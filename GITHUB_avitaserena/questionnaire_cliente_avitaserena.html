@@ -449,11 +449,19 @@ input[type=range]{position:absolute;top:50%;left:0;width:100%;transform:translat
       <span class="qtag a">Identité</span>
       <div class="qt">Comment vous appelez-vous, et quel âge avez-vous ?</div>
       <div class="qv">Ces informations restent strictement confidentielles et servent uniquement à personnaliser votre analyse.</div>
-      <div class="g3">
+      <div class="g2">
         <div><label class="lbl">Prénom</label><input class="inp" type="text" id="prenom" placeholder="Votre prénom"></div>
         <div><label class="lbl">Âge</label><input class="inp" type="number" id="age" placeholder="ex : 34" min="16" max="90"></div>
+      </div>
+      <div class="g2" style="margin-top:12px">
+        <div>
+          <label class="lbl">Adresse email <span style="color:var(--ocre)">*</span></label>
+          <input class="inp" type="email" id="email-cliente" placeholder="votre@email.com">
+          <div style="font-size:12px;color:var(--gris);margin-top:6px;font-style:italic">Pour recevoir votre confirmation de réception</div>
+        </div>
         <div><label class="lbl">Vous vous identifiez comme</label><select class="inp"><option value="">— Choisir —</option><option>Femme</option><option>Homme</option><option>Non-binaire</option><option>Préfère ne pas préciser</option></select></div>
       </div>
+      <div style="margin-top:14px"><label class="lbl">Votre email — pour recevoir la confirmation</label><input class="inp" type="email" id="email-cliente" placeholder="votre@email.com"></div>
     </div>
 
     <div class="qc rev r1">
@@ -760,33 +768,156 @@ function collectData(){
   return data;
 }
 
-async function sendForm(){
-  const p=document.getElementById('prenom').value.trim();
-  if(!p){toast('Merci de renseigner votre prénom pour continuer 🌿');return;}
+/* ─── Email HTML confirmation cliente ─── */
+function buildConfirmationHTML(prenom){
+  return `<div style="margin:0;padding:0;background-color:#F7F6F4;font-family:'Georgia',serif">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#F7F6F4;padding:40px 0">
+<tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%">
+  <tr><td style="background-color:#FFFFFF;border-radius:20px 20px 0 0;padding:40px 48px 32px;text-align:center;border-bottom:1px solid #EDE9E1">
+    <div style="width:48px;height:2px;background:linear-gradient(to right,#C4A882,#9B7230,#C4A882);margin:0 auto 20px"></div>
+    <div style="font-family:'Georgia',serif;font-style:italic;font-size:15px;letter-spacing:4px;text-transform:uppercase;color:#6B6560;margin-bottom:4px">avita<span style="font-family:Arial,sans-serif;font-style:normal;font-weight:800;letter-spacing:2px">serena</span></div>
+    <div style="font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#9B9590;margin-top:6px">Naturopathie · Porto-Vecchio</div>
+    <div style="width:48px;height:1px;background:linear-gradient(to right,#C4A882,#9B7230,#C4A882);margin:20px auto 0"></div>
+  </td></tr>
+  <tr><td style="background-color:#FFFFFF;padding:48px 48px 40px;text-align:center">
+    <div style="font-size:13px;letter-spacing:3px;text-transform:uppercase;color:#B4906A;font-family:Arial,sans-serif;font-weight:700;margin-bottom:18px">Bilan de vitalité reçu ✓</div>
+    <h1 style="font-family:'Georgia',serif;font-style:italic;font-size:32px;color:#1E1E1C;line-height:1.2;margin:0 0 20px;font-weight:400">Votre corps mérite toute<br>l'attention que vous venez<br>de lui accorder.</h1>
+    <div style="width:40px;height:1px;background:#D5CFC6;margin:0 auto"></div>
+  </td></tr>
+  <tr><td style="background-color:#FFFFFF;padding:0 48px 40px">
+    <p style="font-family:Arial,sans-serif;font-size:16px;line-height:1.85;color:#3C3830;margin:0 0 18px">Chèr·e ${prenom},</p>
+    <p style="font-family:Arial,sans-serif;font-size:16px;line-height:1.85;color:#3C3830;margin:0 0 18px">Votre questionnaire de bilan de vitalité est bien arrivé.</p>
+    <p style="font-family:Arial,sans-serif;font-size:16px;line-height:1.85;color:#3C3830;margin:0">Je vais l'analyser avec attention avant notre rendez-vous — chaque réponse compte, et je prends le temps de croiser l'ensemble de vos informations pour construire une analyse qui vous ressemble vraiment.</p>
+  </td></tr>
+  <tr><td style="background-color:#FFFFFF;padding:0 48px 40px">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0">
+      <tr>
+        <td width="31%" style="background-color:#FBF3E4;border-radius:14px;padding:22px 16px;text-align:center;vertical-align:top">
+          <div style="font-size:26px;margin-bottom:10px">📋</div>
+          <div style="font-family:Arial,sans-serif;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#B4906A;margin-bottom:8px">Reçu</div>
+          <div style="font-family:Arial,sans-serif;font-size:13px;color:#6B6560;line-height:1.6">Votre questionnaire est reçu et sécurisé</div>
+        </td>
+        <td width="4%"></td>
+        <td width="31%" style="background-color:#FBF3E4;border-radius:14px;padding:22px 16px;text-align:center;vertical-align:top">
+          <div style="font-size:26px;margin-bottom:10px">🔬</div>
+          <div style="font-family:Arial,sans-serif;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#B4906A;margin-bottom:8px">En cours</div>
+          <div style="font-family:Arial,sans-serif;font-size:13px;color:#6B6560;line-height:1.6">J'analyse votre terrain en profondeur</div>
+        </td>
+        <td width="4%"></td>
+        <td width="31%" style="background-color:#FBF3E4;border-radius:14px;padding:22px 16px;text-align:center;vertical-align:top">
+          <div style="font-size:26px;margin-bottom:10px">🌿</div>
+          <div style="font-family:Arial,sans-serif;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#B4906A;margin-bottom:8px">Bientôt</div>
+          <div style="font-family:Arial,sans-serif;font-size:13px;color:#6B6560;line-height:1.6">Votre protocole personnalisé lors de notre RDV</div>
+        </td>
+      </tr>
+    </table>
+  </td></tr>
+  <tr><td style="background-color:#FFFFFF;padding:0 48px 40px">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+      <td style="background-color:#F5EDD8;border-left:3px solid #C4A882;border-radius:0 14px 14px 0;padding:24px 28px">
+        <p style="font-family:'Georgia',serif;font-style:italic;font-size:19px;color:#1E1E1C;line-height:1.65;margin:0 0 14px">« Ce que vous vivez a une explication biochimique précise. Et presque toujours, une solution. Je suis là pour vous aider à la trouver. »</p>
+        <p style="font-family:Arial,sans-serif;font-size:13px;color:#B4906A;font-weight:700;margin:0;letter-spacing:1px">— Sabrina Castelli · Naturopathe</p>
+      </td>
+    </tr></table>
+  </td></tr>
+  <tr><td style="background-color:#FFFFFF;padding:0 48px 40px">
+    <div style="background-color:#EDE9E1;border-radius:14px;padding:28px 32px">
+      <div style="font-family:Arial,sans-serif;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:#B4906A;margin-bottom:16px">En attendant notre rendez-vous</div>
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr><td style="padding:8px 0;border-bottom:1px solid #D5CFC6"><table cellpadding="0" cellspacing="0" border="0"><tr><td style="width:24px;font-size:15px;vertical-align:top;padding-top:1px">→</td><td style="font-family:Arial,sans-serif;font-size:15px;color:#3C3830;line-height:1.7;padding-left:8px">Buvez <strong>1,5 litre d'eau entre les repas</strong> (pas pendant)</td></tr></table></td></tr>
+        <tr><td style="padding:8px 0;border-bottom:1px solid #D5CFC6"><table cellpadding="0" cellspacing="0" border="0"><tr><td style="width:24px;font-size:15px;vertical-align:top;padding-top:1px">→</td><td style="font-family:Arial,sans-serif;font-size:15px;color:#3C3830;line-height:1.7;padding-left:8px">Essayez de vous coucher <strong>avant 23h</strong> cette semaine</td></tr></table></td></tr>
+        <tr><td style="padding:8px 0"><table cellpadding="0" cellspacing="0" border="0"><tr><td style="width:24px;font-size:15px;vertical-align:top;padding-top:1px">→</td><td style="font-family:Arial,sans-serif;font-size:15px;color:#3C3830;line-height:1.7;padding-left:8px"><strong>Notez ce que vous ressentez</strong> dans les prochains jours — vos observations seront précieuses</td></tr></table></td></tr>
+      </table>
+    </div>
+  </td></tr>
+  <tr><td style="background-color:#FFFFFF;padding:0 48px 48px;text-align:center">
+    <a href="https://avitaserena.com" style="display:inline-block;background-color:#1E1E1C;color:#FFFFFF;font-family:Arial,sans-serif;font-size:14px;font-weight:700;letter-spacing:1px;text-decoration:none;padding:16px 40px;border-radius:99px">Prendre ou modifier mon rendez-vous</a>
+    <p style="font-family:Arial,sans-serif;font-size:13px;color:#9B9590;margin:20px 0 0;line-height:1.7">Une question avant notre rendez-vous ?<br>Répondez simplement à cet email — je vous lis personnellement.</p>
+  </td></tr>
+  <tr><td style="background-color:#EDE9E1;border-radius:0 0 20px 20px;padding:28px 48px;text-align:center">
+    <div style="font-family:'Georgia',serif;font-style:italic;font-size:15px;color:#6B6560;margin-bottom:10px">avita<span style="font-family:Arial,sans-serif;font-style:normal;font-weight:800">serena</span></div>
+    <div style="font-family:Arial,sans-serif;font-size:12px;color:#9B9590;line-height:1.8">sabrina@avitaserena.com · avitaserena.com<br>Instagram @naturo.insulaire · Porto-Vecchio, Corse<br><br><span style="font-size:11px">Vous recevez cet email car vous avez rempli le bilan de vitalité sur avitaserena.com</span></div>
+  </td></tr>
+</table>
+</td></tr>
+</table>
+</div>`;
+}
 
-  const b=document.querySelector('.btn-send');
+/* ─── Construction du résumé pour Sabrina ─── */
+function buildSummaryHTML(prenom, data){
+  let rows='';
+  Object.entries(data).forEach(([k,v])=>{
+    rows+=`<tr><td style="padding:8px 12px;font-size:13px;font-weight:700;color:#6B6560;border-bottom:1px solid #EDE9E1;white-space:nowrap;vertical-align:top">${k}</td><td style="padding:8px 12px;font-size:14px;color:#1E1E1C;border-bottom:1px solid #EDE9E1">${v}</td></tr>`;
+  });
+  return `<div style="font-family:Arial,sans-serif;background:#F7F6F4;padding:32px">
+  <div style="max-width:640px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #EDE9E1">
+    <div style="background:#1E1E1C;padding:24px 32px">
+      <div style="font-size:13px;letter-spacing:3px;text-transform:uppercase;color:#C4A882;margin-bottom:4px">Avita Serena</div>
+      <div style="font-size:20px;color:#fff;font-weight:700">🌿 Nouveau bilan reçu — ${prenom}</div>
+    </div>
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse">${rows}</table>
+    <div style="padding:20px 32px;background:#FBF3E4;font-size:13px;color:#9B7230;border-top:1px solid #EDE9E1">À retrouver dans votre dashboard Formspree · avitaserena.com</div>
+  </div></div>`;
+}
+
+/* ─── Envoi API Brevo ─── */
+async function sendViaBrevo(toEmail, toName, subject, htmlContent){
+  const res = await fetch('https://api.brevo.com/v3/smtp/email',{
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'api-key':'xsmtpsib-2142b50fb231f0c8d1e7c42a07b57fc40d40cda9cf6b53fd41c17ee5b5b611d2-T9v0lNBjcQCEZQRa'
+    },
+    body:JSON.stringify({
+      sender:{name:'Sabrina · Avita Serena',email:'sabrina@avitaserena.com'},
+      to:[{email:toEmail,name:toName}],
+      subject:subject,
+      htmlContent:htmlContent
+    })
+  });
+  return res;
+}
+
+async function sendForm(){
+  const p = document.getElementById('prenom').value.trim();
+  const emailInput = document.getElementById('email-cliente');
+  const clientEmail = emailInput ? emailInput.value.trim() : '';
+
+  if(!p){toast('Merci de renseigner votre prénom pour continuer 🌿');return;}
+  if(!clientEmail || !clientEmail.includes('@')){toast('Merci de renseigner votre adresse email pour recevoir la confirmation 🌿');return;}
+
+  const b = document.querySelector('.btn-send');
   b.innerHTML='⏳ Envoi en cours…';
   b.disabled=true;
 
-  const payload=collectData();
+  const data = collectData();
 
   try{
-    const res=await fetch('https://tally.so/r/q4JEJY',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(payload),
-      mode:'no-cors'
-    });
+    // 1. Email de confirmation à la cliente
+    await sendViaBrevo(
+      clientEmail, p,
+      '🌿 Votre bilan de vitalité est bien reçu',
+      buildConfirmationHTML(p)
+    );
+
+    // 2. Résumé des réponses à Sabrina
+    await sendViaBrevo(
+      'sabrina@avitaserena.com','Sabrina Castelli',
+      `🌿 Nouveau bilan de vitalité — ${p}`,
+      buildSummaryHTML(p, data)
+    );
+
     b.innerHTML='✓ Questionnaire envoyé !';
     b.style.background='var(--vert-sauge)';
-    toast(`Merci ${p} 🌿 Votre questionnaire est bien reçu. À très bientôt !`,5500);
+    toast(`Merci ${p} 🌿 Un email de confirmation vous a été envoyé. À très bientôt !`,5500);
     setTimeout(()=>window.scrollTo({top:0,behavior:'smooth'}),1400);
+
   }catch(e){
-    // no-cors ne lève pas d'erreur réseau réelle — on considère l'envoi OK
-    b.innerHTML='✓ Questionnaire envoyé !';
-    b.style.background='var(--vert-sauge)';
-    toast(`Merci ${p} 🌿 Votre questionnaire est bien reçu. À très bientôt !`,5500);
-    setTimeout(()=>window.scrollTo({top:0,behavior:'smooth'}),1400);
+    b.innerHTML='Envoyer mon questionnaire <span class="arr">→</span>';
+    b.disabled=false;
+    toast('Une erreur est survenue, veuillez réessayer.',4000);
   }
 }
 </script>
