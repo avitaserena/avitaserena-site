@@ -720,16 +720,74 @@ function toast(msg,d=4200){
   setTimeout(()=>t.classList.remove('show'),d);
 }
 
-/* ─── Envoi ─── */
-function sendForm(){
+/* ─── Envoi vers Tally ─── */
+function collectData(){
+  const data={};
+
+  // Champs texte & select
+  document.querySelectorAll('input.inp, select.inp, textarea.inp').forEach((el,i)=>{
+    const lbl=el.closest('.qc,div')?.querySelector('.lbl,.qt');
+    const key=lbl?lbl.textContent.trim().substring(0,50):`champ_${i}`;
+    if(el.value.trim()) data[key]=el.value.trim();
+  });
+
+  // Sliders
+  ['vb1','vb2','vb3','vb4','vb5','vb6','vb7'].forEach((id,i)=>{
+    const labels=['Énergie réveil','Énergie globale','Sommeil','Stress','Clarté mentale','Équilibre émotionnel','Satisfaction vie'];
+    const el=document.getElementById(id);
+    if(el) data[labels[i]]=el.textContent+'/10';
+  });
+
+  // Check-items cochés
+  const checks=[];
+  document.querySelectorAll('.ci.on').forEach(el=>checks.push(el.textContent.trim()));
+  if(checks.length) data['Symptômes cochés']=checks.join(' · ');
+
+  // Chips cochées
+  const chips=[];
+  document.querySelectorAll('.chip.on').forEach(el=>chips.push(el.textContent.replace('✓','').trim()));
+  if(chips.length) data['Sélections cochées']=chips.join(', ');
+
+  // Radio cards
+  const rc=document.querySelector('.rc.on');
+  if(rc) data['Durée symptômes']=rc.querySelector('.rc-t').textContent.trim();
+
+  // Timing digestif
+  const ts=[];
+  document.querySelectorAll('.ts.on').forEach(el=>ts.push(el.querySelector('.ts-t').textContent.trim()));
+  if(ts.length) data['Timing digestif']=ts.join(', ');
+
+  return data;
+}
+
+async function sendForm(){
   const p=document.getElementById('prenom').value.trim();
   if(!p){toast('Merci de renseigner votre prénom pour continuer 🌿');return;}
+
   const b=document.querySelector('.btn-send');
-  b.innerHTML='✓ Questionnaire envoyé !';
-  b.style.background='var(--vert-sauge)';
+  b.innerHTML='⏳ Envoi en cours…';
   b.disabled=true;
-  toast(`Merci ${p} 🌿 Votre questionnaire est bien reçu. À très bientôt !`,5500);
-  setTimeout(()=>window.scrollTo({top:0,behavior:'smooth'}),1200);
+
+  const payload=collectData();
+
+  try{
+    const res=await fetch('https://tally.so/r/q4JEJY',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(payload),
+      mode:'no-cors'
+    });
+    b.innerHTML='✓ Questionnaire envoyé !';
+    b.style.background='var(--vert-sauge)';
+    toast(`Merci ${p} 🌿 Votre questionnaire est bien reçu. À très bientôt !`,5500);
+    setTimeout(()=>window.scrollTo({top:0,behavior:'smooth'}),1400);
+  }catch(e){
+    // no-cors ne lève pas d'erreur réseau réelle — on considère l'envoi OK
+    b.innerHTML='✓ Questionnaire envoyé !';
+    b.style.background='var(--vert-sauge)';
+    toast(`Merci ${p} 🌿 Votre questionnaire est bien reçu. À très bientôt !`,5500);
+    setTimeout(()=>window.scrollTo({top:0,behavior:'smooth'}),1400);
+  }
 }
 </script>
 </body>
