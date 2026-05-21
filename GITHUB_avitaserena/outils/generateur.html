@@ -1,0 +1,975 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Générateur de Bilan — Avita Serena</title>
+<style id="suivi-styles">
+.badge-suivi{display:none;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#7A4530;background:#FAF0EB;border:1px solid rgba(122,69,48,.25);padding:4px 14px;border-radius:99px;margin-left:8px}
+.badge-suivi.visible{display:inline-block}
+.mode-indicator{font-size:12px;color:var(--gris);background:var(--grege);border:1px solid var(--taupe);border-radius:99px;padding:5px 14px;font-weight:500}
+.suivi-banner{display:none;background:linear-gradient(135deg,#FAF0EB,#F0E8D8);border:1.5px solid rgba(122,69,48,.3);border-radius:14px;padding:16px 20px;margin-bottom:20px;align-items:center;gap:14px}
+.suivi-banner.visible{display:flex}
+.sb-icon{font-size:28px;flex-shrink:0}
+.sb-text .sb-t{font-size:14px;font-weight:700;color:#5A3020;margin-bottom:3px}
+.sb-text .sb-s{font-size:12px;color:#8B6050;line-height:1.6}
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --blanc:#FFFFFF;--off:#F7F6F4;--grege:#EDE9E1;--taupe:#D5CFC6;
+  --sable:#C4A882;--ocre:#B4906A;--ardoise:#1E1E1C;--gris:#6B6560;
+  --or-clair:#FBF3E4;--or:#9B7230;
+  --vert-clair:#EAF0E6;--vert:#3D6B2C;
+  --rose-clair:#F5EAEE;--rose:#8A3A52;
+  --rouge-clair:#F9EDEC;--rouge:#8B3A3A;
+  --bleu-clair:#EAF2F8;--bleu:#2C5E8A;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{font-family:'Be Vietnam Pro',sans-serif;color:var(--ardoise);background:var(--off);font-size:16px;line-height:1.65}
+body{max-width:900px;margin:0 auto;padding:0 0 80px}
+
+.hdr{background:var(--blanc);border-bottom:1px solid var(--taupe);padding:18px 36px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 1px 8px rgba(0,0,0,.04)}
+.logo .avita{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:24px;color:var(--ardoise)}
+.logo .serena{font-family:'Be Vietnam Pro',sans-serif;font-weight:800;font-size:24px;color:var(--ardoise)}
+.hdr-tag{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--gris);background:var(--grege);padding:4px 14px;border-radius:99px}
+.hdr-stripe{height:3px;background:linear-gradient(to right,var(--taupe),var(--sable),var(--ocre),var(--sable),var(--taupe))}
+
+.page{padding:28px 36px 40px}
+
+/* ── API BOX ── */
+.api-box{background:var(--blanc);border:1px solid var(--taupe);border-radius:12px;padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.api-box label{font-size:14px;font-weight:600;color:var(--ardoise);white-space:nowrap}
+.api-row{display:flex;gap:8px;flex:1;min-width:260px}
+.api-row input{flex:1;border:1.5px solid var(--taupe);border-radius:8px;padding:10px 14px;font-size:14px;font-family:inherit;color:var(--ardoise);background:var(--off);outline:none;transition:border-color .15s}
+.api-row input:focus{border-color:var(--ocre)}
+.api-btn{padding:10px 18px;background:var(--ardoise);color:var(--blanc);border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-size:13px;font-weight:500}
+
+/* ── SESSION CARD ── */
+.session-card{background:var(--blanc);border:1.5px solid var(--sable);border-radius:14px;padding:20px 24px;margin-bottom:20px}
+.session-card h3{font-size:14px;font-weight:700;color:var(--ardoise);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.session-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.session-item{background:var(--off);border-radius:8px;padding:10px 14px;font-size:13px}
+.session-item strong{display:block;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--gris);margin-bottom:3px}
+.session-item span{color:var(--ardoise);font-weight:500}
+.session-empty{color:var(--gris);font-size:13px;font-style:italic}
+.manual-toggle{font-size:12px;color:var(--ocre);cursor:pointer;text-decoration:underline;margin-top:10px;display:inline-block}
+
+/* ── MANUAL FORM ── */
+.manual-form{display:none;margin-top:16px;border-top:1px solid var(--grege);padding-top:16px}
+.manual-form.open{display:block}
+.mf-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+label.ml{font-size:12px;font-weight:700;color:var(--ardoise);display:block;margin-bottom:5px;letter-spacing:.03em;text-transform:uppercase}
+textarea.mf,input.mf,select.mf{width:100%;border:1.5px solid var(--taupe);border-radius:8px;padding:10px 13px;font-size:14px;font-family:inherit;color:var(--ardoise);background:var(--off);outline:none;resize:vertical;line-height:1.55}
+textarea.mf{min-height:80px}
+textarea.mf:focus,input.mf:focus,select.mf:focus{border-color:var(--ocre);background:var(--blanc)}
+
+/* ── PARAMETRES ── */
+.params-card{background:var(--blanc);border:1px solid var(--taupe);border-radius:12px;padding:18px 22px;margin-bottom:20px}
+.params-card h3{font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ocre);margin-bottom:14px}
+.params-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.p-sel label{font-size:12px;font-weight:600;color:var(--ardoise);display:block;margin-bottom:5px}
+.p-sel select{width:100%;border:1.5px solid var(--taupe);border-radius:8px;padding:9px 12px;font-size:13px;font-family:inherit;color:var(--ardoise);background:var(--off);outline:none;cursor:pointer}
+.p-sel select:focus{border-color:var(--ocre)}
+
+/* ── BOUTON ── */
+.gen-btn{width:100%;background:var(--ardoise);color:var(--blanc);border:none;border-radius:12px;padding:18px;font-size:16px;font-weight:600;cursor:pointer;font-family:inherit;transition:opacity .15s;letter-spacing:.04em;margin-bottom:24px}
+.gen-btn:hover{opacity:.88}
+.gen-btn:disabled{opacity:.35;cursor:not-allowed}
+
+/* ── LOADING ── */
+#loading-wrap{display:none;text-align:center;padding:60px 24px}
+.spinner{width:34px;height:34px;border:2px solid var(--taupe);border-top-color:var(--ardoise);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 18px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-msg{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:20px;color:var(--gris)}
+.loading-sub{font-size:13px;color:var(--gris);margin-top:6px}
+
+/* ── PREVIEW ── */
+#preview-wrap{display:none}
+.prev-hero{background:linear-gradient(135deg,var(--or-clair),var(--grege));border:1.5px solid var(--sable);border-radius:14px;padding:24px 28px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.prev-hero-name{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:26px;color:var(--ardoise)}
+.prev-hero-sub{font-size:13px;color:var(--gris);margin-top:4px}
+.dl-btn{background:var(--ardoise);color:var(--blanc);border:none;border-radius:99px;padding:13px 28px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;transition:opacity .15s}
+.dl-btn:hover{opacity:.85}
+.prev-section{background:var(--blanc);border:1px solid var(--taupe);border-radius:12px;padding:22px 26px;margin-bottom:14px}
+.prev-section h3{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--ocre);font-weight:700;margin-bottom:14px}
+.prev-content{font-size:14px;color:var(--ardoise);line-height:1.8;white-space:pre-wrap}
+.reset-btn{background:var(--blanc);border:1.5px solid var(--taupe);border-radius:99px;padding:10px 24px;font-size:13px;cursor:pointer;color:var(--gris);font-family:inherit;margin-top:12px;transition:all .15s}
+.reset-btn:hover{border-color:var(--ardoise);color:var(--ardoise)}
+
+@media(max-width:680px){.session-grid,.mf-grid,.params-grid{grid-template-columns:1fr}.page{padding:18px 16px 40px}.hdr{padding:14px 16px}}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="logo"><span class="avita">avita</span><span class="serena">serena</span></div>
+  <div style="display:flex;align-items:center;gap:8px">
+    <div class="mode-indicator" id="mode-indicator">Première consultation</div>
+    <span class="badge-suivi" id="badge-suivi">🔄 Mode Suivi</span>
+    <div class="hdr-tag">Générateur de Bilan</div>
+  </div>
+</div>
+<div class="hdr-stripe"></div>
+
+<div class="page">
+
+<!-- BANNIÈRE SUIVI — visible uniquement en mode suivi -->
+<div class="suivi-banner" id="suivi-banner">
+  <div class="sb-icon">🔄</div>
+  <div class="sb-text">
+    <div class="sb-t">Mode Consultation de Suivi détecté</div>
+    <div class="sb-s">Le prompt et la structure du bilan sont automatiquement adaptés. La section "Évolution" remplace la section "Ce qui se passe dans votre corps". Le protocole sera présenté comme un ajustement, non comme une construction.</div>
+  </div>
+</div>
+
+<!-- API -->
+<div class="api-box">
+  <label>Clé API Anthropic</label>
+  <div class="api-row">
+    <input type="password" id="api-key" placeholder="sk-ant-api03-…">
+    <button class="api-btn" onclick="saveKey()">Enregistrer</button>
+  </div>
+  <span id="key-status" style="font-size:13px"></span>
+</div>
+
+<!-- SESSION IMPORTÉE -->
+<div class="session-card">
+  <h3>📋 Données de la séance</h3>
+  <div id="session-display"></div>
+  <span class="manual-toggle" onclick="toggleManual()">✎ Saisir / modifier manuellement</span>
+  <div class="manual-form" id="manual-form">
+    <div class="mf-grid">
+      <div><label class="ml">Prénom</label><input class="mf" type="text" id="m-prenom" placeholder="Marie"></div>
+      <div><label class="ml">Âge</label><input class="mf" type="number" id="m-age" placeholder="38"></div>
+      <div><label class="ml">Durée des symptômes</label>
+        <select class="mf" id="m-duree">
+          <option value="">—</option>
+          <option>Quelques semaines</option><option>2-6 mois</option>
+          <option>6-12 mois</option><option>1 à 3 ans</option>
+          <option>Plus de 3 ans</option><option>Depuis l'enfance</option>
+        </select>
+      </div>
+      <div><label class="ml">Contraception actuelle</label>
+        <select class="mf" id="m-contra">
+          <option value="">—</option>
+          <option>Aucune</option><option>Pilule oestroprogestative</option>
+          <option>Pilule microprogestative</option><option>DIU hormonal</option>
+          <option>DIU cuivre</option><option>Implant</option>
+        </select>
+      </div>
+    </div>
+    <div style="margin-bottom:12px"><label class="ml">Motifs principaux & symptômes</label><textarea class="mf" id="m-motifs" style="min-height:70px" placeholder="Fatigue chronique, ballonnements, SPM intense, insomnies 3h du matin…"></textarea></div>
+    <div style="margin-bottom:12px"><label class="ml">Scores cliniques (1–10)</label><textarea class="mf" id="m-scores" placeholder="Énergie: 4 | Sommeil: 5 | Stress: 8 | Digestion: 3 | Émotions: 5 | Hormones: 4"></textarea></div>
+    <div style="margin-bottom:12px"><label class="ml">Symptômes cochés (check-lists)</label><textarea class="mf" id="m-checks" placeholder="Réveil 1h-3h du matin, Épuisée le matin, Envies de sucre 17h, Ballonnements après repas…"></textarea></div>
+    <div style="margin-bottom:12px"><label class="ml">Médicaments & allergies ⚠</label><textarea class="mf" id="m-medics" placeholder="Médicaments: Lévothyrox 50µg. Allergies: arachide."></textarea></div>
+    <div style="margin-bottom:12px"><label class="ml">Cycle, gynécologie, thyroïde</label><textarea class="mf" id="m-gyneco" placeholder="Cycle 24j, règles noirâtres, SPM 10j, endométriose stade 2. Thyroïde: Hashimoto diagnostiqué."></textarea></div>
+    <div style="margin-bottom:12px"><label class="ml">Alimentation & mode de vie</label><textarea class="mf" id="m-alim" placeholder="Omnivore, café seul le matin, dîner tardif, sédentaire 8h/j, 1L eau/j…"></textarea></div>
+    <div><label class="ml">Intuition clinique & notes praticien</label><textarea class="mf" id="m-notes" placeholder="Dominance œstrogénique probable, cortisol inversé suspecté, a pleuré en parlant de son travail…"></textarea></div>
+  </div>
+</div>
+
+<!-- PARAMÈTRES -->
+<div class="params-card">
+  <h3>⚙ Paramètres du bilan</h3>
+  <div class="params-grid">
+    <div class="p-sel">
+      <label>Axe prioritaire 1</label>
+      <select id="prio1">
+        <option>Digestif & microbiote</option>
+        <option>Hormonal & cycles</option>
+        <option>Surrénales & énergie</option>
+        <option>Sommeil & récupération</option>
+        <option>Foie & détox</option>
+        <option>Thyroïde</option>
+        <option>Stress & système nerveux</option>
+      </select>
+    </div>
+    <div class="p-sel">
+      <label>Axe prioritaire 2</label>
+      <select id="prio2">
+        <option>Hormonal & cycles</option>
+        <option>Digestif & microbiote</option>
+        <option>Surrénales & énergie</option>
+        <option>Sommeil & récupération</option>
+        <option>Foie & détox</option>
+        <option>Thyroïde</option>
+        <option>Stress & système nerveux</option>
+      </select>
+    </div>
+    <div class="p-sel">
+      <label>Durée du programme</label>
+      <select id="duree-prog">
+        <option>6 semaines</option>
+        <option>3 mois</option>
+        <option>4 semaines</option>
+        <option>6 mois</option>
+      </select>
+    </div>
+    <div class="p-sel">
+      <label>Niveau de changement</label>
+      <select id="niveau">
+        <option>Modéré — progressif</option>
+        <option>Élevé — prête à tout changer</option>
+        <option>Minimal — contraintes importantes</option>
+      </select>
+    </div>
+    <div class="p-sel">
+      <label>Objectif principal</label>
+      <select id="obj-principal">
+        <option>Retrouver de l'énergie</option>
+        <option>Équilibre hormonal</option>
+        <option>Mieux dormir</option>
+        <option>Digestion apaisée</option>
+        <option>Gestion du stress</option>
+        <option>Perte de poids durable</option>
+        <option>Conception / fertilité</option>
+        <option>Périménopause</option>
+      </select>
+    </div>
+    <div class="p-sel">
+      <label>Profil de vie</label>
+      <select id="profil">
+        <option>Femme active, travail sédentaire</option>
+        <option>Mère de famille, charge mentale</option>
+        <option>Indépendante / entrepreneur</option>
+        <option>Profession de santé</option>
+        <option>En convalescence / burn-out</option>
+        <option>Périménopause / ménopause</option>
+      </select>
+    </div>
+  </div>
+</div>
+
+<button class="gen-btn" id="gen-btn" onclick="generate()">✦ Générer le Plan d'Hygiène Vitale</button>
+
+<!-- LOADING -->
+<div id="loading-wrap">
+  <div class="spinner"></div>
+  <div class="loading-msg" id="loading-msg">Analyse du terrain…</div>
+  <div class="loading-sub">Génération en cours — environ 40 secondes</div>
+</div>
+
+<!-- PREVIEW -->
+<div id="preview-wrap">
+  <div class="prev-hero">
+    <div>
+      <div class="prev-hero-name" id="prev-name">—</div>
+      <div class="prev-hero-sub" id="prev-sub">Plan d'Hygiène Vitale · Avita Serena</div>
+    </div>
+    <button class="dl-btn" id="dl-btn" onclick="downloadDocx()">↓ Télécharger le Word</button>
+  </div>
+  <div class="prev-section"><h3>01 · Ce qui se passe dans votre corps</h3><div class="prev-content" id="s1"></div></div>
+  <div class="prev-section"><h3>02 · Vos axes prioritaires & pourquoi</h3><div class="prev-content" id="s2"></div></div>
+  <div class="prev-section"><h3>03 · Votre protocole</h3><div class="prev-content" id="s3"></div></div>
+  <div class="prev-section"><h3>04 · Votre alimentation</h3><div class="prev-content" id="s4"></div></div>
+  <div class="prev-section"><h3>05 · Votre semaine type & rituels</h3><div class="prev-content" id="s5"></div></div>
+  <div class="prev-section"><h3>06 · Les signaux d'amélioration</h3><div class="prev-content" id="s6"></div></div>
+  <button class="reset-btn" onclick="resetAll()">← Nouveau bilan</button>
+</div>
+
+</div><!-- /page -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/docx/8.5.0/docx.umd.min.js"></script>
+<script>
+let apiKey = '';
+let sessionData = null;
+let generatedData = null;
+let isSuivi = false;
+
+/* ══════════════════════════════════════
+   MESSAGES CHARGEMENT
+══════════════════════════════════════ */
+const loadingMsgsPremiere = [
+  'Lecture du terrain de vie…',
+  'Identification des mécanismes causaux…',
+  'Vérification des contre-indications médicamenteuses…',
+  'Sélection des plantes et compléments prioritaires…',
+  'Construction du protocole personnalisé…',
+  'Rédaction des explications physiologiques…',
+  'Ajustement au profil de vie…',
+  'Finalisation du bilan…',
+];
+
+const loadingMsgsSuivi = [
+  'Lecture des évolutions depuis la dernière séance…',
+  'Analyse des scores avant/après…',
+  'Évaluation de l\'observance du protocole…',
+  'Identification des ajustements nécessaires…',
+  'Valorisation des progrès accomplis…',
+  'Construction du protocole ajusté…',
+  'Rédaction du bilan de suivi personnalisé…',
+  'Finalisation…',
+];
+
+/* ══════════════════════════════════════
+   CLÉ API
+══════════════════════════════════════ */
+function saveKey() {
+  const k = document.getElementById('api-key').value.trim();
+  if (!k.startsWith('sk-ant')) {
+    document.getElementById('key-status').innerHTML = '<span style="color:#8B3A3A">⚠ Clé invalide — doit commencer par sk-ant</span>';
+    return;
+  }
+  apiKey = k;
+  try { localStorage.setItem('avita_api_key', k); } catch(e) {}
+  document.getElementById('key-status').innerHTML = '<span style="color:#3D6B2C">✓ Clé enregistrée</span>';
+}
+
+/* ══════════════════════════════════════
+   SESSION DEPUIS localStorage
+══════════════════════════════════════ */
+function loadSession() {
+  // Restaurer la clé API si mémorisée
+  try {
+    const savedKey = localStorage.getItem('avita_api_key');
+    if (savedKey) {
+      document.getElementById('api-key').value = savedKey;
+      apiKey = savedKey;
+      document.getElementById('key-status').innerHTML = '<span style="color:#3D6B2C">✓ Clé restaurée</span>';
+    }
+  } catch(e) {}
+
+  try {
+    const raw = localStorage.getItem('avita_session');
+    if (raw) {
+      sessionData = JSON.parse(raw);
+
+      // Détecter mode suivi
+      isSuivi = !!sessionData._type_consultation && sessionData._type_consultation === 'suivi';
+      updateModeUI();
+      renderSessionCard();
+      prefillParams();
+    } else {
+      document.getElementById('session-display').innerHTML = '<p class="session-empty">Aucune donnée importée. Lancez depuis le questionnaire ou utilisez le formulaire manuel ci-dessous.</p>';
+      document.getElementById('manual-form').classList.add('open');
+    }
+  } catch(e) {
+    document.getElementById('session-display').innerHTML = '<p class="session-empty">Erreur de lecture — saisissez les données manuellement.</p>';
+    document.getElementById('manual-form').classList.add('open');
+  }
+}
+
+function updateModeUI() {
+  const badge = document.getElementById('badge-suivi');
+  const banner = document.getElementById('suivi-banner');
+  const indicator = document.getElementById('mode-indicator');
+  const genBtn = document.getElementById('gen-btn');
+
+  if (isSuivi) {
+    badge.classList.add('visible');
+    banner.classList.add('visible');
+    indicator.textContent = sessionData._num_suivi || 'Consultation de suivi';
+    indicator.style.color = '#7A4530';
+    indicator.style.background = '#FAF0EB';
+    genBtn.textContent = '✦ Générer le Bilan de Suivi';
+    // Adapter les titres des sections preview
+    document.querySelector('#preview-wrap .prev-section:nth-child(2) h3').textContent = '01 · Vos progrès & ce qui a changé';
+    document.querySelector('#preview-wrap .prev-section:nth-child(3) h3').textContent = '02 · Ce qui se joue encore dans votre corps';
+  } else {
+    badge.classList.remove('visible');
+    banner.classList.remove('visible');
+    indicator.textContent = 'Première consultation';
+    genBtn.textContent = '✦ Générer le Plan d\'Hygiène Vitale';
+  }
+}
+
+function renderSessionCard() {
+  const d = sessionData;
+  let items;
+
+  if (isSuivi) {
+    items = [
+      ['Cliente', d.prenom ? `${d.prenom}${d.age ? ', ' + d.age + ' ans' : ''}` : '—'],
+      ['Numéro de suivi', d._num_suivi || '—'],
+      ['Évolution des scores', (d.scores || '—').substring(0, 120)],
+      ['Axe maintenu', d._prio1 || '—'],
+      ['Phase programme', d._phase || '—'],
+      ['Notes de séance', d.notes_libres ? '✓ ' + d.notes_libres.length + ' caractères' : '—'],
+    ];
+  } else {
+    items = [
+      ['Cliente', d.prenom ? `${d.prenom}${d.age ? ', ' + d.age + ' ans' : ''}` : '—'],
+      ['Durée des symptômes', d.duree_symptomes || '—'],
+      ['Motifs principaux', (d.motifs || '—').substring(0, 80)],
+      ['Scores cliniques', (d.scores || '—').substring(0, 80)],
+      ['Médicaments', (d.textes_libres?.match(/Médicaments[^\n]*/)?.[0] || '—').substring(0, 80)],
+      ['Bilans recommandés', (d.bilans_recommandes || '—').substring(0, 80)],
+    ];
+  }
+
+  const html = `
+    <div class="session-grid">
+      ${items.map(([k,v]) => `<div class="session-item"><strong>${k}</strong><span>${(v||'—')}</span></div>`).join('')}
+    </div>
+    <div style="margin-top:10px;font-size:12px;color:var(--vert)">
+      ✓ ${Object.values(d).filter(v=>v&&String(v).length>2).length} champs importés · 
+      ${isSuivi ? '🔄 Mode Suivi activé' : '📋 Première consultation'}
+    </div>`;
+  document.getElementById('session-display').innerHTML = html;
+}
+
+function prefillParams() {
+  if (!sessionData) return;
+  const checks = (sessionData.symptomes_coches || '') + (sessionData.motifs || '') + (sessionData.motifs_initiaux || '');
+
+  if (isSuivi) {
+    // Pré-remplir depuis les axes du questionnaire de suivi
+    if (sessionData._prio1) {
+      const prio1 = document.getElementById('prio1');
+      for (let o of prio1.options) { if (o.text.includes(sessionData._prio1.split('&')[0].trim())) { prio1.value = o.value; break; } }
+    }
+    if (sessionData._prio2) {
+      const prio2 = document.getElementById('prio2');
+      for (let o of prio2.options) { if (o.text.includes(sessionData._prio2.split('&')[0].trim())) { prio2.value = o.value; break; } }
+    }
+  } else {
+    if (/digestif|ballonnem|transit|SII|SIBO|microbiote/i.test(checks)) document.getElementById('prio1').value = 'Digestif & microbiote';
+    if (/SPM|cycle|hormonal|ovaires|règles|endométriose|SOPK/i.test(checks)) document.getElementById('prio1').value = 'Hormonal & cycles';
+    if (/cortisol|surrén|épuisée|énergie|fatigue/i.test(checks)) document.getElementById('prio2').value = 'Surrénales & énergie';
+    if (/thyroïde|hashimoto|lévothyrox/i.test(checks)) document.getElementById('prio2').value = 'Thyroïde';
+    if (/foie|détox|biliaire|cholestérol/i.test(checks)) document.getElementById('prio2').value = 'Foie & détox';
+  }
+}
+
+function toggleManual() {
+  document.getElementById('manual-form').classList.toggle('open');
+}
+
+/* ══════════════════════════════════════
+   COLLECTE DONNÉES FINALES
+══════════════════════════════════════ */
+function buildClientData() {
+  const mf = id => document.getElementById(id)?.value?.trim() || '';
+  const manual = {
+    prenom: mf('m-prenom'), age: mf('m-age'), duree: mf('m-duree'),
+    contra: mf('m-contra'), motifs: mf('m-motifs'), scores: mf('m-scores'),
+    checks: mf('m-checks'), medics: mf('m-medics'), gyneco: mf('m-gyneco'),
+    alim: mf('m-alim'), notes: mf('m-notes'),
+  };
+  const s = sessionData || {};
+
+  return {
+    prenom: manual.prenom || s.prenom || 'Cliente',
+    age: manual.age || s.age || '',
+    duree_symptomes: manual.duree || s.duree_symptomes || '',
+    contraception: manual.contra || '',
+    motifs: manual.motifs || [s.motifs, s.motifs_initiaux, s.mots_cles].filter(Boolean).join(', '),
+    scores: manual.scores || s.scores || s.scores_evolution || '',
+    symptomes_coches: manual.checks || s.symptomes_coches || s.symptomes_ameliores || '',
+    chips: s.chips_coches || s.changements_vie || '',
+    medics_allergies: manual.medics || (s.textes_libres?.match(/Médicaments[^\n]*/g) || []).join(', ') || '',
+    gyneco: manual.gyneco || (s.textes_libres?.match(/(?:Cycle|Gynécolog|Thyroïde|Hormonal)[^\n]*/g) || []).join(' | ') || '',
+    alimentation: manual.alim || (s.selects?.match(/(?:Alimentation|Transit|Ballonnem|Alcool|Hydratation)[^\n]*/g) || []).join(' | ') || '',
+    notes_praticien: manual.notes || s.synthese_praticien || s.notes_libres || s.textes_libres?.slice(-600) || '',
+    bilans_rec: s.bilans_recommandes || '',
+    objectif_6mois: s.objectif_6mois || s.objectif_initial || '',
+    prio1: document.getElementById('prio1').value,
+    prio2: document.getElementById('prio2').value,
+    duree_prog: document.getElementById('duree-prog').value,
+    niveau: document.getElementById('niveau').value,
+    obj_principal: document.getElementById('obj-principal').value,
+    profil: document.getElementById('profil').value,
+    // Données suivi
+    _suivi: isSuivi,
+    _num_suivi: s._num_suivi || '',
+    _phase: s._phase || '',
+    _delai: s._delai || '',
+    _scores_evolution: s.scores_evolution || s.scores || '',
+    _notes_libres: s.notes_libres || '',
+    _changements_vie: s.changements_vie || '',
+    _textes_suivi: s.textes || '',
+  };
+}
+
+/* ══════════════════════════════════════
+   PROMPT PREMIÈRE CONSULTATION
+══════════════════════════════════════ */
+function buildPrompt(d) {
+  return `Tu es Sabrina Castelli, naturopathe diplômée (Avita Serena, Porto-Vecchio, Corse), spécialisée en santé digestive et équilibre hormonal féminin. Tu génères le Plan d'Hygiène Vitale (PHV) — un document que la cliente va lire, garder et appliquer pendant ${d.duree_prog}.
+
+━━ RÈGLE N°1 — FORMAT & TON ━━
+Longueur : 6 à 8 pages A4 équivalent. Ni trop court (bâclé), ni trop long (décourageant).
+Ton : chaleureux, direct, expert, incarné. Comme une amie médecin qui parle vrai — pas un rapport médical, pas un article de blog.
+Structure : PRESCRIPTIF et PÉDAGOGIQUE. Jamais récapitulatif.
+Ne répète PAS ce que la cliente a dit — elle le sait. Explique-lui CE QUI SE PASSE dans son corps (mécanismes vulgarisés), POURQUOI on fait ces choix précis, et QUOI faire concrètement.
+Chaque conseil doit être accompagné de son "pourquoi physiologique" en 1 à 2 phrases. Ex : "Le magnésium bisglycinate agit comme cofacteur de plus de 300 enzymes dont celles qui régulent l'axe HPA — en d'autres termes, il aide votre corps à mieux moduler sa réponse au stress au niveau cellulaire."
+
+━━ RÈGLE N°2 — MODALITÉS AUTORISÉES ━━
+1. Phytothérapie — priorité absolue — forme : EPS > TM > gélule extrait sec > tisane
+2. Compléments : UNIQUEMENT Pileje, Nutergia, Holistica, Nat & Form, Bionutrics
+3. Nutrition : simple, sans comptage, sans cuisine complexe
+4. Produits de la ruche : miel thérapeutique, propolis, gelée royale
+5. Argile (verte ou blanche selon indication)
+6. Fleurs de Bach (uniquement si terrain émotionnel marqué)
+7. Mouvement sans matériel : marche, yoga doux, cohérence cardiaque, Qi gong, respiration
+JAMAIS : homéopathie, hydrolats, sophrologie, matériel de fitness, salle de sport
+
+━━ RÈGLE N°3 — COMPLÉMENTS SYSTÉMATIQUES (sauf CI) ━━
+Ces 2 compléments sont la base de TOUS les bilans Avita Serena — à inclure sauf contre-indication documentée :
+• Oméga-3 EPA/DHA : Omégabiane EPA ou Omégabiane DHA (Pileje) — 2 gélules/jour au repas le plus riche — pourquoi : modulation de l'inflammation de bas grade, fluidification membranaire, soutien de la synthèse hormonale
+• Magnésium bisglycinate : Nutergia Ergymag ou Holistica Magnésium bisglycinate — 300 à 400 mg/jour au coucher — pourquoi : cofacteur de 300+ enzymes, régulation axe HPA, qualité du sommeil, réduction des crampes
+
+Probiotiques selon indication clinique PRÉCISE (ne jamais prescrire sans indication) :
+• Lactibiane Référence 5M (Pileje) : SII, ballonnements sans SIBO confirmé
+• Lactibiane Iki (Pileje) : SIBO H2, fermentation intestinale marquée
+• Lactibiane Tolérance (Pileje) : hyperperméabilité intestinale, intolérance alimentaire
+• Gynophilus LP (Pileje) : infections vaginales récurrentes, mycoses, dysbiose vaginale
+• Feminabiane SPM (Pileje) : SPM avec douleurs aux seins, troubles de l'humeur, rétention d'eau
+
+━━ RÈGLE N°4 — SÉCURITÉ ABSOLUE ━━
+Ces vérifications sont impératives. Si un médicament est déclaré, signale l'interaction dans s3_protocole avec le tag ⚠ CI :
+• Anticoagulants (AVK, héparine, xarelto…) → éviter oméga-3 > 2g/j, gingko, millepertuis, ail concentré
+• ISRS / antidépresseurs → millepertuis ABSOLUMENT INTERDIT (syndrome sérotoninergique)
+• Pilule œstroprogestative ou THM → phytoestrogènes (trèfle rouge, houblon, fenouil) à éviter ou doser avec prudence
+• Cancer hormono-dépendant (sein, endomètre, ovaire) → JAMAIS de phytoestrogènes, Feminabiane Ménopause, ni plantes stimulant les œstrogènes
+• Lévothyrox (hypothyroïdie) → espacer de 4h minimum fer, calcium, magnésium — ne pas prendre à jeun en même temps
+• Grossesse confirmée → aucune HE par voie interne, vérifier chaque plante individuellement avant inclusion
+• Diabète sous insuline ou metformine → prudence avec le chrome, berberine (interaction hypoglycémiante)
+
+━━ DONNÉES DE LA SÉANCE ━━
+Cliente : ${d.prenom}${d.age ? ', ' + d.age + ' ans' : ''} · Profil de vie : ${d.profil}
+Durée des symptômes : ${d.duree_symptomes || 'Non renseignée'}
+Motifs & mots-clés : ${d.motifs || '—'}
+Scores de vitalité (1–10) : ${d.scores || '—'}
+Symptômes cochés en séance : ${d.symptomes_coches || '—'}
+Sélections complémentaires : ${d.chips || '—'}
+Alimentation & mode de vie : ${d.alimentation || '—'}
+Gynécologie, cycle & thyroïde : ${d.gyneco || '—'}
+Contraception actuelle : ${d.contraception || 'Non renseignée'}
+⚠ MÉDICAMENTS & ALLERGIES : ${d.medics_allergies || 'NON RENSEIGNÉ — vérifier impérativement avant toute prescription de plante ou complément'}
+Bilans biologiques à recommander : ${d.bilans_rec || '—'}
+Objectif exprimé par la cliente : ${d.objectif_6mois || d.obj_principal || '—'}
+Intuition clinique & notes praticien : ${d.notes_praticien || '—'}
+Axe prioritaire 1 : ${d.prio1}
+Axe prioritaire 2 : ${d.prio2}
+Durée du programme : ${d.duree_prog}
+Niveau de changement accepté : ${d.niveau}
+
+━━ STRUCTURE JSON — RÉPONDS UNIQUEMENT EN JSON PUR ━━
+Sans markdown, sans backticks, sans texte avant ou après.
+
+{
+  "prenom": "${d.prenom}",
+  "sous_titre": "Plan d'Hygiène Vitale · ${d.duree_prog} · Avita Serena",
+
+  "s1_corps": "SECTION 1 — CE QUI SE PASSE DANS VOTRE CORPS\\n\\nRédige 4 paragraphes de 4 à 6 lignes chacun. Chaque paragraphe explique un mécanisme physiologique clé identifié chez cette cliente (causes racines, pas liste de symptômes). Niveau : vulgarisation médicale soignée. Exemples de formulations : 'Quand le cortisol reste élevé le soir, il bloque la production de mélatonine — voilà pourquoi l'endormissement devient un combat malgré une fatigue réelle.' ou 'Le foie est responsable de métaboliser les œstrogènes usagés. Quand il est surchargé, ces œstrogènes recirculent dans le sang — amplifiant le SPM, les douleurs aux seins et les sautes d'humeur.' Termine par une phrase d'espoir ancrée dans la physiologie, personnalisée.",
+
+  "s2_axes": "SECTION 2 — VOS AXES PRIORITAIRES & POURQUOI CET ORDRE\\n\\nPrésente les 2 axes choisis. Pour chaque axe : 1/ Titre et pourquoi on commence par là (logique physiologique — ex : 'Inutile de travailler les hormones si l'intestin est incapable d'absorber les compléments.'), 2/ Ce que cela va changer concrètement pour elle dans les prochaines semaines. Rédigé en paragraphes fluides, personal, prescriptif — pas de liste à puces.",
+
+  "s3_protocole": "SECTION 3 — VOTRE PROTOCOLE\\n\\nStructure EXACTE à respecter :\\n\\n[AXE 1 — NOM EN MAJUSCULES]\\n\\nPhytothérapie :\\n• [Nom de la plante] — [Forme précise : EPS/TM/extrait sec/tisane] — [Posologie COMPLÈTE : dose en ml ou mg, fréquence, moment exact, avec quoi prendre] — [Durée de la cure] — Pourquoi : [bénéfice physiologique en 1 phrase percutante]\\n• [Plante 2] — [même structure]\\n\\nCompléments :\\n• [Nom commercial EXACT Pileje/Nutergia/Holistica] — [Posologie COMPLÈTE] — Pourquoi : [mécanisme d'action]\\n⚠ CI : [si interaction détectée avec les médicaments déclarés]\\n\\n[AXE 2 — NOM EN MAJUSCULES]\\n[même structure]\\n\\nSOCLE DE BASE (toutes les consultations Avita Serena) :\\n• Oméga-3 — [Nom commercial exact Pileje] — [Posologie complète] — Pourquoi : [mécanisme]\\n• Magnésium — [Nom commercial exact] — [Posologie complète] — Pourquoi : [mécanisme]\\n\\n⚠ BILAN BIOLOGIQUE À DEMANDER À VOTRE MÉDECIN :\\n• [bilan 1 — valeur cible à atteindre]\\n• [bilan 2]",
+
+  "s4_alimentation": "SECTION 4 — VOTRE ALIMENTATION\\n\\nPas de régime. Pas de comptage. 3 paragraphes :\\n1/ LES ALLIÉS — aliments fonctionnels prioritaires pour son profil (avec leur 'pourquoi' physiologique bref)\\n2/ LES FREINS — ce qu'on réduit ou réorganise (sans culpabilisation, avec explication du mécanisme)\\n3/ LES RÉFLEXES QUI CHANGENT TOUT — 3 gestes quotidiens ultra-concrets adaptés à son profil de vie (ex : ordre des aliments dans l'assiette, petit-déjeuner protéiné, fenêtre alimentaire). Chaque réflexe avec son 'pourquoi' en 1 phrase.",
+
+  "s5_rituels": "SECTION 5 — VOTRE SEMAINE TYPE\\n\\nFormat tableau de rituels réaliste pour son profil de vie. Maximum 10 min par session :\\n\\nLE MATIN (5 à 10 min) :\\n• [rituel 1 — ex: cohérence cardiaque 5 min, 3×/semaine]\\n• [rituel 2]\\n• [rituel 3]\\n\\nLE SOIR (5 à 10 min) :\\n• [rituel 1]\\n• [rituel 2]\\n\\nAU QUOTIDIEN :\\n• [1 geste simple]\\n• [1 geste simple]\\n\\nCHAQUE SEMAINE :\\n• [1 rituel hebdomadaire structurant]\\n\\nPas de salle de sport, pas de matériel.",
+
+  "s6_signaux": "SECTION 6 — LES SIGNAUX QUE ÇA FONCTIONNE\\n\\nCitation personnalisée d'ouverture (1 phrase inspirante liée à son terrain).\\n\\nSemaines 1 à 2 — les premiers signaux :\\n• [signe très concret et mesurable, pas générique]\\n• [signe 2]\\n\\nSemaines 3 à 6 — les changements en profondeur :\\n• [signe d'amélioration physiologique plus profond]\\n• [signe 2]\\n• [signe 3]\\n\\nSi rien ne bouge après 3 semaines : [conseil clair et rassurant — que faire, qui contacter]\\n\\nMot de clôture chaleureux et personnel (3 phrases max, signé Sabrina Castelli · Avita Serena · Naturopathe, Porto-Vecchio)."
+}
+
+IMPÉRATIFS FINAUX :
+1. Jamais de récapitulatif de séance — la cliente ne veut pas lire ce qu'elle vient de dire
+2. Posologies TOUJOURS complètes : marque commerciale exacte + forme + dose en mg ou ml + fréquence + moment de prise
+3. Vérifier les CI médicamenteuses déclarées — les signaler en ⚠ dans s3
+4. s3_protocole est la section la plus importante — elle doit être la plus précise, la plus complète, la plus actionnable
+5. s6_signaux doit être SPÉCIFIQUE au profil, jamais générique — les signes d'amélioration doivent correspondre exactement aux motifs de consultation`;
+}
+
+/* ══════════════════════════════════════
+   PROMPT CONSULTATION DE SUIVI
+══════════════════════════════════════ */
+function buildPromptSuivi(d) {
+  return `Tu es Sabrina Castelli, naturopathe diplômée (Avita Serena, Porto-Vecchio, Corse). Tu génères le Bilan de Suivi — un document destiné à la cliente, qui marque une étape dans son parcours de soin.
+
+Ce bilan est différent d'un premier bilan. Il ne construit pas — il AJUSTE, VALORISE et APPROFONDIT.
+La cliente a déjà fait un chemin. Ce document doit le reconnaître explicitement, et construire la suite sur ce qui a été accompli.
+
+━━ RÈGLE N°1 — POSTURE DU BILAN DE SUIVI ━━
+Ton : chaleureux, honnête, ancré. Ni trop enthousiaste (faux), ni trop technique (froid).
+Ce bilan doit donner à la cliente le sentiment d'être vue dans son évolution réelle — y compris si c'est partiel, y compris si elle n'a pas tout suivi.
+Ne jamais juger l'observance. L'expliquer physiologiquement si pertinent.
+Longueur : 5 à 7 pages A4. Concis car elle connaît déjà le contexte.
+
+━━ RÈGLE N°2 — MODALITÉS (identiques au PHV initial) ━━
+1. Phytothérapie — EPS > TM > extrait sec > tisane
+2. Compléments : UNIQUEMENT Pileje, Nutergia, Holistica, Nat & Form, Bionutrics
+3. Nutrition simple, sans comptage
+4. Produits de la ruche, argile, Fleurs de Bach si terrain émotionnel
+5. Mouvement sans matériel
+JAMAIS : homéopathie, hydrolats, sophrologie, matériel de sport
+
+━━ RÈGLE N°3 — COMPLÉMENTS SYSTÉMATIQUES ━━
+• Oméga-3 Omégabiane (Pileje) — 2 gél/j au repas — mentionner si continuer ou ajuster
+• Magnésium bisglycinate Nutergia ou Holistica — 300-400mg/j au coucher
+• Probiotiques : uniquement si indication clinique reste d'actualité
+
+━━ RÈGLE N°4 — SÉCURITÉ ━━
+• ISRS → millepertuis interdit
+• Anticoagulants → oméga-3 < 2g/j
+• Pilule/THM → phytoestrogènes avec prudence
+• Cancer hormono-dépendant → pas de phytoestrogènes
+• Lévothyrox → espacer minéraux de 4h
+
+━━ DONNÉES DU SUIVI ━━
+Cliente : ${d.prenom}${d.age ? ', ' + d.age + ' ans' : ''} · ${d._num_suivi || 'Consultation de suivi'}
+Profil : ${d.profil}
+Motifs initiaux : ${d.motifs || '—'}
+Objectif initial à 6 mois : ${d.objectif_6mois || '—'}
+
+ÉVOLUTION DES SCORES (avant → aujourd'hui) :
+${d._scores_evolution || d.scores || '—'}
+
+Symptômes améliorés (cochés en séance) : ${d.symptomes_coches || '—'}
+Changements de vie intervenus : ${d._changements_vie || '—'}
+
+Observance & ce qui a tenu : ${d.notes_praticien?.substring(0, 400) || '—'}
+Notes libres de séance :
+${d._notes_libres || d.notes_praticien || '—'}
+
+Textes d'anamnèse complémentaires :
+${d._textes_suivi || '—'}
+
+⚠ Médicaments (vérifiés / nouveaux) : ${d.medics_allergies || 'À vérifier'}
+Axe prioritaire maintenu : ${d.prio1}
+Ajustement / Nouvel axe : ${d.prio2 || 'Inchangé'}
+Phase du programme : ${d._phase || '—'}
+Prochain rendez-vous : ${d._delai || '—'}
+Niveau de changement : ${d.niveau}
+
+━━ STRUCTURE JSON — RÉPONDS UNIQUEMENT EN JSON PUR ━━
+Sans markdown, sans backticks, sans texte avant ou après.
+
+{
+  "prenom": "${d.prenom}",
+  "sous_titre": "${d._num_suivi || 'Bilan de suivi'} · Avita Serena · ${new Date().toLocaleDateString('fr-FR', {month:'long', year:'numeric'})}",
+
+  "s1_corps": "SECTION 1 — CE QUE VOTRE CORPS A ACCOMPLI\\n\\nCommence par une phrase d'ouverture personnalisée qui reconnaît le chemin parcouru — sans flatterie, avec précision clinique. Ex : 'Votre système digestif a eu le temps de commencer à se reconfigurer. Ce n'est pas anodin.'\\n\\nRédige 3 paragraphes :\\n1/ Les progrès physiologiques réels observés (s'appuyer sur les scores et symptômes améliorés) — expliquer le mécanisme de cette amélioration en 2 phrases\\n2/ Ce qui résiste encore — et pourquoi physiologiquement (sans jugement, avec clarté)\\n3/ Ce que les changements de vie ont pu impacter sur le terrain (cortisol, microbiote, hormones…)\\nTermine par une phrase de cap : 'Voici ce qu'on va travailler cette fois-ci — et pourquoi c'est le bon moment.'",
+
+  "s2_axes": "SECTION 2 — CE QUI SE JOUE ENCORE DANS VOTRE CORPS\\n\\nExplique les 1 à 2 mécanismes qui nécessitent encore un travail actif. Pourquoi maintenant ? Qu'est-ce qui a évolué dans le terrain qui justifie cet axe ? Adapte au contexte de vie (changements survenus). Rédigé en paragraphes fluides, jamais en liste.",
+
+  "s3_protocole": "SECTION 3 — VOTRE PROTOCOLE AJUSTÉ\\n\\nStructure en 3 parties :\\n\\n✅ CE QU'ON CONTINUE (et pourquoi c'est toujours utile) :\\n• [complément ou plante à maintenir] — [posologie si changement] — Pourquoi continuer : [mécanisme]\\n\\n🔄 CE QU'ON MODIFIE (et pourquoi maintenant) :\\n• [ancien élément du protocole] → [nouveau dosage/forme/plante] — Pourquoi l'ajustement : [explication physiologique]\\n\\n✨ CE QU'ON AJOUTE (nouveaux éléments pour cette phase) :\\n• [Nom commercial EXACT Pileje/Nutergia/Holistica] — [Forme] — [Posologie COMPLÈTE : dose, fréquence, moment] — Pourquoi maintenant : [mécanisme, en quoi c'est le bon moment]\\n• [Plante ou complément 2 — même structure]\\n\\nSOCLE BASE (à confirmer ou rappeler) :\\n• Oméga-3 [statut : continuer/ajuster] — [posologie]\\n• Magnésium [statut] — [posologie]\\n\\n⚠ CI si médicaments nouveaux déclarés",
+
+  "s4_alimentation": "SECTION 4 — VOTRE ALIMENTATION — CE QUI ÉVOLUE\\n\\n2 à 3 paragraphes courts :\\n1/ Ce qui est en place et qu'on garde (valoriser) — avec son effet physiologique positif\\n2/ Le prochain niveau alimentaire à intégrer — adapté au nouveau contexte de vie — avec son 'pourquoi'\\n3/ Le réflexe alimentaire le plus impactant pour cette phase du programme",
+
+  "s5_rituels": "SECTION 5 — VOTRE NOUVELLE SEMAINE TYPE\\n\\nPrésente les rituels ajustés pour cette phase. Précise ce qu'on garde, ce qu'on simplifie, ce qu'on ajoute. Maximum 10 min/session.\\n\\nLE MATIN :\\n• [rituel maintenu ou ajusté]\\n• [nouveau rituel si pertinent]\\n\\nLE SOIR :\\n• [rituel — ex : cohérence cardiaque si stress élevé déclaré]\\n\\nAU QUOTIDIEN :\\n• [geste simple ancré dans la vie réelle]\\n\\nCETE SEMAINE, EN PRIORITÉ :\\n• [1 seul geste — le plus impactant — à commencer dès aujourd'hui]",
+
+  "s6_signaux": "SECTION 6 — LES PROCHAINS SIGNAUX\\n\\nDans les 2 prochaines semaines — les signaux que le protocole ajusté agit :\\n• [signe précis et mesurable]\\n• [signe 2]\\n\\nÀ la prochaine consultation dans ${d._delai || '4 à 6 semaines'} — on regardera ensemble :\\n• [point d'évaluation 1]\\n• [point d'évaluation 2]\\n• [bilan biologique à apporter si commandé]\\n\\nSi quelque chose ne va pas d'ici là : [comment vous contacter, quand ne pas attendre la prochaine séance]\\n\\nMot de clôture chaleureux, ancré dans le parcours de cette cliente spécifiquement (2 à 3 phrases). Signé Sabrina Castelli · Avita Serena · Naturopathe, Porto-Vecchio."
+}
+
+IMPÉRATIFS SPÉCIFIQUES AU SUIVI :
+1. Ne PAS recommencer à expliquer ce qu'est l'axe HPA ou le microbiote comme si c'était la première fois — elle sait, elle est en parcours
+2. s3_protocole DOIT clairement distinguer ce qui continue / ce qui change / ce qui s'ajoute — c'est la valeur ajoutée principale du suivi
+3. Valoriser les progrès avec précision clinique — pas de flatterie vague ("bravo vous avez bien travaillé") mais des observations ancrées ("votre score de digestion est passé de 3 à 6 — ce n'est pas un hasard, c'est le résultat de...")
+4. Posologies TOUJOURS complètes
+5. Intégrer les changements de vie déclarés dans l'analyse — ils expliquent les résistances et orientent les ajustements`;
+}
+
+/* ══════════════════════════════════════
+   GÉNÉRATION
+══════════════════════════════════════ */
+async function generate() {
+  if (!apiKey) { alert('Veuillez d\'abord entrer votre clé API Anthropic.'); return; }
+  const d = buildClientData();
+  if (!d.prenom || d.prenom === 'Cliente') {
+    if (!confirm('Aucun prénom détecté. Continuer quand même ?')) return;
+  }
+
+  document.getElementById('gen-btn').disabled = true;
+  document.getElementById('loading-wrap').style.display = 'block';
+  document.getElementById('preview-wrap').style.display = 'none';
+  document.getElementById('loading-wrap').scrollIntoView({ behavior: 'smooth' });
+
+  const msgs = isSuivi ? loadingMsgsSuivi : loadingMsgsPremiere;
+  let mi = 0;
+  const interval = setInterval(() => {
+    document.getElementById('loading-msg').textContent = msgs[Math.min(mi++, msgs.length - 1)];
+  }, 4200);
+
+  const prompt = isSuivi ? buildPromptSuivi(d) : buildPrompt(d);
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 8000,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    clearInterval(interval);
+
+    if (!res.ok) {
+      const e = await res.json();
+      throw new Error(e.error?.message || 'Erreur API ' + res.status);
+    }
+
+    const result = await res.json();
+    const raw = result.content[0].text.replace(/```json[\s\S]*?```/g, m => m.slice(8, -3)).replace(/^```json|```$/gm, '').trim();
+    generatedData = JSON.parse(raw);
+    generatedData._client = d;
+    generatedData._isSuivi = isSuivi;
+    renderPreview(generatedData, d);
+
+  } catch (err) {
+    clearInterval(interval);
+    document.getElementById('loading-wrap').style.display = 'none';
+    document.getElementById('gen-btn').disabled = false;
+    document.getElementById('gen-btn').textContent = isSuivi ? '✦ Générer le Bilan de Suivi' : '✦ Générer le Plan d\'Hygiène Vitale';
+    alert('Erreur : ' + err.message + '\n\nSi le problème persiste, vérifiez votre clé API ou réessayez dans quelques secondes.');
+  }
+}
+
+function renderPreview(data, d) {
+  document.getElementById('loading-wrap').style.display = 'none';
+  document.getElementById('preview-wrap').style.display = 'block';
+  document.getElementById('prev-name').textContent = d.prenom;
+  document.getElementById('prev-sub').textContent = data.sous_titre || (isSuivi ? 'Bilan de Suivi · Avita Serena' : 'Plan d\'Hygiène Vitale · Avita Serena');
+  document.getElementById('s1').textContent = data.s1_corps || '';
+  document.getElementById('s2').textContent = data.s2_axes || '';
+  document.getElementById('s3').textContent = data.s3_protocole || '';
+  document.getElementById('s4').textContent = data.s4_alimentation || '';
+  document.getElementById('s5').textContent = data.s5_rituels || '';
+  document.getElementById('s6').textContent = data.s6_signaux || '';
+
+  // Adapter les titres des sections selon le mode
+  if (isSuivi) {
+    document.querySelector('#preview-wrap .prev-section:nth-child(2) h3').textContent = '01 · Ce que votre corps a accompli';
+    document.querySelector('#preview-wrap .prev-section:nth-child(3) h3').textContent = '02 · Ce qui se joue encore';
+    document.querySelector('#preview-wrap .prev-section:nth-child(4) h3').textContent = '03 · Votre protocole ajusté';
+    document.querySelector('#preview-wrap .prev-section:nth-child(5) h3').textContent = '04 · Votre alimentation — ce qui évolue';
+    document.querySelector('#preview-wrap .prev-section:nth-child(6) h3').textContent = '05 · Votre nouvelle semaine type';
+    document.querySelector('#preview-wrap .prev-section:nth-child(7) h3').textContent = '06 · Les prochains signaux';
+    document.getElementById('dl-btn').textContent = '↓ Télécharger le Bilan de Suivi';
+  }
+
+  document.getElementById('preview-wrap').scrollIntoView({ behavior: 'smooth' });
+}
+
+/* ══════════════════════════════════════
+   EXPORT WORD — VERSION ENRICHIE
+══════════════════════════════════════ */
+async function downloadDocx() {
+  if (!generatedData) return;
+  const { Document, Packer, Paragraph, TextRun, AlignmentType, BorderStyle, ShadingType, WidthType } = docx;
+  const d = generatedData;
+  const cl = d._client;
+  const suivi = d._isSuivi;
+  const C = {
+    ARDOISE: '1E1E1C', OCRE: 'B4906A', OR: '9B7230', GRIS: '6B6560',
+    BLANC: 'FFFFFF', GREGE: 'EDE9E1', SABLE: 'C4A882', TAUPE: 'D5CFC6',
+    TERRE: '7A4530', VERT: '3D6B2C'
+  };
+
+  const sp = (b, a) => ({ before: b || 0, after: a || 0 });
+
+  const bodyP = (txt, opts = {}) => {
+    const lines = (txt || '').split('\n');
+    return new Paragraph({
+      spacing: sp(0, opts.after || 180),
+      indent: opts.indent ? { left: 400 } : {},
+      children: lines.flatMap((line, i) => [
+        new TextRun({
+          text: line,
+          font: 'Gill Sans MT',
+          size: opts.size || 22,
+          color: opts.color || C.ARDOISE,
+          bold: opts.bold || false,
+          italics: opts.italic || false,
+        }),
+        ...(i < lines.length - 1 ? [new TextRun({ break: 1 })] : [])
+      ])
+    });
+  };
+
+  const heading = (txt, num, color) => new Paragraph({
+    spacing: sp(440, 140),
+    children: [
+      new TextRun({ text: `0${num} — `, font: 'Gill Sans MT', size: 20, color: C.OCRE, bold: true }),
+      new TextRun({ text: txt.toUpperCase(), font: 'Gill Sans MT', size: 22, bold: true, color: color || C.ARDOISE, characterSpacing: 40 }),
+    ]
+  });
+
+  const rule = (color) => new Paragraph({
+    spacing: sp(0, 0),
+    border: { bottom: { style: BorderStyle.SINGLE, size: 2, color: color || C.SABLE, space: 6 } },
+    children: []
+  });
+
+  const spacer = (n) => new Paragraph({ spacing: sp(0, 0), children: [new TextRun({ text: '', size: n || 100 })] });
+
+  const children = [];
+
+  // ── PAGE DE COUVERTURE ──
+  children.push(spacer(600));
+  children.push(new Paragraph({
+    alignment: AlignmentType.CENTER, spacing: sp(0, 60),
+    children: [
+      new TextRun({ text: 'avita', font: 'Times New Roman', size: 60, italics: true, color: C.ARDOISE }),
+      new TextRun({ text: 'serena', font: 'Arial', size: 60, bold: true, color: C.ARDOISE }),
+    ]
+  }));
+  children.push(new Paragraph({
+    alignment: AlignmentType.CENTER, spacing: sp(0, 100),
+    children: [new TextRun({ text: 'NATUROPATHIE · SANTÉ FÉMININE · PORTO-VECCHIO', font: 'Gill Sans MT', size: 17, color: C.GRIS, characterSpacing: 60 })]
+  }));
+  children.push(rule(C.SABLE));
+  children.push(spacer(300));
+
+  // Badge suivi
+  if (suivi) {
+    children.push(new Paragraph({
+      alignment: AlignmentType.CENTER, spacing: sp(0, 60),
+      children: [new TextRun({ text: `✦ ${(cl._num_suivi || 'Consultation de suivi').toUpperCase()} ✦`, font: 'Gill Sans MT', size: 18, color: C.TERRE, bold: true, characterSpacing: 60 })]
+    }));
+    children.push(spacer(80));
+  }
+
+  children.push(new Paragraph({
+    alignment: AlignmentType.CENTER, spacing: sp(0, 60),
+    children: [new TextRun({
+      text: suivi ? 'BILAN DE SUIVI' : 'PLAN D\'HYGIÈNE VITALE',
+      font: 'Gill Sans MT', size: 30, bold: true, color: C.ARDOISE, characterSpacing: 80
+    })]
+  }));
+  children.push(new Paragraph({
+    alignment: AlignmentType.CENTER, spacing: sp(0, 40),
+    children: [new TextRun({ text: cl.prenom, font: 'Times New Roman', size: 54, italics: true, color: C.OCRE })]
+  }));
+  children.push(new Paragraph({
+    alignment: AlignmentType.CENTER, spacing: sp(0, 0),
+    children: [new TextRun({ text: d.sous_titre || '', font: 'Gill Sans MT', size: 20, color: C.GRIS, italics: true })]
+  }));
+
+  children.push(spacer(600));
+  children.push(new Paragraph({
+    alignment: AlignmentType.CENTER, spacing: sp(0, 0),
+    children: [new TextRun({
+      text: `Sabrina Castelli · Naturopathe · Porto-Vecchio · ${new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })}`,
+      font: 'Gill Sans MT', size: 18, color: C.GRIS
+    })]
+  }));
+
+  // ── DISCLAIMER ──
+  children.push(new Paragraph({ pageBreakBefore: true, spacing: sp(0, 0), children: [] }));
+  children.push(new Paragraph({
+    spacing: sp(0, 200),
+    shading: { fill: 'F7F6F4', type: ShadingType.CLEAR },
+    border: {
+      top: { style: BorderStyle.SINGLE, size: 2, color: C.TAUPE, space: 8 },
+      bottom: { style: BorderStyle.SINGLE, size: 2, color: C.TAUPE, space: 8 },
+    },
+    children: [new TextRun({
+      text: '⚠ Ce document est un outil d\'accompagnement naturopathique personnalisé. Il ne remplace pas un diagnostic médical ni l\'avis de votre médecin traitant. En cas de doute sur une interaction médicamenteuse ou avant toute modification de traitement, consultez votre médecin. Avita Serena — Sabrina Castelli, Naturopathe.',
+      font: 'Gill Sans MT', size: 18, color: C.GRIS, italics: true
+    })]
+  }));
+  children.push(spacer(200));
+
+  // ── SECTIONS ──
+  const sectionTitles = suivi
+    ? ['Ce que votre corps a accompli', 'Ce qui se joue encore', 'Votre protocole ajusté', 'Votre alimentation — ce qui évolue', 'Votre nouvelle semaine type', 'Les prochains signaux']
+    : ['Ce qui se passe dans votre corps', 'Vos axes prioritaires & pourquoi', 'Votre protocole', 'Votre alimentation', 'Votre semaine type & rituels', 'Les signaux d\'amélioration'];
+
+  const sectionContents = [d.s1_corps, d.s2_axes, d.s3_protocole, d.s4_alimentation, d.s5_rituels, d.s6_signaux];
+  const sectionColors = [C.ARDOISE, C.ARDOISE, suivi ? C.TERRE : C.ARDOISE, C.ARDOISE, C.ARDOISE, C.VERT];
+
+  for (let i = 0; i < sectionTitles.length; i++) {
+    if (!sectionContents[i]) continue;
+    children.push(new Paragraph({ pageBreakBefore: true, spacing: sp(0, 0), children: [] }));
+    children.push(heading(sectionTitles[i], i + 1, sectionColors[i]));
+    children.push(rule(i === 2 && suivi ? C.TERRE : C.SABLE));
+    children.push(spacer(160));
+
+    // Traitement intelligent du contenu
+    const lines = sectionContents[i].split('\n');
+    let inBlock = false;
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) { children.push(spacer(100)); continue; }
+      if (trimmed.startsWith('•') || trimmed.startsWith('·')) {
+        // Bullet point
+        children.push(new Paragraph({
+          spacing: sp(0, 120),
+          indent: { left: 360, hanging: 200 },
+          children: [
+            new TextRun({ text: '•  ', font: 'Gill Sans MT', size: 22, color: C.OCRE, bold: true }),
+            new TextRun({ text: trimmed.slice(1).trim(), font: 'Gill Sans MT', size: 22, color: C.ARDOISE }),
+          ]
+        }));
+      } else if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+        // Titre de sous-section
+        children.push(spacer(120));
+        children.push(new Paragraph({
+          spacing: sp(0, 100),
+          children: [new TextRun({ text: trimmed.slice(1, -1), font: 'Gill Sans MT', size: 20, bold: true, color: suivi ? C.TERRE : C.OR, characterSpacing: 30 })]
+        }));
+        children.push(rule(C.TAUPE));
+      } else if (trimmed.startsWith('✅') || trimmed.startsWith('🔄') || trimmed.startsWith('✨') || trimmed.startsWith('⚠')) {
+        // Lignes spéciales suivi
+        children.push(spacer(120));
+        children.push(new Paragraph({
+          spacing: sp(0, 100),
+          children: [new TextRun({ text: trimmed, font: 'Gill Sans MT', size: 21, bold: true, color: C.TERRE })]
+        }));
+      } else {
+        // Paragraphe normal
+        children.push(bodyP(trimmed, { after: 160 }));
+      }
+    }
+    children.push(spacer(200));
+  }
+
+  // ── SIGNATURE ──
+  children.push(rule(C.SABLE));
+  children.push(spacer(200));
+  children.push(new Paragraph({
+    alignment: AlignmentType.CENTER, spacing: sp(0, 40),
+    children: [
+      new TextRun({ text: 'avita', font: 'Times New Roman', size: 34, italics: true, color: C.ARDOISE }),
+      new TextRun({ text: 'serena', font: 'Arial', size: 34, bold: true, color: C.ARDOISE }),
+    ]
+  }));
+  children.push(new Paragraph({
+    alignment: AlignmentType.CENTER, spacing: sp(0, 0),
+    children: [new TextRun({ text: 'Naturopathie · Corse · Santé Féminine · avitaserena.com', font: 'Gill Sans MT', size: 17, color: C.GRIS, characterSpacing: 40 })]
+  }));
+
+  const doc = new Document({
+    sections: [{
+      properties: {
+        page: { size: { width: 11906, height: 16838 }, margin: { top: 1440, right: 1620, bottom: 1440, left: 1620 } }
+      },
+      children
+    }]
+  });
+
+  const buf = await Packer.toBuffer(doc);
+  const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const prefix = suivi ? 'Suivi' : 'PHV';
+  a.download = `${prefix}-${cl.prenom.toLowerCase().replace(/\s/g, '-')}-${new Date().toISOString().slice(0, 10)}.docx`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function resetAll() {
+  generatedData = null;
+  document.getElementById('preview-wrap').style.display = 'none';
+  document.getElementById('gen-btn').disabled = false;
+  document.getElementById('gen-btn').textContent = isSuivi ? '✦ Générer le Bilan de Suivi' : '✦ Générer le Plan d\'Hygiène Vitale';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ── Init ──
+loadSession();
+</script>
+</body>
+</html>
