@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Réserver une consultation — Avita Serena</title>
+<meta name="description" content="Prenez rendez-vous avec Sabrina Castelli, naturopathe spécialisée en santé digestive et équilibre hormonal féminin.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://js.stripe.com/v3/"></script>
+<style>
+:root{--blanc:#FFFFFF;--off:#F7F6F4;--grege:#EDE9E1;--taupe:#D5CFC6;--sable:#C4A882;--ocre:#B4906A;--ardoise:#1E1E1C;--encre:#2C2C2A;--gris:#6B6560;--gris-l:#9A9590;--or:#9B7230;--or-clair:#FBF3E4;--vert:#3D6B2C;--vert-l:#EAF0E6;--rouge:#8B3A3A;--rouge-l:#FDF0F0}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-family:'Be Vietnam Pro',sans-serif;font-size:15px;color:var(--encre);background:var(--off);scroll-behavior:smooth}
+body{min-height:100vh}
+.hdr{background:var(--ardoise);padding:18px 40px;display:flex;align-items:center;justify-content:space-between}
+.hdr img{height:34px;width:auto;display:block}
+.hdr-tag{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--sable);font-weight:500}
+.hdr-stripe{height:3px;background:linear-gradient(to right,var(--taupe),var(--sable),var(--ocre),var(--sable),var(--taupe))}
+.hero{background:linear-gradient(150deg,var(--off) 0%,var(--grege) 60%,#DDD6CC 100%);padding:64px 40px 52px;text-align:center;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;top:-80px;right:-80px;width:400px;height:400px;background:radial-gradient(ellipse,rgba(196,168,130,.1) 0%,transparent 70%);border-radius:50%}
+.hero-eyebrow{font-size:10px;font-weight:700;letter-spacing:.24em;text-transform:uppercase;color:var(--ocre);margin-bottom:14px;display:flex;align-items:center;justify-content:center;gap:10px}
+.hero-eyebrow::before,.hero-eyebrow::after{content:'';display:block;width:24px;height:1px;background:var(--sable)}
+.hero h1{font-family:'Cormorant Garamond',serif;font-size:clamp(38px,6vw,64px);font-weight:400;color:var(--ardoise);line-height:1.1;margin-bottom:8px}
+.hero h1 em{font-style:italic;color:var(--ocre)}
+.hero-sub{font-size:15px;font-weight:300;color:var(--gris);max-width:520px;margin:16px auto 0;line-height:1.75}
+.hero-trust{display:flex;align-items:center;justify-content:center;gap:24px;flex-wrap:wrap;margin-top:28px}
+.trust-item{font-size:12px;color:var(--gris);display:flex;align-items:center;gap:6px;font-weight:500}
+.main{max-width:920px;margin:0 auto;padding:48px 24px 80px}
+.step-dot{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;transition:all .3s}
+.step-dot.active{background:var(--ardoise);color:white}
+.step-dot.done{background:var(--vert);color:white}
+.step-dot.future{background:var(--grege);color:var(--gris-l)}
+.step-line{width:60px;height:2px;background:var(--taupe);transition:background .3s}
+.step-line.done{background:var(--vert)}
+.step-label{font-size:11px;font-weight:600;text-align:center;margin-top:6px;color:var(--gris);letter-spacing:.06em}
+.prestations{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-bottom:32px}
+.presta-card{background:var(--blanc);border:2px solid var(--taupe);border-radius:16px;padding:24px;cursor:pointer;transition:all .18s;position:relative;overflow:hidden}
+.presta-card:hover{border-color:var(--sable);transform:translateY(-2px);box-shadow:0 8px 28px rgba(180,144,106,.18)}
+.presta-card.selected{border-color:var(--ocre);background:var(--or-clair);box-shadow:0 8px 28px rgba(180,144,106,.25)}
+.presta-card.selected::after{content:'✓';position:absolute;top:14px;right:16px;width:26px;height:26px;background:var(--ocre);color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;line-height:26px;text-align:center}
+.pc-badge{font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--ocre);margin-bottom:10px}
+.pc-name{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:400;color:var(--ardoise);margin-bottom:6px;line-height:1.2}
+.pc-desc{font-size:13px;color:var(--gris);line-height:1.7;margin-bottom:14px}
+.pc-meta{display:flex;align-items:center;justify-content:space-between}
+.pc-duree{font-size:12px;color:var(--gris-l);font-weight:500}
+.pc-prix{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:300;color:var(--ardoise)}
+.pc-prix span{font-size:14px;font-family:'Be Vietnam Pro',sans-serif;font-weight:300;color:var(--gris)}
+.form-card{background:var(--blanc);border:1px solid var(--taupe);border-radius:16px;padding:32px;margin-bottom:24px}
+.form-title{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:24px;color:var(--ardoise);margin-bottom:4px}
+.form-sub{font-size:13px;color:var(--gris);margin-bottom:24px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+label.lbl{display:block;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ardoise);margin-bottom:6px}
+.field-wrap{position:relative}
+input.fi,select.fi,textarea.fi{width:100%;border:1.5px solid var(--taupe);border-radius:9px;padding:12px 14px;font-size:14px;font-family:'Be Vietnam Pro',sans-serif;color:var(--encre);background:var(--off);outline:none;transition:border-color .13s}
+input.fi:focus,select.fi:focus,textarea.fi:focus{border-color:var(--ocre);background:var(--blanc);box-shadow:0 0 0 3px rgba(180,144,106,.1)}
+input.fi.error{border-color:var(--rouge);background:var(--rouge-l)}
+input.fi.valid{border-color:var(--vert)}
+textarea.fi{min-height:90px;resize:vertical;line-height:1.65}
+.field-msg{font-size:11px;margin-top:5px;display:none;align-items:center;gap:5px}
+.field-msg.show{display:flex}
+.field-msg.error{color:var(--rouge)}
+.field-msg.ok{color:var(--vert)}
+.recap-card{background:var(--ardoise);border-radius:16px;padding:28px 32px;margin-bottom:24px;color:rgba(255,255,255,.88)}
+.recap-title{font-family:'Cormorant Garamond',serif;font-size:20px;color:var(--sable);margin-bottom:16px}
+.recap-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.08)}
+.recap-row:last-child{border-bottom:none}
+.recap-lbl{font-size:12px;color:rgba(255,255,255,.6)}
+.recap-val{font-size:14px;font-weight:600;color:white}
+.recap-total{display:flex;justify-content:space-between;align-items:center;margin-top:16px;padding-top:16px;border-top:1px solid rgba(255,255,255,.15)}
+.recap-total-lbl{font-size:13px;font-weight:700;color:var(--sable);letter-spacing:.08em;text-transform:uppercase}
+.recap-total-val{font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:300;color:white}
+.btn-payer{width:100%;background:var(--ocre);color:white;border:none;border-radius:99px;padding:18px 32px;font-size:15px;font-weight:700;font-family:'Be Vietnam Pro',sans-serif;cursor:pointer;transition:all .18s;display:flex;align-items:center;justify-content:center;gap:10px;letter-spacing:.04em}
+.btn-payer:hover{background:var(--or);transform:translateY(-2px);box-shadow:0 8px 24px rgba(180,144,106,.4)}
+.btn-payer:disabled{background:var(--taupe);cursor:not-allowed;transform:none;box-shadow:none;opacity:.7}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:white;border-radius:50%;animation:spin .8s linear infinite;display:none}
+.btn-payer.loading .spinner{display:inline-block}
+.btn-nav{padding:12px 28px;border-radius:99px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;border:1.5px solid var(--taupe);background:var(--blanc);color:var(--ardoise);transition:all .13s}
+.btn-nav:hover{background:var(--grege)}
+.btn-nav.primary{background:var(--ardoise);color:white;border-color:var(--ardoise)}
+.btn-nav.primary:hover{background:var(--encre);box-shadow:0 4px 14px rgba(0,0,0,.2)}
+.garanties{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:24px}
+.gar-item{background:var(--blanc);border:1px solid var(--taupe);border-radius:12px;padding:16px;text-align:center}
+.gar-ic{font-size:24px;margin-bottom:8px}
+.gar-t{font-size:12px;font-weight:700;color:var(--ardoise);margin-bottom:4px}
+.gar-s{font-size:11px;color:var(--gris);line-height:1.55}
+.stripe-element-wrap{background:var(--blanc);border:1.5px solid var(--taupe);border-radius:9px;padding:14px;transition:border-color .13s}
+.stripe-element-wrap.focused{border-color:var(--ocre);box-shadow:0 0 0 3px rgba(180,144,106,.1)}
+.stripe-error{background:var(--rouge-l);border:1px solid rgba(139,58,58,.2);border-left:3px solid var(--rouge);border-radius:0 9px 9px 0;padding:12px 16px;margin-top:10px;font-size:13px;color:var(--rouge);display:none}
+.security-note{text-align:center;font-size:11px;color:var(--gris-l);margin-top:12px;display:flex;align-items:center;justify-content:center;gap:6px}
+.avis-section{background:var(--blanc);border-radius:16px;padding:32px;margin-top:48px;text-align:center}
+.avis-title{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:24px;color:var(--ardoise);margin-bottom:24px}
+.avis-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px}
+.avis-card{background:var(--off);border-radius:12px;padding:18px;text-align:left}
+.avis-stars{color:var(--ocre);font-size:14px;margin-bottom:8px}
+.avis-texte{font-size:13px;color:var(--gris);line-height:1.7;margin-bottom:10px;font-style:italic}
+.avis-auteur{font-size:12px;font-weight:700;color:var(--ardoise)}
+.success-page{display:none;text-align:center;padding:80px 24px;max-width:600px;margin:0 auto}
+.success-icon{font-size:64px;margin-bottom:24px}
+.success-title{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:40px;color:var(--ardoise);margin-bottom:12px}
+.success-sub{font-size:16px;color:var(--gris);line-height:1.75;margin-bottom:32px}
+.success-box{background:var(--vert-l);border:1px solid rgba(61,107,44,.2);border-radius:14px;padding:24px 28px;text-align:left;margin-bottom:28px}
+.success-box-t{font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--vert);margin-bottom:12px}
+.success-item{display:flex;align-items:flex-start;gap:10px;font-size:13px;color:var(--encre);margin-bottom:8px;line-height:1.6}
+.booking-step{display:none}
+.booking-step.active{display:block;animation:fadeIn .25s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.footer{background:var(--ardoise);padding:24px 40px;text-align:center}
+.footer p{font-size:11px;color:#6B6560;line-height:1.6}
+.footer a{color:var(--sable);text-decoration:none}
+#toast-msg{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ardoise);color:white;padding:13px 22px;border-radius:99px;font-size:13px;opacity:0;transition:all .3s;z-index:9999;white-space:nowrap;max-width:90vw;text-align:center;pointer-events:none}
+@media(max-width:640px){.hdr{padding:14px 20px}.hero{padding:40px 20px 36px}.main{padding:28px 16px 60px}.g2{grid-template-columns:1fr}.garanties{grid-template-columns:1fr}.prestations{grid-template-columns:1fr}.form-card{padding:20px}.recap-card{padding:20px}.step-label{display:none}}
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyB3aWR0aD0iMjIwIiBoZWlnaHQ9IjY0IiBpZD0iYSIgZGF0YS1uYW1lPSJDYWxxdWUgMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2aWV3Qm94PSIwIDAgNDAyLjUyIDExNi41NiI+CiAgPGRlZnM+CiAgICA8c3R5bGU+CiAgICAgIC5iIHsKICAgICAgICBmaWxsOiAjZmZmOwogICAgICB9CiAgICA8L3N0eWxlPgogIDwvZGVmcz4KICA8cGF0aCBjbGFzcz0iYiIgZD0iTTE2Mi45NSw3Mi41N2wzLjI1LTQuODQsOS41OC4wM2MuNzgsMy42OSwzLjY3LDUuMjcsNy4xLDQuMjIuOTctLjMsMi40Mi0xLjg4LDIuNTMtMi44NHMtMS4yOC0yLjk3LTIuMjgtMy4yM2wtOC4zNC0yLjExYy00LjkxLTEuMjQtOC4wNi00Ljc1LTguNDctOS4yNC0uNDQtNC44MSwxLjYtOS4yMiw2LjUtMTEuMjYsNS0yLjA4LDExLjA1LTIuMTEsMTUuODguNDUsMy42OCwxLjk1LDYuMSw0LjkyLDYuMjMsOS44NGwtMTAuNTEuMDdjLS43Ni0yLjQ3LTEuOTctMy43NC0zLjgtNC4wMy0xLjcxLS4yNy00LjQ0Ljk3LTQuNjUsMi41Ni0uODYsNi41NywxMS44MywyLjU5LDE4LjU4LDExLjIxLjExLTcuNTcsMS42My0xMy45Nyw3LjI4LTE4LjE1LDYuNzItNC45OCwxNy4xMy00Ljc2LDIzLjE0LDEuMTgsNC43OSw0LjczLDUuMzEsMTEuMzksNC45NSwxNy44N2gtMjQuNjZjLS4wMSwzLjc0LDIuMTYsNi41OCw0Ljg2LDcuMywzLjg2LDEuMDQsNy4xNi0uMjUsOS4wMS0zLjczbDEwLjU1LjA4Yy0xLjk3LDguMjItOC45OCwxMi44LTE3LjE4LDEyLjcyLTcuODItLjA3LTE0LjA3LTQuMjYtMTYuOTItMTIuMjQtLjE2LDQuNTctMi4zNSw4LjQ2LTYuNzgsMTAuNDQtOS4zMSw0LjE4LTIwLjk1LjkyLTIzLjIyLTguNTdsLTIuNjQsMi4yNFpNMjE5LjU3LDU3LjE3Yy0uMjUtNS44OC0zLjctNy40OC03LjQzLTcuMzlzLTYuNjIsMi43LTYuNDksNy40OGwxMy45Mi0uMDlaIi8+CiAgPHBhdGggY2xhc3M9ImIiIGQ9Ik0yNTMuNTksNTIuNzRjLTIuODEtLjUxLTUuNjQtLjQ2LTgsLjctMS45MS45NC0zLjQxLDQuMzMtMy40Miw2LjkzbC0uMDgsMTkuNjYtMTAuOTItLjAydi0zNy40czEwLjc1LS4wNCwxMC43NS0uMDRsLjQyLDYuMTljMi41Ny00Ljk5LDcuMzYtNy4wMSwxMi40OC01Ljg0bC0uMTIsNy4yOGMzLjQ1LTUuNjIsOC45NC04LjM5LDE1LjU3LTguNDEsNy4xMy0uMDMsMTMuMzQsMy42NSwxNS43NywxMC40OSwxLjM0LDMuNzcsMS42Miw3Ljc4LDEuNDEsMTIuMDJsLTI0Ljc0LjAyYy0uMjQsMy42MywyLjEyLDYuNTUsNS4xMSw3LjM0LDMuNDguOTIsNi43Mi0uMTcsOC41NS0zLjcyaDEwLjcxYy0yLjAyLDguMDYtOC43NywxMi43NS0xNi44MywxMi43My02LjItLjAxLTEyLjA2LTIuNS0xNS4xOC03Ljk1LTMuNTYtNi4yMi0zLjgyLTEzLjE3LTEuNDgtMTkuOThaTTI3Ni44Myw1Ny4yN2MuMzMtNC40LTIuNTYtNy42LTYuOTEtNy41Ni0zLjg2LjAzLTcuMTgsMy4wMi02Ljg0LDcuNTNsMTMuNzUuMDNaIi8+CiAgPHBhdGggY2xhc3M9ImIiIGQ9Ik05NC4yLDQ0LjQxYzIuOSw4LjQ4LTExLjUxLDI2Ljk5LTIwLjA1LDM1Ljg4LS43LTEwLjQxLS4yNy0zMy4zNS00LjUyLTM0LjYzbC00LjM4LTEuMzMsMTEuMDctMi41YzMsOS4zMSwyLjc4LDE4LjM3LDMuNDcsMjkuMjEsNC42OS00Ljk1LDguMzgtMTEuMTIsMTAuNzItMTcuNzQsMS4wNi0zLjAxLS4xNC00LjY3LTIuNTgtNi4zMy0xLjQtLjk1LS42My00LjAxLjkzLTQuNjksMS40Ny0uNjUsNC40OC0uNDMsNS4zNiwyLjE0WiIvPgogIDxwYXRoIGNsYXNzPSJiIiBkPSJNMTIwLjExLDQ1LjQ0bC01LjczLS4yNS4zMi0xLjU0YzguMzMtMS43MSw5LjY4LTcuMTUsMTQuODgtMTEuMTVsLTIuNTIsMTAuMjEsNS4yMi4wOS0uMzIsMmMtLjA3LjQ1LTEuNDIuMjgtMS45My4zNWwtNC4wNC4wNSIvPgogIDxjaXJjbGUgY2xhc3M9ImIiIGN4PSIzNzEuMDYiIGN5PSI3NC42MSIgcj0iNi4wNiIvPgogIDxjaXJjbGUgY2xhc3M9ImIiIGN4PSIxMDkuMzkiIGN5PSIyOS45IiByPSI0LjAyIi8+CiAgPHBhdGggY2xhc3M9ImIiIGQ9Ik0yODguMiw0Mi40OGgxMS4wM3Y1LjQ4aC41N2MuOC0xLjc1LDIuMTEtMy4yNCwzLjkyLTQuNDUsMS44MS0xLjIxLDQuMDItMS44MSw2LjYxLTEuODEsNC45LDAsOC4zLDEuNTUsMTAuMTgsNC42NiwxLjg4LDMuMTEsMi44Myw2LjU4LDIuODMsMTAuNDN2MjMuMzRoLTExLjAzdi0yMS40MmMwLTIuNDctLjU0LTQuNDEtMS42My01LjgzLTEuMDgtMS40Mi0yLjY5LTIuMTQtNC44MS0yLjE0LTIuMjYsMC0zLjk0Ljc1LTUuMDIsMi4yNC0xLjA4LDEuNDktMS42MywzLjQxLTEuNjMsNS43M3YyMS40MmgtMTEuMDN2LTM3LjY1WiIvPgogIDxwYXRoIGNsYXNzPSJiIiBkPSJNMzI3LjM4LDc0LjhjLTIuNDktMy40Ni0zLjczLTguMS0zLjczLTEzLjkyczEuMjgtMTAuNTMsMy44My0xMy45OWMyLjU1LTMuNDYsNi4wOC01LjIsMTAuNTktNS4yLDMuMTEsMCw1LjUuNjksNy4xOCwyLjA2LDEuNjcsMS4zNywyLjgzLDIuNzYsMy40OCw0LjE1aC41NnYtNS40NGgxMC45NHYzNi45MWgtMTAuOTR2LTUuOTNoLS41NmMtLjcsMS40OS0xLjg5LDIuOTYtMy41OSw0LjQtMS43LDEuNDQtNC4xLDIuMTYtNy4yMSwyLjE2LTQuNTUsMC04LjA3LTEuNzMtMTAuNTYtNS4yWk0zNDcuNTYsNjguMThjMS4yMS0yLjA3LDEuODEtNC41MiwxLjgxLTcuMzZzLS42MS01LjIyLTEuODEtNy4yOWMtMS4yMS0yLjA3LTMuMDQtMy4xMS01LjUtMy4xMXMtNC40MywxLjAxLTUuNjEsMy4wM2MtMS4xOSwyLjAyLTEuNzgsNC40NS0xLjc4LDcuMjlzLjU5LDUuMzYsMS43OCw3LjQzYzEuMTgsMi4wNywzLjA1LDMuMTEsNS42MSwzLjExczQuMy0xLjAzLDUuNS0zLjExWiIvPgogIDxwYXRoIGNsYXNzPSJiIiBkPSJNMTA5LjUsNDIuNTljLTUuNzEsMC05LjUyLS4xNC0xMy45NC40NGwzLjAxLDEuMTFjLjMxLjEyLDEuNTkuNzcsMS44NCwxLjAyLjg3Ljg4LDEuMDksMi4yMi43NSwzLjQiLz4KICA8cGF0aCBjbGFzcz0iYiIgZD0iTTU4LjExLDc1LjM2Yy0zLjY0LDEuOTEtMS44Mi0zLjczLTEuODItMy43M2w4LjQ3LTI5LjA0aC02LjQ2cy0uMzMsMS0uODUsMi42NmMtLjY0LS43Ny0xLjQ3LTEuMzUtMi40OC0xLjc1LTEuMDgtLjQyLTIuMTgtLjYzLTMuMzItLjYzLTMuMDUsMC02LjMxLDEuMzktOS43OCw0LjE3LTMuNDcsMi43OC02LjQ5LDYuMzItOS4wNiwxMC42My0yLjU3LDQuMzEtNC4xNiw4LjU4LTQuNzUsMTIuODMtLjEyLDEuMzItLjE4LDIuMjEtLjE4LDIuNjksMCw0LjQzLDEuODUsNi42NCw1LjU2LDYuNjQsMy4xNywwLDYuNDctMS42OSw5LjkxLTUuMDcsMy40NC0zLjM4LDYuNTMtNy44NSw5LjI4LTEzLjQxbC0uNjgsMy45MmMtMS41OCw3LjIyLTIuMywxMy41NC0uMjEsMTQuMjksNi4wMywyLjE1LDExLjg0LTguMjksMTEuODQtOC4yOWwuODQtMS41cy0yLjY2LDMuNjktNi4zLDUuNlpNNTAuMDMsNjMuNzJjLTEuOTIsMy4zOC00LjA4LDYuMTgtNi41LDguMzktMi40MiwyLjIxLTQuNzEsMy4zMi02Ljg2LDMuMzItMi41MSwwLTMuNzctMS43OS0zLjc3LTUuMzgsMC0xLjA4LjA5LTIuMjcuMjctMy41OS41NC0zLjc3LDEuNjItNy4xOSwzLjIzLTEwLjI3LDEuNjEtMy4wOCwzLjUxLTUuNTMsNS43LTcuMzYsMi4xOC0xLjgyLDQuMzItMi43Nyw2LjQxLTIuODMsMS44NSwwLDMuMjQuNTEsNC4xNywxLjUzLjkzLDEuMDIsMS4zOSwyLjQyLDEuMzksNC4yMi4wNi42LDAsMS4yOS0uMTgsMi4wNi0uNjYsMy4yMy0xLjk0LDYuNTMtMy44Niw5LjkxWiIvPgogIDxwYXRoIGNsYXNzPSJiIiBkPSJNMTU5Ljc2LDc1LjM2Yy0zLjM5LDIuMzMtMS44Mi0zLjczLTEuODItMy43M2w4LjQ3LTI5LjA0aC02LjQ2cy0uMzMsMS0uODUsMi42NmMtLjY0LS43Ny0xLjQ3LTEuMzUtMi40OC0xLjc1LTEuMDgtLjQyLTIuMTgtLjYzLTMuMzItLjYzLTMuMDUsMC02LjMxLDEuMzktOS43OCw0LjE3LTMuNDcsMi43OC02LjQ5LDYuMzItOS4wNiwxMC42My0yLjU3LDQuMzEtNC4xNiw4LjU4LTQuNzUsMTIuODMtLjEyLDEuMzItLjE4LDIuMjEtLjE4LDIuNjksMCw0LjQzLDEuODUsNi42NCw1LjU2LDYuNjQsMy4xNywwLDYuNDctMS42OSw5LjkxLTUuMDcsMy40NC0zLjM4LDYuNTMtNy44NSw5LjI4LTEzLjQxbC0uNjgsMy45MmMtMS41OCw3LjIyLTIuMywxMy41NC0uMjEsMTQuMjksNi4wMywyLjE1LDExLjg0LTguMjksMTEuODQtOC4yOWwuOTMtMi4xOHMtMy43NCw0LjQ1LTYuMzksNi4yOFpNMTUxLjY4LDYzLjcyYy0xLjkyLDMuMzgtNC4wOCw2LjE4LTYuNSw4LjM5LTIuNDIsMi4yMS00LjcxLDMuMzItNi44NiwzLjMyLTIuNTEsMC0zLjc3LTEuNzktMy43Ny01LjM4LDAtMS4wOC4wOS0yLjI3LjI3LTMuNTkuNTQtMy43NywxLjYyLTcuMTksMy4yMy0xMC4yNywxLjYxLTMuMDgsMy41MS01LjUzLDUuNy03LjM2LDIuMTgtMS44Miw0LjMyLTIuNzcsNi40MS0yLjgzLDEuODUsMCwzLjI0LjUxLDQuMTcsMS41My45MywxLjAyLDEuMzksMi40MiwxLjM5LDQuMjIuMDYuNiwwLDEuMjktLjE4LDIuMDYtLjY2LDMuMjMtMS45NCw2LjUzLTMuODYsOS45MVoiLz4KICA8cGF0aCBjbGFzcz0iYiIgZD0iTTEwMy4wNCw0Mi41OWg2LjQ2bC04LjQ3LDI5LjA0cy0xLjgyLDUuNjQsMS44MiwzLjczYzMuNjQtMS45MSw2LjMtNS42LDYuMy01LjZsLS44NCwxLjVzLTUuOCwxMC40NC0xMS44NCw4LjI5Yy01LjEtMS44Miw2LjU2LTM2Ljk3LDYuNTYtMzYuOTdaIi8+CiAgPHBhdGggY2xhc3M9ImIiIGQ9Ik0xMjAuNTQsNDIuNTloNi40NmwtOC40NywyOS4wNHMtMS44Miw1LjY0LDEuODIsMy43Myw2LjMtNS42LDYuMy01LjZsLS44NCwxLjVzLTUuOCwxMC40NC0xMS44NCw4LjI5Yy01LjEtMS44Miw2LjU2LTM2Ljk3LDYuNTYtMzYuOTdaIi8+Cjwvc3ZnPg==" alt="Avita Serena">
+  <div class="hdr-tag">Naturopathie · Santé féminine</div>
+</header>
+<div class="hdr-stripe"></div>
+
+<div class="hero">
+  <div class="hero-eyebrow">Consultation naturopathique</div>
+  <h1>Réservez votre<br><em>consultation</em></h1>
+  <p class="hero-sub">Prenez soin de vous avec un accompagnement personnalisé, fondé sur la physiologie et adapté à votre terrain.</p>
+  <div class="hero-trust">
+    <div class="trust-item">🔒 Paiement sécurisé Stripe</div>
+    <div class="trust-item">🛡 Secret professionnel</div>
+    <div class="trust-item">📍 Visioconférence · Partout en France</div>
+    <div class="trust-item">✅ Confirmation immédiate</div>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- INDICATEUR ÉTAPES -->
+  <div style="margin-bottom:40px">
+    <div style="display:flex;align-items:flex-start;justify-content:center;gap:0">
+      <div style="text-align:center;width:80px">
+        <div class="step-dot active" id="sdot-1">1</div>
+        <div class="step-label">Prestation</div>
+      </div>
+      <div style="margin-top:15px"><div class="step-line" id="sline-1"></div></div>
+      <div style="text-align:center;width:80px">
+        <div class="step-dot future" id="sdot-2">2</div>
+        <div class="step-label">Informations</div>
+      </div>
+      <div style="margin-top:15px"><div class="step-line" id="sline-2"></div></div>
+      <div style="text-align:center;width:80px">
+        <div class="step-dot future" id="sdot-3">3</div>
+        <div class="step-label">Paiement</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ÉTAPE 1 -->
+  <div class="booking-step active" id="step-1">
+    <div style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:28px;color:var(--ardoise);margin-bottom:6px;text-align:center">Quelle consultation souhaitez-vous ?</div>
+    <div style="font-size:13px;color:var(--gris);text-align:center;margin-bottom:28px">Cliquez sur la prestation qui vous correspond</div>
+
+    <div class="prestations">
+      <div class="presta-card" id="pc-bilan" onclick="selectionnerPresta('bilan')">
+        <div class="pc-badge">⭐ Le plus demandé</div>
+        <div class="pc-name">Bilan de vitalité naturopathique</div>
+        <div class="pc-desc">Première consultation complète : anamnèse approfondie, analyse de votre terrain, bilan des systèmes digestif, hormonal, nerveux et immunitaire. Plan d'hygiène vitale personnalisé sous 48h.</div>
+        <div class="pc-meta">
+          <div class="pc-duree">⏱ 90 minutes · Visio</div>
+          <div class="pc-prix">90 <span>€</span></div>
+        </div>
+      </div>
+      <div class="presta-card" id="pc-suivi" onclick="selectionnerPresta('suivi')">
+        <div class="pc-badge">🔄 Clientes en suivi</div>
+        <div class="pc-name">Consultation de suivi</div>
+        <div class="pc-desc">Pour les clientes ayant déjà réalisé un bilan de vitalité. Évaluation des progrès, ajustement du protocole, nouveaux axes de travail. Bilan de suivi envoyé sous 48h.</div>
+        <div class="pc-meta">
+          <div class="pc-duree">⏱ 60 minutes · Visio</div>
+          <div class="pc-prix">65 <span>€</span></div>
+        </div>
+      </div>
+      <div class="presta-card" id="pc-flash" onclick="selectionnerPresta('flash')">
+        <div class="pc-badge">⚡ Ciblé & efficace</div>
+        <div class="pc-name">Point flash</div>
+        <div class="pc-desc">Un point précis à aborder : résultat de bilan biologique, question sur le protocole en cours, réorientation rapide. Pour les clientes déjà accompagnées.</div>
+        <div class="pc-meta">
+          <div class="pc-duree">⏱ 30 minutes · Visio</div>
+          <div class="pc-prix">35 <span>€</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="text-align:center">
+      <button class="btn-nav primary" id="btn-step1" onclick="allerEtape2()" disabled>Continuer →</button>
+    </div>
+
+    <div class="avis-section">
+      <div class="avis-title">Ce que disent mes clientes</div>
+      <div class="avis-grid">
+        <div class="avis-card">
+          <div class="avis-stars">★★★★★</div>
+          <div class="avis-texte">« Sabrina a transformé ma relation avec mon corps. Après des années de SIBO non diagnostiqué, enfin des réponses claires et un protocole qui fonctionne vraiment. »</div>
+          <div class="avis-auteur">Marie L. · Bilan de vitalité</div>
+        </div>
+        <div class="avis-card">
+          <div class="avis-stars">★★★★★</div>
+          <div class="avis-texte">« Un niveau de professionnalisme rare. Le bilan envoyé après la séance est d'une précision médicale, expliqué avec une clarté et une chaleur exceptionnelles. »</div>
+          <div class="avis-auteur">Camille R. · Consultation de suivi</div>
+        </div>
+        <div class="avis-card">
+          <div class="avis-stars">★★★★★</div>
+          <div class="avis-texte">« Je me suis sentie écoutée pour la première fois depuis des années. Sabrina ne cherche pas juste les symptômes — elle cherche les causes. C'est la différence. »</div>
+          <div class="avis-auteur">Sophie M. · Bilan de vitalité</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ÉTAPE 2 -->
+  <div class="booking-step" id="step-2">
+    <div class="form-card">
+      <div class="form-title">Vos informations</div>
+      <div class="form-sub">Ces informations restent strictement confidentielles, soumises au secret professionnel.</div>
+
+      <div class="g2" style="margin-bottom:16px">
+        <div>
+          <label class="lbl">Prénom *</label>
+          <input class="fi" type="text" id="f-prenom" placeholder="Marie" oninput="validerChamp('prenom')">
+          <div class="field-msg error" id="msg-prenom">⚠ Prénom obligatoire</div>
+        </div>
+        <div>
+          <label class="lbl">Nom *</label>
+          <input class="fi" type="text" id="f-nom" placeholder="Dupont" oninput="validerChamp('nom')">
+          <div class="field-msg error" id="msg-nom">⚠ Nom obligatoire</div>
+        </div>
+      </div>
+
+      <div class="g2" style="margin-bottom:16px">
+        <div>
+          <label class="lbl">Email *</label>
+          <input class="fi" type="email" id="f-email" placeholder="marie@email.com" oninput="validerChamp('email')" onblur="validerChamp('email')">
+          <div class="field-msg error" id="msg-email">⚠ Adresse email invalide</div>
+          <div class="field-msg ok" id="msg-email-ok">✓ Email valide</div>
+        </div>
+        <div>
+          <label class="lbl">Téléphone *</label>
+          <input class="fi" type="tel" id="f-tel" placeholder="06 00 00 00 00" oninput="validerChamp('tel')" onblur="validerChamp('tel')">
+          <div class="field-msg error" id="msg-tel">⚠ Numéro invalide (10 chiffres requis)</div>
+          <div class="field-msg ok" id="msg-tel-ok">✓ Numéro valide</div>
+        </div>
+      </div>
+
+      <div style="margin-bottom:16px">
+        <label class="lbl">Motif principal de votre consultation</label>
+        <select class="fi" id="f-motif">
+          <option value="">— Choisissez —</option>
+          <option>Troubles digestifs (ballonnements, SIBO suspecté, transit)</option>
+          <option>Fatigue chronique inexpliquée</option>
+          <option>Déséquilibre hormonal (SOPK, cycle, SPM)</option>
+          <option>Endométriose</option>
+          <option>Ménopause / périménopause</option>
+          <option>Stress chronique / anxiété</option>
+          <option>Troubles du sommeil</option>
+          <option>Prise de poids / métabolisme</option>
+          <option>Thyroïde (Hashimoto, hypothyroïdie)</option>
+          <option>Bilan global de santé</option>
+          <option>Autre</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="lbl">Quelque chose à préciser ? <span style="font-weight:300;text-transform:none;letter-spacing:0">(optionnel)</span></label>
+        <textarea class="fi" id="f-message" placeholder="Un contexte particulier, une question, un antécédent important…"></textarea>
+      </div>
+
+      <div style="margin-top:20px;background:var(--or-clair);border:1px solid rgba(155,114,48,.2);border-radius:10px;padding:14px 16px;font-size:12.5px;color:var(--encre);line-height:1.7">
+        🌿 <strong>La suite :</strong> après votre paiement, vous recevrez immédiatement un email de confirmation. Le lien de connexion et le questionnaire de préparation vous seront envoyés 24h avant votre séance.
+      </div>
+    </div>
+
+    <div style="display:flex;gap:12px;justify-content:space-between;align-items:center">
+      <button class="btn-nav" onclick="allerEtape(1)">← Retour</button>
+      <button class="btn-nav primary" onclick="allerEtape3()">Continuer vers le paiement →</button>
+    </div>
+  </div>
+
+  <!-- ÉTAPE 3 -->
+  <div class="booking-step" id="step-3">
+    <div class="recap-card">
+      <div class="recap-title">Récapitulatif</div>
+      <div class="recap-row"><div class="recap-lbl">Prestation</div><div class="recap-val" id="recap-presta">—</div></div>
+      <div class="recap-row"><div class="recap-lbl">Cliente</div><div class="recap-val" id="recap-client">—</div></div>
+      <div class="recap-row"><div class="recap-lbl">Email de confirmation</div><div class="recap-val" id="recap-email">—</div></div>
+      <div class="recap-row"><div class="recap-lbl">Format</div><div class="recap-val">Visioconférence · Partout en France</div></div>
+      <div class="recap-total">
+        <div class="recap-total-lbl">Total</div>
+        <div class="recap-total-val" id="recap-prix">—</div>
+      </div>
+    </div>
+
+    <div class="form-card">
+      <div class="form-title">Paiement sécurisé</div>
+      <div class="form-sub">Vos données bancaires sont chiffrées et traitées exclusivement par Stripe. Avita Serena n'y a jamais accès.</div>
+
+      <div id="stripe-loading" style="text-align:center;padding:20px;color:var(--gris);font-size:13px">
+        ⏳ Chargement du formulaire de paiement…
+      </div>
+
+      <div id="stripe-ready" style="display:none">
+        <div style="margin-bottom:16px">
+          <label class="lbl">Informations de carte bancaire</label>
+          <div class="stripe-element-wrap" id="card-element"></div>
+          <div class="stripe-error" id="card-errors"></div>
+        </div>
+        <button class="btn-payer" id="btn-payer" onclick="lancerPaiement()">
+          <span class="spinner"></span>
+          🔒 Payer <span id="btn-prix-affiche">—</span> en toute sécurité
+        </button>
+        <div class="security-note">🔒 SSL 256 bits · Traitement par <strong>Stripe</strong> · Données bancaires jamais stockées</div>
+      </div>
+
+      <div id="stripe-error-init" style="display:none;background:var(--rouge-l);border:1px solid rgba(139,58,58,.2);border-radius:10px;padding:16px;font-size:13px;color:var(--rouge)">
+        ⚠️ Le formulaire de paiement n'a pas pu se charger. Rechargez la page ou contactez sabrina@avitaserena.com
+      </div>
+    </div>
+
+    <div style="display:flex;gap:12px;justify-content:space-between">
+      <button class="btn-nav" onclick="allerEtape(2)">← Retour</button>
+    </div>
+
+    <div class="garanties">
+      <div class="gar-item"><div class="gar-ic">🔒</div><div class="gar-t">Paiement sécurisé</div><div class="gar-s">Traitement par Stripe, leader mondial du paiement en ligne</div></div>
+      <div class="gar-item"><div class="gar-ic">✉️</div><div class="gar-t">Confirmation immédiate</div><div class="gar-s">Email de confirmation envoyé dans les minutes qui suivent</div></div>
+      <div class="gar-item"><div class="gar-ic">🛡</div><div class="gar-t">Secret professionnel</div><div class="gar-s">Toutes vos données personnelles sont protégées et confidentielles</div></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- SUCCÈS -->
+<div style="display:none;max-width:600px;margin:0 auto;padding:80px 24px;text-align:center" id="success-page">
+  <div style="font-size:64px;margin-bottom:24px">🌿</div>
+  <div style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:40px;color:var(--ardoise);margin-bottom:12px">Votre réservation est confirmée</div>
+  <div style="font-size:16px;color:var(--gris);line-height:1.75;margin-bottom:32px">Merci <strong id="success-prenom"></strong>. Votre paiement a bien été reçu.</div>
+  <div class="success-box">
+    <div class="success-box-t">✅ Ce qui se passe maintenant</div>
+    <div class="success-item">✉️ Un email de confirmation vous a été envoyé à <strong id="success-email"></strong></div>
+    <div class="success-item">📋 Le questionnaire de préparation vous sera envoyé 24h avant votre séance</div>
+    <div class="success-item">🔗 Le lien de connexion vous sera transmis dans ce même email</div>
+    <div class="success-item">📄 Votre bilan personnalisé vous sera envoyé sous 48h après la séance</div>
+  </div>
+  <div style="font-size:13px;color:var(--gris);line-height:1.75">Une question ? Écrivez à <a href="mailto:sabrina@avitaserena.com" style="color:var(--ocre);font-weight:600">sabrina@avitaserena.com</a></div>
+</div>
+
+<footer class="footer">
+  <p>
+    <img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyB3aWR0aD0iMjIwIiBoZWlnaHQ9IjY0IiBpZD0iYSIgZGF0YS1uYW1lPSJDYWxxdWUgMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2aWV3Qm94PSIwIDAgNDAyLjUyIDExNi41NiI+CiAgPGRlZnM+CiAgICA8c3R5bGU+CiAgICAgIC5iIHsKICAgICAgICBmaWxsOiAjZmZmOwogICAgICB9CiAgICA8L3N0eWxlPgogIDwvZGVmcz4KICA8cGF0aCBjbGFzcz0iYiIgZD0iTTE2Mi45NSw3Mi41N2wzLjI1LTQuODQsOS41OC4wM2MuNzgsMy42OSwzLjY3LDUuMjcsNy4xLDQuMjIuOTctLjMsMi40Mi0xLjg4LDIuNTMtMi44NHMtMS4yOC0yLjk3LTIuMjgtMy4yM2wtOC4zNC0yLjExYy00LjkxLTEuMjQtOC4wNi00Ljc1LTguNDctOS4yNC0uNDQtNC44MSwxLjYtOS4yMiw2LjUtMTEuMjYsNS0yLjA4LDExLjA1LTIuMTEsMTUuODguNDUsMy42OCwxLjk1LDYuMSw0LjkyLDYuMjMsOS44NGwtMTAuNTEuMDdjLS43Ni0yLjQ3LTEuOTctMy43NC0zLjgtNC4wMy0xLjcxLS4yNy00LjQ0Ljk3LTQuNjUsMi41Ni0uODYsNi41NywxMS44MywyLjU5LDE4LjU4LDExLjIxLjExLTcuNTcsMS42My0xMy45Nyw3LjI4LTE4LjE1LDYuNzItNC45OCwxNy4xMy00Ljc2LDIzLjE0LDEuMTgsNC43OSw0LjczLDUuMzEsMTEuMzksNC45NSwxNy44N2gtMjQuNjZjLS4wMSwzLjc0LDIuMTYsNi41OCw0Ljg2LDcuMywzLjg2LDEuMDQsNy4xNi0uMjUsOS4wMS0zLjczbDEwLjU1LjA4Yy0xLjk3LDguMjItOC45OCwxMi44LTE3LjE4LDEyLjcyLTcuODItLjA3LTE0LjA3LTQuMjYtMTYuOTItMTIuMjQtLjE2LDQuNTctMi4zNSw4LjQ2LTYuNzgsMTAuNDQtOS4zMSw0LjE4LTIwLjk1LjkyLTIzLjIyLTguNTdsLTIuNjQsMi4yNFpNMjE5LjU3LDU3LjE3Yy0uMjUtNS44OC0zLjctNy40OC03LjQzLTcuMzlzLTYuNjIsMi43LTYuNDksNy40OGwxMy45Mi0uMDlaIi8+CiAgPHBhdGggY2xhc3M9ImIiIGQ9Ik0yNTMuNTksNTIuNzRjLTIuODEtLjUxLTUuNjQtLjQ2LTgsLjctMS45MS45NC0zLjQxLDQuMzMtMy40Miw2LjkzbC0uMDgsMTkuNjYtMTAuOTItLjAydi0zNy40czEwLjc1LS4wNCwxMC43NS0uMDRsLjQyLDYuMTljMi41Ny00Ljk5LDcuMzYtNy4wMSwxMi40OC01Ljg0bC0uMTIsNy4yOGMzLjQ1LTUuNjIsOC45NC04LjM5LDE1LjU3LTguNDEsNy4xMy0uMDMsMTMuMzQsMy42NSwxNS43NywxMC40OSwxLjM0LDMuNzcsMS42Miw3Ljc4LDEuNDEsMTIuMDJsLTI0Ljc0LjAyYy0uMjQsMy42MywyLjEyLDYuNTUsNS4xMSw3LjM0LDMuNDguOTIsNi43Mi0uMTcsOC41NS0zLjcyaDEwLjcxYy0yLjAyLDguMDYtOC43NywxMi43NS0xNi44MywxMi43My02LjItLjAxLTEyLjA2LTIuNS0xNS4xOC03Ljk1LTMuNTYtNi4yMi0zLjgyLTEzLjE3LTEuNDgtMTkuOThaTTI3Ni44Myw1Ny4yN2MuMzMtNC40LTIuNTYtNy42LTYuOTEtNy41Ni0zLjg2LjAzLTcuMTgsMy4wMi02Ljg0LDcuNTNsMTMuNzUuMDNaIi8+CiAgPHBhdGggY2xhc3M9ImIiIGQ9Ik05NC4yLDQ0LjQxYzIuOSw4LjQ4LTExLjUxLDI2Ljk5LTIwLjA1LDM1Ljg4LS43LTEwLjQxLS4yNy0zMy4zNS00LjUyLTM0LjYzbC00LjM4LTEuMzMsMTEuMDctMi41YzMsOS4zMSwyLjc4LDE4LjM3LDMuNDcsMjkuMjEsNC42OS00Ljk1LDguMzgtMTEuMTIsMTAuNzItMTcuNzQsMS4wNi0zLjAxLS4xNC00LjY3LTIuNTgtNi4zMy0xLjQtLjk1LS42My00LjAxLjkzLTQuNjksMS40Ny0uNjUsNC40OC0uNDMsNS4zNiwyLjE0WiIvPgogIDxwYXRoIGNsYXNzPSJiIiBkPSJNMTIwLjExLDQ1LjQ0bC01LjczLS4yNS4zMi0xLjU0YzguMzMtMS43MSw5LjY4LTcuMTUsMTQuODgtMTEuMTVsLTIuNTIsMTAuMjEsNS4yMi4wOS0uMzIsMmMtLjA3LjQ1LTEuNDIuMjgtMS45My4zNWwtNC4wNC4wNSIvPgogIDxjaXJjbGUgY2xhc3M9ImIiIGN4PSIzNzEuMDYiIGN5PSI3NC42MSIgcj0iNi4wNiIvPgogIDxjaXJjbGUgY2xhc3M9ImIiIGN4PSIxMDkuMzkiIGN5PSIyOS45IiByPSI0LjAyIi8+CiAgPHBhdGggY2xhc3M9ImIiIGQ9Ik0yODguMiw0Mi40OGgxMS4wM3Y1LjQ4aC41N2MuOC0xLjc1LDIuMTEtMy4yNCwzLjkyLTQuNDUsMS44MS0xLjIxLDQuMDItMS44MSw2LjYxLTEuODEsNC45LDAsOC4zLDEuNTUsMTAuMTgsNC42NiwxLjg4LDMuMTEsMi44Myw2LjU4LDIuODMsMTAuNDN2MjMuMzRoLTExLjAzdi0yMS40MmMwLTIuNDctLjU0LTQuNDEtMS42My01LjgzLTEuMDgtMS40Mi0yLjY5LTIuMTQtNC44MS0yLjE0LTIuMjYsMC0zLjk0Ljc1LTUuMDIsMi4yNC0xLjA4LDEuNDktMS42MywzLjQxLTEuNjMsNS43M3YyMS40MmgtMTEuMDN2LTM3LjY1WiIvPgogIDxwYXRoIGNsYXNzPSJiIiBkPSJNMzI3LjM4LDc0LjhjLTIuNDktMy40Ni0zLjczLTguMS0zLjczLTEzLjkyczEuMjgtMTAuNTMsMy44My0xMy45OWMyLjU1LTMuNDYsNi4wOC01LjIsMTAuNTktNS4yLDMuMTEsMCw1LjUuNjksNy4xOCwyLjA2LDEuNjcsMS4zNywyLjgzLDIuNzYsMy40OCw0LjE1aC41NnYtNS40NGgxMC45NHYzNi45MWgtMTAuOTR2LTUuOTNoLS41NmMtLjcsMS40OS0xLjg5LDIuOTYtMy41OSw0LjQtMS43LDEuNDQtNC4xLDIuMTYtNy4yMSwyLjE2LTQuNTUsMC04LjA3LTEuNzMtMTAuNTYtNS4yWk0zNDcuNTYsNjguMThjMS4yMS0yLjA3LDEuODEtNC41MiwxLjgxLTcuMzZzLS42MS01LjIyLTEuODEtNy4yOWMtMS4yMS0yLjA3LTMuMDQtMy4xMS01LjUtMy4xMXMtNC40MywxLjAxLTUuNjEsMy4wM2MtMS4xOSwyLjAyLTEuNzgsNC40NS0xLjc4LDcuMjlzLjU5LDUuMzYsMS43OCw3LjQzYzEuMTgsMi4wNywzLjA1LDMuMTEsNS42MSwzLjExczQuMy0xLjAzLDUuNS0zLjExWiIvPgogIDxwYXRoIGNsYXNzPSJiIiBkPSJNMTA5LjUsNDIuNTljLTUuNzEsMC05LjUyLS4xNC0xMy45NC40NGwzLjAxLDEuMTFjLjMxLjEyLDEuNTkuNzcsMS44NCwxLjAyLjg3Ljg4LDEuMDksMi4yMi43NSwzLjQiLz4KICA8cGF0aCBjbGFzcz0iYiIgZD0iTTU4LjExLDc1LjM2Yy0zLjY0LDEuOTEtMS44Mi0zLjczLTEuODItMy43M2w4LjQ3LTI5LjA0aC02LjQ2cy0uMzMsMS0uODUsMi42NmMtLjY0LS43Ny0xLjQ3LTEuMzUtMi40OC0xLjc1LTEuMDgtLjQyLTIuMTgtLjYzLTMuMzItLjYzLTMuMDUsMC02LjMxLDEuMzktOS43OCw0LjE3LTMuNDcsMi43OC02LjQ5LDYuMzItOS4wNiwxMC42My0yLjU3LDQuMzEtNC4xNiw4LjU4LTQuNzUsMTIuODMtLjEyLDEuMzItLjE4LDIuMjEtLjE4LDIuNjksMCw0LjQzLDEuODUsNi42NCw1LjU2LDYuNjQsMy4xNywwLDYuNDctMS42OSw5LjkxLTUuMDcsMy40NC0zLjM4LDYuNTMtNy44NSw5LjI4LTEzLjQxbC0uNjgsMy45MmMtMS41OCw3LjIyLTIuMywxMy41NC0uMjEsMTQuMjksNi4wMywyLjE1LDExLjg0LTguMjksMTEuODQtOC4yOWwuODQtMS41cy0yLjY2LDMuNjktNi4zLDUuNlpNNTAuMDMsNjMuNzJjLTEuOTIsMy4zOC00LjA4LDYuMTgtNi41LDguMzktMi40MiwyLjIxLTQuNzEsMy4zMi02Ljg2LDMuMzItMi41MSwwLTMuNzctMS43OS0zLjc3LTUuMzgsMC0xLjA4LjA5LTIuMjcuMjctMy41OS41NC0zLjc3LDEuNjItNy4xOSwzLjIzLTEwLjI3LDEuNjEtMy4wOCwzLjUxLTUuNTMsNS43LTcuMzYsMi4xOC0xLjgyLDQuMzItMi43Nyw2LjQxLTIuODMsMS44NSwwLDMuMjQuNTEsNC4xNywxLjUzLjkzLDEuMDIsMS4zOSwyLjQyLDEuMzksNC4yMi4wNi42LDAsMS4yOS0uMTgsMi4wNi0uNjYsMy4yMy0xLjk0LDYuNTMtMy44Niw5LjkxWiIvPgogIDxwYXRoIGNsYXNzPSJiIiBkPSJNMTU5Ljc2LDc1LjM2Yy0zLjM5LDIuMzMtMS44Mi0zLjczLTEuODItMy43M2w4LjQ3LTI5LjA0aC02LjQ2cy0uMzMsMS0uODUsMi42NmMtLjY0LS43Ny0xLjQ3LTEuMzUtMi40OC0xLjc1LTEuMDgtLjQyLTIuMTgtLjYzLTMuMzItLjYzLTMuMDUsMC02LjMxLDEuMzktOS43OCw0LjE3LTMuNDcsMi43OC02LjQ5LDYuMzItOS4wNiwxMC42My0yLjU3LDQuMzEtNC4xNiw4LjU4LTQuNzUsMTIuODMtLjEyLDEuMzItLjE4LDIuMjEtLjE4LDIuNjksMCw0LjQzLDEuODUsNi42NCw1LjU2LDYuNjQsMy4xNywwLDYuNDctMS42OSw5LjkxLTUuMDcsMy40NC0zLjM4LDYuNTMtNy44NSw5LjI4LTEzLjQxbC0uNjgsMy45MmMtMS41OCw3LjIyLTIuMywxMy41NC0uMjEsMTQuMjksNi4wMywyLjE1LDExLjg0LTguMjksMTEuODQtOC4yOWwuOTMtMi4xOHMtMy43NCw0LjQ1LTYuMzksNi4yOFpNMTUxLjY4LDYzLjcyYy0xLjkyLDMuMzgtNC4wOCw2LjE4LTYuNSw4LjM5LTIuNDIsMi4yMS00LjcxLDMuMzItNi44NiwzLjMyLTIuNTEsMC0zLjc3LTEuNzktMy43Ny01LjM4LDAtMS4wOC4wOS0yLjI3LjI3LTMuNTkuNTQtMy43NywxLjYyLTcuMTksMy4yMy0xMC4yNywxLjYxLTMuMDgsMy41MS01LjUzLDUuNy03LjM2LDIuMTgtMS44Miw0LjMyLTIuNzcsNi40MS0yLjgzLDEuODUsMCwzLjI0LjUxLDQuMTcsMS41My45MywxLjAyLDEuMzksMi40MiwxLjM5LDQuMjIuMDYuNiwwLDEuMjktLjE4LDIuMDYtLjY2LDMuMjMtMS45NCw2LjUzLTMuODYsOS45MVoiLz4KICA8cGF0aCBjbGFzcz0iYiIgZD0iTTEwMy4wNCw0Mi41OWg2LjQ2bC04LjQ3LDI5LjA0cy0xLjgyLDUuNjQsMS44MiwzLjczYzMuNjQtMS45MSw2LjMtNS42LDYuMy01LjZsLS44NCwxLjVzLTUuOCwxMC40NC0xMS44NCw4LjI5Yy01LjEtMS44Miw2LjU2LTM2Ljk3LDYuNTYtMzYuOTdaIi8+CiAgPHBhdGggY2xhc3M9ImIiIGQ9Ik0xMjAuNTQsNDIuNTloNi40NmwtOC40NywyOS4wNHMtMS44Miw1LjY0LDEuODIsMy43Myw2LjMtNS42LDYuMy01LjZsLS44NCwxLjVzLTUuOCwxMC40NC0xMS44NCw4LjI5Yy01LjEtMS44Miw2LjU2LTM2Ljk3LDYuNTYtMzYuOTdaIi8+Cjwvc3ZnPg==" alt="Avita Serena" style="height:22px;width:auto;display:inline-block;vertical-align:middle;margin-right:10px">
+    Sabrina Castelli · Naturopathe · Porto-Vecchio, Corse<br>
+    <a href="mailto:sabrina@avitaserena.com">sabrina@avitaserena.com</a> · <a href="https://avitaserena.fr">avitaserena.fr</a>
+    &nbsp;·&nbsp; <a href="#">Mentions légales</a> &nbsp;·&nbsp; <a href="#">Politique de confidentialité</a>
+  </p>
+</footer>
+
+<div id="toast-msg"></div>
+
+<script>
+/* ══ CONFIG — clé publique Stripe intégrée ══ */
+var STRIPE_PK = 'pk_live_51TZucy6JYeTGQPo1F5ANTxC8yBB3ieKF2QpZjfBa2UL1XF8WPmdROcukLxWQzgdQFrh7qsjdY9B86nH98huMEPJJ00je8qE3VX';
+var PRESTATIONS = {
+  bilan: {label:'Bilan de vitalité naturopathique (90 min)', prix:90},
+  suivi: {label:'Consultation de suivi (60 min)', prix:65},
+  flash: {label:'Point flash (30 min)', prix:35}
+};
+
+/* ══ ÉTAT ══ */
+var state = {prestaId:null,prestaLabel:null,prestaPrix:null,prenom:'',nom:'',email:'',tel:'',motif:'',message:'',stripe:null,cardElement:null};
+
+/* ══ VALIDATION ══ */
+function validerChamp(champ) {
+  var el = document.getElementById('f-'+champ);
+  var val = el.value.trim();
+  var ok = false;
+
+  if(champ === 'prenom' || champ === 'nom') {
+    ok = val.length >= 2;
+    showMsg(champ, !ok && val.length > 0, false, '');
+    if(!ok && val.length > 0) el.classList.add('error'); else el.classList.remove('error');
+    if(ok) el.classList.add('valid'); else el.classList.remove('valid');
+  }
+
+  if(champ === 'email') {
+    var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+    ok = emailRegex.test(val);
+    var msgEl = document.getElementById('msg-email');
+    var msgOkEl = document.getElementById('msg-email-ok');
+    if(val.length > 0 && !ok) {
+      el.classList.add('error'); el.classList.remove('valid');
+      msgEl.classList.add('show'); msgOkEl.classList.remove('show');
+    } else if(ok) {
+      el.classList.remove('error'); el.classList.add('valid');
+      msgEl.classList.remove('show'); msgOkEl.classList.add('show');
+    } else {
+      el.classList.remove('error','valid');
+      msgEl.classList.remove('show'); msgOkEl.classList.remove('show');
+    }
+  }
+
+  if(champ === 'tel') {
+    var telClean = val.replace(/[\s\-\.\(\)]/g,'');
+    // Accepter format français : 10 chiffres commençant par 0, ou +33 suivi de 9 chiffres
+    var telRegex = /^(0[1-9][0-9]{8}|(\+33)[1-9][0-9]{8})$/;
+    ok = telRegex.test(telClean);
+    var msgEl = document.getElementById('msg-tel');
+    var msgOkEl = document.getElementById('msg-tel-ok');
+    if(val.length > 0 && !ok) {
+      el.classList.add('error'); el.classList.remove('valid');
+      msgEl.classList.add('show'); msgOkEl.classList.remove('show');
+    } else if(ok) {
+      el.classList.remove('error'); el.classList.add('valid');
+      msgEl.classList.remove('show'); msgOkEl.classList.add('show');
+    } else {
+      el.classList.remove('error','valid');
+      msgEl.classList.remove('show'); msgOkEl.classList.remove('show');
+    }
+  }
+  return ok;
+}
+
+function showMsg(champ, showError, showOk, txt) {
+  var msgEl = document.getElementById('msg-'+champ);
+  if(msgEl) { if(showError) msgEl.classList.add('show'); else msgEl.classList.remove('show'); }
+}
+
+function validerFormulaire() {
+  var prenomOk = document.getElementById('f-prenom').value.trim().length >= 2;
+  var nomOk = document.getElementById('f-nom').value.trim().length >= 2;
+  var emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(document.getElementById('f-email').value.trim());
+  var telClean = document.getElementById('f-tel').value.trim().replace(/[\s\-\.\(\)]/g,'');
+  var telOk = /^(0[1-9][0-9]{8}|(\+33)[1-9][0-9]{8})$/.test(telClean);
+
+  if(!prenomOk){ document.getElementById('f-prenom').classList.add('error'); document.getElementById('msg-prenom').classList.add('show'); }
+  if(!nomOk){ document.getElementById('f-nom').classList.add('error'); document.getElementById('msg-nom').classList.add('show'); }
+  if(!emailOk){ validerChamp('email'); }
+  if(!telOk){ validerChamp('tel'); }
+
+  return prenomOk && nomOk && emailOk && telOk;
+}
+
+/* ══ PRESTATION ══ */
+function selectionnerPresta(id) {
+  document.querySelectorAll('.presta-card').forEach(function(c){c.classList.remove('selected');});
+  document.getElementById('pc-'+id).classList.add('selected');
+  state.prestaId=id; state.prestaLabel=PRESTATIONS[id].label; state.prestaPrix=PRESTATIONS[id].prix;
+  document.getElementById('btn-step1').disabled=false;
+}
+
+/* ══ NAVIGATION ══ */
+function allerEtape(n) {
+  document.querySelectorAll('.booking-step').forEach(function(s){s.classList.remove('active');});
+  document.getElementById('step-'+n).classList.add('active');
+  majIndicateur(n);
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function allerEtape2() {
+  if(!state.prestaId){showToast('Veuillez choisir une prestation');return;}
+  allerEtape(2);
+  setTimeout(function(){document.getElementById('f-prenom').focus();},300);
+}
+
+function allerEtape3() {
+  if(!validerFormulaire()){showToast('Veuillez corriger les erreurs indiquées');return;}
+  state.prenom=document.getElementById('f-prenom').value.trim();
+  state.nom=document.getElementById('f-nom').value.trim();
+  state.email=document.getElementById('f-email').value.trim();
+  state.tel=document.getElementById('f-tel').value.trim();
+  state.motif=document.getElementById('f-motif').value;
+  state.message=document.getElementById('f-message').value.trim();
+  majRecap();
+  allerEtape(3);
+  if(!state.stripe) initStripe();
+}
+
+function majIndicateur(step) {
+  for(var i=1;i<=3;i++){
+    var dot=document.getElementById('sdot-'+i);
+    var line=document.getElementById('sline-'+i);
+    if(i<step){dot.className='step-dot done';dot.textContent='✓';}
+    else if(i===step){dot.className='step-dot active';dot.textContent=i;}
+    else{dot.className='step-dot future';dot.textContent=i;}
+    if(line){ if(i<step) line.classList.add('done'); else line.classList.remove('done'); }
+  }
+}
+
+function majRecap() {
+  document.getElementById('recap-presta').textContent=state.prestaLabel||'—';
+  document.getElementById('recap-client').textContent=state.prenom+' '+state.nom;
+  document.getElementById('recap-email').textContent=state.email;
+  document.getElementById('recap-prix').textContent=(state.prestaPrix||'—')+'€';
+  document.getElementById('btn-prix-affiche').textContent=(state.prestaPrix||'—')+'€';
+}
+
+/* ══ STRIPE ══ */
+function initStripe() {
+  try {
+    state.stripe = Stripe(STRIPE_PK);
+    var elements = state.stripe.elements({
+      fonts:[{cssSrc:'https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400'}]
+    });
+    state.cardElement = elements.create('card',{
+      style:{
+        base:{fontFamily:"'Be Vietnam Pro',sans-serif",fontSize:'15px',color:'#2C2C2A','::placeholder':{color:'#9A9590'}},
+        invalid:{color:'#8B3A3A'}
+      }
+    });
+    state.cardElement.mount('#card-element');
+    state.cardElement.on('focus',function(){document.querySelector('.stripe-element-wrap').classList.add('focused');});
+    state.cardElement.on('blur',function(){document.querySelector('.stripe-element-wrap').classList.remove('focused');});
+    state.cardElement.on('change',function(e){
+      var err=document.getElementById('card-errors');
+      if(e.error){err.textContent=e.error.message;err.style.display='block';}
+      else{err.style.display='none';}
+    });
+    document.getElementById('stripe-loading').style.display='none';
+    document.getElementById('stripe-ready').style.display='block';
+  } catch(e) {
+    document.getElementById('stripe-loading').style.display='none';
+    document.getElementById('stripe-error-init').style.display='block';
+    console.error('Stripe init error:',e);
+  }
+}
+
+/* ══ PAIEMENT ══ */
+async function lancerPaiement() {
+  if(!state.stripe || !state.cardElement){showToast('Formulaire de paiement non prêt');return;}
+  var btn=document.getElementById('btn-payer');
+  btn.disabled=true; btn.classList.add('loading');
+
+  try {
+    var response = await fetch('/.netlify/functions/create-payment-intent',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        amount:(state.prestaPrix||0)*100,
+        currency:'eur',
+        description:state.prestaLabel,
+        customer_email:state.email,
+        customer_name:state.prenom+' '+state.nom,
+        metadata:{prenom:state.prenom,nom:state.nom,email:state.email,tel:state.tel,motif:state.motif,prestation:state.prestaLabel}
+      })
+    });
+
+    if(!response.ok) throw new Error('Erreur serveur '+response.status);
+    var data=await response.json();
+    if(!data.clientSecret) throw new Error('Réponse serveur invalide');
+
+    var result=await state.stripe.confirmCardPayment(data.clientSecret,{
+      payment_method:{card:state.cardElement,billing_details:{name:state.prenom+' '+state.nom,email:state.email}}
+    });
+
+    if(result.error){
+      var errEl=document.getElementById('card-errors');
+      errEl.textContent=result.error.message; errEl.style.display='block';
+      btn.disabled=false; btn.classList.remove('loading');
+    } else if(result.paymentIntent.status==='succeeded'){
+      afficherSucces();
+    }
+  } catch(e) {
+    console.error(e);
+    var errEl=document.getElementById('card-errors');
+    errEl.textContent='Une erreur est survenue. Veuillez réessayer ou contacter sabrina@avitaserena.com';
+    errEl.style.display='block';
+    btn.disabled=false; btn.classList.remove('loading');
+  }
+}
+
+function afficherSucces() {
+  document.querySelector('.main').style.display='none';
+  document.getElementById('success-page').style.display='block';
+  document.getElementById('success-prenom').textContent=state.prenom;
+  document.getElementById('success-email').textContent=state.email;
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+/* ══ TOAST ══ */
+function showToast(msg) {
+  var t=document.getElementById('toast-msg');
+  t.textContent=msg; t.style.opacity='1'; t.style.transform='translateX(-50%) translateY(0)';
+  clearTimeout(t._t); t._t=setTimeout(function(){t.style.opacity='0';t.style.transform='translateX(-50%) translateY(20px)';},4000);
+}
+</script>
+</body>
+</html>
