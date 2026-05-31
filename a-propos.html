@@ -169,11 +169,12 @@ nav.scrolled .hamburger span,.nav-light .hamburger span{background:var(--ardoise
 .pillier:hover .pillier-icon svg path,.pillier:hover .pillier-icon svg circle,.pillier:hover .pillier-icon svg rect,.pillier:hover .pillier-icon svg line{stroke:#fff}
 .pillier-title{font-size:16px;font-weight:600;margin-bottom:10px;color:var(--ardoise)}
 .pillier-desc{font-size:13px;line-height:1.7;color:var(--gris)}
-.quote-section{padding:0;overflow:hidden;position:relative;height:44vh;display:flex;align-items:center;justify-content:center;background-image:url('/images/img-png-3.png');background-size:cover;background-position:center;background-attachment:fixed}
-.quote-section::before{content:'';position:absolute;inset:0;background:rgba(10,8,6,.68)}
-.quote-bg{display:none}
-.quote-text{position:relative;z-index:2;text-align:center;padding:0 10vw;max-width:880px}
-@media(max-width:768px){.quote-section{background-attachment:scroll}}
+.quote-section{padding:0;overflow:hidden;position:relative;height:52vh;display:flex;align-items:center;justify-content:center}
+.quote-parallax-bg{position:absolute;inset:-30%;z-index:0;will-change:transform}
+.quote-parallax-bg img{width:100%;height:100%;object-fit:cover;display:block;filter:brightness(.28) sepia(.12)}
+.quote-section::after{content:'';position:absolute;inset:0;z-index:1;background:linear-gradient(to bottom,rgba(10,8,6,.3) 0%,rgba(10,8,6,.1) 50%,rgba(10,8,6,.3) 100%)}
+.quote-text{position:relative;z-index:3;text-align:center;padding:0 10vw;max-width:880px}
+@media(max-width:768px){.quote-parallax-bg{inset:-15%}}
 .quote-text p{font-family:'Cormorant Garamond',serif;font-size:clamp(22px,3vw,42px);font-style:italic;font-weight:300;color:#fff;line-height:1.45}
 .quote-text em{color:var(--sable);font-style:normal}
 .quote-text cite{display:block;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.28);margin-top:20px;font-style:normal}
@@ -316,8 +317,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   </div>
 </section>
 
-<section class="quote-section">
-  <div class="quote-bg"><img src="/images/img-png-3.png" alt="Vue sur la Corse — Avita Serena"></div>
+<section class="quote-section" id="quote-parallax">
+  <div class="quote-parallax-bg" id="parallax-img"><img src="/images/img-png-3.png" alt="Vue sur la Corse — Avita Serena"></div>
   <div class="quote-text reveal">
     <p>"La nature corse ne m'a pas seulement appris à ralentir. Elle m'a appris que l'équilibre n'est pas un état qu'on atteint une fois pour toutes — c'est une direction qu'on choisit, <em>chaque matin</em>."</p>
     <cite>— Sabrina Castelli · Avita Serena · Porto-Vecchio</cite>
@@ -455,5 +456,23 @@ var co = new IntersectionObserver(function(entries) {
 document.querySelectorAll('.stat-num[data-target]').forEach(function(el) { co.observe(el); });
 </script>
 
+<script>
+// Parallax citation
+(function(){
+  var section = document.getElementById('quote-parallax');
+  var bg = document.getElementById('parallax-img');
+  if(!section || !bg) return;
+  function onScroll(){
+    var rect = section.getBoundingClientRect();
+    var vh = window.innerHeight;
+    // progress: -1 (below viewport) → 0 (centered) → 1 (above viewport)
+    var progress = (vh/2 - (rect.top + rect.height/2)) / (vh + rect.height);
+    var offset = progress * 120; // amplitude en px
+    bg.style.transform = 'translateY(' + offset + 'px)';
+  }
+  window.addEventListener('scroll', onScroll, {passive:true});
+  onScroll();
+})();
+</script>
 </body>
 </html>
