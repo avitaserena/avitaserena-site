@@ -787,27 +787,26 @@ function animCounter(el, target) {
   }
   requestAnimationFrame(step);
 }
-var cntObs = new IntersectionObserver(function(entries) {
-  entries.forEach(function(e) {
-    if (e.isIntersecting && !e.target.dataset.counted) {
-      e.target.dataset.counted = '1';
-      animCounter(e.target, parseInt(e.target.dataset.target));
+function runCounters(container) {
+  container.querySelectorAll('.p-stat-num[data-target]').forEach(function(el) {
+    if (!el.dataset.counted) {
+      el.dataset.counted = '1';
+      animCounter(el, parseInt(el.dataset.target));
     }
   });
-}, {threshold: 0.1});
-document.querySelectorAll('.p-stat-num[data-target]').forEach(function(el) {
-  cntObs.observe(el);
-  // Fallback : si l'élément est déjà dans le viewport au chargement
-  var rect = el.getBoundingClientRect();
-  if (rect.top < window.innerHeight && !el.dataset.counted) {
-    setTimeout(function() {
-      if (!el.dataset.counted) {
-        el.dataset.counted = '1';
-        animCounter(el, parseInt(el.dataset.target));
+}
+var statsContainer = document.querySelector('.portrait-stats');
+if (statsContainer) {
+  var statsObs = new IntersectionObserver(function(entries) {
+    entries.forEach(function(e) {
+      if (e.isIntersecting) {
+        statsObs.disconnect();
+        setTimeout(function() { runCounters(statsContainer); }, 300);
       }
-    }, 600);
-  }
-});
+    });
+  }, {threshold: 0, rootMargin: '0px 0px -50px 0px'});
+  statsObs.observe(statsContainer);
+}
 
 // Parallaxe
 var pb=document.getElementById('parallaxBg');var hb=document.getElementById('heroBg');window.addEventListener('scroll',function(){var sy=window.scrollY;if(pb)pb.style.transform='translateY('+(sy*.22)+'px)';if(hb)hb.style.transform='translateY('+(sy*.28)+'px)';},{passive:true});
