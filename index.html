@@ -748,22 +748,22 @@ function animCounter(el, target) {
   }
   requestAnimationFrame(step);
 }
-var statsContainer = document.querySelector('.portrait-stats');
-if (statsContainer) {
-  var statsObs = new IntersectionObserver(function(entries) {
-    entries.forEach(function(e) {
-      if (e.isIntersecting) {
-        statsObs.disconnect();
-        setTimeout(function() {
-          statsContainer.querySelectorAll('.p-stat-num[data-target]').forEach(function(el) {
-            animCounter(el, parseInt(el.dataset.target));
-          });
-        }, 400);
-      }
+var countersDone = false;
+function checkCounters() {
+  if (countersDone) return;
+  var statsContainer = document.querySelector('.portrait-stats');
+  if (!statsContainer) return;
+  var rect = statsContainer.getBoundingClientRect();
+  if (rect.top < window.innerHeight && rect.bottom > 0) {
+    countersDone = true;
+    statsContainer.querySelectorAll('.p-stat-num[data-target]').forEach(function(el) {
+      animCounter(el, parseInt(el.dataset.target));
     });
-  }, {threshold: 0});
-  statsObs.observe(statsContainer);
+  }
 }
+window.addEventListener('scroll', checkCounters, {passive: true});
+// Vérifier aussi au chargement (si déjà visible)
+setTimeout(checkCounters, 800);
 </script>
 
 </body>
