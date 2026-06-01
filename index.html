@@ -654,38 +654,6 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
 
 <script>
-function toggleMenu() {
-  document.getElementById('hamburger').classList.toggle('open');
-  document.getElementById('menuPanel').classList.toggle('open');
-  document.getElementById('menuOverlay').classList.toggle('open');
-  document.body.style.overflow = document.getElementById('menuPanel').classList.contains('open') ? 'hidden' : '';
-}
-window.addEventListener('scroll', function() {
-  document.getElementById('nav').classList.toggle('scrolled', window.scrollY > 60);
-}, {passive:true});
-var revealObs = new IntersectionObserver(function(entries) {
-  entries.forEach(function(e) { if(e.isIntersecting) e.target.classList.add('visible'); });
-}, {threshold:0.1});
-document.querySelectorAll('.reveal,.reveal-left,.reveal-right').forEach(function(el) {
-  revealObs.observe(el);
-});
-</script>
-
-<script>
-// Parallaxe
-var pb=document.getElementById('parallaxBg');
-var hb=document.getElementById('heroBg');
-window.addEventListener('scroll',function(){
-  var sy=window.scrollY;
-  if(pb)pb.style.transform='translateY('+(sy*.22)+'px)';
-  if(hb)hb.style.transform='translateY('+(sy*.28)+'px)';
-},{passive:true});
-
-// NAV
-window.addEventListener('scroll', function() {
-  document.getElementById('nav').classList.toggle('scrolled', window.scrollY > 60);
-});
-
 // MENU
 function toggleMenu() {
   document.getElementById('hamburger').classList.toggle('open');
@@ -693,6 +661,11 @@ function toggleMenu() {
   document.getElementById('menuOverlay').classList.toggle('open');
   document.body.style.overflow = document.getElementById('menuPanel').classList.contains('open') ? 'hidden' : '';
 }
+
+// NAV SCROLL
+window.addEventListener('scroll', function() {
+  document.getElementById('nav').classList.toggle('scrolled', window.scrollY > 60);
+}, {passive:true});
 
 // PARALLAXE
 var pb = document.getElementById('parallaxBg');
@@ -713,13 +686,11 @@ document.querySelectorAll('.reveal, .reveal-left, .reveal-right').forEach(functi
   revealObs.observe(el);
 });
 
-// CAROUSEL TÉMOIGNAGES — 1 par 1, auto
+// CAROUSEL TÉMOIGNAGES
 var temoIdx = 0;
 var temoCards = document.querySelectorAll('.temo-card');
 var temoTotal = temoCards.length;
 var temoTimer = null;
-
-// Créer les dots
 var dotsContainer = document.getElementById('temoDots');
 for (var i = 0; i < temoTotal; i++) {
   var dot = document.createElement('button');
@@ -729,32 +700,25 @@ for (var i = 0; i < temoTotal; i++) {
   dot.addEventListener('click', function() { goTemo(parseInt(this.getAttribute('data-idx'))); });
   dotsContainer.appendChild(dot);
 }
-
 function updateTemo() {
   var track = document.getElementById('temoTrack');
   track.style.transform = 'translateX(-' + (temoIdx * 100) + '%)';
   document.querySelectorAll('.temo-dot').forEach(function(d, i) {
     d.classList.toggle('active', i === temoIdx);
   });
-  // Reset progress bar
   var bar = document.getElementById('temoBar');
   bar.style.animation = 'none';
-  bar.offsetHeight; // reflow
+  bar.offsetHeight;
   bar.style.animation = 'temoProgress 5s linear forwards';
 }
-
 function slideTemo(dir) {
   temoIdx = (temoIdx + dir + temoTotal) % temoTotal;
-  updateTemo();
-  resetTimer();
+  updateTemo(); resetTimer();
 }
-
 function goTemo(idx) {
   temoIdx = idx;
-  updateTemo();
-  resetTimer();
+  updateTemo(); resetTimer();
 }
-
 function resetTimer() {
   if (temoTimer) clearInterval(temoTimer);
   temoTimer = setInterval(function() {
@@ -762,8 +726,6 @@ function resetTimer() {
     updateTemo();
   }, 5000);
 }
-
-// Touch/swipe
 var touchStartX = 0;
 var viewport = document.querySelector('.temo-viewport');
 viewport.addEventListener('touchstart', function(e) { touchStartX = e.touches[0].clientX; }, {passive:true});
@@ -771,7 +733,6 @@ viewport.addEventListener('touchend', function(e) {
   var diff = touchStartX - e.changedTouches[0].clientX;
   if (Math.abs(diff) > 50) slideTemo(diff > 0 ? 1 : -1);
 }, {passive:true});
-
 resetTimer();
 updateTemo();
 
@@ -787,32 +748,23 @@ function animCounter(el, target) {
   }
   requestAnimationFrame(step);
 }
-function runCounters(container) {
-  container.querySelectorAll('.p-stat-num[data-target]').forEach(function(el) {
-    if (!el.dataset.counted) {
-      el.dataset.counted = '1';
-      animCounter(el, parseInt(el.dataset.target));
-    }
-  });
-}
 var statsContainer = document.querySelector('.portrait-stats');
 if (statsContainer) {
   var statsObs = new IntersectionObserver(function(entries) {
     entries.forEach(function(e) {
       if (e.isIntersecting) {
         statsObs.disconnect();
-        setTimeout(function() { runCounters(statsContainer); }, 300);
+        setTimeout(function() {
+          statsContainer.querySelectorAll('.p-stat-num[data-target]').forEach(function(el) {
+            animCounter(el, parseInt(el.dataset.target));
+          });
+        }, 400);
       }
     });
-  }, {threshold: 0, rootMargin: '0px 0px -50px 0px'});
+  }, {threshold: 0});
   statsObs.observe(statsContainer);
 }
-
-// Parallaxe
-var pb=document.getElementById('parallaxBg');var hb=document.getElementById('heroBg');window.addEventListener('scroll',function(){var sy=window.scrollY;if(pb)pb.style.transform='translateY('+(sy*.22)+'px)';if(hb)hb.style.transform='translateY('+(sy*.28)+'px)';},{passive:true});
-
 </script>
-
 
 </body>
 </html>
