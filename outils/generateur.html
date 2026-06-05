@@ -215,6 +215,11 @@ textarea.mf:focus,input.mf:focus,select.mf:focus{border-color:var(--ocre);backgr
         </select>
       </div>
     </div>
+    <div style="margin-bottom:12px">
+      <label class="ml">🩺 Données spécialisées (SIBO / Hormones / Thyroïde)</label>
+      <textarea class="mf" id="m-thematiques" style="min-height:80px" placeholder="Ex: [SIBO] Test respiratoire H2 positif 42ppm à 90min · Ballonnements 60-90min post-repas · IPP pendant 2 ans · Déclenchement post-gastro 2022&#10;[SOPK] Type insulino-résistant · Cycles 45-60j · Acné mâchoire · Inositol non encore testé&#10;[HASHIMOTO] TSH 3,8 · T3L basse · Anti-TPO 420 · Sélénium jamais supplémenté"></textarea>
+      <p class="field-hint">Résumez ici les réponses des questionnaires thématiques activés en séance. Ces données orientent directement les protocoles spécialisés.</p>
+    </div>
     <div><label class="ml">Analyse causale & intuition clinique praticien</label><textarea class="mf" id="m-notes" style="min-height:80px" placeholder="Ex: Dysbiose intestinale probable comme premier domino → perturbation axe intestin-cerveau → fatigue surrénalienne secondaire. Dominance œstrogénique liée à foie ralenti. A pleuré en parlant de son travail — charge émotionnelle majeure."></textarea>
       <p class="field-hint">Notez les hypothèses causales, liens entre systèmes et observations de séance. Sert à guider la cascade dans le protocole.</p>
     </div>
@@ -409,7 +414,9 @@ function renderSessionCard() {
     ['Durée', d.duree_symptomes || '—'],
     ['Motifs', d.motifs || '—'],
     ['Scores', d.scores || '—'],
-    ['Médicaments', d.selects?.match(/Médicaments[^\\n]*/)?.[0] || (d.textes_libres?.match(/Médicaments[^\n]*/)?.[0] || '—')],
+    ['Grossesse / allaitement', d.grossesse || '—'],
+    ['IMC', d.imc ? d.imc + ' kg/m²' : '—'],
+    ['Spécialités actives', d.thematiques ? d.thematiques.match(/\[([A-Z]+)\]/g)?.join(', ') || '—' : '—'],
     ['Bilans recommandés', d.bilans_recommandes || '—'],
   ];
   const html = `<div class="session-grid">${items.map(([k,v]) => `<div class="session-item"><strong>${k}</strong><span>${(v||'—').substring(0,80)}${v?.length > 80 ? '…' : ''}</span></div>`).join('')}</div>
@@ -439,6 +446,7 @@ function buildClientData() {
     checks: mf('m-checks'), medics: mf('m-medics'), gyneco: mf('m-gyneco'),
     alim: mf('m-alim'), notes: mf('m-notes'),
     lifeline: mf('m-lifeline'), encrassement: mf('m-encrassement'), vitalite: mf('m-vitalite'),
+    thematiques_manual: mf('m-thematiques'),
   };
   const hasManual = Object.values(manual).some(v => v.length > 1);
   const s = sessionData || {};
@@ -467,6 +475,9 @@ function buildClientData() {
     niveau: document.getElementById('niveau').value,
     obj_principal: document.getElementById('obj-principal').value,
     profil: document.getElementById('profil').value,
+    thematiques: manual.thematiques_manual || s.thematiques || '',
+    grossesse: s.grossesse || '',
+    imc: s.imc || '',
   };
 }
 
@@ -519,10 +530,10 @@ ISRS/antidépresseurs → millepertuis INTERDIT absolument
 Pilule/THM → attention phytoestrogènes
 Cancer hormono-dépendant → JAMAIS Feminabiane Ménopause ni phytoestrogènes
 Hypothyroïdie (Lévothyrox) → espacer fer, calcium, magnésium de 4h
-Grossesse → aucune HE par voie interne, vérifier chaque plante
+Grossesse / allaitement déclaré → AUCUNE HE par voie interne, AUCUNE plante emménagogue (gattilier, actée à grappes, sauge, armoise, millepertuis), privilégier acide folique méthylé + DHA + probiotiques sûrs uniquement. Si grossesse déclarée : mentionner explicitement au début de la section compléments.
 
 ━━ DONNÉES DE LA SÉANCE ━━
-Cliente : ${d.prenom}${d.age ? ', ' + d.age + ' ans' : ''} · Profil : ${d.profil}
+Cliente : ${d.prenom}${d.age ? ', ' + d.age + ' ans' : ''} · Profil : ${d.profil}${d.imc ? ' · IMC : ' + d.imc : ''}
 Objectif exprimé : ${d.objectif_6mois || d.obj_principal}
 Durée des déséquilibres : ${d.duree_symptomes}
 Ressentis & motifs : ${d.motifs}
@@ -531,6 +542,7 @@ Signaux cochés en séance : ${d.symptomes_coches}
 Alimentation & mode de vie : ${d.alimentation}
 Cycle, gynécologie, thyroïde : ${d.gyneco}
 Contraception : ${d.contraception}
+⚠️ Grossesse / allaitement : ${d.grossesse || 'Non renseigné'}
 ⚠️ Médicaments & allergies : ${d.medics_allergies || 'Non renseigné — vérifier avant toute recommandation'}
 Bilans biologiques à recommander : ${d.bilans_rec}
 
@@ -542,6 +554,9 @@ ${d.lifeline || '— Non renseigné'}
 
 🔬 ANALYSE CAUSALE PRATICIEN (cascade des premiers dominos) :
 ${d.notes_praticien || '— Non renseigné'}
+
+🩺 DONNÉES SPÉCIALISÉES (questionnaires thématiques remplis en séance) :
+${d.thematiques || '— Aucun questionnaire thématique activé cette séance'}
 
 Axe prioritaire 1 : ${d.prio1}
 Axe prioritaire 2 : ${d.prio2}
