@@ -1,0 +1,1023 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Agenda — Avita Serena</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#F7F6F4; --surface:#FFFFFF; --surface2:#F7F6F4; --surface3:#EDE9E1;
+  --border:#E4E0D8; --border2:#D5CFC6;
+  --text:#1E1E1C; --text2:#6B6560; --text3:#A8A39E;
+  --ocre:#B4906A; --ocre2:#C4A882; --ocre-lt:#FBF3E4; --ocre-dim:rgba(180,144,106,.12);
+  --vert:#3D8B5E; --vert-lt:#EAF3EE; --vert-dim:rgba(61,139,94,.12);
+  --bleu:#3D7EC4; --bleu-lt:#EEF4FB; --bleu-dim:rgba(61,126,196,.12);
+  --violet:#7B5EA7; --violet-dim:rgba(123,94,167,.12);
+  --rouge:#C04040; --rouge-lt:#FDF0F0; --rouge-dim:rgba(192,64,64,.1);
+  --amber:#B8861A; --amber-lt:#FBF4E0; --amber-dim:rgba(184,134,26,.12);
+  --ardoise:#1E1E1C;
+  /* Couleurs prestations */
+  --c-bilan:#3D7EC4; --c-bilan-bg:rgba(61,126,196,.1); --c-bilan-border:rgba(61,126,196,.3);
+  --c-suivi:#3D8B5E; --c-suivi-bg:rgba(61,139,94,.1); --c-suivi-border:rgba(61,139,94,.3);
+  --c-block:#C04040; --c-block-bg:rgba(192,64,64,.07); --c-block-border:rgba(192,64,64,.25);
+  --radius:12px; --radius-sm:8px; --shadow:0 1px 3px rgba(0,0,0,.08),0 4px 16px rgba(0,0,0,.05);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{font-size:14px}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+
+.app{display:grid;grid-template-columns:280px 1fr;height:100vh;overflow:hidden}
+.sidebar{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto}
+.main{display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
+
+/* ─── SIDEBAR ─── */
+.sb-header{padding:20px 20px 16px;border-bottom:1px solid var(--border)}
+.sb-logo{font-family:'Cormorant Garamond',serif;font-size:18px;color:var(--ardoise)}
+.sb-logo em{font-style:italic;color:var(--ocre)}
+.sb-sub{font-size:10px;color:var(--text3);letter-spacing:.12em;text-transform:uppercase;margin-top:2px}
+
+.sb-block{padding:16px 20px;border-bottom:1px solid var(--border)}
+.sb-label{font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
+.sb-label button{background:none;border:none;color:var(--ocre);font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;letter-spacing:.06em;text-transform:none}
+
+/* Stats */
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.stat-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px}
+.stat-num{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:400;line-height:1;color:var(--text)}
+.stat-num.ocre{color:var(--ocre)}
+.stat-num.vert{color:var(--vert)}
+.stat-label{font-size:10px;color:var(--text3);margin-top:2px}
+
+/* CA Dashboard */
+.ca-block{background:var(--ocre-lt);border:1px solid var(--ocre-dim);border-radius:var(--radius-sm);padding:12px 14px}
+.ca-row{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px}
+.ca-amount{font-family:'Cormorant Garamond',serif;font-size:22px;color:var(--text)}
+.ca-target{font-size:11px;color:var(--text3)}
+.ca-bar-bg{height:5px;background:var(--border2);border-radius:99px;overflow:hidden;margin-bottom:6px}
+.ca-bar-fill{height:100%;background:var(--ocre);border-radius:99px;transition:width .6s ease}
+.ca-details{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.ca-detail{font-size:10px;color:var(--text2)}
+.ca-detail strong{color:var(--text);font-weight:600}
+.ca-semaine{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;margin-top:6px}
+.ca-semaine-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.ca-semaine-label{font-size:10px;color:var(--text2)}
+.ca-semaine-val{font-size:11px;font-weight:600;color:var(--text)}
+.day-progress{display:flex;gap:4px;margin-top:2px}
+.day-dot{width:18px;height:18px;border-radius:4px;background:var(--border);display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:var(--text3)}
+.day-dot.done{background:var(--vert-lt);color:var(--vert)}
+.day-dot.today{background:var(--ocre-lt);color:var(--ocre);outline:1px solid var(--ocre)}
+.day-dot.over{background:var(--ocre);color:#fff}
+
+/* Mini cal */
+.mc-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.mc-btn{background:none;border:1px solid var(--border);color:var(--text2);width:24px;height:24px;border-radius:6px;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.mc-btn:hover{background:var(--surface3);color:var(--text)}
+.mc-label{font-size:12px;font-weight:500;color:var(--text)}
+.mc-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px}
+.mc-hdr{font-size:9px;font-weight:600;text-align:center;color:var(--text3);padding:3px 0}
+.mc-day{font-size:10px;text-align:center;padding:4px 1px;border-radius:5px;cursor:pointer;background:none;border:none;color:var(--text2);font-family:inherit;transition:all .12s;line-height:1.2}
+.mc-day:hover{background:var(--surface3)}
+.mc-day.today{background:var(--ardoise);color:#fff;font-weight:600}
+.mc-day.sel{background:var(--surface3);outline:1.5px solid var(--ocre);color:var(--text)}
+.mc-day.has{position:relative}
+.mc-day.has::after{content:'';position:absolute;bottom:1px;left:50%;transform:translateX(-50%);width:3px;height:3px;border-radius:50%;background:var(--ocre)}
+.mc-day.today.has::after{background:rgba(255,255,255,.7)}
+.mc-day.other{color:var(--text3);opacity:.45}
+.mc-day.blocked{color:var(--rouge);text-decoration:line-through;opacity:.55}
+
+/* Plages */
+.slot-row{display:flex;align-items:center;gap:7px;padding:6px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;margin-bottom:3px}
+.slot-day{font-size:11px;font-weight:600;color:var(--text);min-width:24px}
+.slot-time{font-size:11px;color:var(--text2);flex:1}
+.slot-tog{position:relative;width:30px;height:17px;background:var(--border2);border-radius:99px;cursor:pointer;transition:background .2s;border:none;flex-shrink:0}
+.slot-tog.on{background:var(--ocre)}
+.slot-tog::after{content:'';position:absolute;top:2px;left:2px;width:13px;height:13px;border-radius:50%;background:#fff;transition:transform .2s}
+.slot-tog.on::after{transform:translateX(13px)}
+
+/* Blocages */
+.blocked-item{display:flex;align-items:center;justify-content:space-between;padding:5px 9px;background:var(--rouge-lt);border:1px solid rgba(192,64,64,.2);border-radius:6px;margin-bottom:3px;font-size:10px;color:var(--text2)}
+.blocked-rm{background:none;border:none;color:var(--rouge);cursor:pointer;font-size:14px;padding:0 2px;opacity:.6}
+.blocked-rm:hover{opacity:1}
+
+/* Alertes */
+.alerte-row{display:flex;gap:7px;padding:8px 10px;border-radius:8px;margin-bottom:5px;border:1px solid var(--border)}
+.alerte-row.urgent{background:var(--rouge-lt);border-color:rgba(192,64,64,.2)}
+.alerte-row.warning{background:var(--amber-lt);border-color:rgba(184,134,26,.2)}
+.alerte-row.ok{background:var(--surface2)}
+.alerte-ic{font-size:14px;flex-shrink:0;padding-top:1px}
+.alerte-body{flex:1;min-width:0}
+.alerte-label{font-size:11px;font-weight:500;color:var(--text);line-height:1.35;margin-bottom:2px}
+.alerte-cliente{font-size:10px;color:var(--text3);margin-bottom:4px}
+.alerte-btns{display:flex;gap:3px;flex-wrap:wrap}
+.btn-al{font-size:10px;padding:3px 8px;border-radius:5px;cursor:pointer;font-family:inherit;font-weight:500;border:1px solid var(--border);background:var(--surface);color:var(--text2);text-decoration:none;transition:all .12s}
+.btn-al:hover{background:var(--surface3);color:var(--text)}
+.btn-al-done{border-color:rgba(61,139,94,.3);background:var(--vert-lt);color:var(--vert)}
+.alertes-badge{font-size:10px;padding:2px 8px;border-radius:99px;font-weight:600}
+.alertes-badge.all-ok{background:var(--vert-lt);color:var(--vert)}
+.alertes-badge.has-actions{background:var(--amber-lt);color:var(--amber)}
+
+/* ─── TOPBAR ─── */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 24px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--surface);gap:12px;box-shadow:0 1px 0 var(--border)}
+.topbar-left{display:flex;align-items:center;gap:10px}
+.nav-btns{display:flex;gap:3px}
+.nav-btn{background:var(--surface2);border:1px solid var(--border);color:var(--text2);padding:5px 12px;border-radius:7px;cursor:pointer;font-size:12px;transition:all .15s;font-family:inherit;font-weight:500}
+.nav-btn:hover{background:var(--surface3);color:var(--text)}
+.nav-btn.today{font-size:11px;font-weight:600;letter-spacing:.04em}
+.period-label{font-size:14px;font-weight:500;color:var(--text);min-width:180px}
+.view-pills{display:flex;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:3px;gap:2px}
+.view-pill{padding:5px 14px;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;border:none;background:none;color:var(--text3);font-family:inherit;transition:all .18s;letter-spacing:.03em}
+.view-pill.active{background:var(--ardoise);color:#fff}
+.btn-add{background:var(--ardoise);color:#fff;border:none;padding:7px 18px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .18s;display:flex;align-items:center;gap:6px}
+.btn-add:hover{background:#333330;transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,.15)}
+
+/* Légende */
+.legend-bar{display:flex;align-items:center;gap:14px;padding:7px 24px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0}
+.leg{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--text3)}
+.leg-dot{width:10px;height:10px;border-radius:3px}
+
+/* ─── CAL BODY ─── */
+.cal-body{flex:1;overflow:auto}
+
+/* Vue mois */
+.month-grid{display:grid;grid-template-columns:repeat(7,1fr)}
+.month-hdr{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);padding:8px 10px;text-align:center;border-bottom:1px solid var(--border);border-right:1px solid var(--border);background:var(--surface);position:sticky;top:0;z-index:5}
+.month-hdr:last-child{border-right:none}
+.month-day{border-right:1px solid var(--border);border-bottom:1px solid var(--border);padding:7px 8px;min-height:110px;cursor:pointer;transition:background .12s;vertical-align:top;background:var(--surface)}
+.month-day:nth-child(7n){border-right:none}
+.month-day:hover{background:var(--surface2)}
+.month-day.other-month{background:var(--bg);opacity:.6}
+.month-day.today{background:#FFFCF8}
+.month-day.today .day-num{background:var(--ardoise);color:#fff;border-radius:50%}
+.month-day.selected{background:var(--ocre-lt)}
+.month-day.blocked-day{background:var(--rouge-lt)}
+.day-num{width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;color:var(--text2);margin-bottom:4px}
+.month-rdv{font-size:10px;font-weight:500;padding:2px 6px;border-radius:4px;margin-bottom:2px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:opacity .12s}
+.month-rdv:hover{opacity:.75}
+.month-rdv.initial,.month-rdv.bilan{background:var(--c-bilan-bg);color:var(--c-bilan);border-left:2px solid var(--c-bilan)}
+.month-rdv.suivi{background:var(--c-suivi-bg);color:var(--c-suivi);border-left:2px solid var(--c-suivi)}
+.month-rdv.block{background:var(--c-block-bg);color:var(--c-block);border-left:2px solid var(--c-block)}
+.month-more{font-size:9px;color:var(--text3);padding:0 4px}
+
+/* Vue semaine */
+.week-wrap{display:grid;grid-template-columns:52px repeat(7,1fr);height:100%;min-height:720px}
+.week-time-col{border-right:1px solid var(--border)}
+.week-day-hdr{background:var(--surface);border-bottom:1px solid var(--border);border-right:1px solid var(--border);padding:8px 4px;text-align:center;position:sticky;top:0;z-index:10}
+.week-day-hdr:last-child{border-right:none}
+.week-day-name{font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text3)}
+.week-day-num{font-size:18px;font-family:'Cormorant Garamond',serif;font-weight:400;color:var(--text2);margin-top:1px}
+.week-day-hdr.today .week-day-num{color:var(--ocre)}
+.week-day-hdr.today{background:var(--ocre-lt)}
+.week-time-hdr{background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:10;height:54px}
+.week-hour{height:60px;border-bottom:1px solid var(--border);border-right:1px solid var(--border);position:relative;background:var(--surface)}
+.week-hour-label{font-size:9px;color:var(--text3);text-align:right;padding:3px 7px 0 0}
+.week-cell{height:60px;border-bottom:1px solid var(--border);border-right:1px solid var(--border);position:relative;cursor:pointer;transition:background .1s;background:var(--surface)}
+.week-cell:hover{background:var(--surface2)}
+.week-cell:last-child{border-right:none}
+.week-event{position:absolute;left:2px;right:2px;border-radius:6px;padding:2px 5px;font-size:10px;font-weight:600;cursor:pointer;overflow:hidden;z-index:5;transition:all .12s}
+.week-event:hover{z-index:6;filter:brightness(.95);box-shadow:0 2px 8px rgba(0,0,0,.12)}
+.week-event.initial,.week-event.bilan{background:var(--c-bilan-bg);border-left:2px solid var(--c-bilan);color:var(--c-bilan)}
+.week-event.suivi{background:var(--c-suivi-bg);border-left:2px solid var(--c-suivi);color:var(--c-suivi)}
+.week-event.blockslot{background:var(--c-block-bg);border-left:2px solid var(--c-block);color:var(--c-block)}
+.now-line{position:absolute;left:0;right:0;height:1.5px;background:var(--rouge);z-index:8;pointer-events:none}
+.now-line::before{content:'';position:absolute;left:-3px;top:-3px;width:7px;height:7px;border-radius:50%;background:var(--rouge)}
+
+/* Vue jour */
+.day-wrap{display:grid;grid-template-columns:52px 1fr;min-height:720px}
+.day-hour{height:72px;border-bottom:1px solid var(--border);border-right:1px solid var(--border);position:relative;background:var(--surface)}
+.day-hour-label{font-size:9px;color:var(--text3);text-align:right;padding:3px 7px 0 0}
+.day-cell{height:72px;border-bottom:1px solid var(--border);position:relative;cursor:pointer;transition:background .1s;background:var(--surface)}
+.day-cell:hover{background:var(--surface2)}
+.day-event{position:absolute;left:8px;right:8px;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:600;cursor:pointer;overflow:hidden;z-index:5;transition:all .12s;box-shadow:var(--shadow)}
+.day-event:hover{z-index:6;transform:translateX(2px)}
+.day-event.initial,.day-event.bilan{background:var(--bleu-lt);border-left:3px solid var(--c-bilan);color:var(--c-bilan)}
+.day-event.suivi{background:var(--vert-lt);border-left:3px solid var(--c-suivi);color:var(--c-suivi)}
+.day-event.blockslot{background:var(--rouge-lt);border-left:3px solid var(--c-block);color:var(--c-block)}
+.day-event-time{font-size:10px;opacity:.7;font-weight:400}
+.day-now-line{position:absolute;left:0;right:0;height:1.5px;background:var(--rouge);z-index:8;pointer-events:none}
+.day-now-line::before{content:'';position:absolute;left:-3px;top:-3px;width:7px;height:7px;border-radius:50%;background:var(--rouge)}
+
+/* Status */
+.badge{font-size:9px;font-weight:600;padding:1px 6px;border-radius:99px}
+.badge-confirme{background:var(--vert-lt);color:var(--vert)}
+.badge-attente{background:var(--amber-lt);color:var(--amber)}
+.badge-annule{background:var(--surface3);color:var(--text3)}
+
+/* Modals */
+.modal-overlay{position:fixed;inset:0;background:rgba(30,30,28,.45);z-index:1000;display:none;align-items:center;justify-content:center;backdrop-filter:blur(3px)}
+.modal-overlay.open{display:flex;animation:fadeIn .18s ease}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.18);animation:slideUp .2s ease}
+@keyframes slideUp{from{transform:translateY(12px);opacity:0}to{transform:translateY(0);opacity:1}}
+.modal-title{font-family:'Cormorant Garamond',serif;font-size:22px;color:var(--text);margin-bottom:20px}
+.modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+.mf{display:flex;flex-direction:column;gap:4px}
+.mf label{font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text3)}
+.mf input,.mf select,.mf textarea{background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:9px 12px;color:var(--text);font-family:inherit;font-size:13px;transition:border .15s;width:100%}
+.mf input:focus,.mf select:focus,.mf textarea:focus{outline:none;border-color:var(--ocre)}
+.modal-actions{display:flex;gap:8px;margin-top:20px;justify-content:flex-end}
+.btn-p{background:var(--ardoise);color:#fff;border:none;padding:9px 20px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .18s}
+.btn-p:hover{background:#333}
+.btn-s{background:var(--surface2);color:var(--text2);border:1px solid var(--border2);padding:9px 16px;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;transition:all .18s}
+.btn-s:hover{background:var(--surface3);color:var(--text)}
+.btn-d{background:var(--rouge-lt);color:var(--rouge);border:1px solid rgba(192,64,64,.2);padding:9px 16px;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;transition:all .18s}
+.btn-d:hover{background:rgba(192,64,64,.15)}
+.email-preview{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:11px;color:var(--text2);white-space:pre-wrap;line-height:1.65;max-height:140px;overflow-y:auto}
+
+/* Block slot picker */
+.duration-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.dur-chip{padding:5px 12px;border:1px solid var(--border2);border-radius:99px;font-size:11px;cursor:pointer;background:var(--surface2);color:var(--text2);transition:all .15s;font-family:inherit}
+.dur-chip:hover,.dur-chip.active{background:var(--ocre);border-color:var(--ocre);color:#fff}
+
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:99px}
+
+.toast{position:fixed;bottom:24px;right:24px;padding:11px 18px;border-radius:10px;font-size:12px;font-weight:500;z-index:9999;animation:slideToast .25s ease;max-width:300px;box-shadow:var(--shadow);border:1px solid var(--border)}
+@keyframes slideToast{from{transform:translateY(8px);opacity:0}to{transform:translateY(0);opacity:1}}
+.toast.success{background:var(--vert-lt);color:var(--vert);border-color:rgba(61,139,94,.25)}
+.toast.warning{background:var(--amber-lt);color:var(--amber);border-color:rgba(184,134,26,.25)}
+.toast.error{background:var(--rouge-lt);color:var(--rouge);border-color:rgba(192,64,64,.25)}
+
+.btn-add-slot{width:100%;padding:7px;border:1.5px dashed var(--border2);background:none;border-radius:7px;font-size:11px;color:var(--text3);cursor:pointer;font-family:inherit;transition:all .2s;margin-top:4px}
+.btn-add-slot:hover{border-color:var(--ocre);color:var(--ocre)}
+
+/* Objectifs journée */
+.day-obj{display:flex;align-items:center;gap:6px;margin-top:8px}
+.obj-track{flex:1;height:4px;background:var(--border);border-radius:99px;overflow:hidden}
+.obj-fill{height:100%;border-radius:99px;transition:width .4s ease}
+.obj-label{font-size:10px;color:var(--text3);white-space:nowrap}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ════ SIDEBAR ════ -->
+<div class="sidebar">
+  <div class="sb-header">
+    <div class="sb-logo">avita<em>serena</em>.</div>
+    <div class="sb-sub">Agenda praticienne</div>
+  </div>
+
+  <!-- Stats rapides -->
+  <div class="sb-block">
+    <div class="sb-label">Cette semaine</div>
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-num vert" id="statSemaine">0</div><div class="stat-label">Consultations</div></div>
+      <div class="stat-card"><div class="stat-num ocre" id="statAttente">0</div><div class="stat-label">En attente</div></div>
+    </div>
+    <!-- Objectif journalier -->
+    <div id="dayProgressBlock" style="margin-top:10px"></div>
+  </div>
+
+  <!-- CA Dashboard -->
+  <div class="sb-block">
+    <div class="sb-label">Chiffre d'affaires — <span id="caMonthLabel" style="text-transform:none;letter-spacing:0;font-weight:400;color:var(--text2)"></span></div>
+    <div class="ca-block">
+      <div class="ca-row">
+        <span class="ca-amount" id="caMontant">0 €</span>
+        <span class="ca-target">/ 4 200 €</span>
+      </div>
+      <div class="ca-bar-bg"><div class="ca-bar-fill" id="caBar" style="width:0%"></div></div>
+      <div class="ca-details">
+        <div class="ca-detail"><strong id="caConsults">0</strong> consults</div>
+        <div class="ca-detail"><strong id="caPct">0%</strong> objectif</div>
+        <div class="ca-detail"><strong id="caManquant">4 200 €</strong> manquants</div>
+        <div class="ca-detail"><strong id="caJRestants">0</strong> j. restants</div>
+      </div>
+    </div>
+    <!-- CA semaine en cours -->
+    <div class="ca-semaine" id="caSemaineBlock">
+      <div class="ca-semaine-row">
+        <span class="ca-semaine-label">Semaine en cours</span>
+        <span class="ca-semaine-val" id="caSemaine">0 €</span>
+      </div>
+      <div class="ca-semaine-row">
+        <span class="ca-semaine-label">Objectif hebdo (~1 050 €)</span>
+        <span class="ca-semaine-val" id="caSemainePct">0%</span>
+      </div>
+    </div>
+    <!-- Tarifs config -->
+    <div style="margin-top:8px;font-size:10px;color:var(--text3);display:flex;gap:10px;align-items:center">
+      Bilan <input type="number" id="prixBilan" value="90" min="1" style="width:46px;padding:3px 6px;background:var(--surface2);border:1px solid var(--border2);border-radius:5px;font-size:11px;color:var(--text);font-family:inherit" onchange="save();updateCA()"> €
+      &nbsp;Suivi <input type="number" id="prixSuivi" value="65" min="1" style="width:46px;padding:3px 6px;background:var(--surface2);border:1px solid var(--border2);border-radius:5px;font-size:11px;color:var(--text);font-family:inherit" onchange="save();updateCA()"> €
+    </div>
+  </div>
+
+  <!-- Mini cal -->
+  <div class="sb-block">
+    <div class="mc-nav">
+      <button class="mc-btn" onclick="miniCalNav(-1)">‹</button>
+      <span class="mc-label" id="miniCalLabel"></span>
+      <button class="mc-btn" onclick="miniCalNav(1)">›</button>
+    </div>
+    <div class="mc-grid" id="miniCalGrid"></div>
+  </div>
+
+  <!-- Plages -->
+  <div class="sb-block">
+    <div class="sb-label">Plages de travail <button onclick="openSlotsModal()">Modifier</button></div>
+    <div id="slotsDisplay"></div>
+    <div style="margin-top:6px;font-size:10px;color:var(--text3)">
+      Tampon : <input type="number" id="prepTime" min="0" max="60" step="5" value="15"
+        style="width:36px;padding:2px 5px;background:var(--surface2);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-size:11px;font-family:inherit"
+        onchange="savePrepTime(this.value)"> min entre chaque RDV
+    </div>
+  </div>
+
+  <!-- Blocages journée -->
+  <div class="sb-block">
+    <div class="sb-label">Journées bloquées <button onclick="openBlockModal()">+ Bloquer</button></div>
+    <div id="blockedList"></div>
+  </div>
+
+  <!-- Blocages créneau -->
+  <div class="sb-block">
+    <div class="sb-label">Créneaux bloqués <button onclick="openBlockSlotModal()">+ Bloquer</button></div>
+    <div style="font-size:10px;color:var(--text3);font-style:italic;margin-bottom:6px">Absences partielles, imprévus</div>
+    <div id="blockedSlotsList"></div>
+  </div>
+
+  <!-- Alertes -->
+  <div class="sb-block" style="flex:1">
+    <div class="sb-label">Actions mails <span class="alertes-badge all-ok" id="alertesBadge">✓ À jour</span></div>
+    <div id="alertesList"></div>
+  </div>
+
+  <!-- Légende -->
+  <div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:4px">
+    <div style="font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-bottom:4px">Légende</div>
+    <div class="leg"><div class="leg-dot" style="background:var(--c-bilan-bg);border-left:2px solid var(--c-bilan)"></div> Bilan de vitalité (90 min)</div>
+    <div class="leg"><div class="leg-dot" style="background:var(--c-suivi-bg);border-left:2px solid var(--c-suivi)"></div> Consultation de suivi (60 min)</div>
+    <div class="leg"><div class="leg-dot" style="background:var(--c-block-bg);border-left:2px solid var(--c-block)"></div> Créneau bloqué</div>
+  </div>
+</div>
+
+<!-- ════ MAIN ════ -->
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="nav-btns">
+        <button class="nav-btn today" onclick="goToday()">Aujourd'hui</button>
+        <button class="nav-btn" onclick="navPrev()">‹</button>
+        <button class="nav-btn" onclick="navNext()">›</button>
+      </div>
+      <span class="period-label" id="topbarPeriod"></span>
+    </div>
+    <div class="view-pills">
+      <button class="view-pill" onclick="switchView('mois',this)">Mois</button>
+      <button class="view-pill active" onclick="switchView('semaine',this)">Semaine</button>
+      <button class="view-pill" onclick="switchView('jour',this)">Jour</button>
+    </div>
+    <button class="btn-add" onclick="openAddModal()">+ Nouveau RDV</button>
+  </div>
+  <div class="cal-body" id="calBody"></div>
+</div>
+</div>
+
+<!-- MODAL RDV -->
+<div class="modal-overlay" id="rdvModal" onclick="closeModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-title" id="rdvModalTitle">Nouveau rendez-vous</div>
+    <div class="modal-grid">
+      <div class="mf"><label>Prénom Nom</label><input type="text" id="rdvName" placeholder="Marie Dupont"></div>
+      <div class="mf"><label>Email</label><input type="email" id="rdvEmail" placeholder="marie@email.com"></div>
+      <div class="mf"><label>Date</label><input type="date" id="rdvDate"></div>
+      <div class="mf"><label>Heure</label><input type="time" id="rdvTime" step="900"></div>
+      <div class="mf"><label>Type</label>
+        <select id="rdvType">
+          <option value="initial">Bilan de vitalité — 90 min</option>
+          <option value="suivi">Consultation de suivi — 60 min</option>
+        </select>
+      </div>
+      <div class="mf"><label>Statut</label>
+        <select id="rdvStatus">
+          <option value="confirme">Confirmé</option>
+          <option value="attente">En attente</option>
+          <option value="annule">Annulé</option>
+        </select>
+      </div>
+      <div class="mf" style="grid-column:1/-1"><label>Notes</label>
+        <textarea id="rdvNotes" rows="2" placeholder="Motif, antécédents…" style="resize:vertical"></textarea>
+      </div>
+    </div>
+    <div id="emailPreviewSection" style="display:none;margin-bottom:4px">
+      <div style="font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-bottom:5px">Aperçu email</div>
+      <div class="email-preview" id="emailPreview"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-d" id="deleteRdvBtn" onclick="deleteRdv()" style="display:none;margin-right:auto">Supprimer</button>
+      <button class="btn-s" onclick="closeModalDirect('rdvModal')">Annuler</button>
+      <button class="btn-p" onclick="saveRdv()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL BLOCAGE JOURNÉE -->
+<div class="modal-overlay" id="blockModal" onclick="closeModal(event)">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:420px">
+    <div class="modal-title">Bloquer des journées</div>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:16px">Toute la journée sera masquée à la réservation.</p>
+    <div class="modal-grid">
+      <div class="mf"><label>Du</label><input type="date" id="blockStart"></div>
+      <div class="mf"><label>Au</label><input type="date" id="blockEnd"></div>
+      <div class="mf" style="grid-column:1/-1"><label>Raison (optionnel)</label><input type="text" id="blockReason" placeholder="Vacances, formation…"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-s" onclick="closeModalDirect('blockModal')">Annuler</button>
+      <button class="btn-p" onclick="saveBlock()">Bloquer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL BLOCAGE CRÉNEAU -->
+<div class="modal-overlay" id="blockSlotModal" onclick="closeModal(event)">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:440px">
+    <div class="modal-title">Bloquer un créneau</div>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:16px">Les RDV qui chevauchent cette plage seront masqués à la réservation.</p>
+    <div class="modal-grid">
+      <div class="mf" style="grid-column:1/-1"><label>Date</label><input type="date" id="blockSlotDate"></div>
+      <div class="mf"><label>Heure de début</label><input type="time" id="blockSlotFrom" step="900"></div>
+      <div class="mf"><label>Heure de fin</label><input type="time" id="blockSlotTo" step="900"></div>
+    </div>
+    <!-- Raccourcis durée -->
+    <div style="margin-bottom:14px">
+      <div style="font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-bottom:6px">Durée rapide</div>
+      <div class="duration-chips">
+        <button class="dur-chip" onclick="setDuration(30)">30 min</button>
+        <button class="dur-chip" onclick="setDuration(60)">1 h</button>
+        <button class="dur-chip" onclick="setDuration(90)">1h30</button>
+        <button class="dur-chip" onclick="setDuration(120)">2 h</button>
+        <button class="dur-chip" onclick="setDuration(180)">3 h</button>
+        <button class="dur-chip" onclick="setDurationPreset('matin')">Matin (9h–13h)</button>
+        <button class="dur-chip" onclick="setDurationPreset('aprem')">Après-midi (14h–19h)</button>
+        <button class="dur-chip" onclick="setDurationPreset('journee')">Journée entière</button>
+      </div>
+    </div>
+    <div class="mf" style="margin-bottom:12px"><label>Raison (optionnel)</label><input type="text" id="blockSlotReason" placeholder="RDV personnel, formation, imprévu…"></div>
+    <div class="modal-actions">
+      <button class="btn-s" onclick="closeModalDirect('blockSlotModal')">Annuler</button>
+      <button class="btn-p" onclick="saveBlockSlot()">Bloquer ce créneau</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PLAGES RÉCURRENTES -->
+<div class="modal-overlay" id="slotsModal" onclick="closeModal(event)">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:440px">
+    <div class="modal-title">Plages de disponibilité</div>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:14px">Créneaux proposés aux clientes sur la page de réservation.</p>
+    <div id="slotsEditor"></div>
+    <button class="btn-add-slot" onclick="addSlotRow()">+ Ajouter une plage</button>
+    <div class="modal-actions">
+      <button class="btn-s" onclick="closeModalDirect('slotsModal')">Fermer</button>
+      <button class="btn-p" onclick="saveSlots()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const MOIS=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+const MOIS_S=['Janv.','Févr.','Mars','Avr.','Mai','Juin','Juil.','Août','Sept.','Oct.','Nov.','Déc.'];
+const JOURS=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+const JOURS_L=['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+const HOURS=Array.from({length:13},(_,i)=>i+8);
+const OBJECTIF_MOIS=4200, OBJECTIF_SEMAINE=1050, OBJECTIF_JOUR=3;
+const t2m=t=>{const p=t.split(':');return +p[0]*60+ +p[1];};
+const m2t=m=>String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
+const today=()=>new Date().toISOString().slice(0,10);
+const dstr=d=>d instanceof Date?d.toISOString().slice(0,10):d;
+
+let state={
+  rdvs:[],blocked:[],blockedSlots:[],
+  slots:[
+    {day:1,label:'Lun',from:'09:00',to:'19:00',on:true},
+    {day:2,label:'Mar',from:'09:00',to:'19:00',on:true},
+    {day:3,label:'Mer',from:'09:00',to:'13:00',on:true},
+    {day:4,label:'Jeu',from:'09:00',to:'19:00',on:true},
+    {day:5,label:'Ven',from:'09:00',to:'19:00',on:true},
+    {day:6,label:'Sam',from:'09:00',to:'19:00',on:true},
+    {day:0,label:'Dim',from:'09:00',to:'19:00',on:false},
+  ],
+  prepTime:15,prixBilan:90,prixSuivi:65,
+  view:'semaine',date:new Date(),miniM:new Date().getMonth(),miniY:new Date().getFullYear(),
+  editId:null,
+};
+
+function getTypeLabel(t){return t==='initial'||t==='bilan'?'Bilan de vitalité — 90 min':'Consultation de suivi — 60 min';}
+function getDur(t){return t==='initial'||t==='bilan'?90:60;}
+function getPrice(t){return t==='initial'||t==='bilan'?state.prixBilan:state.prixSuivi;}
+function getEnd(time,type){return m2t(t2m(time)+getDur(type));}
+
+// ── SAVE/LOAD ──
+function load(){
+  try{
+    const s=JSON.parse(localStorage.getItem('avs_agenda')||'{}');
+    state.rdvs=s.rdvs||[];state.blocked=s.blocked||[];state.blockedSlots=s.blockedSlots||[];
+    state.slots=s.slots||state.slots;state.prepTime=s.prepTime!=null?s.prepTime:15;
+    state.prixBilan=s.prixBilan||90;state.prixSuivi=s.prixSuivi||65;
+    document.getElementById('prepTime').value=state.prepTime;
+    document.getElementById('prixBilan').value=state.prixBilan;
+    document.getElementById('prixSuivi').value=state.prixSuivi;
+  }catch(e){}
+  if(state.rdvs.length===0){
+    const y=new Date().getFullYear();
+    state.rdvs=[
+      {id:1,name:'Marie Laurent',email:'marie@email.com',date:`${y}-09-15`,time:'10:00',type:'initial',status:'confirme',notes:'SIBO suspecté'},
+      {id:2,name:'Sophie Renard',email:'sophie@email.com',date:`${y}-09-15`,time:'14:00',type:'initial',status:'attente',notes:'SOPK'},
+      {id:3,name:'Camille Dumont',email:'cam@email.com',date:`${y}-09-16`,time:'10:00',type:'suivi',status:'confirme',notes:'SPM'},
+      {id:4,name:'Lucie Martin',email:'lucie@email.com',date:`${y}-09-17`,time:'09:00',type:'initial',status:'confirme',notes:'Endométriose'},
+      {id:5,name:'Nathalie Blanc',email:'nat@email.com',date:`${y}-09-18`,time:'11:00',type:'suivi',status:'attente',notes:'Périménopause'},
+    ];
+  }
+}
+function save(){
+  state.prixBilan=parseInt(document.getElementById('prixBilan').value)||90;
+  state.prixSuivi=parseInt(document.getElementById('prixSuivi').value)||65;
+  try{localStorage.setItem('avs_agenda',JSON.stringify({
+    rdvs:state.rdvs,blocked:state.blocked,blockedSlots:state.blockedSlots,
+    slots:state.slots,prepTime:state.prepTime,prixBilan:state.prixBilan,prixSuivi:state.prixSuivi
+  }));exportDispos();}catch(e){}
+}
+function savePrepTime(v){state.prepTime=parseInt(v)||0;save();}
+function exportDispos(){
+  try{localStorage.setItem('avs_dispos',JSON.stringify({
+    slots:state.slots,prepTime:state.prepTime,blocked:state.blocked,blockedSlots:state.blockedSlots,
+    rdvs:state.rdvs.filter(r=>r.status!=='annule').map(r=>({date:r.date,time:r.time,type:r.type}))
+  }));}catch(e){}
+}
+
+// ── CA ──
+function updateCA(){
+  state.prixBilan=parseInt(document.getElementById('prixBilan').value)||90;
+  state.prixSuivi=parseInt(document.getElementById('prixSuivi').value)||65;
+  const now=new Date();
+  const moisLabel=MOIS[now.getMonth()]+' '+now.getFullYear();
+  document.getElementById('caMonthLabel').textContent=moisLabel;
+  const ms=new Date(now.getFullYear(),now.getMonth(),1);
+  const me=new Date(now.getFullYear(),now.getMonth()+1,0);
+  const rdvMois=state.rdvs.filter(r=>{
+    const d=new Date(r.date);return d>=ms&&d<=me&&r.status==='confirme';
+  });
+  const ca=rdvMois.reduce((s,r)=>s+getPrice(r.type),0);
+  const pct=Math.min(Math.round(ca/OBJECTIF_MOIS*100),100);
+  document.getElementById('caMontant').textContent=ca.toLocaleString('fr-FR')+ ' €';
+  document.getElementById('caBar').style.width=pct+'%';
+  document.getElementById('caBar').style.background=pct>=100?'var(--vert)':pct>=75?'var(--ocre)':'var(--ocre)';
+  document.getElementById('caConsults').textContent=rdvMois.length;
+  document.getElementById('caPct').textContent=pct+'%';
+  document.getElementById('caManquant').textContent=Math.max(0,OBJECTIF_MOIS-ca).toLocaleString('fr-FR')+' €';
+  const joursRestants=me.getDate()-now.getDate();
+  document.getElementById('caJRestants').textContent=joursRestants;
+
+  // CA semaine
+  const dow=now.getDay();
+  const lundi=new Date(now);lundi.setDate(now.getDate()-(dow===0?6:dow-1));lundi.setHours(0,0,0,0);
+  const dim=new Date(lundi);dim.setDate(lundi.getDate()+6);dim.setHours(23,59,59,999);
+  const rdvSem=state.rdvs.filter(r=>{const d=new Date(r.date);return d>=lundi&&d<=dim&&r.status==='confirme';});
+  const caSem=rdvSem.reduce((s,r)=>s+getPrice(r.type),0);
+  const pctSem=Math.min(Math.round(caSem/OBJECTIF_SEMAINE*100),100);
+  document.getElementById('caSemaine').textContent=caSem.toLocaleString('fr-FR')+' €';
+  document.getElementById('caSemainePct').textContent=pctSem+'%';
+
+  // Objectif journalier
+  renderDayProgress(lundi);
+}
+
+function renderDayProgress(lundi){
+  const block=document.getElementById('dayProgressBlock');
+  const now=new Date();
+  let html='<div style="font-size:10px;color:var(--text3);margin-bottom:5px">Objectif : '+OBJECTIF_JOUR+' consultations/jour</div>';
+  html+='<div style="display:flex;gap:3px">';
+  for(let i=0;i<6;i++){
+    const d=new Date(lundi);d.setDate(lundi.getDate()+i);
+    if(d.getDay()===0) continue;
+    const ds=dstr(d);
+    const n=state.rdvs.filter(r=>r.date===ds&&r.status==='confirme').length;
+    const isToday=ds===today();
+    const pct=Math.min(n/OBJECTIF_JOUR*100,100);
+    const col=n>=OBJECTIF_JOUR?'var(--vert)':n>0?'var(--ocre)':'var(--border2)';
+    html+=`<div style="flex:1;text-align:center">
+      <div style="font-size:8px;color:var(--text3);margin-bottom:2px">${JOURS[d.getDay()][0]}</div>
+      <div style="height:32px;background:var(--border);border-radius:4px;overflow:hidden;position:relative${isToday?';outline:1.5px solid var(--ocre)':''}">
+        <div style="position:absolute;bottom:0;left:0;right:0;height:${pct}%;background:${col};transition:height .4s ease"></div>
+      </div>
+      <div style="font-size:9px;color:${n>=OBJECTIF_JOUR?'var(--vert)':'var(--text3)'};margin-top:2px;font-weight:${n>=OBJECTIF_JOUR?'600':'400'}">${n}</div>
+    </div>`;
+  }
+  html+='</div>';
+  block.innerHTML=html;
+}
+
+// ── STATS ──
+function updateStats(){
+  const now=new Date();
+  const dow=now.getDay();
+  const lundi=new Date(now);lundi.setDate(now.getDate()-(dow===0?6:dow-1));lundi.setHours(0,0,0,0);
+  const dim=new Date(lundi);dim.setDate(lundi.getDate()+6);dim.setHours(23,59,59,999);
+  document.getElementById('statSemaine').textContent=state.rdvs.filter(r=>{const d=new Date(r.date);return d>=lundi&&d<=dim&&r.status!=='annule';}).length;
+  document.getElementById('statAttente').textContent=state.rdvs.filter(r=>r.status==='attente').length;
+  updateCA();
+}
+
+// ── MINI CAL ──
+function renderMiniCal(){
+  const m=state.miniM,y=state.miniY;
+  document.getElementById('miniCalLabel').textContent=MOIS_S[m]+' '+y;
+  const grid=document.getElementById('miniCalGrid');
+  grid.innerHTML=JOURS.map(d=>`<div class="mc-hdr">${d[0]}</div>`).join('');
+  const first=new Date(y,m,1).getDay();
+  const days=new Date(y,m+1,0).getDate();
+  const offset=first===0?6:first-1;
+  const prev=new Date(y,m,0).getDate();
+  for(let i=offset-1;i>=0;i--){const b=document.createElement('button');b.className='mc-day other';b.textContent=prev-i;grid.appendChild(b);}
+  for(let d=1;d<=days;d++){
+    const ds=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const has=state.rdvs.some(r=>r.date===ds&&r.status!=='annule');
+    const bl=isDateBlocked(ds);
+    const b=document.createElement('button');
+    b.className='mc-day'+(ds===today()?' today':'')+(ds===dstr(state.date)?' sel':'')+(has?' has':'')+(bl?' blocked':'');
+    b.textContent=d;
+    b.onclick=()=>{state.date=new Date(ds+'T12:00:00');render();renderMiniCal();};
+    grid.appendChild(b);
+  }
+  const rem=(offset+days)%7===0?0:7-(offset+days)%7;
+  for(let i=1;i<=rem;i++){const b=document.createElement('button');b.className='mc-day other';b.textContent=i;grid.appendChild(b);}
+}
+function miniCalNav(dir){
+  state.miniM+=dir;
+  if(state.miniM>11){state.miniM=0;state.miniY++;}
+  if(state.miniM<0){state.miniM=11;state.miniY--;}
+  renderMiniCal();
+}
+
+// ── NAVIGATION ──
+function goToday(){state.date=new Date();render();renderMiniCal();}
+function navPrev(){
+  const d=new Date(state.date);
+  if(state.view==='mois') d.setMonth(d.getMonth()-1);
+  else if(state.view==='semaine') d.setDate(d.getDate()-7);
+  else d.setDate(d.getDate()-1);
+  state.date=d;render();renderMiniCal();
+}
+function navNext(){
+  const d=new Date(state.date);
+  if(state.view==='mois') d.setMonth(d.getMonth()+1);
+  else if(state.view==='semaine') d.setDate(d.getDate()+7);
+  else d.setDate(d.getDate()+1);
+  state.date=d;render();renderMiniCal();
+}
+function switchView(v,btn){
+  state.view=v;
+  document.querySelectorAll('.view-pill').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  render();
+}
+function render(){
+  if(state.view==='mois') renderMois();
+  else if(state.view==='semaine') renderSemaine();
+  else renderJour();
+}
+
+// ── VUE MOIS ──
+function renderMois(){
+  const d=state.date,m=d.getMonth(),y=d.getFullYear();
+  document.getElementById('topbarPeriod').textContent=MOIS[m]+' '+y;
+  const first=new Date(y,m,1).getDay();
+  const days=new Date(y,m+1,0).getDate();
+  const offset=first===0?6:first-1;
+  const prevDays=new Date(y,m,0).getDate();
+  let html='<div class="month-grid">';
+  ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'].forEach(j=>html+=`<div class="month-hdr">${j}</div>`);
+  for(let i=offset-1;i>=0;i--){
+    const day=prevDays-i;
+    const pm=m===0?12:m;const py=m===0?y-1:y;
+    const ds=`${py}-${String(pm).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    html+=`<div class="month-day other-month"><div class="day-num">${day}</div></div>`;
+  }
+  for(let day=1;day<=days;day++){
+    const ds=`${y}-${String(m+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    const rdvs=state.rdvs.filter(r=>r.date===ds&&r.status!=='annule').sort((a,b)=>a.time.localeCompare(b.time));
+    const blocks=state.blockedSlots.filter(b=>b.date===ds);
+    const isT=ds===today(),isB=isDateBlocked(ds),isSel=ds===dstr(state.date);
+    html+=`<div class="month-day${isT?' today':''}${isSel?' selected':''}${isB?' blocked-day':''}" onclick="state.date=new Date('${ds}T12:00:00');switchView('jour',document.querySelectorAll('.view-pill')[2])">
+      <div class="day-num">${day}</div>`;
+    if(isB) html+=`<div style="font-size:9px;color:var(--rouge)">🔒 Bloqué</div>`;
+    rdvs.slice(0,3).forEach(r=>html+=`<div class="month-rdv ${r.type}" onclick="event.stopPropagation();openEditModal(${r.id})">${r.time} ${r.name.split(' ')[0]}</div>`);
+    blocks.slice(0,1).forEach(b=>html+=`<div class="month-rdv block" onclick="event.stopPropagation()">🔒 ${b.from}–${b.to}</div>`);
+    if(rdvs.length>3) html+=`<div class="month-more">+${rdvs.length-3}</div>`;
+    html+=`</div>`;
+  }
+  const rem=(offset+days)%7===0?0:7-(offset+days)%7;
+  for(let i=1;i<=rem;i++) html+=`<div class="month-day other-month"><div class="day-num">${i}</div></div>`;
+  html+='</div>';
+  document.getElementById('calBody').innerHTML=html;
+}
+
+// ── VUE SEMAINE ──
+function renderSemaine(){
+  const d=state.date,dow=d.getDay();
+  const lundi=new Date(d);lundi.setDate(d.getDate()-(dow===0?6:dow-1));
+  const days=Array.from({length:7},(_,i)=>{const dd=new Date(lundi);dd.setDate(lundi.getDate()+i);return dd;});
+  const s=days[0],e=days[6];
+  document.getElementById('topbarPeriod').textContent=s.getDate()+' '+MOIS_S[s.getMonth()]+' — '+e.getDate()+' '+MOIS_S[e.getMonth()]+' '+e.getFullYear();
+  const now=new Date(),todayStr=today();
+  let html=`<div class="week-wrap"><div class="week-time-hdr"></div>`;
+  days.forEach(dd=>{
+    const ds=dstr(dd),isT=ds===todayStr;
+    html+=`<div class="week-day-hdr${isT?' today':''}"><div class="week-day-name">${JOURS[dd.getDay()]}</div><div class="week-day-num">${dd.getDate()}</div></div>`;
+  });
+  HOURS.forEach(h=>{
+    html+=`<div class="week-hour"><div class="week-hour-label">${h}h</div></div>`;
+    days.forEach(dd=>{
+      const ds=dstr(dd);
+      const rdvs=state.rdvs.filter(r=>r.date===ds&&r.status!=='annule'&&t2m(r.time)>=h*60&&t2m(r.time)<(h+1)*60);
+      const bslots=state.blockedSlots.filter(b=>b.date===ds&&t2m(b.from)<(h+1)*60&&t2m(b.to)>h*60);
+      html+=`<div class="week-cell" onclick="quickAddAt('${ds}','${String(h).padStart(2,'0')}:00')">`;
+      bslots.forEach(b=>{
+        const top=Math.max(t2m(b.from)-h*60,0)/60*60;
+        const bot=Math.min(t2m(b.to),( h+1)*60)-h*60;
+        const height=Math.max(bot/60*60-top,8);
+        html+=`<div class="week-event blockslot" style="top:${top}px;height:${height}px;opacity:.7">🔒 ${b.from}</div>`;
+      });
+      rdvs.forEach(r=>{
+        const top=(t2m(r.time)-h*60)/60*60;
+        const height=Math.min((getDur(r.type)+state.prepTime)/60*60,60-top);
+        html+=`<div class="week-event ${r.type}" style="top:${top}px;height:${Math.max(height,20)}px" onclick="event.stopPropagation();openEditModal(${r.id})">
+          <div>${r.name.split(' ')[0]}</div><div style="font-size:9px;opacity:.65">${r.time}</div></div>`;
+      });
+      if(ds===todayStr){const nt=(now.getHours()*60+now.getMinutes()-h*60)/60*60;if(nt>=0&&nt<60) html+=`<div class="now-line" style="top:${nt}px"></div>`;}
+      html+=`</div>`;
+    });
+  });
+  html+='</div>';
+  document.getElementById('calBody').innerHTML=html;
+  setTimeout(()=>{document.getElementById('calBody').scrollTop=60;},0);
+}
+
+// ── VUE JOUR ──
+function renderJour(){
+  const d=state.date,ds=dstr(d),dow=d.getDay();
+  document.getElementById('topbarPeriod').textContent=JOURS_L[dow]+' '+d.getDate()+' '+MOIS[d.getMonth()]+' '+d.getFullYear();
+  const now=new Date(),todayStr=today();
+  const rdvsDuJour=state.rdvs.filter(r=>r.date===ds&&r.status!=='annule');
+  const bslotsDuJour=state.blockedSlots.filter(b=>b.date===ds);
+  let html='<div class="day-wrap">';
+  HOURS.forEach(h=>{
+    const rdvs=rdvsDuJour.filter(r=>t2m(r.time)>=h*60&&t2m(r.time)<(h+1)*60);
+    const bslots=bslotsDuJour.filter(b=>t2m(b.from)<(h+1)*60&&t2m(b.to)>h*60);
+    html+=`<div class="day-hour"><div class="day-hour-label">${h}h</div></div>`;
+    html+=`<div class="day-cell" onclick="quickAddAt('${ds}','${String(h).padStart(2,'0')}:00')">`;
+    bslots.forEach(b=>{
+      const top=Math.max(t2m(b.from)-h*60,0)/60*72;
+      const bot=Math.min(t2m(b.to),(h+1)*60)-h*60;
+      const height=Math.max(bot/60*72-top,14);
+      html+=`<div class="day-event blockslot" style="top:${top}px;height:${height}px">
+        <div>🔒 Bloqué${b.reason?' — '+b.reason:''}</div>
+        <div class="day-event-time">${b.from} → ${b.to}</div></div>`;
+    });
+    rdvs.forEach(r=>{
+      const top=(t2m(r.time)-h*60)/60*72;
+      const height=Math.min((getDur(r.type)+state.prepTime)/60*72,72-top);
+      html+=`<div class="day-event ${r.type}" style="top:${top}px;height:${Math.max(height,32)}px" onclick="event.stopPropagation();openEditModal(${r.id})">
+        <div>${r.name} <span class="badge badge-${r.status}" style="margin-left:4px">${r.status==='confirme'?'✓':'⏳'}</span></div>
+        <div class="day-event-time">${r.time} → ${getEnd(r.time,r.type)} · ${getDur(r.type)} min</div>
+        ${r.notes?`<div style="font-size:9px;opacity:.6;margin-top:1px">${r.notes.slice(0,36)}…</div>`:''}
+      </div>`;
+    });
+    if(ds===todayStr){const nt=(now.getHours()*60+now.getMinutes()-h*60)/60*72;if(nt>=0&&nt<72) html+=`<div class="day-now-line" style="top:${nt}px"></div>`;}
+    html+=`</div>`;
+  });
+  html+='</div>';
+  document.getElementById('calBody').innerHTML=html;
+  setTimeout(()=>{document.getElementById('calBody').scrollTop=72;},0);
+}
+
+function quickAddAt(date,time){
+  state.editId=null;
+  ['rdvName','rdvEmail','rdvNotes'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('rdvDate').value=date;
+  document.getElementById('rdvTime').value=time;
+  document.getElementById('rdvType').value='initial';
+  document.getElementById('rdvStatus').value='confirme';
+  document.getElementById('rdvModalTitle').textContent='Nouveau rendez-vous';
+  document.getElementById('deleteRdvBtn').style.display='none';
+  document.getElementById('emailPreviewSection').style.display='none';
+  document.getElementById('rdvModal').classList.add('open');
+}
+
+// ── MODALS RDV ──
+function openAddModal(){quickAddAt(dstr(state.date),'10:00');}
+function openEditModal(id){
+  const r=state.rdvs.find(r=>r.id===id);if(!r) return;
+  state.editId=id;
+  document.getElementById('rdvModalTitle').textContent=r.name;
+  document.getElementById('rdvName').value=r.name;
+  document.getElementById('rdvEmail').value=r.email;
+  document.getElementById('rdvDate').value=r.date;
+  document.getElementById('rdvTime').value=r.time;
+  document.getElementById('rdvType').value=r.type;
+  document.getElementById('rdvStatus').value=r.status;
+  document.getElementById('rdvNotes').value=r.notes||'';
+  document.getElementById('deleteRdvBtn').style.display='block';
+  const dd=new Date(r.date+'T12:00:00');
+  document.getElementById('emailPreview').textContent=`Bonjour ${r.name.split(' ')[0]},\n\nVotre consultation est ${r.status==='confirme'?'confirmée':'en attente'} :\n📅 ${JOURS_L[dd.getDay()]} ${dd.getDate()} ${MOIS[dd.getMonth()]} à ${r.time}\n⏱ ${getDur(r.type)} min — ${getTypeLabel(r.type)}\n💻 En visioconférence\n\nEn cas d'empêchement, merci de prévenir au moins 48h avant votre séance.\nPassé ce délai, la consultation reste due dans son intégralité.\n\nSabrina Castelli · Avita Serena`;
+  document.getElementById('emailPreviewSection').style.display='block';
+  document.getElementById('rdvModal').classList.add('open');
+}
+function saveRdv(){
+  const rdv={name:document.getElementById('rdvName').value,email:document.getElementById('rdvEmail').value,
+    date:document.getElementById('rdvDate').value,time:document.getElementById('rdvTime').value,
+    type:document.getElementById('rdvType').value,status:document.getElementById('rdvStatus').value,
+    notes:document.getElementById('rdvNotes').value};
+  if(!rdv.name||!rdv.date||!rdv.time) return;
+  if(state.editId){
+    const i=state.rdvs.findIndex(r=>r.id===state.editId);
+    if(i>-1) state.rdvs[i]={...state.rdvs[i],...rdv};
+  } else {rdv.id=Date.now();state.rdvs.push(rdv);syncToCRM(rdv);}
+  save();updateStats();render();renderMiniCal();renderAlertes();
+  closeModalDirect('rdvModal');showToast('Rendez-vous enregistré ✓','success');
+}
+function deleteRdv(){
+  if(!state.editId) return;
+  if(!confirm('Supprimer ce rendez-vous ?')) return;
+  state.rdvs=state.rdvs.filter(r=>r.id!==state.editId);
+  save();updateStats();render();renderMiniCal();renderAlertes();
+  closeModalDirect('rdvModal');showToast('Rendez-vous supprimé','warning');
+}
+
+// ── BLOCAGES ──
+function isDateBlocked(ds){return state.blocked.some(b=>ds>=b.start&&ds<=b.end);}
+function renderBlockedList(){
+  const el=document.getElementById('blockedList');
+  if(!state.blocked.length){el.innerHTML='<div style="font-size:10px;color:var(--text3);font-style:italic">Aucune journée bloquée</div>';return;}
+  el.innerHTML='';
+  state.blocked.forEach((b,i)=>{
+    const item=document.createElement('div');item.className='blocked-item';
+    item.innerHTML=`<span>${b.start===b.end?b.start:b.start+' → '+b.end}${b.reason?' · '+b.reason:''}</span><button class="blocked-rm" onclick="removeBlock(${i})">×</button>`;
+    el.appendChild(item);
+  });
+}
+function openBlockModal(){
+  document.getElementById('blockStart').value=today();
+  document.getElementById('blockEnd').value=today();
+  document.getElementById('blockReason').value='';
+  document.getElementById('blockModal').classList.add('open');
+}
+function saveBlock(){
+  const start=document.getElementById('blockStart').value,end=document.getElementById('blockEnd').value,reason=document.getElementById('blockReason').value;
+  if(!start||!end) return;
+  state.blocked.push({start,end:end>=start?end:start,reason});
+  save();renderBlockedList();renderMiniCal();render();closeModalDirect('blockModal');showToast('Journée(s) bloquée(s) ✓','success');
+}
+function removeBlock(i){state.blocked.splice(i,1);save();renderBlockedList();renderMiniCal();render();}
+
+// Blocage créneau
+function setDuration(mins){
+  const from=document.getElementById('blockSlotFrom').value||'09:00';
+  const end=m2t(t2m(from)+mins);
+  document.getElementById('blockSlotTo').value=end;
+  document.querySelectorAll('.dur-chip').forEach(c=>c.classList.remove('active'));
+  event.target.classList.add('active');
+}
+function setDurationPreset(preset){
+  document.querySelectorAll('.dur-chip').forEach(c=>c.classList.remove('active'));
+  event.target.classList.add('active');
+  if(preset==='matin'){document.getElementById('blockSlotFrom').value='09:00';document.getElementById('blockSlotTo').value='13:00';}
+  else if(preset==='aprem'){document.getElementById('blockSlotFrom').value='14:00';document.getElementById('blockSlotTo').value='19:00';}
+  else if(preset==='journee'){document.getElementById('blockSlotFrom').value='08:00';document.getElementById('blockSlotTo').value='20:00';}
+}
+function openBlockSlotModal(){
+  document.getElementById('blockSlotDate').value=today();
+  document.getElementById('blockSlotFrom').value='09:00';
+  document.getElementById('blockSlotTo').value='10:30';
+  document.getElementById('blockSlotReason').value='';
+  document.querySelectorAll('.dur-chip').forEach(c=>c.classList.remove('active'));
+  document.getElementById('blockSlotModal').classList.add('open');
+}
+function saveBlockSlot(){
+  const date=document.getElementById('blockSlotDate').value,from=document.getElementById('blockSlotFrom').value,to=document.getElementById('blockSlotTo').value,reason=document.getElementById('blockSlotReason').value;
+  if(!date||!from||!to) return;
+  if(t2m(to)<=t2m(from)){showToast('L\'heure de fin doit être après le début','error');return;}
+  state.blockedSlots.push({date,from,to,reason});
+  save();renderBlockedSlotsList();renderMiniCal();render();closeModalDirect('blockSlotModal');showToast('Créneau bloqué ✓','success');
+}
+function removeBlockSlot(i){state.blockedSlots.splice(i,1);save();renderBlockedSlotsList();render();}
+function renderBlockedSlotsList(){
+  const el=document.getElementById('blockedSlotsList');if(!el) return;
+  if(!state.blockedSlots||!state.blockedSlots.length){el.innerHTML='<div style="font-size:10px;color:var(--text3);font-style:italic">Aucun créneau bloqué</div>';return;}
+  el.innerHTML='';
+  [...state.blockedSlots].sort((a,b)=>(a.date+a.from).localeCompare(b.date+b.from)).forEach((b,i)=>{
+    const d=new Date(b.date+'T12:00:00');
+    const item=document.createElement('div');item.className='blocked-item';
+    item.innerHTML=`<span>${JOURS[d.getDay()]} ${d.getDate()} ${MOIS_S[d.getMonth()]} · ${b.from}–${b.to}${b.reason?' · '+b.reason:''}</span><button class="blocked-rm" onclick="removeBlockSlot(${i})">×</button>`;
+    el.appendChild(item);
+  });
+}
+
+// ── PLAGES ──
+function renderSlotsDisplay(){
+  const el=document.getElementById('slotsDisplay');el.innerHTML='';
+  state.slots.forEach((s,i)=>{
+    const row=document.createElement('div');row.className='slot-row';
+    row.innerHTML=`<span class="slot-day">${s.label}</span><span class="slot-time">${s.from}–${s.to}</span><button class="slot-tog ${s.on?'on':''}" onclick="toggleSlot(${i})"></button>`;
+    el.appendChild(row);
+  });
+}
+function toggleSlot(i){state.slots[i].on=!state.slots[i].on;save();renderSlotsDisplay();}
+function openSlotsModal(){renderSlotsEditor();document.getElementById('slotsModal').classList.add('open');}
+function renderSlotsEditor(){
+  const ed=document.getElementById('slotsEditor');ed.innerHTML='';
+  state.slots.forEach((s,i)=>{
+    const row=document.createElement('div');row.style.cssText='display:grid;grid-template-columns:56px 1fr 1fr 28px;gap:8px;align-items:center;margin-bottom:8px';
+    row.innerHTML=`<select onchange="state.slots[${i}].day=parseInt(this.value);state.slots[${i}].label=this.options[this.selectedIndex].text"
+        style="padding:7px;background:var(--surface2);border:1px solid var(--border2);border-radius:7px;color:var(--text);font-family:inherit;font-size:11px">
+        ${[1,2,3,4,5,6,0].map(d=>`<option value="${d}" ${s.day===d?'selected':''}>${JOURS[d]}</option>`).join('')}</select>
+      <input type="time" value="${s.from}" onchange="state.slots[${i}].from=this.value" style="padding:7px;background:var(--surface2);border:1px solid var(--border2);border-radius:7px;color:var(--text);font-family:inherit;font-size:12px">
+      <input type="time" value="${s.to}" onchange="state.slots[${i}].to=this.value" style="padding:7px;background:var(--surface2);border:1px solid var(--border2);border-radius:7px;color:var(--text);font-family:inherit;font-size:12px">
+      <button onclick="state.slots.splice(${i},1);renderSlotsEditor()" style="background:none;border:none;color:var(--rouge);cursor:pointer;font-size:16px">×</button>`;
+    ed.appendChild(row);
+  });
+}
+function addSlotRow(){state.slots.push({day:1,label:'Lun',from:'09:00',to:'18:00',on:true});renderSlotsEditor();}
+function saveSlots(){save();renderSlotsDisplay();closeModalDirect('slotsModal');showToast('Plages enregistrées ✓','success');}
+
+// ── CRM ──
+function syncToCRM(rdv){
+  try{
+    const data=JSON.parse(localStorage.getItem('avs_crm_clients')||'[]');
+    if(!data.find(c=>c.email===rdv.email)){
+      const p=rdv.name.split(' ');
+      data.push({id:'cli_'+Date.now(),prenom:p[0]||rdv.name,nom:p.slice(1).join(' ')||'',email:rdv.email,
+        parcours:'bilan',statut:'prospect',notes:rdv.notes||'',rdv_date:rdv.date,rdv_time:rdv.time,rdv_type:rdv.type,created:today(),source:'agenda'});
+      localStorage.setItem('avs_crm_clients',JSON.stringify(data));
+    }
+  }catch(e){}
+}
+
+// ── ALERTES ──
+function diffDays(d){const dt=new Date(d+'T12:00:00'),now=new Date();now.setHours(12,0,0,0);return Math.round((dt-now)/86400000);}
+function fmtShort(d){return new Date(d+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'});}
+function getAlertesRdv(rdv){
+  const d=diffDays(rdv.date),done=rdv.mailsDone||{},a=[];
+  if(d>=0&&!done.m1) a.push({key:'m1',urgence:d<=2?'warning':'ok',ic:'✉️',label:'Confirmation à envoyer',chip:d===0?"Aujourd'hui":d===1?'Demain':`J+${d}`,template:'Mail 1',params:`DATE: ${fmtShort(rdv.date)}, HEURE: ${rdv.time}`});
+  if(d>=0&&d<=1&&!done.m2) a.push({key:'m2',urgence:d===0?'urgent':'warning',ic:'🔔',label:d===0?'Rappel J-1 — ce soir !':'Rappel — séance aujourd\'hui',chip:d===0?'≤18h':'Urgent',template:'Mail 2',params:`HEURE: ${rdv.time}`});
+  if(d>=-1&&d<=0&&!done.m3) a.push({key:'m3',urgence:'urgent',ic:'🌿',label:d===0?'Clôture — dans l\'heure':'Clôture en retard !',chip:d===0?'Maintenant':'Retard',template:'Mail 3',params:'—'});
+  const js=-d;
+  if(js>=6&&js<=10&&!done.m4) a.push({key:'m4',urgence:js>=9?'warning':'ok',ic:'💫',label:`Suivi J+${js}`,chip:js>=9?'Demain':'Semaine',template:'Mail 4',params:'PERSONNALISATION: [1 phrase]'});
+  return a;
+}
+function renderAlertes(){
+  const list=document.getElementById('alertesList'),badge=document.getElementById('alertesBadge');
+  if(!list||!badge) return;
+  const all=[];
+  state.rdvs.filter(r=>r.status!=='annule').forEach(rdv=>getAlertesRdv(rdv).forEach(a=>all.push({rdv,a})));
+  all.sort((x,y)=>{const o={urgent:0,warning:1,ok:2};const od=o[x.a.urgence]-o[y.a.urgence];return od||x.rdv.date.localeCompare(y.rdv.date);});
+  if(!all.length){badge.textContent='✓ À jour';badge.className='alertes-badge all-ok';list.innerHTML='<div style="font-size:10px;color:var(--text3);font-style:italic;padding:4px 0">Tous les mails sont à jour ✓</div>';return;}
+  badge.textContent=all.length+' action'+(all.length>1?'s':'');badge.className='alertes-badge has-actions';
+  list.innerHTML=all.map(({rdv,a})=>`<div class="alerte-row ${a.urgence}">
+    <div class="alerte-ic">${a.ic}</div>
+    <div class="alerte-body">
+      <div class="alerte-label">${a.label}</div>
+      <div class="alerte-cliente">👤 ${rdv.name} · ${rdv.time} · ${fmtShort(rdv.date)}</div>
+      <div class="alerte-btns">
+        <a class="btn-al" href="https://app.brevo.com/contacts" target="_blank">Brevo →</a>
+        <button class="btn-al" onclick="copyAl(${rdv.id},'${a.template.replace(/'/g,"\\'")}','${a.params.replace(/'/g,"\\'")}')">📋</button>
+        <button class="btn-al btn-al-done" onclick="markDone(${rdv.id},'${a.key}')">✓ Envoyé</button>
+      </div>
+    </div></div>`).join('');
+}
+function markDone(id,key){
+  const r=state.rdvs.find(r=>r.id===id);if(!r) return;
+  if(!r.mailsDone) r.mailsDone={};r.mailsDone[key]=true;
+  save();renderAlertes();showToast('✓ Mail marqué envoyé','success');
+}
+function copyAl(id,template,params){
+  const r=state.rdvs.find(r=>r.id===id);
+  navigator.clipboard.writeText(`Template : ${template}\nCliente : ${r.name} — ${r.email}\n${params}`).catch(()=>{});
+  showToast('📋 Paramètres copiés','success');
+}
+setInterval(renderAlertes,5*60*1000);
+
+// ── UTILS ──
+function showToast(msg,type='success'){
+  const el=document.createElement('div');el.className=`toast ${type}`;el.textContent=msg;
+  document.body.appendChild(el);
+  setTimeout(()=>{el.style.opacity='0';el.style.transition='opacity .35s';setTimeout(()=>el.remove(),350);},3000);
+}
+function closeModal(e){if(e.target.classList.contains('modal-overlay')) closeModalDirect(e.target.id);}
+function closeModalDirect(id){document.getElementById(id).classList.remove('open');}
+
+// ── INIT ──
+load();
+updateStats();
+renderSlotsDisplay();
+renderBlockedList();
+renderBlockedSlotsList();
+renderMiniCal();
+renderAlertes();
+exportDispos();
+render();
+</script>
+</body>
+</html>
