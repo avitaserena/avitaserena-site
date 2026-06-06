@@ -541,24 +541,88 @@ function catFromPrestation(label='') {
 }
 
 // ════════════════════════════════
-// STORAGE
+// SUPABASE CONFIG
+/*
+  SQL à exécuter une seule fois dans Supabase > SQL Editor :
+
+  create table if not exists avs_recettes (
+    id text primary key,
+    date text, num text, client text, client_id text,
+    libelle text, categorie text, mode text,
+    montant numeric, notes text, source text default 'manual',
+    created_at timestamptz default now()
+  );
+
+  create table if not exists avs_depenses (
+    id text primary key,
+    date text, libelle text, categorie text,
+    justif text, montant numeric, notes text,
+    created_at timestamptz default now()
+  );
+*/
+// ════════════════════════════════
+const SUPABASE_URL = 'https://bqhkdndwldwqacrrbbig.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_LqUmkNboVtPQkEns2C3R1g_O0WHmrI1';
+
+async function sbFetch(path, options = {}) {
+  const res = await fetch(SUPABASE_URL + '/rest/v1/' + path, {
+    ...options,
+    headers: {
+      'apikey': SUPABASE_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_KEY,
+      'Content-Type': 'application/json',
+      'Prefer': options.prefer || 'return=representation',
+      ...(options.headers || {})
+    }
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error('Supabase error: ' + err);
+  }
+  const text = await res.text();
+  return text ? JSON.parse(text) : [];
+}
+
+// ════════════════════════════════
+// STORAGE — CRM reste localStorage
 // ════════════════════════════════
 const CRM_KEY = 'avs_crm_v2';
-const COMPTA_KEY = 'avs_compta_v1';
-
 function loadCRM() {
   try { return JSON.parse(localStorage.getItem(CRM_KEY) || '{}'); } catch(e) { return {}; }
 }
-function loadCompta() {
-  try { return JSON.parse(localStorage.getItem(COMPTA_KEY) || '{"recettes":[],"depenses":[]}'); }
-  catch(e) { return { recettes:[], depenses:[] }; }
-}
-function saveCompta(d) {
-  localStorage.setItem(COMPTA_KEY, JSON.stringify(d));
-}
 
 let crm = loadCRM();
-let compta = loadCompta();
+// compta chargé depuis Supabase (async) — valeur initiale vide
+let compta = { recettes: [], depenses: [] };
+
+async function loadComptaFromSupabase() {
+  try {
+    showToast('Chargement des données…', 'warning');
+    const [recettes, depenses] = await Promise.all([
+      sbFetch('avs_recettes?order=date.desc'),
+      sbFetch('avs_depenses?order=date.desc')
+    ]);
+    compta.recettes = recettes.map(r => ({
+      id: r.id, date: r.date, num: r.num || '',
+      client: r.client || '', clientId: r.client_id || '',
+      libelle: r.libelle || '', categorie: r.categorie || 'autre',
+      mode: r.mode || 'virement', montant: parseFloat(r.montant) || 0,
+      notes: r.notes || '', source: r.source || 'manual'
+    }));
+    compta.depenses = depenses.map(d => ({
+      id: d.id, date: d.date, libelle: d.libelle || '',
+      categorie: d.categorie || 'depautre', justif: d.justif || '',
+      montant: parseFloat(d.montant) || 0, notes: d.notes || ''
+    }));
+    showToast('Données chargées ✓', 'success');
+    initYearSelects();
+    renderDashboard();
+    renderEcheances();
+  } catch(e) {
+    showToast('Erreur Supabase : ' + e.message, 'error');
+    console.error(e);
+  }
+}
 
 // Fusionne factures CRM + recettes manuelles
 function getAllRecettes() {
@@ -971,30 +1035,40 @@ function openRecetteModal() {
   document.getElementById('r-notes').value = '';
   document.getElementById('modal-recette').classList.add('open');
 }
-function saveRecette() {
+async function saveRecette() {
   const montant = parseFloat(document.getElementById('r-montant').value);
   const libelle = document.getElementById('r-libelle').value.trim();
   if (!montant || !libelle) { showToast('Montant et libellé obligatoires','warning'); return; }
-  compta.recettes.push({
+  const row = {
     id: 'r_'+Date.now(),
     date: document.getElementById('r-date').value,
     montant, libelle,
     categorie: document.getElementById('r-categorie').value,
     mode: document.getElementById('r-mode').value,
     notes: document.getElementById('r-notes').value,
-    client: libelle, num: ''
-  });
-  saveCompta(compta);
-  document.getElementById('modal-recette').classList.remove('open');
-  initYearSelects();
-  renderRecettes();
-  showToast('Recette enregistrée ✓','success');
+    client: libelle, num: '', source: 'manual'
+  };
+  try {
+    await sbFetch('avs_recettes', { method:'POST', body: JSON.stringify({
+      id: row.id, date: row.date, montant: row.montant, libelle: row.libelle,
+      categorie: row.categorie, mode: row.mode, notes: row.notes,
+      client: row.client, num: row.num, source: 'manual'
+    })});
+    compta.recettes.unshift(row);
+    document.getElementById('modal-recette').classList.remove('open');
+    initYearSelects(); renderRecettes();
+    showToast('Recette enregistrée ✓','success');
+  } catch(e) { showToast('Erreur : ' + e.message,'error'); }
 }
-function deleteRecette(id) {
+async function deleteRecette(id) {
   if (!confirm('Supprimer cette recette ?')) return;
-  compta.recettes = compta.recettes.filter(r=>r.id!==id);
-  saveCompta(compta); renderRecettes();
-  showToast('Recette supprimée','warning');
+  try {
+    await sbFetch('avs_recettes?id=eq.'+encodeURIComponent(id), {
+      method:'DELETE', headers:{'Prefer':'return=minimal'}
+    });
+    compta.recettes = compta.recettes.filter(r=>r.id!==id);
+    renderRecettes(); showToast('Recette supprimée','warning');
+  } catch(e) { showToast('Erreur : ' + e.message,'error'); }
 }
 
 function openDepenseModal() {
@@ -1023,7 +1097,7 @@ function editDepense(id) {
   document.getElementById('dep-delete-btn').style.display = 'inline-flex';
   document.getElementById('modal-depense').classList.add('open');
 }
-function saveDepense() {
+async function saveDepense() {
   const montant = parseFloat(document.getElementById('d-montant').value);
   const libelle = document.getElementById('d-libelle').value.trim();
   if (!montant || !libelle) { showToast('Montant et libellé obligatoires','warning'); return; }
@@ -1034,25 +1108,35 @@ function saveDepense() {
     justif: document.getElementById('d-justif').value,
     notes: document.getElementById('d-notes').value
   };
-  if (editingDepId) {
-    const i = compta.depenses.findIndex(d=>d.id===editingDepId);
-    if (i>-1) compta.depenses[i] = { ...compta.depenses[i], ...data };
-  } else {
-    compta.depenses.push({ ...data, id:'d_'+Date.now() });
-  }
-  saveCompta(compta);
-  document.getElementById('modal-depense').classList.remove('open');
-  initYearSelects(); renderDepenses();
-  showToast('Dépense enregistrée ✓','success');
+  try {
+    if (editingDepId) {
+      await sbFetch('avs_depenses?id=eq.'+encodeURIComponent(editingDepId), {
+        method:'PATCH', body: JSON.stringify(data)
+      });
+      const i = compta.depenses.findIndex(d=>d.id===editingDepId);
+      if (i>-1) compta.depenses[i] = { ...compta.depenses[i], ...data };
+    } else {
+      const newDep = { ...data, id:'d_'+Date.now() };
+      await sbFetch('avs_depenses', { method:'POST', body: JSON.stringify(newDep) });
+      compta.depenses.unshift(newDep);
+    }
+    document.getElementById('modal-depense').classList.remove('open');
+    initYearSelects(); renderDepenses();
+    showToast('Dépense enregistrée ✓','success');
+  } catch(e) { showToast('Erreur : ' + e.message,'error'); }
 }
-function deleteDepense(id) {
+async function deleteDepense(id) {
   const depId = id || editingDepId;
   if (!depId) return;
   if (!confirm('Supprimer cette dépense ?')) return;
-  compta.depenses = compta.depenses.filter(d=>d.id!==depId);
-  saveCompta(compta);
-  document.getElementById('modal-depense').classList.remove('open');
-  renderDepenses(); showToast('Dépense supprimée','warning');
+  try {
+    await sbFetch('avs_depenses?id=eq.'+encodeURIComponent(depId), {
+      method:'DELETE', headers:{'Prefer':'return=minimal'}
+    });
+    compta.depenses = compta.depenses.filter(d=>d.id!==depId);
+    document.getElementById('modal-depense').classList.remove('open');
+    renderDepenses(); showToast('Dépense supprimée','warning');
+  } catch(e) { showToast('Erreur : ' + e.message,'error'); }
 }
 
 // ════════════════════════════════
@@ -1189,8 +1273,8 @@ function showToast(msg, type='success') {
 // ════════════════════════════════
 initYearSelects();
 renderEcheances();
-renderDashboard();
 setInterval(renderEcheances, 60*60*1000);
+loadComptaFromSupabase();
 </script>
 </body>
 </html>
