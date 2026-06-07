@@ -164,6 +164,7 @@ textarea.mf:focus,input.mf:focus,select.mf:focus{border-color:var(--ocre);backgr
   <div class="manual-form" id="manual-form">
     <div class="mf-grid">
       <div><label class="ml">Prénom</label><input class="mf" type="text" id="m-prenom" placeholder="Marie"></div>
+      <div><label class="ml">Nom</label><input class="mf" type="text" id="m-nom" placeholder="Dupont"></div>
       <div><label class="ml">Âge</label><input class="mf" type="number" id="m-age" placeholder="38"></div>
       <div><label class="ml">Durée des symptômes</label>
         <select class="mf" id="m-duree">
@@ -214,11 +215,6 @@ textarea.mf:focus,input.mf:focus,select.mf:focus{border-color:var(--ocre);backgr
           <option>Très faible — vitalité à reconstruire en priorité</option>
         </select>
       </div>
-    </div>
-    <div style="margin-bottom:12px">
-      <label class="ml">🩺 Données spécialisées (SIBO / Hormones / Thyroïde)</label>
-      <textarea class="mf" id="m-thematiques" style="min-height:80px" placeholder="Ex: [SIBO] Test respiratoire H2 positif 42ppm à 90min · Ballonnements 60-90min post-repas · IPP pendant 2 ans · Déclenchement post-gastro 2022&#10;[SOPK] Type insulino-résistant · Cycles 45-60j · Acné mâchoire · Inositol non encore testé&#10;[HASHIMOTO] TSH 3,8 · T3L basse · Anti-TPO 420 · Sélénium jamais supplémenté"></textarea>
-      <p class="field-hint">Résumez ici les réponses des questionnaires thématiques activés en séance. Ces données orientent directement les protocoles spécialisés.</p>
     </div>
     <div><label class="ml">Analyse causale & intuition clinique praticien</label><textarea class="mf" id="m-notes" style="min-height:80px" placeholder="Ex: Dysbiose intestinale probable comme premier domino → perturbation axe intestin-cerveau → fatigue surrénalienne secondaire. Dominance œstrogénique liée à foie ralenti. A pleuré en parlant de son travail — charge émotionnelle majeure."></textarea>
       <p class="field-hint">Notez les hypothèses causales, liens entre systèmes et observations de séance. Sert à guider la cascade dans le protocole.</p>
@@ -414,9 +410,7 @@ function renderSessionCard() {
     ['Durée', d.duree_symptomes || '—'],
     ['Motifs', d.motifs || '—'],
     ['Scores', d.scores || '—'],
-    ['Grossesse / allaitement', d.grossesse || '—'],
-    ['IMC', d.imc ? d.imc + ' kg/m²' : '—'],
-    ['Spécialités actives', d.thematiques ? d.thematiques.match(/\[([A-Z]+)\]/g)?.join(', ') || '—' : '—'],
+    ['Médicaments', d.selects?.match(/Médicaments[^\\n]*/)?.[0] || (d.textes_libres?.match(/Médicaments[^\n]*/)?.[0] || '—')],
     ['Bilans recommandés', d.bilans_recommandes || '—'],
   ];
   const html = `<div class="session-grid">${items.map(([k,v]) => `<div class="session-item"><strong>${k}</strong><span>${(v||'—').substring(0,80)}${v?.length > 80 ? '…' : ''}</span></div>`).join('')}</div>
@@ -441,18 +435,18 @@ function toggleManual() {
 function buildClientData() {
   const mf = id => document.getElementById(id)?.value?.trim() || '';
   const manual = {
-    prenom: mf('m-prenom'), age: mf('m-age'), duree: mf('m-duree'),
+    prenom: mf('m-prenom'), nom: mf('m-nom'), age: mf('m-age'), duree: mf('m-duree'),
     contra: mf('m-contra'), motifs: mf('m-motifs'), scores: mf('m-scores'),
     checks: mf('m-checks'), medics: mf('m-medics'), gyneco: mf('m-gyneco'),
     alim: mf('m-alim'), notes: mf('m-notes'),
     lifeline: mf('m-lifeline'), encrassement: mf('m-encrassement'), vitalite: mf('m-vitalite'),
-    thematiques_manual: mf('m-thematiques'),
   };
   const hasManual = Object.values(manual).some(v => v.length > 1);
   const s = sessionData || {};
 
   return {
     prenom: manual.prenom || s.prenom || 'Cliente',
+    nom: manual.nom || s.nom || '',
     age: manual.age || s.age || '',
     duree_symptomes: manual.duree || s.duree_symptomes || '',
     contraception: manual.contra || '',
@@ -475,9 +469,6 @@ function buildClientData() {
     niveau: document.getElementById('niveau').value,
     obj_principal: document.getElementById('obj-principal').value,
     profil: document.getElementById('profil').value,
-    thematiques: manual.thematiques_manual || s.thematiques || '',
-    grossesse: s.grossesse || '',
-    imc: s.imc || '',
   };
 }
 
@@ -530,10 +521,10 @@ ISRS/antidépresseurs → millepertuis INTERDIT absolument
 Pilule/THM → attention phytoestrogènes
 Cancer hormono-dépendant → JAMAIS Feminabiane Ménopause ni phytoestrogènes
 Hypothyroïdie (Lévothyrox) → espacer fer, calcium, magnésium de 4h
-Grossesse / allaitement déclaré → AUCUNE HE par voie interne, AUCUNE plante emménagogue (gattilier, actée à grappes, sauge, armoise, millepertuis), privilégier acide folique méthylé + DHA + probiotiques sûrs uniquement. Si grossesse déclarée : mentionner explicitement au début de la section compléments.
+Grossesse → aucune HE par voie interne, vérifier chaque plante
 
 ━━ DONNÉES DE LA SÉANCE ━━
-Cliente : ${d.prenom}${d.age ? ', ' + d.age + ' ans' : ''} · Profil : ${d.profil}${d.imc ? ' · IMC : ' + d.imc : ''}
+Cliente : ${d.prenom}${d.age ? ', ' + d.age + ' ans' : ''} · Profil : ${d.profil}
 Objectif exprimé : ${d.objectif_6mois || d.obj_principal}
 Durée des déséquilibres : ${d.duree_symptomes}
 Ressentis & motifs : ${d.motifs}
@@ -542,7 +533,6 @@ Signaux cochés en séance : ${d.symptomes_coches}
 Alimentation & mode de vie : ${d.alimentation}
 Cycle, gynécologie, thyroïde : ${d.gyneco}
 Contraception : ${d.contraception}
-⚠️ Grossesse / allaitement : ${d.grossesse || 'Non renseigné'}
 ⚠️ Médicaments & allergies : ${d.medics_allergies || 'Non renseigné — vérifier avant toute recommandation'}
 Bilans biologiques à recommander : ${d.bilans_rec}
 
@@ -554,9 +544,6 @@ ${d.lifeline || '— Non renseigné'}
 
 🔬 ANALYSE CAUSALE PRATICIEN (cascade des premiers dominos) :
 ${d.notes_praticien || '— Non renseigné'}
-
-🩺 DONNÉES SPÉCIALISÉES (questionnaires thématiques remplis en séance) :
-${d.thematiques || '— Aucun questionnaire thématique activé cette séance'}
 
 Axe prioritaire 1 : ${d.prio1}
 Axe prioritaire 2 : ${d.prio2}
@@ -855,6 +842,82 @@ async function downloadDocx() {
   a.download = `PHV-${cl.prenom.toLowerCase().replace(/\s+/g,'-')}-${new Date().toISOString().slice(0,10)}.docx`;
   a.click();
   URL.revokeObjectURL(url);
+
+  // ── Enregistrement dans le CRM ──
+  savePHVtoCRM(cl);
+}
+
+function savePHVtoCRM(cl) {
+  try {
+    const DB_KEY = 'avs_crm_v2';
+    const raw = localStorage.getItem(DB_KEY);
+    if (!raw) return;
+    const db = JSON.parse(raw);
+    if (!db.clients || !db.clients.length) return;
+
+    // Recherche de la cliente par prénom + nom (insensible à la casse)
+    const prenom = (cl.prenom || '').trim().toLowerCase();
+    const nom = (cl.nom || '').trim().toLowerCase();
+
+    let match;
+    if (nom) {
+      // Matching strict prénom + nom
+      match = db.clients.find(c =>
+        (c.prenom || '').trim().toLowerCase() === prenom &&
+        (c.nom || '').trim().toLowerCase() === nom
+      );
+    } else {
+      // Pas de nom disponible : avertir et ne pas enregistrer
+      showCRMNotice(`PHV généré ✓ — renseignez le nom de famille pour l'enregistrer dans le CRM.`, 'warn');
+      return;
+    }
+
+    if (!match) {
+      // Aucune fiche trouvée
+      showCRMNotice(`PHV généré ✓ — aucune fiche CRM trouvée pour « ${cl.prenom} ${cl.nom} ». Enregistrement manuel requis.`, 'warn');
+      return;
+    }
+
+    // Construire un résumé des axes prioritaires
+    const axesTexts = (generatedData?.blocs || blocks)
+      .filter(b => b.pilier && b.titre)
+      .slice(0, 4)
+      .map(b => b.titre)
+      .join(' · ');
+
+    const today = new Date().toISOString().slice(0, 10);
+
+    if (!match.timeline) match.timeline = [];
+    match.timeline.push({
+      type: 'phv',
+      icon: '◧',
+      title: 'PHV généré',
+      detail: axesTexts || 'Protocole d\'Hygiène Vitale',
+      date: today
+    });
+
+    localStorage.setItem(DB_KEY, JSON.stringify(db));
+    showCRMNotice(`PHV enregistré dans la fiche de ${match.prenom} ${match.nom || ''} ✓`, 'ok');
+  } catch(e) {
+    console.warn('Erreur enregistrement CRM:', e);
+  }
+}
+
+function showCRMNotice(msg, type) {
+  let el = document.getElementById('crm-notice');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'crm-notice';
+    el.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);padding:12px 22px;border-radius:10px;font-size:14px;font-family:inherit;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.15);transition:opacity .4s;max-width:420px;text-align:center;';
+    document.body.appendChild(el);
+  }
+  el.style.background = type === 'ok' ? '#EBF2E7' : '#FBF0E6';
+  el.style.color = type === 'ok' ? '#3D6B2C' : '#C4783A';
+  el.style.border = `1px solid ${type === 'ok' ? '#3D6B2C' : '#C4783A'}`;
+  el.textContent = msg;
+  el.style.opacity = '1';
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { el.style.opacity = '0'; }, 5000);
 }
 
 function resetAll() {

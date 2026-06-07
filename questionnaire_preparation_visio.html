@@ -787,7 +787,10 @@ function collectData(){
   return data;
 }
 
-/* ─── Sauvegarde dans localStorage pour import par le questionnaire de consultation ─── */
+/* ─── Sauvegarde dans localStorage ET Supabase pour import par le questionnaire de consultation ─── */
+const SUPA_V_URL = 'https://bqhkdndwldwqacrrbbig.supabase.co';
+const SUPA_V_KEY = 'sb_publishable_LqUmkNboVtPQkEns2C3R1g_O0WHmrI1';
+
 function sauvegarderPourConsultation(prenom, data) {
   try {
     // Extraire les champs clés pour le questionnaire de consultation
@@ -824,6 +827,14 @@ function sauvegarderPourConsultation(prenom, data) {
       ts: Date.now()
     };
     localStorage.setItem('avita_visio_answers', JSON.stringify(visioAnswers));
+    // Sauvegarde Supabase
+    fetch(SUPA_V_URL + '/rest/v1/questionnaires', {
+      method: 'POST',
+      headers: { 'apikey': SUPA_V_KEY, 'Authorization': 'Bearer ' + SUPA_V_KEY,
+        'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ id: 'visio_' + Date.now(), type: 'visio', prenom,
+        snapshot: visioAnswers, created_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+    }).catch(e => console.warn('Supabase visio:', e));
   } catch(e) { /* silencieux si localStorage non disponible */ }
 }
 

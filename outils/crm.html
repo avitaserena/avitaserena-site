@@ -48,8 +48,7 @@ body {
 
 /* ── SIDEBAR ── */
 .sidebar {
-  background: #FFFFFF;
-  border-right: 1px solid var(--taupe);
+  background: var(--ardoise);
   padding: 32px 0;
   display: flex;
   flex-direction: column;
@@ -60,26 +59,26 @@ body {
 }
 .sidebar-logo {
   padding: 0 28px 32px;
-  border-bottom: 1px solid var(--taupe);
+  border-bottom: 1px solid rgba(255,255,255,.08);
 }
-.logo-avita { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 22px; color: var(--ardoise); }
-.logo-serena { font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 22px; color: var(--ardoise); }
-.logo-sub { font-size: 11px; font-weight: 300; color: var(--gris); letter-spacing: .1em; text-transform: uppercase; margin-top: 4px; }
+.logo-avita { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 22px; color: #fff; }
+.logo-serena { font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 22px; color: #fff; }
+.logo-sub { font-size: 11px; font-weight: 300; color: rgba(255,255,255,.35); letter-spacing: .1em; text-transform: uppercase; margin-top: 4px; }
 
 .sidebar-nav { flex: 1; padding: 24px 0; }
 .nav-section-label {
   font-size: 10px; font-weight: 600; letter-spacing: .15em; text-transform: uppercase;
-  color: var(--gris); padding: 0 28px; margin-bottom: 8px; margin-top: 20px;
+  color: rgba(255,255,255,.3); padding: 0 28px; margin-bottom: 8px; margin-top: 20px;
 }
 .nav-item {
   display: flex; align-items: center; gap: 12px;
   padding: 12px 28px; cursor: pointer; transition: var(--transition);
-  border-left: 3px solid transparent; color: var(--gris);
+  border-left: 3px solid transparent; color: rgba(255,255,255,.55);
   font-size: 15px; font-weight: 400;
 }
-.nav-item:hover { color: var(--ardoise); background: var(--grege); }
+.nav-item:hover { color: #fff; background: rgba(255,255,255,.05); }
 .nav-item.active {
-  color: var(--ardoise); background: rgba(180,144,106,.08);
+  color: #fff; background: rgba(180,144,106,.15);
   border-left-color: var(--ocre);
 }
 .nav-item .nav-icon { font-size: 18px; width: 22px; text-align: center; }
@@ -485,7 +484,7 @@ body {
 <!-- ── SIDEBAR ── -->
 <aside class="sidebar">
   <div class="sidebar-logo">
-    <img src="logonoir.png" alt="Avita Serena" style="height:36px;width:auto;display:block;margin-bottom:6px">
+    <div><span class="logo-avita">avita</span><span class="logo-serena">serena.</span></div>
     <div class="logo-sub">Espace Praticien</div>
   </div>
   <nav class="sidebar-nav">
@@ -502,14 +501,14 @@ body {
     <div class="nav-item" onclick="showPage('factures', this)">
       <span class="nav-icon">◈</span> Factures
     </div>
-    <div class="nav-item" onclick="showPage('listes', this)">
-      <span class="nav-icon">◧</span> Listes & Segments
-    </div>
     <div class="nav-item" onclick="window.open('generateur.html', '_blank')">
-      <span class="nav-icon">◉</span> Générateur PHV ↗
+      <span class="nav-icon">◧</span> Générateur PHV ↗
     </div>
     <div class="nav-item" onclick="window.open('protocoles-sibo.html', '_blank')">
       <span class="nav-icon">◉</span> Protocoles SIBO ↗
+    </div>
+    <div class="nav-item" onclick="window.open('comptabilite.html', '_blank')">
+      <span class="nav-icon">◑</span> Comptabilité ↗
     </div>
 
     <div class="nav-section-label">Paramètres</div>
@@ -625,100 +624,6 @@ body {
         <div class="empty-title">Aucune facture</div>
         <div class="empty-sub">Créez votre première facture.</div>
       </div>
-    </div>
-  </div>
-
-  <!-- ══ PAGE : LISTES & SEGMENTS ══ -->
-  <div class="page" id="page-listes">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:28px">
-      <div>
-        <div style="font-family:'Cormorant Garamond',serif;font-size:22px;font-style:italic;color:var(--ardoise);margin-bottom:4px">Listes & Segments</div>
-        <div style="font-size:13px;color:var(--gris)">Créez des segments personnalisés et exportez vos listes en CSV.</div>
-      </div>
-      <button class="btn btn-ocre" onclick="exportCSV()">↓ Exporter le segment en CSV</button>
-    </div>
-
-    <!-- Filtres de segmentation -->
-    <div style="background:var(--blanc);border:1px solid var(--taupe);border-radius:14px;padding:24px;margin-bottom:24px">
-      <div style="font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gris);margin-bottom:16px">Critères de segmentation</div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px">
-        <div>
-          <label class="form-label">Tranche d'âge</label>
-          <select class="form-select" id="seg-age" onchange="renderSegment()">
-            <option value="">Toutes les âges</option>
-            <option value="moins30">Moins de 30 ans</option>
-            <option value="30-40">30 – 40 ans</option>
-            <option value="40-50">40 – 50 ans</option>
-            <option value="50-60">50 – 60 ans</option>
-            <option value="plus60">Plus de 60 ans</option>
-          </select>
-        </div>
-        <div>
-          <label class="form-label">Programme</label>
-          <select class="form-select" id="seg-programme" onchange="renderSegment()">
-            <option value="">Tous les programmes</option>
-            <option value="">Consultation unique seulement</option>
-            <option value="alba">Programme Alba</option>
-            <option value="aria">Programme Aria</option>
-            <option value="ora">Programme Ora</option>
-          </select>
-        </div>
-        <div>
-          <label class="form-label">Motif / préoccupation</label>
-          <select class="form-select" id="seg-motif" onchange="renderSegment()">
-            <option value="">Tous les motifs</option>
-            <option value="sibo">SIBO / digestif</option>
-            <option value="hormone">Hormonal / SOPK</option>
-            <option value="menopause">Ménopause / périménopause</option>
-            <option value="endometriose">Endométriose</option>
-            <option value="fatigue">Fatigue chronique</option>
-            <option value="thyroide">Thyroïde / Hashimoto</option>
-            <option value="stress">Stress / sommeil</option>
-            <option value="spm">SPM</option>
-          </select>
-        </div>
-        <div>
-          <label class="form-label">Statut suivi</label>
-          <select class="form-select" id="seg-statut" onchange="renderSegment()">
-            <option value="">Tous statuts</option>
-            <option value="alerte">Action requise</option>
-            <option value="silence">Silence > 30j</option>
-            <option value="actif">En programme</option>
-          </select>
-        </div>
-        <div>
-          <label class="form-label">Recherche libre</label>
-          <input class="form-input" id="seg-search" placeholder="Nom, motif, note…" oninput="renderSegment()">
-        </div>
-        <div style="display:flex;align-items:flex-end">
-          <button class="btn btn-ghost" onclick="resetSegment()" style="width:100%">Réinitialiser</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Résultats -->
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-      <div style="font-size:13px;color:var(--gris)"><strong id="seg-count" style="color:var(--ardoise)">0</strong> cliente(s) dans ce segment</div>
-      <div style="font-size:12px;color:var(--gris)" id="seg-ca-total"></div>
-    </div>
-
-    <div style="background:var(--blanc);border:1px solid var(--taupe);border-radius:14px;overflow:hidden">
-      <table style="width:100%;border-collapse:collapse" id="seg-table">
-        <thead>
-          <tr style="background:var(--grege)">
-            <th style="padding:12px 16px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gris);border-bottom:1px solid var(--taupe)">Prénom Nom</th>
-            <th style="padding:12px 16px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gris);border-bottom:1px solid var(--taupe)">Âge</th>
-            <th style="padding:12px 16px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gris);border-bottom:1px solid var(--taupe)">Email</th>
-            <th style="padding:12px 16px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gris);border-bottom:1px solid var(--taupe)">Motifs</th>
-            <th style="padding:12px 16px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gris);border-bottom:1px solid var(--taupe)">Programme</th>
-            <th style="padding:12px 16px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gris);border-bottom:1px solid var(--taupe)">Statut</th>
-            <th style="padding:12px 16px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gris);border-bottom:1px solid var(--taupe)"></th>
-          </tr>
-        </thead>
-        <tbody id="seg-tbody">
-          <tr><td colspan="7" style="padding:40px;text-align:center;color:var(--gris);font-style:italic">Aucune cliente dans ce segment</td></tr>
-        </tbody>
-      </table>
     </div>
   </div>
 
@@ -875,11 +780,11 @@ body {
       <div class="form-group">
         <label class="form-label">Prestation</label>
         <select class="form-select" id="nf-prestation" onchange="updateFactureMontant(this.value)">
-          <option value="bilan_vitalite">Bilan de vitalité — 1ère consultation (90 min) · 90 €</option>
-          <option value="consultation_suivi">Consultation de suivi (60 min) · 65 €</option>
-          <option value="programme_alba">Programme Alba — 3 mois · 320 €</option>
-          <option value="programme_aria">Programme Aria — 6 mois · 560 €</option>
-          <option value="programme_ora">Programme Ora — 9 mois · 780 €</option>
+          <option value="consultation_unique">Consultation unique — Bilan de vitalité (90 min)</option>
+          <option value="programme_initial">Programme Initial 3 mois (4 séances)</option>
+          <option value="programme_approfondi">Programme Approfondi 6 mois (7 séances)</option>
+          <option value="suivi_60">Consultation de suivi (60 min)</option>
+          <option value="point_flash">Point flash (15 min)</option>
           <option value="custom">Prestation personnalisée…</option>
         </select>
       </div>
@@ -960,9 +865,9 @@ const DB_KEY = 'avs_crm_v2';
 function loadDB() {
   try {
     const raw = localStorage.getItem(DB_KEY);
-    if (!raw) return { clients: [], factures: [], settings: defaultSettings(), nextFactureNum: 356 };
+    if (!raw) return { clients: [], factures: [], settings: defaultSettings(), nextFactureNum: 1 };
     return JSON.parse(raw);
-  } catch(e) { return { clients: [], factures: [], settings: defaultSettings(), nextFactureNum: 356 }; }
+  } catch(e) { return { clients: [], factures: [], settings: defaultSettings(), nextFactureNum: 1 }; }
 }
 
 function saveDB(db) {
@@ -987,12 +892,11 @@ function showPage(name, navEl) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('page-' + name).classList.add('active');
   if (navEl) navEl.classList.add('active');
-  const titles = { dashboard: 'Tableau de bord', clients: 'Clientes', fiche: 'Fiche cliente', factures: 'Factures', listes: 'Listes & Segments', settings: 'Mon cabinet' };
+  const titles = { dashboard: 'Tableau de bord', clients: 'Clientes', fiche: 'Fiche cliente', factures: 'Factures', settings: 'Mon cabinet' };
   document.getElementById('topbar-title').textContent = titles[name] || name;
   if (name === 'dashboard') renderDashboard();
   if (name === 'clients') renderClients();
   if (name === 'factures') renderFactures();
-  if (name === 'listes') renderSegment();
   if (name === 'settings') loadSettings();
 }
 
@@ -1578,12 +1482,12 @@ function saveNewClient() {
 // FACTURES
 // ═══════════════════════════════════════════════
 const prestations = {
-  bilan_vitalite:      { label: 'Bilan de vitalité naturopathique — 1ère consultation (90 min)', montant: 90 },
-  consultation_suivi:  { label: 'Consultation de suivi (60 min)', montant: 65 },
-  programme_alba:      { label: 'Programme Alba — Accompagnement 3 mois (2 séances incluses)', montant: 320 },
-  programme_aria:      { label: 'Programme Aria — Accompagnement 6 mois (4 séances incluses)', montant: 560 },
-  programme_ora:       { label: 'Programme Ora — Accompagnement 9 mois (6 séances incluses)', montant: 780 },
-  custom:              { label: '', montant: 0 }
+  consultation_unique: { label: 'Bilan de vitalité — Consultation unique (90 min)', montant: 90 },
+  programme_initial: { label: 'Programme Initial 3 mois — Accompagnement naturopathique', montant: 380 },
+  programme_approfondi: { label: 'Programme Approfondi 6 mois — Accompagnement naturopathique', montant: 650 },
+  suivi_60: { label: 'Consultation de suivi (60 min)', montant: 0 },
+  point_flash: { label: 'Point flash (15 min)', montant: 0 },
+  custom: { label: '', montant: 0 }
 };
 
 const paiements = { virement: 'Virement bancaire', cb: 'Carte bancaire', cheque: 'Chèque', especes: 'Espèces', paypal: 'PayPal / Stripe' };
@@ -1622,86 +1526,6 @@ function updateFactureMontant(key) {
   document.getElementById('nf-custom-group').style.display = key === 'custom' ? 'block' : 'none';
 }
 
-function previewFacture() {
-  const clientId = document.getElementById('nf-client').value;
-  const prestKey = document.getElementById('nf-prestation').value;
-  const custom = document.getElementById('nf-custom-label').value;
-  const montant = parseFloat(document.getElementById('nf-montant').value) || 0;
-  const dateVal = document.getElementById('nf-date').value;
-  const paiKey = document.getElementById('nf-paiement').value;
-  const deuxFois = document.getElementById('nf-2fois').value;
-
-  const client = db.clients.find(c => c.id === clientId);
-  const settings = db.settings || defaultSettings();
-  const prestLabel = prestKey === 'custom' ? custom : prestations[prestKey]?.label || prestKey;
-  const paiLabel = paiements[paiKey] || paiKey;
-  const mention2fois = deuxFois !== 'non' ? `<br><em>${deuxFois === 'acompte1' ? 'Acompte — 1er versement' : 'Solde — 2ème versement'}</em>` : '';
-  const numPreview = 'APERÇU';
-
-  const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">
-<title>Aperçu facture — Avita Serena</title>
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;1,300&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400&display=swap');
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'DM Sans',sans-serif;background:#f5f4f2;color:#1E1E1C;padding:24px}
-.page{width:210mm;min-height:297mm;margin:0 auto;background:#fff;box-shadow:0 4px 32px rgba(0,0,0,.12)}
-.header{background:#1E1E1C;padding:36px 48px;display:flex;justify-content:space-between;align-items:flex-start}
-.logo-a{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:26px;color:#fff}
-.logo-s{font-family:'DM Sans',sans-serif;font-weight:600;font-size:26px;color:#fff}
-.logo-sub{font-size:11px;color:rgba(255,255,255,.4);margin-top:4px;letter-spacing:.1em;text-transform:uppercase}
-.num{text-align:right;color:rgba(255,255,255,.5);font-size:12px}
-.num strong{display:block;color:#C4A882;font-size:20px;font-family:'DM Mono',monospace;margin-top:4px}
-.band{height:3px;background:linear-gradient(to right,#D5CFC6,#C4A882,#B4906A,#C4A882,#D5CFC6)}
-.body{padding:48px}
-.parties{display:grid;grid-template-columns:1fr 1fr;gap:48px;margin-bottom:48px}
-.partie-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#6B6560;margin-bottom:10px}
-.partie-val{font-size:14px;line-height:1.9;color:#1E1E1C}
-table{width:100%;border-collapse:collapse;margin-bottom:32px}
-th{text-align:left;padding:10px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#6B6560;border-bottom:2px solid #D4CBBC}
-td{padding:16px 14px;border-bottom:1px solid #EDE9E1;font-size:14px;color:#1E1E1C;line-height:1.5}
-.td-r{text-align:right;font-family:'DM Mono',monospace;font-weight:500}
-.total-block{text-align:right;padding:20px 14px;border-top:2px solid #1E1E1C;margin-bottom:32px}
-.total-lbl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#6B6560;margin-bottom:6px}
-.total-val{font-family:'Cormorant Garamond',serif;font-size:48px;font-weight:300;color:#1E1E1C}
-.mentions{font-size:11px;color:#6B6560;line-height:1.85;border-top:1px solid #D4CBBC;padding-top:24px}
-.preview-banner{background:#FBF3E4;border:1px solid #C4A882;border-radius:6px;padding:8px 16px;text-align:center;font-size:12px;font-weight:600;color:#9B7230;margin-bottom:24px;letter-spacing:.06em}
-@media print{body{background:#fff;padding:0}.preview-banner{display:none}}
-</style></head><body>
-<div class="preview-banner">APERÇU — Non enregistré · Cliquez Imprimer pour tester le rendu</div>
-<div class="page">
-<div class="header">
-  <div><img src="https://avitaserena.com/logoblanc.png" alt="Avita Serena" style="height:42px;width:auto;display:block;margin-bottom:6px"><div class="logo-sub">Naturopathie · Porto-Vecchio, Corse</div></div>
-  <div class="num">Facture<strong>N° AVS-${numPreview}</strong>${dateVal ? new Date(dateVal).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}) : '—'}</div>
-</div>
-<div class="band"></div>
-<div class="body">
-  <div class="parties">
-    <div><div class="partie-lbl">Praticienne</div><div class="partie-val"><strong>${settings.nom}</strong><br>${settings.titre}<br>${settings.adresse}${settings.email?'<br>'+settings.email:''}${settings.tel?'<br>'+settings.tel:''}${settings.siret?'<br>SIRET : '+settings.siret:''}${settings.adeli?'<br>N° ADELI : '+settings.adeli:''}</div></div>
-    <div><div class="partie-lbl">Cliente</div><div class="partie-val"><strong>${client?client.prenom+' '+(client.nom||''):'—'}</strong>${client?.email?'<br>'+client.email:''}${client?.tel?'<br>'+client.tel:''}</div></div>
-  </div>
-  <table>
-    <thead><tr><th>Prestation</th><th>Date</th><th>Mode de paiement</th><th class="td-r">Montant TTC</th></tr></thead>
-    <tbody><tr><td>${prestLabel}${mention2fois}</td><td>${dateVal?new Date(dateVal).toLocaleDateString('fr-FR'):'—'}</td><td>${paiLabel}</td><td class="td-r">${montant.toLocaleString('fr-FR')} €</td></tr></tbody>
-  </table>
-  <div class="total-block"><div class="total-lbl">Total TTC</div><div class="total-val">${montant.toLocaleString('fr-FR')} €</div></div>
-  <div class="mentions">
-    <strong>TVA non applicable — Article 293B du Code Général des Impôts.</strong><br>
-    Prestation de naturopathie — Praticienne non conventionnée par l'Assurance Maladie.<br>
-    Remboursement possible selon votre mutuelle (niveaux 2 & 3 — se renseigner auprès de votre organisme).<br>
-    Une facture est remise à l'issue de chaque séance conformément à la réglementation en vigueur.<br><br>
-    Avita Serena · Sabrina Castelli · ${settings.adresse} · ${settings.email||'sabrina@avitaserena.com'}
-  </div>
-</div>
-</div>
-<script>window.onload=function(){window.print()}<\/script>
-</body></html>`;
-
-  const w = window.open('', '_blank');
-  if (!w) { showToast('Autorisez les popups pour prévisualiser', 'warning'); return; }
-  w.document.write(html);
-  w.document.close();
-}
-
 function saveFacture() {
   const clientId = document.getElementById('nf-client').value;
   const prestKey = document.getElementById('nf-prestation').value;
@@ -1711,7 +1535,7 @@ function saveFacture() {
 
   const facture = {
     id: 'f_' + Date.now(),
-    num: String(db.nextFactureNum || 356),
+    num: String(db.nextFactureNum || 1).padStart(4, '0'),
     clientId,
     date: document.getElementById('nf-date').value,
     prestation: prestKey,
@@ -1725,7 +1549,7 @@ function saveFacture() {
   };
 
   db.factures.push(facture);
-  db.nextFactureNum = (db.nextFactureNum || 356) + 1;
+  db.nextFactureNum = (db.nextFactureNum || 1) + 1;
 
   // Ajouter dans timeline client
   if (clientId) {
@@ -1799,42 +1623,38 @@ body{font-family:'DM Sans',sans-serif;background:#fff;color:#1E1E1C;padding:0}
 .logo-sub{font-size:11px;color:rgba(255,255,255,.4);margin-top:4px;letter-spacing:.1em;text-transform:uppercase}
 .num{text-align:right;color:rgba(255,255,255,.5);font-size:12px}
 .num strong{display:block;color:#C4A882;font-size:20px;font-family:'DM Mono',monospace;margin-top:4px}
-.band{height:3px;background:linear-gradient(to right,#D5CFC6,#C4A882,#B4906A,#C4A882,#D5CFC6)}
 .body{padding:48px}
 .parties{display:grid;grid-template-columns:1fr 1fr;gap:48px;margin-bottom:48px}
 .partie-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#6B6560;margin-bottom:10px}
-.partie-val{font-size:14px;line-height:1.9;color:#1E1E1C}
+.partie-val{font-size:14px;line-height:1.8;color:#1E1E1C}
 table{width:100%;border-collapse:collapse;margin-bottom:32px}
 th{text-align:left;padding:10px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#6B6560;border-bottom:2px solid #D4CBBC}
 td{padding:16px 14px;border-bottom:1px solid #EDE9E1;font-size:14px;color:#1E1E1C;line-height:1.5}
 .td-r{text-align:right;font-family:'DM Mono',monospace;font-weight:500}
-.total-block{text-align:right;padding:20px 14px;border-top:2px solid #1E1E1C;margin-bottom:32px}
-.total-lbl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#6B6560;margin-bottom:6px}
-.total-val{font-family:'Cormorant Garamond',serif;font-size:48px;font-weight:300;color:#1E1E1C}
-.mentions{font-size:11px;color:#6B6560;line-height:1.85;border-top:1px solid #D4CBBC;padding-top:24px;margin-top:8px}
+.total{text-align:right;margin-bottom:32px}
+.total-lbl{font-size:12px;color:#6B6560;margin-bottom:4px}
+.total-val{font-family:'Cormorant Garamond',serif;font-size:42px;font-weight:300;color:#1E1E1C}
+.mentions{font-size:11px;color:#6B6560;line-height:1.8;border-top:1px solid #D4CBBC;padding-top:24px;margin-top:32px}
 @media print{body{background:#fff}}
 </style></head><body>
 <div class="page">
 <div class="header">
-  <div><img src="https://avitaserena.com/logoblanc.png" alt="Avita Serena" style="height:42px;width:auto;display:block;margin-bottom:6px"><div class="logo-sub">Naturopathie · Porto-Vecchio, Corse</div></div>
+  <div><div><span class="logo-a">avita</span><span class="logo-s">serena.</span></div><div class="logo-sub">Naturopathie · Corse</div></div>
   <div class="num">Facture<strong>N° AVS-${f.num}</strong>${formatDate(f.date)}</div>
 </div>
-<div class="band"></div>
 <div class="body">
   <div class="parties">
-    <div><div class="partie-lbl">Praticienne</div><div class="partie-val"><strong>${settings.nom}</strong><br>${settings.titre}<br>${settings.adresse}${settings.email ? '<br>' + settings.email : ''}${settings.tel ? '<br>' + settings.tel : ''}${settings.siret ? '<br>SIRET : ' + settings.siret : ''}${settings.adeli ? '<br>N° ADELI : ' + settings.adeli : ''}</div></div>
-    <div><div class="partie-lbl">Cliente</div><div class="partie-val"><strong>${client ? client.prenom + ' ' + (client.nom || '') : '—'}</strong>${client?.email ? '<br>' + client.email : ''}${client?.tel ? '<br>' + client.tel : ''}</div></div>
+    <div><div class="partie-lbl">Émettrice</div><div class="partie-val"><strong>${settings.nom}</strong><br>${settings.titre}<br>${settings.adresse}${settings.email ? '<br>' + settings.email : ''}${settings.tel ? '<br>' + settings.tel : ''}${settings.siret ? '<br>SIRET : ' + settings.siret : ''}${settings.adeli ? '<br>N° ADELI : ' + settings.adeli : ''}</div></div>
+    <div><div class="partie-lbl">Destinataire</div><div class="partie-val"><strong>${client ? client.prenom + ' ' + (client.nom || '') : '—'}</strong>${client?.email ? '<br>' + client.email : ''}${client?.tel ? '<br>' + client.tel : ''}</div></div>
   </div>
   <table>
-    <thead><tr><th>Prestation</th><th>Date</th><th>Mode de paiement</th><th class="td-r">Montant TTC</th></tr></thead>
+    <thead><tr><th>Prestation</th><th>Date</th><th>Mode de paiement</th><th class="td-r">Montant</th></tr></thead>
     <tbody><tr><td>${f.prestationLabel}${mention2fois}</td><td>${formatDate(f.date)}</td><td>${f.paiementLabel || f.paiement}</td><td class="td-r">${f.montant} €</td></tr></tbody>
   </table>
-  <div class="total-block"><div class="total-lbl">Total TTC</div><div class="total-val">${f.montant} €</div></div>
+  <div class="total"><div class="total-lbl">Total TTC</div><div class="total-val">${f.montant} €</div></div>
   <div class="mentions">
-    <strong>TVA non applicable — Article 293B du Code Général des Impôts.</strong><br>
-    Prestation de naturopathie — Praticienne non conventionnée par l'Assurance Maladie.<br>
-    Remboursement possible selon votre mutuelle (niveaux 2 &amp; 3 — se renseigner auprès de votre organisme complémentaire).<br>
-    Une facture est remise à l'issue de chaque séance conformément à la réglementation en vigueur.<br><br>
+    TVA non applicable — Article 293B du CGI · Naturopathe non conventionné(e) · Remboursement selon mutuelle (niveaux 2 & 3).<br>
+    Une facture est remise après chaque séance conformément à la réglementation en vigueur.<br>
     Avita Serena · Sabrina Castelli · ${settings.adresse} · ${settings.email || 'sabrina@avitaserena.com'}
   </div>
 </div>
@@ -1884,130 +1704,6 @@ function closeModal(id) { document.getElementById(id).classList.remove('open'); 
 document.querySelectorAll('.modal-overlay').forEach(m => {
   m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
 });
-
-// ═══════════════════════════════════════════════
-// LISTES & SEGMENTS
-// ═══════════════════════════════════════════════
-function getSegmentedClients() {
-  const age = document.getElementById('seg-age')?.value || '';
-  const prog = document.getElementById('seg-programme')?.value || '';
-  const motif = document.getElementById('seg-motif')?.value || '';
-  const statut = document.getElementById('seg-statut')?.value || '';
-  const search = (document.getElementById('seg-search')?.value || '').toLowerCase();
-
-  return db.clients.filter(c => {
-    // Âge
-    if (age) {
-      const a = parseInt(c.age) || 0;
-      if (age === 'moins30' && a >= 30) return false;
-      if (age === '30-40' && (a < 30 || a >= 40)) return false;
-      if (age === '40-50' && (a < 40 || a >= 50)) return false;
-      if (age === '50-60' && (a < 50 || a >= 60)) return false;
-      if (age === 'plus60' && a < 60) return false;
-    }
-    // Programme
-    if (prog) {
-      if (prog === '' && c.programme) return false;
-      if (prog !== '' && c.programme !== prog) return false;
-    }
-    // Motif
-    if (motif) {
-      const motifs = (c.motifs || '').toLowerCase();
-      const motifMap = {
-        sibo: ['sibo','digestif','ballonnement','intestin'],
-        hormone: ['hormonal','sopk','acné hormonale','hormone'],
-        menopause: ['ménopause','periménopause','bouffée','chaleur'],
-        endometriose: ['endométriose','endomet'],
-        fatigue: ['fatigue'],
-        thyroide: ['thyroïde','hashimoto','hypothyroïdie'],
-        stress: ['stress','sommeil','anxiété'],
-        spm: ['spm','cycle','syndrome prémenstruel']
-      };
-      const keywords = motifMap[motif] || [motif];
-      if (!keywords.some(k => motifs.includes(k))) return false;
-    }
-    // Statut
-    if (statut) {
-      const s = getStatusInfo(c);
-      if (statut === 'alerte' && s.class !== 'rouge') return false;
-      if (statut === 'silence' && !s.label.includes('Silence')) return false;
-      if (statut === 'actif' && !c.programme) return false;
-    }
-    // Recherche libre
-    if (search) {
-      const haystack = (c.prenom + ' ' + c.nom + ' ' + c.motifs + ' ' + c.notes + ' ' + c.email).toLowerCase();
-      if (!haystack.includes(search)) return false;
-    }
-    return true;
-  });
-}
-
-function renderSegment() {
-  const clients = getSegmentedClients();
-  document.getElementById('seg-count').textContent = clients.length;
-
-  // CA total du segment
-  const caTotal = db.factures
-    .filter(f => clients.find(c => c.id === f.clientId) && f.statut === 'payee')
-    .reduce((s, f) => s + parseFloat(f.montant || 0), 0);
-  document.getElementById('seg-ca-total').textContent = caTotal > 0 ? 'CA cumulé : ' + caTotal.toLocaleString('fr-FR') + ' €' : '';
-
-  const tbody = document.getElementById('seg-tbody');
-  if (clients.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" style="padding:40px;text-align:center;color:var(--gris);font-style:italic">Aucune cliente ne correspond à ces critères</td></tr>';
-    return;
-  }
-
-  const progLabels = { alba: 'Programme Alba', aria: 'Programme Aria', ora: 'Programme Ora', initial: 'Programme Initial', approfondi: 'Programme Approfondi', '': 'Consultation unique' };
-
-  tbody.innerHTML = clients.map(c => {
-    const status = getStatusInfo(c);
-    return `<tr style="border-bottom:1px solid var(--grege);transition:background .15s" onmouseover="this.style.background='var(--grege)'" onmouseout="this.style.background=''">
-      <td style="padding:12px 16px;font-size:14px;font-weight:500;cursor:pointer;color:var(--ardoise)" onclick="openFiche('${c.id}')">${c.prenom} ${c.nom || ''}</td>
-      <td style="padding:12px 16px;font-size:13px;color:var(--gris)">${c.age ? c.age + ' ans' : '—'}</td>
-      <td style="padding:12px 16px;font-size:13px;color:var(--gris)">${c.email || '—'}</td>
-      <td style="padding:12px 16px;font-size:13px;color:var(--ardoise);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.motifs || '—'}</td>
-      <td style="padding:12px 16px"><span class="chip" style="font-size:11px">${progLabels[c.programme||''] || c.programme || 'Consultation unique'}</span></td>
-      <td style="padding:12px 16px"><span class="status-badge ${status.class}" style="font-size:11px">${status.label}</span></td>
-      <td style="padding:12px 16px"><button class="btn btn-ghost" style="font-size:11px;padding:5px 12px" onclick="openFiche('${c.id}')">Voir fiche →</button></td>
-    </tr>`;
-  }).join('');
-}
-
-function resetSegment() {
-  ['seg-age', 'seg-programme', 'seg-motif', 'seg-statut', 'seg-search'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.value = '';
-  });
-  renderSegment();
-}
-
-function exportCSV() {
-  const clients = getSegmentedClients();
-  if (clients.length === 0) { showToast('Aucune cliente dans ce segment', 'warning'); return; }
-
-  const progLabels = { alba: 'Programme Alba', aria: 'Programme Aria', ora: 'Programme Ora', initial: 'Programme Initial', approfondi: 'Programme Approfondi' };
-  const headers = ['Prénom', 'Nom', 'Email', 'Téléphone', 'Âge', 'Programme', 'Motifs', 'Axes prioritaires', '1ère consultation', 'Statut', 'Notes'];
-
-  const rows = clients.map(c => {
-    const status = getStatusInfo(c);
-    return [
-      c.prenom || '', c.nom || '', c.email || '', c.tel || '',
-      c.age || '', progLabels[c.programme||''] || 'Consultation unique',
-      c.motifs || '', c.axes || '', c.date1 || '',
-      status.label, (c.notes || '').replace(/\n/g, ' ')
-    ].map(v => '"' + String(v).replace(/"/g, '""') + '"').join(';');
-  });
-
-  const csv = '\uFEFF' + [headers.join(';'), ...rows].join('\n');
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = 'avitaserena_segment_' + today() + '.csv';
-  document.body.appendChild(a); a.click();
-  document.body.removeChild(a); URL.revokeObjectURL(url);
-  showToast('Export CSV téléchargé ✓ (' + clients.length + ' clientes)', 'success');
-}
 
 // ═══════════════════════════════════════════════
 // TOAST

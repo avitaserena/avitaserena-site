@@ -557,9 +557,35 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         </select>
       </div>
 
+      <div style="margin-bottom:16px">
+        <label class="lbl">Depuis combien de temps ressentez-vous ces symptômes ? *</label>
+        <select class="fi" id="f-duree">
+          <option value="">— Choisissez —</option>
+          <option>Quelques semaines</option>
+          <option>2 à 6 mois</option>
+          <option>6 mois à 1 an</option>
+          <option>1 à 3 ans</option>
+          <option>Plus de 3 ans</option>
+        </select>
+      </div>
+
+      <div style="margin-bottom:16px">
+        <label class="lbl">En 3 mots, comment décririez-vous ce que vous vivez ? <span style="font-weight:300;text-transform:none;letter-spacing:0">(optionnel)</span></label>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+          <input class="fi" type="text" id="f-mot1" placeholder="ex : fatigue">
+          <input class="fi" type="text" id="f-mot2" placeholder="ex : ventre">
+          <input class="fi" type="text" id="f-mot3" placeholder="ex : anxiété">
+        </div>
+      </div>
+
+      <div style="margin-bottom:16px">
+        <label class="lbl">Dans 6 mois, comment rêveriez-vous de vous sentir ? <span style="font-weight:300;text-transform:none;letter-spacing:0">(optionnel)</span></label>
+        <textarea class="fi" id="f-objectif" style="min-height:80px" placeholder="Décrivez librement votre idéal de bien-être…"></textarea>
+      </div>
+
       <div>
-        <label class="lbl">Avez-vous quelque chose à préciser ? <span style="font-weight:300;text-transform:none;letter-spacing:0">(optionnel)</span></label>
-        <textarea class="fi" id="f-message" placeholder="Un contexte particulier, une question, un antécédent important à mentionner avant la séance…"></textarea>
+        <label class="lbl">Y a-t-il quelque chose d'important que vous souhaitez que je sache avant notre rendez-vous ? <span style="font-weight:300;text-transform:none;letter-spacing:0">(optionnel)</span></label>
+        <textarea class="fi" id="f-message" placeholder="Un événement récent, un contexte de santé particulier, une chose difficile à aborder en séance…"></textarea>
       </div>
 
       <div style="margin-top:20px;background:var(--or-clair);border:1px solid rgba(155,114,48,.2);border-radius:10px;padding:14px 16px;font-size:12.5px;color:var(--encre);line-height:1.7">
@@ -798,9 +824,17 @@ function allerEtape3() {
   var email = document.getElementById('f-email').value.trim();
   if(!prenom||!nom){showMsg('Prénom et nom obligatoires');return;}
   if(!email||email.indexOf('@')<0){showMsg('Email invalide');return;}
+  var duree=document.getElementById('f-duree').value;
+  if(!duree){showMsg('Merci d\'indiquer depuis combien de temps vous ressentez ces symptômes');return;}
   state.prenom=prenom; state.nom=nom; state.email=email;
   state.tel=document.getElementById('f-tel').value.trim();
   state.motif=document.getElementById('f-motif').value;
+  state.duree=document.getElementById('f-duree').value;
+  var m1=document.getElementById('f-mot1').value.trim();
+  var m2=document.getElementById('f-mot2').value.trim();
+  var m3=document.getElementById('f-mot3').value.trim();
+  state.mots_cles=[m1,m2,m3].filter(Boolean).join(' · ');
+  state.objectif=document.getElementById('f-objectif').value.trim();
   state.message=document.getElementById('f-message').value.trim();
   majRecap();
   allerEtape(3);
@@ -914,6 +948,10 @@ async function lancerPaiement() {
           email: state.email,
           tel: state.tel,
           motif: state.motif,
+          duree_symptomes: state.duree,
+          mots_cles: state.mots_cles,
+          objectif_6mois: state.objectif,
+          message: state.message,
           prestation: state.prestaLabel
         }
       })

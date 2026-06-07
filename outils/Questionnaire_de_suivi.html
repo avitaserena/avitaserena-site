@@ -983,10 +983,30 @@ function captureSnapshot() {
   return snap;
 }
 
+/* ── Supabase ── */
+const SUPA_S_URL = 'https://bqhkdndwldwqacrrbbig.supabase.co';
+const SUPA_S_KEY = 'sb_publishable_LqUmkNboVtPQkEns2C3R1g_O0WHmrI1';
+async function saveQuestionnaireSupabase(snapshot, type) {
+  try {
+    const prenom = document.getElementById('prenom-cliente')?.value?.trim()
+                || document.querySelector('input[placeholder*="Prénom"]')?.value?.trim()
+                || 'Inconnue';
+    await fetch(SUPA_S_URL + '/rest/v1/questionnaires', {
+      method: 'POST',
+      headers: { 'apikey': SUPA_S_KEY, 'Authorization': 'Bearer ' + SUPA_S_KEY,
+        'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ id: (type||'suivi') + '_' + Date.now(), type: type||'suivi',
+        prenom, snapshot, created_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+    });
+  } catch(e) { console.warn('Supabase suivi:', e); }
+}
+
 function autoSave() {
   if (!formTouched) return;
   try {
-    localStorage.setItem(SAVE_KEY, JSON.stringify({ ts: Date.now(), data: captureSnapshot() }));
+    const snap = captureSnapshot();
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ ts: Date.now(), data: snap }));
+    saveQuestionnaireSupabase(snap, 'suivi_draft');
     showAutosave();
   } catch(e) {}
 }
@@ -1017,7 +1037,9 @@ function fermerPause() { document.getElementById('pause-overlay').style.display 
 
 function sauvegarderMaintenant() {
   try {
-    localStorage.setItem(SAVE_KEY, JSON.stringify({ ts: Date.now(), data: captureSnapshot() }));
+    const snap = captureSnapshot();
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ ts: Date.now(), data: snap }));
+    saveQuestionnaireSupabase(snap, 'suivi_pause');
     formTouched = false;
     const t = new Date().toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'});
     document.getElementById('pause-info').textContent = '✅ Sauvegardé à ' + t + ' — vous pouvez fermer';
@@ -1156,6 +1178,7 @@ function finalise() {
   try {
     localStorage.setItem('avita_session', JSON.stringify(session));
     localStorage.setItem('avita_suivi_session', JSON.stringify(session));
+    saveQuestionnaireSupabase(captureSnapshot(), 'suivi');
     formTouched = false;
     showToast('✓ Données exportées — ouverture du générateur…');
     setTimeout(() => window.open('generateur.html', '_blank'), 800);
