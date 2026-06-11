@@ -1,0 +1,1214 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Protocole d'Hygiène Vitale — Avita Serena</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500;1,600&family=Be+Vietnam+Pro:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+
+/* ═══════════════════════════════════════════════
+   VARIABLES
+═══════════════════════════════════════════════ */
+:root {
+  --ardoise:   #1E1E1C;
+  --ocre:      #B4906A;
+  --sable:     #C4A882;
+  --grege:     #EDE9E1;
+  --taupe:     #D5CFC6;
+  --gris:      #6B6560;
+  --off:       #F7F6F4;
+  --blanc:     #FFFFFF;
+  --or:        #9B7230;
+
+  --vert:      #3D6B2C;
+  --vert-cl:   #EAF0E6;
+  --vert-bg:   #F3F8F1;
+
+  --violet:    #5C4578;
+  --violet-cl: #EEE8F5;
+  --violet-bg: #F7F4FB;
+
+  --bleu:      #2C5E8A;
+  --bleu-cl:   #E4EFF8;
+  --bleu-bg:   #F1F7FC;
+
+  --or-acc:    #8B6010;
+  --or-cl:     #FBF3E8;
+  --or-bg:     #FEFAF4;
+
+  --rose:      #7A3A52;
+  --rose-cl:   #F5E8EE;
+  --rose-bg:   #FCF5F8;
+}
+
+/* ═══════════════════════════════════════════════
+   BASE SCREEN
+═══════════════════════════════════════════════ */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  font-family: 'Be Vietnam Pro', sans-serif;
+  font-size: 16px;
+  color: var(--ardoise);
+  background: #D8D4CC;
+}
+
+body {
+  padding: 32px 0 60px;
+}
+
+/* ═══════════════════════════════════════════════
+   TOOLBAR (masquée à l'impression)
+═══════════════════════════════════════════════ */
+.toolbar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  background: var(--ardoise);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 24px;
+  gap: 12px;
+}
+.toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.toolbar-logo .avita { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 18px; color: #fff; }
+.toolbar-logo .serena { font-family: 'Be Vietnam Pro', sans-serif; font-weight: 800; font-size: 18px; color: #fff; }
+.toolbar-sep { width: 1px; height: 20px; background: rgba(255,255,255,.2); }
+.toolbar-tag { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--sable); font-weight: 500; }
+.toolbar-right { display: flex; gap: 8px; align-items: center; }
+.btn-print {
+  background: var(--ocre);
+  color: #fff;
+  border: none;
+  border-radius: 99px;
+  padding: 9px 22px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: 'Be Vietnam Pro', sans-serif;
+  display: flex; align-items: center; gap: 7px;
+  transition: opacity .15s;
+}
+.btn-print:hover { opacity: .85; }
+.btn-back {
+  background: transparent;
+  color: rgba(255,255,255,.7);
+  border: 1px solid rgba(255,255,255,.25);
+  border-radius: 99px;
+  padding: 8px 18px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: 'Be Vietnam Pro', sans-serif;
+  transition: all .15s;
+}
+.btn-back:hover { color: #fff; border-color: rgba(255,255,255,.6); }
+.print-tip {
+  font-size: 11px;
+  color: rgba(255,255,255,.45);
+  max-width: 260px;
+  text-align: right;
+  line-height: 1.4;
+}
+
+/* ═══════════════════════════════════════════════
+   DOCUMENT WRAPPER
+═══════════════════════════════════════════════ */
+.doc-wrap {
+  margin: 56px auto 0;
+  max-width: 794px; /* A4 */
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* ═══════════════════════════════════════════════
+   PAGE A4
+═══════════════════════════════════════════════ */
+.page {
+  width: 794px;
+  min-height: 1123px;
+  background: var(--blanc);
+  box-shadow: 0 4px 32px rgba(0,0,0,.18);
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+/* ═══════════════════════════════════════════════
+   PAGE DE GARDE
+═══════════════════════════════════════════════ */
+.cover-page {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Bandeau haut */
+.cover-top {
+  background: var(--ardoise);
+  padding: 36px 52px 32px;
+  position: relative;
+}
+.cover-top::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(to right, var(--taupe), var(--sable), var(--ocre), var(--sable), var(--taupe));
+}
+
+.cover-logo-line {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+  margin-bottom: 6px;
+}
+.cover-logo-avita {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 32px;
+  color: #fff;
+  font-weight: 400;
+  letter-spacing: -.5px;
+}
+.cover-logo-serena {
+  font-family: 'Be Vietnam Pro', sans-serif;
+  font-weight: 800;
+  font-size: 32px;
+  color: #fff;
+}
+.cover-tagline {
+  font-size: 10px;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: var(--sable);
+  font-weight: 500;
+}
+.cover-date {
+  position: absolute;
+  top: 38px; right: 52px;
+  font-size: 11px;
+  color: rgba(255,255,255,.45);
+  letter-spacing: .06em;
+}
+
+/* Corps de couverture */
+.cover-body {
+  flex: 1;
+  padding: 52px 52px 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.cover-label {
+  font-size: 10px;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: var(--ocre);
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.cover-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-weight: 300;
+  font-size: 42px;
+  color: var(--ardoise);
+  line-height: 1.1;
+  letter-spacing: -.5px;
+  margin-bottom: 6px;
+}
+.cover-title em {
+  font-style: italic;
+  color: var(--ocre);
+}
+
+.cover-prenom {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 56px;
+  color: var(--ardoise);
+  font-weight: 300;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+
+.cover-sous-titre {
+  font-size: 13px;
+  color: var(--gris);
+  letter-spacing: .06em;
+  margin-bottom: 40px;
+}
+
+/* Ligne décorative */
+.cover-rule {
+  width: 80px;
+  height: 2px;
+  background: linear-gradient(to right, var(--ocre), var(--sable));
+  margin-bottom: 32px;
+}
+
+/* Encadré intro */
+.cover-intro {
+  background: var(--grege);
+  border-left: 3px solid var(--ocre);
+  border-radius: 0 10px 10px 0;
+  padding: 20px 24px;
+  margin-bottom: 36px;
+}
+.cover-intro p {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 17px;
+  color: var(--ardoise);
+  line-height: 1.75;
+}
+
+/* Promesse */
+.cover-promise {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 40px;
+}
+.promise-item {
+  background: var(--off);
+  border-radius: 10px;
+  padding: 16px 14px;
+  border-top: 3px solid var(--taupe);
+}
+.promise-item.accent-vert { border-top-color: var(--vert); }
+.promise-item.accent-ocre { border-top-color: var(--ocre); }
+.promise-item.accent-violet { border-top-color: var(--violet); }
+.promise-icon { font-size: 18px; margin-bottom: 8px; }
+.promise-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ardoise);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  margin-bottom: 5px;
+}
+.promise-text {
+  font-size: 12px;
+  color: var(--gris);
+  line-height: 1.6;
+}
+
+/* Bas de couverture */
+.cover-footer {
+  margin-top: auto;
+  padding: 24px 52px;
+  border-top: 1px solid var(--grege);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.cover-footer-left {
+  font-size: 12px;
+  color: var(--gris);
+  line-height: 1.6;
+}
+.cover-footer-right {
+  font-size: 10px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--taupe);
+  text-align: right;
+}
+
+/* Disclaimer */
+.cover-disclaimer {
+  background: var(--off);
+  border-top: 1px solid var(--grege);
+  padding: 14px 52px;
+  font-size: 10px;
+  color: var(--gris);
+  line-height: 1.6;
+  font-style: italic;
+}
+
+/* ═══════════════════════════════════════════════
+   PAGE CONTENU
+═══════════════════════════════════════════════ */
+.content-page {
+  padding: 0;
+}
+
+/* En-tête de page contenu */
+.page-header {
+  background: var(--ardoise);
+  padding: 14px 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.page-header::after {
+  content: '';
+  display: block;
+  position: absolute;
+  top: 48px; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(to right, var(--taupe), var(--sable), var(--ocre), var(--sable), var(--taupe));
+}
+.ph-logo { display: flex; align-items: baseline; gap: 2px; }
+.ph-logo .avita { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 14px; color: rgba(255,255,255,.8); }
+.ph-logo .serena { font-family: 'Be Vietnam Pro', sans-serif; font-weight: 800; font-size: 14px; color: rgba(255,255,255,.8); }
+.ph-prenom { font-size: 11px; color: var(--sable); letter-spacing: .08em; }
+.ph-page { font-size: 10px; color: rgba(255,255,255,.35); }
+
+/* Corps de page */
+.page-body {
+  padding: 36px 52px 32px;
+}
+
+/* Pied de page */
+.page-footer {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  padding: 10px 52px;
+  border-top: 1px solid var(--grege);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 9px;
+  color: var(--taupe);
+  letter-spacing: .06em;
+}
+
+/* ═══════════════════════════════════════════════
+   BLOCS DE CONTENU
+═══════════════════════════════════════════════ */
+
+/* Titre de section */
+.section-block {
+  margin-bottom: 28px;
+}
+
+.section-eyebrow {
+  font-size: 9px;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  font-weight: 700;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.section-eyebrow::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: currentColor;
+  opacity: .25;
+}
+
+.section-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-weight: 500;
+  font-size: 26px;
+  color: var(--ardoise);
+  line-height: 1.2;
+  margin-bottom: 18px;
+  letter-spacing: -.3px;
+}
+
+/* Pilier card */
+.pilier-card {
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.pilier-card-hdr {
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.pilier-card-hdr-icon {
+  font-size: 16px;
+  line-height: 1;
+}
+.pilier-card-hdr-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+
+.pilier-card-body {
+  padding: 18px 20px 20px;
+  background: var(--blanc);
+  border: 1px solid;
+  border-top: none;
+  border-radius: 0 0 12px 12px;
+}
+
+/* Couleurs piliers */
+.pc-alim .pilier-card-hdr { background: var(--vert-cl); }
+.pc-alim .pilier-card-hdr-title { color: var(--vert); }
+.pc-alim .pilier-card-body { border-color: var(--vert-cl); }
+
+.pc-psy .pilier-card-hdr { background: var(--violet-cl); }
+.pc-psy .pilier-card-hdr-title { color: var(--violet); }
+.pc-psy .pilier-card-body { border-color: var(--violet-cl); }
+
+.pc-sport .pilier-card-hdr { background: var(--bleu-cl); }
+.pc-sport .pilier-card-hdr-title { color: var(--bleu); }
+.pc-sport .pilier-card-body { border-color: var(--bleu-cl); }
+
+.pc-compl .pilier-card-hdr { background: var(--or-cl); }
+.pc-compl .pilier-card-hdr-title { color: var(--or-acc); }
+.pc-compl .pilier-card-body { border-color: var(--or-cl); }
+
+.pc-bilan .pilier-card-hdr { background: var(--rose-cl); }
+.pc-bilan .pilier-card-hdr-title { color: var(--rose); }
+.pc-bilan .pilier-card-body { border-color: var(--rose-cl); }
+
+.pc-autre .pilier-card-hdr { background: var(--grege); }
+.pc-autre .pilier-card-hdr-title { color: var(--gris); }
+.pc-autre .pilier-card-body { border-color: var(--grege); }
+
+/* Texte de contenu */
+.content-text {
+  font-size: 13.5px;
+  line-height: 1.85;
+  color: var(--ardoise);
+}
+.content-text p {
+  margin-bottom: 12px;
+}
+.content-text p:last-child {
+  margin-bottom: 0;
+}
+
+/* Bullets */
+.content-bullets {
+  list-style: none;
+  margin: 8px 0 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.content-bullets li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--ardoise);
+}
+.bullet-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ocre);
+  flex-shrink: 0;
+  margin-top: 7px;
+}
+
+/* Encadré spécial */
+.callout {
+  border-radius: 10px;
+  padding: 16px 18px;
+  margin: 16px 0;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.callout-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+.callout-text { font-size: 12.5px; line-height: 1.7; }
+.callout.style-sage { background: var(--vert-bg); border-left: 3px solid var(--vert); }
+.callout.style-gold { background: var(--or-bg); border-left: 3px solid var(--or-acc); }
+.callout.style-warm { background: var(--rose-bg); border-left: 3px solid var(--rose); }
+.callout.style-info { background: var(--bleu-bg); border-left: 3px solid var(--bleu); }
+
+/* Quote bloc */
+.quote-block {
+  background: var(--grege);
+  border-radius: 12px;
+  padding: 22px 28px;
+  margin: 16px 0;
+  position: relative;
+}
+.quote-block::before {
+  content: '\201C';
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 64px;
+  color: var(--sable);
+  position: absolute;
+  top: 4px; left: 18px;
+  line-height: 1;
+}
+.quote-block p {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 17px;
+  line-height: 1.75;
+  color: var(--ardoise);
+  padding-left: 24px;
+}
+
+/* Timeline rituels */
+.ritual-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 8px 0;
+}
+.ritual-item {
+  background: var(--off);
+  border-radius: 8px;
+  padding: 14px 14px;
+  border-top: 2px solid var(--taupe);
+}
+.ritual-time {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--ocre);
+  margin-bottom: 8px;
+}
+.ritual-item ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ritual-item ul li {
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--ardoise);
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+.ritual-item ul li::before {
+  content: '→';
+  color: var(--sable);
+  flex-shrink: 0;
+  font-size: 11px;
+  margin-top: 1px;
+}
+
+/* Signaux timeline */
+.signal-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 8px 0;
+}
+.signal-item {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+.signal-period {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--ocre);
+  white-space: nowrap;
+  padding-top: 3px;
+  min-width: 80px;
+}
+.signal-content {
+  font-size: 12.5px;
+  line-height: 1.65;
+  color: var(--ardoise);
+  flex: 1;
+  border-left: 2px solid var(--grege);
+  padding-left: 14px;
+}
+
+/* ═══════════════════════════════════════════════
+   PAGE FIN — FICHE MÉMO
+═══════════════════════════════════════════════ */
+.memo-page .page-body {
+  padding-bottom: 80px;
+}
+.memo-intro {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 16px;
+  color: var(--gris);
+  line-height: 1.75;
+  margin-bottom: 24px;
+}
+.memo-group {
+  margin-bottom: 18px;
+}
+.memo-group-title {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--gris);
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--grege);
+  margin-bottom: 10px;
+}
+.memo-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 8px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--ardoise);
+}
+.memo-check {
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid var(--taupe);
+  border-radius: 4px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.memo-note-area {
+  background: var(--off);
+  border-radius: 10px;
+  border: 1px dashed var(--taupe);
+  padding: 14px 16px;
+  margin-top: 20px;
+}
+.memo-note-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--gris);
+  margin-bottom: 8px;
+}
+.memo-note-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.memo-note-lines .line {
+  height: 1px;
+  background: var(--taupe);
+  opacity: .5;
+}
+
+/* Signature finale */
+.signature-block {
+  text-align: center;
+  padding: 28px 0 20px;
+  border-top: 1px solid var(--grege);
+  margin-top: 32px;
+}
+.sig-logo { display: flex; align-items: baseline; gap: 2px; justify-content: center; margin-bottom: 6px; }
+.sig-logo .avita { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 22px; color: var(--ardoise); }
+.sig-logo .serena { font-family: 'Be Vietnam Pro', sans-serif; font-weight: 800; font-size: 22px; color: var(--ardoise); }
+.sig-sub { font-size: 11px; color: var(--gris); letter-spacing: .1em; }
+
+/* ═══════════════════════════════════════════════
+   PRINT STYLES
+═══════════════════════════════════════════════ */
+@media print {
+  @page { margin: 0; size: A4; }
+  html { background: white; font-size: 14px; }
+  body { padding: 0; }
+  .toolbar { display: none !important; }
+  .doc-wrap { margin-top: 0; }
+  .page {
+    width: 100%;
+    min-height: auto;
+    box-shadow: none;
+    margin-bottom: 0;
+    page-break-after: always;
+  }
+  .page:last-child { page-break-after: auto; }
+  .page-body { padding-bottom: 52px; }
+  .section-block { page-break-inside: avoid; }
+  .pilier-card { page-break-inside: avoid; }
+  .callout { page-break-inside: avoid; }
+}
+
+/* ═══════════════════════════════════════════════
+   LOADING / ERROR
+═══════════════════════════════════════════════ */
+#loading {
+  position: fixed; inset: 0;
+  background: var(--ardoise);
+  display: flex; align-items: center; justify-content: center;
+  flex-direction: column; gap: 16px;
+  z-index: 9999;
+}
+.spinner {
+  width: 36px; height: 36px;
+  border: 2px solid rgba(255,255,255,.15);
+  border-top-color: var(--ocre);
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 18px;
+  color: rgba(255,255,255,.6);
+}
+
+#error-state {
+  display: none;
+  text-align: center; padding: 80px 24px; color: var(--gris);
+}
+</style>
+</head>
+<body>
+
+<!-- TOOLBAR -->
+<div class="toolbar">
+  <div class="toolbar-left">
+    <div class="toolbar-logo"><span class="avita">avita</span><span class="serena">serena</span></div>
+    <div class="toolbar-sep"></div>
+    <div class="toolbar-tag">Protocole d'Hygiène Vitale</div>
+  </div>
+  <div class="toolbar-right">
+    <span class="print-tip">Fichier → Imprimer → Enregistrer en PDF<br>Désactiver les en-têtes/pieds de page</span>
+    <button class="btn-back" onclick="history.back()">← Retour</button>
+    <button class="btn-print" onclick="window.print()">🖨 Télécharger le PDF</button>
+  </div>
+</div>
+
+<!-- LOADING -->
+<div id="loading">
+  <div class="spinner"></div>
+  <div class="loading-text">Mise en page du protocole…</div>
+</div>
+
+<!-- DOCUMENT -->
+<div class="doc-wrap" id="doc-wrap" style="display:none"></div>
+
+<script>
+/* ═══════════════════════════════════════════════
+   DONNÉES
+═══════════════════════════════════════════════ */
+let data = null;
+let blocks = [];
+
+const PILIER_CSS = {
+  alimentation: 'pc-alim',
+  psychologie:  'pc-psy',
+  activite:     'pc-sport',
+  complements:  'pc-compl',
+  bilan:        'pc-bilan',
+  autre:        'pc-autre',
+};
+const PILIER_ICONS = {
+  alimentation: '🌿',
+  psychologie:  '🧠',
+  activite:     '🏃',
+  complements:  '✦',
+  bilan:        '📊',
+  autre:        '—',
+};
+const PILIER_LABELS = {
+  alimentation: 'Alimentation',
+  psychologie:  'Psychologie & émotions',
+  activite:     'Activité physique',
+  complements:  'Compléments ciblés',
+  bilan:        'Bilan & suivi',
+  autre:        'Autre',
+};
+const SECTION_COLORS = {
+  alimentation: '#3D6B2C',
+  psychologie:  '#5C4578',
+  activite:     '#2C5E8A',
+  complements:  '#8B6010',
+  bilan:        '#7A3A52',
+  autre:        '#6B6560',
+};
+const EYEBROW_NAMES = {
+  s1: 'Comprendre votre terrain',
+  s2: 'Vos axes de travail',
+  s3: 'Votre protocole',
+  s4: 'Alimentation au quotidien',
+  s5: 'Votre semaine type',
+  s6: 'Ce que vous allez ressentir',
+};
+
+function escH(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+/* ═══════════════════════════════════════════════
+   PARSING DU CONTENU
+═══════════════════════════════════════════════ */
+function parseContent(raw) {
+  // Détecter les blocs de rituels (MATIN / SOIR / EN JOURNÉE / HEBDOMADAIRE)
+  const ritualMatch = raw.match(/(MATIN|SOIR|EN JOURNÉE|HEBDOMADAIRE|matin|soir|en journée|hebdomadaire)/i);
+  if (ritualMatch) return renderRituals(raw);
+
+  // Détecter les signaux temporels (semaines / mois)
+  const signalMatch = raw.match(/(semaine|À \d|En \d|après \d)/i);
+  if (signalMatch && raw.includes('•')) {
+    return renderSignals(raw);
+  }
+
+  // Rendu standard : paragraphes + bullets
+  return renderParagraphs(raw);
+}
+
+function renderParagraphs(raw) {
+  const lines = raw.split('\n');
+  let html = '';
+  let inBullets = false;
+  let bulletColor = 'var(--ocre)';
+
+  for (const line of lines) {
+    const l = line.trim();
+    if (!l) {
+      if (inBullets) { html += '</ul>'; inBullets = false; }
+      continue;
+    }
+    if (/^[•·\-–→*]/.test(l)) {
+      if (!inBullets) { html += '<ul class="content-bullets">'; inBullets = true; }
+      const text = escH(l.replace(/^[•·\-–→*]\s*/,''));
+      html += `<li><span class="bullet-dot" style="background:${bulletColor}"></span><span>${text}</span></li>`;
+    } else {
+      if (inBullets) { html += '</ul>'; inBullets = false; }
+      // Détecter sous-titres en majuscules (ex: [PILIER 1 — ALIMENTATION])
+      if (/^\[.+\]$/.test(l) || /^[A-ZÀÉÈÊÎÏ\s&–—\[\]]+$/.test(l) && l.length < 60) {
+        const clean = l.replace(/^\[|\]$/g,'');
+        html += `<div style="font-size:10px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--ocre);margin:16px 0 8px;padding-bottom:5px;border-bottom:1px solid var(--grege)">${escH(clean)}</div>`;
+      } else {
+        html += `<p>${escH(l)}</p>`;
+      }
+    }
+  }
+  if (inBullets) html += '</ul>';
+  return `<div class="content-text">${html}</div>`;
+}
+
+function renderRituals(raw) {
+  // Extraire les sections rituels
+  const sections = [];
+  let current = null;
+  for (const line of raw.split('\n')) {
+    const l = line.trim();
+    if (!l) continue;
+    const isHeader = /^(MATIN|SOIR|EN JOURNÉE|HEBDOMADAIRE)/i.test(l) && l.length < 50;
+    if (isHeader) {
+      if (current) sections.push(current);
+      current = { time: l.replace(/[:\s*]+$/, '').replace(/\*/g,''), items: [] };
+    } else if (current && /^[•·\-–→*]/.test(l)) {
+      current.items.push(l.replace(/^[•·\-–→*]\s*/,''));
+    } else if (!current) {
+      // Intro avant les rituels
+      sections.push({ intro: l });
+    }
+  }
+  if (current) sections.push(current);
+
+  let html = '';
+  const introItems = sections.filter(s => s.intro);
+  const ritualItems = sections.filter(s => s.time);
+
+  if (introItems.length) {
+    html += `<div class="content-text">${introItems.map(s=>`<p>${escH(s.intro)}</p>`).join('')}</div>`;
+  }
+
+  if (ritualItems.length) {
+    html += '<div class="ritual-grid">';
+    for (const s of ritualItems) {
+      html += `<div class="ritual-item">
+        <div class="ritual-time">${escH(s.time)}</div>
+        <ul>${s.items.map(i=>`<li>${escH(i)}</li>`).join('')}</ul>
+      </div>`;
+    }
+    html += '</div>';
+  }
+
+  // Reste non parsé
+  const unparsed = sections.filter(s => !s.intro && !s.time);
+  if (unparsed.length) {
+    html += `<div class="content-text">${unparsed.map(s=>`<p>${escH(s.intro||'')}</p>`).join('')}</div>`;
+  }
+
+  return html;
+}
+
+function renderSignals(raw) {
+  const lines = raw.split('\n').filter(l=>l.trim());
+  let html = '<div class="signal-list">';
+  let currentPeriod = '';
+  let currentItems = [];
+
+  function flush() {
+    if (!currentPeriod && !currentItems.length) return;
+    html += `<div class="signal-item">
+      <div class="signal-period">${escH(currentPeriod)}</div>
+      <div class="signal-content">${currentItems.map(i=>`• ${escH(i)}`).join('<br>')}</div>
+    </div>`;
+    currentItems = [];
+  }
+
+  for (const line of lines) {
+    const l = line.trim();
+    const isPeriod = /^(En |À |Après |Si |Dès )/i.test(l) && !/^[•·\-–→*]/.test(l);
+    if (isPeriod) {
+      flush();
+      currentPeriod = l.replace(/:$/, '');
+    } else if (/^[•·\-–→*]/.test(l)) {
+      currentItems.push(l.replace(/^[•·\-–→*]\s*/,''));
+    } else {
+      flush();
+      currentPeriod = l;
+    }
+  }
+  flush();
+  html += '</div>';
+  return html;
+}
+
+/* ═══════════════════════════════════════════════
+   CONSTRUCTION DU DOCUMENT
+═══════════════════════════════════════════════ */
+function buildDoc() {
+  const wrap = document.getElementById('doc-wrap');
+  const cl = data._client;
+  const dateStr = new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'});
+  const prenom = cl.prenom || 'Cliente';
+
+  let pages = [];
+
+  // ── PAGE 1 : COUVERTURE ──
+  pages.push(buildCoverPage(cl, dateStr));
+
+  // ── PAGES CONTENU (blocs) ──
+  // Regrouper les blocs par 2 ou seuls selon longueur
+  let pageNum = 2;
+  let i = 0;
+  while (i < blocks.length) {
+    const b = blocks[i];
+    const content = parseContent(b.content || '');
+    pages.push(buildContentPage(b, content, prenom, pageNum));
+    pageNum++;
+    i++;
+  }
+
+  // ── DERNIÈRE PAGE : FICHE MÉMO ──
+  pages.push(buildMemoPage(prenom, pageNum));
+
+  wrap.innerHTML = pages.join('');
+}
+
+function buildCoverPage(cl, dateStr) {
+  const prenom = cl.prenom || 'Cliente';
+  const sousTitre = data.sous_titre || `Protocole d'Hygiène Vitale · Avita Serena`;
+
+  return `
+<div class="page cover-page">
+  <div class="cover-top">
+    <div class="cover-logo-line">
+      <span class="cover-logo-avita">avita</span><span class="cover-logo-serena">serena</span>
+    </div>
+    <div class="cover-tagline">Naturopathie · Santé Féminine · Corse</div>
+    <div class="cover-date">${dateStr}</div>
+  </div>
+
+  <div class="cover-body">
+    <div class="cover-label">Protocole d'Hygiène Vitale</div>
+
+    <div class="cover-prenom">${escH(prenom)}</div>
+    <div class="cover-title">Votre feuille de route <em>vers le mieux-être</em></div>
+    <div class="cover-sous-titre">${escH(sousTitre)}</div>
+
+    <div class="cover-rule"></div>
+
+    <div class="cover-intro">
+      <p>Ce protocole a été conçu uniquement pour vous, à partir de tout ce que vous m'avez partagé. Il n'est pas une liste de contraintes — c'est une invitation à prendre soin de vous, à votre rythme. Lisez-le comme une lettre, pas comme une ordonnance.</p>
+    </div>
+
+    <div class="cover-promise">
+      <div class="promise-item accent-vert">
+        <div class="promise-icon">🌱</div>
+        <div class="promise-title">À votre rythme</div>
+        <div class="promise-text">Pas besoin de tout mettre en place d'un coup. Chaque petit geste compte et s'accumule.</div>
+      </div>
+      <div class="promise-item accent-ocre">
+        <div class="promise-icon">🔎</div>
+        <div class="promise-title">Observez & notez</div>
+        <div class="promise-text">Notez ce que vous ressentez : les améliorations, les difficultés, vos questions.</div>
+      </div>
+      <div class="promise-item accent-violet">
+        <div class="promise-icon">🔄</div>
+        <div class="promise-title">On réévalue ensemble</div>
+        <div class="promise-text">Ce protocole évolue avec vous. La consultation de suivi est là pour l'adapter.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cover-footer">
+    <div class="cover-footer-left">
+      <strong>Sabrina Castelli</strong><br>
+      Naturopathe · Avita Serena · Porto-Vecchio, Corse
+    </div>
+    <div class="cover-footer-right">
+      Consultation en visioconférence<br>
+      avitaserena.com · @avitaserena
+    </div>
+  </div>
+
+  <div class="cover-disclaimer">
+    Ce document est un outil d'accompagnement naturopathique personnalisé. Il ne se substitue pas à l'avis de votre médecin. En cas de doute ou d'interaction médicamenteuse, consultez votre médecin traitant. Avita Serena — Sabrina Castelli, Naturopathe.
+  </div>
+</div>`;
+}
+
+function buildContentPage(b, contentHtml, prenom, pageNum) {
+  const pcClass = PILIER_CSS[b.pilier] || 'pc-autre';
+  const icon = PILIER_ICONS[b.pilier] || '—';
+  const label = PILIER_LABELS[b.pilier] || 'Autre';
+  const accentColor = SECTION_COLORS[b.pilier] || '#6B6560';
+
+  return `
+<div class="page content-page">
+  <div class="page-header" style="position:relative">
+    <div class="ph-logo"><span class="avita">avita</span><span class="serena">serena</span></div>
+    <div class="ph-prenom">${escH(prenom)}</div>
+    <div class="ph-page">${pageNum}</div>
+  </div>
+  <div style="height:2px;background:linear-gradient(to right,var(--taupe),var(--sable),var(--ocre),var(--sable),var(--taupe))"></div>
+
+  <div class="page-body">
+    <div class="section-block">
+      <div class="section-eyebrow" style="color:${accentColor}">
+        ${icon} &nbsp;${escH(label)}
+      </div>
+      <div class="section-title">${escH(b.title || '')}</div>
+
+      <div class="pilier-card ${pcClass}">
+        <div class="pilier-card-body">
+          ${contentHtml}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <span>Protocole d'Hygiène Vitale · ${escH(prenom)}</span>
+    <span>Avita Serena · Sabrina Castelli, Naturopathe</span>
+    <span>${pageNum}</span>
+  </div>
+</div>`;
+}
+
+function buildMemoPage(prenom, pageNum) {
+  // Extraire les bullets de tous les blocs pour la fiche mémo
+  const groups = {};
+  for (const b of blocks) {
+    if (!b.content) continue;
+    const lines = b.content.split('\n').filter(l => /^[•·\-–→*]/.test(l.trim()));
+    const pilier = b.pilier || 'autre';
+    if (!groups[pilier]) groups[pilier] = { title: PILIER_LABELS[pilier], items: [] };
+    for (const l of lines) {
+      const text = l.trim().replace(/^[•·\-–→*]\s*/,'');
+      if (text.length > 6) groups[pilier].items.push(text);
+    }
+  }
+
+  const pilierOrder = ['alimentation','psychologie','activite','complements','bilan','autre'];
+  let memoHtml = '';
+  for (const p of pilierOrder) {
+    if (!groups[p] || !groups[p].items.length) continue;
+    memoHtml += `<div class="memo-group">
+      <div class="memo-group-title">${PILIER_ICONS[p]} &nbsp;${groups[p].title}</div>`;
+    for (const item of groups[p].items) {
+      memoHtml += `<div class="memo-item">
+        <div class="memo-check"></div>
+        <span>${escH(item)}</span>
+      </div>`;
+    }
+    memoHtml += `</div>`;
+  }
+
+  return `
+<div class="page content-page memo-page">
+  <div class="page-header" style="position:relative">
+    <div class="ph-logo"><span class="avita">avita</span><span class="serena">serena</span></div>
+    <div class="ph-prenom">${escH(prenom)}</div>
+    <div class="ph-page">${pageNum}</div>
+  </div>
+  <div style="height:2px;background:linear-gradient(to right,var(--taupe),var(--sable),var(--ocre),var(--sable),var(--taupe))"></div>
+
+  <div class="page-body">
+    <div class="section-eyebrow" style="color:var(--ocre);margin-bottom:6px">
+      ✓ &nbsp;Votre fiche mémo
+    </div>
+    <div class="section-title">Ce que vous avez mis en place</div>
+
+    <p class="memo-intro">Cochez au fur et à mesure ce que vous avez réussi à intégrer. Lors de notre prochain rendez-vous, apportez cette fiche — elle guidera notre échange et me permettra d'adapter votre protocole.</p>
+
+    ${memoHtml}
+
+    <div class="memo-note-area">
+      <div class="memo-note-label">Vos observations & ressentis</div>
+      <div class="memo-note-lines">
+        <div class="line"></div><div class="line"></div><div class="line"></div>
+        <div class="line"></div><div class="line"></div>
+      </div>
+    </div>
+
+    <div class="callout style-gold" style="margin-top:20px">
+      <span class="callout-icon">💛</span>
+      <div class="callout-text"><strong>N'attendez pas d'avoir tout mis en place pour me recontacter.</strong> Même 2 gestes sur 10, c'est un vrai départ. Ce qui compte, c'est d'observer ce qui fonctionne pour vous — et d'en parler ensemble.</div>
+    </div>
+
+    <div class="signature-block">
+      <div class="sig-logo"><span class="avita">avita</span><span class="serena">serena</span></div>
+      <div class="sig-sub">Naturopathie · Corse · Santé Féminine · avitaserena.com</div>
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <span>Protocole d'Hygiène Vitale · ${escH(prenom)}</span>
+    <span>Avita Serena · Sabrina Castelli, Naturopathe</span>
+    <span>${pageNum}</span>
+  </div>
+</div>`;
+}
+
+/* ═══════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════ */
+function init() {
+  try {
+    const raw = localStorage.getItem('avita_phv_print');
+    if (!raw) throw new Error('no data');
+    const parsed = JSON.parse(raw);
+    data = parsed.data;
+    blocks = parsed.blocks;
+    if (!data || !blocks.length) throw new Error('empty');
+
+    setTimeout(() => {
+      buildDoc();
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('doc-wrap').style.display = 'flex';
+    }, 300);
+  } catch(e) {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('doc-wrap').style.display = 'flex';
+    document.getElementById('doc-wrap').innerHTML = `
+      <div id="error-state" style="display:block;text-align:center;padding:80px 24px;color:var(--gris)">
+        <div style="font-size:40px;margin-bottom:16px">📋</div>
+        <p style="font-size:16px;margin-bottom:8px">Aucun protocole à afficher.</p>
+        <p style="font-size:13px">Retournez dans le <a href="generateur.html" style="color:var(--ocre)">Générateur PHV</a> et cliquez sur "Télécharger le PDF".</p>
+      </div>`;
+  }
+}
+
+init();
+</script>
+</body>
+</html>
