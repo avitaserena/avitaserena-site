@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Générateur de Protocole d'Hygiène Vitale — Avita Serena</title>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --blanc:#FFFFFF;--off:#F7F6F4;--grege:#EDE9E1;--taupe:#D5CFC6;
+  --sable:#C4A882;--ocre:#B4906A;--ardoise:#1E1E1C;--gris:#6B6560;
+  --or-clair:#FBF3E4;--or:#9B7230;
+  --vert-clair:#EAF0E6;--vert:#3D6B2C;
+  --rose-clair:#F5EAEE;--rose:#8A3A52;
+  --rouge-clair:#F9EDEC;--rouge:#8B3A3A;
+  --bleu-clair:#EAF2F8;--bleu:#2C5E8A;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{font-family:'Be Vietnam Pro',sans-serif;color:var(--ardoise);background:var(--off);font-size:16px;line-height:1.65}
+body{max-width:900px;margin:0 auto;padding:0 0 80px}
+
+.hdr{background:var(--blanc);border-bottom:1px solid var(--taupe);padding:18px 36px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 1px 8px rgba(0,0,0,.04)}
+.logo .avita{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:24px;color:var(--ardoise)}
+.logo .serena{font-family:'Be Vietnam Pro',sans-serif;font-weight:800;font-size:24px;color:var(--ardoise)}
+.hdr-tag{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--gris);background:var(--grege);padding:4px 14px;border-radius:99px}
+.hdr-stripe{height:3px;background:linear-gradient(to right,var(--taupe),var(--sable),var(--ocre),var(--sable),var(--taupe))}
+
+.page{padding:28px 36px 40px}
+
+/* ── API BOX ── */
+.api-box{background:var(--blanc);border:1px solid var(--taupe);border-radius:12px;padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.api-box label{font-size:14px;font-weight:600;color:var(--ardoise);white-space:nowrap}
+.api-row{display:flex;gap:8px;flex:1;min-width:260px}
+.api-row input{flex:1;border:1.5px solid var(--taupe);border-radius:8px;padding:10px 14px;font-size:14px;font-family:inherit;color:var(--ardoise);background:var(--off);outline:none;transition:border-color .15s}
+.api-row input:focus{border-color:var(--ocre)}
+.api-btn{padding:10px 18px;background:var(--ardoise);color:var(--blanc);border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-size:13px;font-weight:500}
+
+/* ── SESSION CARD ── */
+.session-card{background:var(--blanc);border:1.5px solid var(--sable);border-radius:14px;padding:20px 24px;margin-bottom:20px}
+.session-card h3{font-size:14px;font-weight:700;color:var(--ardoise);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.session-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.session-item{background:var(--off);border-radius:8px;padding:10px 14px;font-size:13px}
+.session-item strong{display:block;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--gris);margin-bottom:3px}
+.session-item span{color:var(--ardoise);font-weight:500}
+.session-empty{color:var(--gris);font-size:13px;font-style:italic}
+.manual-toggle{font-size:12px;color:var(--ocre);cursor:pointer;text-decoration:underline;margin-top:10px;display:inline-block}
+
+/* ── MANUAL FORM ── */
+.manual-form{display:none;margin-top:16px;border-top:1px solid var(--grege);padding-top:16px}
+.manual-form.open{display:block}
+.mf-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+label.ml{font-size:12px;font-weight:700;color:var(--ardoise);display:block;margin-bottom:5px;letter-spacing:.03em;text-transform:uppercase}
+textarea.mf,input.mf,select.mf{width:100%;border:1.5px solid var(--taupe);border-radius:8px;padding:10px 13px;font-size:14px;font-family:inherit;color:var(--ardoise);background:var(--off);outline:none;resize:vertical;line-height:1.55}
+textarea.mf{min-height:80px}
+textarea.mf:focus,input.mf:focus,select.mf:focus{border-color:var(--ocre);background:var(--blanc)}
+
+/* ── PARAMETRES ── */
+.params-card{background:var(--blanc);border:1px solid var(--taupe);border-radius:12px;padding:18px 22px;margin-bottom:20px}
+.params-card h3{font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ocre);margin-bottom:14px}
+.params-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.p-sel label{font-size:12px;font-weight:600;color:var(--ardoise);display:block;margin-bottom:5px}
+.p-sel select{width:100%;border:1.5px solid var(--taupe);border-radius:8px;padding:9px 12px;font-size:13px;font-family:inherit;color:var(--ardoise);background:var(--off);outline:none;cursor:pointer}
+.p-sel select:focus{border-color:var(--ocre)}
+
+/* ── BOUTON ── */
+.gen-btn{width:100%;background:var(--ardoise);color:var(--blanc);border:none;border-radius:12px;padding:18px;font-size:16px;font-weight:600;cursor:pointer;font-family:inherit;transition:opacity .15s;letter-spacing:.04em;margin-bottom:24px}
+.gen-btn:hover{opacity:.88}
+.gen-btn:disabled{opacity:.35;cursor:not-allowed}
+
+/* ── LOADING ── */
+#loading-wrap{display:none;text-align:center;padding:60px 24px}
+.spinner{width:34px;height:34px;border:2px solid var(--taupe);border-top-color:var(--ardoise);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 18px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-msg{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:20px;color:var(--gris)}
+.loading-sub{font-size:13px;color:var(--gris);margin-top:6px}
+
+/* ── PREVIEW ── */
+#preview-wrap{display:none}
+.prev-hero{background:linear-gradient(135deg,var(--or-clair),var(--grege));border:1.5px solid var(--sable);border-radius:14px;padding:24px 28px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.prev-hero-name{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:26px;color:var(--ardoise)}
+.prev-hero-sub{font-size:13px;color:var(--gris);margin-top:4px}
+.dl-btn{background:var(--ardoise);color:var(--blanc);border:none;border-radius:99px;padding:13px 28px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;transition:opacity .15s}
+.dl-btn:hover{opacity:.85}
+.prev-section{background:var(--blanc);border:1px solid var(--taupe);border-radius:12px;padding:22px 26px;margin-bottom:14px}
+.prev-section h3{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--ocre);font-weight:700;margin-bottom:14px}
+.prev-content{font-size:14px;color:var(--ardoise);line-height:1.8;white-space:pre-wrap}
+.reset-btn{background:var(--blanc);border:1.5px solid var(--taupe);border-radius:99px;padding:10px 24px;font-size:13px;cursor:pointer;color:var(--gris);font-family:inherit;margin-top:12px;transition:all .15s}
+.reset-btn:hover{border-color:var(--ardoise);color:var(--ardoise)}
+
+/* ── NOUVEAUX CHAMPS ── */
+.field-hint{font-size:11px;color:var(--gris);margin-top:4px;line-height:1.4}
+.pilier-note{background:var(--or-clair);border:1px solid rgba(180,144,106,.3);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--or);margin-top:8px;line-height:1.6}
+/* ── BLOCS ÉDITABLES ── */
+.blocks-container{display:flex;flex-direction:column;gap:14px}
+.block-item{background:var(--blanc);border:1.5px solid var(--taupe);border-radius:12px;overflow:hidden;transition:box-shadow .2s,border-color .2s}
+.block-item:hover{border-color:var(--sable);box-shadow:0 3px 14px rgba(0,0,0,.06)}
+.block-item.dragging{opacity:.45;border:2px dashed var(--ocre)}
+.block-item.drag-over{border-color:var(--ocre);box-shadow:0 0 0 3px rgba(180,144,106,.18)}
+.block-hdr{padding:11px 16px;display:flex;align-items:center;gap:9px;background:var(--off);border-bottom:1px solid var(--grege)}
+.block-drag{cursor:grab;color:var(--taupe);font-size:15px;user-select:none;flex-shrink:0}
+.block-drag:active{cursor:grabbing}
+.block-num{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;background:var(--ardoise);color:var(--blanc)}
+.block-title-inp{flex:1;border:none;background:transparent;font-family:'Be Vietnam Pro',sans-serif;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ardoise);outline:none;padding:2px 0}
+.block-title-inp:focus{border-bottom:1px dashed var(--ocre)}
+.block-acts{display:flex;gap:5px;margin-left:auto;flex-shrink:0}
+.block-btn{background:transparent;border:none;cursor:pointer;padding:3px 7px;border-radius:5px;font-size:12px;color:var(--gris);font-family:inherit;transition:all .15s}
+.block-btn:hover{background:var(--grege);color:var(--ardoise)}
+.block-btn.del:hover{background:var(--rouge-clair);color:var(--rouge)}
+.block-body{padding:14px 16px}
+.block-textarea{width:100%;min-height:90px;border:1.5px solid transparent;border-radius:7px;padding:9px 11px;font-size:13.5px;font-family:'Be Vietnam Pro',sans-serif;line-height:1.8;color:var(--ardoise);background:transparent;outline:none;resize:vertical;transition:border-color .15s,background .15s}
+.block-textarea:focus{border-color:var(--taupe);background:var(--off)}
+.block-pilier-sel{margin-top:7px}
+.block-pilier-sel select{font-size:11px;font-family:inherit;border:1px solid var(--taupe);border-radius:5px;padding:3px 7px;background:var(--off);color:var(--gris);outline:none;cursor:pointer}
+.block-item[data-pilier="alimentation"] .block-hdr{background:#EAF0E6}
+.block-item[data-pilier="alimentation"] .block-num{background:#3D6B2C}
+.block-item[data-pilier="psychologie"] .block-hdr{background:#F0EAF8}
+.block-item[data-pilier="psychologie"] .block-num{background:#6B4E8A}
+.block-item[data-pilier="activite"] .block-hdr{background:#EAF2F8}
+.block-item[data-pilier="activite"] .block-num{background:#2C5E8A}
+.block-item[data-pilier="complements"] .block-hdr{background:var(--or-clair)}
+.block-item[data-pilier="complements"] .block-num{background:var(--or)}
+.block-item[data-pilier="bilan"] .block-hdr{background:var(--rose-clair)}
+.block-item[data-pilier="bilan"] .block-num{background:var(--rose)}
+/* ── PARAMS ÉTENDU ── */
+.params-section-lbl{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;padding:14px 0 8px;margin-top:8px;border-top:1px solid var(--grege);color:var(--ocre);display:flex;align-items:center;gap:8px}
+.params-section-lbl:first-child{border-top:none;padding-top:0;margin-top:0}
+.params-section-lbl .ps-icon{font-size:14px}
+.params-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:4px}
+.params-grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:4px}
+.params-grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:4px}
+.p-toggle-group{display:flex;flex-wrap:wrap;gap:7px;margin-top:2px}
+.p-toggle{padding:7px 14px;border-radius:99px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid var(--taupe);background:var(--blanc);color:var(--gris);font-family:'Be Vietnam Pro',sans-serif;transition:all .12s;user-select:none;letter-spacing:.02em}
+.p-toggle:hover{border-color:var(--ardoise);color:var(--ardoise)}
+.p-toggle.on{background:var(--ardoise);border-color:var(--ardoise);color:var(--blanc);font-weight:700}
+.p-toggle.on-bleu{background:var(--ardoise);border-color:var(--ardoise);color:var(--blanc)}
+.p-toggle.on-vert{background:var(--ardoise);border-color:var(--ardoise);color:var(--blanc)}
+.p-toggle.on-rose{background:var(--ardoise);border-color:var(--ardoise);color:var(--blanc)}
+.p-lbl{font-size:12px;font-weight:600;color:var(--ardoise);display:block;margin-bottom:5px;letter-spacing:.02em}
+.p-hint{font-size:11px;color:var(--gris);margin-top:3px;font-style:italic}
+.p-sel-wide select{width:100%;border:1.5px solid var(--taupe);border-radius:8px;padding:9px 12px;font-size:13px;font-family:inherit;color:var(--ardoise);background:var(--off);outline:none;cursor:pointer;transition:border-color .15s}
+.p-sel-wide select:focus{border-color:var(--ocre)}
+.params-card textarea.mf{min-height:60px}
+/* ── PREVIEW HEADER étendu ── */
+.prev-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.add-block-btn{background:var(--blanc);color:var(--ardoise);border:1.5px solid var(--taupe);border-radius:99px;padding:10px 20px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s}
+.add-block-btn:hover{border-color:var(--ocre);color:var(--ocre)}
+/* ── MODAL ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:300;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:var(--blanc);border-radius:14px;padding:26px 30px;max-width:460px;width:90%;box-shadow:0 18px 56px rgba(0,0,0,.18)}
+.modal h3{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:21px;margin-bottom:16px;color:var(--ardoise)}
+.modal-acts{display:flex;gap:9px;margin-top:18px;justify-content:flex-end}
+.modal-cancel{background:transparent;border:1.5px solid var(--taupe);border-radius:7px;padding:8px 18px;font-size:13px;font-family:inherit;cursor:pointer;color:var(--gris)}
+.modal-ok{background:var(--ardoise);border:none;border-radius:7px;padding:8px 18px;font-size:13px;font-family:inherit;cursor:pointer;color:var(--blanc);font-weight:600}
+@media(max-width:680px){.session-grid,.mf-grid,.params-grid{grid-template-columns:1fr}.page{padding:18px 16px 40px}.hdr{padding:14px 16px}.prev-actions{flex-direction:column}.add-block-btn,.dl-btn{width:100%;text-align:center}}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="logo"><img src="logonoir.png" alt="Avita Serena" style="height:36px;display:block"></div>
+  <div class="hdr-tag">Protocole d'Hygiène Vitale</div>
+</div>
+<div class="hdr-stripe"></div>
+
+<div class="page">
+
+<!-- API -->
+<div class="api-box">
+  <label>Clé API Anthropic</label>
+  <div class="api-row">
+    <input type="password" id="api-key" placeholder="sk-ant-api03-…">
+    <button class="api-btn" onclick="saveKey()">Enregistrer</button>
+  </div>
+  <span id="key-status" style="font-size:13px"></span>
+</div>
+
+<!-- SESSION IMPORTÉE -->
+<div class="session-card">
+  <h3>📋 Données de la séance</h3>
+  <div id="session-display"></div>
+  <span class="manual-toggle" onclick="toggleManual()">✎ Saisir / modifier manuellement</span>
+  <div class="manual-form" id="manual-form">
+    <div class="mf-grid">
+      <div><label class="ml">Prénom</label><input class="mf" type="text" id="m-prenom" placeholder="Marie"></div>
+      <div><label class="ml">Âge</label><input class="mf" type="number" id="m-age" placeholder="38"></div>
+      <div><label class="ml">Durée des symptômes</label>
+        <select class="mf" id="m-duree">
+          <option value="">—</option>
+          <option>Quelques semaines</option><option>2-6 mois</option>
+          <option>6-12 mois</option><option>1 à 3 ans</option>
+          <option>Plus de 3 ans</option><option>Depuis l'enfance</option>
+        </select>
+      </div>
+      <div><label class="ml">Contraception actuelle</label>
+        <select class="mf" id="m-contra">
+          <option value="">—</option>
+          <option>Aucune</option><option>Pilule oestroprogestative</option>
+          <option>Pilule microprogestative</option><option>DIU hormonal</option>
+          <option>DIU cuivre</option><option>Implant</option>
+        </select>
+      </div>
+    </div>
+    <div style="margin-bottom:12px"><label class="ml">Motifs principaux & symptômes</label><textarea class="mf" id="m-motifs" style="min-height:70px" placeholder="Fatigue chronique, ballonnements, SPM intense, insomnies 3h du matin…"></textarea></div>
+    <div style="margin-bottom:12px"><label class="ml">Scores cliniques (1–10)</label><textarea class="mf" id="m-scores" placeholder="Énergie: 4 | Sommeil: 5 | Stress: 8 | Digestion: 3 | Émotions: 5 | Hormones: 4"></textarea></div>
+    <div style="margin-bottom:12px"><label class="ml">Symptômes cochés (check-lists)</label><textarea class="mf" id="m-checks" placeholder="Réveil 1h-3h du matin, Épuisée le matin, Envies de sucre 17h, Ballonnements après repas…"></textarea></div>
+    <div style="margin-bottom:12px"><label class="ml">Médicaments & allergies ⚠</label><textarea class="mf" id="m-medics" placeholder="Médicaments: Lévothyrox 50µg. Allergies: arachide."></textarea></div>
+    <div style="margin-bottom:12px"><label class="ml">Cycle, gynécologie, thyroïde</label><textarea class="mf" id="m-gyneco" placeholder="Cycle 24j, règles noirâtres, SPM 10j, endométriose stade 2. Thyroïde: Hashimoto diagnostiqué."></textarea></div>
+    <div style="margin-bottom:12px"><label class="ml">Alimentation & mode de vie</label><textarea class="mf" id="m-alim" placeholder="Omnivore, café seul le matin, dîner tardif, sédentaire 8h/j, 1L eau/j…"></textarea></div>
+    <div style="margin-bottom:12px">
+      <label class="ml">🕰 Ligne de vie & événements déclencheurs</label>
+      <textarea class="mf" id="m-lifeline" style="min-height:80px" placeholder="Ex: Fatigue apparue après accouchement 2019 → antibiothérapie longue 2021 → burn-out professionnel 2023 → ballonnements et insomnies depuis 6 mois."></textarea>
+      <p class="field-hint">Listez les événements clés dans le temps (chocs, maladies, traitements, périodes de stress). Ce sont les premiers dominos de la cascade.</p>
+    </div>
+    <div class="mf-grid" style="margin-bottom:12px">
+      <div>
+        <label class="ml">🌡 Niveau d'encrassement estimé</label>
+        <select class="mf" id="m-encrassement">
+          <option value="">—</option>
+          <option>Léger — terrain peu chargé</option>
+          <option>Modéré — quelques émonctoires ralentis</option>
+          <option>Important — surcharge hépatique, digestive ou cutanée</option>
+          <option>Sévère — terrain très encrassé, fatigue profonde</option>
+        </select>
+      </div>
+      <div>
+        <label class="ml">⚡ Énergie vitale globale</label>
+        <select class="mf" id="m-vitalite">
+          <option value="">—</option>
+          <option>Bonne réserve — terrain réactif</option>
+          <option>Réserve moyenne — fatigue d'adaptation</option>
+          <option>Réserve faible — épuisement chronique</option>
+          <option>Très faible — vitalité à reconstruire en priorité</option>
+        </select>
+      </div>
+    </div>
+    <div><label class="ml">Analyse causale & intuition clinique praticien</label><textarea class="mf" id="m-notes" style="min-height:80px" placeholder="Ex: Dysbiose intestinale probable comme premier domino → perturbation axe intestin-cerveau → fatigue surrénalienne secondaire. Dominance œstrogénique liée à foie ralenti. A pleuré en parlant de son travail — charge émotionnelle majeure."></textarea>
+      <p class="field-hint">Notez les hypothèses causales, liens entre systèmes et observations de séance. Sert à guider la cascade dans le protocole.</p>
+    </div>
+  </div>
+</div>
+
+<!-- PARAMÈTRES DU PROTOCOLE -->
+<div class="params-card" id="params-card">
+  <h3>⚙ Paramètres du protocole — personnalisation</h3>
+
+  <!-- ── AXES PRIORITAIRES ── -->
+  <div class="params-section-lbl"><span class="ps-icon">🎯</span> Axes de travail prioritaires <span style="font-size:10px;color:var(--gris);font-weight:400;text-transform:none;letter-spacing:0">(sélectionnez les 2-3 axes à traiter en priorité)</span></div>
+  <div class="p-toggle-group" id="axes-group">
+    <button class="p-toggle" data-val="Digestif & microbiote" onclick="toggleAxe(this)">🦠 Digestif & microbiote</button>
+    <button class="p-toggle" data-val="Hormonal & cycles" onclick="toggleAxe(this)">🌸 Hormonal & cycles</button>
+    <button class="p-toggle" data-val="Surrénales & énergie" onclick="toggleAxe(this)">⚡ Surrénales & énergie</button>
+    <button class="p-toggle" data-val="Sommeil & récupération" onclick="toggleAxe(this)">🌙 Sommeil & récupération</button>
+    <button class="p-toggle" data-val="Foie & détox" onclick="toggleAxe(this)">🍃 Foie & détox</button>
+    <button class="p-toggle" data-val="Thyroïde" onclick="toggleAxe(this)">🦋 Thyroïde</button>
+    <button class="p-toggle" data-val="Stress & système nerveux" onclick="toggleAxe(this)">🧠 Stress & système nerveux</button>
+    <button class="p-toggle" data-val="Glycémie & insuline" onclick="toggleAxe(this)">🩸 Glycémie & insuline</button>
+    <button class="p-toggle" data-val="Inflammation chronique" onclick="toggleAxe(this)">🔥 Inflammation chronique</button>
+    <button class="p-toggle" data-val="SIBO / dysbiose" onclick="toggleAxe(this)">🔬 SIBO / dysbiose</button>
+    <button class="p-toggle" data-val="Fertilité / désir de grossesse" onclick="toggleAxe(this)">🌱 Fertilité</button>
+    <button class="p-toggle" data-val="Périménopause / ménopause" onclick="toggleAxe(this)">🌡️ Périménopause</button>
+  </div>
+  <input type="hidden" id="axes-selectionnes" value="">
+
+  <!-- ── OBJECTIF & DURÉE ── -->
+  <div class="params-section-lbl"><span class="ps-icon">✨</span> Objectif exprimé & durée du programme</div>
+  <div class="params-grid-2">
+    <div class="p-sel-wide">
+      <label class="p-lbl">Objectif principal de la cliente</label>
+      <select id="obj-principal">
+        <option>Retrouver de l'énergie durablement</option>
+        <option>Rééquilibrer ses hormones</option>
+        <option>Mieux dormir et récupérer</option>
+        <option>Apaiser sa digestion</option>
+        <option>Gérer son stress & charge mentale</option>
+        <option>Perdre du poids durablement</option>
+        <option>Projet de grossesse / fertilité</option>
+        <option>Traverser la périménopause en douceur</option>
+        <option>Réduire les douleurs chroniques</option>
+        <option>Renforcer son immunité</option>
+        <option>Sortir du burn-out / reconstruction</option>
+      </select>
+    </div>
+    <div class="p-sel-wide">
+      <label class="p-lbl">Durée du programme</label>
+      <select id="duree-prog">
+        <option>4 semaines — protocole d'urgence ciblé</option>
+        <option>6 semaines — première phase de rééquilibrage</option>
+        <option>3 mois — programme Alba</option>
+        <option>6 mois — programme Aria</option>
+        <option>9 mois — programme Ora (reconstruction complète)</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- ── ALIMENTATION ── -->
+  <div class="params-section-lbl"><span class="ps-icon">🌿</span> Alimentation — prédisposition au changement</div>
+  <div class="params-grid-2">
+    <div class="p-sel-wide">
+      <label class="p-lbl">Motivation à changer l'alimentation</label>
+      <select id="motiv-alim">
+        <option>Très motivée — changements importants acceptés</option>
+        <option>Partiellement — petits ajustements progressifs</option>
+        <option>Peu motivée — priorité à d'autres leviers</option>
+        <option>Bloquée émotionnellement sur l'alimentation</option>
+      </select>
+    </div>
+    <div class="p-sel-wide">
+      <label class="p-lbl">Contraintes alimentaires spécifiques</label>
+      <select id="contraintes-alim">
+        <option>Aucune contrainte majeure</option>
+        <option>Cuisine en famille — difficile de cuisiner séparément</option>
+        <option>Très peu de temps pour cuisiner</option>
+        <option>Budget alimentaire limité</option>
+        <option>Pas de cuisine — mange souvent à l'extérieur</option>
+        <option>Végétarienne / vegan</option>
+        <option>Régime déjà restrictif (sans gluten, sans lactose…)</option>
+      </select>
+    </div>
+  </div>
+  <div class="p-toggle-group" style="margin-top:6px">
+    <span style="font-size:11px;color:var(--gris);align-self:center;margin-right:4px">Gestes spécifiques à intégrer :</span>
+    <button class="p-toggle" data-val="petit-déjeuner protéiné" onclick="this.classList.toggle('on')">🥚 Petit-déj protéiné</button>
+    <button class="p-toggle" data-val="fenêtre alimentaire / jeûne intermittent" onclick="this.classList.toggle('on')">⏱ Jeûne intermittent</button>
+    <button class="p-toggle" data-val="réduction sucres rapides" onclick="this.classList.toggle('on')">🍬 Réduire sucres</button>
+    <button class="p-toggle" data-val="augmenter fibres & légumes" onclick="this.classList.toggle('on')">🥦 Plus de légumes</button>
+    <button class="p-toggle" data-val="réduction gluten" onclick="this.classList.toggle('on')">🌾 Réduire gluten</button>
+    <button class="p-toggle" data-val="réduction produits laitiers" onclick="this.classList.toggle('on')">🥛 Réduire laitiers</button>
+    <button class="p-toggle" data-val="ordre des aliments (glucides en dernier)" onclick="this.classList.toggle('on')">📋 Ordre des aliments</button>
+    <button class="p-toggle" data-val="alimentation anti-inflammatoire" onclick="this.classList.toggle('on')">🐟 Anti-inflammatoire</button>
+  </div>
+
+  <!-- ── ACTIVITÉ PHYSIQUE ── -->
+  <div class="params-section-lbl"><span class="ps-icon">🏃</span> Activité physique — niveau & prédisposition</div>
+  <div class="params-grid-2">
+    <div class="p-sel-wide">
+      <label class="p-lbl">Prête à intégrer du mouvement</label>
+      <select id="motiv-sport">
+        <option>Oui — activité douce (marche, yoga, étirements)</option>
+        <option>Oui — activité modérée (natation, vélo, pilates)</option>
+        <option>Oui — activité intensive déjà pratiquée</option>
+        <option>Partiellement — manque de temps ou d'énergie</option>
+        <option>Non — état de fatigue ne le permet pas actuellement</option>
+      </select>
+    </div>
+    <div class="p-sel-wide">
+      <label class="p-lbl">Niveau actuel d'activité physique</label>
+      <select id="niveau-sport">
+        <option>Sédentaire — moins de 30 min/semaine</option>
+        <option>Légère — marche, activité douce occasionnelle</option>
+        <option>Modérée — 2-3 séances par semaine</option>
+        <option>Régulière — 4 séances ou plus par semaine</option>
+        <option>Surentraînement suspecté</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- ── COMPLÉMENTS ── -->
+  <div class="params-section-lbl"><span class="ps-icon">💊</span> Compléments alimentaires — disposition</div>
+  <div class="params-grid-2">
+    <div class="p-sel-wide">
+      <label class="p-lbl">Prête à prendre des compléments</label>
+      <select id="motiv-compl">
+        <option>Oui — sans réticence, budget disponible (50–100€/mois)</option>
+        <option>Oui — budget modéré, max 2–3 compléments ciblés</option>
+        <option>Partiellement — préfère d'abord l'alimentation</option>
+        <option>Réticente — compléments en dernier recours uniquement</option>
+        <option>Non — approche alimentation & mode de vie uniquement</option>
+      </select>
+    </div>
+    <div class="p-sel-wide">
+      <label class="p-lbl">Compléments déjà en cours</label>
+      <input class="mf" type="text" id="compl-en-cours" placeholder="Ex : Mg bisglycinate, Vitamine D 2000 UI, probiotiques…">
+    </div>
+  </div>
+
+  <!-- ── PRATIQUES BIEN-ÊTRE ── -->
+  <div class="params-section-lbl"><span class="ps-icon">🧘</span> Pratiques bien-être & gestion du stress</div>
+  <div class="params-grid-2">
+    <div class="p-sel-wide">
+      <label class="p-lbl">Prête à intégrer des pratiques de gestion du stress</label>
+      <select id="motiv-stress">
+        <option>Oui — cohérence cardiaque, respiration, méditation</option>
+        <option>Ouverte — avec accompagnement et rappels</option>
+        <option>Sceptique — préfère l'approche physique/nutritionnelle</option>
+        <option>Pratique régulière déjà en place</option>
+        <option>Pas de disponibilité mentale actuellement</option>
+      </select>
+    </div>
+    <div class="p-sel-wide">
+      <label class="p-lbl">Soutien de l'entourage</label>
+      <select id="motiv-entourage">
+        <option>Entourage soutenant — changements facilités</option>
+        <option>Entourage neutre — changements personnels possibles</option>
+        <option>Entourage peu coopératif (alimentation familiale partagée)</option>
+        <option>Isolée — protocole à concevoir pour autonomie maximale</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- ── BILANS BIOLOGIQUES ── -->
+  <div class="params-section-lbl"><span class="ps-icon">🧬</span> Bilans biologiques à recommander dans le protocole</div>
+  <div style="background:var(--or-clair);border-radius:10px;padding:11px 16px;margin-bottom:10px;font-size:12px;color:var(--or);line-height:1.6">
+    <strong>Cochez les examens à recommander à son médecin.</strong> Chaque bilan coché sera intégré dans le protocole avec une justification clinique personnalisée citant ses symptômes.
+  </div>
+  <div class="p-toggle-group" id="bilans-group">
+    <button class="p-toggle" data-val="Thyroïde complète (TSH + T3L + T4L + Anti-TPO)" onclick="this.classList.toggle('on')">🦋 Thyroïde complète</button>
+    <button class="p-toggle" data-val="Bilan martial (Ferritine + NFS)" onclick="this.classList.toggle('on')">🩸 Bilan martial</button>
+    <button class="p-toggle" data-val="Vitamine D (25-OH)" onclick="this.classList.toggle('on')">☀️ Vitamine D</button>
+    <button class="p-toggle" data-val="Cortisol salivaire 4 points" onclick="this.classList.toggle('on')">⚡ Cortisol salivaire</button>
+    <button class="p-toggle" data-val="Bilan hormonal J3 (FSH, LH, Estradiol, Progestérone J21)" onclick="this.classList.toggle('on')">🌸 Hormonal J3</button>
+    <button class="p-toggle" data-val="Glycémie + Insuline à jeun + HbA1c" onclick="this.classList.toggle('on')">🩺 Glycémie & insuline</button>
+    <button class="p-toggle" data-val="Magnésium érythrocytaire" onclick="this.classList.toggle('on')">💊 Magnésium globulaire</button>
+    <button class="p-toggle" data-val="B12 active (holotranscobalamine)" onclick="this.classList.toggle('on')">💉 B12 active</button>
+    <button class="p-toggle" data-val="CRP ultrasensible (inflammation)" onclick="this.classList.toggle('on')">🔥 CRP us</button>
+    <button class="p-toggle" data-val="Zinc & Sélénium" onclick="this.classList.toggle('on')">⚗️ Zinc & Sélénium</button>
+    <button class="p-toggle" data-val="Test SIBO respiratoire (gastro-entérologue)" onclick="this.classList.toggle('on')">🔬 Test SIBO</button>
+    <button class="p-toggle" data-val="Bilan SOPK (AMH, Testostérone libre, SHBG, DHEA-S)" onclick="this.classList.toggle('on')">⚖️ Bilan SOPK</button>
+    <button class="p-toggle" data-val="Homocystéine" onclick="this.classList.toggle('on')">🧪 Homocystéine</button>
+    <button class="p-toggle" data-val="Bilan hépatique (ASAT, ALAT, GGT)" onclick="this.classList.toggle('on')">🍃 Bilan hépatique</button>
+  </div>
+  <div style="margin-top:10px">
+    <label class="p-lbl">Justification clinique à citer dans le protocole</label>
+    <textarea class="mf" id="bilans-justif" placeholder="Ex : Ferritine à recommander car règles abondantes + fatigue persistante + chute de cheveux. Thyroïde car frilosité + queue du sourcil + TSH jamais vérifiée. Insuline car acné + prise de poids malgré alimentation correcte…"></textarea>
+    <p class="p-hint">Ces éléments seront insérés dans le protocole pour expliquer à la cliente POURQUOI on lui recommande ces bilans.</p>
+  </div>
+
+  <!-- ── PARAMÈTRES AVANCÉS ── -->
+  <div class="params-section-lbl"><span class="ps-icon">⚙️</span> Paramètres avancés</div>
+  <div class="params-grid-3">
+    <div class="p-sel-wide">
+      <label class="p-lbl">Niveau d'encrassement estimé</label>
+      <select id="m-encrassement">
+        <option value="">—</option>
+        <option>Léger — terrain peu chargé</option>
+        <option>Modéré — quelques émonctoires ralentis</option>
+        <option>Important — surcharge hépatique / digestive</option>
+        <option>Sévère — terrain très encrassé, vitalité basse</option>
+      </select>
+    </div>
+    <div class="p-sel-wide">
+      <label class="p-lbl">Énergie vitale globale</label>
+      <select id="m-vitalite">
+        <option value="">—</option>
+        <option>Bonne réserve — terrain réactif</option>
+        <option>Réserve moyenne — fatigue d'adaptation</option>
+        <option>Réserve faible — épuisement chronique</option>
+        <option>Très faible — vitalité à reconstruire en priorité</option>
+      </select>
+    </div>
+    <div class="p-sel-wide">
+      <label class="p-lbl">Profil de vie</label>
+      <select id="profil">
+        <option>Femme active, travail sédentaire</option>
+        <option>Mère de famille, charge mentale élevée</option>
+        <option>Indépendante / entrepreneur</option>
+        <option>Profession de santé / aidante</option>
+        <option>En convalescence / burn-out actif</option>
+        <option>Périménopause / ménopause</option>
+        <option>Étudiante / jeune adulte</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="pilier-note" style="margin-top:14px">
+    <strong>Ordre des priorités naturopathiques :</strong> Le protocole développe en premier les <strong>3 piliers</strong> — 🌿 Alimentation · 🧠 Psychologie & émotions · 🏃 Activité physique — puis les compléments en soutien ciblé (3 max). La naturopathie n'est pas une médecine verte.
+  </div>
+</div>
+
+<button class="gen-btn" id="gen-btn" onclick="generate()">✦ Générer le Protocole d'Hygiène Vitale</button>
+
+<!-- LOADING -->
+<div id="loading-wrap">
+  <div class="spinner"></div>
+  <div class="loading-msg" id="loading-msg">Analyse du terrain…</div>
+  <div class="loading-sub">Génération en cours — environ 40 secondes</div>
+</div>
+
+<!-- PREVIEW / ÉDITEUR DE BLOCS -->
+<div id="preview-wrap">
+  <div class="prev-hero">
+    <div>
+      <div class="prev-hero-name" id="prev-name">—</div>
+      <div class="prev-hero-sub" id="prev-sub">Protocole d'Hygiène Vitale · Avita Serena</div>
+      <div style="margin-top:8px;font-size:11px;color:var(--gris)">💡 Glissez les blocs pour les réorganiser · Cliquez sur le titre ou le texte pour modifier · 🗑 pour supprimer</div>
+    </div>
+    <div class="prev-actions">
+      <button class="dl-btn" onclick="downloadDocx()">↓ Télécharger le Word</button>
+      <button class="add-block-btn" onclick="openAddModal()">+ Ajouter un bloc</button>
+    </div>
+  </div>
+  <div class="blocks-container" id="blocks-container"></div>
+  <button class="reset-btn" onclick="resetAll()">← Nouveau bilan</button>
+</div>
+
+</div><!-- /page -->
+
+<!-- MODAL AJOUT BLOC -->
+<div class="modal-overlay" id="add-modal">
+  <div class="modal">
+    <h3>Ajouter un bloc</h3>
+    <div style="margin-bottom:11px"><label class="ml">Titre du bloc</label><input class="mf" type="text" id="new-block-title" placeholder="Ex: Gestion du stress au travail"></div>
+    <div style="margin-bottom:11px"><label class="ml">Contenu</label><textarea class="mf" id="new-block-content" style="min-height:90px" placeholder="Rédigez le contenu…"></textarea></div>
+    <div><label class="ml">Pilier / Catégorie</label>
+      <select class="mf" id="new-block-pilier">
+        <option value="alimentation">🌿 Alimentation</option>
+        <option value="psychologie">🧠 Psychologie & émotions</option>
+        <option value="activite">🏃 Activité physique</option>
+        <option value="complements">✦ Compléments ciblés</option>
+        <option value="bilan">📊 Bilan & suivi</option>
+        <option value="autre">— Autre</option>
+      </select>
+    </div>
+    <div class="modal-acts">
+      <button class="modal-cancel" onclick="closeAddModal()">Annuler</button>
+      <button class="modal-ok" onclick="addBlock()">Ajouter</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/docx/8.5.0/docx.umd.min.js"></script>
+<script>
+let apiKey = '';
+let sessionData = null;
+let generatedData = null;
+let blocks = [];
+let dragSrcIdx = null;
+
+const PILIER_LABELS = {
+  alimentation: '🌿 Alimentation',
+  psychologie:  '🧠 Psychologie & émotions',
+  activite:     '🏃 Activité physique',
+  complements:  '✦ Compléments ciblés',
+  bilan:        '📊 Bilan & suivi',
+  autre:        '— Autre',
+};
+
+const loadingMsgs = [
+  'Lecture de la ligne de vie…',
+  'Identification de la cascade causale…',
+  'Construction des 3 piliers…',
+  'Sélection des compléments ciblés…',
+  'Rédaction du protocole personnalisé…',
+  'Finalisation du bilan…'
+];
+
+// ── Toggle axes prioritaires (max 3 recommandé) ──
+function toggleAxe(btn) {
+  btn.classList.toggle('on');
+  const actifs = document.querySelectorAll('#axes-group .p-toggle.on');
+  // Feedback visuel si >3 sélectionnés
+  actifs.forEach((b, i) => {
+    b.classList.remove('on-bleu', 'on-vert', 'on-rose');
+    if (i === 0) b.classList.add('on-vert');
+    else if (i === 1) b.classList.add('on-bleu');
+    else b.classList.add('on-rose');
+  });
+  document.getElementById('axes-selectionnes').value = [...actifs].map(b => b.dataset.val).join(', ');
+}
+
+// ── Clé API ──
+function saveKey() {
+  const k = document.getElementById('api-key').value.trim();
+  if (!k.startsWith('sk-ant')) {
+    document.getElementById('key-status').innerHTML = '<span style="color:#8B3A3A">Clé invalide</span>';
+    return;
+  }
+  apiKey = k;
+  document.getElementById('key-status').innerHTML = '<span style="color:#3D6B2C">✓ Enregistrée</span>';
+}
+
+// ── Session depuis localStorage ──
+function loadSession() {
+  try {
+    const raw = localStorage.getItem('avita_session');
+    if (raw) {
+      sessionData = JSON.parse(raw);
+      renderSessionCard();
+      prefillParams();
+    } else {
+      document.getElementById('session-display').innerHTML = '<p class="session-empty">Aucune donnée importée. Utilisez le formulaire manuel ci-dessous ou lancez depuis le questionnaire.</p>';
+      document.getElementById('manual-form').classList.add('open');
+    }
+  } catch(e) {
+    document.getElementById('session-display').innerHTML = '<p class="session-empty">Erreur de lecture — saisissez les données manuellement.</p>';
+    document.getElementById('manual-form').classList.add('open');
+  }
+}
+
+function renderSessionCard() {
+  const d = sessionData;
+  const items = [
+    ['Cliente', d.prenom ? `${d.prenom}${d.age ? ', ' + d.age + ' ans' : ''}` : '—'],
+    ['Durée', d.duree_symptomes || '—'],
+    ['Motifs & mots-clés', [d.motifs, d.mots_cles].filter(Boolean).join(' · ') || '—'],
+    ['Scores vitalité', d.scores || '—'],
+    ['Objectif 6 mois', d.objectif_6mois || '—'],
+    ['Bilans recommandés', d.bilans_recommandes || '—'],
+  ];
+  // Compter les champs réellement remplis (utiles)
+  const richFields = ['prenom','age','duree_symptomes','motifs','mots_cles','objectif_6mois','scores',
+    'symptomes_coches','chips_coches','selects','textes_libres','synthese_praticien','bilans_recommandes','motivation'];
+  const filled = richFields.filter(k => d[k] && d[k].length > 2).length;
+  const totalChars = Object.values(d).reduce((acc, v) => acc + (typeof v === 'string' ? v.length : 0), 0);
+
+  const html = `<div class="session-grid">${items.map(([k,v]) => `<div class="session-item"><strong>${k}</strong><span>${(v||'—').substring(0,90)}${v?.length > 90 ? '…' : ''}</span></div>`).join('')}</div>
+  <div style="margin-top:10px;font-size:12px;color:var(--vert)">✓ ${filled} blocs importés · ${totalChars.toLocaleString('fr-FR')} caractères de données transmis au générateur</div>`;
+  document.getElementById('session-display').innerHTML = html;
+}
+
+function prefillParams() {
+  if (!sessionData) return;
+  const checks = (sessionData.symptomes_coches || '') + (sessionData.motifs || '') + (sessionData.chips_coches || '');
+  // Auto-cocher les axes prioritaires selon les symptômes
+  const autoAxes = [];
+  if (/digestif|ballonnem|transit|SII|SIBO|microbiote|gaz|constip|diarrh/i.test(checks)) autoAxes.push('Digestif & microbiote');
+  if (/SPM|cycle|hormonal|ovaires|règles|endométriose|SOPK|estrogène|progestérone/i.test(checks)) autoAxes.push('Hormonal & cycles');
+  if (/cortisol|surrén|épuisée|énergie|fatigue/i.test(checks)) autoAxes.push('Surrénales & énergie');
+  if (/sommeil|insomn|réveil nocturne|endorm/i.test(checks)) autoAxes.push('Sommeil & récupération');
+  if (/foie|hépatique|détox|acné menton|réveil 2h|3h/i.test(checks)) autoAxes.push('Foie & détox');
+  if (/thyroïde|TSH|Hashimoto|frilosité|lévothyrox/i.test(checks)) autoAxes.push('Thyroïde');
+  if (/stress|anxiété|burn.out|charge mentale/i.test(checks)) autoAxes.push('Stress & système nerveux');
+  if (/glycémie|insuline|sucre|prise de poids|résistance/i.test(checks)) autoAxes.push('Glycémie & insuline');
+
+  document.querySelectorAll('#axes-group .p-toggle').forEach((btn, i) => {
+    if (autoAxes.includes(btn.dataset.val)) {
+      btn.classList.add('on');
+    }
+  });
+  // Appliquer couleurs
+  const actifs = document.querySelectorAll('#axes-group .p-toggle.on');
+  actifs.forEach((b, i) => {
+    b.classList.remove('on-bleu', 'on-vert', 'on-rose');
+    if (i === 0) b.classList.add('on-vert');
+    else if (i === 1) b.classList.add('on-bleu');
+    else b.classList.add('on-rose');
+  });
+  document.getElementById('axes-selectionnes').value = [...actifs].map(b => b.dataset.val).join(', ');
+}
+
+function toggleManual() {
+  document.getElementById('manual-form').classList.toggle('open');
+}
+
+// ── Collecte des données finales ──
+function buildClientData() {
+  const mf = id => document.getElementById(id)?.value?.trim() || '';
+  const manual = {
+    prenom: mf('m-prenom'), age: mf('m-age'), duree: mf('m-duree'),
+    contra: mf('m-contra'), motifs: mf('m-motifs'), scores: mf('m-scores'),
+    checks: mf('m-checks'), medics: mf('m-medics'), gyneco: mf('m-gyneco'),
+    alim: mf('m-alim'), notes: mf('m-notes'),
+    lifeline: mf('m-lifeline'), encrassement: mf('m-encrassement'), vitalite: mf('m-vitalite'),
+  };
+  const hasManual = Object.values(manual).some(v => v.length > 1);
+  const s = sessionData || {};
+
+  // Collecter les axes sélectionnés
+  const axesBtns = document.querySelectorAll('#axes-group .p-toggle.on');
+  const axesSelectionnes = [...axesBtns].map(b => b.dataset.val).join(', ') || 'Non précisé';
+
+  // Collecter les bilans sélectionnés
+  const bilansBtns = document.querySelectorAll('#bilans-group .p-toggle.on');
+  const bilansSelectionnes = [...bilansBtns].map(b => b.dataset.val).join(' | ') || '';
+
+  // Collecter les gestes alimentaires cochés
+  const gestesBtns = document.querySelectorAll('.p-toggle-group:not(#axes-group):not(#bilans-group) .p-toggle.on');
+  const gestesAlim = [...gestesBtns].map(b => b.dataset.val).filter(Boolean).join(', ') || '';
+
+  const gv = id => document.getElementById(id)?.value?.trim() || '';
+
+  return {
+    prenom: manual.prenom || s.prenom || 'Cliente',
+    age: manual.age || s.age || '',
+    duree_symptomes: manual.duree || s.duree_symptomes || '',
+    contraception: manual.contra || s.selects?.match(/(?:Contraception|Pilule|DIU|Implant|contraceptif)[^\n]*/gi)?.join(', ') || '',
+    motifs: manual.motifs || [s.motifs, s.mots_cles].filter(Boolean).join(', '),
+    objectif_6mois: s.objectif_6mois || '',
+    scores: manual.scores || s.scores || '',
+    symptomes_coches: manual.checks || s.symptomes_coches || '',
+    chips: s.chips_coches || '',
+    // Toutes les zones de texte libre du questionnaire
+    textes_libres: s.textes_libres || '',
+    // Toutes les sélections (selects)
+    selects_complets: s.selects || '',
+    // Motivation & prédispositions au changement
+    motivation_changement: s.motivation || '',
+    medics_allergies: manual.medics || (s.textes_libres?.match(/(?:Médicament|allergie|traitement|ordonnance)[^\n]*/gi) || []).join('\n'),
+    gyneco: manual.gyneco || (s.textes_libres?.match(/(?:Cycle|Gynécolog|Thyroïde|règles|hormones|ménopause|endométriose|SOPK)[^\n]*/gi) || []).join('\n') || (s.selects?.match(/(?:Cycle|Gynécolog|Thyroïde|Règles|Contraception)[^\n]*/gi) || []).join('\n'),
+    alimentation: manual.alim || (s.selects?.match(/(?:Alimentation|Transit|Ballonnem|Alcool|Tabac|Café|Régime|Végétar)[^\n]*/gi) || []).join('\n') || (s.textes_libres?.match(/(?:Alimentation|Transit|Ballonnem)[^\n]*/gi) || []).join('\n'),
+    notes_praticien: manual.notes || s.synthese_praticien || '',
+    lifeline: manual.lifeline || s.lifeline || (s.textes_libres?.match(/(?:ligne de vie|déclencheur|depuis|après|avant)[^\n]*/gi) || []).slice(0,5).join('\n') || '',
+    encrassement: gv('m-encrassement') || manual.encrassement || '',
+    vitalite: gv('m-vitalite') || manual.vitalite || '',
+    // Paramètres du protocole
+    axes_prioritaires: axesSelectionnes,
+    duree_prog: gv('duree-prog'),
+    obj_principal: gv('obj-principal'),
+    profil: gv('profil'),
+    // Alimentation
+    motiv_alim: gv('motiv-alim') || s.motivation?.match(/Alimentation: ([^|]+)/)?.[1]?.trim() || '',
+    contraintes_alim: gv('contraintes-alim'),
+    gestes_alim: gestesAlim,
+    // Sport
+    motiv_sport: gv('motiv-sport') || s.motivation?.match(/Sport: ([^|]+)/)?.[1]?.trim() || '',
+    niveau_sport: gv('niveau-sport'),
+    // Compléments
+    motiv_compl: gv('motiv-compl') || s.motivation?.match(/Budget compléments: ([^|]+)/)?.[1]?.trim() || '',
+    compl_en_cours: gv('compl-en-cours') || (s.textes_libres?.match(/(?:complément|supplément|vitamine|magnésium|probiotique)[^\n]*/gi) || []).join(', '),
+    // Bien-être
+    motiv_stress: gv('motiv-stress') || s.motivation?.match(/Gestion stress: ([^|]+)/)?.[1]?.trim() || '',
+    motiv_entourage: gv('motiv-entourage') || s.motivation?.match(/Entourage: ([^|]+)/)?.[1]?.trim() || '',
+    // Bilans
+    bilans_a_recommander: bilansSelectionnes || s.bilans_recommandes || '',
+    bilans_justif: gv('bilans-justif'),
+  };
+}
+
+function buildPrompt(d) {
+  return `Tu es Sabrina Castelli, naturopathe diplômée (Avita Serena, Porto-Vecchio, Corse), spécialisée en santé digestive et équilibre hormonal féminin. Tu génères le Protocole d'Hygiène Vitale (PHV) destiné à la cliente — un document qu'elle va lire, garder et appliquer.
+
+━━ RÈGLE N°1 — FORMAT ET VOCABULAIRE ━━
+Le bilan doit faire 6 à 8 pages A4 maximum.
+Il est PRESCRIPTIF et PÉDAGOGIQUE, JAMAIS récapitulatif.
+Ne répète pas ce que la cliente a dit. Elle le sait déjà.
+Explique CE QUI SE PASSE dans son organisme (mécanismes vulgarisés), POURQUOI on fait ces choix, et QUOI faire concrètement.
+Ton : chaleureux, direct, expert, jamais condescendant. Comme une amie experte qui parle vrai.
+
+VOCABULAIRE — INTERDIT (trop médical ou posture de guérisseur) :
+"pathologie", "traitement", "diagnostic", "maladie", "guérir", "soigner", "cure", "thérapeutique", "prescrire", "symptômes"
+VOCABULAIRE — À UTILISER :
+"terrain", "déséquilibre", "vitalité", "encrassement", "régulation", "hygiène de vie", "drainage", "énergie", "rééquilibrage", "soutien", "ressources naturelles", "ressentis"
+
+━━ RÈGLE N°2 — PHILOSOPHIE NATUROPATHE : LA CASCADE ━━
+La naturopathie remonte la chaîne des causes. Le ressenti actuel est le dernier domino.
+Tu as ici la ligne de vie et l'analyse causale du praticien. Utilise-les pour donner du sens aux recommandations et expliquer POURQUOI ces déséquilibres sont apparus.
+Repartir TOUJOURS de l'objectif exprimé par la cliente.
+
+━━ RÈGLE N°3 — PRIORITÉ DES 3 PILIERS (ORDRE OBLIGATOIRE) ━━
+1. ALIMENTATION — fondement de tout rééquilibrage du terrain
+2. PSYCHOLOGIE & ÉMOTIONS — gestion du stress, émotions, sommeil, rythmes de vie
+3. ACTIVITÉ PHYSIQUE — mouvement adapté, sans matériel, sans salle de sport
+4. Compléments ciblés — EN DERNIER, en soutien, MAXIMUM 3 (sauf terrain très complexe)
+
+Un protocole d'hygiène vitale n'est PAS une liste de compléments. Les 3 piliers sont le cœur du document.
+
+━━ RÈGLE N°4 — MODALITÉS AUTORISÉES ━━
+1. Phytothérapie — forme : EPS > TM > gélule extrait sec > tisane
+2. Compléments : UNIQUEMENT Pileje, Nutergia, Holistica, Nat & Form, Bionutrics
+3. Nutrition : simple, sans cuisine complexe, sans comptage calorique
+4. Produits de la ruche (miel, propolis, gelée royale)
+5. Argile, Fleurs de Bach
+6. Mouvement SANS matériel : marche, yoga doux, cohérence cardiaque, respiration, étirements
+JAMAIS : homéopathie, hydrolats, sophrologie, salle de sport, matériel de fitness
+
+━━ RÈGLE N°5 — COMPLÉMENTS (2 À 3 OBLIGATOIRES) ━━
+IMPORTANT : Tu DOIS toujours proposer 2 à 3 compléments ciblés dans la section s3, même si les données sont incomplètes. Les compléments viennent EN COMPLÉMENT des 3 piliers, jamais à la place.
+Marques autorisées : Pileje, Nutergia, Holistica, Nat & Form, Bionutrics, Novoma, Nutripure, Nutrixeal
+Exemples concrets à adapter selon les axes prioritaires :
+- Magnésium bisglycinate : Nutergia Ergymag ou Holistica Magnésium Bisglycinate, 300-400mg/j le soir — si stress, fatigue, crampes, insomnie
+- Oméga-3 EPA/DHA : Omégabiane EPA/DHA (Pileje), 2 gél/j au repas — si inflammation, humeur, sécheresse, hormones
+- Probiotiques ciblés Pileje : Lactibiane Référence 5M (côlon irritable), Lactibiane Iki (fermentation/SIBO/ballonnements), Lactibiane Tolérance (hyperperméabilité/SIBO/porosité), Gynophilus (flore vaginale), Feminabiane SPM (SPM) — selon axe digestif/hormonal
+- Vitamine D3 + K2 : Pileje D3K2, 1 gél/j — si fatigue profonde, immunité, osseux
+- Zinc bisglycinate : Nutripure Zinc, 15mg/j — si acné, immunité, hormones, Hashimoto
+- EPS (Extrait Phyto Standard) : Valériane EPS ou Passiflore EPS (Phytostandard Pileje) — si sommeil, anxiété
+- Chardon-marie EPS (Phytostandard Pileje) — si foie, détox, hormones
+TOUJOURS : posologie exacte (marque, forme, dose, fréquence, moment précis), et 1-2 phrases expliquant pourquoi CE choix pour ELLE.
+
+━━ RÈGLE N°6 — SÉCURITÉ ABSOLUE ━━
+Anticoagulants → éviter oméga-3 >2g/j, millepertuis, gingko
+ISRS/antidépresseurs → millepertuis INTERDIT absolument
+Pilule/THM → attention phytoestrogènes
+Cancer hormono-dépendant → JAMAIS Feminabiane Ménopause ni phytoestrogènes
+Hypothyroïdie (Lévothyrox) → espacer fer, calcium, magnésium de 4h
+Grossesse → aucune HE par voie interne, vérifier chaque plante
+
+━━ DONNÉES DE LA SÉANCE ━━
+Cliente : ${d.prenom}${d.age ? ', ' + d.age + ' ans' : ''} · Profil : ${d.profil}
+Objectif exprimé : ${d.objectif_6mois || d.obj_principal}
+Durée des déséquilibres : ${d.duree_symptomes}
+Ressentis & motifs : ${d.motifs}
+Scores de vitalité : ${d.scores}
+Signaux cochés en séance : ${d.symptomes_coches}
+Puces & chips cochées : ${d.chips}
+Alimentation & mode de vie : ${d.alimentation}
+Cycle, gynécologie, thyroïde : ${d.gyneco}
+Contraception : ${d.contraception}
+⚠️ Médicaments & allergies : ${d.medics_allergies || 'Non renseigné — vérifier avant toute recommandation'}
+
+📋 TOUTES LES SÉLECTIONS DU QUESTIONNAIRE :
+${d.selects_complets || '— Non renseigné'}
+
+📝 NOTES & TEXTES LIBRES DU QUESTIONNAIRE (zones de saisie) :
+${d.textes_libres || '— Non renseigné'}
+
+💪 PRÉDISPOSITIONS AU CHANGEMENT :
+${d.motivation_changement || '— Non renseigné'}
+
+🕰️ LIGNE DE VIE & DÉCLENCHEURS :
+${d.lifeline || '— Non renseigné'}
+
+🌡️ Niveau d'encrassement estimé : ${d.encrassement || '— Non renseigné'}
+⚡ Énergie vitale globale : ${d.vitalite || '— Non renseigné'}
+
+🔬 ANALYSE CAUSALE PRATICIEN (cascade des premiers dominos) :
+${d.notes_praticien || '— Non renseigné'}
+
+━━ PARAMÈTRES DU PROTOCOLE (définis par le praticien après séance) ━━
+🎯 Axes de travail prioritaires : ${d.axes_prioritaires}
+⏱ Durée du programme : ${d.duree_prog}
+✨ Objectif principal retenu : ${d.obj_principal}
+
+🌿 ALIMENTATION
+• Motivation au changement alimentaire : ${d.motiv_alim || '— voir prédispositions ci-dessus'}
+• Contraintes spécifiques : ${d.contraintes_alim}
+• Gestes alimentaires à intégrer en priorité : ${d.gestes_alim || 'Non précisé'}
+
+🏃 ACTIVITÉ PHYSIQUE
+• Prédisposition au mouvement : ${d.motiv_sport || '— voir prédispositions ci-dessus'}
+• Niveau actuel : ${d.niveau_sport}
+
+💊 COMPLÉMENTS ALIMENTAIRES
+• Disposition aux compléments : ${d.motiv_compl || '— voir prédispositions ci-dessus'}
+• Compléments déjà en cours : ${d.compl_en_cours || 'Aucun'}
+⚠️ IMPORTANT : Adapter les recommandations selon la disposition aux compléments. Si la cliente est réticente ou a un budget limité, privilegier l'alimentation et les plantes avant tout complément.
+
+🧘 BIEN-ÊTRE & STRESS
+• Prête à intégrer des pratiques de gestion du stress : ${d.motiv_stress || '— voir prédispositions ci-dessus'}
+• Soutien de l'entourage : ${d.motiv_entourage || '— voir prédispositions ci-dessus'}
+
+🧬 BILANS BIOLOGIQUES À RECOMMANDER DANS LE PROTOCOLE
+${d.bilans_a_recommander ? '• ' + d.bilans_a_recommander.split(' | ').join('\n• ') : '— Aucun bilan sélectionné'}
+Justification clinique à citer : ${d.bilans_justif || '— Non précisé'}
+⚠️ Pour chaque bilan recommandé, expliquer à la cliente POURQUOI on le recommande en citant SES symptômes spécifiques (ex: "Je vous recommande un bilan thyroïdien complet car vous m'avez décrit une frilosité permanente, une chute de cheveux et une fatigue qui résiste au sommeil — ce sont des signaux que votre thyroïde mérite d'être explorée plus finement."). Si aucun bilan n'est sélectionné, ne pas en recommander dans le protocole.
+
+━━ STRUCTURE DU BILAN — JSON STRICT ━━
+Réponds UNIQUEMENT avec le JSON pur, sans markdown, sans backticks.
+
+{
+  "prenom": "${d.prenom}",
+  "sous_titre": "Protocole d'Hygiène Vitale · ${d.duree_prog} · Avita Serena",
+
+  "s1_corps": "Rédigez 3 à 4 paragraphes courts expliquant les 2-3 mécanismes clés. COMMENCER par repartir de l'objectif de la cliente. Utiliser la ligne de vie et l'analyse causale pour expliquer POURQUOI ces déséquilibres sont apparus (logique de cascade : quels ont été les premiers dominos ?). Langage accessible et rigoureux, SANS vocabulaire médical. Terminer par 1 phrase d'élan vers ce qui est possible.",
+
+  "s2_axes": "Présente les 2-3 axes en expliquant l'ORDRE de priorisation physiologique. Pour chaque axe : 1/ son titre, 2/ pourquoi on commence par là (mécanisme), 3/ ce qu'on va faire concrètement (sans les posologies — c'est la section 3). Paragraphes fluides, personnel, prescriptif. JAMAIS de vocabulaire médical.",
+
+  "s3_protocole": "[PILIER 1 — ALIMENTATION]\\nDes gestes simples, concrets, adaptés au profil et au niveau de changement. Ce qu'on ajoute (aliments fonctionnels). Ce qu'on adapte (ordre des aliments, fenêtre alimentaire, petit-déjeuner protéiné). Ce qu'on réduit si pertinent. PAS de régime, PAS de comptage.\\n\\n[PILIER 2 — PSYCHOLOGIE & ÉMOTIONS]\\n2 à 4 pratiques réalistes pour ce profil : cohérence cardiaque (protocole précis), gestion du stress, rituels de décompression, qualité du sommeil.\\n\\n[PILIER 3 — ACTIVITÉ PHYSIQUE]\\nMouvement adapté SANS matériel. Marche, yoga doux, étirements, respiration. Fréquence et durée précises.\\n\\n[SOUTIENS CIBLÉS — 2 À 3 COMPLÉMENTS OBLIGATOIRES]\\nTu DOIS proposer 2 à 3 compléments, même si les données sont partielles. Choisis selon les axes prioritaires. Pour chacun : nom commercial exact (marque), forme, posologie exacte (dose, moment, durée), et 1-2 phrases expliquant pourquoi ce choix pour elle. Signaler les précautions si médicaments détectés.\\n⚠ CI éventuelles mentionnées explicitement.",
+
+  "s4_alimentation": "Pas de régime. Pas de comptage. Des gestes simples et impactants, personnalisés au profil. Structure en 3 courts paragraphes : 1/ Ce qu'on ajoute en priorité (aliments fonctionnels pour ses axes), 2/ Ce qu'on adapte ou réorganise, 3/ Les 2-3 réflexes quotidiens qui changent tout. Adaptez au profil de vie et au niveau de changement accepté.",
+
+  "s5_rituels": "Propose un planning de rituels RÉALISTE pour ce profil. Format :\\n\\nMATIN (5-10 min) :\\n• [rituel 1]\\n• [rituel 2]\\n\\nSOIR (5-10 min) :\\n• [rituel 1]\\n• [rituel 2]\\n\\nEN JOURNÉE :\\n• [1-2 gestes simples]\\n\\nHEBDOMADAIRE :\\n• [1 rituel important]\\n\\nPas de salle de sport, pas de matériel. Tout faisable en 10 min max par session.",
+
+  "s6_signaux": "1 phrase d'introduction personnalisée (basée sur son objectif exprimé).\\n\\nEn 2 à 4 semaines, vous devriez ressentir :\\n• [signal concret 1 lié à ses axes]\\n• [signal concret 2]\\n• [signal concret 3]\\n\\nÀ 6 semaines :\\n• [changement plus profond]\\n• [signe 2]\\n\\nSi vous ne ressentez aucun changement après 3 semaines : [conseil clair]\\n\\nMot de clôture chaleureux (2-3 phrases, signé Sabrina Castelli / Avita Serena — Naturopathe, Porto-Vecchio)."
+}
+
+RÈGLES IMPÉRATIVES :
+1. JAMAIS de vocabulaire médical ni de récapitulatif de séance dans le document
+2. Les 3 PILIERS sont le cœur du document — les compléments viennent après, en nombre limité
+3. Repartir de l'objectif exprimé dès la section 1
+4. Posologies TOUJOURS complètes (marque, forme, dose, fréquence, moment)
+5. Vérifier les contre-indications selon médicaments déclarés
+6. Ton chaleureux mais direct — la cliente doit se sentir comprise et guidée
+7. Longueur totale : 6-8 pages A4 équivalent`;
+}
+
+// ── Génération ──
+async function generate() {
+  if (!apiKey) { alert('Veuillez d\'abord entrer votre clé API Anthropic.'); return; }
+  const d = buildClientData();
+  if (!d.prenom || d.prenom === 'Cliente') {
+    if (!confirm('Aucun prénom détecté. Continuer quand même ?')) return;
+  }
+
+  document.getElementById('gen-btn').disabled = true;
+  document.getElementById('loading-wrap').style.display = 'block';
+  document.getElementById('preview-wrap').style.display = 'none';
+  document.getElementById('loading-wrap').scrollIntoView({ behavior: 'smooth' });
+
+  let mi = 0;
+  const interval = setInterval(() => {
+    document.getElementById('loading-msg').textContent = loadingMsgs[Math.min(mi++, loadingMsgs.length - 1)];
+  }, 4000);
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-5',
+        max_tokens: 8000,
+        messages: [{ role: 'user', content: buildPrompt(d) }]
+      })
+    });
+
+    clearInterval(interval);
+
+    if (!res.ok) {
+      const e = await res.json();
+      throw new Error(e.error?.message || 'Erreur API ' + res.status);
+    }
+
+    const result = await res.json();
+    const raw = result.content[0].text.replace(/```json|```/g, '').trim();
+    generatedData = JSON.parse(raw);
+    generatedData._client = d;
+
+    // Convertir les 6 sections en blocs éditables
+    blocks = [
+      { id:'s1', title:'Ce qui se passe dans votre organisme', pilier:'bilan',         content: stripMd(generatedData.s1_corps || '') },
+      { id:'s2', title:'Vos axes prioritaires & pourquoi',     pilier:'bilan',         content: stripMd(generatedData.s2_axes || '') },
+      { id:'s3', title:'Vos 3 piliers & soutiens ciblés',      pilier:'complements',   content: stripMd(generatedData.s3_protocole || '') },
+      { id:'s4', title:'Votre alimentation au quotidien',       pilier:'alimentation',  content: stripMd(generatedData.s4_alimentation || '') },
+      { id:'s5', title:'Votre semaine type & rituels',          pilier:'activite',      content: stripMd(generatedData.s5_rituels || '') },
+      { id:'s6', title:'Ce que vous allez ressentir',           pilier:'bilan',         content: stripMd(generatedData.s6_signaux || '') },
+    ];
+    renderPreview(generatedData, d);
+
+  } catch (err) {
+    clearInterval(interval);
+    document.getElementById('loading-wrap').style.display = 'none';
+    document.getElementById('gen-btn').disabled = false;
+    alert('Erreur : ' + err.message);
+  }
+}
+
+function renderPreview(data, d) {
+  document.getElementById('loading-wrap').style.display = 'none';
+  document.getElementById('preview-wrap').style.display = 'block';
+  document.getElementById('prev-name').textContent = d.prenom;
+  document.getElementById('prev-sub').textContent = data.sous_titre || 'Protocole d\'Hygiène Vitale · Avita Serena';
+  renderBlocks();
+  document.getElementById('preview-wrap').scrollIntoView({ behavior: 'smooth' });
+}
+
+// ── Rendu des blocs éditables ──
+function renderBlocks() {
+  const container = document.getElementById('blocks-container');
+  container.innerHTML = '';
+  blocks.forEach((b, idx) => container.appendChild(createBlockEl(b, idx)));
+}
+
+function stripMd(s) {
+  // Keep **bold** markers for docx rendering, only remove italic underscores
+  return (s||'')
+    .replace(/__([^_]+)__/g, '$1')
+    .replace(/_([^_]+)_/g, '$1');
+}
+
+function escH(s) {
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function createBlockEl(b, idx) {
+  const div = document.createElement('div');
+  div.className = 'block-item';
+  div.dataset.idx = idx;
+  div.dataset.pilier = b.pilier || 'autre';
+  div.setAttribute('draggable', 'true');
+
+  const pilierOpts = Object.entries(PILIER_LABELS).map(([v,l]) =>
+    `<option value="${v}"${b.pilier===v?' selected':''}>${l}</option>`).join('');
+
+  div.innerHTML = `
+    <div class="block-hdr">
+      <span class="block-drag" title="Glisser pour réorganiser">⠿</span>
+      <div class="block-num">${idx+1}</div>
+      <input class="block-title-inp" type="text" value="${escH(b.title)}" onchange="updateBlockTitle(${idx},this.value)" placeholder="Titre du bloc">
+      <div class="block-acts">
+        <button class="block-btn" onclick="toggleBlockBody(${idx})" title="Réduire/déployer">▾</button>
+        <button class="block-btn del" onclick="removeBlock(${idx})" title="Supprimer">🗑</button>
+      </div>
+    </div>
+    <div class="block-body" id="bb-${idx}">
+      <textarea class="block-textarea" rows="8" onchange="updateBlockContent(${idx},this.value)">${escH(b.content)}</textarea>
+      <div class="block-pilier-sel">
+        <select onchange="updateBlockPilier(${idx},this.value)">${pilierOpts}</select>
+      </div>
+    </div>`;
+
+  // Drag & drop
+  div.addEventListener('dragstart', e => { dragSrcIdx = idx; div.classList.add('dragging'); e.dataTransfer.effectAllowed='move'; });
+  div.addEventListener('dragend', () => { div.classList.remove('dragging'); document.querySelectorAll('.block-item').forEach(el=>el.classList.remove('drag-over')); });
+  div.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect='move'; document.querySelectorAll('.block-item').forEach(el=>el.classList.remove('drag-over')); div.classList.add('drag-over'); });
+  div.addEventListener('drop', e => {
+    e.preventDefault(); div.classList.remove('drag-over');
+    if (dragSrcIdx===null || dragSrcIdx===idx) return;
+    const moved = blocks.splice(dragSrcIdx,1)[0];
+    blocks.splice(idx,0,moved);
+    dragSrcIdx = null;
+    renderBlocks();
+  });
+  return div;
+}
+
+function updateBlockTitle(idx,val) { blocks[idx].title=val; document.querySelectorAll('.block-num').forEach((el,i)=>el.textContent=i+1); }
+function updateBlockContent(idx,val) { blocks[idx].content=val; }
+function updateBlockPilier(idx,val) { blocks[idx].pilier=val; const el=document.querySelectorAll('.block-item')[idx]; if(el){el.dataset.pilier=val;} }
+function toggleBlockBody(idx) { const b=document.getElementById('bb-'+idx); if(b) b.style.display=b.style.display==='none'?'':'none'; }
+function removeBlock(idx) { if(!confirm('Supprimer ce bloc ?')) return; blocks.splice(idx,1); renderBlocks(); }
+
+// ── Modal ajout ──
+function openAddModal() { document.getElementById('new-block-title').value=''; document.getElementById('new-block-content').value=''; document.getElementById('add-modal').classList.add('open'); }
+function closeAddModal() { document.getElementById('add-modal').classList.remove('open'); }
+function addBlock() {
+  const title = document.getElementById('new-block-title').value.trim();
+  const content = document.getElementById('new-block-content').value.trim();
+  const pilier = document.getElementById('new-block-pilier').value;
+  if (!title) { alert('Entrez un titre.'); return; }
+  blocks.push({ id:'custom_'+Date.now(), title, content, pilier });
+  renderBlocks();
+  closeAddModal();
+  setTimeout(() => { const items=document.querySelectorAll('.block-item'); if(items.length) items[items.length-1].scrollIntoView({behavior:'smooth',block:'center'}); }, 100);
+}
+
+// ── Export Word ──
+async function downloadDocx() {
+  if (!generatedData || !blocks.length) return;
+  const { Document, Packer, Paragraph, TextRun, AlignmentType, BorderStyle, ShadingType, WidthType, ImageRun } = docx;
+  const cl = generatedData._client;
+  const C = { ARDOISE:'1E1E1C', OCRE:'B4906A', OR:'9B7230', GRIS:'6B6560', BLANC:'FFFFFF', GREGE:'EDE9E1', SABLE:'C4A882',
+              VERT:'3D6B2C', VERT_CL:'EAF0E6', VIOLET:'6B4E8A', VIOLET_CL:'F0EAF8',
+              BLEU:'2C5E8A', BLEU_CL:'EAF2F8', ROSE:'8A3A52', ROSE_CL:'F5EAEE', OR_CL:'FBF3E4' };
+  const PILIER_COLORS = {
+    alimentation:{ bg:C.VERT_CL, accent:C.VERT },
+    psychologie: { bg:C.VIOLET_CL, accent:C.VIOLET },
+    activite:    { bg:C.BLEU_CL, accent:C.BLEU },
+    complements: { bg:C.OR_CL, accent:C.OR },
+    bilan:       { bg:C.ROSE_CL, accent:C.ROSE },
+    autre:       { bg:C.GREGE, accent:C.ARDOISE },
+  };
+
+  const sp = (b,a) => ({ before:b||0, after:a||0 });
+  const rule = (color) => new Paragraph({ spacing:sp(0,60), border:{ bottom:{ style:BorderStyle.SINGLE, size:4, color:color||C.SABLE, space:4 }}, children:[] });
+  const spacer = (n) => new Paragraph({ spacing:sp(0,0), children:[new TextRun({ text:'', size:n })] });
+
+  const children = [];
+
+  // COUVERTURE
+  children.push(spacer(1200));
+
+  // Logo PNG centré
+  try {
+    const logoResp = await fetch('logonoir.png');
+    const logoBlob = await logoResp.blob();
+    const logoBuffer = await logoBlob.arrayBuffer();
+    children.push(new Paragraph({ alignment:AlignmentType.CENTER, spacing:sp(0,80), children:[
+      new ImageRun({ data: logoBuffer, transformation:{ width:220, height:66 }, type:'png' })
+    ]}));
+  } catch(e) {
+    // Fallback texte si image non dispo
+    children.push(new Paragraph({ alignment:AlignmentType.CENTER, spacing:sp(0,60), children:[
+      new TextRun({ text:'avita', font:'Times New Roman', size:64, italics:true, color:C.ARDOISE }),
+      new TextRun({ text:'serena', font:'Arial', size:64, bold:true, color:C.ARDOISE }),
+    ]}));
+  }
+  children.push(new Paragraph({ alignment:AlignmentType.CENTER, spacing:sp(0,120), children:[
+    new TextRun({ text:'NATUROPATHIE · SANTÉ FÉMININE · CORSE', font:'Gill Sans MT', size:15, color:C.GRIS, characterSpacing:80 })
+  ]}));
+  children.push(rule(C.SABLE));
+  children.push(spacer(400));
+  children.push(new Paragraph({ alignment:AlignmentType.CENTER, spacing:sp(0,80), children:[
+    new TextRun({ text:'PROTOCOLE D\'HYGIÈNE VITALE', font:'Gill Sans MT', size:32, bold:true, color:C.ARDOISE, characterSpacing:100 })
+  ]}));
+  children.push(new Paragraph({ alignment:AlignmentType.CENTER, spacing:sp(0,60), children:[
+    new TextRun({ text:cl.prenom, font:'Cormorant Garamond', size:56, italics:true, color:C.OCRE })
+  ]}));
+  children.push(new Paragraph({ alignment:AlignmentType.CENTER, spacing:sp(0,0), children:[
+    new TextRun({ text:generatedData.sous_titre||'', font:'Gill Sans MT', size:20, color:C.GRIS })
+  ]}));
+  children.push(spacer(1000));
+  children.push(new Paragraph({ alignment:AlignmentType.CENTER, spacing:sp(0,0), children:[
+    new TextRun({ text:`Sabrina Castelli · Naturopathe · Porto-Vecchio · ${new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'})}`, font:'Gill Sans MT', size:18, color:C.GRIS })
+  ]}));
+
+  // DISCLAIMER
+  children.push(new Paragraph({ pageBreakBefore:true, spacing:sp(0,0), children:[] }));
+  children.push(spacer(300));
+  children.push(new Paragraph({ spacing:sp(0,200), shading:{ fill:C.GREGE, type:ShadingType.CLEAR }, children:[
+    new TextRun({ text:'Ce Protocole d\'Hygiène Vitale est un outil d\'accompagnement naturopathique personnalisé. Il ne se substitue pas à l\'avis de votre médecin. En cas de doute concernant une interaction ou un suivi en cours, consultez votre médecin traitant. Avita Serena — Sabrina Castelli, Naturopathe.', font:'Gill Sans MT', size:18, color:C.GRIS, italics:true })
+  ]}));
+
+  // BLOCS
+  for (let i = 0; i < blocks.length; i++) {
+    const b = blocks[i];
+    if (!b.content && !b.title) continue;
+    children.push(new Paragraph({ pageBreakBefore:true, spacing:sp(0,0), children:[] }));
+    const pc = PILIER_COLORS[b.pilier] || PILIER_COLORS.autre;
+
+    // Titre du bloc
+    children.push(new Paragraph({ spacing:sp(0,40), shading:{ fill:pc.bg, type:ShadingType.CLEAR }, children:[
+      new TextRun({ text:`0${i+1} · `, font:'Gill Sans MT', size:18, color:pc.accent, bold:true }),
+      new TextRun({ text:(b.title||'').toUpperCase(), font:'Gill Sans MT', size:24, bold:true, color:C.ARDOISE, characterSpacing:40 }),
+    ]}));
+    children.push(rule(pc.accent));
+    children.push(spacer(120));
+
+    // Contenu paragraphe par paragraphe
+    const paras = (b.content||'').split(/\n\n+/);
+    for (const para of paras) {
+      if (!para.trim()) continue;
+      const lines = para.trim().split('\n');
+      for (const line of lines) {
+        if (!line.trim()) continue;
+
+        // PILIER / SOUTIENS header : [PILIER 1 — ALIMENTATION] or [SOUTIENS CIBLÉS — ...]
+        const pilierMatch = line.trim().match(/^\[(.+)\]$/);
+        if (pilierMatch) {
+          const pilierLabel = pilierMatch[1];
+          // Detect pilier type for color
+          let pAccent = pc.accent;
+          if (/ALIMENTATION/i.test(pilierLabel)) pAccent = C.VERT;
+          else if (/PSYCHOLOGIE|ÉMOTIONS/i.test(pilierLabel)) pAccent = C.VIOLET;
+          else if (/ACTIVITÉ|PHYSIQUE/i.test(pilierLabel)) pAccent = C.BLEU;
+          else if (/COMPLÉMENTS|SOUTIENS/i.test(pilierLabel)) pAccent = C.OR;
+          children.push(spacer(200));
+          children.push(new Paragraph({ spacing:sp(0,40), shading:{ fill:'F7F6F4', type:ShadingType.CLEAR }, children:[
+            new TextRun({ text:pilierLabel, font:'Gill Sans MT', size:28, bold:true, color:pAccent, characterSpacing:60 }),
+          ]}));
+          children.push(rule(pAccent));
+          children.push(spacer(80));
+          continue;
+        }
+
+        const isBullet = /^[•·\-–→*]/.test(line.trim());
+        const rawText = isBullet ? line.trim().replace(/^[•·\-–→*]\s*/,'') : line.trim();
+
+        // Parse **bold** segments
+        const runs = [];
+        const boldRegex = /\*\*([^*]+)\*\*/g;
+        let lastIdx = 0;
+        let match;
+        while ((match = boldRegex.exec(rawText)) !== null) {
+          if (match.index > lastIdx) {
+            runs.push(new TextRun({ text: rawText.slice(lastIdx, match.index), font:'Gill Sans MT', size:21, color:C.ARDOISE }));
+          }
+          runs.push(new TextRun({ text: match[1], font:'Gill Sans MT', size:21, color:C.ARDOISE, bold:true }));
+          lastIdx = match.index + match[0].length;
+        }
+        if (lastIdx < rawText.length) {
+          runs.push(new TextRun({ text: rawText.slice(lastIdx), font:'Gill Sans MT', size:21, color:C.ARDOISE }));
+        }
+
+        children.push(new Paragraph({
+          spacing: sp(0, isBullet ? 80 : 160),
+          indent: isBullet ? { left:360, hanging:240 } : {},
+          children: [
+            ...(isBullet ? [new TextRun({ text:'•  ', font:'Gill Sans MT', size:20, color:pc.accent, bold:true })] : []),
+            ...runs
+          ]
+        }));
+      }
+    }
+    children.push(spacer(200));
+  }
+
+  // SIGNATURE
+  children.push(rule(C.SABLE));
+  children.push(spacer(160));
+  try {
+    const logoResp2 = await fetch('logonoir.png');
+    const logoBlob2 = await logoResp2.blob();
+    const logoBuffer2 = await logoBlob2.arrayBuffer();
+    children.push(new Paragraph({ alignment:AlignmentType.CENTER, spacing:sp(0,40), children:[
+      new ImageRun({ data: logoBuffer2, transformation:{ width:130, height:39 }, type:'png' })
+    ]}));
+  } catch(e) {
+    children.push(new Paragraph({ alignment:AlignmentType.CENTER, spacing:sp(0,40), children:[
+      new TextRun({ text:'avita', font:'Times New Roman', size:32, italics:true, color:C.ARDOISE }),
+      new TextRun({ text:'serena', font:'Arial', size:32, bold:true, color:C.ARDOISE }),
+    ]}));
+  }
+  children.push(new Paragraph({ alignment:AlignmentType.CENTER, spacing:sp(0,0), children:[
+    new TextRun({ text:'Naturopathie · Corse · Santé Féminine · @avitaserena', font:'Gill Sans MT', size:16, color:C.GRIS, characterSpacing:40 })
+  ]}));
+
+  const doc = new Document({
+    sections: [{ properties:{ page:{ size:{ width:11906, height:16838 }, margin:{ top:1440, right:1620, bottom:1440, left:1620 } } }, children }]
+  });
+
+  const blob = await Packer.toBlob(doc);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `PHV-${cl.prenom.toLowerCase().replace(/\s+/g,'-')}-${new Date().toISOString().slice(0,10)}.docx`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function resetAll() {
+  generatedData = null;
+  blocks = [];
+  document.getElementById('blocks-container').innerHTML = '';
+  document.getElementById('preview-wrap').style.display = 'none';
+  document.getElementById('gen-btn').disabled = false;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ── Init ──
+loadSession();
+</script>
+</body>
+</html>
