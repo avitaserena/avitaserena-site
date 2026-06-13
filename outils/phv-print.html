@@ -1,0 +1,1659 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Protocole d'Hygiène Vitale — A Vita Serena</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500;1,600&family=Be+Vietnam+Pro:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="supabase-db.js"></script>
+<style>
+
+/* ═══════════════════════════════════════════════
+   VARIABLES
+═══════════════════════════════════════════════ */
+:root {
+  --ardoise:   #1E1E1C;
+  --ocre:      #B4906A;
+  --sable:     #C4A882;
+  --grege:     #EDE9E1;
+  --taupe:     #D5CFC6;
+  --gris:      #6B6560;
+  --off:       #F7F6F4;
+  --blanc:     #FFFFFF;
+  --or:        #9B7230;
+
+  --vert:      #3D6B2C;
+  --vert-cl:   #EAF0E6;
+  --vert-bg:   #F3F8F1;
+
+  --violet:    #5C4578;
+  --violet-cl: #EEE8F5;
+  --violet-bg: #F7F4FB;
+
+  --bleu:      #2C5E8A;
+  --bleu-cl:   #E4EFF8;
+  --bleu-bg:   #F1F7FC;
+
+  --or-acc:    #8B6010;
+  --or-cl:     #FBF3E8;
+  --or-bg:     #FEFAF4;
+
+  --rose:      #7A3A52;
+  --rose-cl:   #F5E8EE;
+  --rose-bg:   #FCF5F8;
+}
+
+/* ═══════════════════════════════════════════════
+   BASE SCREEN
+═══════════════════════════════════════════════ */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  font-family: 'Be Vietnam Pro', sans-serif;
+  font-size: 16px;
+  color: var(--ardoise);
+  background: #D8D4CC;
+}
+
+body {
+  padding: 32px 0 60px;
+}
+
+/* ═══════════════════════════════════════════════
+   TOOLBAR (masquée à l'impression)
+═══════════════════════════════════════════════ */
+.toolbar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  background: var(--ardoise);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 24px;
+  gap: 12px;
+}
+.toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.toolbar-logo .avita { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 18px; color: #fff; }
+.toolbar-logo .serena { font-family: 'Be Vietnam Pro', sans-serif; font-weight: 800; font-size: 18px; color: #fff; }
+.toolbar-sep { width: 1px; height: 20px; background: rgba(255,255,255,.2); }
+.toolbar-tag { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--sable); font-weight: 500; }
+.toolbar-right { display: flex; gap: 8px; align-items: center; }
+.btn-print {
+  background: var(--ocre);
+  color: #fff;
+  border: none;
+  border-radius: 99px;
+  padding: 9px 22px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: 'Be Vietnam Pro', sans-serif;
+  display: flex; align-items: center; gap: 7px;
+  transition: opacity .15s;
+}
+.btn-print:hover { opacity: .85; }
+.btn-back {
+  background: transparent;
+  color: rgba(255,255,255,.7);
+  border: 1px solid rgba(255,255,255,.25);
+  border-radius: 99px;
+  padding: 8px 18px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: 'Be Vietnam Pro', sans-serif;
+  transition: all .15s;
+}
+.btn-back:hover { color: #fff; border-color: rgba(255,255,255,.6); }
+.print-tip {
+  font-size: 11px;
+  color: rgba(255,255,255,.45);
+  max-width: 260px;
+  text-align: right;
+  line-height: 1.4;
+}
+
+/* ═══════════════════════════════════════════════
+   DOCUMENT WRAPPER
+═══════════════════════════════════════════════ */
+.doc-wrap {
+  margin: 56px auto 0;
+  max-width: 794px; /* A4 */
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* ═══════════════════════════════════════════════
+   PAGE A4
+═══════════════════════════════════════════════ */
+.page {
+  width: 794px;
+  min-height: 1123px;
+  background: var(--blanc);
+  box-shadow: 0 4px 32px rgba(0,0,0,.18);
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+/* ═══════════════════════════════════════════════
+   PAGE DE GARDE
+═══════════════════════════════════════════════ */
+.cover-page {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Bandeau haut */
+.cover-top {
+  background: var(--ardoise);
+  padding: 36px 52px 32px;
+  position: relative;
+}
+.cover-top::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(to right, var(--taupe), var(--sable), var(--ocre), var(--sable), var(--taupe));
+}
+
+.cover-logo-line {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+  margin-bottom: 6px;
+}
+.cover-logo-avita {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 32px;
+  color: #fff;
+  font-weight: 400;
+  letter-spacing: -.5px;
+}
+.cover-logo-serena {
+  font-family: 'Be Vietnam Pro', sans-serif;
+  font-weight: 800;
+  font-size: 32px;
+  color: #fff;
+}
+.cover-tagline {
+  font-size: 10px;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: var(--sable);
+  font-weight: 500;
+}
+.cover-date {
+  position: absolute;
+  top: 38px; right: 52px;
+  font-size: 11px;
+  color: rgba(255,255,255,.45);
+  letter-spacing: .06em;
+}
+
+/* Corps de couverture */
+.cover-body {
+  flex: 1;
+  padding: 52px 52px 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.cover-label {
+  font-size: 10px;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: var(--ocre);
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.cover-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-weight: 300;
+  font-size: 42px;
+  color: var(--ardoise);
+  line-height: 1.1;
+  letter-spacing: -.5px;
+  margin-bottom: 6px;
+}
+.cover-title em {
+  font-style: italic;
+  color: var(--ocre);
+}
+
+.cover-prenom {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 56px;
+  color: var(--ardoise);
+  font-weight: 300;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+
+.cover-sous-titre {
+  font-size: 13px;
+  color: var(--gris);
+  letter-spacing: .06em;
+  margin-bottom: 40px;
+}
+
+/* Ligne décorative */
+.cover-rule {
+  width: 80px;
+  height: 2px;
+  background: linear-gradient(to right, var(--ocre), var(--sable));
+  margin-bottom: 32px;
+}
+
+/* Encadré intro */
+.cover-intro {
+  background: var(--grege);
+  border-left: 3px solid var(--ocre);
+  border-radius: 0 10px 10px 0;
+  padding: 20px 24px;
+  margin-bottom: 36px;
+}
+.cover-intro p {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 17px;
+  color: var(--ardoise);
+  line-height: 1.75;
+}
+
+/* Promesse */
+.cover-promise {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 40px;
+}
+.promise-item {
+  background: var(--off);
+  border-radius: 10px;
+  padding: 16px 14px;
+  border-top: 3px solid var(--taupe);
+}
+.promise-item.accent-vert { border-top-color: var(--vert); }
+.promise-item.accent-ocre { border-top-color: var(--ocre); }
+.promise-item.accent-violet { border-top-color: var(--violet); }
+.promise-icon { font-size: 18px; margin-bottom: 8px; }
+.promise-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ardoise);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  margin-bottom: 5px;
+}
+.promise-text {
+  font-size: 12px;
+  color: var(--gris);
+  line-height: 1.6;
+}
+
+/* Bas de couverture */
+.cover-footer {
+  margin-top: auto;
+  padding: 24px 52px;
+  border-top: 1px solid var(--grege);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.cover-footer-left {
+  font-size: 12px;
+  color: var(--gris);
+  line-height: 1.6;
+}
+.cover-footer-right {
+  font-size: 10px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--taupe);
+  text-align: right;
+}
+
+/* Disclaimer */
+.cover-disclaimer {
+  background: var(--off);
+  border-top: 1px solid var(--grege);
+  padding: 14px 52px;
+  font-size: 10px;
+  color: var(--gris);
+  line-height: 1.6;
+  font-style: italic;
+}
+
+/* ═══════════════════════════════════════════════
+   PAGE CONTENU
+═══════════════════════════════════════════════ */
+.content-page {
+  padding: 0;
+}
+
+/* En-tête de page contenu */
+.page-header {
+  background: var(--ardoise);
+  padding: 14px 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.page-header::after {
+  content: '';
+  display: block;
+  position: absolute;
+  top: 48px; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(to right, var(--taupe), var(--sable), var(--ocre), var(--sable), var(--taupe));
+}
+.ph-logo { display: flex; align-items: baseline; gap: 2px; }
+.ph-logo .avita { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 14px; color: rgba(255,255,255,.8); }
+.ph-logo .serena { font-family: 'Be Vietnam Pro', sans-serif; font-weight: 800; font-size: 14px; color: rgba(255,255,255,.8); }
+.ph-prenom { font-size: 11px; color: var(--sable); letter-spacing: .08em; }
+.ph-page { font-size: 10px; color: rgba(255,255,255,.35); }
+
+/* Corps de page */
+.page-body {
+  padding: 36px 52px 32px;
+}
+
+/* Pied de page */
+.page-footer {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  padding: 10px 52px;
+  border-top: 1px solid var(--grege);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 9px;
+  color: var(--taupe);
+  letter-spacing: .06em;
+}
+
+/* ═══════════════════════════════════════════════
+   BLOCS DE CONTENU
+═══════════════════════════════════════════════ */
+
+/* Titre de section */
+.section-block {
+  margin-bottom: 28px;
+}
+
+.section-eyebrow {
+  font-size: 9px;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  font-weight: 700;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.section-eyebrow::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: currentColor;
+  opacity: .25;
+}
+
+.section-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-weight: 500;
+  font-size: 26px;
+  color: var(--ardoise);
+  line-height: 1.2;
+  margin-bottom: 18px;
+  letter-spacing: -.3px;
+}
+
+/* Pilier card */
+.pilier-card {
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.pilier-card-hdr {
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.pilier-card-hdr-icon {
+  font-size: 16px;
+  line-height: 1;
+}
+.pilier-card-hdr-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+
+.pilier-card-body {
+  padding: 18px 20px 20px;
+  background: var(--blanc);
+  border: 1px solid;
+  border-top: none;
+  border-radius: 0 0 12px 12px;
+}
+
+/* Couleurs piliers */
+.pc-alim .pilier-card-hdr { background: var(--vert-cl); }
+.pc-alim .pilier-card-hdr-title { color: var(--vert); }
+.pc-alim .pilier-card-body { border-color: var(--vert-cl); }
+
+.pc-psy .pilier-card-hdr { background: var(--violet-cl); }
+.pc-psy .pilier-card-hdr-title { color: var(--violet); }
+.pc-psy .pilier-card-body { border-color: var(--violet-cl); }
+
+.pc-sport .pilier-card-hdr { background: var(--bleu-cl); }
+.pc-sport .pilier-card-hdr-title { color: var(--bleu); }
+.pc-sport .pilier-card-body { border-color: var(--bleu-cl); }
+
+.pc-compl .pilier-card-hdr { background: var(--or-cl); }
+.pc-compl .pilier-card-hdr-title { color: var(--or-acc); }
+.pc-compl .pilier-card-body { border-color: var(--or-cl); }
+
+.pc-bilan .pilier-card-hdr { background: var(--rose-cl); }
+.pc-bilan .pilier-card-hdr-title { color: var(--rose); }
+.pc-bilan .pilier-card-body { border-color: var(--rose-cl); }
+
+.pc-autre .pilier-card-hdr { background: var(--grege); }
+.pc-autre .pilier-card-hdr-title { color: var(--gris); }
+.pc-autre .pilier-card-body { border-color: var(--grege); }
+
+/* Texte de contenu */
+.content-text {
+  font-size: 13.5px;
+  line-height: 1.85;
+  color: var(--ardoise);
+}
+.content-text p {
+  margin-bottom: 12px;
+}
+.content-text p:last-child {
+  margin-bottom: 0;
+}
+
+/* Bullets */
+.content-bullets {
+  list-style: none;
+  margin: 8px 0 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.content-bullets li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--ardoise);
+}
+.bullet-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ocre);
+  flex-shrink: 0;
+  margin-top: 7px;
+}
+
+/* Encadré spécial */
+.callout {
+  border-radius: 10px;
+  padding: 16px 18px;
+  margin: 16px 0;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.callout-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+.callout-text { font-size: 12.5px; line-height: 1.7; }
+.callout.style-sage { background: var(--vert-bg); border-left: 3px solid var(--vert); }
+.callout.style-gold { background: var(--or-bg); border-left: 3px solid var(--or-acc); }
+.callout.style-warm { background: var(--rose-bg); border-left: 3px solid var(--rose); }
+.callout.style-info { background: var(--bleu-bg); border-left: 3px solid var(--bleu); }
+
+/* Quote bloc */
+.quote-block {
+  background: var(--grege);
+  border-radius: 12px;
+  padding: 22px 28px;
+  margin: 16px 0;
+  position: relative;
+}
+.quote-block::before {
+  content: '\201C';
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 64px;
+  color: var(--sable);
+  position: absolute;
+  top: 4px; left: 18px;
+  line-height: 1;
+}
+.quote-block p {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 17px;
+  line-height: 1.75;
+  color: var(--ardoise);
+  padding-left: 24px;
+}
+
+/* Timeline rituels */
+.ritual-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 8px 0;
+}
+.ritual-item {
+  background: var(--off);
+  border-radius: 8px;
+  padding: 14px 14px;
+  border-top: 2px solid var(--taupe);
+}
+.ritual-time {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--ocre);
+  margin-bottom: 8px;
+}
+.ritual-item ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ritual-item ul li {
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--ardoise);
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+.ritual-item ul li::before {
+  content: '→';
+  color: var(--sable);
+  flex-shrink: 0;
+  font-size: 11px;
+  margin-top: 1px;
+}
+
+/* Signaux timeline */
+.signal-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 8px 0;
+}
+.signal-item {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+.signal-period {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--ocre);
+  white-space: nowrap;
+  padding-top: 3px;
+  min-width: 80px;
+}
+.signal-content {
+  font-size: 12.5px;
+  line-height: 1.65;
+  color: var(--ardoise);
+  flex: 1;
+  border-left: 2px solid var(--grege);
+  padding-left: 14px;
+}
+
+/* ═══════════════════════════════════════════════
+   PAGE FIN — FICHE MÉMO
+═══════════════════════════════════════════════ */
+.memo-page .page-body {
+  padding-bottom: 80px;
+}
+.memo-intro {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 16px;
+  color: var(--gris);
+  line-height: 1.75;
+  margin-bottom: 24px;
+}
+.memo-group {
+  margin-bottom: 18px;
+}
+.memo-group-title {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--gris);
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--grege);
+  margin-bottom: 10px;
+}
+.memo-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 8px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--ardoise);
+}
+.memo-check {
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid var(--taupe);
+  border-radius: 4px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.memo-note-area {
+  background: var(--off);
+  border-radius: 10px;
+  border: 1px dashed var(--taupe);
+  padding: 14px 16px;
+  margin-top: 20px;
+}
+.memo-note-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--gris);
+  margin-bottom: 8px;
+}
+.memo-note-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.memo-note-lines .line {
+  height: 1px;
+  background: var(--taupe);
+  opacity: .5;
+}
+
+/* Signature finale */
+.signature-block {
+  text-align: center;
+  padding: 28px 0 20px;
+  border-top: 1px solid var(--grege);
+  margin-top: 32px;
+}
+.sig-logo { display: flex; align-items: baseline; gap: 2px; justify-content: center; margin-bottom: 6px; }
+.sig-logo .avita { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 22px; color: var(--ardoise); }
+.sig-logo .serena { font-family: 'Be Vietnam Pro', sans-serif; font-weight: 800; font-size: 22px; color: var(--ardoise); }
+.sig-sub { font-size: 11px; color: var(--gris); letter-spacing: .1em; }
+
+/* ═══════════════════════════════════════════════
+   PRINT STYLES
+═══════════════════════════════════════════════ */
+@media print {
+  @page { margin: 0; size: A4; }
+  html { background: white; font-size: 14px; }
+  body { padding: 0; }
+  .toolbar { display: none !important; }
+  .doc-wrap { margin-top: 0; }
+  .page {
+    width: 100%;
+    min-height: auto;
+    box-shadow: none;
+    margin-bottom: 0;
+    page-break-after: always;
+  }
+  .page:last-child { page-break-after: auto; }
+  .page-body { padding-bottom: 52px; }
+  .section-block { page-break-inside: avoid; }
+  .pilier-card { page-break-inside: avoid; }
+  .callout { page-break-inside: avoid; }
+}
+
+/* ═══════════════════════════════════════════════
+   LOADING / ERROR
+═══════════════════════════════════════════════ */
+#loading {
+  position: fixed; inset: 0;
+  background: var(--ardoise);
+  display: flex; align-items: center; justify-content: center;
+  flex-direction: column; gap: 16px;
+  z-index: 9999;
+}
+.spinner {
+  width: 36px; height: 36px;
+  border: 2px solid rgba(255,255,255,.15);
+  border-top-color: var(--ocre);
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 18px;
+  color: rgba(255,255,255,.6);
+}
+
+#error-state {
+  display: none;
+  text-align: center; padding: 80px 24px; color: var(--gris);
+}
+
+/* ═══════════════════════════════════════════════
+   EDITION INLINE
+═══════════════════════════════════════════════ */
+.edit-toolbar {
+  display: none;
+  position: fixed;
+  background: var(--ardoise);
+  border-radius: 8px;
+  padding: 5px 8px;
+  gap: 4px;
+  z-index: 500;
+  box-shadow: 0 4px 16px rgba(0,0,0,.3);
+  align-items: center;
+}
+.edit-toolbar.visible { display: flex; }
+.etb-btn {
+  background: transparent;
+  border: none;
+  color: rgba(255,255,255,.8);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 5px;
+  font-size: 13px;
+  font-family: 'Be Vietnam Pro', sans-serif;
+  font-weight: 600;
+  transition: background .12s;
+  line-height: 1;
+}
+.etb-btn:hover { background: rgba(255,255,255,.15); color: #fff; }
+.etb-btn.active { background: var(--ocre); color: #fff; }
+.etb-sep { width: 1px; height: 16px; background: rgba(255,255,255,.2); margin: 0 2px; }
+
+/* Blocs éditables */
+.editable-block {
+  outline: none;
+  border-radius: 4px;
+  transition: background .15s;
+  cursor: text;
+}
+.editable-block:hover { background: rgba(180,144,106,.05); }
+.editable-block:focus { background: rgba(180,144,106,.07); outline: 2px solid rgba(180,144,106,.25); outline-offset: 3px; }
+
+/* Cases à cocher engagements éditables */
+.engagement-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--grege);
+}
+.engagement-row:last-child { border-bottom: none; }
+.engagement-text-edit {
+  flex: 1;
+  outline: none;
+  font-size: 13.5px;
+  line-height: 1.6;
+  font-family: 'Be Vietnam Pro', sans-serif;
+  color: var(--ardoise);
+  padding: 2px 4px;
+  border-radius: 4px;
+  cursor: text;
+}
+.engagement-text-edit:focus { background: rgba(180,144,106,.07); }
+.engagement-del {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: rgba(180,100,80,.5);
+  font-size: 14px;
+  padding: 2px 4px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  transition: all .12s;
+}
+.engagement-del:hover { color: #c0392b; background: #fdf0ee; }
+.add-engagement-btn {
+  margin-top: 10px;
+  background: transparent;
+  border: 1.5px dashed var(--taupe);
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 12px;
+  color: var(--gris);
+  cursor: pointer;
+  font-family: 'Be Vietnam Pro', sans-serif;
+  width: 100%;
+  text-align: left;
+  transition: all .15s;
+}
+.add-engagement-btn:hover { border-color: var(--ocre); color: var(--ocre); background: var(--or-bg); }
+
+@media print {
+  .edit-toolbar { display: none !important; }
+  .editable-block:focus, .editable-block:hover { background: transparent !important; outline: none !important; }
+  .engagement-del { display: none !important; }
+  .add-engagement-btn { display: none !important; }
+}
+
+
+/* ── FICHE MÉMO INTERACTIVE ── */
+.memo-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 7px 8px;
+  border-radius: 7px;
+  margin-bottom: 3px;
+  transition: background .1s;
+}
+.memo-item:hover { background: var(--off); }
+.memo-item:hover .memo-del-btn { opacity: 1; }
+.memo-checkbox { margin-top: 2px; }
+.memo-label {
+  flex: 1;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--ardoise);
+  cursor: pointer;
+}
+input[type="checkbox"]:checked + .memo-label {
+  text-decoration: line-through;
+  color: var(--gris);
+  opacity: .65;
+}
+.memo-del-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--taupe);
+  font-size: 11px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  opacity: 0;
+  transition: all .12s;
+  flex-shrink: 0;
+}
+.memo-del-btn:hover { color: #c0392b; background: #fdf0ee; opacity: 1 !important; }
+@media print { .memo-del-btn { display: none !important; } }
+
+
+.memo-group-counter {
+  margin-left: 8px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--taupe);
+  background: var(--off);
+  border-radius: 99px;
+  padding: 1px 7px;
+  letter-spacing: .02em;
+}
+
+</style>
+</head>
+<body>
+
+<!-- TOOLBAR -->
+<div class="toolbar">
+  <div class="toolbar-left">
+    <div class="toolbar-logo"><img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iYSIgZmlsbD0id2hpdGUiIGRhdGEtbmFtZT0iQ2FscXVlIDEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgdmlld0JveD0iMCAwIDQwMi41MiAxMTYuNTYiPgogIDxwYXRoIGQ9Ik0xNjIuOTUsNzIuNTdsMy4yNS00Ljg0LDkuNTguMDNjLjc4LDMuNjksMy42Nyw1LjI3LDcuMSw0LjIyLjk3LS4zLDIuNDItMS44OCwyLjUzLTIuODRzLTEuMjgtMi45Ny0yLjI4LTMuMjNsLTguMzQtMi4xMWMtNC45MS0xLjI0LTguMDYtNC43NS04LjQ3LTkuMjQtLjQ0LTQuODEsMS42LTkuMjIsNi41LTExLjI2LDUtMi4wOCwxMS4wNS0yLjExLDE1Ljg4LjQ1LDMuNjgsMS45NSw2LjEsNC45Miw2LjIzLDkuODRsLTEwLjUxLjA3Yy0uNzYtMi40Ny0xLjk3LTMuNzQtMy44LTQuMDMtMS43MS0uMjctNC40NC45Ny00LjY1LDIuNTYtLjg2LDYuNTcsMTEuODMsMi41OSwxOC41OCwxMS4yMS4xMS03LjU3LDEuNjMtMTMuOTcsNy4yOC0xOC4xNSw2LjcyLTQuOTgsMTcuMTMtNC43NiwyMy4xNCwxLjE4LDQuNzksNC43Myw1LjMxLDExLjM5LDQuOTUsMTcuODdoLTI0LjY2Yy0uMDEsMy43NCwyLjE2LDYuNTgsNC44Niw3LjMsMy44NiwxLjA0LDcuMTYtLjI1LDkuMDEtMy43M2wxMC41NS4wOGMtMS45Nyw4LjIyLTguOTgsMTIuOC0xNy4xOCwxMi43Mi03LjgyLS4wNy0xNC4wNy00LjI2LTE2LjkyLTEyLjI0LS4xNiw0LjU3LTIuMzUsOC40Ni02Ljc4LDEwLjQ0LTkuMzEsNC4xOC0yMC45NS45Mi0yMy4yMi04LjU3bC0yLjY0LDIuMjRaTTIxOS41Nyw1Ny4xN2MtLjI1LTUuODgtMy43LTcuNDgtNy40My03LjM5cy02LjYyLDIuNy02LjQ5LDcuNDhsMTMuOTItLjA5WiIvPgogIDxwYXRoIGQ9Ik0yNTMuNTksNTIuNzRjLTIuODEtLjUxLTUuNjQtLjQ2LTgsLjctMS45MS45NC0zLjQxLDQuMzMtMy40Miw2LjkzbC0uMDgsMTkuNjYtMTAuOTItLjAydi0zNy40czEwLjc1LS4wNCwxMC43NS0uMDRsLjQyLDYuMTljMi41Ny00Ljk5LDcuMzYtNy4wMSwxMi40OC01Ljg0bC0uMTIsNy4yOGMzLjQ1LTUuNjIsOC45NC04LjM5LDE1LjU3LTguNDEsNy4xMy0uMDMsMTMuMzQsMy42NSwxNS43NywxMC40OSwxLjM0LDMuNzcsMS42Miw3Ljc4LDEuNDEsMTIuMDJsLTI0Ljc0LjAyYy0uMjQsMy42MywyLjEyLDYuNTUsNS4xMSw3LjM0LDMuNDguOTIsNi43Mi0uMTcsOC41NS0zLjcyaDEwLjcxYy0yLjAyLDguMDYtOC43NywxMi43NS0xNi44MywxMi43My02LjItLjAxLTEyLjA2LTIuNS0xNS4xOC03Ljk1LTMuNTYtNi4yMi0zLjgyLTEzLjE3LTEuNDgtMTkuOThaTTI3Ni44Myw1Ny4yN2MuMzMtNC40LTIuNTYtNy42LTYuOTEtNy41Ni0zLjg2LjAzLTcuMTgsMy4wMi02Ljg0LDcuNTNsMTMuNzUuMDNaIi8+CiAgPHBhdGggZD0iTTk0LjIsNDQuNDFjMi45LDguNDgtMTEuNTEsMjYuOTktMjAuMDUsMzUuODgtLjctMTAuNDEtLjI3LTMzLjM1LTQuNTItMzQuNjNsLTQuMzgtMS4zMywxMS4wNy0yLjVjMyw5LjMxLDIuNzgsMTguMzcsMy40NywyOS4yMSw0LjY5LTQuOTUsOC4zOC0xMS4xMiwxMC43Mi0xNy43NCwxLjA2LTMuMDEtLjE0LTQuNjctMi41OC02LjMzLTEuNC0uOTUtLjYzLTQuMDEuOTMtNC42OSwxLjQ3LS42NSw0LjQ4LS40Myw1LjM2LDIuMTRaIi8+CiAgPHBhdGggZD0iTTEyMC4xMSw0NS40NGwtNS43My0uMjUuMzItMS41NGM4LjMzLTEuNzEsOS42OC03LjE1LDE0Ljg4LTExLjE1bC0yLjUyLDEwLjIxLDUuMjIuMDktLjMyLDJjLS4wNy40NS0xLjQyLjI4LTEuOTMuMzVsLTQuMDQuMDUiLz4KICA8Y2lyY2xlIGN4PSIzNzEuMDYiIGN5PSI3NC42MSIgcj0iNi4wNiIvPgogIDxjaXJjbGUgY3g9IjEwOS4zOSIgY3k9IjI5LjkiIHI9IjQuMDIiLz4KICA8cGF0aCBkPSJNMjg4LjIsNDIuNDhoMTEuMDN2NS40OGguNTdjLjgtMS43NSwyLjExLTMuMjQsMy45Mi00LjQ1LDEuODEtMS4yMSw0LjAyLTEuODEsNi42MS0xLjgxLDQuOSwwLDguMywxLjU1LDEwLjE4LDQuNjYsMS44OCwzLjExLDIuODMsNi41OCwyLjgzLDEwLjQzdjIzLjM0aC0xMS4wM3YtMjEuNDJjMC0yLjQ3LS41NC00LjQxLTEuNjMtNS44My0xLjA4LTEuNDItMi42OS0yLjE0LTQuODEtMi4xNC0yLjI2LDAtMy45NC43NS01LjAyLDIuMjQtMS4wOCwxLjQ5LTEuNjMsMy40MS0xLjYzLDUuNzN2MjEuNDJoLTExLjAzdi0zNy42NVoiLz4KICA8cGF0aCBkPSJNMzI3LjM4LDc0LjhjLTIuNDktMy40Ni0zLjczLTguMS0zLjczLTEzLjkyczEuMjgtMTAuNTMsMy44My0xMy45OWMyLjU1LTMuNDYsNi4wOC01LjIsMTAuNTktNS4yLDMuMTEsMCw1LjUuNjksNy4xOCwyLjA2LDEuNjcsMS4zNywyLjgzLDIuNzYsMy40OCw0LjE1aC41NnYtNS40NGgxMC45NHYzNi45MWgtMTAuOTR2LTUuOTNoLS41NmMtLjcsMS40OS0xLjg5LDIuOTYtMy41OSw0LjQtMS43LDEuNDQtNC4xLDIuMTYtNy4yMSwyLjE2LTQuNTUsMC04LjA3LTEuNzMtMTAuNTYtNS4yWk0zNDcuNTYsNjguMThjMS4yMS0yLjA3LDEuODEtNC41MiwxLjgxLTcuMzZzLS42MS01LjIyLTEuODEtNy4yOWMtMS4yMS0yLjA3LTMuMDQtMy4xMS01LjUtMy4xMXMtNC40MywxLjAxLTUuNjEsMy4wM2MtMS4xOSwyLjAyLTEuNzgsNC40NS0xLjc4LDcuMjlzLjU5LDUuMzYsMS43OCw3LjQzYzEuMTgsMi4wNywzLjA1LDMuMTEsNS42MSwzLjExczQuMy0xLjAzLDUuNS0zLjExWiIvPgogIDxwYXRoIGQ9Ik0xMDkuNSw0Mi41OWMtNS43MSwwLTkuNTItLjE0LTEzLjk0LjQ0bDMuMDEsMS4xMWMuMzEuMTIsMS41OS43NywxLjg0LDEuMDIuODcuODgsMS4wOSwyLjIyLjc1LDMuNCIvPgogIDxwYXRoIGQ9Ik01OC4xMSw3NS4zNmMtMy42NCwxLjkxLTEuODItMy43My0xLjgyLTMuNzNsOC40Ny0yOS4wNGgtNi40NnMtLjMzLDEtLjg1LDIuNjZjLS42NC0uNzctMS40Ny0xLjM1LTIuNDgtMS43NS0xLjA4LS40Mi0yLjE4LS42My0zLjMyLS42My0zLjA1LDAtNi4zMSwxLjM5LTkuNzgsNC4xNy0zLjQ3LDIuNzgtNi40OSw2LjMyLTkuMDYsMTAuNjMtMi41Nyw0LjMxLTQuMTYsOC41OC00Ljc1LDEyLjgzLS4xMiwxLjMyLS4xOCwyLjIxLS4xOCwyLjY5LDAsNC40MywxLjg1LDYuNjQsNS41Niw2LjY0LDMuMTcsMCw2LjQ3LTEuNjksOS45MS01LjA3LDMuNDQtMy4zOCw2LjUzLTcuODUsOS4yOC0xMy40MWwtLjY4LDMuOTJjLTEuNTgsNy4yMi0yLjMsMTMuNTQtLjIxLDE0LjI5LDYuMDMsMi4xNSwxMS44NC04LjI5LDExLjg0LTguMjlsLjg0LTEuNXMtMi42NiwzLjY5LTYuMyw1LjZaTTUwLjAzLDYzLjcyYy0xLjkyLDMuMzgtNC4wOCw2LjE4LTYuNSw4LjM5LTIuNDIsMi4yMS00LjcxLDMuMzItNi44NiwzLjMyLTIuNTEsMC0zLjc3LTEuNzktMy43Ny01LjM4LDAtMS4wOC4wOS0yLjI3LjI3LTMuNTkuNTQtMy43NywxLjYyLTcuMTksMy4yMy0xMC4yNywxLjYxLTMuMDgsMy41MS01LjUzLDUuNy03LjM2LDIuMTgtMS44Miw0LjMyLTIuNzcsNi40MS0yLjgzLDEuODUsMCwzLjI0LjUxLDQuMTcsMS41My45MywxLjAyLDEuMzksMi40MiwxLjM5LDQuMjIuMDYuNiwwLDEuMjktLjE4LDIuMDYtLjY2LDMuMjMtMS45NCw2LjUzLTMuODYsOS45MVoiLz4KICA8cGF0aCBkPSJNMTU5Ljc2LDc1LjM2Yy0zLjM5LDIuMzMtMS44Mi0zLjczLTEuODItMy43M2w4LjQ3LTI5LjA0aC02LjQ2cy0uMzMsMS0uODUsMi42NmMtLjY0LS43Ny0xLjQ3LTEuMzUtMi40OC0xLjc1LTEuMDgtLjQyLTIuMTgtLjYzLTMuMzItLjYzLTMuMDUsMC02LjMxLDEuMzktOS43OCw0LjE3LTMuNDcsMi43OC02LjQ5LDYuMzItOS4wNiwxMC42My0yLjU3LDQuMzEtNC4xNiw4LjU4LTQuNzUsMTIuODMtLjEyLDEuMzItLjE4LDIuMjEtLjE4LDIuNjksMCw0LjQzLDEuODUsNi42NCw1LjU2LDYuNjQsMy4xNywwLDYuNDctMS42OSw5LjkxLTUuMDcsMy40NC0zLjM4LDYuNTMtNy44NSw5LjI4LTEzLjQxbC0uNjgsMy45MmMtMS41OCw3LjIyLTIuMywxMy41NC0uMjEsMTQuMjksNi4wMywyLjE1LDExLjg0LTguMjksMTEuODQtOC4yOWwuOTMtMi4xOHMtMy43NCw0LjQ1LTYuMzksNi4yOFpNMTUxLjY4LDYzLjcyYy0xLjkyLDMuMzgtNC4wOCw2LjE4LTYuNSw4LjM5LTIuNDIsMi4yMS00LjcxLDMuMzItNi44NiwzLjMyLTIuNTEsMC0zLjc3LTEuNzktMy43Ny01LjM4LDAtMS4wOC4wOS0yLjI3LjI3LTMuNTkuNTQtMy43NywxLjYyLTcuMTksMy4yMy0xMC4yNywxLjYxLTMuMDgsMy41MS01LjUzLDUuNy03LjM2LDIuMTgtMS44Miw0LjMyLTIuNzcsNi40MS0yLjgzLDEuODUsMCwzLjI0LjUxLDQuMTcsMS41My45MywxLjAyLDEuMzksMi40MiwxLjM5LDQuMjIuMDYuNiwwLDEuMjktLjE4LDIuMDYtLjY2LDMuMjMtMS45NCw2LjUzLTMuODYsOS45MVoiLz4KICA8cGF0aCBkPSJNMTAzLjA0LDQyLjU5aDYuNDZsLTguNDcsMjkuMDRzLTEuODIsNS42NCwxLjgyLDMuNzNjMy42NC0xLjkxLDYuMy01LjYsNi4zLTUuNmwtLjg0LDEuNXMtNS44LDEwLjQ0LTExLjg0LDguMjljLTUuMS0xLjgyLDYuNTYtMzYuOTcsNi41Ni0zNi45N1oiLz4KICA8cGF0aCBkPSJNMTIwLjU0LDQyLjU5aDYuNDZsLTguNDcsMjkuMDRzLTEuODIsNS42NCwxLjgyLDMuNzMsNi4zLTUuNiw2LjMtNS42bC0uODQsMS41cy01LjgsMTAuNDQtMTEuODQsOC4yOWMtNS4xLTEuODIsNi41Ni0zNi45Nyw2LjU2LTM2Ljk3WiIvPgo8L3N2Zz4=" alt="A Vita Serena" style="height:26px;display:block"></div>
+    <div class="toolbar-sep"></div>
+    <div class="toolbar-tag">Protocole d'Hygiène Vitale</div>
+  </div>
+  <div class="toolbar-right">
+    <span class="print-tip">Fichier → Imprimer → Enregistrer en PDF<br>Désactiver les en-têtes/pieds de page</span>
+    <button class="btn-back" onclick="history.back()">← Retour</button>
+    <button class="btn-print" onclick="window.print()">🖨 Télécharger le PDF</button>
+  </div>
+</div>
+
+<!-- LOADING -->
+<div id="loading">
+  <div class="spinner"></div>
+  <div class="loading-text">Mise en page du protocole…</div>
+</div>
+
+<!-- DOCUMENT -->
+<div class="doc-wrap" id="doc-wrap" style="display:none"></div>
+
+<script>
+/* ═══════════════════════════════════════════════
+   DONNÉES
+═══════════════════════════════════════════════ */
+let data = null;
+let blocks = [];
+
+const PILIER_CSS = {
+  alimentation: 'pc-alim',
+  psychologie:  'pc-psy',
+  activite:     'pc-sport',
+  complements:  'pc-compl',
+  bilan:        'pc-bilan',
+  autre:        'pc-autre',
+};
+const PILIER_ICONS = {
+  alimentation: '🌿',
+  psychologie:  '🧠',
+  activite:     '🏃',
+  complements:  '✦',
+  bilan:        '📊',
+  autre:        '—',
+};
+const PILIER_LABELS = {
+  alimentation: 'Alimentation',
+  psychologie:  'Psychologie & émotions',
+  activite:     'Activité physique',
+  complements:  'Compléments ciblés',
+  bilan:        'Bilan & suivi',
+  autre:        'Autre',
+};
+const SECTION_COLORS = {
+  alimentation: '#3D6B2C',
+  psychologie:  '#5C4578',
+  activite:     '#2C5E8A',
+  complements:  '#8B6010',
+  bilan:        '#7A3A52',
+  autre:        '#6B6560',
+};
+const EYEBROW_NAMES = {
+  s1: 'Comprendre votre terrain',
+  s2: 'Vos axes de travail',
+  s3: 'Votre protocole',
+  s4: 'Alimentation au quotidien',
+  s5: 'Votre semaine type',
+  s6: 'Ce que vous allez ressentir',
+};
+
+function escH(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+/* ═══════════════════════════════════════════════
+   PARSING DU CONTENU
+═══════════════════════════════════════════════ */
+function parseContent(raw) {
+  // Détecter les blocs de rituels (MATIN / SOIR / EN JOURNÉE / HEBDOMADAIRE)
+  const ritualMatch = raw.match(/(MATIN|SOIR|EN JOURNÉE|HEBDOMADAIRE|matin|soir|en journée|hebdomadaire)/i);
+  if (ritualMatch) return renderRituals(raw);
+
+  // Détecter les signaux temporels (semaines / mois)
+  const signalMatch = raw.match(/(semaine|À \d|En \d|après \d)/i);
+  if (signalMatch && raw.includes('•')) {
+    return renderSignals(raw);
+  }
+
+  // Rendu standard : paragraphes + bullets
+  return renderParagraphs(raw);
+}
+
+function renderParagraphs(raw) {
+  const lines = raw.split('\n');
+  let html = '';
+  let inBullets = false;
+  let bulletColor = 'var(--ocre)';
+
+  for (const line of lines) {
+    const l = line.trim();
+    if (!l) {
+      if (inBullets) { html += '</ul>'; inBullets = false; }
+      continue;
+    }
+    if (/^[•·\-–→*]/.test(l)) {
+      if (!inBullets) { html += '<ul class="content-bullets">'; inBullets = true; }
+      const text = escH(l.replace(/^[•·\-–→*]\s*/,''));
+      html += `<li><span class="bullet-dot" style="background:${bulletColor}"></span><span>${text}</span></li>`;
+    } else {
+      if (inBullets) { html += '</ul>'; inBullets = false; }
+      // Détecter sous-titres en majuscules (ex: [PILIER 1 — ALIMENTATION])
+      if (/^\[.+\]$/.test(l) || /^[A-ZÀÉÈÊÎÏ\s&–—\[\]]+$/.test(l) && l.length < 60) {
+        const clean = l.replace(/^\[|\]$/g,'');
+        html += `<div style="font-size:10px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--ocre);margin:16px 0 8px;padding-bottom:5px;border-bottom:1px solid var(--grege)">${escH(clean)}</div>`;
+      } else {
+        html += `<p>${escH(l)}</p>`;
+      }
+    }
+  }
+  if (inBullets) html += '</ul>';
+  return `<div class="content-text">${html}</div>`;
+}
+
+function renderRituals(raw) {
+  const RITUAL_KEYS = /^(MATIN|MIDI|SOIR|EN JOURNÉE|EN JOURNEE|JOURNÉE|HEBDOMADAIRE|MATIN\s*\(|MIDI\s*\(|SOIR\s*\(|EN JOURNÉE\s*\(|HEBDOMADAIRE\s*\()/i;
+  const RITUAL_ICONS = { MATIN:'🌅', MIDI:'☀️', SOIR:'🌙', 'EN JOURNÉE':'🕐', 'EN JOURNEE':'🕐', JOURNÉE:'🕐', HEBDOMADAIRE:'📅' };
+
+  const sections = [];
+  let current = null;
+
+  for (const line of raw.split('\n')) {
+    const l = line.trim();
+    if (!l) continue;
+
+    // Détection header rituel — sans limite de longueur, juste le début de ligne
+    const isHeader = RITUAL_KEYS.test(l) && !(/^[•·\-–→*]/.test(l));
+    if (isHeader) {
+      if (current) sections.push(current);
+      // Extraire le label propre (ex: "MATIN (10 minutes — avant de démarrer la journée)")
+      const label = l.replace(/[:\s]+$/, '').replace(/\*\*/g,'').replace(/\*/g,'');
+      const keyMatch = label.match(/^(MATIN|MIDI|SOIR|EN JOURNÉE|EN JOURNEE|JOURNÉE|HEBDOMADAIRE)/i);
+      const icon = keyMatch ? (RITUAL_ICONS[keyMatch[1].toUpperCase()] || '🕐') : '🕐';
+      current = { time: label, icon, items: [], prose: [] };
+    } else if (current) {
+      if (/^[•·\-–→*]/.test(l)) {
+        current.items.push(l.replace(/^[•·\-–→*]\s*/,''));
+      } else {
+        // Ligne de prose dans un rituel (ex: description après header)
+        current.prose.push(l);
+      }
+    } else {
+      sections.push({ intro: l });
+    }
+  }
+  if (current) sections.push(current);
+
+  const introItems = sections.filter(s => s.intro);
+  const ritualItems = sections.filter(s => s.time);
+
+  let html = '';
+  if (introItems.length) {
+    html += `<div class="content-text">${introItems.map(s=>`<p>${escH(s.intro)}</p>`).join('')}</div>`;
+  }
+
+  if (ritualItems.length) {
+    html += '<div class="ritual-grid">';
+    for (const s of ritualItems) {
+      const allItems = [
+        ...(s.prose || []).map(p => `<li class="ritual-prose">${escH(p)}</li>`),
+        ...s.items.map(i => `<li>${escH(i)}</li>`)
+      ];
+      html += `<div class="ritual-item">
+        <div class="ritual-time">${s.icon ? s.icon + ' ' : ''}${escH(s.time)}</div>
+        <ul>${allItems.join('') || '<li style="color:var(--taupe);font-style:italic">—</li>'}</ul>
+      </div>`;
+    }
+    html += '</div>';
+  }
+
+  return html;
+}
+
+function renderSignals(raw) {
+  const lines = raw.split('\n').filter(l=>l.trim());
+  let html = '<div class="signal-list">';
+  let currentPeriod = '';
+  let currentItems = [];
+
+  function flush() {
+    if (!currentPeriod && !currentItems.length) return;
+    html += `<div class="signal-item">
+      <div class="signal-period">${escH(currentPeriod)}</div>
+      <div class="signal-content">${currentItems.map(i=>`• ${escH(i)}`).join('<br>')}</div>
+    </div>`;
+    currentItems = [];
+  }
+
+  for (const line of lines) {
+    const l = line.trim();
+    const isPeriod = /^(En |À |Après |Si |Dès )/i.test(l) && !/^[•·\-–→*]/.test(l);
+    if (isPeriod) {
+      flush();
+      currentPeriod = l.replace(/:$/, '');
+    } else if (/^[•·\-–→*]/.test(l)) {
+      currentItems.push(l.replace(/^[•·\-–→*]\s*/,''));
+    } else {
+      flush();
+      currentPeriod = l;
+    }
+  }
+  flush();
+  html += '</div>';
+  return html;
+}
+
+/* ═══════════════════════════════════════════════
+   CONSTRUCTION DU DOCUMENT
+═══════════════════════════════════════════════ */
+function buildDoc() {
+  const wrap = document.getElementById('doc-wrap');
+  const cl = data._client;
+  const dateStr = new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'});
+  const prenom = cl.prenom || 'Cliente';
+
+  let pages = [];
+
+  // ── PAGE 1 : COUVERTURE ──
+  pages.push(buildCoverPage(cl, dateStr));
+
+  // ── PAGES CONTENU (blocs) ──
+  // Regrouper les blocs par 2 ou seuls selon longueur
+  let pageNum = 2;
+  let i = 0;
+  while (i < blocks.length) {
+    const b = blocks[i];
+    const content = parseContent(b.content || '');
+    pages.push(buildContentPage(b, content, prenom, pageNum));
+    pageNum++;
+    i++;
+  }
+
+  // ── DERNIÈRE PAGE : FICHE MÉMO ──
+  pages.push(buildMemoPage(prenom, pageNum));
+
+  wrap.innerHTML = pages.join('');
+}
+
+function buildCoverPage(cl, dateStr) {
+  const prenom = cl.prenom || 'Cliente';
+  const sousTitre = data.sous_titre || `Protocole d'Hygiène Vitale · A Vita Serena`;
+
+  return `
+<div class="page cover-page">
+  <div class="cover-top">
+    <img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iYSIgZmlsbD0id2hpdGUiIGRhdGEtbmFtZT0iQ2FscXVlIDEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgdmlld0JveD0iMCAwIDQwMi41MiAxMTYuNTYiPgogIDxwYXRoIGQ9Ik0xNjIuOTUsNzIuNTdsMy4yNS00Ljg0LDkuNTguMDNjLjc4LDMuNjksMy42Nyw1LjI3LDcuMSw0LjIyLjk3LS4zLDIuNDItMS44OCwyLjUzLTIuODRzLTEuMjgtMi45Ny0yLjI4LTMuMjNsLTguMzQtMi4xMWMtNC45MS0xLjI0LTguMDYtNC43NS04LjQ3LTkuMjQtLjQ0LTQuODEsMS42LTkuMjIsNi41LTExLjI2LDUtMi4wOCwxMS4wNS0yLjExLDE1Ljg4LjQ1LDMuNjgsMS45NSw2LjEsNC45Miw2LjIzLDkuODRsLTEwLjUxLjA3Yy0uNzYtMi40Ny0xLjk3LTMuNzQtMy44LTQuMDMtMS43MS0uMjctNC40NC45Ny00LjY1LDIuNTYtLjg2LDYuNTcsMTEuODMsMi41OSwxOC41OCwxMS4yMS4xMS03LjU3LDEuNjMtMTMuOTcsNy4yOC0xOC4xNSw2LjcyLTQuOTgsMTcuMTMtNC43NiwyMy4xNCwxLjE4LDQuNzksNC43Myw1LjMxLDExLjM5LDQuOTUsMTcuODdoLTI0LjY2Yy0uMDEsMy43NCwyLjE2LDYuNTgsNC44Niw3LjMsMy44NiwxLjA0LDcuMTYtLjI1LDkuMDEtMy43M2wxMC41NS4wOGMtMS45Nyw4LjIyLTguOTgsMTIuOC0xNy4xOCwxMi43Mi03LjgyLS4wNy0xNC4wNy00LjI2LTE2LjkyLTEyLjI0LS4xNiw0LjU3LTIuMzUsOC40Ni02Ljc4LDEwLjQ0LTkuMzEsNC4xOC0yMC45NS45Mi0yMy4yMi04LjU3bC0yLjY0LDIuMjRaTTIxOS41Nyw1Ny4xN2MtLjI1LTUuODgtMy43LTcuNDgtNy40My03LjM5cy02LjYyLDIuNy02LjQ5LDcuNDhsMTMuOTItLjA5WiIvPgogIDxwYXRoIGQ9Ik0yNTMuNTksNTIuNzRjLTIuODEtLjUxLTUuNjQtLjQ2LTgsLjctMS45MS45NC0zLjQxLDQuMzMtMy40Miw2LjkzbC0uMDgsMTkuNjYtMTAuOTItLjAydi0zNy40czEwLjc1LS4wNCwxMC43NS0uMDRsLjQyLDYuMTljMi41Ny00Ljk5LDcuMzYtNy4wMSwxMi40OC01Ljg0bC0uMTIsNy4yOGMzLjQ1LTUuNjIsOC45NC04LjM5LDE1LjU3LTguNDEsNy4xMy0uMDMsMTMuMzQsMy42NSwxNS43NywxMC40OSwxLjM0LDMuNzcsMS42Miw3Ljc4LDEuNDEsMTIuMDJsLTI0Ljc0LjAyYy0uMjQsMy42MywyLjEyLDYuNTUsNS4xMSw3LjM0LDMuNDguOTIsNi43Mi0uMTcsOC41NS0zLjcyaDEwLjcxYy0yLjAyLDguMDYtOC43NywxMi43NS0xNi44MywxMi43My02LjItLjAxLTEyLjA2LTIuNS0xNS4xOC03Ljk1LTMuNTYtNi4yMi0zLjgyLTEzLjE3LTEuNDgtMTkuOThaTTI3Ni44Myw1Ny4yN2MuMzMtNC40LTIuNTYtNy42LTYuOTEtNy41Ni0zLjg2LjAzLTcuMTgsMy4wMi02Ljg0LDcuNTNsMTMuNzUuMDNaIi8+CiAgPHBhdGggZD0iTTk0LjIsNDQuNDFjMi45LDguNDgtMTEuNTEsMjYuOTktMjAuMDUsMzUuODgtLjctMTAuNDEtLjI3LTMzLjM1LTQuNTItMzQuNjNsLTQuMzgtMS4zMywxMS4wNy0yLjVjMyw5LjMxLDIuNzgsMTguMzcsMy40NywyOS4yMSw0LjY5LTQuOTUsOC4zOC0xMS4xMiwxMC43Mi0xNy43NCwxLjA2LTMuMDEtLjE0LTQuNjctMi41OC02LjMzLTEuNC0uOTUtLjYzLTQuMDEuOTMtNC42OSwxLjQ3LS42NSw0LjQ4LS40Myw1LjM2LDIuMTRaIi8+CiAgPHBhdGggZD0iTTEyMC4xMSw0NS40NGwtNS43My0uMjUuMzItMS41NGM4LjMzLTEuNzEsOS42OC03LjE1LDE0Ljg4LTExLjE1bC0yLjUyLDEwLjIxLDUuMjIuMDktLjMyLDJjLS4wNy40NS0xLjQyLjI4LTEuOTMuMzVsLTQuMDQuMDUiLz4KICA8Y2lyY2xlIGN4PSIzNzEuMDYiIGN5PSI3NC42MSIgcj0iNi4wNiIvPgogIDxjaXJjbGUgY3g9IjEwOS4zOSIgY3k9IjI5LjkiIHI9IjQuMDIiLz4KICA8cGF0aCBkPSJNMjg4LjIsNDIuNDhoMTEuMDN2NS40OGguNTdjLjgtMS43NSwyLjExLTMuMjQsMy45Mi00LjQ1LDEuODEtMS4yMSw0LjAyLTEuODEsNi42MS0xLjgxLDQuOSwwLDguMywxLjU1LDEwLjE4LDQuNjYsMS44OCwzLjExLDIuODMsNi41OCwyLjgzLDEwLjQzdjIzLjM0aC0xMS4wM3YtMjEuNDJjMC0yLjQ3LS41NC00LjQxLTEuNjMtNS44My0xLjA4LTEuNDItMi42OS0yLjE0LTQuODEtMi4xNC0yLjI2LDAtMy45NC43NS01LjAyLDIuMjQtMS4wOCwxLjQ5LTEuNjMsMy40MS0xLjYzLDUuNzN2MjEuNDJoLTExLjAzdi0zNy42NVoiLz4KICA8cGF0aCBkPSJNMzI3LjM4LDc0LjhjLTIuNDktMy40Ni0zLjczLTguMS0zLjczLTEzLjkyczEuMjgtMTAuNTMsMy44My0xMy45OWMyLjU1LTMuNDYsNi4wOC01LjIsMTAuNTktNS4yLDMuMTEsMCw1LjUuNjksNy4xOCwyLjA2LDEuNjcsMS4zNywyLjgzLDIuNzYsMy40OCw0LjE1aC41NnYtNS40NGgxMC45NHYzNi45MWgtMTAuOTR2LTUuOTNoLS41NmMtLjcsMS40OS0xLjg5LDIuOTYtMy41OSw0LjQtMS43LDEuNDQtNC4xLDIuMTYtNy4yMSwyLjE2LTQuNTUsMC04LjA3LTEuNzMtMTAuNTYtNS4yWk0zNDcuNTYsNjguMThjMS4yMS0yLjA3LDEuODEtNC41MiwxLjgxLTcuMzZzLS42MS01LjIyLTEuODEtNy4yOWMtMS4yMS0yLjA3LTMuMDQtMy4xMS01LjUtMy4xMXMtNC40MywxLjAxLTUuNjEsMy4wM2MtMS4xOSwyLjAyLTEuNzgsNC40NS0xLjc4LDcuMjlzLjU5LDUuMzYsMS43OCw3LjQzYzEuMTgsMi4wNywzLjA1LDMuMTEsNS42MSwzLjExczQuMy0xLjAzLDUuNS0zLjExWiIvPgogIDxwYXRoIGQ9Ik0xMDkuNSw0Mi41OWMtNS43MSwwLTkuNTItLjE0LTEzLjk0LjQ0bDMuMDEsMS4xMWMuMzEuMTIsMS41OS43NywxLjg0LDEuMDIuODcuODgsMS4wOSwyLjIyLjc1LDMuNCIvPgogIDxwYXRoIGQ9Ik01OC4xMSw3NS4zNmMtMy42NCwxLjkxLTEuODItMy43My0xLjgyLTMuNzNsOC40Ny0yOS4wNGgtNi40NnMtLjMzLDEtLjg1LDIuNjZjLS42NC0uNzctMS40Ny0xLjM1LTIuNDgtMS43NS0xLjA4LS40Mi0yLjE4LS42My0zLjMyLS42My0zLjA1LDAtNi4zMSwxLjM5LTkuNzgsNC4xNy0zLjQ3LDIuNzgtNi40OSw2LjMyLTkuMDYsMTAuNjMtMi41Nyw0LjMxLTQuMTYsOC41OC00Ljc1LDEyLjgzLS4xMiwxLjMyLS4xOCwyLjIxLS4xOCwyLjY5LDAsNC40MywxLjg1LDYuNjQsNS41Niw2LjY0LDMuMTcsMCw2LjQ3LTEuNjksOS45MS01LjA3LDMuNDQtMy4zOCw2LjUzLTcuODUsOS4yOC0xMy40MWwtLjY4LDMuOTJjLTEuNTgsNy4yMi0yLjMsMTMuNTQtLjIxLDE0LjI5LDYuMDMsMi4xNSwxMS44NC04LjI5LDExLjg0LTguMjlsLjg0LTEuNXMtMi42NiwzLjY5LTYuMyw1LjZaTTUwLjAzLDYzLjcyYy0xLjkyLDMuMzgtNC4wOCw2LjE4LTYuNSw4LjM5LTIuNDIsMi4yMS00LjcxLDMuMzItNi44NiwzLjMyLTIuNTEsMC0zLjc3LTEuNzktMy43Ny01LjM4LDAtMS4wOC4wOS0yLjI3LjI3LTMuNTkuNTQtMy43NywxLjYyLTcuMTksMy4yMy0xMC4yNywxLjYxLTMuMDgsMy41MS01LjUzLDUuNy03LjM2LDIuMTgtMS44Miw0LjMyLTIuNzcsNi40MS0yLjgzLDEuODUsMCwzLjI0LjUxLDQuMTcsMS41My45MywxLjAyLDEuMzksMi40MiwxLjM5LDQuMjIuMDYuNiwwLDEuMjktLjE4LDIuMDYtLjY2LDMuMjMtMS45NCw2LjUzLTMuODYsOS45MVoiLz4KICA8cGF0aCBkPSJNMTU5Ljc2LDc1LjM2Yy0zLjM5LDIuMzMtMS44Mi0zLjczLTEuODItMy43M2w4LjQ3LTI5LjA0aC02LjQ2cy0uMzMsMS0uODUsMi42NmMtLjY0LS43Ny0xLjQ3LTEuMzUtMi40OC0xLjc1LTEuMDgtLjQyLTIuMTgtLjYzLTMuMzItLjYzLTMuMDUsMC02LjMxLDEuMzktOS43OCw0LjE3LTMuNDcsMi43OC02LjQ5LDYuMzItOS4wNiwxMC42My0yLjU3LDQuMzEtNC4xNiw4LjU4LTQuNzUsMTIuODMtLjEyLDEuMzItLjE4LDIuMjEtLjE4LDIuNjksMCw0LjQzLDEuODUsNi42NCw1LjU2LDYuNjQsMy4xNywwLDYuNDctMS42OSw5LjkxLTUuMDcsMy40NC0zLjM4LDYuNTMtNy44NSw5LjI4LTEzLjQxbC0uNjgsMy45MmMtMS41OCw3LjIyLTIuMywxMy41NC0uMjEsMTQuMjksNi4wMywyLjE1LDExLjg0LTguMjksMTEuODQtOC4yOWwuOTMtMi4xOHMtMy43NCw0LjQ1LTYuMzksNi4yOFpNMTUxLjY4LDYzLjcyYy0xLjkyLDMuMzgtNC4wOCw2LjE4LTYuNSw4LjM5LTIuNDIsMi4yMS00LjcxLDMuMzItNi44NiwzLjMyLTIuNTEsMC0zLjc3LTEuNzktMy43Ny01LjM4LDAtMS4wOC4wOS0yLjI3LjI3LTMuNTkuNTQtMy43NywxLjYyLTcuMTksMy4yMy0xMC4yNywxLjYxLTMuMDgsMy41MS01LjUzLDUuNy03LjM2LDIuMTgtMS44Miw0LjMyLTIuNzcsNi40MS0yLjgzLDEuODUsMCwzLjI0LjUxLDQuMTcsMS41My45MywxLjAyLDEuMzksMi40MiwxLjM5LDQuMjIuMDYuNiwwLDEuMjktLjE4LDIuMDYtLjY2LDMuMjMtMS45NCw2LjUzLTMuODYsOS45MVoiLz4KICA8cGF0aCBkPSJNMTAzLjA0LDQyLjU5aDYuNDZsLTguNDcsMjkuMDRzLTEuODIsNS42NCwxLjgyLDMuNzNjMy42NC0xLjkxLDYuMy01LjYsNi4zLTUuNmwtLjg0LDEuNXMtNS44LDEwLjQ0LTExLjg0LDguMjljLTUuMS0xLjgyLDYuNTYtMzYuOTcsNi41Ni0zNi45N1oiLz4KICA8cGF0aCBkPSJNMTIwLjU0LDQyLjU5aDYuNDZsLTguNDcsMjkuMDRzLTEuODIsNS42NCwxLjgyLDMuNzMsNi4zLTUuNiw2LjMtNS42bC0uODQsMS41cy01LjgsMTAuNDQtMTEuODQsOC4yOWMtNS4xLTEuODIsNi41Ni0zNi45Nyw2LjU2LTM2Ljk3WiIvPgo8L3N2Zz4=" alt="A Vita Serena" style="height:34px;display:block;margin-bottom:8px">
+    <div class="cover-tagline">Naturopathie · Santé Féminine · Corse</div>
+    <div class="cover-date">${dateStr}</div>
+  </div>
+
+  <div class="cover-body">
+    <div class="cover-label">Protocole d'Hygiène Vitale</div>
+
+    <div class="cover-prenom">${escH(prenom)}</div>
+    <div class="cover-title">Votre feuille de route <em>vers le mieux-être</em></div>
+    <div class="cover-sous-titre">${escH(sousTitre)}</div>
+
+    <div class="cover-rule"></div>
+
+    <div class="cover-intro">
+      <p>Ce protocole a été conçu uniquement pour vous, à partir de tout ce que vous m'avez partagé. Il n'est pas une liste de contraintes — c'est une invitation à prendre soin de vous, à votre rythme. Lisez-le comme une lettre, pas comme une ordonnance.</p>
+    </div>
+
+    <div class="cover-promise">
+      <div class="promise-item accent-vert">
+        <div class="promise-icon">🌱</div>
+        <div class="promise-title">À votre rythme</div>
+        <div class="promise-text">Pas besoin de tout mettre en place d'un coup. Chaque petit geste compte et s'accumule.</div>
+      </div>
+      <div class="promise-item accent-ocre">
+        <div class="promise-icon">🔎</div>
+        <div class="promise-title">Observez & notez</div>
+        <div class="promise-text">Notez ce que vous ressentez : les améliorations, les difficultés, vos questions.</div>
+      </div>
+      <div class="promise-item accent-violet">
+        <div class="promise-icon">🔄</div>
+        <div class="promise-title">On réévalue ensemble</div>
+        <div class="promise-text">Ce protocole évolue avec vous. La consultation de suivi est là pour l'adapter.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cover-footer">
+    <div class="cover-footer-left">
+      <strong>Sabrina Castelli</strong><br>
+      Naturopathe · A Vita Serena · Porto-Vecchio, Corse
+    </div>
+    <div class="cover-footer-right">
+      Consultation en visioconférence<br>
+      avitaserena.com · @avitaserena
+    </div>
+  </div>
+
+  <div class="cover-disclaimer">
+    Ce document est un outil d'accompagnement naturopathique personnalisé. Il ne se substitue pas à l'avis de votre médecin. En cas de doute ou d'interaction médicamenteuse, consultez votre médecin traitant. A Vita Serena — Sabrina Castelli, Naturopathe.
+  </div>
+</div>`;
+}
+
+function buildContentPage(b, contentHtml, prenom, pageNum) {
+  const pcClass = PILIER_CSS[b.pilier] || 'pc-autre';
+  const icon = PILIER_ICONS[b.pilier] || '—';
+  const label = PILIER_LABELS[b.pilier] || 'Autre';
+  const accentColor = SECTION_COLORS[b.pilier] || '#6B6560';
+
+  return `
+<div class="page content-page">
+  <div class="page-header" style="position:relative">
+    <div class="ph-logo"><img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iYSIgZmlsbD0id2hpdGUiIGRhdGEtbmFtZT0iQ2FscXVlIDEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgdmlld0JveD0iMCAwIDQwMi41MiAxMTYuNTYiPgogIDxwYXRoIGQ9Ik0xNjIuOTUsNzIuNTdsMy4yNS00Ljg0LDkuNTguMDNjLjc4LDMuNjksMy42Nyw1LjI3LDcuMSw0LjIyLjk3LS4zLDIuNDItMS44OCwyLjUzLTIuODRzLTEuMjgtMi45Ny0yLjI4LTMuMjNsLTguMzQtMi4xMWMtNC45MS0xLjI0LTguMDYtNC43NS04LjQ3LTkuMjQtLjQ0LTQuODEsMS42LTkuMjIsNi41LTExLjI2LDUtMi4wOCwxMS4wNS0yLjExLDE1Ljg4LjQ1LDMuNjgsMS45NSw2LjEsNC45Miw2LjIzLDkuODRsLTEwLjUxLjA3Yy0uNzYtMi40Ny0xLjk3LTMuNzQtMy44LTQuMDMtMS43MS0uMjctNC40NC45Ny00LjY1LDIuNTYtLjg2LDYuNTcsMTEuODMsMi41OSwxOC41OCwxMS4yMS4xMS03LjU3LDEuNjMtMTMuOTcsNy4yOC0xOC4xNSw2LjcyLTQuOTgsMTcuMTMtNC43NiwyMy4xNCwxLjE4LDQuNzksNC43Myw1LjMxLDExLjM5LDQuOTUsMTcuODdoLTI0LjY2Yy0uMDEsMy43NCwyLjE2LDYuNTgsNC44Niw3LjMsMy44NiwxLjA0LDcuMTYtLjI1LDkuMDEtMy43M2wxMC41NS4wOGMtMS45Nyw4LjIyLTguOTgsMTIuOC0xNy4xOCwxMi43Mi03LjgyLS4wNy0xNC4wNy00LjI2LTE2LjkyLTEyLjI0LS4xNiw0LjU3LTIuMzUsOC40Ni02Ljc4LDEwLjQ0LTkuMzEsNC4xOC0yMC45NS45Mi0yMy4yMi04LjU3bC0yLjY0LDIuMjRaTTIxOS41Nyw1Ny4xN2MtLjI1LTUuODgtMy43LTcuNDgtNy40My03LjM5cy02LjYyLDIuNy02LjQ5LDcuNDhsMTMuOTItLjA5WiIvPgogIDxwYXRoIGQ9Ik0yNTMuNTksNTIuNzRjLTIuODEtLjUxLTUuNjQtLjQ2LTgsLjctMS45MS45NC0zLjQxLDQuMzMtMy40Miw2LjkzbC0uMDgsMTkuNjYtMTAuOTItLjAydi0zNy40czEwLjc1LS4wNCwxMC43NS0uMDRsLjQyLDYuMTljMi41Ny00Ljk5LDcuMzYtNy4wMSwxMi40OC01Ljg0bC0uMTIsNy4yOGMzLjQ1LTUuNjIsOC45NC04LjM5LDE1LjU3LTguNDEsNy4xMy0uMDMsMTMuMzQsMy42NSwxNS43NywxMC40OSwxLjM0LDMuNzcsMS42Miw3Ljc4LDEuNDEsMTIuMDJsLTI0Ljc0LjAyYy0uMjQsMy42MywyLjEyLDYuNTUsNS4xMSw3LjM0LDMuNDguOTIsNi43Mi0uMTcsOC41NS0zLjcyaDEwLjcxYy0yLjAyLDguMDYtOC43NywxMi43NS0xNi44MywxMi43My02LjItLjAxLTEyLjA2LTIuNS0xNS4xOC03Ljk1LTMuNTYtNi4yMi0zLjgyLTEzLjE3LTEuNDgtMTkuOThaTTI3Ni44Myw1Ny4yN2MuMzMtNC40LTIuNTYtNy42LTYuOTEtNy41Ni0zLjg2LjAzLTcuMTgsMy4wMi02Ljg0LDcuNTNsMTMuNzUuMDNaIi8+CiAgPHBhdGggZD0iTTk0LjIsNDQuNDFjMi45LDguNDgtMTEuNTEsMjYuOTktMjAuMDUsMzUuODgtLjctMTAuNDEtLjI3LTMzLjM1LTQuNTItMzQuNjNsLTQuMzgtMS4zMywxMS4wNy0yLjVjMyw5LjMxLDIuNzgsMTguMzcsMy40NywyOS4yMSw0LjY5LTQuOTUsOC4zOC0xMS4xMiwxMC43Mi0xNy43NCwxLjA2LTMuMDEtLjE0LTQuNjctMi41OC02LjMzLTEuNC0uOTUtLjYzLTQuMDEuOTMtNC42OSwxLjQ3LS42NSw0LjQ4LS40Myw1LjM2LDIuMTRaIi8+CiAgPHBhdGggZD0iTTEyMC4xMSw0NS40NGwtNS43My0uMjUuMzItMS41NGM4LjMzLTEuNzEsOS42OC03LjE1LDE0Ljg4LTExLjE1bC0yLjUyLDEwLjIxLDUuMjIuMDktLjMyLDJjLS4wNy40NS0xLjQyLjI4LTEuOTMuMzVsLTQuMDQuMDUiLz4KICA8Y2lyY2xlIGN4PSIzNzEuMDYiIGN5PSI3NC42MSIgcj0iNi4wNiIvPgogIDxjaXJjbGUgY3g9IjEwOS4zOSIgY3k9IjI5LjkiIHI9IjQuMDIiLz4KICA8cGF0aCBkPSJNMjg4LjIsNDIuNDhoMTEuMDN2NS40OGguNTdjLjgtMS43NSwyLjExLTMuMjQsMy45Mi00LjQ1LDEuODEtMS4yMSw0LjAyLTEuODEsNi42MS0xLjgxLDQuOSwwLDguMywxLjU1LDEwLjE4LDQuNjYsMS44OCwzLjExLDIuODMsNi41OCwyLjgzLDEwLjQzdjIzLjM0aC0xMS4wM3YtMjEuNDJjMC0yLjQ3LS41NC00LjQxLTEuNjMtNS44My0xLjA4LTEuNDItMi42OS0yLjE0LTQuODEtMi4xNC0yLjI2LDAtMy45NC43NS01LjAyLDIuMjQtMS4wOCwxLjQ5LTEuNjMsMy40MS0xLjYzLDUuNzN2MjEuNDJoLTExLjAzdi0zNy42NVoiLz4KICA8cGF0aCBkPSJNMzI3LjM4LDc0LjhjLTIuNDktMy40Ni0zLjczLTguMS0zLjczLTEzLjkyczEuMjgtMTAuNTMsMy44My0xMy45OWMyLjU1LTMuNDYsNi4wOC01LjIsMTAuNTktNS4yLDMuMTEsMCw1LjUuNjksNy4xOCwyLjA2LDEuNjcsMS4zNywyLjgzLDIuNzYsMy40OCw0LjE1aC41NnYtNS40NGgxMC45NHYzNi45MWgtMTAuOTR2LTUuOTNoLS41NmMtLjcsMS40OS0xLjg5LDIuOTYtMy41OSw0LjQtMS43LDEuNDQtNC4xLDIuMTYtNy4yMSwyLjE2LTQuNTUsMC04LjA3LTEuNzMtMTAuNTYtNS4yWk0zNDcuNTYsNjguMThjMS4yMS0yLjA3LDEuODEtNC41MiwxLjgxLTcuMzZzLS42MS01LjIyLTEuODEtNy4yOWMtMS4yMS0yLjA3LTMuMDQtMy4xMS01LjUtMy4xMXMtNC40MywxLjAxLTUuNjEsMy4wM2MtMS4xOSwyLjAyLTEuNzgsNC40NS0xLjc4LDcuMjlzLjU5LDUuMzYsMS43OCw3LjQzYzEuMTgsMi4wNywzLjA1LDMuMTEsNS42MSwzLjExczQuMy0xLjAzLDUuNS0zLjExWiIvPgogIDxwYXRoIGQ9Ik0xMDkuNSw0Mi41OWMtNS43MSwwLTkuNTItLjE0LTEzLjk0LjQ0bDMuMDEsMS4xMWMuMzEuMTIsMS41OS43NywxLjg0LDEuMDIuODcuODgsMS4wOSwyLjIyLjc1LDMuNCIvPgogIDxwYXRoIGQ9Ik01OC4xMSw3NS4zNmMtMy42NCwxLjkxLTEuODItMy43My0xLjgyLTMuNzNsOC40Ny0yOS4wNGgtNi40NnMtLjMzLDEtLjg1LDIuNjZjLS42NC0uNzctMS40Ny0xLjM1LTIuNDgtMS43NS0xLjA4LS40Mi0yLjE4LS42My0zLjMyLS42My0zLjA1LDAtNi4zMSwxLjM5LTkuNzgsNC4xNy0zLjQ3LDIuNzgtNi40OSw2LjMyLTkuMDYsMTAuNjMtMi41Nyw0LjMxLTQuMTYsOC41OC00Ljc1LDEyLjgzLS4xMiwxLjMyLS4xOCwyLjIxLS4xOCwyLjY5LDAsNC40MywxLjg1LDYuNjQsNS41Niw2LjY0LDMuMTcsMCw2LjQ3LTEuNjksOS45MS01LjA3LDMuNDQtMy4zOCw2LjUzLTcuODUsOS4yOC0xMy40MWwtLjY4LDMuOTJjLTEuNTgsNy4yMi0yLjMsMTMuNTQtLjIxLDE0LjI5LDYuMDMsMi4xNSwxMS44NC04LjI5LDExLjg0LTguMjlsLjg0LTEuNXMtMi42NiwzLjY5LTYuMyw1LjZaTTUwLjAzLDYzLjcyYy0xLjkyLDMuMzgtNC4wOCw2LjE4LTYuNSw4LjM5LTIuNDIsMi4yMS00LjcxLDMuMzItNi44NiwzLjMyLTIuNTEsMC0zLjc3LTEuNzktMy43Ny01LjM4LDAtMS4wOC4wOS0yLjI3LjI3LTMuNTkuNTQtMy43NywxLjYyLTcuMTksMy4yMy0xMC4yNywxLjYxLTMuMDgsMy41MS01LjUzLDUuNy03LjM2LDIuMTgtMS44Miw0LjMyLTIuNzcsNi40MS0yLjgzLDEuODUsMCwzLjI0LjUxLDQuMTcsMS41My45MywxLjAyLDEuMzksMi40MiwxLjM5LDQuMjIuMDYuNiwwLDEuMjktLjE4LDIuMDYtLjY2LDMuMjMtMS45NCw2LjUzLTMuODYsOS45MVoiLz4KICA8cGF0aCBkPSJNMTU5Ljc2LDc1LjM2Yy0zLjM5LDIuMzMtMS44Mi0zLjczLTEuODItMy43M2w4LjQ3LTI5LjA0aC02LjQ2cy0uMzMsMS0uODUsMi42NmMtLjY0LS43Ny0xLjQ3LTEuMzUtMi40OC0xLjc1LTEuMDgtLjQyLTIuMTgtLjYzLTMuMzItLjYzLTMuMDUsMC02LjMxLDEuMzktOS43OCw0LjE3LTMuNDcsMi43OC02LjQ5LDYuMzItOS4wNiwxMC42My0yLjU3LDQuMzEtNC4xNiw4LjU4LTQuNzUsMTIuODMtLjEyLDEuMzItLjE4LDIuMjEtLjE4LDIuNjksMCw0LjQzLDEuODUsNi42NCw1LjU2LDYuNjQsMy4xNywwLDYuNDctMS42OSw5LjkxLTUuMDcsMy40NC0zLjM4LDYuNTMtNy44NSw5LjI4LTEzLjQxbC0uNjgsMy45MmMtMS41OCw3LjIyLTIuMywxMy41NC0uMjEsMTQuMjksNi4wMywyLjE1LDExLjg0LTguMjksMTEuODQtOC4yOWwuOTMtMi4xOHMtMy43NCw0LjQ1LTYuMzksNi4yOFpNMTUxLjY4LDYzLjcyYy0xLjkyLDMuMzgtNC4wOCw2LjE4LTYuNSw4LjM5LTIuNDIsMi4yMS00LjcxLDMuMzItNi44NiwzLjMyLTIuNTEsMC0zLjc3LTEuNzktMy43Ny01LjM4LDAtMS4wOC4wOS0yLjI3LjI3LTMuNTkuNTQtMy43NywxLjYyLTcuMTksMy4yMy0xMC4yNywxLjYxLTMuMDgsMy41MS01LjUzLDUuNy03LjM2LDIuMTgtMS44Miw0LjMyLTIuNzcsNi40MS0yLjgzLDEuODUsMCwzLjI0LjUxLDQuMTcsMS41My45MywxLjAyLDEuMzksMi40MiwxLjM5LDQuMjIuMDYuNiwwLDEuMjktLjE4LDIuMDYtLjY2LDMuMjMtMS45NCw2LjUzLTMuODYsOS45MVoiLz4KICA8cGF0aCBkPSJNMTAzLjA0LDQyLjU5aDYuNDZsLTguNDcsMjkuMDRzLTEuODIsNS42NCwxLjgyLDMuNzNjMy42NC0xLjkxLDYuMy01LjYsNi4zLTUuNmwtLjg0LDEuNXMtNS44LDEwLjQ0LTExLjg0LDguMjljLTUuMS0xLjgyLDYuNTYtMzYuOTcsNi41Ni0zNi45N1oiLz4KICA8cGF0aCBkPSJNMTIwLjU0LDQyLjU5aDYuNDZsLTguNDcsMjkuMDRzLTEuODIsNS42NCwxLjgyLDMuNzMsNi4zLTUuNiw2LjMtNS42bC0uODQsMS41cy01LjgsMTAuNDQtMTEuODQsOC4yOWMtNS4xLTEuODIsNi41Ni0zNi45Nyw2LjU2LTM2Ljk3WiIvPgo8L3N2Zz4=" alt="A Vita Serena" style="height:20px;display:block"></div>
+    <div class="ph-page">${pageNum}</div>
+  </div>
+  <div style="height:2px;background:linear-gradient(to right,var(--taupe),var(--sable),var(--ocre),var(--sable),var(--taupe))"></div>
+
+  <div class="page-body">
+    <div class="section-block">
+      <div class="section-eyebrow" style="color:${accentColor}">
+        ${icon} &nbsp;${escH(label)}
+      </div>
+      <div class="section-title">${escH(b.title || '')}</div>
+
+      <div class="pilier-card ${pcClass}">
+        <div class="pilier-card-body">
+          ${contentHtml}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <span>Protocole d'Hygiène Vitale · ${escH(prenom)}</span>
+    <span>A Vita Serena · Sabrina Castelli, Naturopathe</span>
+    <span>${pageNum}</span>
+  </div>
+</div>`;
+}
+
+
+
+function classifyMemoItem(text) {
+  const t = text.toLowerCase();
+  // Compléments : noms de compléments spécifiques, dosages, marques
+  if (/vitamine|magnésium|zinc|fer|ferritine|oméga|probiotique|prébiotique|glutamine|curcuma|charbon|spiruline|coenzyme|q10|ashwagandha|rhodiola|maca|gattilier|berbérine|inositol|chrome|sélénium|iode|b12|folate|mélatonine|tryptophane|l-\w+|novoma|nutripure|nutrixeal|pileje|nutergia|holistica|gélule|comprimé|capsule|ampoule|mg|µg|ui\b|posologie|matin à jeun|compléments?/i.test(t)) return 'complements';
+  // Alimentation : nourriture, boissons, repas, recettes
+  if (/manger|repas|aliment|cuisin|légume|fruit|protéine|glucide|lipide|graisse|huile|bouillon|infusion|tisane|thé|herbe|épice|sel|sucre|farine|gluten|lactose|laitier|viande|poisson|oeuf|légumineux|haricot|lentille|pois|tofu|tempeh|céréale|riz|quinoa|pain|assiette|déjeuner|dîner|petit-déjeuner|collation|grignoter|mastiquer|mâcher|manger lentement|poser la fourchette|boire|eau|hydrat|jus|citron|gingembre|fenouil|camomille|mélisse|passiflore|sureau|valériane|cuit|vapeur|cru|fermenté|kéfir|kombucha|choucroute|sauerkraut|portion|ration|calorie|jeûne|fenêtre alimentaire|ordre des aliments|légumes d'abord|légumes avant|féculents en dernier|glucides en dernier|anti-inflam/i.test(t)) return 'alimentation';
+  // Activité physique : mouvement, exercice
+  if (/marche|marcher|yoga|étirement|stretching|pilates|natation|vélo|sport|exercice|activité physique|mouvement|gym|séance|entraîn|cardio|musculation|gainage|respiration|cohérence cardiaque|respiRelax|sophrologie|méditation|pleine conscience|mindfulness|respir|souffle|inspir|expir|pranayama/i.test(t)) return 'activite';
+  // Psychologie : stress, émotions, sommeil, rituels mentaux
+  if (/stress|anxiété|émotions?|humeur|mental|charge mentale|burn.out|pleurs?|colère|journal|écrire|écriture|gratitude|visualis|relaxation|détente|décompression|bain|douche froide|lumière|écran|sommeil|dormir|endormissement|réveil|sieste|nuit|rituel du soir|rituel du matin/i.test(t)) return 'psychologie';
+  return null; // garder le pilier d'origine
+}
+
+function buildMemoPage(prenom, pageNum) {
+  // Extraire les bullets de tous les blocs pour la fiche mémo
+  const groups = {};
+  for (const b of blocks) {
+    if (!b.content) continue;
+    const lines = b.content.split('\n').filter(l => /^[•·\-–→*]/.test(l.trim()));
+    const pilier = b.pilier || 'autre';
+    if (!groups[pilier]) groups[pilier] = { title: PILIER_LABELS[pilier], items: [] };
+    for (const l of lines) {
+      const text = l.trim().replace(/^[•·\-–→*]\s*/,'');
+      if (text.length > 6) {
+        // Reclassifier sémantiquement plutôt que par pilier source
+        const semantic = classifyMemoItem(text);
+        const targetPilier = semantic || pilier;
+        if (!groups[targetPilier]) groups[targetPilier] = { title: PILIER_LABELS[targetPilier] || PILIER_LABELS[pilier], items: [] };
+        groups[targetPilier].items.push(text);
+      }
+    }
+  }
+
+  const pilierOrder = ['alimentation','psychologie','activite','complements','bilan','autre'];
+  let memoHtml = '';
+  for (const p of pilierOrder) {
+    if (!groups[p] || !groups[p].items.length) continue;
+    const groupAccents = { alimentation:'var(--vert)', psychologie:'var(--violet)', activite:'var(--bleu)', complements:'var(--or-acc)', bilan:'var(--rose)', autre:'var(--gris)' };
+    memoHtml += `<div class="memo-group" data-pilier="${p}">
+      <div class="memo-group-title" style="color:${groupAccents[p]||'var(--gris)'}">
+        ${PILIER_ICONS[p]} &nbsp;${groups[p].title}
+        <span class="memo-group-counter" id="counter-${p}"></span>
+      </div>`;
+    for (const item of groups[p].items) {
+      const itemId = `memo-${p}-${groups[p].items.indexOf(item)}`;
+      memoHtml += `<div class="memo-item" id="${itemId}">
+        <input type="checkbox" class="memo-checkbox" id="chk-${itemId}" onchange="saveMemoState()" style="width:16px;height:16px;cursor:pointer;accent-color:var(--ocre);flex-shrink:0">
+        <label for="chk-${itemId}" class="memo-label">${escH(item)}</label>
+        <button class="memo-del-btn" onclick="deleteMemoItem('${itemId}')" title="Supprimer cet élément">✕</button>
+      </div>`;
+    }
+    memoHtml += `</div>`;
+  }
+
+  return `
+<div class="page content-page memo-page">
+  <div class="page-header" style="position:relative">
+    <div class="ph-logo"><img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iYSIgZmlsbD0id2hpdGUiIGRhdGEtbmFtZT0iQ2FscXVlIDEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgdmlld0JveD0iMCAwIDQwMi41MiAxMTYuNTYiPgogIDxwYXRoIGQ9Ik0xNjIuOTUsNzIuNTdsMy4yNS00Ljg0LDkuNTguMDNjLjc4LDMuNjksMy42Nyw1LjI3LDcuMSw0LjIyLjk3LS4zLDIuNDItMS44OCwyLjUzLTIuODRzLTEuMjgtMi45Ny0yLjI4LTMuMjNsLTguMzQtMi4xMWMtNC45MS0xLjI0LTguMDYtNC43NS04LjQ3LTkuMjQtLjQ0LTQuODEsMS42LTkuMjIsNi41LTExLjI2LDUtMi4wOCwxMS4wNS0yLjExLDE1Ljg4LjQ1LDMuNjgsMS45NSw2LjEsNC45Miw2LjIzLDkuODRsLTEwLjUxLjA3Yy0uNzYtMi40Ny0xLjk3LTMuNzQtMy44LTQuMDMtMS43MS0uMjctNC40NC45Ny00LjY1LDIuNTYtLjg2LDYuNTcsMTEuODMsMi41OSwxOC41OCwxMS4yMS4xMS03LjU3LDEuNjMtMTMuOTcsNy4yOC0xOC4xNSw2LjcyLTQuOTgsMTcuMTMtNC43NiwyMy4xNCwxLjE4LDQuNzksNC43Myw1LjMxLDExLjM5LDQuOTUsMTcuODdoLTI0LjY2Yy0uMDEsMy43NCwyLjE2LDYuNTgsNC44Niw3LjMsMy44NiwxLjA0LDcuMTYtLjI1LDkuMDEtMy43M2wxMC41NS4wOGMtMS45Nyw4LjIyLTguOTgsMTIuOC0xNy4xOCwxMi43Mi03LjgyLS4wNy0xNC4wNy00LjI2LTE2LjkyLTEyLjI0LS4xNiw0LjU3LTIuMzUsOC40Ni02Ljc4LDEwLjQ0LTkuMzEsNC4xOC0yMC45NS45Mi0yMy4yMi04LjU3bC0yLjY0LDIuMjRaTTIxOS41Nyw1Ny4xN2MtLjI1LTUuODgtMy43LTcuNDgtNy40My03LjM5cy02LjYyLDIuNy02LjQ5LDcuNDhsMTMuOTItLjA5WiIvPgogIDxwYXRoIGQ9Ik0yNTMuNTksNTIuNzRjLTIuODEtLjUxLTUuNjQtLjQ2LTgsLjctMS45MS45NC0zLjQxLDQuMzMtMy40Miw2LjkzbC0uMDgsMTkuNjYtMTAuOTItLjAydi0zNy40czEwLjc1LS4wNCwxMC43NS0uMDRsLjQyLDYuMTljMi41Ny00Ljk5LDcuMzYtNy4wMSwxMi40OC01Ljg0bC0uMTIsNy4yOGMzLjQ1LTUuNjIsOC45NC04LjM5LDE1LjU3LTguNDEsNy4xMy0uMDMsMTMuMzQsMy42NSwxNS43NywxMC40OSwxLjM0LDMuNzcsMS42Miw3Ljc4LDEuNDEsMTIuMDJsLTI0Ljc0LjAyYy0uMjQsMy42MywyLjEyLDYuNTUsNS4xMSw3LjM0LDMuNDguOTIsNi43Mi0uMTcsOC41NS0zLjcyaDEwLjcxYy0yLjAyLDguMDYtOC43NywxMi43NS0xNi44MywxMi43My02LjItLjAxLTEyLjA2LTIuNS0xNS4xOC03Ljk1LTMuNTYtNi4yMi0zLjgyLTEzLjE3LTEuNDgtMTkuOThaTTI3Ni44Myw1Ny4yN2MuMzMtNC40LTIuNTYtNy42LTYuOTEtNy41Ni0zLjg2LjAzLTcuMTgsMy4wMi02Ljg0LDcuNTNsMTMuNzUuMDNaIi8+CiAgPHBhdGggZD0iTTk0LjIsNDQuNDFjMi45LDguNDgtMTEuNTEsMjYuOTktMjAuMDUsMzUuODgtLjctMTAuNDEtLjI3LTMzLjM1LTQuNTItMzQuNjNsLTQuMzgtMS4zMywxMS4wNy0yLjVjMyw5LjMxLDIuNzgsMTguMzcsMy40NywyOS4yMSw0LjY5LTQuOTUsOC4zOC0xMS4xMiwxMC43Mi0xNy43NCwxLjA2LTMuMDEtLjE0LTQuNjctMi41OC02LjMzLTEuNC0uOTUtLjYzLTQuMDEuOTMtNC42OSwxLjQ3LS42NSw0LjQ4LS40Myw1LjM2LDIuMTRaIi8+CiAgPHBhdGggZD0iTTEyMC4xMSw0NS40NGwtNS43My0uMjUuMzItMS41NGM4LjMzLTEuNzEsOS42OC03LjE1LDE0Ljg4LTExLjE1bC0yLjUyLDEwLjIxLDUuMjIuMDktLjMyLDJjLS4wNy40NS0xLjQyLjI4LTEuOTMuMzVsLTQuMDQuMDUiLz4KICA8Y2lyY2xlIGN4PSIzNzEuMDYiIGN5PSI3NC42MSIgcj0iNi4wNiIvPgogIDxjaXJjbGUgY3g9IjEwOS4zOSIgY3k9IjI5LjkiIHI9IjQuMDIiLz4KICA8cGF0aCBkPSJNMjg4LjIsNDIuNDhoMTEuMDN2NS40OGguNTdjLjgtMS43NSwyLjExLTMuMjQsMy45Mi00LjQ1LDEuODEtMS4yMSw0LjAyLTEuODEsNi42MS0xLjgxLDQuOSwwLDguMywxLjU1LDEwLjE4LDQuNjYsMS44OCwzLjExLDIuODMsNi41OCwyLjgzLDEwLjQzdjIzLjM0aC0xMS4wM3YtMjEuNDJjMC0yLjQ3LS41NC00LjQxLTEuNjMtNS44My0xLjA4LTEuNDItMi42OS0yLjE0LTQuODEtMi4xNC0yLjI2LDAtMy45NC43NS01LjAyLDIuMjQtMS4wOCwxLjQ5LTEuNjMsMy40MS0xLjYzLDUuNzN2MjEuNDJoLTExLjAzdi0zNy42NVoiLz4KICA8cGF0aCBkPSJNMzI3LjM4LDc0LjhjLTIuNDktMy40Ni0zLjczLTguMS0zLjczLTEzLjkyczEuMjgtMTAuNTMsMy44My0xMy45OWMyLjU1LTMuNDYsNi4wOC01LjIsMTAuNTktNS4yLDMuMTEsMCw1LjUuNjksNy4xOCwyLjA2LDEuNjcsMS4zNywyLjgzLDIuNzYsMy40OCw0LjE1aC41NnYtNS40NGgxMC45NHYzNi45MWgtMTAuOTR2LTUuOTNoLS41NmMtLjcsMS40OS0xLjg5LDIuOTYtMy41OSw0LjQtMS43LDEuNDQtNC4xLDIuMTYtNy4yMSwyLjE2LTQuNTUsMC04LjA3LTEuNzMtMTAuNTYtNS4yWk0zNDcuNTYsNjguMThjMS4yMS0yLjA3LDEuODEtNC41MiwxLjgxLTcuMzZzLS42MS01LjIyLTEuODEtNy4yOWMtMS4yMS0yLjA3LTMuMDQtMy4xMS01LjUtMy4xMXMtNC40MywxLjAxLTUuNjEsMy4wM2MtMS4xOSwyLjAyLTEuNzgsNC40NS0xLjc4LDcuMjlzLjU5LDUuMzYsMS43OCw3LjQzYzEuMTgsMi4wNywzLjA1LDMuMTEsNS42MSwzLjExczQuMy0xLjAzLDUuNS0zLjExWiIvPgogIDxwYXRoIGQ9Ik0xMDkuNSw0Mi41OWMtNS43MSwwLTkuNTItLjE0LTEzLjk0LjQ0bDMuMDEsMS4xMWMuMzEuMTIsMS41OS43NywxLjg0LDEuMDIuODcuODgsMS4wOSwyLjIyLjc1LDMuNCIvPgogIDxwYXRoIGQ9Ik01OC4xMSw3NS4zNmMtMy42NCwxLjkxLTEuODItMy43My0xLjgyLTMuNzNsOC40Ny0yOS4wNGgtNi40NnMtLjMzLDEtLjg1LDIuNjZjLS42NC0uNzctMS40Ny0xLjM1LTIuNDgtMS43NS0xLjA4LS40Mi0yLjE4LS42My0zLjMyLS42My0zLjA1LDAtNi4zMSwxLjM5LTkuNzgsNC4xNy0zLjQ3LDIuNzgtNi40OSw2LjMyLTkuMDYsMTAuNjMtMi41Nyw0LjMxLTQuMTYsOC41OC00Ljc1LDEyLjgzLS4xMiwxLjMyLS4xOCwyLjIxLS4xOCwyLjY5LDAsNC40MywxLjg1LDYuNjQsNS41Niw2LjY0LDMuMTcsMCw2LjQ3LTEuNjksOS45MS01LjA3LDMuNDQtMy4zOCw2LjUzLTcuODUsOS4yOC0xMy40MWwtLjY4LDMuOTJjLTEuNTgsNy4yMi0yLjMsMTMuNTQtLjIxLDE0LjI5LDYuMDMsMi4xNSwxMS44NC04LjI5LDExLjg0LTguMjlsLjg0LTEuNXMtMi42NiwzLjY5LTYuMyw1LjZaTTUwLjAzLDYzLjcyYy0xLjkyLDMuMzgtNC4wOCw2LjE4LTYuNSw4LjM5LTIuNDIsMi4yMS00LjcxLDMuMzItNi44NiwzLjMyLTIuNTEsMC0zLjc3LTEuNzktMy43Ny01LjM4LDAtMS4wOC4wOS0yLjI3LjI3LTMuNTkuNTQtMy43NywxLjYyLTcuMTksMy4yMy0xMC4yNywxLjYxLTMuMDgsMy41MS01LjUzLDUuNy03LjM2LDIuMTgtMS44Miw0LjMyLTIuNzcsNi40MS0yLjgzLDEuODUsMCwzLjI0LjUxLDQuMTcsMS41My45MywxLjAyLDEuMzksMi40MiwxLjM5LDQuMjIuMDYuNiwwLDEuMjktLjE4LDIuMDYtLjY2LDMuMjMtMS45NCw2LjUzLTMuODYsOS45MVoiLz4KICA8cGF0aCBkPSJNMTU5Ljc2LDc1LjM2Yy0zLjM5LDIuMzMtMS44Mi0zLjczLTEuODItMy43M2w4LjQ3LTI5LjA0aC02LjQ2cy0uMzMsMS0uODUsMi42NmMtLjY0LS43Ny0xLjQ3LTEuMzUtMi40OC0xLjc1LTEuMDgtLjQyLTIuMTgtLjYzLTMuMzItLjYzLTMuMDUsMC02LjMxLDEuMzktOS43OCw0LjE3LTMuNDcsMi43OC02LjQ5LDYuMzItOS4wNiwxMC42My0yLjU3LDQuMzEtNC4xNiw4LjU4LTQuNzUsMTIuODMtLjEyLDEuMzItLjE4LDIuMjEtLjE4LDIuNjksMCw0LjQzLDEuODUsNi42NCw1LjU2LDYuNjQsMy4xNywwLDYuNDctMS42OSw5LjkxLTUuMDcsMy40NC0zLjM4LDYuNTMtNy44NSw5LjI4LTEzLjQxbC0uNjgsMy45MmMtMS41OCw3LjIyLTIuMywxMy41NC0uMjEsMTQuMjksNi4wMywyLjE1LDExLjg0LTguMjksMTEuODQtOC4yOWwuOTMtMi4xOHMtMy43NCw0LjQ1LTYuMzksNi4yOFpNMTUxLjY4LDYzLjcyYy0xLjkyLDMuMzgtNC4wOCw2LjE4LTYuNSw4LjM5LTIuNDIsMi4yMS00LjcxLDMuMzItNi44NiwzLjMyLTIuNTEsMC0zLjc3LTEuNzktMy43Ny01LjM4LDAtMS4wOC4wOS0yLjI3LjI3LTMuNTkuNTQtMy43NywxLjYyLTcuMTksMy4yMy0xMC4yNywxLjYxLTMuMDgsMy41MS01LjUzLDUuNy03LjM2LDIuMTgtMS44Miw0LjMyLTIuNzcsNi40MS0yLjgzLDEuODUsMCwzLjI0LjUxLDQuMTcsMS41My45MywxLjAyLDEuMzksMi40MiwxLjM5LDQuMjIuMDYuNiwwLDEuMjktLjE4LDIuMDYtLjY2LDMuMjMtMS45NCw2LjUzLTMuODYsOS45MVoiLz4KICA8cGF0aCBkPSJNMTAzLjA0LDQyLjU5aDYuNDZsLTguNDcsMjkuMDRzLTEuODIsNS42NCwxLjgyLDMuNzNjMy42NC0xLjkxLDYuMy01LjYsNi4zLTUuNmwtLjg0LDEuNXMtNS44LDEwLjQ0LTExLjg0LDguMjljLTUuMS0xLjgyLDYuNTYtMzYuOTcsNi41Ni0zNi45N1oiLz4KICA8cGF0aCBkPSJNMTIwLjU0LDQyLjU5aDYuNDZsLTguNDcsMjkuMDRzLTEuODIsNS42NCwxLjgyLDMuNzMsNi4zLTUuNiw2LjMtNS42bC0uODQsMS41cy01LjgsMTAuNDQtMTEuODQsOC4yOWMtNS4xLTEuODIsNi41Ni0zNi45Nyw2LjU2LTM2Ljk3WiIvPgo8L3N2Zz4=" alt="A Vita Serena" style="height:20px;display:block"></div>
+    <div class="ph-page">${pageNum}</div>
+  </div>
+  <div style="height:2px;background:linear-gradient(to right,var(--taupe),var(--sable),var(--ocre),var(--sable),var(--taupe))"></div>
+
+  <div class="page-body">
+    <div class="section-eyebrow" style="color:var(--ocre);margin-bottom:6px">
+      ✓ &nbsp;Votre fiche mémo
+    </div>
+    <div class="section-title">Ce que vous avez mis en place</div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+      <p class="memo-intro" style="margin:0;flex:1">Cochez au fur et à mesure ce que vous avez réussi à intégrer. Votre praticienne pourra suivre vos progrès.</p>
+      <span id="memo-summary" style="font-size:12px;font-weight:700;color:var(--ocre);white-space:nowrap;background:var(--or-cl);padding:4px 12px;border-radius:99px">0 / 0 mis en place</span>
+    </div>
+
+    ${memoHtml}
+
+    <div class="memo-note-area">
+      <div class="memo-note-label">Vos observations & ressentis</div>
+      <div class="memo-note-lines">
+        <div class="line"></div><div class="line"></div><div class="line"></div>
+        <div class="line"></div><div class="line"></div>
+      </div>
+    </div>
+
+    <div class="callout style-gold" style="margin-top:20px">
+      <span class="callout-icon">💛</span>
+      <div class="callout-text"><strong>N'attendez pas d'avoir tout mis en place pour me recontacter.</strong> Même 2 gestes sur 10, c'est un vrai départ. Ce qui compte, c'est d'observer ce qui fonctionne pour vous — et d'en parler ensemble.</div>
+    </div>
+
+    <div class="signature-block">
+      <div class="sig-logo"><img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iYSIgZGF0YS1uYW1lPSJDYWxxdWUgMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2aWV3Qm94PSIwIDAgNDAyLjUyIDExNi41NiI+CiAgPHBhdGggZD0iTTE2Mi45NSw3Mi41N2wzLjI1LTQuODQsOS41OC4wM2MuNzgsMy42OSwzLjY3LDUuMjcsNy4xLDQuMjIuOTctLjMsMi40Mi0xLjg4LDIuNTMtMi44NHMtMS4yOC0yLjk3LTIuMjgtMy4yM2wtOC4zNC0yLjExYy00LjkxLTEuMjQtOC4wNi00Ljc1LTguNDctOS4yNC0uNDQtNC44MSwxLjYtOS4yMiw2LjUtMTEuMjYsNS0yLjA4LDExLjA1LTIuMTEsMTUuODguNDUsMy42OCwxLjk1LDYuMSw0LjkyLDYuMjMsOS44NGwtMTAuNTEuMDdjLS43Ni0yLjQ3LTEuOTctMy43NC0zLjgtNC4wMy0xLjcxLS4yNy00LjQ0Ljk3LTQuNjUsMi41Ni0uODYsNi41NywxMS44MywyLjU5LDE4LjU4LDExLjIxLjExLTcuNTcsMS42My0xMy45Nyw3LjI4LTE4LjE1LDYuNzItNC45OCwxNy4xMy00Ljc2LDIzLjE0LDEuMTgsNC43OSw0LjczLDUuMzEsMTEuMzksNC45NSwxNy44N2gtMjQuNjZjLS4wMSwzLjc0LDIuMTYsNi41OCw0Ljg2LDcuMywzLjg2LDEuMDQsNy4xNi0uMjUsOS4wMS0zLjczbDEwLjU1LjA4Yy0xLjk3LDguMjItOC45OCwxMi44LTE3LjE4LDEyLjcyLTcuODItLjA3LTE0LjA3LTQuMjYtMTYuOTItMTIuMjQtLjE2LDQuNTctMi4zNSw4LjQ2LTYuNzgsMTAuNDQtOS4zMSw0LjE4LTIwLjk1LjkyLTIzLjIyLTguNTdsLTIuNjQsMi4yNFpNMjE5LjU3LDU3LjE3Yy0uMjUtNS44OC0zLjctNy40OC03LjQzLTcuMzlzLTYuNjIsMi43LTYuNDksNy40OGwxMy45Mi0uMDlaIi8+CiAgPHBhdGggZD0iTTI1My41OSw1Mi43NGMtMi44MS0uNTEtNS42NC0uNDYtOCwuNy0xLjkxLjk0LTMuNDEsNC4zMy0zLjQyLDYuOTNsLS4wOCwxOS42Ni0xMC45Mi0uMDJ2LTM3LjRzMTAuNzUtLjA0LDEwLjc1LS4wNGwuNDIsNi4xOWMyLjU3LTQuOTksNy4zNi03LjAxLDEyLjQ4LTUuODRsLS4xMiw3LjI4YzMuNDUtNS42Miw4Ljk0LTguMzksMTUuNTctOC40MSw3LjEzLS4wMywxMy4zNCwzLjY1LDE1Ljc3LDEwLjQ5LDEuMzQsMy43NywxLjYyLDcuNzgsMS40MSwxMi4wMmwtMjQuNzQuMDJjLS4yNCwzLjYzLDIuMTIsNi41NSw1LjExLDcuMzQsMy40OC45Miw2LjcyLS4xNyw4LjU1LTMuNzJoMTAuNzFjLTIuMDIsOC4wNi04Ljc3LDEyLjc1LTE2LjgzLDEyLjczLTYuMi0uMDEtMTIuMDYtMi41LTE1LjE4LTcuOTUtMy41Ni02LjIyLTMuODItMTMuMTctMS40OC0xOS45OFpNMjc2LjgzLDU3LjI3Yy4zMy00LjQtMi41Ni03LjYtNi45MS03LjU2LTMuODYuMDMtNy4xOCwzLjAyLTYuODQsNy41M2wxMy43NS4wM1oiLz4KICA8cGF0aCBkPSJNOTQuMiw0NC40MWMyLjksOC40OC0xMS41MSwyNi45OS0yMC4wNSwzNS44OC0uNy0xMC40MS0uMjctMzMuMzUtNC41Mi0zNC42M2wtNC4zOC0xLjMzLDExLjA3LTIuNWMzLDkuMzEsMi43OCwxOC4zNywzLjQ3LDI5LjIxLDQuNjktNC45NSw4LjM4LTExLjEyLDEwLjcyLTE3Ljc0LDEuMDYtMy4wMS0uMTQtNC42Ny0yLjU4LTYuMzMtMS40LS45NS0uNjMtNC4wMS45My00LjY5LDEuNDctLjY1LDQuNDgtLjQzLDUuMzYsMi4xNFoiLz4KICA8cGF0aCBkPSJNMTIwLjExLDQ1LjQ0bC01LjczLS4yNS4zMi0xLjU0YzguMzMtMS43MSw5LjY4LTcuMTUsMTQuODgtMTEuMTVsLTIuNTIsMTAuMjEsNS4yMi4wOS0uMzIsMmMtLjA3LjQ1LTEuNDIuMjgtMS45My4zNWwtNC4wNC4wNSIvPgogIDxjaXJjbGUgY3g9IjM3MS4wNiIgY3k9Ijc0LjYxIiByPSI2LjA2Ii8+CiAgPGNpcmNsZSBjeD0iMTA5LjM5IiBjeT0iMjkuOSIgcj0iNC4wMiIvPgogIDxwYXRoIGQ9Ik0yODguMiw0Mi40OGgxMS4wM3Y1LjQ4aC41N2MuOC0xLjc1LDIuMTEtMy4yNCwzLjkyLTQuNDUsMS44MS0xLjIxLDQuMDItMS44MSw2LjYxLTEuODEsNC45LDAsOC4zLDEuNTUsMTAuMTgsNC42NiwxLjg4LDMuMTEsMi44Myw2LjU4LDIuODMsMTAuNDN2MjMuMzRoLTExLjAzdi0yMS40MmMwLTIuNDctLjU0LTQuNDEtMS42My01LjgzLTEuMDgtMS40Mi0yLjY5LTIuMTQtNC44MS0yLjE0LTIuMjYsMC0zLjk0Ljc1LTUuMDIsMi4yNC0xLjA4LDEuNDktMS42MywzLjQxLTEuNjMsNS43M3YyMS40MmgtMTEuMDN2LTM3LjY1WiIvPgogIDxwYXRoIGQ9Ik0zMjcuMzgsNzQuOGMtMi40OS0zLjQ2LTMuNzMtOC4xLTMuNzMtMTMuOTJzMS4yOC0xMC41MywzLjgzLTEzLjk5YzIuNTUtMy40Niw2LjA4LTUuMiwxMC41OS01LjIsMy4xMSwwLDUuNS42OSw3LjE4LDIuMDYsMS42NywxLjM3LDIuODMsMi43NiwzLjQ4LDQuMTVoLjU2di01LjQ0aDEwLjk0djM2LjkxaC0xMC45NHYtNS45M2gtLjU2Yy0uNywxLjQ5LTEuODksMi45Ni0zLjU5LDQuNC0xLjcsMS40NC00LjEsMi4xNi03LjIxLDIuMTYtNC41NSwwLTguMDctMS43My0xMC41Ni01LjJaTTM0Ny41Niw2OC4xOGMxLjIxLTIuMDcsMS44MS00LjUyLDEuODEtNy4zNnMtLjYxLTUuMjItMS44MS03LjI5Yy0xLjIxLTIuMDctMy4wNC0zLjExLTUuNS0zLjExcy00LjQzLDEuMDEtNS42MSwzLjAzYy0xLjE5LDIuMDItMS43OCw0LjQ1LTEuNzgsNy4yOXMuNTksNS4zNiwxLjc4LDcuNDNjMS4xOCwyLjA3LDMuMDUsMy4xMSw1LjYxLDMuMTFzNC4zLTEuMDMsNS41LTMuMTFaIi8+CiAgPHBhdGggZD0iTTEwOS41LDQyLjU5Yy01LjcxLDAtOS41Mi0uMTQtMTMuOTQuNDRsMy4wMSwxLjExYy4zMS4xMiwxLjU5Ljc3LDEuODQsMS4wMi44Ny44OCwxLjA5LDIuMjIuNzUsMy40Ii8+CiAgPHBhdGggZD0iTTU4LjExLDc1LjM2Yy0zLjY0LDEuOTEtMS44Mi0zLjczLTEuODItMy43M2w4LjQ3LTI5LjA0aC02LjQ2cy0uMzMsMS0uODUsMi42NmMtLjY0LS43Ny0xLjQ3LTEuMzUtMi40OC0xLjc1LTEuMDgtLjQyLTIuMTgtLjYzLTMuMzItLjYzLTMuMDUsMC02LjMxLDEuMzktOS43OCw0LjE3LTMuNDcsMi43OC02LjQ5LDYuMzItOS4wNiwxMC42My0yLjU3LDQuMzEtNC4xNiw4LjU4LTQuNzUsMTIuODMtLjEyLDEuMzItLjE4LDIuMjEtLjE4LDIuNjksMCw0LjQzLDEuODUsNi42NCw1LjU2LDYuNjQsMy4xNywwLDYuNDctMS42OSw5LjkxLTUuMDcsMy40NC0zLjM4LDYuNTMtNy44NSw5LjI4LTEzLjQxbC0uNjgsMy45MmMtMS41OCw3LjIyLTIuMywxMy41NC0uMjEsMTQuMjksNi4wMywyLjE1LDExLjg0LTguMjksMTEuODQtOC4yOWwuODQtMS41cy0yLjY2LDMuNjktNi4zLDUuNlpNNTAuMDMsNjMuNzJjLTEuOTIsMy4zOC00LjA4LDYuMTgtNi41LDguMzktMi40MiwyLjIxLTQuNzEsMy4zMi02Ljg2LDMuMzItMi41MSwwLTMuNzctMS43OS0zLjc3LTUuMzgsMC0xLjA4LjA5LTIuMjcuMjctMy41OS41NC0zLjc3LDEuNjItNy4xOSwzLjIzLTEwLjI3LDEuNjEtMy4wOCwzLjUxLTUuNTMsNS43LTcuMzYsMi4xOC0xLjgyLDQuMzItMi43Nyw2LjQxLTIuODMsMS44NSwwLDMuMjQuNTEsNC4xNywxLjUzLjkzLDEuMDIsMS4zOSwyLjQyLDEuMzksNC4yMi4wNi42LDAsMS4yOS0uMTgsMi4wNi0uNjYsMy4yMy0xLjk0LDYuNTMtMy44Niw5LjkxWiIvPgogIDxwYXRoIGQ9Ik0xNTkuNzYsNzUuMzZjLTMuMzksMi4zMy0xLjgyLTMuNzMtMS44Mi0zLjczbDguNDctMjkuMDRoLTYuNDZzLS4zMywxLS44NSwyLjY2Yy0uNjQtLjc3LTEuNDctMS4zNS0yLjQ4LTEuNzUtMS4wOC0uNDItMi4xOC0uNjMtMy4zMi0uNjMtMy4wNSwwLTYuMzEsMS4zOS05Ljc4LDQuMTctMy40NywyLjc4LTYuNDksNi4zMi05LjA2LDEwLjYzLTIuNTcsNC4zMS00LjE2LDguNTgtNC43NSwxMi44My0uMTIsMS4zMi0uMTgsMi4yMS0uMTgsMi42OSwwLDQuNDMsMS44NSw2LjY0LDUuNTYsNi42NCwzLjE3LDAsNi40Ny0xLjY5LDkuOTEtNS4wNywzLjQ0LTMuMzgsNi41My03Ljg1LDkuMjgtMTMuNDFsLS42OCwzLjkyYy0xLjU4LDcuMjItMi4zLDEzLjU0LS4yMSwxNC4yOSw2LjAzLDIuMTUsMTEuODQtOC4yOSwxMS44NC04LjI5bC45My0yLjE4cy0zLjc0LDQuNDUtNi4zOSw2LjI4Wk0xNTEuNjgsNjMuNzJjLTEuOTIsMy4zOC00LjA4LDYuMTgtNi41LDguMzktMi40MiwyLjIxLTQuNzEsMy4zMi02Ljg2LDMuMzItMi41MSwwLTMuNzctMS43OS0zLjc3LTUuMzgsMC0xLjA4LjA5LTIuMjcuMjctMy41OS41NC0zLjc3LDEuNjItNy4xOSwzLjIzLTEwLjI3LDEuNjEtMy4wOCwzLjUxLTUuNTMsNS43LTcuMzYsMi4xOC0xLjgyLDQuMzItMi43Nyw2LjQxLTIuODMsMS44NSwwLDMuMjQuNTEsNC4xNywxLjUzLjkzLDEuMDIsMS4zOSwyLjQyLDEuMzksNC4yMi4wNi42LDAsMS4yOS0uMTgsMi4wNi0uNjYsMy4yMy0xLjk0LDYuNTMtMy44Niw5LjkxWiIvPgogIDxwYXRoIGQ9Ik0xMDMuMDQsNDIuNTloNi40NmwtOC40NywyOS4wNHMtMS44Miw1LjY0LDEuODIsMy43M2MzLjY0LTEuOTEsNi4zLTUuNiw2LjMtNS42bC0uODQsMS41cy01LjgsMTAuNDQtMTEuODQsOC4yOWMtNS4xLTEuODIsNi41Ni0zNi45Nyw2LjU2LTM2Ljk3WiIvPgogIDxwYXRoIGQ9Ik0xMjAuNTQsNDIuNTloNi40NmwtOC40NywyOS4wNHMtMS44Miw1LjY0LDEuODIsMy43Myw2LjMtNS42LDYuMy01LjZsLS44NCwxLjVzLTUuOCwxMC40NC0xMS44NCw4LjI5Yy01LjEtMS44Miw2LjU2LTM2Ljk3LDYuNTYtMzYuOTdaIi8+Cjwvc3ZnPg==" alt="A Vita Serena" style="height:22px;display:block;margin-bottom:4px"></div>
+      <div class="sig-sub">Naturopathie · Corse · Santé Féminine · avitaserena.com</div>
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <span>Protocole d'Hygiène Vitale · ${escH(prenom)}</span>
+    <span>A Vita Serena · Sabrina Castelli, Naturopathe</span>
+    <span>${pageNum}</span>
+  </div>
+</div>`;
+}
+
+/* ═══════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════ */
+function init() {
+  try {
+    const raw = localStorage.getItem('avita_phv_print');
+    if (!raw) throw new Error('no data');
+    const parsed = JSON.parse(raw);
+    data = parsed.data;
+    blocks = parsed.blocks;
+    if (!data || !blocks.length) throw new Error('empty');
+
+    setTimeout(() => {
+      buildDoc();
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('doc-wrap').style.display = 'flex';
+    }, 300);
+  } catch(e) {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('doc-wrap').style.display = 'flex';
+    document.getElementById('doc-wrap').innerHTML = `
+      <div id="error-state" style="display:block;text-align:center;padding:80px 24px;color:var(--gris)">
+        <div style="font-size:40px;margin-bottom:16px">📋</div>
+        <p style="font-size:16px;margin-bottom:8px">Aucun protocole à afficher.</p>
+        <p style="font-size:13px">Retournez dans le <a href="generateur.html" style="color:var(--ocre)">Générateur PHV</a> et cliquez sur "Télécharger le PDF".</p>
+      </div>`;
+  }
+}
+
+init();
+</script>
+
+<!-- FLOATING EDIT TOOLBAR -->
+<div class="edit-toolbar" id="edit-toolbar">
+  <button class="etb-btn" id="etb-bold" title="Gras" onmousedown="event.preventDefault();applyFmt('bold')"><b>G</b></button>
+  <button class="etb-btn" id="etb-italic" title="Italique" onmousedown="event.preventDefault();applyFmt('italic')"><i>I</i></button>
+  <button class="etb-btn" id="etb-ul" title="Liste à puces" onmousedown="event.preventDefault();applyFmt('insertUnorderedList')">• Liste</button>
+  <div class="etb-sep"></div>
+  <button class="etb-btn" title="Supprimer la mise en forme" onmousedown="event.preventDefault();applyFmt('removeFormat')">✕ Format</button>
+</div>
+
+
+<script>
+/* ═══════════════════════════════════════════════
+   EDITION INLINE
+═══════════════════════════════════════════════ */
+const tb = document.getElementById('edit-toolbar');
+let activeBlock = null;
+
+function applyFmt(cmd) {
+  document.execCommand(cmd, false, null);
+  updateToolbarState();
+}
+
+function updateToolbarState() {
+  document.getElementById('etb-bold').classList.toggle('active', document.queryCommandState('bold'));
+  document.getElementById('etb-italic').classList.toggle('active', document.queryCommandState('italic'));
+  document.getElementById('etb-ul').classList.toggle('active', document.queryCommandState('insertUnorderedList'));
+}
+
+function positionToolbar(el) {
+  const rect = el.getBoundingClientRect();
+  const tbRect = tb.getBoundingClientRect();
+  let top = rect.top - 44 + window.scrollY;
+  if (top < 56) top = rect.bottom + 8 + window.scrollY;
+  let left = rect.left + window.scrollX;
+  if (left + 240 > window.innerWidth) left = window.innerWidth - 250;
+  tb.style.top = top + 'px';
+  tb.style.left = left + 'px';
+}
+
+document.addEventListener('selectionchange', () => {
+  const sel = window.getSelection();
+  if (!sel || sel.isCollapsed || !sel.toString().trim()) return;
+  const anchor = sel.anchorNode;
+  const block = anchor?.parentElement?.closest('.editable-block, .engagement-text-edit, .pilier-card-body, .content-text, .ritual-item');
+  if (block) {
+    tb.classList.add('visible');
+    positionToolbar(block);
+    updateToolbarState();
+  }
+});
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.edit-toolbar') && !e.target.closest('.editable-block') && !e.target.closest('.engagement-text-edit') && !e.target.closest('.pilier-card-body') && !e.target.closest('.content-text')) {
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed) tb.classList.remove('visible');
+  }
+});
+
+// Make content blocks editable after build
+function makeEditable() {
+  // All content text areas
+  document.querySelectorAll('.content-text, .pilier-card-body, .ritual-item ul, .signal-content, .signal-period').forEach(el => {
+    el.contentEditable = 'true';
+    el.classList.add('editable-block');
+    el.spellcheck = false;
+  });
+  // Section titles (allow editing)
+  document.querySelectorAll('.section-title').forEach(el => {
+    el.contentEditable = 'true';
+    el.classList.add('editable-block');
+    el.spellcheck = false;
+  });
+  // Intro text on cover
+  document.querySelectorAll('.cover-intro p, .mot-perso-body').forEach(el => {
+    el.contentEditable = 'true';
+    el.classList.add('editable-block');
+    el.spellcheck = false;
+  });
+  // Engagement rows
+  buildEngagementEditor();
+}
+
+function buildEngagementEditor() {
+  const wrap = document.getElementById('engagements-edit-wrap');
+  if (!wrap) return;
+  const raw = wrap.dataset.content || '';
+  const lines = raw.split('\n').map(l => l.trim().replace(/^[•·\-–*Je\s]+/, '').trim()).filter(l => l.length > 3);
+  renderEngagementEditor(lines, wrap);
+}
+
+function renderEngagementEditor(lines, wrap) {
+  let html = lines.map((line, i) => `
+    <div class="engagement-row" id="eng-row-${i}">
+      <div style="width:18px;height:18px;border-radius:50%;border:2px solid var(--ocre);flex-shrink:0;margin-top:3px"></div>
+      <div class="engagement-text-edit" contenteditable="true" spellcheck="false">${escH(line)}</div>
+      <button class="engagement-del" onclick="deleteEngagement(${i})" title="Supprimer">✕</button>
+    </div>`).join('');
+  html += `<button class="add-engagement-btn" onclick="addEngagement()">+ Ajouter un engagement</button>`;
+  wrap.innerHTML = html;
+}
+
+function deleteEngagement(idx) {
+  const wrap = document.getElementById('engagements-edit-wrap');
+  if (!wrap) return;
+  const rows = [...wrap.querySelectorAll('.engagement-row')];
+  if (rows.length <= 1) return; // garder au moins 1
+  const lines = rows.map(r => r.querySelector('.engagement-text-edit').textContent.trim()).filter(l => l);
+  lines.splice(idx, 1);
+  renderEngagementEditor(lines, wrap);
+}
+
+function addEngagement() {
+  const wrap = document.getElementById('engagements-edit-wrap');
+  if (!wrap) return;
+  const rows = [...wrap.querySelectorAll('.engagement-row')];
+  const lines = rows.map(r => r.querySelector('.engagement-text-edit').textContent.trim()).filter(l => l);
+  lines.push('Nouvel engagement — cliquez pour modifier');
+  renderEngagementEditor(lines, wrap);
+  // Focus le nouveau
+  setTimeout(() => {
+    const last = wrap.querySelectorAll('.engagement-text-edit');
+    if (last.length) { last[last.length-1].focus(); document.execCommand('selectAll'); }
+  }, 50);
+}
+
+// Hook after buildDoc
+const _origBuildDoc = buildDoc;
+window.buildDoc = function() {
+  _origBuildDoc();
+  setTimeout(makeEditable, 100);
+};
+
+/* ── FICHE MÉMO — ÉTAT DES CASES ── */
+function getMemoKey() {
+  const cl = data?._client;
+  return 'avs_memo_' + [cl?.prenom, cl?.nom, cl?.ddn].filter(Boolean).join('_').replace(/\s+/g,'_');
+}
+
+function saveMemoState() {
+  const checkboxes = document.querySelectorAll('.memo-checkbox');
+  // État local pour rechargement
+  const state = {};
+  checkboxes.forEach(cb => { state[cb.id] = cb.checked; });
+  const key = getMemoKey();
+  const existing = JSON.parse(localStorage.getItem(key) || '{}');
+  existing.checked = state;
+  existing.ts = Date.now();
+  localStorage.setItem(key, JSON.stringify(existing));
+
+  // Construire le payload
+  const cl = data?._client;
+  const prenom = cl?.prenom || '';
+  const nom = cl?.nom || '';
+  const ddn = cl?.ddn || cl?.date_naissance || '';
+
+  const details = {};
+  const pilierOrder = ['alimentation','psychologie','activite','complements','bilan','autre'];
+  pilierOrder.forEach(p => {
+    const group = document.querySelector(`.memo-group[data-pilier="${p}"]`);
+    if (!group) return;
+    const items = group.querySelectorAll('.memo-item');
+    if (!items.length) return;
+    details[p] = [...items].map(item => {
+      const cb = item.querySelector('.memo-checkbox');
+      const lbl = item.querySelector('.memo-label');
+      return { texte: lbl?.textContent?.trim() || '', etat: cb?.checked ? 'ok' : 'non' };
+    });
+  });
+
+  const allCbs = [...checkboxes];
+  const totalOk = allCbs.filter(cb => cb.checked).length;
+  const payload = {
+    stats: { ok: totalOk, total: allCbs.length },
+    note: '',
+    details
+  };
+
+  // ── Supabase (cross-device) ──
+  if (typeof DB !== 'undefined') {
+    DB.savePHVMemo(prenom, nom, ddn, payload).catch(e => console.warn('Supabase memo save failed:', e));
+  }
+
+  // ── Fallback localStorage CRM ──
+  const prenomKey = prenom.toLowerCase().replace(/\s+/g,'_');
+  const crmKey = 'avita_memo_crm_' + prenomKey + '_' + Date.now();
+  localStorage.setItem(crmKey, JSON.stringify({ ...payload, date_rempli: Date.now() }));
+  localStorage.setItem('avita_memo_crm_last', crmKey);
+
+  updateMemoSummary();
+}
+
+function loadMemoState() {
+  const key = getMemoKey();
+  const saved = JSON.parse(localStorage.getItem(key) || '{}');
+  if (saved.checked) {
+    Object.entries(saved.checked).forEach(([id, checked]) => {
+      const cb = document.getElementById(id);
+      if (cb) cb.checked = checked;
+    });
+  }
+  if (saved.deleted) {
+    saved.deleted.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.remove();
+    });
+  }
+  updateMemoSummary();
+}
+
+function deleteMemoItem(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.style.opacity = '0';
+  el.style.transition = 'opacity .2s';
+  setTimeout(() => el.remove(), 200);
+  // Save deletion
+  const key = getMemoKey();
+  const saved = JSON.parse(localStorage.getItem(key) || '{}');
+  if (!saved.deleted) saved.deleted = [];
+  if (!saved.deleted.includes(id)) saved.deleted.push(id);
+  saved.ts = Date.now();
+  localStorage.setItem(key, JSON.stringify(saved));
+  updateMemoSummary();
+}
+
+function updateMemoSummary() {
+  const total = document.querySelectorAll('.memo-checkbox').length;
+  const checked = document.querySelectorAll('.memo-checkbox:checked').length;
+  const summary = document.getElementById('memo-summary');
+  if (summary) {
+    summary.textContent = checked + ' / ' + total + ' mis en place';
+    summary.style.color = checked === total && total > 0 ? 'var(--vert)' : 'var(--ocre)';
+  }
+  // Update per-group counters
+  document.querySelectorAll('.memo-group').forEach(group => {
+    const p = group.dataset.pilier;
+    const counter = group.querySelector('.memo-group-counter');
+    if (!counter) return;
+    const total = group.querySelectorAll('.memo-checkbox').length;
+    const ok = group.querySelectorAll('.memo-checkbox:checked').length;
+    counter.textContent = ok + '/' + total;
+    counter.style.color = ok === total && total > 0 ? 'var(--vert)' : 'var(--taupe)';
+  });
+}
+
+// Hook makeEditable to also load memo state
+const _origMakeEditable = makeEditable;
+function makeEditable() {
+  _origMakeEditable();
+  setTimeout(loadMemoState, 150);
+}
+
+</script>
+
+</body>
+</html>
