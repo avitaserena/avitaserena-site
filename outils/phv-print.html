@@ -1543,6 +1543,28 @@ function buildMemoPage(prenom, pageNum) {
 ═══════════════════════════════════════════════ */
 function init() {
   try {
+    // ── Priorité 1 : hash URL (lien unique cliente) ──
+    const hash = window.location.hash;
+    if (hash && hash.startsWith('#phv=')) {
+      const encoded = hash.slice(5);
+      // Décodage UTF-8 correct
+      const bytes = Uint8Array.from(atob(encoded), c => c.charCodeAt(0));
+      const json = new TextDecoder('utf-8').decode(bytes);
+      const parsed = JSON.parse(json);
+      data = parsed.data;
+      blocks = parsed.blocks;
+      if (!data || !blocks.length) throw new Error('empty');
+      // Sauvegarder en localStorage pour les coches (même session)
+      localStorage.setItem('avita_phv_print', json);
+      setTimeout(() => {
+        buildDoc();
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('doc-wrap').style.display = 'flex';
+      }, 300);
+      return;
+    }
+
+    // ── Priorité 2 : localStorage (même navigateur) ──
     const raw = localStorage.getItem('avita_phv_print');
     if (!raw) throw new Error('no data');
     const parsed = JSON.parse(raw);
@@ -1562,7 +1584,7 @@ function init() {
       <div id="error-state" style="display:block;text-align:center;padding:80px 24px;color:var(--gris)">
         <div style="font-size:40px;margin-bottom:16px">📋</div>
         <p style="font-size:16px;margin-bottom:8px">Aucun protocole à afficher.</p>
-        <p style="font-size:13px">Retournez dans le <a href="generateur.html" style="color:var(--ocre)">Générateur PHV</a> et cliquez sur "Télécharger le PDF".</p>
+        <p style="font-size:13px">Le lien a peut-être expiré ou est incomplet. Contactez votre praticienne.</p>
       </div>`;
   }
 }
