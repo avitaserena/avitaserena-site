@@ -1361,6 +1361,10 @@ function isMemoWorthy(text) {
   const t = text.toLowerCase().trim();
   // Exclure : trop court
   if (t.length < 10) return false;
+  // Exclure : titres de sous-section (se terminent par ":")
+  if (/:\s*$/.test(t)) return false;
+  // Exclure : lignes trop longues (>120 cars = explication, pas action)
+  if (t.length > 120) return false;
   // Exclure : posologies (contient mg, µg, UI, gélule(s), comprimé(s) + chiffre)
   if (/\d+\s*(mg|µg|g|ml|ui|gélule|comprimé|capsule|goutte|drop)/i.test(t)) return false;
   // Exclure : lignes "Pourquoi pour vous", "Précaution", "Note :", "NB :"
@@ -1368,7 +1372,7 @@ function isMemoWorthy(text) {
   // Exclure : lignes qui sont des explications entre parenthèses uniquement
   if (/^\([^)]{20,}\)$/.test(t)) return false;
   // Exclure : lignes avec "c'est-à-dire", "c'est pourquoi", "en effet", "car ", "parce que"
-  if (/^(c'est-à-dire|c'est pourquoi|en effet,|car |parce que |cela signifie)/i.test(t)) return false;
+  if (/^(c'est-à-dire|c'est pourquoi|en effet,|car |parce que |cela signifie|cette |ce |ces |la |le |les |un |une )/i.test(t)) return false;
   // Exclure : marques et noms de produits seuls (sans verbe d'action)
   if (/^(novoma|nutripure|nutrixeal|pileje|nutergia|holistica|solgar|pure encapsulations)$/i.test(t)) return false;
   return true;
@@ -1695,7 +1699,7 @@ function addEngagement() {
 const _origBuildDoc = buildDoc;
 window.buildDoc = function() {
   _origBuildDoc();
-  setTimeout(makeEditable, 100);
+  setTimeout(() => { makeEditable(); loadMemoState(); }, 150);
 };
 
 /* ── FICHE MÉMO — ÉTAT DES CASES ── */
@@ -1964,12 +1968,8 @@ function updateMemoSummary() {
   });
 }
 
-// Hook makeEditable to also load memo state
-const _origMakeEditable = makeEditable;
-function makeEditable() {
-  _origMakeEditable();
-  setTimeout(loadMemoState, 150);
-}
+// Charger l'état mémo après buildDoc (ajouté directement dans le hook buildDoc ci-dessus)
+// Note: loadMemoState est appelé depuis window.buildDoc via makeEditable
 
 </script>
 
