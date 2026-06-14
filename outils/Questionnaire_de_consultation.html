@@ -120,7 +120,7 @@ body{max-width:960px;margin:0 auto;padding:0 0 100px}
 .acc-hdr.open .chevron{transform:rotate(180deg)}
 
 /* ── INPUT ZONE ── */
-.qinput{padding:4px 26px 24px;border-top:1px solid var(--grege)}
+.qinput{padding:16px 26px 24px;border-top:1px solid var(--grege)}
 
 label.fl{font-size:12px;font-weight:700;color:var(--ardoise);display:block;margin:16px 0 7px;letter-spacing:.03em;text-transform:uppercase}
 
@@ -344,8 +344,9 @@ select.fi{height:44px;cursor:pointer}
 
 <!-- ═══ HEADER ═══ -->
 <div class="hdr">
-  <div class="logo"><span class="avita">avita</span><span class="serena">serena</span></div>
+  <div class="logo"><img src="logonoir.png" alt="Avita Serena" style="height:38px;display:block"></div>
   <div style="display:flex;align-items:center;gap:10px">
+    <button class="btn-pause" onclick="nouvelleCliente()" title="Effacer et démarrer un nouveau questionnaire" style="background:var(--rouge-clair);border-color:var(--rouge);color:var(--rouge);font-weight:700">✦ Nouvelle cliente</button>
     <button class="btn-pause" onclick="ouvrirPause()" title="Mettre en pause et reprendre plus tard">⏸ Pause</button>
     <div class="hdr-counter" id="hdr-counter" title="Champs remplis">0 notes</div>
     <button class="hdr-tag" onclick="toggleDark()" id="dark-btn" style="cursor:pointer;border:none;transition:all .2s">🌙 Mode sombre</button>
@@ -375,18 +376,6 @@ select.fi{height:44px;cursor:pointer}
 </div>
 
 <div class="page">
-
-<!-- ═══ BANDEAU PRATICIEN — SECRET MÉDICAL & ACCUEIL ═══ -->
-<div id="bandeau-praticien" style="padding:28px 40px 0">
-  <div class="accueil-praticien">
-    <div class="ap-label">🔒 Avant de commencer</div>
-    <div class="ap-secret">Tout ce que vous me direz lors de cet entretien est soumis au secret médical. Ce que vous partagez ici reste strictement confidentiel — je suis liée par le même devoir de discrétion qu'un médecin.</div>
-    <div class="ap-accueil">
-      <strong>À dire à voix haute à la cliente :</strong><br>
-      « Installez-vous confortablement. Prenez une grande inspiration. Ce moment est pour vous — il n'y a ni bonne ni mauvaise réponse, ni jugement. Tout ce que vous me direz restera entre nous, soumis au secret médical. Nous allons avancer à votre rythme. »
-    </div>
-  </div>
-</div>
 
 <!-- ═══════════════════════════════════════════
      SECTION 0 : ACCUEIL & MOTIF
@@ -434,7 +423,12 @@ select.fi{height:44px;cursor:pointer}
       <div class="g4">
         <div><label class="fl">Prénom</label><input class="fi" type="text" id="prenom" placeholder="Marie"></div>
         <div><label class="fl">Nom</label><input class="fi" type="text" id="nom" placeholder="Dupont"></div>
-        <div><label class="fl">Âge</label><input class="fi" type="number" id="age" placeholder="34" min="16" max="90"></div>        <div><label class="fl">Identité</label>
+        <div><label class="fl">Date de naissance <span style="color:var(--rouge)">*</span></label><input class="fi" type="date" id="ddn" oninput="calcAge()"></div>
+        <div><label class="fl">Âge <span style="font-size:10px;font-weight:400;color:var(--gris)">(auto)</span></label><input class="fi" type="number" id="age" placeholder="34" min="16" max="90" readonly style="background:var(--grege);cursor:default"></div>
+      </div>
+      <!-- Ligne 1b : identité + durée -->
+      <div class="g2" style="margin-top:10px">
+        <div><label class="fl">Identité</label>
           <select class="fi" id="sexe">
             <option value="">--</option><option>Femme</option><option>Homme</option><option>Non-binaire</option>
           </select>
@@ -455,11 +449,7 @@ select.fi{height:44px;cursor:pointer}
         <div><label class="fl">Poids (kg)</label><input class="fi" type="number" id="poids" placeholder="62" oninput="calcIMC()"></div>
         <div><label class="fl">IMC (calculé)</label><input class="fi" type="text" id="imc" placeholder="—" readonly style="background:var(--grege);cursor:default"></div>
       </div>
-      <!-- Pré-remplissage depuis questionnaire visio -->
-      <div style="margin-top:14px;padding:12px 16px;background:var(--bleu-clair);border:1px solid #7EB5D8;border-radius:10px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
-        <div style="font-size:13px;color:var(--bleu);flex:1;line-height:1.5"><strong>📥 Questionnaire de préparation visio</strong> — si la cliente l'a rempli, importez ses réponses en un clic pour ne pas lui reposer les mêmes questions.</div>
-        <button class="btn" onclick="importerDepuisVisio()" style="border-color:var(--bleu);color:var(--bleu);font-size:12px;padding:9px 18px;flex-shrink:0">⬇ Importer les réponses</button>
-      </div>
+
     </div>
   </div>
 
@@ -1223,13 +1213,17 @@ select.fi{height:44px;cursor:pointer}
       </div>
     </div>
     <div class="qinput" style="padding-top:18px">
+      <!-- ── Scores de vitalité ── -->
+      <div style="font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--ocre);margin-bottom:12px">📊 État de santé actuel — mesure de départ</div>
       <div class="slider-row"><div class="slider-lbl">Énergie / vitalité<small>1 = épuisée en permanence</small></div><input type="range" min="1" max="10" value="5" oninput="sv(this,'rv-e')"><div class="slider-val" id="rv-e">5</div></div>
       <div class="slider-row"><div class="slider-lbl">Qualité du sommeil<small>1 = nuits très perturbées</small></div><input type="range" min="1" max="10" value="5" oninput="sv(this,'rv-s')"><div class="slider-val" id="rv-s">5</div></div>
       <div class="slider-row"><div class="slider-lbl">Niveau de stress<small>1 = très stressée en permanence</small></div><input type="range" min="1" max="10" value="5" oninput="sv(this,'rv-st')"><div class="slider-val" id="rv-st">5</div></div>
       <div class="slider-row"><div class="slider-lbl">Confort digestif<small>1 = symptômes quotidiens intenses</small></div><input type="range" min="1" max="10" value="5" oninput="sv(this,'rv-d')"><div class="slider-val" id="rv-d">5</div></div>
       <div class="slider-row"><div class="slider-lbl">Bien-être émotionnel<small>1 = anxiété / tristesse constante</small></div><input type="range" min="1" max="10" value="5" oninput="sv(this,'rv-em')"><div class="slider-val" id="rv-em">5</div></div>
       <div class="slider-row"><div class="slider-lbl">Satisfaction globale de vie<small>1 = sentiment que tout va mal</small></div><input type="range" min="1" max="10" value="5" oninput="sv(this,'rv-v')"><div class="slider-val" id="rv-v">5</div></div>
-      <div style="margin-top:14px"><label class="fl">Notes libres — scores & contexte de vie global</label>
+      <div class="slider-row"><div class="slider-lbl">Douleurs chroniques<small>1 = douleurs invalidantes quotidiennes</small></div><input type="range" min="1" max="10" value="5" oninput="sv(this,'rv-doul')"><div class="slider-val" id="rv-doul">5</div></div>
+
+      <div style="margin-top:4px"><label class="fl">Notes libres — scores & contexte de vie global</label>
         <textarea class="fi" placeholder="Ce qui ressort spontanément en commentant ces scores... Ce qui pèse le plus en ce moment? Ce qui l'a surprise dans ses propres réponses?"></textarea>
       </div>
     </div>
@@ -2037,31 +2031,11 @@ select.fi{height:44px;cursor:pointer}
         <div class="check-item"><div class="cb">✓</div> Cycles irréguliers (variation &gt;7 jours)</div>
       </div>
 
-      <div style="background:#F0EEFA;border-left:3px solid #9B80D4;border-radius:0 10px 10px 0;padding:14px 18px;margin:14px 0;font-size:13px">
-        <div style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#5A3E8A;margin-bottom:6px">🌻 Charge émotionnelle — orientation Fleurs de Bach</div>
-        <div style="font-style:italic;color:#3A206A">Cochez les états émotionnels récurrents — ces informations orientent vers des élixirs floraux complémentaires au protocole naturo.</div>
-      </div>
-      <div class="chip-wrap">
-        <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Angoisse de réussite</button>
-        <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Peur de l'échec</button>
-        <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Perfectionnisme extrême</button>
-        <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Regard des autres / jugement</button>
-        <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Manque de confiance en soi</button>
-        <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Sentiment d'injustice</button>
-        <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Épuisement sans raison (lassitude)</button>
-        <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Décisions difficiles / indécision</button>
-        <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Pensées obsédantes / rumination</button>
-        <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Impatience, irritabilité envers les autres</button>
-        <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Sentiment d'être dépassée / submergée</button>
-        <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Culpabilité persistante</button>
-        <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Dépendance émotionnelle / besoin de validation</button>
-      </div>
-
       <div><label class="fl" style="margin-top:14px">Précisions — endométriose, SOPK, ménopause, obstétrique</label>
         <textarea class="fi" placeholder="Endométriose (stade? localisations? opérée?), SOPK (AMH? testostérone?), ménopause (âge début? THS envisagé?), grossesses, fausses couches..."></textarea>
       </div>
       <div><label class="fl">Notes libres — plan gynécologique & émotionnel</label>
-        <textarea class="fi" placeholder="Ce qu'elle dit sur son rapport au corps, ses peurs, son rapport à la féminité, à la maternité... Observations sur le ton, les émotions en cours d'entretien... Fleurs de Bach envisagées..."></textarea>
+        <textarea class="fi" placeholder="Ce qu'elle dit sur son rapport au corps, ses peurs, son rapport à la féminité, à la maternité... Observations sur le ton, les émotions en cours d'entretien... États émotionnels récurrents à noter..."></textarea>
       </div>
     </div>
   </div>
@@ -2082,62 +2056,8 @@ select.fi{height:44px;cursor:pointer}
     <div class="sec-sub">L'environnement et le rythme de vie modulent l'expression des gènes — c'est l'épigénétique quotidienne. Ces questions révèlent souvent des causes que les bilans sanguins ne voient pas.</div>
   </div>
 
-  <!-- Q19bis — Poids, taille, profession -->
-  <div class="qcard">
-    <div class="qcard-top">
-      <div class="qnum">19a</div>
-      <div class="qcontent">
-        <div class="qtext">Poids, taille et profession — données de terrain essentielles</div>
-        <div class="qtags"></div>
-        <div class="info-boxes">
-          <div class="info-box pourquoi">
-            <div class="box-lbl">⚙ Pourquoi ces données changent le protocole</div>
-            <div class="pourquoi-txt">L'IMC oriente les posologies (certains compléments se dosent au poids corporel), et les variations récentes de poids sont un marqueur clé : prise inexpliquée → thyroïde/insulinorésistance/cortisol ; perte involontaire → malabsorption/inflammation. La profession révèle immédiatement le niveau de sédentarité réelle, la charge cognitive, et les expositions spécifiques (travail de nuit, posture prolongée, produits chimiques). Une infirmière de nuit et une consultante en télétravail n'ont pas du tout le même terrain surrénalien.</div>
-          </div>
-          <div class="info-box proto">
-            <div class="box-lbl">✦ Impact direct sur le protocole</div>
-            <div class="proto-txt">Surpoids + fatigue → résistance à l'insuline à explorer (HOMA-IR, insuline à jeun). IMC bas + fatigues → malabsorption, carences multiples, règles absentes. Profession sédentaire → intégrer prescription d'activité physique. Travail de nuit → chronobiologie perturbée, mélatonine, soutien surrénalien spécifique.</div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="qinput">
-      <div class="g3">
-        <div><label class="fl">Poids actuel (kg)</label>
-          <input class="fi" type="number" placeholder="ex : 64" min="30" max="200">
-        </div>
-        <div><label class="fl">Taille (cm)</label>
-          <input class="fi" type="number" placeholder="ex : 167" min="130" max="220">
-        </div>
-        <div><label class="fl">Évolution du poids récente</label>
-          <select class="fi">
-            <option>Stable</option>
-            <option>Prise de poids progressive</option>
-            <option>Prise de poids rapide (>5kg/3mois)</option>
-            <option>Perte de poids involontaire</option>
-            <option>Fluctuations fréquentes</option>
-          </select>
-        </div>
-      </div>
-      <div class="g2" style="margin-top:10px">
-        <div><label class="fl">Profession</label>
-          <input class="fi" type="text" placeholder="ex : comptable, infirmière, enseignante, cheffe d'entreprise…">
-        </div>
-        <div><label class="fl">Profil d'activité au travail</label>
-          <select class="fi">
-            <option>Bureau / assis 8h+</option>
-            <option>Mix bureau & déplacements</option>
-            <option>Debout, mobilité importante</option>
-            <option>Travail physique intense</option>
-            <option>Travail de nuit ou horaires décalés</option>
-            <option>Sans activité professionnelle</option>
-          </select>
-        </div>
-      </div>
-    </div>
-  </div>
 
-  <!-- Q19 — Activité physique -->
+    <!-- Q19 — Activité physique -->
   <div class="qcard">
     <div class="qcard-top">
       <div class="qnum">19b</div>
@@ -2207,61 +2127,8 @@ select.fi{height:44px;cursor:pointer}
     </div>
   </div>
 
-  <!-- Q19c — Tabac & alcool -->
-  <div class="qcard">
-    <div class="qcard-top">
-      <div class="qnum">19c</div>
-      <div class="qcontent">
-        <div class="qtext">Tabac et alcool — consommation actuelle et quantifiée</div>
-        <div class="qtags"></div>
-        <div class="info-boxes">
-          <div class="info-box pourquoi">
-            <div class="box-lbl">⚙ Pourquoi ces données sont cliniquement importantes</div>
-            <div class="pourquoi-txt">Le tabac épuise massivement la vitamine C (1 cigarette détruit ~25mg de vitamine C), perturbe l'axe cortisol, augmente l'inflammation systémique (CRP) et favorise la dysbiose intestinale. L'alcool, même à faible dose répétée (2 verres/soir), augmente significativement la perméabilité intestinale, surcharge la détox hépatique phase 2 et perturbe la conversion des œstrogènes. 7 verres/semaine = augmentation de 40% du risque de dominance œstrogénique. Ces données conditionnent la charge du foie et les priorités du protocole.</div>
-          </div>
-          <div class="info-box dis">
-            <div class="box-lbl">💬 Ce que vous pouvez dire à voix haute</div>
-            <div class="dis-phrase">"Je vous pose cette question sans jugement. Ce n'est pas pour vous faire culpabiliser — c'est pour comprendre la charge de votre foie. L'alcool et le tabac occupent des enzymes hépatiques qui devraient éliminer vos œstrogènes et vos toxines. Ça peut tout changer dans l'équation."</div>
-          </div>
-          <div class="info-box proto">
-            <div class="box-lbl">✦ Impact direct sur le protocole</div>
-            <div class="proto-txt">Tabac actif → vitamine C liposomale 1g/j, NAC, glutathion, antioxydants renforcés. Alcool >7 verres/sem → drainage hépatique prioritaire avant tout protocole hormonal, chardon-marie, glucuronolactone, B1. Tabac + alcool → phase 2 détox hépatique à soutenir impérativement avant compléments oméga-3 et hormones.</div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="qinput">
-      <div class="g2">
-        <div>
-          <label class="fl">Tabac</label>
-          <select class="fi" id="tabac-consult" onchange="handleTabac(this)">
-            <option>Non-fumeur·se</option>
-            <option>Ex-fumeur·se</option>
-            <option>Fumeur·se occasionnel·le</option>
-            <option>Fumeur·se régulier·ère</option>
-          </select>
-          <div id="tabac-detail-consult" style="display:none;margin-top:8px">
-            <input class="fi" type="text" placeholder="Cigarettes/jour · Durée en années · Tabac chauffé / e-cigarette ?">
-          </div>
-        </div>
-        <div>
-          <label class="fl">Alcool</label>
-          <select class="fi" id="alcool-consult" onchange="handleAlcool(this)">
-            <option>Jamais</option>
-            <option>Très occasionnel (fêtes)</option>
-            <option>Quelques verres par semaine</option>
-            <option>Quotidien</option>
-          </select>
-          <div id="alcool-detail-consult" style="display:none;margin-top:8px">
-            <input class="fi" type="number" placeholder="Nombre de verres / semaine" min="0" max="70" style="margin-bottom:6px">
-            <div style="font-size:12px;color:var(--gris);font-style:italic">1 verre standard = 10cl vin / 25cl bière / 3cl spiritueux</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
 
-  <!-- Q19d — Charge mentale -->
+    <!-- Q19d — Charge mentale -->
   <div class="qcard">
     <div class="qcard-top">
       <div class="qnum">19d</div>
@@ -2286,13 +2153,13 @@ select.fi{height:44px;cursor:pointer}
     </div>
     <div class="qinput">
       <div class="check-list">
-        <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div> Gère seul·e l'organisation du foyer (courses, repas, administratif, école…)</div>
-        <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div> Pense constamment à ce qu'il reste à faire, y compris pendant les moments de détente</div>
-        <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div> Aidant·e d'un proche (parent âgé, enfant en difficulté, conjoint malade)</div>
-        <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div> Travail avec haute charge cognitive (décisions, responsabilités, urgences fréquentes)</div>
-        <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div> Difficulté à se "déconnecter" le soir et les week-ends</div>
-        <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div> Peu ou pas de temps pour soi — les besoins propres passent systématiquement après</div>
-        <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div> Sentiment de n'être jamais "assez" — perfectionnisme ou hyperexigence envers soi</div>
+        <div class="check-item"><div class="cb">✓</div> Gère seul·e l'organisation du foyer (courses, repas, administratif, école…)</div>
+        <div class="check-item"><div class="cb">✓</div> Pense constamment à ce qu'il reste à faire, y compris pendant les moments de détente</div>
+        <div class="check-item"><div class="cb">✓</div> Aidant·e d'un proche (parent âgé, enfant en difficulté, conjoint malade)</div>
+        <div class="check-item"><div class="cb">✓</div> Travail avec haute charge cognitive (décisions, responsabilités, urgences fréquentes)</div>
+        <div class="check-item"><div class="cb">✓</div> Difficulté à se "déconnecter" le soir et les week-ends</div>
+        <div class="check-item"><div class="cb">✓</div> Peu ou pas de temps pour soi — les besoins propres passent systématiquement après</div>
+        <div class="check-item"><div class="cb">✓</div> Sentiment de n'être jamais "assez" — perfectionnisme ou hyperexigence envers soi</div>
       </div>
       <div style="margin-top:14px"><label class="fl">Contexte de vie — précisions libres</label>
         <textarea class="fi" placeholder="Enfants (âges, garde partagée?) · Séparation en cours · Proche aidant depuis combien de temps · Rythme pro (heures/semaine, télétravail?) · Soutien dans l'entourage? · Sentiment de perte de sens?"></textarea>
@@ -2445,77 +2312,28 @@ select.fi{height:44px;cursor:pointer}
     <div class="sec-sub">Les bilans biologiques que vous recommandez à votre cliente, à faire prescrire par son médecin. Cochez ceux qui correspondent au tableau clinique identifié pendant la séance.</div>
   </div>
 
+  <!-- NOTE BILANS — intégrés dans le générateur PHV -->
   <div class="qcard">
     <div class="qcard-top">
       <div class="qnum">23</div>
       <div class="qcontent">
-        <div class="qtext">Bilans biologiques à recommander à son médecin — en fonction du tableau clinique identifié</div>
-        <div class="qtags"><span class="qtag opt">À transmettre à son médecin</span></div>
-        <div class="info-boxes">
-          <div class="info-box pourquoi">
-            <div class="box-lbl">⚙ Pourquoi ces bilans changent le protocole</div>
-            <div class="pourquoi-txt">Recommander des bilans précis à son médecin est l'une des démonstrations les plus puissantes de votre expertise. Vous ne diagnostiquez pas — vous guidez vers un bilan fonctionnel que la médecine conventionnelle ne prescrit pas systématiquement. Un cortisol salivaire 4 points révèle l'inversion du rythme circadien. Un magnésium érythrocytaire (et non sérique) est le seul marqueur fiable du magnésium intracellulaire. Une ferritine &lt;50 peut expliquer toute la fatigue alors que "les analyses sont normales".</div>
-          </div>
-          <div class="info-box dis">
-            <div class="box-lbl">💬 Ce que vous pouvez dire à voix haute</div>
-            <div class="dis-phrase">"Je vais vous donner une liste de bilans à demander à votre médecin. Ce ne sont pas des bilans standard — ce sont des marqueurs fonctionnels qui parlent de la façon dont votre métabolisme fonctionne, et non pas juste si vous êtes dans les normes de laboratoire. La norme de laboratoire pour la ferritine, c'est 15 — mais en dessous de 50, beaucoup de femmes sont épuisées. Je vous explique chaque bilan pour que vous puissiez en parler à votre médecin avec confiance."</div>
-          </div>
-        </div>
+        <div class="qtext">Bilans biologiques à recommander</div>
+        <div class="qtags"><span class="qtag opt">Générés dans le protocole remis à la cliente</span></div>
       </div>
     </div>
     <div class="qinput">
-      <div class="bilans-grid">
-        <div class="bilan-card">
-          <h4>Thyroïde complète</h4>
-          <p>TSH + T3 libre + T4 libre + Anti-TPO + Anti-Thyroglobuline · À demander si fatigue + froid + chute cheveux + cycle irrégulier</p>
-        </div>
-        <div class="bilan-card">
-          <h4>Bilan martial complet</h4>
-          <p>Ferritine + coefficient saturation + NFS · Ferritine &lt;50 = facteur aggravant majeur même si "normal" pour le labo</p>
-        </div>
-        <div class="bilan-card">
-          <h4>Vitamine D (25-OH)</h4>
-          <p>Objectif fonctionnel 60-80 ng/mL · La norme labo (&gt;20) est insuffisante pour l'immunité et les os</p>
-        </div>
-        <div class="bilan-card">
-          <h4>Cortisol salivaire 4 points</h4>
-          <p>Réveil / 12h / 17h / coucher · Seul bilan qui révèle l'inversion du rythme circadien surrénalien</p>
-        </div>
-        <div class="bilan-card">
-          <h4>Bilan hormonal J3</h4>
-          <p>FSH + LH + Estradiol à J2-J3 du cycle · Progestérone à J21 · AMH si désir grossesse</p>
-        </div>
-        <div class="bilan-card">
-          <h4>Glycémie & insuline</h4>
-          <p>Glycémie à jeun + Insuline à jeun + HbA1c · Insuline &gt;10 µUI/mL = insulinorésistance même avec glycémie normale</p>
-        </div>
-        <div class="bilan-card">
-          <h4>Magnésium érythrocytaire</h4>
-          <p>Le magnésium sérique est inutile (toujours "normal") · Le magnésium globulaire révèle le stock intracellulaire réel</p>
-        </div>
-        <div class="bilan-card">
-          <h4>B12 active (holotranscobalamine)</h4>
-          <p>Pas la B12 sérique totale · Utile si végétarien, vegan, ou sous metformine / IPP longue durée</p>
-        </div>
-        <div class="bilan-card">
-          <h4>CRP ultrasensible</h4>
-          <p>Marqueur d'inflammation systémique de bas grade · &gt;1 mg/L = inflammation chronique même sans symptôme aigu</p>
-        </div>
-        <div class="bilan-card">
-          <h4>Zinc & sélénium</h4>
-          <p>Essentiels thyroïde, immunité, peau · Souvent bas sans signe clinique évident · Sélénium &lt;80 µg/L = risque auto-immun</p>
-        </div>
-        <div class="bilan-card">
-          <h4>Test SIBO respiratoire</h4>
-          <p>À demander à un gastro-entérologue · Obligatoire avant probiotiques si suspicion SIBO (ballonnements matin, H2/CH4)</p>
-        </div>
-        <div class="bilan-card">
-          <h4>Bilan SOPK</h4>
-          <p>AMH + Testostérone libre + SHBG + DHEA-S + Androstènedione · Echo ovarienne · Si cycles irréguliers + acné + poids</p>
+      <div style="background:var(--or-clair);border:1.5px solid var(--sable);border-radius:12px;padding:18px 22px;margin-bottom:16px;display:flex;gap:16px;align-items:flex-start">
+        <div style="font-size:24px;flex-shrink:0">🧬</div>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--or);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Bilans intégrés au Plan d'Hygiène Vitale</div>
+          <div style="font-size:14px;color:#6B5020;line-height:1.7">Les examens biologiques à recommander sont générés <strong>automatiquement dans le protocole remis à la cliente</strong> par le générateur PHV, sur la base du tableau clinique complet identifié tout au long de cette séance. Chaque bilan recommandé sera accompagné de la justification clinique citant les symptômes exprimés par la cliente.</div>
         </div>
       </div>
-      <div><label class="fl">Bilans spécifiques complémentaires à noter</label>
-        <textarea class="fi" placeholder="Homocystéine (risque cardio + méthylation) · Acide urique · Bilan hépatique (ASAT/ALAT/GGT) · Metaux lourds si suspicion..."></textarea>
+      <div><label class="fl">Suspicions cliniques prioritaires à explorer par bilan</label>
+        <textarea class="fi" style="min-height:80px" placeholder="Ex : Suspicion Hashimoto (frilosité + chute cheveux + TSH non demandée) · Insulinorésistance probable (acné + prise de poids + fatigue post-prandiale) · Ferritine basse suspectée (fatigue + cycle abondant) · SIBO possible (ballonnements matinaux + constipation) — Ces notes alimenteront la justification des bilans dans le protocole..."></textarea>
+      </div>
+      <div><label class="fl">Bilans déjà disponibles (résultats existants à analyser)</label>
+        <textarea class="fi" placeholder="Bilan sanguin du JJ/MM/AAAA : TSH 2.4 · Ferritine 22 · Vit D 18 — à analyser dans le contexte de la séance..."></textarea>
       </div>
     </div>
   </div>
@@ -2611,13 +2429,13 @@ select.fi{height:44px;cursor:pointer}
             </div>
           </div>
           <div class="check-list" style="margin-top:10px">
-            <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div> Ballonnements majeurs 60-90 min après le repas</div>
-            <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div> Ventre "enceinte" le soir, plat le matin</div>
-            <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div> Constipation prédominante (SIBO-CH4)</div>
-            <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div> Diarrhée ou alternance (SIBO-H2)</div>
-            <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div> Aggravation avec fibres, légumineuses, sucres fermentescibles</div>
-            <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div> Brain fog post-prandial notable</div>
-            <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div> Reflux / RGO associés</div>
+            <div class="check-item"><div class="cb">✓</div> Ballonnements majeurs 60-90 min après le repas</div>
+            <div class="check-item"><div class="cb">✓</div> Ventre "enceinte" le soir, plat le matin</div>
+            <div class="check-item"><div class="cb">✓</div> Constipation prédominante (SIBO-CH4)</div>
+            <div class="check-item"><div class="cb">✓</div> Diarrhée ou alternance (SIBO-H2)</div>
+            <div class="check-item"><div class="cb">✓</div> Aggravation avec fibres, légumineuses, sucres fermentescibles</div>
+            <div class="check-item"><div class="cb">✓</div> Brain fog post-prandial notable</div>
+            <div class="check-item"><div class="cb">✓</div> Reflux / RGO associés</div>
           </div>
         </div>
       </div>
@@ -2636,13 +2454,13 @@ select.fi{height:44px;cursor:pointer}
         </div></div>
         <div class="qinput">
           <div class="check-list">
-            <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div> Antécédent de gastro-entérite grave ou intoxication alimentaire (déclencheur fréquent)</div>
-            <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div> IPP longue durée (oméprazole, pantoprazole >3 mois)</div>
-            <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div> Nombreuses cures antibiotiques (3+ fois)</div>
-            <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div> Hypothyroïdie (ralentit péristaltisme)</div>
-            <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div> Chirurgie abdominale (appendicite, césarienne, adhérences)</div>
-            <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div> Endométriose (adhérences pelvien)</div>
-            <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div> Stress chronique intense (perturbe le CMM)</div>
+            <div class="check-item"><div class="cb">✓</div> Antécédent de gastro-entérite grave ou intoxication alimentaire (déclencheur fréquent)</div>
+            <div class="check-item"><div class="cb">✓</div> IPP longue durée (oméprazole, pantoprazole >3 mois)</div>
+            <div class="check-item"><div class="cb">✓</div> Nombreuses cures antibiotiques (3+ fois)</div>
+            <div class="check-item"><div class="cb">✓</div> Hypothyroïdie (ralentit péristaltisme)</div>
+            <div class="check-item"><div class="cb">✓</div> Chirurgie abdominale (appendicite, césarienne, adhérences)</div>
+            <div class="check-item"><div class="cb">✓</div> Endométriose (adhérences pelvien)</div>
+            <div class="check-item"><div class="cb">✓</div> Stress chronique intense (perturbe le CMM)</div>
           </div>
           <label class="fl" style="margin-top:10px">Régimes testés — Low-FODMAP, SCD, SIBO-SCD… résultats</label>
           <textarea class="fi" style="min-height:60px" placeholder="Durée, amélioration, rechute…"></textarea>
@@ -2682,12 +2500,12 @@ select.fi{height:44px;cursor:pointer}
             </div>
           </div>
           <div class="check-list" style="margin-top:10px">
-            <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div> Douleurs améliorées après défécation (critère Rome IV)</div>
-            <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div> Sensation d'évacuation incomplète</div>
-            <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div> Mucus dans les selles</div>
-            <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div> Urgences défécatoires</div>
-            <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div> Fibromyalgie ou douleurs diffuses associées</div>
-            <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div> Cystite interstitielle ou douleurs pelviennes associées</div>
+            <div class="check-item"><div class="cb">✓</div> Douleurs améliorées après défécation (critère Rome IV)</div>
+            <div class="check-item"><div class="cb">✓</div> Sensation d'évacuation incomplète</div>
+            <div class="check-item"><div class="cb">✓</div> Mucus dans les selles</div>
+            <div class="check-item"><div class="cb">✓</div> Urgences défécatoires</div>
+            <div class="check-item"><div class="cb">✓</div> Fibromyalgie ou douleurs diffuses associées</div>
+            <div class="check-item"><div class="cb">✓</div> Cystite interstitielle ou douleurs pelviennes associées</div>
           </div>
           <label class="fl" style="margin-top:10px">Épisode déclencheur identifié — gastro, stress, antibio…</label>
           <textarea class="fi" style="min-height:60px" placeholder="Date, contexte, évolution depuis…"></textarea>
@@ -2729,11 +2547,11 @@ select.fi{height:44px;cursor:pointer}
             </div>
           </div>
           <div class="check-list" style="margin-top:10px">
-            <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div> Ovaires — endométriomes</div>
-            <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div> Rectum / côlon sigmoïde (douleurs défécation)</div>
-            <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div> Cul-de-sac de Douglas (dyspareunie profonde)</div>
-            <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div> Péritoine — endométriose superficielle</div>
-            <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div> Vessie / uretères</div>
+            <div class="check-item"><div class="cb">✓</div> Ovaires — endométriomes</div>
+            <div class="check-item"><div class="cb">✓</div> Rectum / côlon sigmoïde (douleurs défécation)</div>
+            <div class="check-item"><div class="cb">✓</div> Cul-de-sac de Douglas (dyspareunie profonde)</div>
+            <div class="check-item"><div class="cb">✓</div> Péritoine — endométriose superficielle</div>
+            <div class="check-item"><div class="cb">✓</div> Vessie / uretères</div>
           </div>
         </div>
       </div>
@@ -2746,11 +2564,11 @@ select.fi{height:44px;cursor:pointer}
         </div></div>
         <div class="qinput">
           <div class="check-list">
-            <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div> Dysménorrhée sévère ≥ 7/10 — invalidante</div>
-            <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div> Dyspareunie (douleurs pendant/après rapports)</div>
-            <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div> Douleurs pelviennes chroniques hors règles</div>
-            <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div> Fatigue de plomb péri-menstruelle</div>
-            <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div> Nausées / vomissements pendant les règles</div>
+            <div class="check-item"><div class="cb">✓</div> Dysménorrhée sévère ≥ 7/10 — invalidante</div>
+            <div class="check-item"><div class="cb">✓</div> Dyspareunie (douleurs pendant/après rapports)</div>
+            <div class="check-item"><div class="cb">✓</div> Douleurs pelviennes chroniques hors règles</div>
+            <div class="check-item"><div class="cb">✓</div> Fatigue de plomb péri-menstruelle</div>
+            <div class="check-item"><div class="cb">✓</div> Nausées / vomissements pendant les règles</div>
           </div>
           <div class="g2" style="margin-top:10px">
             <div><label class="fl">Douleur règles (/10)</label>
@@ -2797,13 +2615,13 @@ select.fi{height:44px;cursor:pointer}
             </div>
           </div>
           <div class="check-list" style="margin-top:10px">
-            <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div> Sueurs nocturnes perturbant le sommeil</div>
-            <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div> Insomnie — réveils 3-4h du matin</div>
-            <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div> Sécheresse vaginale / inconfort intime</div>
-            <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div> Prise de poids abdominale post-ménopause</div>
-            <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div> Douleurs articulaires (arthralgie ménopausique)</div>
-            <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div> Brouillard mental, trous de mémoire</div>
-            <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div> Palpitations cardiaques</div>
+            <div class="check-item"><div class="cb">✓</div> Sueurs nocturnes perturbant le sommeil</div>
+            <div class="check-item"><div class="cb">✓</div> Insomnie — réveils 3-4h du matin</div>
+            <div class="check-item"><div class="cb">✓</div> Sécheresse vaginale / inconfort intime</div>
+            <div class="check-item"><div class="cb">✓</div> Prise de poids abdominale post-ménopause</div>
+            <div class="check-item"><div class="cb">✓</div> Douleurs articulaires (arthralgie ménopausique)</div>
+            <div class="check-item"><div class="cb">✓</div> Brouillard mental, trous de mémoire</div>
+            <div class="check-item"><div class="cb">✓</div> Palpitations cardiaques</div>
           </div>
           <div class="g2" style="margin-top:10px">
             <div><label class="fl">THS en cours</label>
@@ -2850,12 +2668,12 @@ select.fi{height:44px;cursor:pointer}
           <label class="fl" style="margin-top:10px">Bilans hormonaux connus</label>
           <textarea class="fi" style="min-height:60px" placeholder="Testostérone libre/totale · SHBG · AMH · LH/FSH ratio · Insuline à jeun · HOMA-IR · DHEA-S · Prolactine…"></textarea>
           <div class="check-list" style="margin-top:10px">
-            <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div> Acné hormonale (menton, mâchoire)</div>
-            <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div> Hirsutisme (visage, poitrine, ventre)</div>
-            <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div> Chute de cheveux type androgénique</div>
-            <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div> Hypoglycémie réactionnelle (malaise 2-3h après repas)</div>
-            <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div> Acanthosis nigricans (peau foncée aux plis)</div>
-            <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div> Projet de grossesse / FIV motivée par SOPK</div>
+            <div class="check-item"><div class="cb">✓</div> Acné hormonale (menton, mâchoire)</div>
+            <div class="check-item"><div class="cb">✓</div> Hirsutisme (visage, poitrine, ventre)</div>
+            <div class="check-item"><div class="cb">✓</div> Chute de cheveux type androgénique</div>
+            <div class="check-item"><div class="cb">✓</div> Hypoglycémie réactionnelle (malaise 2-3h après repas)</div>
+            <div class="check-item"><div class="cb">✓</div> Acanthosis nigricans (peau foncée aux plis)</div>
+            <div class="check-item"><div class="cb">✓</div> Projet de grossesse / FIV motivée par SOPK</div>
           </div>
         </div>
       </div>
@@ -2894,12 +2712,12 @@ select.fi{height:44px;cursor:pointer}
           <label class="fl" style="margin-top:10px">Derniers résultats biologiques</label>
           <textarea class="fi" style="min-height:60px" placeholder="TSH · T3 libre · T4 libre · Anti-TPO · Anti-Thyroglobuline · Ferritine · Vitamine D · Date du bilan…"></textarea>
           <div class="check-list" style="margin-top:10px">
-            <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div> Fatigue persistante malgré traitement Lévothyrox</div>
-            <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div> Froid permanent — mains, pieds, corps</div>
-            <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div> Chute de cheveux diffuse + queue du sourcil clairsemée</div>
-            <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div> Constipation rebelle à tout</div>
-            <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div> Brouillard mental — lenteur cognitive</div>
-            <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div> Hypersensibilité au gluten suspectée ou testée</div>
+            <div class="check-item"><div class="cb">✓</div> Fatigue persistante malgré traitement Lévothyrox</div>
+            <div class="check-item"><div class="cb">✓</div> Froid permanent — mains, pieds, corps</div>
+            <div class="check-item"><div class="cb">✓</div> Chute de cheveux diffuse + queue du sourcil clairsemée</div>
+            <div class="check-item"><div class="cb">✓</div> Constipation rebelle à tout</div>
+            <div class="check-item"><div class="cb">✓</div> Brouillard mental — lenteur cognitive</div>
+            <div class="check-item"><div class="cb">✓</div> Hypersensibilité au gluten suspectée ou testée</div>
           </div>
           <label class="fl" style="margin-top:10px">Alimentation testée — sans gluten, AIP, sans lait… résultats</label>
           <textarea class="fi" style="min-height:60px" placeholder="Durée, impact sur les anticorps ou les symptômes…"></textarea>
@@ -2912,678 +2730,11 @@ select.fi{height:44px;cursor:pointer}
 
 </div><!-- /page -->
 
-<!-- ═══════════════════════════════════════════
-     ONGLETS THÉMATIQUES — SPÉCIALITÉS
-     (hors sections paginées — toujours visibles
-      en bas, activés si la cliente vient pour
-      l'une de ces pathologies)
-═══════════════════════════════════════════ -->
-<div style="max-width:960px;margin:0 auto;padding:0 40px 80px" id="thematic-zone">
-
-  <div class="theme-section">
-    <div class="theme-intro">
-      <div class="theme-intro-icon">🎯</div>
-      <div class="theme-intro-txt">
-        <h3>Questionnaires thématiques spécialisés</h3>
-        <p>À activer uniquement si la cliente vient spécifiquement pour cette pathologie. Les blocs restent vierges sinon — ils ne s'impriment pas si non ouverts. Cliquez sur l'onglet pour dérouler, recliquez pour fermer.</p>
-      </div>
-    </div>
-
-    <div class="theme-tabs">
-      <button class="theme-tab sibo" onclick="toggleTheme('sibo',this)">🔬 SIBO</button>
-      <button class="theme-tab sii" onclick="toggleTheme('sii',this)">🌀 SII / Côlon irritable</button>
-      <button class="theme-tab endo" onclick="toggleTheme('endo',this)">🌸 Endométriose</button>
-      <button class="theme-tab meno" onclick="toggleTheme('meno',this)">🌡️ Ménopause</button>
-      <button class="theme-tab sopk" onclick="toggleTheme('sopk',this)">⚖️ SOPK</button>
-      <button class="theme-tab hashi" onclick="toggleTheme('hashi',this)">🦋 Thyroïde & Hashimoto</button>
-    </div>
-
-    <!-- ── SIBO ── -->
-    <div class="tblock sibo" id="tblock-sibo">
-      <div class="tblock-hdr">
-        <div class="tblock-icon">🔬</div>
-        <div>
-          <div class="tblock-title" style="color:var(--sibo-tx)">SIBO — Prolifération bactérienne de l'intestin grêle</div>
-          <div class="tblock-sub" style="color:var(--sibo-tx)">Small Intestinal Bacterial Overgrowth · Questions cliniques spécialisées</div>
-        </div>
-      </div>
-
-      <div class="th-sep" style="color:var(--sibo-tx)">🧪 Diagnostic & historique</div>
-      <div class="qcard">
-        <div class="qcard-top">
-          <div class="qnum" style="background:var(--sibo-lt);color:var(--sibo-tx)">S1</div>
-          <div class="qcontent">
-            <div class="qtext">Diagnostic SIBO confirmé ? Type de gaz identifié ?</div>
-            <div class="qtags"><span class="qtag-th">Clé diagnostic</span></div>
-            <div class="info-boxes">
-              <div class="info-box pourquoi">
-                <div class="box-lbl">⚙ Pourquoi le type de gaz change tout</div>
-                <div class="pourquoi-txt">SIBO-H2 (hydrogène) → diarrhée dominante, lactobacillus en excès → rifaximine ou herbes : berberine, origan, allicine. SIBO-CH4 (méthane / IMO) → constipation dominante, méthanobrevibacter smithii → néomycine + rifaximine ou huile de noix de coco + allicine. SIBO-H2S → gaz malodorants, symptômes mixtes, plus difficile à traiter. Le protocole est radicalement différent selon le profil.</div>
-              </div>
-              <div class="info-box proto">
-                <div class="box-lbl">✦ Impact direct sur le protocole</div>
-                <div class="proto-txt">H2 → protocole herbes : berberine 500mg x3, origan 150mg x2, allicine 450mg x2 — 4 semaines. CH4/IMO → allicine 900mg/j + atrantil ou lorathalibine. H2S → bismuth + molybdène + taurine. Post-traitement → motilité intestinale : gingembre, artichaut, pro-kinétiques. Régime Bi-Phasique Siebecker ou SIBO-SCD selon tolérance.</div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="qinput">
-          <div class="g3">
-            <div><label class="fl">Diagnostic</label>
-              <select class="fi">
-                <option>Non confirmé / suspicion clinique</option>
-                <option>Test respiratoire H2 positif</option>
-                <option>Test respiratoire CH4/méthane positif</option>
-                <option>Test H2S positif</option>
-                <option>Test mixte H2+CH4</option>
-              </select>
-            </div>
-            <div><label class="fl">Valeur peak test (ppm) si connu</label>
-              <input class="fi" type="text" placeholder="ex : H2 peak 42ppm à 90min">
-            </div>
-            <div><label class="fl">Traitements déjà tentés</label>
-              <select class="fi">
-                <option>Aucun</option>
-                <option>Rifaximine seule</option>
-                <option>Rifaximine + néomycine</option>
-                <option>Protocole herbacé</option>
-                <option>Plusieurs protocoles sans succès</option>
-              </select>
-            </div>
-          </div>
-          <div><label class="fl">Détails traitements passés & résultats</label>
-            <textarea class="fi" placeholder="Rifaximine (dose, durée, résultat?) · Herbes (berberine, origan, allicine?) · Régimes testés (FODMAP, SCD, Bi-phasique?) · Récidives?"></textarea>
-          </div>
-        </div>
-      </div>
-
-      <div class="th-sep" style="color:var(--sibo-tx)">🫁 Symptômes & déclencheurs</div>
-      <div class="qcard">
-        <div class="qcard-top">
-          <div class="qnum" style="background:var(--sibo-lt);color:var(--sibo-tx)">S2</div>
-          <div class="qcontent">
-            <div class="qtext">Symptômes caractéristiques & timing post-prandial</div>
-            <div class="info-boxes">
-              <div class="info-box dis">
-                <div class="box-lbl">💬 À demander à voix haute</div>
-                <div class="dis-phrase">"Vos ballonnements arrivent dans les combien de temps après le repas ? Moins de 30 min → intestin grêle proximal. 60-90 min → grêle distal. Plus de 2h → côlon. C'est une information clé pour situer la fermentation."</div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="qinput">
-          <div class="check-list">
-            <div class="check-item"><div class="cb">✓</div> Ballonnements dans les 60-90 min post-repas (signe cardinal)</div>
-            <div class="check-item"><div class="cb">✓</div> Ventre "enceinte" en fin de journée, plat le matin</div>
-            <div class="check-item"><div class="cb">✓</div> Gaz excessifs et malodorants</div>
-            <div class="check-item"><div class="cb">✓</div> Constipation prédominante (SIBO méthane)</div>
-            <div class="check-item"><div class="cb">✓</div> Diarrhée ou alternance (SIBO hydrogène)</div>
-            <div class="check-item"><div class="cb">✓</div> Brouillard mental post-prandial (brain fog)</div>
-            <div class="check-item"><div class="cb">✓</div> Aggravation avec fibres, légumineuses, fruits, FODMAP élevés</div>
-            <div class="check-item"><div class="cb">✓</div> Nausées matinales à jeun</div>
-            <div class="check-item"><div class="cb">✓</div> Reflux / RGO associé</div>
-            <div class="check-item"><div class="cb">✓</div> Fatigue notable après les repas</div>
-          </div>
-          <div class="g2" style="margin-top:12px">
-            <div><label class="fl">Délai d'apparition des ballonnements post-repas</label>
-              <select class="fi">
-                <option>< 30 min (grêle proximal)</option>
-                <option>60-90 min (grêle distal)</option>
-                <option>> 2h (côlon)</option>
-                <option>Variable</option>
-              </select>
-            </div>
-            <div><label class="fl">Aggravation FODMAP ?</label>
-              <select class="fi">
-                <option>Oui, nette</option>
-                <option>Partielle</option>
-                <option>Non testé</option>
-                <option>Non</option>
-              </select>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="th-sep" style="color:var(--sibo-tx)">🔗 Facteurs causaux & motilité</div>
-      <div class="qcard">
-        <div class="qcard-top">
-          <div class="qnum" style="background:var(--sibo-lt);color:var(--sibo-tx)">S3</div>
-          <div class="qcontent">
-            <div class="qtext">Facteurs prédisposants & état de la motilité intestinale</div>
-            <div class="info-boxes">
-              <div class="info-box pourquoi">
-                <div class="box-lbl">⚙ La motilité est la clé des récidives SIBO</div>
-                <div class="pourquoi-txt">Le SIBO récidive systématiquement si la cause sous-jacente n'est pas traitée. La principale : un déficit du complexe moteur migrant (CMM) — le mécanisme de "nettoyage" de l'intestin grêle entre les repas. Le CMM est perturbé par : hypothyroïdie, adhérences post-chirurgicales, stress chronique, IPP au long cours, faible acidité gastrique. Sans traitement du CMM, le SIBO revient dans 100% des cas dans les 6 mois.</div>
-              </div>
-              <div class="info-box proto">
-                <div class="box-lbl">✦ Protocole motilité (post-traitement antimicrobien)</div>
-                <div class="proto-txt">Pro-kinétiques naturels : extrait d'artichaut 600mg + gingembre 500mg entre les repas (à jeun, 2x/j). Iberogast 20 gouttes 3x/j. Espacer les repas 4-5h (ne pas grignoter — le CMM ne se déclenche qu'à jeun). Gérer hypothyroïdie si présente. Arrêt IPP progressif si possible (avec accord médical).</div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="qinput">
-          <div class="check-list">
-            <div class="check-item"><div class="cb">✓</div> Gastro-entérite sévère ou intoxication alimentaire avant le déclenchement</div>
-            <div class="check-item"><div class="cb">✓</div> Prise d'IPP (oméprazole, pantoprazole…) pendant > 3 mois</div>
-            <div class="check-item"><div class="cb">✓</div> Nombreuses cures d'antibiotiques (> 3 dans la vie)</div>
-            <div class="check-item"><div class="cb">✓</div> Hypothyroïdie (ralentit le péristaltisme)</div>
-            <div class="check-item"><div class="cb">✓</div> Chirurgie abdominale (appendicite, césarienne, adhérences)</div>
-            <div class="check-item"><div class="cb">✓</div> Diabète ou insulinorésistance</div>
-            <div class="check-item"><div class="cb">✓</div> Stress chronique intense (inhibe le CMM)</div>
-            <div class="check-item"><div class="cb">✓</div> Tendance à grignoter entre les repas (empêche le CMM de se déclencher)</div>
-          </div>
-          <div><label class="fl">Observations libres — terrain SIBO</label>
-            <textarea class="fi" placeholder="Anticorps anti-vinculine ou anti-CdtB (post-gastro-entérite) ? Syndrome de l'intestin perméable associé ? Carences identifiées (B12, fer, vit D) ?"></textarea>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ── SII ── -->
-    <div class="tblock sii" id="tblock-sii">
-      <div class="tblock-hdr">
-        <div class="tblock-icon">🌀</div>
-        <div>
-          <div class="tblock-title" style="color:var(--sii-tx)">SII — Syndrome de l'Intestin Irritable</div>
-          <div class="tblock-sub" style="color:var(--sii-tx)">Côlon irritable · Critères Rome IV · Axe intestin-cerveau</div>
-        </div>
-      </div>
-
-      <div class="th-sep" style="color:var(--sii-tx)">🔍 Classification & profil</div>
-      <div class="qcard">
-        <div class="qcard-top">
-          <div class="qnum" style="background:var(--sii-lt);color:var(--sii-tx)">I1</div>
-          <div class="qcontent">
-            <div class="qtext">Profil Rome IV & symptômes prédominants</div>
-            <div class="info-boxes">
-              <div class="info-box pourquoi">
-                <div class="box-lbl">⚙ Pourquoi le profil Rome IV change le protocole</div>
-                <div class="pourquoi-txt">SII-C (constipation) → fibres solubles, magnésium citrate, huile de lin, probiotiques Bifidobacterium longum. SII-D (diarrhée) → glutamine 5g x2/j, zinc carnosine, probiotiques Lactobacillus rhamnosus GG, réduction fibres insolubles. SII-M (mixte) → approche bifronts + adaptogènes digestifs. Dans tous les cas : axe intestin-cerveau incontournable — sans traitement du stress, aucun protocole ne tient.</div>
-              </div>
-              <div class="info-box proto">
-                <div class="box-lbl">✦ Socle commun SII</div>
-                <div class="proto-txt">Glutamine 5g x2/j à jeun (réparation muqueuse). Zinc carnosine 75mg/j. Probiotiques ciblés selon profil. L-glutamine + aloe vera si hyperperméabilité. Régime Low-FODMAP 4-6 semaines puis réintroduction progressive. Gestion axe intestin-cerveau : cohérence cardiaque, hypnose intestinale (protocole Whorwell validé en ECR).</div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="qinput">
-          <div class="g2">
-            <div><label class="fl">Profil Rome IV</label>
-              <select class="fi">
-                <option>SII-C (constipation prédominante)</option>
-                <option>SII-D (diarrhée prédominante)</option>
-                <option>SII-M (mixte alternant)</option>
-                <option>SII-U (non classifié)</option>
-              </select>
-            </div>
-            <div><label class="fl">Diagnostic posé par</label>
-              <select class="fi">
-                <option>Gastro-entérologue (coloscopie normale)</option>
-                <option>Médecin généraliste</option>
-                <option>Auto-diagnostic / non confirmé</option>
-              </select>
-            </div>
-          </div>
-          <div class="check-list" style="margin-top:12px">
-            <div class="check-item"><div class="cb">✓</div> Douleurs améliorées par la défécation (signe cardinal Rome IV)</div>
-            <div class="check-item"><div class="cb">✓</div> Sensation d'évacuation incomplète</div>
-            <div class="check-item"><div class="cb">✓</div> Mucus dans les selles</div>
-            <div class="check-item"><div class="cb">✓</div> Urgences défécatoires incontrôlables</div>
-            <div class="check-item"><div class="cb">✓</div> Aggravation très nette au stress ou à l'anxiété</div>
-            <div class="check-item"><div class="cb">✓</div> Fibromyalgie ou douleurs diffuses associées</div>
-            <div class="check-item"><div class="cb">✓</div> Cystite interstitielle ou vulvodynie associées</div>
-            <div class="check-item"><div class="cb">✓</div> Antidépresseurs ou anxiolytiques prescrits pour le SII</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="th-sep" style="color:var(--sii-tx)">🧠 Axe intestin-cerveau & impact qualité de vie</div>
-      <div class="qcard">
-        <div class="qcard-top">
-          <div class="qnum" style="background:var(--sii-lt);color:var(--sii-tx)">I2</div>
-          <div class="qcontent">
-            <div class="qtext">Lien stress-intestin & retentissement sur la vie quotidienne</div>
-          </div>
-        </div>
-        <div class="qinput">
-          <div class="g2">
-            <div><label class="fl">Corrélation stress → symptômes</label>
-              <select class="fi">
-                <option>Très forte — les crises coïncident avec le stress</option>
-                <option>Modérée</option>
-                <option>Faible — peu de lien perçu</option>
-              </select>
-            </div>
-            <div><label class="fl">Épisode déclencheur connu</label>
-              <select class="fi">
-                <option>Gastro-entérite / intoxication</option>
-                <option>Période de stress intense</option>
-                <option>Cure d'antibiotiques</option>
-                <option>Chirurgie</option>
-                <option>Pas de déclencheur identifié</option>
-              </select>
-            </div>
-          </div>
-          <div><label class="fl">Impact sur la vie sociale & professionnelle</label>
-            <textarea class="fi" placeholder="Évitement de sorties, restaurants, voyages? Arrêts de travail? Impact sur la vie intime? Niveau d'anxiété anticipatoire?"></textarea>
-          </div>
-          <div><label class="fl">Techniques de gestion déjà testées</label>
-            <textarea class="fi" placeholder="Hypnose intestinale (Whorwell)? TCC? Cohérence cardiaque? Acupuncture? Résultats?"></textarea>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ── ENDOMÉTRIOSE ── -->
-    <div class="tblock endo" id="tblock-endo">
-      <div class="tblock-hdr">
-        <div class="tblock-icon">🌸</div>
-        <div>
-          <div class="tblock-title" style="color:var(--endo-tx)">Endométriose</div>
-          <div class="tblock-sub" style="color:var(--endo-tx)">Inflammation · Douleur · Dominance œstrogénique · Fertilité</div>
-        </div>
-      </div>
-
-      <div class="th-sep" style="color:var(--endo-tx)">🔬 Diagnostic & localisation</div>
-      <div class="qcard">
-        <div class="qcard-top">
-          <div class="qnum" style="background:var(--endo-lt);color:var(--endo-tx)">E1</div>
-          <div class="qcontent">
-            <div class="qtext">Statut diagnostique, stade & localisations connues</div>
-            <div class="info-boxes">
-              <div class="info-box pourquoi">
-                <div class="box-lbl">⚙ Pourquoi la localisation change le protocole</div>
-                <div class="pourquoi-txt">Endométriose profonde infiltrante (rectum, rectovaginale) → douleurs à la défécation, lien direct avec SII et SIBO. Endométriomes ovariens → atteinte de la réserve ovarienne (AMH), fertilité compromise, stress oxydatif ovarien → protocole antioxydants spécifiques (CoQ10, vitamine E, N-acétylcystéine). Endométriose diaphragmatique → douleur à l'épaule pendant les règles (signe rare mais pathognomonique).</div>
-              </div>
-              <div class="info-box proto">
-                <div class="box-lbl">✦ Socle anti-inflammatoire endométriose</div>
-                <div class="proto-txt">Oméga-3 EPA+DHA 2-3g/j (anti-PGE2). N-acétylcystéine 600mg x3/j (étude RCT 2013 vs danazol : équivalent sur réduction endométriomes). DIM 200mg/j + sulforaphane (élimination E1/E2). Curcumine phytosomale 1g/j. Éviction gluten (lien gluten-inflammation pelvi-génitale documenté). Magnésium bisglycinate 400mg/j (antispasmodique utérin).</div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="qinput">
-          <div class="g2">
-            <div><label class="fl">Mode de diagnostic</label>
-              <select class="fi">
-                <option>Cœlioscopie confirmée</option>
-                <option>IRM / échographie (endométriomes visibles)</option>
-                <option>Suspecté par gynécologue</option>
-                <option>Suspicion clinique non encore explorée</option>
-              </select>
-            </div>
-            <div><label class="fl">Stade rAFS si connu</label>
-              <select class="fi">
-                <option>Stade 1 (minime)</option>
-                <option>Stade 2 (léger)</option>
-                <option>Stade 3 (modéré)</option>
-                <option>Stade 4 (sévère / endométriose profonde)</option>
-                <option>Non classifié / inconnu</option>
-              </select>
-            </div>
-          </div>
-          <div><label class="fl">Localisations confirmées</label>
-            <div class="chip-wrap">
-              <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Péritoine superficiel</button>
-              <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Ovaires (endométriomes)</button>
-              <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Cul-de-sac de Douglas</button>
-              <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Rectum / sigmoïde</button>
-              <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Trompes</button>
-              <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Vessie / uretères</button>
-              <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Diaphragme</button>
-              <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Cicatrice césarienne</button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="th-sep" style="color:var(--endo-tx)">🩸 Douleur, traitements & fertilité</div>
-      <div class="qcard">
-        <div class="qcard-top">
-          <div class="qnum" style="background:var(--endo-lt);color:var(--endo-tx)">E2</div>
-          <div class="qcontent">
-            <div class="qtext">Tableau douloureux, traitements hormonaux & projet de grossesse</div>
-          </div>
-        </div>
-        <div class="qinput">
-          <div class="check-list">
-            <div class="check-item"><div class="cb">✓</div> Dysménorrhée sévère (≥ 7/10) — règles invalidantes</div>
-            <div class="check-item"><div class="cb">✓</div> Dyspareunie (douleur pendant/après les rapports)</div>
-            <div class="check-item"><div class="cb">✓</div> Douleurs pelviennes chroniques hors règles</div>
-            <div class="check-item"><div class="cb">✓</div> Douleurs à la défécation péri-menstruelles</div>
-            <div class="check-item"><div class="cb">✓</div> Douleurs à la miction / hématurie catamméniale</div>
-            <div class="check-item"><div class="cb">✓</div> Douleur scapulaire droite pendant les règles (endométriose diaphragmatique ?)</div>
-            <div class="check-item"><div class="cb">✓</div> Fatigue de plomb péri-menstruelle (prostration)</div>
-          </div>
-          <div class="g2" style="margin-top:12px">
-            <div><label class="fl">Intensité douleur règles (EVA 1-10)</label>
-              <input class="fi" type="number" min="1" max="10" placeholder="ex : 8">
-            </div>
-            <div><label class="fl">Traitements hormonaux reçus</label>
-              <select class="fi">
-                <option>Aucun</option>
-                <option>Pilule en continu</option>
-                <option>DIU Mirena</option>
-                <option>Agonistes GnRH (Décapeptyl…)</option>
-                <option>Progestatifs seuls</option>
-                <option>Cœlioscopie d'excision</option>
-                <option>Hystérectomie</option>
-              </select>
-            </div>
-          </div>
-          <div><label class="fl">Projet de grossesse & fertilité</label>
-            <textarea class="fi" placeholder="En cours d'essai? Infertilité liée à l'endométriose? FIV ou IAC envisagée? AMH connue? Protocole de préparation souhaité?"></textarea>
-          </div>
-          <div><label class="fl">Ce que la cliente attend de la naturopathie</label>
-            <textarea class="fi" placeholder="Réduire les douleurs sans hormonothérapie? Soutenir l'immunité? Préparer une FIV? Améliorer la qualité de vie en complément du suivi gynéco?"></textarea>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ── MÉNOPAUSE ── -->
-    <div class="tblock meno" id="tblock-meno">
-      <div class="tblock-hdr">
-        <div class="tblock-icon">🌡️</div>
-        <div>
-          <div class="tblock-title" style="color:var(--meno-tx)">Ménopause & Périménopause</div>
-          <div class="tblock-sub" style="color:var(--meno-tx)">Transition hormonale · Vasomoteur · Os · Qualité de vie</div>
-        </div>
-      </div>
-
-      <div class="th-sep" style="color:var(--meno-tx)">📅 Statut & timing hormonal</div>
-      <div class="qcard">
-        <div class="qcard-top">
-          <div class="qnum" style="background:var(--meno-lt);color:var(--meno-tx)">M1</div>
-          <div class="qcontent">
-            <div class="qtext">Statut ménopausique, âge de début & bilans hormonaux</div>
-            <div class="info-boxes">
-              <div class="info-box pourquoi">
-                <div class="box-lbl">⚙ Périménopause ≠ ménopause — protocoles distincts</div>
-                <div class="pourquoi-txt">La périménopause dure en moyenne 4-10 ans — les œstrogènes fluctuent de façon erratique (parfois en excès, parfois en déficit). Ce n'est pas un déficit simple — c'est un chaos hormonal. Les phyto-œstrogènes (soja, trèfle rouge, houblon) peuvent AGGRAVER si les œstrogènes sont encore élevés. En ménopause confirmée (> 12 mois sans règles) → les phyto-œstrogènes sont appropriés. Cette distinction est fondamentale pour ne pas faire de mal.</div>
-              </div>
-              <div class="info-box proto">
-                <div class="box-lbl">✦ Socle ménopause confirmée</div>
-                <div class="proto-txt">Bouffées de chaleur → trèfle rouge isoflavones 40-80mg/j, actée à grappes noires (Remifemin) 20mg x2/j, sauge officinale si non CI. Os → vitamine D3 4000 UI/j + K2 MK7 200µg + calcium alimentaire (pas supplément). Prise de poids → adaptogènes + chrono-nutrition + magnésium. Sécheresse muqueuses → oméga-7 (argousier), probiotiques vaginaux, DHEA topique (avis médical).</div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="qinput">
-          <div class="g3">
-            <div><label class="fl">Statut ménopausique</label>
-              <select class="fi">
-                <option>Périménopause précoce (cycles irréguliers)</option>
-                <option>Périménopause avancée (cycles rares)</option>
-                <option>Ménopause confirmée (> 12 mois)</option>
-                <option>Ménopause chirurgicale (ovariectomie)</option>
-                <option>Ménopause précoce (< 40 ans)</option>
-              </select>
-            </div>
-            <div><label class="fl">Âge de début / âge actuel</label>
-              <input class="fi" type="text" placeholder="ex : ménopause à 51 ans, actuellement 54">
-            </div>
-            <div><label class="fl">THS en cours</label>
-              <select class="fi">
-                <option>Non</option>
-                <option>Oui — estradiol + progestérone bioidentique</option>
-                <option>Oui — THS synthétique</option>
-                <option>En discussion avec le médecin</option>
-                <option>Contre-indication (ATCD cancer hormono-dépendant)</option>
-              </select>
-            </div>
-          </div>
-          <div><label class="fl">Bilans hormonaux récents (si disponibles)</label>
-            <textarea class="fi" style="min-height:60px" placeholder="FSH : · LH : · Estradiol (E2) : · Progestérone : · DHEA-S : · Testostérone libre : · Date :"></textarea>
-          </div>
-        </div>
-      </div>
-
-      <div class="th-sep" style="color:var(--meno-tx)">🌡️ Symptômes & suivi osseux</div>
-      <div class="qcard">
-        <div class="qcard-top">
-          <div class="qnum" style="background:var(--meno-lt);color:var(--meno-tx)">M2</div>
-          <div class="qcontent">
-            <div class="qtext">Symptômes vasomoteurs, cognitifs & suivi osseux</div>
-          </div>
-        </div>
-        <div class="qinput">
-          <div class="check-list">
-            <div class="check-item"><div class="cb">✓</div> Bouffées de chaleur (≥ 5/jour — impact significatif)</div>
-            <div class="check-item"><div class="cb">✓</div> Sueurs nocturnes perturbant le sommeil</div>
-            <div class="check-item"><div class="cb">✓</div> Insomnie — difficulté d'endormissement ET/OU réveils fréquents</div>
-            <div class="check-item"><div class="cb">✓</div> Sécheresse vaginale / dyspareunie post-ménopausique</div>
-            <div class="check-item"><div class="cb">✓</div> Prise de poids abdominale résistante</div>
-            <div class="check-item"><div class="cb">✓</div> Douleurs articulaires diffuses (arthralgie ménopausique)</div>
-            <div class="check-item"><div class="cb">✓</div> Brouillard mental, trous de mémoire ("brain fog ménopausique")</div>
-            <div class="check-item"><div class="cb">✓</div> Irritabilité, anxiété, labilité émotionnelle</div>
-            <div class="check-item"><div class="cb">✓</div> Palpitations cardiaques</div>
-          </div>
-          <div class="g2" style="margin-top:12px">
-            <div><label class="fl">Fréquence bouffées de chaleur</label>
-              <select class="fi">
-                <option>Moins de 3/jour</option>
-                <option>3 à 7/jour</option>
-                <option>7 à 15/jour</option>
-                <option>Plus de 15/jour</option>
-                <option>Absentes</option>
-              </select>
-            </div>
-            <div><label class="fl">Ostéodensitométrie</label>
-              <select class="fi">
-                <option>Jamais réalisée</option>
-                <option>Normale (T-score > -1)</option>
-                <option>Ostéopénie (-1 à -2,5)</option>
-                <option>Ostéoporose (< -2,5)</option>
-              </select>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ── SOPK ── -->
-    <div class="tblock sopk" id="tblock-sopk">
-      <div class="tblock-hdr">
-        <div class="tblock-icon">⚖️</div>
-        <div>
-          <div class="tblock-title" style="color:var(--sopk-tx)">SOPK — Syndrome des Ovaires Polykystiques</div>
-          <div class="tblock-sub" style="color:var(--sopk-tx)">Androgènes · Insuline · Cycle · Fertilité</div>
-        </div>
-      </div>
-
-      <div class="th-sep" style="color:var(--sopk-tx)">🔬 Profil & bilans</div>
-      <div class="qcard">
-        <div class="qcard-top">
-          <div class="qnum" style="background:var(--sopk-lt);color:var(--sopk-tx)">P1</div>
-          <div class="qcontent">
-            <div class="qtext">Profil SOPK dominant & bilans biologiques</div>
-            <div class="info-boxes">
-              <div class="info-box pourquoi">
-                <div class="box-lbl">⚙ Les 4 types de SOPK — protocoles radicalement différents</div>
-                <div class="pourquoi-txt">SOPK insulino-résistant (le plus fréquent, ~70%) → inositol, berbérine, chrome, alimentation low-GI. SOPK inflammatoire → anti-inflammatoires oméga-3, curcumine, éviction gluten/lait. SOPK post-pilule → microbiote, zinc, vitamine B6, phyto-androgéniques (sabal serrulata). SOPK surrénalien (DHEA-S élevée, stress dominant) → adaptogènes, réglisse, gestion cortisol. Un protocole générique "SOPK" sans identifier le profil est au mieux inefficace, au pire contre-productif.</div>
-              </div>
-              <div class="info-box proto">
-                <div class="box-lbl">✦ Inositol — la molécule star SOPK</div>
-                <div class="proto-txt">Myo-inositol 2g + D-chiro-inositol 50mg (ratio 40:1) matin et soir. Réduit testostérone libre, améliore sensibilité insuline, restaure l'ovulation dans les études randomisées. Ajouter : NAC 600mg x3/j (résistance insuline + qualité ovocytaire). Berbérine 500mg x2/j si résistance insuline confirmée. Vitamine D (corriger systématiquement — déficit quasi universel dans le SOPK).</div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="qinput">
-          <div class="g2">
-            <div><label class="fl">Profil SOPK dominant</label>
-              <select class="fi">
-                <option>Insulino-résistant (prise de poids, sucre, fatigue post-repas)</option>
-                <option>Inflammatoire (douleurs, fatigue chronique, CRP élevée)</option>
-                <option>Post-pilule (apparu à l'arrêt de la contraception)</option>
-                <option>Surrénalien (DHEA-S élevée, stress dominant)</option>
-                <option>Non déterminé</option>
-              </select>
-            </div>
-            <div><label class="fl">Critères de Rotterdam remplis</label>
-              <select class="fi">
-                <option>3/3 (oligo-anovulation + hyperandrogénisme + OPK écho)</option>
-                <option>2/3</option>
-                <option>Diagnostic clinique sans bilan complet</option>
-              </select>
-            </div>
-          </div>
-          <div><label class="fl">Bilans hormonaux & métaboliques disponibles</label>
-            <textarea class="fi" placeholder="Testostérone totale / libre · DHEA-S · LH/FSH ratio · AMH · Androstènedione · Insuline à jeun · HOMA-IR · Glycémie à jeun · Prolactine · TSH · Vitamine D"></textarea>
-          </div>
-        </div>
-      </div>
-
-      <div class="th-sep" style="color:var(--sopk-tx)">🩸 Cycle & signes androgéniques</div>
-      <div class="qcard">
-        <div class="qcard-top">
-          <div class="qnum" style="background:var(--sopk-lt);color:var(--sopk-tx)">P2</div>
-          <div class="qcontent">
-            <div class="qtext">Symptômes androgéniques & état du cycle</div>
-          </div>
-        </div>
-        <div class="qinput">
-          <div class="check-list">
-            <div class="check-item"><div class="cb">✓</div> Cycles longs (> 35j) ou aménorrhée (< 8 cycles/an)</div>
-            <div class="check-item"><div class="cb">✓</div> Acné hormonale résistante (menton, mâchoire, dos)</div>
-            <div class="check-item"><div class="cb">✓</div> Hirsutisme (visage, poitrine, ventre — score de Ferriman-Gallwey)</div>
-            <div class="check-item"><div class="cb">✓</div> Alopécie androgénétique (tempes, vertex)</div>
-            <div class="check-item"><div class="cb">✓</div> Prise de poids abdominale résistante au régime</div>
-            <div class="check-item"><div class="cb">✓</div> Hypoglycémie réactionnelle (malaise 2-3h post-repas)</div>
-            <div class="check-item"><div class="cb">✓</div> Envies de sucre intenses et compulsives</div>
-            <div class="check-item"><div class="cb">✓</div> Acanthosis nigricans (plis cutanés foncés)</div>
-          </div>
-          <div class="g2" style="margin-top:12px">
-            <div><label class="fl">Durée cycle habituelle</label>
-              <input class="fi" type="text" placeholder="ex : 40-60j, très variable, absent">
-            </div>
-            <div><label class="fl">Projet de grossesse</label>
-              <select class="fi">
-                <option>Pas de projet</option>
-                <option>En cours d'essai</option>
-                <option>Inducteurs d'ovulation (Clomid) en cours</option>
-                <option>FIV envisagée</option>
-                <option>Grossesse obtenue malgré SOPK</option>
-              </select>
-            </div>
-          </div>
-          <div><label class="fl">Traitements reçus pour le SOPK</label>
-            <textarea class="fi" placeholder="Pilule 'pour réguler' (laquelle? durée?) · Metformine (dose? résultats?) · Myoinositol déjà testé? · Inducteurs d'ovulation?"></textarea>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ── HASHIMOTO / THYROÏDE ── -->
-    <div class="tblock hashi" id="tblock-hashi">
-      <div class="tblock-hdr">
-        <div class="tblock-icon">🦋</div>
-        <div>
-          <div class="tblock-title" style="color:var(--hashi-tx)">Thyroïde & Hashimoto</div>
-          <div class="tblock-sub" style="color:var(--hashi-tx)">Auto-immunité · Hypothyroïdie · Conversion T4→T3 · Terrain</div>
-        </div>
-      </div>
-
-      <div class="th-sep" style="color:var(--hashi-tx)">🔬 Bilans & statut clinique</div>
-      <div class="qcard">
-        <div class="qcard-top">
-          <div class="qnum" style="background:var(--hashi-lt);color:var(--hashi-tx)">H1</div>
-          <div class="qcontent">
-            <div class="qtext">Bilans thyroïdiens complets & traitement en cours</div>
-            <div class="info-boxes">
-              <div class="info-box pourquoi">
-                <div class="box-lbl">⚙ TSH "normale" ≠ thyroïde fonctionnelle — ce qu'il faut regarder</div>
-                <div class="pourquoi-txt">TSH entre 2,5 et 4,5 mUI/L : "normale" pour la plupart des labos, mais symptomatique pour beaucoup de femmes. T3 libre basse avec T4 normale → problème de conversion (intestin, foie, sélénium). Anti-TPO élevés → Hashimoto actif → programme anti-inflammatoire + sélénium impératif (200µg/j réduit les anticorps de 40% à 12 mois, étude Toulis 2010). Rétro-T3 élevée → hypothyroïdie fonctionnelle malgré TSH normale → zinc, sélénium, réduction cortisol.</div>
-              </div>
-              <div class="info-box proto">
-                <div class="box-lbl">✦ Protocole Hashimoto — priorités</div>
-                <div class="proto-txt">Sélénium L-sélénométhionine 200µg/j (impératif — réduction anti-TPO, conversion T4→T3). Zinc bis-glycinate 25mg/j. Vitamine D3 ≥ 4000 UI/j (correction systématique). Oméga-3 2g/j EPA+DHA. Exploration gluten (lien moléculaire thyroglobuline/gliadine — envisager éviction 3 mois test). Éviction excès iode (> 500µg/j aggrave Hashimoto). Inositol 600mg x2 (améliore sensibilité TSH en combinaison sélénium).</div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="qinput">
-          <div class="g2">
-            <div><label class="fl">Diagnostic</label>
-              <select class="fi">
-                <option>Hashimoto confirmé (anti-TPO et/ou anti-TG élevés)</option>
-                <option>Hypothyroïdie sans Hashimoto</option>
-                <option>Hyperthyroïdie / Basedow</option>
-                <option>TSH normale mais symptomatique</option>
-                <option>Nodules thyroïdiens</option>
-                <option>Suspicion non encore confirmée</option>
-              </select>
-            </div>
-            <div><label class="fl">Traitement actuel</label>
-              <select class="fi">
-                <option>Aucun</option>
-                <option>Lévothyrox (T4 seule)</option>
-                <option>Euthyrox</option>
-                <option>NDT — thyroïde desséchée (Thyroid, Armour)</option>
-                <option>T3+T4 (Cynomel + Lévothyrox)</option>
-                <option>Carbimazole / PTU (hyperthyroïdie)</option>
-              </select>
-            </div>
-          </div>
-          <div><label class="fl">Valeurs biologiques récentes (copier si disponibles)</label>
-            <textarea class="fi" placeholder="TSH : · T3 libre : · T4 libre : · Anti-TPO : · Anti-TG : · Rétro-T3 : · Ferritine : · Vitamine D : · Sélénium : · Date du bilan :"></textarea>
-          </div>
-        </div>
-      </div>
-
-      <div class="th-sep" style="color:var(--hashi-tx)">😴 Symptômes & alimentation</div>
-      <div class="qcard">
-        <div class="qcard-top">
-          <div class="qnum" style="background:var(--hashi-lt);color:var(--hashi-tx)">H2</div>
-          <div class="qcontent">
-            <div class="qtext">Tableau clinique hypothyroïdien & expériences alimentaires</div>
-          </div>
-        </div>
-        <div class="qinput">
-          <div class="check-list">
-            <div class="check-item"><div class="cb">✓</div> Fatigue persistante malgré un sommeil "suffisant"</div>
-            <div class="check-item"><div class="cb">✓</div> Frilosité permanente — mains, pieds, corps entier</div>
-            <div class="check-item"><div class="cb">✓</div> Chute de cheveux diffuse dont la queue du sourcil (signe de Hertoghe)</div>
-            <div class="check-item"><div class="cb">✓</div> Prise de poids résistante à tous les régimes</div>
-            <div class="check-item"><div class="cb">✓</div> Constipation chronique rebelle (hypothyroïdie ralentit le péristaltisme)</div>
-            <div class="check-item"><div class="cb">✓</div> Peau sèche, ongles cassants, voix plus grave</div>
-            <div class="check-item"><div class="cb">✓</div> Brouillard mental — mémoire, lenteur cognitive</div>
-            <div class="check-item"><div class="cb">✓</div> Hypersensibilité au gluten associée (lien Hashimoto-coeliakie)</div>
-            <div class="check-item"><div class="cb">✓</div> Dépression ou anxiété résistante aux antidépresseurs</div>
-            <div class="check-item"><div class="cb">✓</div> Cycles irréguliers ou SPM aggravé (hypothyroïdie → excès PRL)</div>
-          </div>
-          <div class="g2" style="margin-top:12px">
-            <div><label class="fl">Dose Lévothyrox & satisfaction</label>
-              <input class="fi" type="text" placeholder="ex : 75µg, mais encore fatiguée → conversion T4→T3 ?">
-            </div>
-            <div><label class="fl">Expériences alimentaires testées</label>
-              <select class="fi">
-                <option>Aucune modification</option>
-                <option>Sans gluten — amélioration partielle</option>
-                <option>Sans gluten — pas d'effet</option>
-                <option>AIP (Autoimmune Protocol) en cours</option>
-                <option>Sans lait</option>
-                <option>Végétarien / vegan</option>
-              </select>
-            </div>
-          </div>
-          <div><label class="fl">Ce que la cliente attend de la naturopathie pour sa thyroïde</label>
-            <textarea class="fi" placeholder="Réduire les anticorps? Optimiser la conversion T4→T3? Soutenir l'énergie en complément du Lévothyrox? Envisager protocole sans médicament (cas très spécifiques)?"></textarea>
-          </div>
-        </div>
-      </div>
-    </div>
-
-  </div><!-- /theme-section -->
-</div><!-- /thematic-zone -->
 
 <script>
 const TOTAL = 12;
 let darkMode = false;
+let formTouched = false;
 const SAVE_KEY = 'avita_consultation_autosave';
 
 /* ══════════════════════════════════════
@@ -3663,6 +2814,18 @@ function sauvegarderMaintenant() {
 /* ══════════════════════════════════════
    CALCUL IMC
 ══════════════════════════════════════ */
+function calcAge() {
+  const ddn = document.getElementById('ddn')?.value;
+  if (!ddn) return;
+  const today = new Date();
+  const birth = new Date(ddn);
+  let age = today.getFullYear() - birth.getFullYear();
+  const m = today.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+  const ageEl = document.getElementById('age');
+  if (ageEl && age > 0 && age < 120) { ageEl.value = age; updateCounter(); }
+}
+
 function calcIMC() {
   const t = parseFloat(document.getElementById('taille')?.value);
   const p = parseFloat(document.getElementById('poids')?.value);
@@ -3743,12 +2906,22 @@ function importerDepuisVisio() {
    NAVIGATION
 ══════════════════════════════════════ */
 function goSection(n) {
-  document.querySelectorAll('.section').forEach((s, i) => s.classList.toggle('active', i === n));
+  // Forcer la suppression immédiate de toutes les sections avant d'afficher la nouvelle
+  document.querySelectorAll('.section').forEach((s, i) => {
+    s.classList.remove('active');
+    s.style.display = 'none';
+  });
+  const target = document.querySelectorAll('.section')[n];
+  if (target) {
+    target.classList.add('active');
+    target.style.display = '';
+  }
   document.querySelectorAll('.nav-btn').forEach((b, i) => b.classList.toggle('active', i === n));
   const pct = Math.round((n + 1) / TOTAL * 100);
   document.getElementById('progress').style.width = pct + '%';
   document.getElementById('progress-label').textContent = 'Section ' + (n + 1) + ' sur ' + TOTAL + ' — ' + pct + '% complété';
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
   updateCounter();
 }
 
@@ -3802,8 +2975,16 @@ document.addEventListener('input', updateCounter);
 document.addEventListener('change', updateCounter);
 
 document.addEventListener('click', function(e) {
+  // Check-items (toutes sections, y compris questionnaires thématiques)
   const ci = e.target.closest('.check-item');
-  if (ci) { ci.classList.toggle('checked'); updateCounter(); ci.style.transform = 'scale(1.02)'; setTimeout(() => ci.style.transform = '', 180); return; }
+  if (ci) {
+    ci.classList.toggle('checked');
+    ci.style.transform = 'scale(1.02)';
+    setTimeout(() => ci.style.transform = '', 180);
+    updateCounter();
+    return;
+  }
+  // Bilan cards
   const bc = e.target.closest('.bilan-card');
   if (bc) { bc.classList.toggle('checked'); updateCounter(); return; }
 });
@@ -3811,7 +2992,6 @@ document.addEventListener('click', function(e) {
 /* ══════════════════════════════════════
    PROTECTION FERMETURE ACCIDENTELLE
 ══════════════════════════════════════ */
-let formTouched = false;
 document.addEventListener('input', () => { formTouched = true; });
 document.addEventListener('click', () => { formTouched = true; });
 window.addEventListener('beforeunload', function(e) {
@@ -3927,6 +3107,7 @@ function collectAllData() {
   const d = {
     prenom: document.getElementById('prenom')?.value?.trim() || '',
     nom: document.getElementById('nom')?.value?.trim() || '',
+    ddn: document.getElementById('ddn')?.value || '',
     age: document.getElementById('age')?.value || '',
     sexe: document.getElementById('sexe')?.value || '',
     duree_symptomes: document.getElementById('duree')?.value || '',
@@ -3937,9 +3118,13 @@ function collectAllData() {
   d.objectif_6mois = obj6mois?.value?.trim() || '';
   const motifsCochs = [...document.querySelectorAll('#motifs-chips .chip.on')].map(c=>c.textContent.replace('✓','').trim());
   d.motifs = motifsCochs.join(', ');
-  const scoreIds = ['rv-e','rv-s','rv-st','rv-d','rv-em','rv-v'];
-  const scoreLbls = ['Énergie','Sommeil','Stress','Digestion','Émotions','Satisfaction de vie'];
+  const scoreIds = ['rv-e','rv-s','rv-st','rv-d','rv-em','rv-v','rv-doul'];
+  const scoreLbls = ['Énergie','Sommeil','Stress','Digestion','Émotions','Satisfaction de vie','Douleurs'];
   d.scores = scoreIds.map((id,i) => `${scoreLbls[i]}: ${document.getElementById(id)?.textContent || '5'}/10`).join(' | ');
+  // Prédisposition au changement
+  const motivIds = ['motiv-alim','motiv-sport','motiv-compl','motiv-temps','motiv-stress','motiv-entourage'];
+  const motivLbls = ['Alimentation','Sport','Budget compléments','Disponibilité','Gestion stress','Entourage'];
+  d.motivation = motivIds.map((id,i) => { const el = document.getElementById(id); return el?.value ? `${motivLbls[i]}: ${el.value}` : ''; }).filter(Boolean).join(' | ');
   const checked = [...document.querySelectorAll('.check-item.checked')].map(el => {
     const txt = el.textContent.replace('✓','').trim();
     const section = el.closest('.section')?.id || '';
@@ -3990,6 +3175,7 @@ function genererSynthese() {
       d.objectif_6mois ? `Objectif à 6 mois :\n${d.objectif_6mois}` : '',
     ].filter(Boolean).join('\n') },
     { titre: '📊 Scores cliniques', contenu: d.scores || '— Non renseignés —' },
+    { titre: '🎯 Prédisposition au changement', contenu: d.motivation || '— Non renseigné —' },
     { titre: '✅ Symptômes cochés', contenu: d.symptomes_coches || '— Aucun coché —' },
     { titre: '💊 Sélections & puces', contenu: d.chips_coches || '— Aucune —' },
     { titre: '🩸 Bilans recommandés', contenu: d.bilans_recommandes || '— Aucun sélectionné —' },
@@ -4030,15 +3216,80 @@ function copierSynthese() {
 }
 
 /* ══════════════════════════════════════
+   BRIDGE CRM — enregistrement dossier
+══════════════════════════════════════ */
+function bridgeCRM_questionnaire(d) {
+  try {
+    const raw = localStorage.getItem('avs_crm_v2');
+    if (!raw) return; // CRM vide, rien à faire
+    const db = JSON.parse(raw);
+    if (!db.clients || !db.clients.length) return;
+
+    const prenomQ = (d.prenom || '').trim().toLowerCase();
+    const nomQ    = (d.nom    || '').trim().toLowerCase();
+    const ddnQ    = (d.ddn   || '').trim();
+    if (!prenomQ || !ddnQ) return; // identifiant insuffisant
+
+    // Matching sur prénom + nom + date de naissance (même triplet que le CRM pour les doublons)
+    const client = db.clients.find(c => {
+      const prenomC = (c.prenom || '').trim().toLowerCase();
+      const nomC    = (c.nom    || '').trim().toLowerCase();
+      const ddnC    = (c.ddn   || '').trim();
+      return prenomC === prenomQ && nomC === nomQ && ddnC === ddnQ;
+    });
+
+    if (!client) {
+      console.warn('[Bridge CRM] Cliente introuvable dans le CRM :', d.prenom, d.nom);
+      return;
+    }
+
+    // Stocker un snapshot synthétique du questionnaire
+    client.dernier_questionnaire = {
+      date: new Date().toISOString().split('T')[0],
+      motifs: d.motifs || '',
+      mots_cles: d.mots_cles || '',
+      objectif_6mois: d.objectif_6mois || '',
+      duree_symptomes: d.duree_symptomes || '',
+      scores: d.scores || '',
+      symptomes_coches: d.symptomes_coches || '',
+      bilans_recommandes: d.bilans_recommandes || '',
+      synthese_praticien: d.synthese_praticien || '',
+      imc: d.imc || '',
+      grossesse: d.grossesse || '',
+      allaitement: d.allaitement || ''
+    };
+
+    // Ajouter un événement dans la timeline
+    if (!client.timeline) client.timeline = [];
+    client.timeline.push({
+      type: 'questionnaire',
+      title: '📋 Questionnaire de consultation complété',
+      icon: '📋',
+      date: new Date().toISOString().split('T')[0],
+      desc: `Motifs : ${d.motifs || '—'} · Durée : ${d.duree_symptomes || '—'}`
+    });
+
+    localStorage.setItem('avs_crm_v2', JSON.stringify(db));
+    console.log('[Bridge CRM] Questionnaire enregistré pour', client.prenom, client.nom);
+  } catch(e) {
+    console.warn('[Bridge CRM] Erreur :', e);
+  }
+}
+
+/* ══════════════════════════════════════
    FINALISER → GÉNÉRATEUR
 ══════════════════════════════════════ */
 function finalise() {
   const d = collectAllData();
   try {
     localStorage.setItem('avita_session', JSON.stringify(d));
-    // Aussi sauvegarder la session complète pour relecture future
-    localStorage.setItem(SAVE_KEY, JSON.stringify({ ts: Date.now(), data: captureSnapshot() }));
+    // Effacer l'autosave — la session est finalisée
+    localStorage.removeItem(SAVE_KEY);
     formTouched = false; // évite l'alerte de fermeture
+
+    // ── BRIDGE CRM : enregistrer dans le dossier cliente ──
+    bridgeCRM_questionnaire(d);
+
     showToast('✓ Données exportées — ouverture du générateur…');
     setTimeout(() => { window.open('generateur.html', '_blank'); }, 800);
   } catch(e) {
@@ -4100,12 +3351,51 @@ function toggleTheme(theme, btn) {
       const age = (Date.now() - parsed.ts) / 1000 / 60; // en minutes
       if (parsed.data && age < 480) { // moins de 8h
         const mins = Math.round(age);
-        const confirm = window.confirm(`Une session non terminée a été trouvée (il y a ${mins < 1 ? 'moins d\'1 min' : mins + ' min'}). Voulez-vous la restaurer ?`);
-        if (confirm) { restoreSnapshot(parsed.data); showToast('✓ Session restaurée'); }
+        // Afficher modale de choix plutôt qu'un confirm() bloquant
+        showRestoreModal(mins, parsed.data);
+        return;
       }
     }
   } catch(e) {}
 })();
+
+function showRestoreModal(mins, data) {
+  window._pendingRestoreData = data;
+  const label = mins < 1 ? "moins d'1 min" : mins + " min";
+  const overlay = document.createElement('div');
+  overlay.id = 'restore-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center';
+  overlay.innerHTML = '<div style="background:#fff;border-radius:16px;padding:32px 36px;max-width:420px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.2);font-family:\'Be Vietnam Pro\',sans-serif;">'
+    + '<div style="font-size:28px;text-align:center;margin-bottom:12px">💾</div>'
+    + '<div style="font-size:18px;font-weight:700;color:#1E1E1C;text-align:center;margin-bottom:8px">Session en cours trouvée</div>'
+    + '<div style="font-size:14px;color:#6B6560;text-align:center;margin-bottom:24px">Un questionnaire non finalisé existe (sauvegardé il y a ' + label + ').</div>'
+    + '<div style="display:flex;flex-direction:column;gap:10px;">'
+    + '<button onclick="closeRestoreModal(true)" style="padding:14px;background:#1E1E1C;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit">↩ Reprendre ce questionnaire</button>'
+    + '<button onclick="closeRestoreModal(false)" style="padding:14px;background:#fff;color:#8B3A3A;border:1.5px solid #8B3A3A;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit">✦ Nouvelle cliente (effacer)</button>'
+    + '</div></div>';
+  document.body.appendChild(overlay);
+}
+
+function closeRestoreModal(doRestore) {
+  const overlay = document.getElementById('restore-overlay');
+  if (overlay) document.body.removeChild(overlay);
+  if (doRestore && window._pendingRestoreData) {
+    restoreSnapshot(window._pendingRestoreData);
+    showToast('✓ Session restaurée');
+  } else {
+    localStorage.removeItem(SAVE_KEY);
+    localStorage.removeItem('avita_session');
+    showToast('✓ Nouveau questionnaire vierge prêt');
+  }
+  window._pendingRestoreData = null;
+}
+
+function nouvelleCliente() {
+  if (!window.confirm('Effacer toutes les données et démarrer un nouveau questionnaire ?')) return;
+  localStorage.removeItem(SAVE_KEY);
+  localStorage.removeItem('avita_session');
+  location.reload();
+}
 </script>
 
 <!-- ═══ MODALE PAUSE ═══ -->

@@ -5,7 +5,7 @@
    ═══════════════════════════════════════════════════════════ */
 
 const SUPA_URL = 'https://bqhkdndwldwqacrrbbig.supabase.co';
-const SUPA_KEY = 'sb_publishable_LqUmkNboVtPQkEns2C3R1g_O0WHmrI1';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxaGtkbmR3bGR3cWFjcnJiYmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU3NjM2NTMsImV4cCI6MjA2MTMzOTY1M30.LqUmkNboVtPQkEns2C3R1g_O0WHmrI1cVJCJBiZl_h0';
 
 /* ── Requête générique ──────────────────────────────────── */
 async function supaFetch(path, opts = {}) {
@@ -170,7 +170,46 @@ const DB = {
     return await supaFetch('questionnaires' + filter);
   },
 
-  /* ── Settings ─────────────────────────────────────── */
+  /* ── PHV Memos (observance fiche mémo cliente) ───────── */
+
+  // Clé unique cliente : prenom+nom+ddn normalisés
+  clientKey(prenom, nom, ddn) {
+    const normalize = s => (s||'').toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+      .replace(/[^a-z0-9]/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'');
+    return [normalize(prenom), normalize(nom), normalize(ddn)].filter(Boolean).join('_');
+  },
+
+  async savePHVMemo(prenom, nom, ddn, payload) {
+    const client_key = this.clientKey(prenom, nom, ddn);
+    const id = 'memo_' + client_key + '_' + Date.now();
+    return await supaFetch('phv_memos', {
+      method: 'POST',
+      headers: { 'Prefer': 'return=representation' },
+      body: {
+        id,
+        client_key,
+        prenom:     prenom || null,
+        nom:        nom || null,
+        ddn:        ddn || null,
+        stats:      payload.stats || {},
+        details:    payload.details || {},
+        note:       payload.note || null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
+    });
+  },
+
+  async getPHVMemos(prenom, nom, ddn) {
+    const client_key = this.clientKey(prenom, nom, ddn);
+    return await supaFetch('phv_memos?client_key=eq.' + encodeURIComponent(client_key) + '&order=created_at.desc');
+  },
+
+  async getLatestPHVMemo(prenom, nom, ddn) {
+    const rows = await this.getPHVMemos(prenom, nom, ddn);
+    return rows?.[0] || null;
+  },
   async getSettings() {
     const rows = await supaFetch('settings?id=eq.praticien');
     return rows?.[0]?.data || {};
