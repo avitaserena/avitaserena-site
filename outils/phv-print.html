@@ -1492,12 +1492,9 @@ function buildMemoPage(prenom, pageNum) {
     </div>
     <div class="section-title">Ce que vous avez mis en place</div>
 
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
-      <p class="memo-intro" style="margin:0;flex:1">Cochez au fur et à mesure ce que vous avez réussi à intégrer. Votre praticienne pourra suivre vos progrès.</p>
-      <div style="display:flex;align-items:center;gap:8px">
-        <span id="memo-save-ind" style="font-size:10px;font-weight:600;color:var(--vert);opacity:0;transition:opacity .3s">✓ Synchronisé</span>
-        <span id="memo-summary" style="font-size:12px;font-weight:700;color:var(--ocre);white-space:nowrap;background:var(--or-cl);padding:4px 12px;border-radius:99px">0 / 0 mis en place</span>
-      </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+      <p class="memo-intro" style="margin:0;flex:1">Cochez au fur et à mesure ce que vous avez réussi à intégrer. Quand vous avez terminé, cliquez sur le bouton pour envoyer vos retours à Sabrina.</p>
+      <span id="memo-summary" style="font-size:12px;font-weight:700;color:var(--ocre);white-space:nowrap;background:var(--or-cl);padding:4px 12px;border-radius:99px">0 / 0 mis en place</span>
     </div>
 
     ${memoHtml}
@@ -1513,6 +1510,14 @@ function buildMemoPage(prenom, pageNum) {
     <div class="callout style-gold" style="margin-top:20px">
       <span class="callout-icon">💛</span>
       <div class="callout-text"><strong>N'attendez pas d'avoir tout mis en place pour me recontacter.</strong> Même 2 gestes sur 10, c'est un vrai départ. Ce qui compte, c'est d'observer ce qui fonctionne pour vous — et d'en parler ensemble.</div>
+    </div>
+
+    <div style="text-align:center;margin:28px 0 20px;padding:24px;background:linear-gradient(135deg,#FAF8F4,#F0EBE0);border-radius:16px;border:1.5px solid var(--sable)">
+      <p style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:16px;color:var(--gris);margin-bottom:16px">Quand vous êtes prête, envoyez vos retours à Sabrina.<br>Elle pourra adapter votre protocole en conséquence.</p>
+      <button id="btn-envoyer" onclick="envoyerRetours()" style="font-family:'Be Vietnam Pro',sans-serif;font-size:15px;font-weight:700;padding:16px 40px;border-radius:99px;border:none;background:var(--ardoise);color:#fff;cursor:pointer;transition:all .2s;letter-spacing:.03em;box-shadow:0 4px 16px rgba(30,30,28,.25)">
+        ↗ Envoyer mes retours à Sabrina
+      </button>
+      <p style="font-size:11px;color:var(--taupe);margin-top:10px">Vos réponses seront transmises directement à votre dossier.</p>
     </div>
 
     <div class="signature-block">
@@ -1699,8 +1704,7 @@ function getMemoKey() {
   return 'avs_memo_' + [cl?.prenom, cl?.nom, cl?.ddn].filter(Boolean).join('_').replace(/\s+/g,'_');
 }
 
-function saveMemoState() {
-  // ── Collecter états + textes pourquoi ──
+function collectMemoPayload() {
   const states = {};
   const pourquois = {};
   document.querySelectorAll('.memo-item[id]').forEach(item => {
@@ -1712,22 +1716,8 @@ function saveMemoState() {
     }
   });
 
-  // Persister en localStorage pour rechargement
-  const key = getMemoKey();
-  const existing = JSON.parse(localStorage.getItem(key) || '{}');
-  existing.states = states;
-  existing.pourquois = pourquois;
-  existing.ts = Date.now();
-  localStorage.setItem(key, JSON.stringify(existing));
-
-  // Construire le payload détaillé
-  const cl = data?._client;
-  const prenom = cl?.prenom || '';
-  const nom = cl?.nom || '';
-  const ddn = cl?.ddn || cl?.date_naissance || '';
-
   const details = {};
-  const refus = []; // items refusés avec raison → alertes CRM
+  const refus = [];
   const pilierOrder = ['alimentation','psychologie','activite','complements','bilan','autre'];
   pilierOrder.forEach(p => {
     const group = document.querySelector(`.memo-group[data-pilier="${p}"]`);
@@ -1745,23 +1735,90 @@ function saveMemoState() {
   });
 
   const allItems = [...document.querySelectorAll('.memo-item[id]')];
-  const totalOk = allItems.filter(i => i.dataset.state === 'ok').length;
-  const totalNon = allItems.filter(i => i.dataset.state === 'non').length;
-  const payload = {
-    stats: { ok: totalOk, non: totalNon, total: allItems.length },
-    refus,
-    details,
+  const ok = allItems.filter(i => i.dataset.state === 'ok').length;
+  const non = allItems.filter(i => i.dataset.state === 'non').length;
+  return {
+    states, pourquois, refus, details,
+    stats: { ok, non, total: allItems.length },
     updated_at: new Date().toISOString()
   };
+}
 
-  // ── Supabase (remonte dans le CRM) ──
-  if (typeof DB !== 'undefined' && prenom) {
-    DB.savePHVMemo(prenom, nom, ddn, payload)
-      .then(() => showMemoSaveIndicator())
-      .catch(e => console.warn('Supabase memo save failed:', e));
+function saveMemoLocal() {
+  const payload = collectMemoPayload();
+  const key = getMemoKey();
+  const existing = JSON.parse(localStorage.getItem(key) || '{}');
+  existing.states = payload.states;
+  existing.pourquois = payload.pourquois;
+  existing.ts = Date.now();
+  localStorage.setItem(key, JSON.stringify(existing));
+}
+
+// Alias pour compatibilité
+function saveMemoState() { saveMemoLocal(); updateMemoSummary(); }
+
+async function envoyerRetours() {
+  const btn = document.getElementById('btn-envoyer');
+  if (btn) { btn.disabled = true; btn.textContent = 'Envoi en cours…'; }
+
+  const payload = collectMemoPayload();
+  const cl = data?._client;
+  const prenom = cl?.prenom || '';
+  const nom = cl?.nom || '';
+  const ddn = cl?.ddn || cl?.date_naissance || '';
+
+  saveMemoLocal();
+
+  const SB = 'https://bqhkdndwldwqacrrbbig.supabase.co';
+  const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxaGtkbmR3bGR3cWFjcnJiYmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU3NjM2NTMsImV4cCI6MjA2MTMzOTY1M30.LqUmkNboVtPQkEns2C3R1g_O0WHmrI1cVJCJBiZl_h0';
+
+  const normalize = s => (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'');
+  const clientKey = [normalize(prenom), normalize(nom), normalize(ddn)].filter(Boolean).join('_');
+  const id = 'memo_' + clientKey + '_' + Date.now();
+
+  try {
+    const res = await fetch(SB + '/rest/v1/phv_memos', {
+      method: 'POST',
+      headers: {
+        'apikey': KEY,
+        'Authorization': 'Bearer ' + KEY,
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates,return=minimal'
+      },
+      body: JSON.stringify({
+        id,
+        client_key: clientKey,
+        prenom, nom, ddn,
+        stats: payload.stats,
+        refus: payload.refus,
+        details: payload.details,
+        updated_at: payload.updated_at
+      })
+    });
+
+    if (res.ok) {
+      if (btn) {
+        btn.textContent = '✓ Retours envoyés à Sabrina !';
+        btn.style.background = '#3D6B2C';
+        btn.disabled = false;
+      }
+      // Masquer le bouton après 4 secondes
+      setTimeout(() => {
+        if (btn) { btn.textContent = '↗ Envoyer mes retours à Sabrina'; btn.style.background = ''; btn.disabled = false; }
+      }, 4000);
+    } else {
+      const err = await res.text();
+      throw new Error(err);
+    }
+  } catch(e) {
+    if (btn) {
+      btn.textContent = '⚠ Erreur — réessayez';
+      btn.style.background = '#8B3A3A';
+      btn.disabled = false;
+      setTimeout(() => { btn.textContent = '↗ Envoyer mes retours à Sabrina'; btn.style.background = ''; }, 3000);
+    }
+    console.error('Envoi retours:', e.message);
   }
-
-  updateMemoSummary();
 }
 
 function showMemoSaveIndicator() {
@@ -1786,14 +1843,13 @@ function cycleMemoState(id) {
       if (ta) ta.focus();
     }, 50);
   }
-  saveMemoState();
+  // Sauvegarder en local seulement (pas Supabase)
+  saveMemoLocal();
   updateMemoSummary();
 }
 
 function savePourquoi(id, value) {
-  // Déclencher une sauvegarde différée quand la cliente tape
-  clearTimeout(savePourquoi._t);
-  savePourquoi._t = setTimeout(() => saveMemoState(), 800);
+  saveMemoLocal();
 }
 
 function loadMemoState() {
@@ -1864,7 +1920,7 @@ function moveMemoItem(id, targetPilier) {
     g.style.display = g.querySelector('.memo-item') ? '' : 'none';
   });
 
-  saveMemoState();
+  saveMemoLocal();
   updateMemoSummary();
 }
 
