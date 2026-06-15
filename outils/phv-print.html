@@ -911,39 +911,6 @@ body {
 .memo-item[data-state="non"] .memo-toggle-icon { font-size: 0; }
 .memo-item[data-state="non"] .memo-label { color: var(--gris); text-decoration: line-through; opacity: .6; }
 
-/* Zone "pourquoi" — visible uniquement sur état non */
-.memo-pourquoi {
-  display: none;
-  margin-top: 6px;
-  padding: 6px 8px;
-  background: #FFF5F5;
-  border-radius: 6px;
-  border-left: 2px solid #8B3A3A;
-}
-.memo-item[data-state="non"] .memo-pourquoi { display: block; }
-.memo-pourquoi textarea {
-  width: 100%;
-  border: none;
-  background: transparent;
-  font-family: 'Be Vietnam Pro', sans-serif;
-  font-size: 11.5px;
-  color: var(--ardoise);
-  resize: none;
-  outline: none;
-  min-height: 44px;
-  line-height: 1.55;
-}
-.memo-pourquoi textarea::placeholder { color: #C47A7A; opacity: .8; }
-.memo-pourquoi-label {
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: .12em;
-  text-transform: uppercase;
-  color: #8B3A3A;
-  margin-bottom: 4px;
-}
-@media print { .memo-pourquoi { display: none !important; } }
-
 /* État neutre */
 .memo-item[data-state="neutral"] .memo-toggle-icon { color: var(--taupe); }
 
@@ -1361,10 +1328,6 @@ function isMemoWorthy(text) {
   const t = text.toLowerCase().trim();
   // Exclure : trop court
   if (t.length < 10) return false;
-  // Exclure : titres de sous-section (se terminent par ":")
-  if (/:\s*$/.test(t)) return false;
-  // Exclure : lignes trop longues (>120 cars = explication, pas action)
-  if (t.length > 120) return false;
   // Exclure : posologies (contient mg, µg, UI, gélule(s), comprimé(s) + chiffre)
   if (/\d+\s*(mg|µg|g|ml|ui|gélule|comprimé|capsule|goutte|drop)/i.test(t)) return false;
   // Exclure : lignes "Pourquoi pour vous", "Précaution", "Note :", "NB :"
@@ -1372,7 +1335,7 @@ function isMemoWorthy(text) {
   // Exclure : lignes qui sont des explications entre parenthèses uniquement
   if (/^\([^)]{20,}\)$/.test(t)) return false;
   // Exclure : lignes avec "c'est-à-dire", "c'est pourquoi", "en effet", "car ", "parce que"
-  if (/^(c'est-à-dire|c'est pourquoi|en effet,|car |parce que |cela signifie|cette |ce |ces |la |le |les |un |une )/i.test(t)) return false;
+  if (/^(c'est-à-dire|c'est pourquoi|en effet,|car |parce que |cela signifie)/i.test(t)) return false;
   // Exclure : marques et noms de produits seuls (sans verbe d'action)
   if (/^(novoma|nutripure|nutrixeal|pileje|nutergia|holistica|solgar|pure encapsulations)$/i.test(t)) return false;
   return true;
@@ -1461,13 +1424,7 @@ function buildMemoPage(prenom, pageNum) {
         <button class="memo-toggle" onclick="cycleMemoState('${itemId}')" title="Cliquez pour changer l'état">
           <span class="memo-toggle-icon">○</span>
         </button>
-        <div style="flex:1">
-          <span class="memo-label" id="lbl-${itemId}">${escH(item)}</span>
-          <div class="memo-pourquoi">
-            <div class="memo-pourquoi-label">Pourquoi pas encore ?</div>
-            <textarea id="pq-${itemId}" placeholder="Dites-moi ce qui vous freine… manque de temps, goût, difficulté pratique ?" oninput="savePourquoi('${itemId}', this.value)" rows="2"></textarea>
-          </div>
-        </div>
+        <span class="memo-label" id="lbl-${itemId}">${escH(item)}</span>
         <select class="memo-move-select" onchange="moveMemoItem('${itemId}', this.value); this.value=''" title="Déplacer dans une autre catégorie">
           <option value="">↕</option>
           <option value="alimentation">🌿 Alimentation</option>
@@ -1496,8 +1453,8 @@ function buildMemoPage(prenom, pageNum) {
     </div>
     <div class="section-title">Ce que vous avez mis en place</div>
 
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
-      <p class="memo-intro" style="margin:0;flex:1">Cochez au fur et à mesure ce que vous avez réussi à intégrer. Quand vous avez terminé, cliquez sur le bouton pour envoyer vos retours à Sabrina.</p>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+      <p class="memo-intro" style="margin:0;flex:1">Cochez au fur et à mesure ce que vous avez réussi à intégrer. Votre praticienne pourra suivre vos progrès.</p>
       <span id="memo-summary" style="font-size:12px;font-weight:700;color:var(--ocre);white-space:nowrap;background:var(--or-cl);padding:4px 12px;border-radius:99px">0 / 0 mis en place</span>
     </div>
 
@@ -1514,14 +1471,6 @@ function buildMemoPage(prenom, pageNum) {
     <div class="callout style-gold" style="margin-top:20px">
       <span class="callout-icon">💛</span>
       <div class="callout-text"><strong>N'attendez pas d'avoir tout mis en place pour me recontacter.</strong> Même 2 gestes sur 10, c'est un vrai départ. Ce qui compte, c'est d'observer ce qui fonctionne pour vous — et d'en parler ensemble.</div>
-    </div>
-
-    <div style="text-align:center;margin:28px 0 20px;padding:24px;background:linear-gradient(135deg,#FAF8F4,#F0EBE0);border-radius:16px;border:1.5px solid var(--sable)">
-      <p style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:16px;color:var(--gris);margin-bottom:16px">Quand vous êtes prête, envoyez vos retours à Sabrina.<br>Elle pourra adapter votre protocole en conséquence.</p>
-      <button id="btn-envoyer" onclick="envoyerRetours()" style="font-family:'Be Vietnam Pro',sans-serif;font-size:15px;font-weight:700;padding:16px 40px;border-radius:99px;border:none;background:var(--ardoise);color:#fff;cursor:pointer;transition:all .2s;letter-spacing:.03em;box-shadow:0 4px 16px rgba(30,30,28,.25)">
-        ↗ Envoyer mes retours à Sabrina
-      </button>
-      <p style="font-size:11px;color:var(--taupe);margin-top:10px">Vos réponses seront transmises directement à votre dossier.</p>
     </div>
 
     <div class="signature-block">
@@ -1543,28 +1492,6 @@ function buildMemoPage(prenom, pageNum) {
 ═══════════════════════════════════════════════ */
 function init() {
   try {
-    // ── Priorité 1 : hash URL (lien unique cliente) ──
-    const hash = window.location.hash;
-    if (hash && hash.startsWith('#phv=')) {
-      const encoded = hash.slice(5);
-      // Décodage UTF-8 correct
-      const bytes = Uint8Array.from(atob(encoded), c => c.charCodeAt(0));
-      const json = new TextDecoder('utf-8').decode(bytes);
-      const parsed = JSON.parse(json);
-      data = parsed.data;
-      blocks = parsed.blocks;
-      if (!data || !blocks.length) throw new Error('empty');
-      // Sauvegarder en localStorage pour les coches (même session)
-      localStorage.setItem('avita_phv_print', json);
-      setTimeout(() => {
-        buildDoc();
-        document.getElementById('loading').style.display = 'none';
-        document.getElementById('doc-wrap').style.display = 'flex';
-      }, 300);
-      return;
-    }
-
-    // ── Priorité 2 : localStorage (même navigateur) ──
     const raw = localStorage.getItem('avita_phv_print');
     if (!raw) throw new Error('no data');
     const parsed = JSON.parse(raw);
@@ -1584,7 +1511,7 @@ function init() {
       <div id="error-state" style="display:block;text-align:center;padding:80px 24px;color:var(--gris)">
         <div style="font-size:40px;margin-bottom:16px">📋</div>
         <p style="font-size:16px;margin-bottom:8px">Aucun protocole à afficher.</p>
-        <p style="font-size:13px">Le lien a peut-être expiré ou est incomplet. Contactez votre praticienne.</p>
+        <p style="font-size:13px">Retournez dans le <a href="generateur.html" style="color:var(--ocre)">Générateur PHV</a> et cliquez sur "Télécharger le PDF".</p>
       </div>`;
   }
 }
@@ -1721,7 +1648,7 @@ function addEngagement() {
 const _origBuildDoc = buildDoc;
 window.buildDoc = function() {
   _origBuildDoc();
-  setTimeout(() => { makeEditable(); loadMemoState(); }, 150);
+  setTimeout(makeEditable, 100);
 };
 
 /* ── FICHE MÉMO — ÉTAT DES CASES ── */
@@ -1730,20 +1657,26 @@ function getMemoKey() {
   return 'avs_memo_' + [cl?.prenom, cl?.nom, cl?.ddn].filter(Boolean).join('_').replace(/\s+/g,'_');
 }
 
-function collectMemoPayload() {
+function saveMemoState() {
+  const checkboxes = document.querySelectorAll('.memo-checkbox');
+  // État local pour rechargement
   const states = {};
-  const pourquois = {};
   document.querySelectorAll('.memo-item[id]').forEach(item => {
-    const st = item.dataset.state || 'neutral';
-    states[item.id] = st;
-    if (st === 'non') {
-      const ta = document.getElementById('pq-' + item.id);
-      if (ta && ta.value.trim()) pourquois[item.id] = ta.value.trim();
-    }
+    states[item.id] = item.dataset.state || 'neutral';
   });
+  const key = getMemoKey();
+  const existing = JSON.parse(localStorage.getItem(key) || '{}');
+  existing.states = states;
+  existing.ts = Date.now();
+  localStorage.setItem(key, JSON.stringify(existing));
+
+  // Construire le payload
+  const cl = data?._client;
+  const prenom = cl?.prenom || '';
+  const nom = cl?.nom || '';
+  const ddn = cl?.ddn || cl?.date_naissance || '';
 
   const details = {};
-  const refus = [];
   const pilierOrder = ['alimentation','psychologie','activite','complements','bilan','autre'];
   pilierOrder.forEach(p => {
     const group = document.querySelector(`.memo-group[data-pilier="${p}"]`);
@@ -1752,107 +1685,31 @@ function collectMemoPayload() {
     if (!items.length) return;
     details[p] = [...items].map(item => {
       const lbl = item.querySelector('.memo-label');
-      const texte = lbl?.textContent?.trim() || '';
-      const etat = item.dataset.state || 'neutral';
-      const raison = pourquois[item.id] || '';
-      if (etat === 'non') refus.push({ pilier: p, texte, raison });
-      return { texte, etat, raison };
+      return { texte: lbl?.textContent?.trim() || '', etat: item.dataset.state || 'neutral' };
     });
   });
 
   const allItems = [...document.querySelectorAll('.memo-item[id]')];
-  const ok = allItems.filter(i => i.dataset.state === 'ok').length;
-  const non = allItems.filter(i => i.dataset.state === 'non').length;
-  return {
-    states, pourquois, refus, details,
-    stats: { ok, non, total: allItems.length },
-    updated_at: new Date().toISOString()
+  const totalOk = allItems.filter(i => i.dataset.state === 'ok').length;
+  const totalNon = allItems.filter(i => i.dataset.state === 'non').length;
+  const payload = {
+    stats: { ok: totalOk, non: totalNon, total: allItems.length },
+    note: '',
+    details
   };
-}
 
-function saveMemoLocal() {
-  const payload = collectMemoPayload();
-  const key = getMemoKey();
-  const existing = JSON.parse(localStorage.getItem(key) || '{}');
-  existing.states = payload.states;
-  existing.pourquois = payload.pourquois;
-  existing.ts = Date.now();
-  localStorage.setItem(key, JSON.stringify(existing));
-}
-
-// Alias pour compatibilité
-function saveMemoState() { saveMemoLocal(); updateMemoSummary(); }
-
-async function envoyerRetours() {
-  const btn = document.getElementById('btn-envoyer');
-  if (btn) { btn.disabled = true; btn.textContent = 'Envoi en cours…'; }
-
-  const payload = collectMemoPayload();
-  const cl = data?._client;
-  const prenom = cl?.prenom || '';
-  const nom = cl?.nom || '';
-  const ddn = cl?.ddn || cl?.date_naissance || '';
-
-  saveMemoLocal();
-
-  const SB = 'https://bqhkdndwldwqacrrbbig.supabase.co';
-  const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxaGtkbmR3bGR3cWFjcnJiYmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU3NjM2NTMsImV4cCI6MjA2MTMzOTY1M30.LqUmkNboVtPQkEns2C3R1g_O0WHmrI1cVJCJBiZl_h0';
-
-  const normalize = s => (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'');
-  const clientKey = [normalize(prenom), normalize(nom), normalize(ddn)].filter(Boolean).join('_');
-  const id = 'memo_' + clientKey + '_' + Date.now();
-
-  try {
-    const res = await fetch(SB + '/rest/v1/phv_memos', {
-      method: 'POST',
-      headers: {
-        'apikey': KEY,
-        'Authorization': 'Bearer ' + KEY,
-        'Content-Type': 'application/json',
-        'Prefer': 'resolution=merge-duplicates,return=minimal'
-      },
-      body: JSON.stringify({
-        id,
-        client_key: clientKey,
-        prenom, nom, ddn,
-        stats: payload.stats,
-        refus: payload.refus,
-        details: payload.details,
-        updated_at: payload.updated_at
-      })
-    });
-
-    if (res.ok) {
-      if (btn) {
-        btn.textContent = '✓ Retours envoyés à Sabrina !';
-        btn.style.background = '#3D6B2C';
-        btn.disabled = false;
-      }
-      // Masquer le bouton après 4 secondes
-      setTimeout(() => {
-        if (btn) { btn.textContent = '↗ Envoyer mes retours à Sabrina'; btn.style.background = ''; btn.disabled = false; }
-      }, 4000);
-    } else {
-      const err = await res.text();
-      throw new Error(err);
-    }
-  } catch(e) {
-    if (btn) {
-      btn.textContent = '⚠ Erreur — réessayez';
-      btn.style.background = '#8B3A3A';
-      btn.disabled = false;
-      setTimeout(() => { btn.textContent = '↗ Envoyer mes retours à Sabrina'; btn.style.background = ''; }, 3000);
-    }
-    console.error('Envoi retours:', e.message);
+  // ── Supabase (cross-device) ──
+  if (typeof DB !== 'undefined') {
+    DB.savePHVMemo(prenom, nom, ddn, payload).catch(e => console.warn('Supabase memo save failed:', e));
   }
-}
 
-function showMemoSaveIndicator() {
-  let ind = document.getElementById('memo-save-ind');
-  if (!ind) return;
-  ind.style.opacity = '1';
-  clearTimeout(showMemoSaveIndicator._t);
-  showMemoSaveIndicator._t = setTimeout(() => { ind.style.opacity = '0'; }, 2000);
+  // ── Fallback localStorage CRM ──
+  const prenomKey = prenom.toLowerCase().replace(/\s+/g,'_');
+  const crmKey = 'avita_memo_crm_' + prenomKey + '_' + Date.now();
+  localStorage.setItem(crmKey, JSON.stringify({ ...payload, date_rempli: Date.now() }));
+  localStorage.setItem('avita_memo_crm_last', crmKey);
+
+  updateMemoSummary();
 }
 
 function cycleMemoState(id) {
@@ -1862,20 +1719,8 @@ function cycleMemoState(id) {
   const cur = item.dataset.state || 'neutral';
   const next = states[(states.indexOf(cur) + 1) % states.length];
   item.dataset.state = next;
-  // Focus textarea si on passe à "non"
-  if (next === 'non') {
-    setTimeout(() => {
-      const ta = document.getElementById('pq-' + id);
-      if (ta) ta.focus();
-    }, 50);
-  }
-  // Sauvegarder en local seulement (pas Supabase)
-  saveMemoLocal();
+  saveMemoState();
   updateMemoSummary();
-}
-
-function savePourquoi(id, value) {
-  saveMemoLocal();
 }
 
 function loadMemoState() {
@@ -1887,16 +1732,10 @@ function loadMemoState() {
       if (item) item.dataset.state = state;
     });
   }
-  // Restaurer les textes "pourquoi"
-  if (saved.pourquois) {
-    Object.entries(saved.pourquois).forEach(([id, raison]) => {
-      const ta = document.getElementById('pq-' + id);
-      if (ta) ta.value = raison;
-    });
-  }
-  // Legacy
+  // Legacy: support old checkbox format
   if (saved.checked && !saved.states) {
     Object.entries(saved.checked).forEach(([id, checked]) => {
+      // old id format was "chk-memo-..." strip the "chk-" prefix
       const itemId = id.replace(/^chk-/, '');
       const item = document.getElementById(itemId);
       if (item && checked) item.dataset.state = 'ok';
@@ -1946,7 +1785,7 @@ function moveMemoItem(id, targetPilier) {
     g.style.display = g.querySelector('.memo-item') ? '' : 'none';
   });
 
-  saveMemoLocal();
+  saveMemoState();
   updateMemoSummary();
 }
 
@@ -1973,10 +1812,8 @@ function updateMemoSummary() {
   const non = [...items].filter(i => i.dataset.state === 'non').length;
   const summary = document.getElementById('memo-summary');
   if (summary) {
-    const pct = total > 0 ? Math.round(ok / total * 100) : 0;
-    summary.textContent = ok + '/' + total + ' mis en place (' + pct + '%)' + (non > 0 ? ' · ' + non + ' à revoir' : '');
-    summary.style.color = non > 0 ? '#8B3A3A' : ok === total && total > 0 ? 'var(--vert)' : 'var(--ocre)';
-    summary.style.background = non > 0 ? '#FFF0F0' : '';
+    summary.textContent = ok + ' ✓ · ' + non + ' ✕ · ' + (total - ok - non) + ' en attente';
+    summary.style.color = ok === total && total > 0 ? 'var(--vert)' : 'var(--ocre)';
   }
   // Update per-group counters
   document.querySelectorAll('.memo-group').forEach(group => {
@@ -1990,8 +1827,12 @@ function updateMemoSummary() {
   });
 }
 
-// Charger l'état mémo après buildDoc (ajouté directement dans le hook buildDoc ci-dessus)
-// Note: loadMemoState est appelé depuis window.buildDoc via makeEditable
+// Hook makeEditable to also load memo state
+const _origMakeEditable = makeEditable;
+function makeEditable() {
+  _origMakeEditable();
+  setTimeout(loadMemoState, 150);
+}
 
 </script>
 
