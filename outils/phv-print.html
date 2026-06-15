@@ -1661,7 +1661,7 @@ function addEngagement() {
 const _origBuildDoc = buildDoc;
 window.buildDoc = function() {
   _origBuildDoc();
-  setTimeout(makeEditable, 100);
+  setTimeout(makeEditableWithMemo, 100);
 };
 
 /* ── FICHE MÉMO — ÉTAT DES CASES ── */
@@ -1855,10 +1855,19 @@ function updateMemoSummary() {
 
 // Hook makeEditable to also load memo state
 const _origMakeEditable = makeEditable;
-const makeEditable = function() {
+const makeEditableWithMemo = function() {
   _origMakeEditable();
   setTimeout(loadMemoState, 150);
 };
+window._makeEditableHooked = makeEditableWithMemo;
+
+// Exposer les fonctions mémo globalement (appelées depuis les onclick inline générés dynamiquement)
+window.cycleMemoState  = cycleMemoState;
+window.saveMemoState   = saveMemoState;
+window.loadMemoState   = loadMemoState;
+window.moveMemoItem    = moveMemoItem;
+window.deleteMemoItem  = deleteMemoItem;
+window.updateMemoSummary = updateMemoSummary;
 
 </script>
 
