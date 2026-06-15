@@ -631,34 +631,6 @@ body{font-family:'Inter',-apple-system,sans-serif;background:var(--surface);colo
   </div>
 </div>
 
-<!-- MODALE UPLOAD BILAN -->
-<div class="modal-bg" id="m-upload-bilan">
-  <div class="modal">
-    <div class="mhead">
-      <div class="mtitle">🧬 Ajouter un bilan biologique</div>
-      <button class="mx" onclick="closeM('m-upload-bilan')">×</button>
-    </div>
-    <div style="padding:20px 24px;display:flex;flex-direction:column;gap:16px;">
-      <div class="fg">
-        <label class="fl">Date du bilan *</label>
-        <input class="fi" type="date" id="ub-date">
-      </div>
-      <div class="fg">
-        <label class="fl">Fichier (PDF, JPG, PNG) *</label>
-        <input class="fi" type="file" id="ub-file" accept=".pdf,.jpg,.jpeg,.png" style="padding:6px 10px;cursor:pointer;">
-      </div>
-      <div style="font-size:12px;color:var(--muted);line-height:1.5;">
-        Le fichier sera stocké dans votre espace Supabase et accessible depuis cette fiche cliente.
-      </div>
-      <div id="ub-status" style="font-size:12px;color:#E2445C;min-height:16px;"></div>
-    </div>
-    <div class="mfoot">
-      <button class="btn btn-ghost" onclick="closeM('m-upload-bilan')">Annuler</button>
-      <button class="btn btn-primary" onclick="doUploadBilan()">Importer</button>
-    </div>
-  </div>
-</div>
-
 <div class="toast" id="toast"></div>
 
 <script>
@@ -674,58 +646,6 @@ async function sb(path,opts={}){
 const LKEY='avs_crm_v2';
 function loadL(){try{return JSON.parse(localStorage.getItem(LKEY)||'{}')}catch(e){return{}}}
 function saveL(d){localStorage.setItem(LKEY,JSON.stringify(d))}
-
-// ══════════════════════════════════════════════════════
-// BILANS BIOLOGIQUES — Supabase Storage
-// Bucket : avs-bilans (à créer dans le dashboard Supabase,
-// policy : service_role ou authenticated read/write)
-// ══════════════════════════════════════════════════════
-async function uploadBilan(clientId, clientKey, file, dateBilan) {
-  const ext = file.name.split('.').pop().toLowerCase();
-  const ts = Date.now();
-  const path = `${clientKey}/${dateBilan}_${ts}.${ext}`;
-  // 1. Upload fichier dans Storage
-  const upRes = await fetch(`${SB}/storage/v1/object/avs-bilans/${path}`, {
-    method: 'POST',
-    headers: { 'apikey': KEY, 'Authorization': 'Bearer ' + KEY, 'Content-Type': file.type },
-    body: file
-  });
-  if (!upRes.ok) throw new Error('Upload échoué : ' + await upRes.text());
-  // 2. Enregistrer métadonnées en base
-  await sb('bilans_biologiques', {
-    method: 'POST',
-    prefer: 'return=representation',
-    body: JSON.stringify({
-      client_id: clientId,
-      client_key: clientKey,
-      nom_fichier: file.name,
-      date_bilan: dateBilan,
-      storage_path: path,
-      type: ext.toUpperCase(),
-      uploaded_at: new Date().toISOString()
-    })
-  });
-}
-
-async function listBilans(clientId) {
-  try {
-    return await sb(`bilans_biologiques?client_id=eq.${clientId}&order=date_bilan.desc`);
-  } catch(e) { return []; }
-}
-
-async function deleteBilan(bilanId, storagePath) {
-  // Supprimer de Storage
-  await fetch(`${SB}/storage/v1/object/avs-bilans/${storagePath}`, {
-    method: 'DELETE',
-    headers: { 'apikey': KEY, 'Authorization': 'Bearer ' + KEY }
-  });
-  // Supprimer la ligne
-  await sb(`bilans_biologiques?id=eq.${bilanId}`, { method: 'DELETE', prefer: '' });
-}
-
-function bilanPublicUrl(path) {
-  return `${SB}/storage/v1/object/public/avs-bilans/${path}`;
-}
 
 let db={clients:[],factures:[],settings:null,nextF:1};
 let taches=[],rdvs=[],emailCtx=null,curTab='urg',curSearch='',curFilter='all';
@@ -859,12 +779,12 @@ function renderAlerts(tab,urg,sem){
     const cl=a.isOvd?'urg':'sem';
     const dago=a.tgt?diffD(a.tgt):0;
     const dtxt=dago>0?'Retard de '+dago+'j':'Dans '+Math.abs(dago)+'j';
-    return "<div class='al-item "+cl+"' onclick="openFiche('"+c.id+"')">" +
+    return "<div class='al-item "+cl+"' onclick='openFiche("'+c.id+'")'>" +
       "<div class='al-av' style='background:"+col+"'>"+init+"</div>" +
       "<div class='al-body'><div class='al-name'>"+escH(c.prenom)+" "+escH(c.nom||'')+"</div>" +
       "<div class='al-desc'>"+escH(a.label)+"</div>" +
       "<div class='al-meta'>"+(a.tgt?fmtDate(a.tgt)+' · '+dtxt:'')+"</div></div>" +
-      (a.tpl?"<button class='al-btn' onclick="event.stopPropagation();openEmail('"+c.id+"','"+a.tpl+"')">Email →</button>":'')+
+      (a.tpl?"<button class='al-btn' onclick='event.stopPropagation();openEmail("'+c.id+'","'+a.tpl+'")'>Email →</button>":'')+
       "</div>";
   }).join('');
 }
@@ -884,7 +804,7 @@ function renderPipeline(actives){
       "<div class='pipe-sub'>"+pLbl(c.programme)+" · depuis "+fmtShort(c.dateProtocole||c.date1)+"</div>" +
       "<div class='prog-track'><div class='prog-fill' style='width:"+pct+"%;background:"+g+"'></div></div>" +
       "<div class='prog-pct'>"+pct+"% terminé</div></div>" +
-      "<button class='btn btn-ghost btn-xs' onclick="openFiche('"+c.id+"')">Voir</button>" +
+      "<button class='btn btn-ghost btn-xs' onclick='openFiche("'+c.id+'")'>Voir</button>" +
       "</div>";
   }).join('');
 }
@@ -920,12 +840,12 @@ function renderTaches(){
     const eco=t.echeance?fmtShort(t.echeance):'';
     const ov=t.echeance&&diffD(t.echeance)>0;
     return "<div class='task-item' id='ti-"+t.id+"'>" +
-      "<div class='t-check' onclick="checkTask('"+t.id+"')">✓</div>" +
+      "<div class='t-check' onclick='checkTask("'+t.id+'")'>✓</div>" +
       "<div class='t-txt'>"+escH(t.titre)+"</div>" +
       (t.client_nom?"<span class='t-chip'>"+escH(t.client_nom)+"</span>":'')+
       "<span style='font-size:12px'>"+prio+"</span>"+
       (eco?"<span style='font-size:10px;font-family:monospace;color:"+(ov?"var(--red)":"var(--muted)")+";'>"+eco+"</span>":'')+
-      "<span class='t-del' onclick="delTask('"+t.id+"')">×</span>" +
+      "<span class='t-del' onclick='delTask("'+t.id+'")'>×</span>" +
       "</div>";
   }).join('');
 }
@@ -936,10 +856,10 @@ function renderSilences(sils){
   el.innerHTML=sils.map(c=>{
     const last=c.timeline?.[c.timeline.length-1]?.date||c.date1;
     const days=diffD(last);
-    return "<div class='sil-item' onclick="openFiche('"+c.id+"')">" +
+    return "<div class='sil-item' onclick='openFiche("'+c.id+'")'>" +
       "<div style='font-size:13px;font-weight:700;flex:1'>"+escH(c.prenom)+" "+escH(c.nom||'')+"</div>" +
       "<span style='font-size:11px;font-weight:700;color:var(--orange);font-family:monospace'>"+days+"j</span>" +
-      "<button class='btn btn-ghost btn-xs' onclick="event.stopPropagation();openEmail('"+c.id+"','relance')">Email</button>" +
+      "<button class='btn btn-ghost btn-xs' onclick='event.stopPropagation();openEmail("'+c.id+'","relance")'>Email</button>" +
       "</div>";
   }).join('');
 }
@@ -968,7 +888,7 @@ function renderClients(){
     }
     const chips=[];
     if(c.motifs)c.motifs.split(/[,·]/).slice(0,3).forEach(m=>{if(m.trim())chips.push("<span class='mchip'>"+escH(m.trim())+"</span>");});
-    return "<div class='cc' onclick="openFiche('"+c.id+"')">" +
+    return "<div class='cc' onclick='openFiche("'+c.id+'")'>" +
       "<div class='cc-top'><div class='cc-av' style='background:"+col+"'>"+init+"</div>" +
       "<div class='cc-info'><div class='cc-name'>"+escH(c.prenom)+" "+escH(c.nom||'')+"</div>" +
       "<div class='cc-sub'>"+(age?age+" ans":'')+( c.email?" · "+escH(c.email):'')+"</div></div>" +
@@ -983,7 +903,7 @@ function renderClients(){
 function filterC(v){curSearch=v;renderClients();}
 function setFilter(s,el){curFilter=s;document.querySelectorAll('.fchip').forEach(c=>c.classList.remove('on'));if(el)el.classList.add('on');renderClients();}
 
-function openFiche(id){const c=db.clients.find(x=>x.id===id);if(!c)return;nav('fiche',null);renderFiche(c);setTimeout(()=>renderBilans(id),100);}
+function openFiche(id){const c=db.clients.find(x=>x.id===id);if(!c)return;nav('fiche',null);renderFiche(c);}
 
 function renderFiche(c){
   const el=document.getElementById('fiche-box');if(!el)return;
@@ -1003,9 +923,9 @@ function renderFiche(c){
   const wfH=wf.map(s=>{
     let cls=s.done?'done':s.isOvd?'overdue':s.isSoon?'soon':'';
     const sttxt=s.isOvd?"<span style='color:var(--red);font-weight:700'> · Retard</span>":s.isSoon?"<span style='color:var(--orange);font-weight:700'> · Cette semaine</span>":'';
-    const eBtn=s.tpl?"<button class='wf-ebtn' onclick="loadFicheTpl('"+s.tpl+"','"+c.id+"')">Email</button>":'';
+    const eBtn=s.tpl?"<button class='wf-ebtn' onclick='loadFicheTpl("'+s.tpl+'","'+c.id+'")'>Email</button>":'';
     return "<div class='wf-item "+cls+"'>" +
-      "<div class='wf-chk' onclick="toggleWF('"+c.id+"','"+s.key+"')">"+( s.done?"✓":"")+"</div>" +
+      "<div class='wf-chk' onclick='toggleWF("'+c.id+'","'+s.key+'")'>"+( s.done?"✓":"")+"</div>" +
       "<div class='wf-info'><div class='wfj'>J+"+s.j+"</div><div class='wft'>"+escH(s.label)+"</div><div class='wfd'>"+(s.tgt?fmtDate(s.tgt):'—')+sttxt+"</div></div>" +
       eBtn+"</div>";
   }).join('');
@@ -1030,8 +950,8 @@ function renderFiche(c){
       "<div class='fiche-sub'>"+(age?age+" ans":'')+( c.ddn?" · née le "+fmtDate(c.ddn):'')+( c.email?" · "+escH(c.email):'')+( c.tel?" · "+escH(c.tel):'')+"</div>" +
       "<div class='fiche-htags'>"+tagH+"</div></div>" +
       "<div class='fiche-acts'>" +
-        "<button class='btn btn-ghost btn-sm' style='border-color:rgba(255,255,255,.4);color:white' onclick="openEmail('"+c.id+"','')" >Email</button>" +
-        "<button class='btn btn-ghost btn-sm' style='border-color:rgba(255,255,255,.4);color:white' onclick="window.open('generateur.html','_blank')">PHV ↗</button>" +
+        "<button class='btn btn-ghost btn-sm' style='border-color:rgba(255,255,255,.4);color:white' onclick='openEmail("'+c.id+'","")' >Email</button>" +
+        "<button class='btn btn-ghost btn-sm' style='border-color:rgba(255,255,255,.4);color:white' onclick='window.open("generateur.html","_blank")'>PHV ↗</button>" +
       "</div>" +
     "</div>" +
     "<div class='m3'>" +
@@ -1060,92 +980,21 @@ function renderFiche(c){
           "<div class='efield'><span class='elbl'>À</span><input type='email' class='einput' id='fe-to' value='"+escH(c.email||'')+"'></div>" +
           "<div class='efield'><span class='elbl'>Objet</span><input type='text' class='einput' id='fe-sub' placeholder='Objet...'></div>" +
           "<div class='etpls'><span style='font-size:10px;font-weight:700;color:var(--muted);flex-shrink:0;align-self:center'>Templates :</span>" +
-            "<button class='etpl' onclick="loadFicheTpl('j7','"+c.id+"')">J+7</button>" +
-            "<button class='etpl' onclick="loadFicheTpl('j21','"+c.id+"')">J+21</button>" +
-            "<button class='etpl' onclick="loadFicheTpl('suivi','"+c.id+"')">Suivi</button>" +
-            "<button class='etpl' onclick="loadFicheTpl('fin_programme','"+c.id+"')">Fin prog.</button>" +
-            "<button class='etpl' onclick="loadFicheTpl('relance','"+c.id+"')">Relance</button>" +
+            "<button class='etpl' onclick='loadFicheTpl("j7","'+c.id+'")'>J+7</button>" +
+            "<button class='etpl' onclick='loadFicheTpl("j21","'+c.id+'")'>J+21</button>" +
+            "<button class='etpl' onclick='loadFicheTpl("suivi","'+c.id+'")'>Suivi</button>" +
+            "<button class='etpl' onclick='loadFicheTpl("fin_programme","'+c.id+'")'>Fin prog.</button>" +
+            "<button class='etpl' onclick='loadFicheTpl("relance","'+c.id+'")'>Relance</button>" +
           "</div>" +
           "<textarea class='ebody' id='fe-body' placeholder='Message...'></textarea>" +
           "<div class='efoot'><span style='font-size:12px;color:var(--muted)'>Avita Serena</span>" +
             "<div style='display:flex;gap:7px'>" +
-              "<button class='btn btn-ghost btn-sm' onclick="logEmail('"+c.id+"')">Logger</button>" +
-              "<button class='btn btn-primary btn-sm' onclick="sendBrevoFiche('"+c.id+"')">Ouvrir Brevo ↗</button>" +
+              "<button class='btn btn-ghost btn-sm' onclick='logEmail("'+c.id+'")'>Logger</button>" +
+              "<button class='btn btn-primary btn-sm' onclick='sendBrevoFiche("'+c.id+'")'>Ouvrir Brevo ↗</button>" +
             "</div></div>" +
         "</div></div></div>" +
-      "<div class='card'><div class='card-head'><div class='card-title'><div class='card-dot' style='background:#C4A882'></div>Bilans biologiques</div>" +
-        "<button class='btn btn-ghost btn-xs' onclick=\"openUploadBilan('"+c.id+"','"+clientKey(c)+"')\">+ Ajouter</button>" +
-      "</div><div class='card-body' id='bilans-box-"+c.id+"' style='padding:10px 18px;min-height:40px'>" +
-        "<span style='font-size:12px;color:var(--muted)'>Chargement…</span>" +
-      "</div></div>" +
-      "<div class='card'><div class='card-head'><div class='card-title'><div class='card-dot' style='background:#FF7B2C'></div>Timeline</div><button class='btn btn-ghost btn-xs' onclick="addTLEvent('"+c.id+"')">+ Événement</button></div><div class='card-body'>"+tlH+"</div></div>" +
+      "<div class='card'><div class='card-head'><div class='card-title'><div class='card-dot' style='background:#FF7B2C'></div>Timeline</div><button class='btn btn-ghost btn-xs' onclick='addTLEvent("'+c.id+'")'>+ Événement</button></div><div class='card-body'>"+tlH+"</div></div>" +
     "</div></div>";
-}
-
-// ── Clé cliente normalisée (prénom+nom+ddn) ──
-function clientKey(c){
-  const p=(c.prenom||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'_');
-  const n=(c.nom||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'_');
-  const d=(c.ddn||'').replace(/-/g,'');
-  return [p,n,d].filter(Boolean).join('_');
-}
-
-// ── Affichage liste bilans dans la fiche ──
-async function renderBilans(clientId){
-  const box=document.getElementById('bilans-box-'+clientId);
-  if(!box)return;
-  const bilans=await listBilans(clientId);
-  if(!bilans.length){
-    box.innerHTML="<span style='font-size:12px;color:var(--muted)'>Aucun bilan ajouté. Utilisez le bouton + Ajouter pour importer un fichier envoyé par la cliente.</span>";
-    return;
-  }
-  const typeColors={'PDF':'#E2445C','JPG':'#0096FF','JPEG':'#0096FF','PNG':'#00C875'};
-  box.innerHTML=bilans.map(b=>`
-    <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;">
-      <span style="background:${typeColors[b.type]||'#6C47FF'};color:#fff;border-radius:4px;padding:2px 6px;font-size:10px;font-weight:700;flex-shrink:0">${b.type}</span>
-      <a href="${bilanPublicUrl(b.storage_path)}" target="_blank" style="color:var(--ink);text-decoration:none;font-weight:600;flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis" title="${b.nom_fichier}">${b.nom_fichier}</a>
-      <span style="color:var(--muted);white-space:nowrap;font-size:11px">${fmtDate(b.date_bilan)}</span>
-      <button onclick="confirmDelBilan('${b.id}','${b.storage_path}','${clientId}')" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px;line-height:1;padding:0 4px" title="Supprimer">×</button>
-    </div>`).join('');
-}
-
-async function confirmDelBilan(bilanId, path, clientId){
-  if(!confirm('Supprimer ce bilan ? Cette action est irréversible.'))return;
-  try{
-    await deleteBilan(bilanId, path);
-    toast('Bilan supprimé','ok');
-    renderBilans(clientId);
-  }catch(e){toast('Erreur : '+e.message,'err');}
-}
-
-// ── Modale upload bilan ──
-let _uploadCtx={};
-function openUploadBilan(clientId, clientKey){
-  _uploadCtx={clientId,clientKey};
-  document.getElementById('ub-date').value=today();
-  document.getElementById('ub-file').value='';
-  document.getElementById('ub-status').textContent='';
-  openM('m-upload-bilan');
-}
-
-async function doUploadBilan(){
-  const file=document.getElementById('ub-file').files[0];
-  const date=document.getElementById('ub-date').value;
-  const status=document.getElementById('ub-status');
-  if(!file){status.textContent='Veuillez sélectionner un fichier.';return;}
-  if(!date){status.textContent='Veuillez indiquer la date du bilan.';return;}
-  const allowed=['pdf','jpg','jpeg','png'];
-  if(!allowed.includes(file.name.split('.').pop().toLowerCase())){status.textContent='Format accepté : PDF, JPG, PNG.';return;}
-  status.textContent='Upload en cours…';
-  try{
-    await uploadBilan(_uploadCtx.clientId,_uploadCtx.clientKey,file,date);
-    toast('Bilan ajouté ✓','ok');
-    closeM('m-upload-bilan');
-    renderBilans(_uploadCtx.clientId);
-  }catch(e){
-    status.textContent='Erreur : '+e.message;
-    console.error(e);
-  }
 }
 
 async function toggleWF(id,key){
@@ -1277,7 +1126,7 @@ function renderFactures(){
   if(!facs.length){list.innerHTML='<div class="empty"><div class="eicon">📄</div><div class="etitle">Aucune facture</div><div class="esub">Créez votre première facture.</div></div>';return;}
   list.innerHTML=facs.map(f=>{
     const c=db.clients.find(x=>x.id===f.clientId);
-    return "<div class='fr'><span class='fnum'>N° "+escH(f.num||'')+"</span><div style='flex:1'><div class='fcl'>"+(c?escH(c.prenom+' '+(c.nom||'')):"<span style='color:var(--muted)'>—</span>")+"</div><div class='fpre'>"+escH(f.prestationLabel||f.prestation||'')+"</div></div><span class='fdat'>"+fmtShort(f.date)+"</span><span class='famt'>"+(f.montant||0).toFixed(0)+" €</span><span class='fst "+(f.statut==='payee'?'ok':'pend')+"'>"+(f.statut==='payee'?'Payée':'En attente')+"</span><button class='btn btn-ghost btn-xs' onclick="printF('"+f.id+"')">🖨</button></div>";
+    return "<div class='fr'><span class='fnum'>N° "+escH(f.num||'')+"</span><div style='flex:1'><div class='fcl'>"+(c?escH(c.prenom+' '+(c.nom||'')):"<span style='color:var(--muted)'>—</span>")+"</div><div class='fpre'>"+escH(f.prestationLabel||f.prestation||'')+"</div></div><span class='fdat'>"+fmtShort(f.date)+"</span><span class='famt'>"+(f.montant||0).toFixed(0)+" €</span><span class='fst "+(f.statut==='payee'?'ok':'pend')+"'>"+(f.statut==='payee'?'Payée':'En attente')+"</span><button class='btn btn-ghost btn-xs' onclick='printF("'+f.id+'")'>🖨</button></div>";
   }).join('');
 }
 
