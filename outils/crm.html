@@ -335,8 +335,28 @@ async function init(){
   renderDashboard();
 }
 
-async function loadClients(){try{const r=await sb('clientes?order=created_at.desc');db.clients=r.map(mapC);}catch(e){db.clients=loadL().clients||[];}}
-async function loadFactures(){try{const r=await sb('factures?order=date.desc');db.factures=r.map(f=>({id:f.id,num:f.num,clientId:f.client_id,date:f.date,prestation:f.prestation,prestationLabel:f.prestation_label,montant:parseFloat(f.montant)||0,paiement:f.paiement,paiementLabel:f.paiement_label,statut:f.statut,deuxFois:f.deux_fois}));}catch(e){db.factures=loadL().factures||[];}}
+async function loadClients(){
+  try{
+    const r=await sb('clientes?order=created_at.desc');
+    db.clients=r.map(mapC);
+    console.log('[CRM] Clientes chargées depuis Supabase:', db.clients.length);
+  }catch(e){
+    console.error('[CRM] Erreur chargement clientes:', e.message);
+    // Ne PAS se replier sur localStorage — si Supabase échoue, on affiche l'erreur
+    db.clients=[];
+    toast('Erreur chargement clientes : '+e.message,'err');
+  }
+}
+async function loadFactures(){
+  try{
+    const r=await sb('factures?order=date.desc');
+    db.factures=r.map(f=>({id:f.id,num:f.num,clientId:f.client_id,date:f.date,prestation:f.prestation,prestationLabel:f.prestation_label,montant:parseFloat(f.montant)||0,paiement:f.paiement,paiementLabel:f.paiement_label,statut:f.statut,deuxFois:f.deux_fois}));
+    console.log('[CRM] Factures chargées:', db.factures.length);
+  }catch(e){
+    console.error('[CRM] Erreur chargement factures:', e.message);
+    db.factures=[];
+  }
+}
 async function loadTaches(){try{taches=await sb("taches?statut=neq.done&statut=neq.archive&order=echeance.asc.nullslast");}catch(e){taches=[];}}
 async function loadRdvs(){try{rdvs=await sb('rendez_vous?order=date.desc');}catch(e){rdvs=[];}}
 
