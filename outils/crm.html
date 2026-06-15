@@ -307,7 +307,7 @@ body{font-family:'Inter',-apple-system,sans-serif;background:var(--surface);colo
 </style>
 <script defer>
 const SB='https://bqhkdndwldwqacrrbbig.supabase.co';
-const KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxaGtkbmR3bGR3cWFjcnJiYmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MzAyNTIsImV4cCI6MjA5NjMwNjI1Mn0.nH2UktMAVKYwng4L3SvW5F0fluV_sObGV0f3Mk1dnOY';
+const KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxaGtkbmR3bGR3cWFjcnJiYmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU3NjM2NTMsImV4cCI6MjA2MTMzOTY1M30.LqUmkNboVtPQkEns2C3R1g_O0WHmrI1cVJCJBiZl_h0';
 
 async function sb(path,opts={}){
   const r=await fetch(SB+'/rest/v1/'+path,{...opts,headers:{'apikey':KEY,'Authorization':'Bearer '+KEY,'Content-Type':'application/json','Prefer':opts.prefer||'return=representation',...(opts.headers||{})}});
@@ -739,7 +739,14 @@ async function saveNewClient(){
   const age=ageFrom(ddn);
   const id=prenom.toLowerCase().replace(/[\s\']/g,'_')+(nom?'-'+nom.toLowerCase().replace(/[\s\']/g,'_'):'')+'-'+ddn.replace(/-/g,'');
   const payload={id,prenom,nom,email:document.getElementById('nc-email')?.value||'',tel:document.getElementById('nc-tel')?.value||'',age:age?String(age):'',ddn,motifs:document.getElementById('nc-motifs')?.value||'',axes:document.getElementById('nc-axes')?.value||'',notes:document.getElementById('nc-notes')?.value||'',programme:document.getElementById('nc-prog')?.value||'',duree_ttt:document.getElementById('nc-duree')?.value||'60',date1:document.getElementById('nc-date1')?.value||today(),date_protocole:document.getElementById('nc-dateproto')?.value||'',timeline:[{type:'creation',title:'Dossier créé',icon:'✦',date:today()}],workflow_done:{},created_at:new Date().toISOString()};
-  try{await sb('clientes',{method:'POST',body:JSON.stringify(payload)});db.clients.unshift(mapC(payload));closeM('m-client');toast('Fiche créée ✓','ok');nav('clients',null);renderClients();}
+  try{
+    await sb('clientes',{method:'POST',headers:{'Prefer':'return=representation,resolution=merge-duplicates'},body:JSON.stringify(payload)});
+    // Mettre à jour en mémoire (remplacer si existant, ajouter sinon)
+    const existIdx = db.clients.findIndex(c => c.id === payload.id);
+    if(existIdx > -1) db.clients[existIdx] = mapC(payload);
+    else db.clients.unshift(mapC(payload));
+    closeM('m-client');toast('Fiche créée ✓','ok');nav('clients',null);renderClients();
+  }
   catch(e){toast('Erreur: '+e.message,'err');}
 }
 
