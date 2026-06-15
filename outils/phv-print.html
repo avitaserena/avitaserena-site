@@ -1480,10 +1480,10 @@ function buildMemoPage(prenom, pageNum) {
       <p style="font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:16px;color:var(--gris);line-height:1.7;margin:0 0 16px">
         Quand vous êtes prête, envoyez vos retours à Sabrina.<br>Elle pourra adapter votre protocole en conséquence.
       </p>
-      <button onclick="saveMemoState()" style="display:inline-flex;align-items:center;gap:8px;background:var(--ardoise);color:white;border:none;border-radius:99px;padding:12px 28px;font-family:'Be Vietnam Pro',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:opacity .2s" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+      <button id="btn-send-memo" onclick="envoyerRetours(this)" style="display:inline-flex;align-items:center;gap:8px;background:var(--ardoise);color:white;border:none;border-radius:99px;padding:12px 28px;font-family:'Be Vietnam Pro',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
         ↗ Envoyer mes retours à Sabrina
       </button>
-      <p style="font-size:11px;color:var(--taupe);margin:10px 0 0">Vos réponses seront transmises directement à votre dossier.</p>
+      <p id="send-memo-status" style="font-size:12px;color:var(--taupe);margin:10px 0 0">Vos réponses seront transmises directement à votre dossier.</p>
     </div>
 
     <div class="signature-block">
@@ -1862,12 +1862,89 @@ const makeEditableWithMemo = function() {
 window._makeEditableHooked = makeEditableWithMemo;
 
 // Exposer les fonctions mémo globalement (appelées depuis les onclick inline générés dynamiquement)
-window.cycleMemoState  = cycleMemoState;
-window.saveMemoState   = saveMemoState;
-window.loadMemoState   = loadMemoState;
-window.moveMemoItem    = moveMemoItem;
-window.deleteMemoItem  = deleteMemoItem;
+window.cycleMemoState    = cycleMemoState;
+window.saveMemoState     = saveMemoState;
+window.loadMemoState     = loadMemoState;
+window.moveMemoItem      = moveMemoItem;
+window.deleteMemoItem    = deleteMemoItem;
 window.updateMemoSummary = updateMemoSummary;
+
+// ── Envoi des retours avec feedback visuel ──
+async function envoyerRetours(btn) {
+  const status = document.getElementById('send-memo-status');
+  btn.disabled = true;
+  btn.textContent = '⏳ Envoi en cours…';
+  if (status) status.textContent = '';
+
+  try {
+    // Sauvegarder l'état local d'abord
+    saveMemoState();
+
+    // Construire le payload complet
+    const cl = data?._client;
+    const prenom = cl?.prenom || '';
+    const nom    = cl?.nom || '';
+    const ddn    = cl?.ddn || cl?.date_naissance || '';
+
+    if (!prenom) {
+      throw new Error('Prénom introuvable — impossible d\'envoyer.');
+    }
+
+    const allItems = [...document.querySelectorAll('.memo-item[id]')];
+    const totalOk  = allItems.filter(i => i.dataset.state === 'ok').length;
+    const totalNon = allItems.filter(i => i.dataset.state === 'non').length;
+
+    const details = {};
+    const pilierOrder = ['alimentation','psychologie','activite','complements','bilan','autre'];
+    pilierOrder.forEach(p => {
+      const group = document.querySelector(`.memo-group[data-pilier="${p}"]`);
+      if (!group) return;
+      const items = group.querySelectorAll('.memo-item');
+      if (!items.length) return;
+      details[p] = [...items].map(item => {
+        const lbl = item.querySelector('.memo-label');
+        const reasonTA = item.querySelector('.memo-reason-box textarea');
+        return {
+          texte: lbl?.textContent?.trim() || '',
+          etat:  item.dataset.state || 'neutral',
+          raison: (item.dataset.state === 'non' && reasonTA) ? reasonTA.value.trim() : ''
+        };
+      });
+    });
+
+    const payload = {
+      stats:   { ok: totalOk, non: totalNon, total: allItems.length },
+      details,
+      note:    '',
+      sent_at: new Date().toISOString()
+    };
+
+    // Envoyer vers Supabase
+    if (typeof DB === 'undefined') throw new Error('Connexion Supabase indisponible.');
+    await DB.savePHVMemo(prenom, nom, ddn, payload);
+
+    // Succès
+    btn.style.background = '#3D6B2C';
+    btn.textContent = '✓ Retours envoyés à Sabrina';
+    if (status) {
+      status.style.color = '#3D6B2C';
+      status.style.fontWeight = '600';
+      status.textContent = `Envoyé le ${new Date().toLocaleDateString('fr-FR', { day:'numeric', month:'long', year:'numeric', hour:'2-digit', minute:'2-digit' })}. Sabrina recevra une notification.`;
+    }
+
+  } catch(e) {
+    btn.disabled = false;
+    btn.textContent = '↗ Envoyer mes retours à Sabrina';
+    btn.style.background = '';
+    if (status) {
+      status.style.color = '#C0392B';
+      status.style.fontWeight = '600';
+      status.textContent = 'Erreur : ' + (e.message || 'impossible d\'envoyer. Vérifiez votre connexion.');
+    }
+    console.error('Erreur envoi retours:', e);
+  }
+}
+window.envoyerRetours = envoyerRetours;
 
 </script>
 
