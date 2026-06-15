@@ -5,7 +5,7 @@
    ═══════════════════════════════════════════════════════════ */
 
 const SUPA_URL = 'https://bqhkdndwldwqacrrbbig.supabase.co';
-const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxaGtkbmR3bGR3cWFjcnJiYmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU3NjM2NTMsImV4cCI6MjA2MTMzOTY1M30.LqUmkNboVtPQkEns2C3R1g_O0WHmrI1cVJCJBiZl_h0';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxaGtkbmR3bGR3cWFjcnJiYmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MzAyNTIsImV4cCI6MjA5NjMwNjI1Mn0.nH2UktMAVKYwng4L3SvW5F0fluV_sObGV0f3Mk1dnOY';
 
 /* ── Requête générique ──────────────────────────────────── */
 async function supaFetch(path, opts = {}) {
