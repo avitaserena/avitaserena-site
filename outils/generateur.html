@@ -203,7 +203,6 @@ textarea.mf:focus,input.mf:focus,select.mf:focus{border-color:var(--ocre);backgr
       <div><label class="ml">Prénom</label><input class="mf" type="text" id="m-prenom" placeholder="Marie"></div>
       <div><label class="ml">Nom</label><input class="mf" type="text" id="m-nom" placeholder="Dupont"></div>
       <div><label class="ml">Âge</label><input class="mf" type="number" id="m-age" placeholder="38"></div>
-      <div><label class="ml">Date de naissance</label><input class="mf" type="date" id="m-ddn"></div>
       <div><label class="ml">Durée des symptômes</label>
         <select class="mf" id="m-duree">
           <option value="">—</option>
@@ -758,7 +757,7 @@ function toggleManual() {
 function buildClientData() {
   const mf = id => document.getElementById(id)?.value?.trim() || '';
   const manual = {
-    prenom: mf('m-prenom'), nom: mf('m-nom'), age: mf('m-age'), ddn: mf('m-ddn'), duree: mf('m-duree'),
+    prenom: mf('m-prenom'), nom: mf('m-nom'), age: mf('m-age'), duree: mf('m-duree'),
     contra: mf('m-contra'), motifs: mf('m-motifs'), scores: mf('m-scores'),
     checks: mf('m-checks'), medics: mf('m-medics'), gyneco: mf('m-gyneco'),
     alim: mf('m-alim'), notes: mf('m-notes'),
@@ -784,7 +783,7 @@ function buildClientData() {
   return {
     prenom: manual.prenom || s.prenom || 'Cliente',
     nom: manual.nom || s.nom || '',
-    ddn: manual.ddn || s.ddn || '',
+    ddn: s.ddn || '',
     age: manual.age || s.age || '',
     duree_symptomes: manual.duree || s.duree_symptomes || '',
     contraception: manual.contra || s.selects?.match(/(?:Contraception|Pilule|DIU|Implant|contraceptif)[^\n]*/gi)?.join(', ') || '',
@@ -1143,164 +1142,20 @@ function addBlock() {
   setTimeout(() => { const items=document.querySelectorAll('.block-item'); if(items.length) items[items.length-1].scrollIntoView({behavior:'smooth',block:'center'}); }, 100);
 }
 
-// ── Bridge Supabase : créer ou mettre à jour la fiche cliente ──
-const SB_URL = 'https://bqhkdndwldwqacrrbbig.supabase.co';
-const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxaGtkbmR3bGR3cWFjcnJiYmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU3NjM2NTMsImV4cCI6MjA2MTMzOTY1M30.LqUmkNboVtPQkEns2C3R1g_O0WHmrI1cVJCJBiZl_h0';
-
-async function bridgeCRM_generateur(d) {
-  try {
-    const prenom = (d.prenom || '').trim();
-    const nom    = (d.nom    || '').trim();
-    const ddn    = (d.ddn    || '').trim();
-    if (!prenom || !ddn) {
-      console.warn('[Bridge CRM] Prénom ou DDN manquant — fiche non créée');
-      return;
-    }
-
-    // Construire le client_id identique à celui du CRM
-    const normalize = s => (s || '').toLowerCase().replace(/[\s']/g, '_');
-    const clientId = normalize(prenom) + (nom ? '-' + normalize(nom) : '') + '-' + ddn.replace(/-/g, '');
-
-    const today = new Date().toISOString().split('T')[0];
-
-    // Vérifier si la cliente existe déjà
-    const checkRes = await fetch(`${SB_URL}/rest/v1/clientes?id=eq.${encodeURIComponent(clientId)}&limit=1`, {
-      headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY }
-    });
-    const existing = await checkRes.json();
-
-    let timeline = [];
-    if (existing && existing.length > 0) {
-      // Cliente existante : ajouter un événement PHV à sa timeline
-      timeline = existing[0].timeline || [];
-    } else {
-      // Nouvelle cliente : timeline initiale
-      timeline = [{ type: 'creation', title: 'Dossier créé depuis le générateur', icon: '✦', date: today }];
-    }
-
-    // Ajouter l'événement PHV
-    timeline.push({
-      type: 'phv',
-      title: 'Protocole d\'Hygiène Vitale généré',
-      icon: '◧',
-      date: today,
-      desc: d.motifs ? 'Motifs : ' + d.motifs.substring(0, 80) : ''
-    });
-
-    const payload = {
-      id:            clientId,
-      prenom:        prenom,
-      nom:           nom || '',
-      email:         d.email || '',
-      tel:           d.tel   || '',
-      age:           d.age   ? String(d.age) : '',
-      ddn:           ddn,
-      motifs:        d.motifs || '',
-      axes:          (d.axes_prioritaires || []).join(' · '),
-      notes:         d.synthese_praticien || '',
-      date1:         existing?.length ? existing[0].date1 : today,
-      date_protocole: today,
-      timeline:      timeline,
-      workflow_done: existing?.length ? (existing[0].workflow_done || {}) : { protocole_envoye: true },
-      created_at:    existing?.length ? existing[0].created_at : new Date().toISOString(),
-      updated_at:    new Date().toISOString()
-    };
-
-    const upsertRes = await fetch(`${SB_URL}/rest/v1/clientes`, {
-      method: 'POST',
-      headers: {
-        'apikey': SB_KEY,
-        'Authorization': 'Bearer ' + SB_KEY,
-        'Content-Type': 'application/json',
-        'Prefer': 'resolution=merge-duplicates,return=minimal'
-      },
-      body: JSON.stringify(payload)
-    });
-
-    if (upsertRes.ok) {
-      console.log('[Bridge CRM] Fiche cliente upsertée :', clientId);
-    } else {
-      const err = await upsertRes.text();
-      console.warn('[Bridge CRM] Erreur Supabase :', err);
-    }
-  } catch(e) {
-    console.warn('[Bridge CRM] Exception :', e.message);
-  }
-}
-
-// ── Générer l'URL unique cliente ──
-function genererURLCliente() {
-  if (!generatedData || !blocks.length) return null;
-  // Synchroniser le contenu édité
-  const map = { s1:'s1_corps', s2:'s2_axes', s3:'s3_protocole', s4:'s4_alimentation', s5:'s5_rituels', s6:'s6_signaux' };
-  blocks.forEach(b => { if (map[b.id]) generatedData[map[b.id]] = b.content; });
-
-  const payload = { data: generatedData, blocks };
-  // Encodage UTF-8 base64 correct
-  const json = JSON.stringify(payload);
-  const bytes = new TextEncoder().encode(json);
-  const b64 = btoa(String.fromCharCode(...bytes));
-
-  // URL absolue pour que la cliente puisse l'ouvrir depuis n'importe où
-  const base = window.location.href.replace(/\/generateur\.html.*$/, '/phv-print.html');
-  return base + '#phv=' + b64;
-}
-
 // ── Ouvrir phv-print.html ──
 function ouvrirProtocole() {
   if (!generatedData || !blocks.length) return;
 
-  const url = genererURLCliente();
-  if (!url) return;
+  // Synchroniser le contenu édité dans generatedData
+  const map = { s1:'s1_corps', s2:'s2_axes', s3:'s3_protocole', s4:'s4_alimentation', s5:'s5_rituels', s6:'s6_signaux' };
+  blocks.forEach(b => { if (map[b.id]) generatedData[map[b.id]] = b.content; });
 
-  // Sauvegarder aussi en localStorage (fallback si même navigateur)
   localStorage.setItem('avita_phv_print', JSON.stringify({ data: generatedData, blocks }));
-
-  // Créer/mettre à jour la fiche cliente dans le CRM
-  bridgeCRM_generateur(generatedData._client || generatedData).catch(e => console.warn(e));
-
-  // Afficher le panneau de lien
-  afficherPanneauLien(url);
-
-  // Ouvrir le protocole dans un nouvel onglet
-  window.open(url, '_blank');
-}
-
-function afficherPanneauLien(url) {
-  // Supprimer l'ancien panneau si existant
-  const old = document.getElementById('lien-panneau');
-  if (old) old.remove();
-
-  const prenom = generatedData.prenom || 'votre cliente';
-
-  const div = document.createElement('div');
-  div.id = 'lien-panneau';
-  div.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ardoise);color:#fff;border-radius:16px;padding:20px 24px;box-shadow:0 8px 32px rgba(0,0,0,.3);z-index:9999;max-width:560px;width:calc(100% - 48px);font-family:"Be Vietnam Pro",sans-serif';
-  div.innerHTML = `
-    <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ocre);font-weight:700;margin-bottom:8px">🔗 Lien du protocole de ${prenom}</div>
-    <div style="font-size:12px;color:rgba(255,255,255,.6);margin-bottom:12px">Copiez ce lien et envoyez-le à votre cliente par email. Elle pourra y accéder depuis n'importe quel appareil.</div>
-    <div style="display:flex;gap:8px;align-items:stretch">
-      <input id="lien-input" value="${url}" readonly style="flex:1;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:8px;padding:9px 12px;font-size:11px;color:#fff;font-family:monospace;outline:none;min-width:0">
-      <button onclick="copierLien()" id="btn-copier" style="background:var(--ocre);color:#fff;border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0">Copier</button>
-    </div>
-    <button onclick="document.getElementById('lien-panneau').remove()" style="position:absolute;top:12px;right:14px;background:transparent;border:none;color:rgba(255,255,255,.4);font-size:18px;cursor:pointer;line-height:1">×</button>`;
-  document.body.appendChild(div);
-}
-
-function copierLien() {
-  const input = document.getElementById('lien-input');
-  const btn = document.getElementById('btn-copier');
-  if (!input || !btn) return;
-  navigator.clipboard.writeText(input.value).then(() => {
-    btn.textContent = '✓ Copié !';
-    btn.style.background = 'var(--vert-clair, #3D6B2C)';
-    setTimeout(() => { btn.textContent = 'Copier'; btn.style.background = ''; }, 2500);
-  }).catch(() => {
-    input.select();
-    document.execCommand('copy');
-    btn.textContent = '✓ Copié !';
-    setTimeout(() => { btn.textContent = 'Copier'; }, 2500);
-  });
+  // Archiver avec clé indexée par prénom + timestamp pour le CRM
+  const prenomSlug = (generatedData.prenom || 'cliente').toLowerCase().replace(/\s+/g,'-');
+  const archiveKey = `avita_phv_archive_${prenomSlug}_${Date.now()}`;
+  localStorage.setItem(archiveKey, JSON.stringify({ data: { ...generatedData, ts: Date.now() }, blocks }));
+  window.open('phv-print.html', '_blank');
 }
 
 function resetAll() {
