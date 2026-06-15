@@ -631,6 +631,34 @@ body{font-family:'Inter',-apple-system,sans-serif;background:var(--surface);colo
   </div>
 </div>
 
+<!-- MODALE UPLOAD BILAN -->
+<div class="modal" id="m-upload-bilan">
+  <div class="modal-box" style="max-width:420px">
+    <div class="modal-head">
+      <div class="modal-title">🧬 Ajouter un bilan biologique</div>
+      <div class="btn-icon" onclick="closeM('m-upload-bilan')">×</div>
+    </div>
+    <div class="modal-body" style="padding:20px 24px;display:flex;flex-direction:column;gap:16px;">
+      <div class="fg">
+        <label class="fl">Date du bilan *</label>
+        <input class="fi" type="date" id="ub-date">
+      </div>
+      <div class="fg">
+        <label class="fl">Fichier (PDF, JPG, PNG) *</label>
+        <input class="fi" type="file" id="ub-file" accept=".pdf,.jpg,.jpeg,.png" style="padding:6px 10px;cursor:pointer;">
+      </div>
+      <div style="font-size:12px;color:var(--muted);line-height:1.5;">
+        Le fichier sera stocké de façon sécurisée dans votre espace Supabase et accessible depuis cette fiche.
+      </div>
+      <div id="ub-status" style="font-size:12px;color:#E2445C;min-height:16px;"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost btn-sm" onclick="closeM('m-upload-bilan')">Annuler</button>
+      <button class="btn btn-primary btn-sm" onclick="doUploadBilan()">Importer</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -647,6 +675,58 @@ const LKEY='avs_crm_v2';
 function loadL(){try{return JSON.parse(localStorage.getItem(LKEY)||'{}')}catch(e){return{}}}
 function saveL(d){localStorage.setItem(LKEY,JSON.stringify(d))}
 
+// ══════════════════════════════════════════════════════
+// BILANS BIOLOGIQUES — Supabase Storage
+// Bucket : avs-bilans (à créer dans le dashboard Supabase,
+// policy : service_role ou authenticated read/write)
+// ══════════════════════════════════════════════════════
+async function uploadBilan(clientId, clientKey, file, dateBilan) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  const ts = Date.now();
+  const path = `${clientKey}/${dateBilan}_${ts}.${ext}`;
+  // 1. Upload fichier dans Storage
+  const upRes = await fetch(`${SB}/storage/v1/object/avs-bilans/${path}`, {
+    method: 'POST',
+    headers: { 'apikey': KEY, 'Authorization': 'Bearer ' + KEY, 'Content-Type': file.type },
+    body: file
+  });
+  if (!upRes.ok) throw new Error('Upload échoué : ' + await upRes.text());
+  // 2. Enregistrer métadonnées en base
+  await sb('bilans_biologiques', {
+    method: 'POST',
+    prefer: 'return=representation',
+    body: JSON.stringify({
+      client_id: clientId,
+      client_key: clientKey,
+      nom_fichier: file.name,
+      date_bilan: dateBilan,
+      storage_path: path,
+      type: ext.toUpperCase(),
+      uploaded_at: new Date().toISOString()
+    })
+  });
+}
+
+async function listBilans(clientId) {
+  try {
+    return await sb(`bilans_biologiques?client_id=eq.${clientId}&order=date_bilan.desc`);
+  } catch(e) { return []; }
+}
+
+async function deleteBilan(bilanId, storagePath) {
+  // Supprimer de Storage
+  await fetch(`${SB}/storage/v1/object/avs-bilans/${storagePath}`, {
+    method: 'DELETE',
+    headers: { 'apikey': KEY, 'Authorization': 'Bearer ' + KEY }
+  });
+  // Supprimer la ligne
+  await sb(`bilans_biologiques?id=eq.${bilanId}`, { method: 'DELETE', prefer: '' });
+}
+
+function bilanPublicUrl(path) {
+  return `${SB}/storage/v1/object/public/avs-bilans/${path}`;
+}
+
 let db={clients:[],factures:[],settings:null,nextF:1};
 let taches=[],rdvs=[],emailCtx=null,curTab='urg',curSearch='',curFilter='all';
 
@@ -655,7 +735,7 @@ const COLORS=['#6C47FF','#FF4C8B','#00C875','#0096FF','#FF7B2C','#00C4D4','#E244
 function avColor(p){return COLORS[(p||'').charCodeAt(0)%COLORS.length];}
 
 async function init(){
-  document.getElementById('page-title').textContent='Tableau de bord';
+  document.getElementById('topbar-title').textContent='Tableau de bord';
   const loc=loadL();
   db.settings=loc.settings||defSettings();
   db.nextF=loc.nextF||1;
@@ -770,7 +850,7 @@ function switchTab(tab,el){
 
 function renderAlerts(tab,urg,sem){
   const el=document.getElementById('alerts-box');if(!el)return;
-  if(tab==='feed'){renderFeed();return;}
+  if(tab==='feed'){el.innerHTML='<div class="empty"><div class="eicon">📬</div><div class="etitle">Aucun retour</div><div class="esub">Phase 2 à venir.</div></div>';return;}
   const items=tab==='urg'?urg:sem;
   if(!items.length){el.innerHTML='<div class="empty"><div class="eicon">✅</div><div class="etitle">Tout est à jour</div></div>';return;}
   el.innerHTML=items.map(({client:c,alert:a})=>{
@@ -779,55 +859,14 @@ function renderAlerts(tab,urg,sem){
     const cl=a.isOvd?'urg':'sem';
     const dago=a.tgt?diffD(a.tgt):0;
     const dtxt=dago>0?'Retard de '+dago+'j':'Dans '+Math.abs(dago)+'j';
-    let h='<div class="al-item '+cl+'" data-action="openFiche" data-id="'+escH(c.id)+'">';
-    h+='<div class="al-av" style="background:'+col+'">'+init+'</div>';
-    h+='<div class="al-body"><div class="al-name">'+escH(c.prenom)+' '+escH(c.nom||'')+'</div>';
-    h+='<div class="al-desc">'+escH(a.label)+'</div>';
-    h+='<div class="al-meta">'+(a.tgt?fmtDate(a.tgt)+' · '+dtxt:'')+'</div></div>';
-    if(a.tpl)h+='<button class="al-btn" data-action="openEmail" data-id="'+escH(c.id)+'" data-tpl="'+escH(a.tpl)+'">Email →</button>';
-    h+='</div>';
-    return h;
+    return "<div class='al-item "+cl+"' onclick="openFiche('"+c.id+"')">" +
+      "<div class='al-av' style='background:"+col+"'>"+init+"</div>" +
+      "<div class='al-body'><div class='al-name'>"+escH(c.prenom)+" "+escH(c.nom||'')+"</div>" +
+      "<div class='al-desc'>"+escH(a.label)+"</div>" +
+      "<div class='al-meta'>"+(a.tgt?fmtDate(a.tgt)+' · '+dtxt:'')+"</div></div>" +
+      (a.tpl?"<button class='al-btn' onclick="event.stopPropagation();openEmail('"+c.id+"','"+a.tpl+"')">Email →</button>":'')+
+      "</div>";
   }).join('');
-}
-
-async function renderFeed(){
-  const el=document.getElementById('alerts-box');if(!el)return;
-  el.innerHTML='<div style="font-size:13px;color:var(--muted);padding:8px 0">Chargement des retours...</div>';
-  try{
-    // Lire phv_memos (sauvegardés depuis phv-print.html et fiche-memo.html)
-    const rows=await sb('phv_memos?order=updated_at.desc&limit=30');
-    if(!rows.length){el.innerHTML='<div class="empty"><div class="eicon">📬</div><div class="etitle">Aucun retour</div><div class="esub">Les retours des clientes apparaîtront ici quand elles rempliront leur fiche mémo.</div></div>';return;}
-    document.getElementById('tc-feed').textContent=rows.length;
-    el.innerHTML=rows.map(r=>{
-      const prenom=r.prenom||r.client_key||'—';
-      const nom=r.nom||'';
-      // Trouver la fiche CRM correspondante
-      const c=db.clients.find(x=>(x.prenom||'').toLowerCase()===prenom.toLowerCase()&&(!nom||(x.nom||'').toLowerCase()===nom.toLowerCase()))
-               ||{prenom,nom,id:null};
-      const col=avColor(prenom);
-      const init=(prenom||'?')[0].toUpperCase();
-      const stats=r.stats||{};
-      const ok=stats.ok||0;const total=stats.total||0;
-      const non=stats.non||0;const partiel=stats.partiel||0;
-      const pct=total>0?Math.round(ok/total*100):0;
-      const updated=r.updated_at?fmtDate(r.updated_at.split('T')[0]):'';
-      const alertBadge=non>0?'<span style="font-size:10px;font-weight:800;padding:1px 7px;border-radius:999px;background:var(--red);color:white;margin-left:6px">'+non+' ✗</span>':'';
-      // Récupérer les refus avec raison
-      const refus=r.refus||[];
-      const refusList=refus.length>0?refus.slice(0,2).map(rf=>'<div class="al-meta" style="margin-top:2px;color:var(--red)">✗ '+escH(rf.texte.slice(0,50))+(rf.raison?' — <em>'+escH(rf.raison.slice(0,40))+'</em>':'')+'</div>').join(''):'';
-      let h='<div class="al-item'+(non>0?' urg':non===0&&partiel>0?' sem':'')+(c.id?' data-action="openFiche" data-id="'+escH(c.id)+'"':'')+'">';
-      h+='<div class="al-av" style="background:'+col+'">'+init+'</div>';
-      h+='<div class="al-body"><div class="al-name">'+escH(prenom)+' '+escH(nom)+alertBadge+'</div>';
-      h+='<div class="al-desc">'+ok+'/'+total+' tenus · '+partiel+' partiels · '+non+' pas encore</div>';
-      h+=refusList;
-      if(r.note)h+='<div class="al-meta" style="margin-top:3px">💬 '+escH(String(r.note).slice(0,80))+(r.note.length>80?'…':'')+'</div>';
-      h+='<div class="al-meta">Mis à jour '+updated+'</div></div>';
-      h+='</div>';
-      return h;
-    }).join('');
-  }catch(e){
-    el.innerHTML='<div class="empty"><div class="eicon">📬</div><div class="etitle">Aucun retour</div><div class="esub">'+escH(e.message)+'</div></div>';
-  }
 }
 
 function renderPipeline(actives){
@@ -839,15 +878,14 @@ function renderPipeline(actives){
     let pct=0;if(started&&dur>0)pct=Math.min(100,Math.round(diffD(started)/dur*100));
     const col=avColor(c.prenom);const init=(c.prenom||'?')[0].toUpperCase();
     const g=gMaps[pCls(c.programme)]||gMaps.alba;
-    let h='<div class="pipe-item">';
-    h+='<div class="pipe-av" style="background:'+g+'">'+init+'</div>';
-    h+='<div class="pipe-info"><div class="pipe-name">'+escH(c.prenom)+' '+escH(c.nom||'')+'</div>';
-    h+='<div class="pipe-sub">'+pLbl(c.programme)+' · depuis '+fmtShort(c.dateProtocole||c.date1)+'</div>';
-    h+='<div class="prog-track"><div class="prog-fill" style="width:'+pct+'%;background:'+g+'"></div></div>';
-    h+='<div class="prog-pct">'+pct+'% terminé</div></div>';
-    h+='<button class="btn btn-ghost btn-xs" data-action="openFiche" data-id="'+escH(c.id)+'">Voir</button>';
-    h+='</div>';
-    return h;
+    return "<div class='pipe-item'>" +
+      "<div class='pipe-av' style='background:"+g+"'>"+init+"</div>" +
+      "<div class='pipe-info'><div class='pipe-name'>"+escH(c.prenom)+" "+escH(c.nom||'')+"</div>" +
+      "<div class='pipe-sub'>"+pLbl(c.programme)+" · depuis "+fmtShort(c.dateProtocole||c.date1)+"</div>" +
+      "<div class='prog-track'><div class='prog-fill' style='width:"+pct+"%;background:"+g+"'></div></div>" +
+      "<div class='prog-pct'>"+pct+"% terminé</div></div>" +
+      "<button class='btn btn-ghost btn-xs' onclick="openFiche('"+c.id+"')">Voir</button>" +
+      "</div>";
   }).join('');
 }
 
@@ -881,15 +919,14 @@ function renderTaches(){
     const prio=t.priorite==='haute'?'🔴':t.priorite==='basse'?'⚪':'🟡';
     const eco=t.echeance?fmtShort(t.echeance):'';
     const ov=t.echeance&&diffD(t.echeance)>0;
-    let h='<div class="task-item" id="ti-'+t.id+'">';
-    h+='<div class="t-check" data-action="checkTask" data-id="'+escH(t.id)+'">✓</div>';
-    h+='<div class="t-txt">'+escH(t.titre)+'</div>';
-    if(t.client_nom)h+='<span class="t-chip">'+escH(t.client_nom)+'</span>';
-    h+='<span style="font-size:12px">'+prio+'</span>';
-    if(eco)h+='<span style="font-size:10px;font-family:monospace;color:'+(ov?'var(--red)':'var(--muted)')+';">'+eco+'</span>';
-    h+='<span class="t-del" data-action="delTask" data-id="'+escH(t.id)+'">×</span>';
-    h+='</div>';
-    return h;
+    return "<div class='task-item' id='ti-"+t.id+"'>" +
+      "<div class='t-check' onclick="checkTask('"+t.id+"')">✓</div>" +
+      "<div class='t-txt'>"+escH(t.titre)+"</div>" +
+      (t.client_nom?"<span class='t-chip'>"+escH(t.client_nom)+"</span>":'')+
+      "<span style='font-size:12px'>"+prio+"</span>"+
+      (eco?"<span style='font-size:10px;font-family:monospace;color:"+(ov?"var(--red)":"var(--muted)")+";'>"+eco+"</span>":'')+
+      "<span class='t-del' onclick="delTask('"+t.id+"')">×</span>" +
+      "</div>";
   }).join('');
 }
 
@@ -899,12 +936,11 @@ function renderSilences(sils){
   el.innerHTML=sils.map(c=>{
     const last=c.timeline?.[c.timeline.length-1]?.date||c.date1;
     const days=diffD(last);
-    let h='<div class="sil-item" data-action="openFiche" data-id="'+escH(c.id)+'">';
-    h+='<div style="font-size:13px;font-weight:700;flex:1">'+escH(c.prenom)+' '+escH(c.nom||'')+'</div>';
-    h+='<span style="font-size:11px;font-weight:700;color:var(--orange);font-family:monospace">'+days+'j</span>';
-    h+='<button class="btn btn-ghost btn-xs" data-action="openEmail" data-id="'+escH(c.id)+'" data-tpl="relance">Email</button>';
-    h+='</div>';
-    return h;
+    return "<div class='sil-item' onclick="openFiche('"+c.id+"')">" +
+      "<div style='font-size:13px;font-weight:700;flex:1'>"+escH(c.prenom)+" "+escH(c.nom||'')+"</div>" +
+      "<span style='font-size:11px;font-weight:700;color:var(--orange);font-family:monospace'>"+days+"j</span>" +
+      "<button class='btn btn-ghost btn-xs' onclick="event.stopPropagation();openEmail('"+c.id+"','relance')">Email</button>" +
+      "</div>";
   }).join('');
 }
 
@@ -927,28 +963,27 @@ function renderClients(){
     let progH='';
     if(c.programme&&dur>0&&started){
       const g=gMaps[pCls(c.programme)]||gMaps.alba;
-      progH='<div class="cc-prog"><div class="cc-plbl">'+pLbl(c.programme)+' · '+pct+'%</div>';
-      progH+='<div class="prog-track"><div class="pfill" style="width:'+pct+'%;background:'+g+'"></div></div></div>';
+      progH="<div class='cc-prog'><div class='cc-plbl'>"+pLbl(c.programme)+" · "+pct+"%</div>" +
+        "<div class='prog-track'><div class='pfill' style='width:"+pct+"%;background:"+g+"'></div></div></div>";
     }
     const chips=[];
-    if(c.motifs)c.motifs.split(/[,·]/).slice(0,3).forEach(m=>{if(m.trim())chips.push('<span class="mchip">'+escH(m.trim())+'</span>');});
-    let h='<div class="cc" data-action="openFiche" data-id="'+escH(c.id)+'">';
-    h+='<div class="cc-top"><div class="cc-av" style="background:'+col+'">'+init+'</div>';
-    h+='<div class="cc-info"><div class="cc-name">'+escH(c.prenom)+' '+escH(c.nom||'')+'</div>';
-    h+='<div class="cc-sub">'+(age?age+' ans':'')+( c.email?' · '+escH(c.email):'')+'</div></div>';
-    h+='<span class="stag '+status.cl+'">'+status.label+'</span></div>';
-    h+=progH;
-    if(chips.length)h+='<div class="cc-chips">'+chips.join('')+'</div>';
-    h+='<div class="cc-foot"><span class="cc-flbl">'+fmtShort(lastR?.date||c.date1)+'</span><span class="cc-frdv">'+cr.length+' RDV</span></div>';
-    h+='</div>';
-    return h;
+    if(c.motifs)c.motifs.split(/[,·]/).slice(0,3).forEach(m=>{if(m.trim())chips.push("<span class='mchip'>"+escH(m.trim())+"</span>");});
+    return "<div class='cc' onclick="openFiche('"+c.id+"')">" +
+      "<div class='cc-top'><div class='cc-av' style='background:"+col+"'>"+init+"</div>" +
+      "<div class='cc-info'><div class='cc-name'>"+escH(c.prenom)+" "+escH(c.nom||'')+"</div>" +
+      "<div class='cc-sub'>"+(age?age+" ans":'')+( c.email?" · "+escH(c.email):'')+"</div></div>" +
+      "<span class='stag "+status.cl+"'>"+status.label+"</span></div>" +
+      progH +
+      (chips.length?"<div class='cc-chips'>"+chips.join('')+"</div>":'')+
+      "<div class='cc-foot'><span class='cc-flbl'>"+fmtShort(lastR?.date||c.date1)+"</span><span class='cc-frdv'>"+cr.length+" RDV</span></div>" +
+      "</div>";
   }).join('');
 }
 
 function filterC(v){curSearch=v;renderClients();}
 function setFilter(s,el){curFilter=s;document.querySelectorAll('.fchip').forEach(c=>c.classList.remove('on'));if(el)el.classList.add('on');renderClients();}
 
-function openFiche(id){const c=db.clients.find(x=>x.id===id);if(!c)return;nav('fiche',null);renderFiche(c);setTimeout(()=>loadProtoCard(id),150);}
+function openFiche(id){const c=db.clients.find(x=>x.id===id);if(!c)return;nav('fiche',null);renderFiche(c);setTimeout(()=>renderBilans(id),100);}
 
 function renderFiche(c){
   const el=document.getElementById('fiche-box');if(!el)return;
@@ -968,9 +1003,9 @@ function renderFiche(c){
   const wfH=wf.map(s=>{
     let cls=s.done?'done':s.isOvd?'overdue':s.isSoon?'soon':'';
     const sttxt=s.isOvd?"<span style='color:var(--red);font-weight:700'> · Retard</span>":s.isSoon?"<span style='color:var(--orange);font-weight:700'> · Cette semaine</span>":'';
-    const eBtn=s.tpl?"<button class='wf-ebtn' data-action='loadFicheTpl' data-tpl='"+s.tpl+"' data-id='"+c.id+"'>Email</button>":'';
+    const eBtn=s.tpl?"<button class='wf-ebtn' onclick="loadFicheTpl('"+s.tpl+"','"+c.id+"')">Email</button>":'';
     return "<div class='wf-item "+cls+"'>" +
-      "<div class='wf-chk' data-action='toggleWF' data-id='"+c.id+"' data-key='"+s.key+"'>"+( s.done?'✓':'')+"</div>" +
+      "<div class='wf-chk' onclick="toggleWF('"+c.id+"','"+s.key+"')">"+( s.done?"✓":"")+"</div>" +
       "<div class='wf-info'><div class='wfj'>J+"+s.j+"</div><div class='wft'>"+escH(s.label)+"</div><div class='wfd'>"+(s.tgt?fmtDate(s.tgt):'—')+sttxt+"</div></div>" +
       eBtn+"</div>";
   }).join('');
@@ -995,8 +1030,8 @@ function renderFiche(c){
       "<div class='fiche-sub'>"+(age?age+" ans":'')+( c.ddn?" · née le "+fmtDate(c.ddn):'')+( c.email?" · "+escH(c.email):'')+( c.tel?" · "+escH(c.tel):'')+"</div>" +
       "<div class='fiche-htags'>"+tagH+"</div></div>" +
       "<div class='fiche-acts'>" +
-        "<button class='btn btn-ghost btn-sm' style='border-color:rgba(255,255,255,.4);color:white' data-action='openEmail' data-id='"+c.id+"' data-tpl=''>Email</button>" +
-        "<button class='btn btn-ghost btn-sm' style='border-color:rgba(255,255,255,.4);color:white' data-action='openGenerateur'>PHV ↗</button>" +
+        "<button class='btn btn-ghost btn-sm' style='border-color:rgba(255,255,255,.4);color:white' onclick="openEmail('"+c.id+"','')" >Email</button>" +
+        "<button class='btn btn-ghost btn-sm' style='border-color:rgba(255,255,255,.4);color:white' onclick="window.open('generateur.html','_blank')">PHV ↗</button>" +
       "</div>" +
     "</div>" +
     "<div class='m3'>" +
@@ -1018,8 +1053,6 @@ function renderFiche(c){
         "<div class='pbar'><div class='pfill' style='width:"+pct+"%;background:"+heroG+"'></div></div>" +
         endAlert+"</div></div>":'')+
       "<div class='card'><div class='card-head'><div class='card-title'><div class='card-dot' style='background:#0096FF'></div>RDV</div><span style='font-size:11px;font-weight:600;color:var(--muted)'>"+cr.length+" au total</span></div><div class='card-body' style='padding:10px 18px'>"+rdvH+"</div></div>" +
-    "</div>" +
-      "<div class='card' id='proto-card-"+c.id+"'><div class='card-head'><div class='card-title'><div class='card-dot' style='background:#00C875'></div>Protocole & Observance</div><button class='btn btn-ghost btn-xs' onclick=\"loadProtoCard('"+c.id+"')\">↻ Actualiser</button></div><div class='card-body' id='proto-body-"+c.id+"'><div style='font-size:13px;color:var(--muted);font-style:italic'>Chargement...</div></div></div>" +
     "</div><div class='fmain'>" +
       "<div class='card'><div class='card-head'><div class='card-title'><div class='card-dot' style='background:#E2445C'></div>Workflow de suivi</div></div><div class='card-body'>"+wfH+"</div></div>" +
       "<div class='card'><div class='card-head'><div class='card-title'><div class='card-dot' style='background:#0096FF'></div>Communication</div><a href='https://app.brevo.com' target='_blank' class='btn btn-ghost btn-xs'>Brevo ↗</a></div>" +
@@ -1027,21 +1060,92 @@ function renderFiche(c){
           "<div class='efield'><span class='elbl'>À</span><input type='email' class='einput' id='fe-to' value='"+escH(c.email||'')+"'></div>" +
           "<div class='efield'><span class='elbl'>Objet</span><input type='text' class='einput' id='fe-sub' placeholder='Objet...'></div>" +
           "<div class='etpls'><span style='font-size:10px;font-weight:700;color:var(--muted);flex-shrink:0;align-self:center'>Templates :</span>" +
-            "<button class='etpl' data-action='loadFicheTpl' data-tpl='j7' data-id='"+c.id+"'>J+7</button>" +
-            "<button class='etpl' data-action='loadFicheTpl' data-tpl='j21' data-id='"+c.id+"'>J+21</button>" +
-            "<button class='etpl' data-action='loadFicheTpl' data-tpl='suivi' data-id='"+c.id+"'>Suivi</button>" +
-            "<button class='etpl' data-action='loadFicheTpl' data-tpl='fin_programme' data-id='"+c.id+"'>Fin prog.</button>" +
-            "<button class='etpl' data-action='loadFicheTpl' data-tpl='relance' data-id='"+c.id+"'>Relance</button>" +
+            "<button class='etpl' onclick="loadFicheTpl('j7','"+c.id+"')">J+7</button>" +
+            "<button class='etpl' onclick="loadFicheTpl('j21','"+c.id+"')">J+21</button>" +
+            "<button class='etpl' onclick="loadFicheTpl('suivi','"+c.id+"')">Suivi</button>" +
+            "<button class='etpl' onclick="loadFicheTpl('fin_programme','"+c.id+"')">Fin prog.</button>" +
+            "<button class='etpl' onclick="loadFicheTpl('relance','"+c.id+"')">Relance</button>" +
           "</div>" +
           "<textarea class='ebody' id='fe-body' placeholder='Message...'></textarea>" +
           "<div class='efoot'><span style='font-size:12px;color:var(--muted)'>Avita Serena</span>" +
             "<div style='display:flex;gap:7px'>" +
-              "<button class='btn btn-ghost btn-sm' data-action='logEmail' data-id='"+c.id+"'>Logger</button>" +
-              "<button class='btn btn-primary btn-sm' data-action='sendBrevoFiche' data-id='"+c.id+"'>Ouvrir Brevo ↗</button>" +
+              "<button class='btn btn-ghost btn-sm' onclick="logEmail('"+c.id+"')">Logger</button>" +
+              "<button class='btn btn-primary btn-sm' onclick="sendBrevoFiche('"+c.id+"')">Ouvrir Brevo ↗</button>" +
             "</div></div>" +
         "</div></div></div>" +
-      "<div class='card'><div class='card-head'><div class='card-title'><div class='card-dot' style='background:#FF7B2C'></div>Timeline</div><button class='btn btn-ghost btn-xs' data-action='addTLEvent' data-id='"+c.id+"'>+ Événement</button></div><div class='card-body'>"+tlH+"</div></div>" +
+      "<div class='card'><div class='card-head'><div class='card-title'><div class='card-dot' style='background:#C4A882'></div>Bilans biologiques</div>" +
+        "<button class='btn btn-ghost btn-xs' onclick=\"openUploadBilan('"+c.id+"','"+clientKey(c)+"')\">+ Ajouter</button>" +
+      "</div><div class='card-body' id='bilans-box-"+c.id+"' style='padding:10px 18px;min-height:40px'>" +
+        "<span style='font-size:12px;color:var(--muted)'>Chargement…</span>" +
+      "</div></div>" +
+      "<div class='card'><div class='card-head'><div class='card-title'><div class='card-dot' style='background:#FF7B2C'></div>Timeline</div><button class='btn btn-ghost btn-xs' onclick="addTLEvent('"+c.id+"')">+ Événement</button></div><div class='card-body'>"+tlH+"</div></div>" +
     "</div></div>";
+}
+
+// ── Clé cliente normalisée (prénom+nom+ddn) ──
+function clientKey(c){
+  const p=(c.prenom||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'_');
+  const n=(c.nom||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'_');
+  const d=(c.ddn||'').replace(/-/g,'');
+  return [p,n,d].filter(Boolean).join('_');
+}
+
+// ── Affichage liste bilans dans la fiche ──
+async function renderBilans(clientId){
+  const box=document.getElementById('bilans-box-'+clientId);
+  if(!box)return;
+  const bilans=await listBilans(clientId);
+  if(!bilans.length){
+    box.innerHTML="<span style='font-size:12px;color:var(--muted)'>Aucun bilan ajouté. Utilisez le bouton + Ajouter pour importer un fichier envoyé par la cliente.</span>";
+    return;
+  }
+  const typeColors={'PDF':'#E2445C','JPG':'#0096FF','JPEG':'#0096FF','PNG':'#00C875'};
+  box.innerHTML=bilans.map(b=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;">
+      <span style="background:${typeColors[b.type]||'#6C47FF'};color:#fff;border-radius:4px;padding:2px 6px;font-size:10px;font-weight:700;flex-shrink:0">${b.type}</span>
+      <a href="${bilanPublicUrl(b.storage_path)}" target="_blank" style="color:var(--ink);text-decoration:none;font-weight:600;flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis" title="${b.nom_fichier}">${b.nom_fichier}</a>
+      <span style="color:var(--muted);white-space:nowrap;font-size:11px">${fmtDate(b.date_bilan)}</span>
+      <button onclick="confirmDelBilan('${b.id}','${b.storage_path}','${clientId}')" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px;line-height:1;padding:0 4px" title="Supprimer">×</button>
+    </div>`).join('');
+}
+
+async function confirmDelBilan(bilanId, path, clientId){
+  if(!confirm('Supprimer ce bilan ? Cette action est irréversible.'))return;
+  try{
+    await deleteBilan(bilanId, path);
+    toast('Bilan supprimé','ok');
+    renderBilans(clientId);
+  }catch(e){toast('Erreur : '+e.message,'err');}
+}
+
+// ── Modale upload bilan ──
+let _uploadCtx={};
+function openUploadBilan(clientId, clientKey){
+  _uploadCtx={clientId,clientKey};
+  document.getElementById('ub-date').value=today();
+  document.getElementById('ub-file').value='';
+  document.getElementById('ub-status').textContent='';
+  openM('m-upload-bilan');
+}
+
+async function doUploadBilan(){
+  const file=document.getElementById('ub-file').files[0];
+  const date=document.getElementById('ub-date').value;
+  const status=document.getElementById('ub-status');
+  if(!file){status.textContent='Veuillez sélectionner un fichier.';return;}
+  if(!date){status.textContent='Veuillez indiquer la date du bilan.';return;}
+  const allowed=['pdf','jpg','jpeg','png'];
+  if(!allowed.includes(file.name.split('.').pop().toLowerCase())){status.textContent='Format accepté : PDF, JPG, PNG.';return;}
+  status.textContent='Upload en cours…';
+  try{
+    await uploadBilan(_uploadCtx.clientId,_uploadCtx.clientKey,file,date);
+    toast('Bilan ajouté ✓','ok');
+    closeM('m-upload-bilan');
+    renderBilans(_uploadCtx.clientId);
+  }catch(e){
+    status.textContent='Erreur : '+e.message;
+    console.error(e);
+  }
 }
 
 async function toggleWF(id,key){
@@ -1055,60 +1159,6 @@ async function toggleWF(id,key){
     c.timeline.push({type:'suivi',title:lbs[key]||key,icon:'✓',date:today()});
   }
   await saveClient(c);renderFiche(c);toast(done?'Étape validée ✓':'Étape réouverte',done?'ok':'warn');
-}
-
-async function loadProtoCard(clientId) {
-  const el = document.getElementById('proto-body-' + clientId);
-  if (!el) return;
-  const c = db.clients.find(x => x.id === clientId);
-  if (!c) return;
-  el.innerHTML = '<div style="font-size:13px;color:var(--muted);font-style:italic">Chargement...</div>';
-  try {
-    // Chercher dans phv_memos par client_key (prenom_nom_ddn normalisé)
-    const normalize = s => (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'');
-    const clientKey = [normalize(c.prenom), normalize(c.nom||''), normalize(c.ddn||'')].filter(Boolean).join('_');
-    const rows = await sb('phv_memos?client_key=eq.' + encodeURIComponent(clientKey) + '&order=updated_at.desc&limit=1');
-    if (!rows.length) {
-      el.innerHTML = '<div style="font-size:13px;color:var(--muted);font-style:italic">Aucune donnée mémo pour cette cliente.</div>';
-      return;
-    }
-    const r = rows[0];
-    const stats = r.stats || {};
-    const ok = stats.ok || 0; const non = stats.non || 0; const total = stats.total || 0;
-    const pct = total > 0 ? Math.round(ok / total * 100) : 0;
-    const refus = r.refus || [];
-    const updated = r.updated_at ? fmtDate(r.updated_at.split('T')[0]) : '—';
-
-    // Barre de progression
-    const barColor = non > 0 ? 'var(--red)' : pct >= 70 ? 'var(--green)' : 'var(--orange)';
-    let html = '<div style="margin-bottom:12px">';
-    html += '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px">';
-    html += '<span style="font-weight:600;color:var(--ink)">' + ok + '/' + total + ' recommandations mises en place</span>';
-    html += '<span style="font-weight:800;color:' + barColor + '">' + pct + '%</span></div>';
-    html += '<div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden">';
-    html += '<div style="width:' + pct + '%;height:100%;border-radius:3px;background:' + barColor + ';transition:width .4s"></div></div>';
-    html += '<div style="display:flex;gap:12px;font-size:11px;margin-top:5px">';
-    html += '<span style="color:var(--green)">✓ ' + ok + ' tenus</span>';
-    html += '<span style="color:var(--red)">✗ ' + non + ' refusés</span>';
-    html += '<span style="color:var(--muted)">Mis à jour ' + updated + '</span></div></div>';
-
-    // Refus avec raison
-    if (refus.length) {
-      html += '<div style="margin-top:10px;border-top:1px solid var(--border);padding-top:10px">';
-      html += '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--red);margin-bottom:7px">⚠ Refus à traiter</div>';
-      refus.forEach(rf => {
-        html += '<div style="font-size:12px;padding:7px 10px;background:var(--red-lt);border-radius:6px;margin-bottom:5px;border-left:3px solid var(--red)">';
-        html += '<div style="font-weight:600;color:var(--red)">✗ ' + escH(rf.texte || '') + '</div>';
-        if (rf.raison) html += '<div style="color:var(--ink3);margin-top:3px;font-size:11px;font-style:italic">→ ' + escH(rf.raison) + '</div>';
-        html += '</div>';
-      });
-      html += '</div>';
-    }
-
-    el.innerHTML = html;
-  } catch(e) {
-    el.innerHTML = '<div style="font-size:12px;color:var(--muted)">Erreur : ' + escH(e.message) + '</div>';
-  }
 }
 
 function tpls(c){
@@ -1227,16 +1277,7 @@ function renderFactures(){
   if(!facs.length){list.innerHTML='<div class="empty"><div class="eicon">📄</div><div class="etitle">Aucune facture</div><div class="esub">Créez votre première facture.</div></div>';return;}
   list.innerHTML=facs.map(f=>{
     const c=db.clients.find(x=>x.id===f.clientId);
-    let h='<div class="fr">';
-    h+='<span class="fnum">N° '+escH(f.num||'')+'</span>';
-    h+='<div style="flex:1"><div class="fcl">'+(c?escH(c.prenom+' '+(c.nom||'')):'<span style="color:var(--muted)">—</span>')+'</div>';
-    h+='<div class="fpre">'+escH(f.prestationLabel||f.prestation||'')+'</div></div>';
-    h+='<span class="fdat">'+fmtShort(f.date)+'</span>';
-    h+='<span class="famt">'+(f.montant||0).toFixed(0)+' €</span>';
-    h+='<span class="fst '+(f.statut==='payee'?'ok':'pend')+'">'+(f.statut==='payee'?'Payée':'En attente')+'</span>';
-    h+='<button class="btn btn-ghost btn-xs" data-action="printF" data-id="'+escH(f.id)+'">🖨</button>';
-    h+='</div>';
-    return h;
+    return "<div class='fr'><span class='fnum'>N° "+escH(f.num||'')+"</span><div style='flex:1'><div class='fcl'>"+(c?escH(c.prenom+' '+(c.nom||'')):"<span style='color:var(--muted)'>—</span>")+"</div><div class='fpre'>"+escH(f.prestationLabel||f.prestation||'')+"</div></div><span class='fdat'>"+fmtShort(f.date)+"</span><span class='famt'>"+(f.montant||0).toFixed(0)+" €</span><span class='fst "+(f.statut==='payee'?'ok':'pend')+"'>"+(f.statut==='payee'?'Payée':'En attente')+"</span><button class='btn btn-ghost btn-xs' onclick="printF('"+f.id+"')">🖨</button></div>";
   }).join('');
 }
 
@@ -1273,65 +1314,6 @@ function toast(msg,type){
   const t=document.getElementById('toast');t.textContent=msg;t.className='toast '+(type||'');
   setTimeout(()=>t.classList.add('show'),10);setTimeout(()=>t.classList.remove('show'),3200);
 }
-
-// === EVENT DELEGATION (remplace tous les onclick dynamiques) ===
-document.addEventListener('click', function(e) {
-  // Find the element with a data-action (could be the target or its parent)
-  const el = e.target.closest('[data-action]');
-  if (!el) return;
-  const action = el.dataset.action;
-  const id = el.dataset.id || '';
-  const tpl = el.dataset.tpl || '';
-  const key = el.dataset.key || '';
-
-  switch(action) {
-    case 'openFiche':
-      e.stopPropagation();
-      openFiche(id);
-      break;
-    case 'openEmail':
-      e.stopPropagation();
-      openEmail(id, tpl);
-      break;
-    case 'checkTask':
-      e.stopPropagation();
-      checkTask(id);
-      break;
-    case 'delTask':
-      e.stopPropagation();
-      delTask(id);
-      break;
-    case 'printF':
-      e.stopPropagation();
-      printF(id);
-      break;
-    case 'toggleWF':
-      e.stopPropagation();
-      toggleWF(id, key);
-      break;
-    case 'loadFicheTpl':
-      e.stopPropagation();
-      loadFicheTpl(tpl, id);
-      break;
-    case 'logEmail':
-      e.stopPropagation();
-      logEmail(id);
-      break;
-    case 'sendBrevoFiche':
-      e.stopPropagation();
-      sendBrevoFiche(id);
-      break;
-    case 'addTLEvent':
-      e.stopPropagation();
-      addTLEvent(id);
-      break;
-    case 'openGenerateur':
-      e.stopPropagation();
-      window.open('generateur.html','_blank');
-      break;
-  }
-});
-
 
 init();
 </script>
