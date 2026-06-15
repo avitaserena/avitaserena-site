@@ -1434,6 +1434,9 @@ function buildMemoPage(prenom, pageNum) {
           <option value="bilan">📊 Bilan</option>
         </select>
         <button class="memo-del-btn" onclick="deleteMemoItem('${itemId}')" title="Retirer cette recommandation">✕</button>
+        <div class="memo-reason-box" id="reason-${itemId}" style="display:none;width:100%;margin-top:6px;padding-left:32px">
+          <textarea placeholder="Pourquoi cette recommandation est difficile à mettre en place ? (optionnel)" style="width:100%;font-family:'Be Vietnam Pro',sans-serif;font-size:12px;color:var(--ardoise);border:1px solid var(--taupe);border-radius:8px;padding:8px 10px;resize:vertical;min-height:52px;outline:none;background:#FAFAF8" oninput="saveMemoState()"></textarea>
+        </div>
       </div>`;
     }
     memoHtml += `</div>`;
@@ -1471,6 +1474,16 @@ function buildMemoPage(prenom, pageNum) {
     <div class="callout style-gold" style="margin-top:20px">
       <span class="callout-icon">💛</span>
       <div class="callout-text"><strong>N'attendez pas d'avoir tout mis en place pour me recontacter.</strong> Même 2 gestes sur 10, c'est un vrai départ. Ce qui compte, c'est d'observer ce qui fonctionne pour vous — et d'en parler ensemble.</div>
+    </div>
+
+    <div class="memo-send-zone" style="margin-top:24px;padding:20px 24px;background:#FAFAF8;border:1.5px solid var(--taupe);border-radius:14px;text-align:center">
+      <p style="font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:16px;color:var(--gris);line-height:1.7;margin:0 0 16px">
+        Quand vous êtes prête, envoyez vos retours à Sabrina.<br>Elle pourra adapter votre protocole en conséquence.
+      </p>
+      <button onclick="saveMemoState()" style="display:inline-flex;align-items:center;gap:8px;background:var(--ardoise);color:white;border:none;border-radius:99px;padding:12px 28px;font-family:'Be Vietnam Pro',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:opacity .2s" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+        ↗ Envoyer mes retours à Sabrina
+      </button>
+      <p style="font-size:11px;color:var(--taupe);margin:10px 0 0">Vos réponses seront transmises directement à votre dossier.</p>
     </div>
 
     <div class="signature-block">
@@ -1685,7 +1698,12 @@ function saveMemoState() {
     if (!items.length) return;
     details[p] = [...items].map(item => {
       const lbl = item.querySelector('.memo-label');
-      return { texte: lbl?.textContent?.trim() || '', etat: item.dataset.state || 'neutral' };
+      const reasonTA = item.querySelector('.memo-reason-box textarea');
+      return {
+        texte: lbl?.textContent?.trim() || '',
+        etat: item.dataset.state || 'neutral',
+        raison: (item.dataset.state === 'non' && reasonTA) ? reasonTA.value.trim() : ''
+      };
     });
   });
 
@@ -1719,6 +1737,9 @@ function cycleMemoState(id) {
   const cur = item.dataset.state || 'neutral';
   const next = states[(states.indexOf(cur) + 1) % states.length];
   item.dataset.state = next;
+  // Afficher/masquer la zone de texte raison
+  const reasonBox = document.getElementById('reason-' + id);
+  if (reasonBox) reasonBox.style.display = next === 'non' ? 'block' : 'none';
   saveMemoState();
   updateMemoSummary();
 }
@@ -1729,7 +1750,12 @@ function loadMemoState() {
   if (saved.states) {
     Object.entries(saved.states).forEach(([id, state]) => {
       const item = document.getElementById(id);
-      if (item) item.dataset.state = state;
+      if (item) {
+        item.dataset.state = state;
+        // Restaurer l'affichage de la zone de texte raison
+        const reasonBox = document.getElementById('reason-' + id);
+        if (reasonBox) reasonBox.style.display = state === 'non' ? 'block' : 'none';
+      }
     });
   }
   // Legacy: support old checkbox format
@@ -1829,10 +1855,10 @@ function updateMemoSummary() {
 
 // Hook makeEditable to also load memo state
 const _origMakeEditable = makeEditable;
-function makeEditable() {
+const makeEditable = function() {
   _origMakeEditable();
   setTimeout(loadMemoState, 150);
-}
+};
 
 </script>
 
