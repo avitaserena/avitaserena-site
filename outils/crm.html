@@ -486,20 +486,30 @@ function renderDashboard(){
   const rdvM=rdvs.filter(r=>r.date&&mk(r.date)===curMk);
   const sils=db.clients.filter(c=>{const l=c.timeline?.[c.timeline.length-1]?.date||c.date1;return l&&diffD(l)>30;});
 
+  // Convertir les mémos-refus en alertes urgentes
+  const memoUrgAl = memoAlerts.map(m => {
+    const client = db.clients.find(c =>
+      (c.prenom||'').toLowerCase()===(m.prenom||'').toLowerCase() &&
+      (c.nom||'').toLowerCase()===(m.nom||'').toLowerCase()
+    );
+    return { client: client||{prenom:m.prenom,nom:m.nom,id:null}, memo:m, isMemo:true };
+  });
+
+  const totalAlerts = allAl.length + memoUrgAl.length;
   document.getElementById('kv-actives').textContent=actives.length;
   document.getElementById('kv-rdv').textContent=rdvM.length;
-  document.getElementById('kv-alertes').textContent=allAl.length;
+  document.getElementById('kv-alertes').textContent=totalAlerts;
   document.getElementById('kv-ca').textContent=caM>0?caM.toFixed(0)+' €':'—';
   document.getElementById('kv-total').textContent=db.clients.length;
   const bdg=document.getElementById('badge-al');
-  bdg.textContent=allAl.length;bdg.classList.toggle('show',allAl.length>0);
+  bdg.textContent=totalAlerts;bdg.classList.toggle('show',totalAlerts>0);
 
   const urg=allAl.filter(a=>a.alert.isOvd);
   const sem=allAl.filter(a=>!a.alert.isOvd&&a.alert.isSoon);
-  document.getElementById('tc-urg').textContent=urg.length;
+  document.getElementById('tc-urg').textContent=urg.length+memoUrgAl.length;
   document.getElementById('tc-sem').textContent=sem.length;
   document.getElementById('tc-feed').textContent=memoAlerts.length;
-  renderAlerts(curTab,urg,sem);
+  renderAlerts(curTab,urg,sem,memoUrgAl);
   renderPipeline(actives);
   renderCA();
   renderTaches();
@@ -511,10 +521,14 @@ function switchTab(tab,el){
   document.querySelectorAll('#tab-row .tab-btn').forEach(b=>b.classList.remove('active'));
   el.classList.add('active');
   const allAl=db.clients.flatMap(c=>getAlerts(c).map(a=>({client:c,alert:a})));
-  renderAlerts(tab,allAl.filter(a=>a.alert.isOvd),allAl.filter(a=>!a.alert.isOvd&&a.alert.isSoon));
+  const memoUrgAl=memoAlerts.map(m=>{
+    const client=db.clients.find(c=>(c.prenom||'').toLowerCase()===(m.prenom||'').toLowerCase()&&(c.nom||'').toLowerCase()===(m.nom||'').toLowerCase());
+    return{client:client||{prenom:m.prenom,nom:m.nom,id:null},memo:m,isMemo:true};
+  });
+  renderAlerts(tab,allAl.filter(a=>a.alert.isOvd),allAl.filter(a=>!a.alert.isOvd&&a.alert.isSoon),memoUrgAl);
 }
 
-function renderAlerts(tab,urg,sem){
+function renderAlerts(tab,urg,sem,memoUrgAl=[]){
   const el=document.getElementById('alerts-box');if(!el)return;
   if(tab==='feed'){
     if(!memoAlerts.length){
@@ -555,21 +569,57 @@ function renderAlerts(tab,urg,sem){
     return;
   }
   const items=tab==='urg'?urg:sem;
-  if(!items.length){el.innerHTML='<div class="empty"><div class="eicon">✅</div><div class="etitle">Tout est à jour</div></div>';return;}
-  el.innerHTML=items.map(({client:c,alert:a})=>{
+  if(!items.length && (tab!=='urg' || !memoUrgAl.length)){el.innerHTML='<div class="empty"><div class="eicon">\u2705</div><div class="etitle">Tout est \u00e0 jour</div></div>';return;}
+
+  let html=items.map(({client:c,alert:a})=>{
     const col=avColor(c.prenom);
     const init=(c.prenom||'?')[0].toUpperCase();
     const cl=a.isOvd?'urg':'sem';
     const dago=a.tgt?diffD(a.tgt):0;
     const dtxt=dago>0?'Retard de '+dago+'j':'Dans '+Math.abs(dago)+'j';
-    return "<div class='al-item "+cl+"' onclick=\"openFiche('"+c.id+"')\">" +
-      "<div class='al-av' style='background:"+col+"'>"+init+"</div>" +
-      "<div class='al-body'><div class='al-name'>"+escH(c.prenom)+" "+escH(c.nom||'')+"</div>" +
-      "<div class='al-desc'>"+escH(a.label)+"</div>" +
-      "<div class='al-meta'>"+(a.tgt?fmtDate(a.tgt)+' · '+dtxt:'')+"</div></div>" +
-      (a.tpl?"<button class='al-btn' onclick=\"event.stopPropagation();openEmail('"+c.id+"','"+a.tpl+"')\">Email →</button>":'')+
+    return "<div class='al-item "+cl+"' onclick=\"openFiche('"+c.id+"')\">"+
+      "<div class='al-av' style='background:"+col+"'>"+init+"</div>"+
+      "<div class='al-body'><div class='al-name'>"+escH(c.prenom)+" "+escH(c.nom||'')+"</div>"+
+      "<div class='al-desc'>"+escH(a.label)+"</div>"+
+      "<div class='al-meta'>"+(a.tgt?fmtDate(a.tgt)+' \u00b7 '+dtxt:'')+"</div></div>"+
+      (a.tpl?"<button class='al-btn' onclick=\"event.stopPropagation();openEmail('"+c.id+"','"+a.tpl+"')\">Email \u2192</button>":'')+
       "</div>";
   }).join('');
+
+  if(tab==='urg' && memoUrgAl.length){
+    html += memoUrgAl.map(({client:c,memo:m})=>{
+      const col=avColor(m.prenom);
+      const init=(m.prenom||'?')[0].toUpperCase();
+      const date=m.created_at?new Date(m.created_at).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):'';
+      const refusList=m.refuses.slice(0,2).map(r=>{
+        const txt=(r.texte||'').substring(0,70)+(r.texte&&r.texte.length>70?'\u2026':'');
+        return '<div style="font-size:11px;padding:4px 8px;margin:3px 0;background:rgba(184,50,50,.08);border-left:2px solid var(--rouge);border-radius:0 4px 4px 0">'+
+          '<span style="color:var(--rouge)">\u2717</span> '+escH(txt)+
+          (r.raison?'<div style="color:var(--muted);font-style:italic;font-size:10px">\u00ab '+escH(r.raison)+' \u00bb</div>':'')+
+          '</div>';
+      }).join('');
+      const plus=m.refuses.length>2?'<div style="font-size:10px;color:var(--muted);margin-top:2px">+ '+(m.refuses.length-2)+' autre(s)</div>':'';
+      const ficheId=c.id;
+      const prenomEnc=encodeURIComponent(m.prenom||'');
+      const nomEnc=encodeURIComponent(m.nom||'');
+      const ddnEnc=encodeURIComponent(m.ddn||'');
+      return '<div class="al-item urg" style="flex-direction:column;align-items:flex-start;padding:12px 14px;border-left:4px solid var(--rouge)">'+
+        '<div style="display:flex;align-items:center;gap:10px;width:100%;cursor:'+(ficheId?'pointer':'default')+'" '+(ficheId?'onclick="openFiche(\'' +ficheId+ '\')"':'')+'>'+
+        '<div class="al-av" style="background:'+col+'">'+init+'</div>'+
+        '<div style="flex:1">'+
+          '<div class="al-name">'+escH(m.prenom)+' '+escH(m.nom||'')+'</div>'+
+          '<div class="al-meta">'+date+' \u00b7 <span style="color:var(--rouge);font-weight:700">\ud83d\udd04 '+m.refuses.length+' refus de recommandation(s)</span></div>'+
+        '</div></div>'+
+        '<div style="width:100%;margin-top:8px">'+refusList+plus+'</div>'+
+        '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">'+
+          (ficheId?'<button onclick="openFiche(\'' +ficheId+ '\')" style="padding:5px 12px;background:var(--ardoise);color:white;border:none;border-radius:99px;font-size:11px;font-weight:600;cursor:pointer">Voir la fiche \u2192</button>':'')+
+          '<button onclick="ouvrirAlternativesModal(\'' +prenomEnc+ '\',\'' +nomEnc+ '\',\'' +ddnEnc+ '\')" style="padding:5px 12px;background:var(--ocre);color:white;border:none;border-radius:99px;font-size:11px;font-weight:600;cursor:pointer">Proposer des alternatives \u2197</button>'+
+        '</div>'+
+      '</div>';
+    }).join('');
+  }
+
+  el.innerHTML=html||'<div class="empty"><div class="eicon">\u2705</div><div class="etitle">Tout est \u00e0 jour</div></div>';
 }
 
 function renderPipeline(actives){
@@ -734,7 +784,8 @@ function renderFiche(c){
       "<div class='fiche-htags'>"+tagH+"</div></div>" +
       "<div class='fiche-acts'>" +
         "<button class='btn btn-ghost btn-sm' style='border-color:rgba(255,255,255,.4);color:white' onclick=\"emailHeroBtn(this)\" data-id='"+c.id+"' >Email</button>" +
-        "<button class='btn btn-ghost btn-sm' style='border-color:rgba(255,255,255,.4);color:white' onclick=\"window.open('generateur.html','_blank')\">PHV ↗</button>" +
+        "<button class='btn btn-ghost btn-sm' style='border-color:rgba(255,255,255,.4);color:white' onclick=\"window.open('generateur.html','_blank')\">Générer PHV ↗</button>" +
+        "<button class='btn btn-ghost btn-sm' style='border-color:rgba(255,255,255,.4);color:white' onclick=\"ouvrirPHVCliente('"+c.id+"')\">PHV client ↗</button>" +
       "</div>" +
     "</div>" +
     "<div class='m3'>" +
@@ -782,41 +833,48 @@ function renderFiche(c){
 }
 
 function buildMemoBlock(c){
-  // Trouver les mémos de cette cliente (matching prénom + nom)
   const clientMemos = memoAlerts.filter(m =>
     (m.prenom||'').toLowerCase() === (c.prenom||'').toLowerCase() &&
     (m.nom||'').toLowerCase() === (c.nom||'').toLowerCase()
   );
   if(!clientMemos.length) return '';
-  const m = clientMemos[0]; // le plus récent
+  const m = clientMemos[0];
   const date = m.created_at ? new Date(m.created_at).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}) : '';
   const nbRefus = m.refuses.length;
   const nbOk = m.stats?.ok || 0;
   const nbTotal = m.stats?.total || 0;
+  const prenomEnc = encodeURIComponent(m.prenom||'');
+  const nomEnc = encodeURIComponent(m.nom||'');
+  const ddnEnc = encodeURIComponent(m.ddn||'');
 
-  const refusHtml = m.refuses.map(r =>
-    `<div style="margin:4px 0;padding:8px 10px;background:rgba(184,50,50,.06);border-left:3px solid #E2445C;border-radius:0 6px 6px 0;font-size:12px">
-      <div style="font-weight:600;color:#E2445C">✗ ${escH(r.pilier.charAt(0).toUpperCase()+r.pilier.slice(1))}</div>
-      <div style="color:var(--ink);margin-top:2px">${escH(r.texte)}</div>
-      ${r.raison ? `<div style="color:var(--muted);margin-top:3px;font-style:italic">Raison : « ${escH(r.raison)} »</div>` : ''}
+  const refusHtml = m.refuses.map((r,i) =>
+    `<div style="margin:6px 0;padding:10px 12px;background:rgba(184,50,50,.06);border-left:3px solid #E2445C;border-radius:0 8px 8px 0;font-size:12px">
+      <div style="font-weight:700;color:#E2445C;margin-bottom:2px">✗ ${escH(r.pilier.charAt(0).toUpperCase()+r.pilier.slice(1))}</div>
+      <div style="color:var(--ink);line-height:1.5">${escH(r.texte)}</div>
+      ${r.raison ? `<div style="color:var(--muted);margin-top:4px;font-style:italic;font-size:11px">« ${escH(r.raison)} »</div>` : ''}
+      <button onclick="ouvrirAlternativesModal('${prenomEnc}','${nomEnc}','${ddnEnc}',${i})" style="margin-top:8px;padding:4px 12px;background:var(--ocre);color:white;border:none;border-radius:99px;font-size:11px;font-weight:600;cursor:pointer">↗ Proposer une alternative</button>
     </div>`
   ).join('');
 
-  const okSummary = nbOk > 0 ? `<div style="margin-top:6px;padding:6px 10px;background:rgba(0,200,117,.08);border-left:3px solid #00C875;border-radius:0 6px 6px 0;font-size:12px;color:#1a6e3c"><strong>${nbOk} recommandation(s) acceptée(s)</strong> ✓</div>` : '';
+  const okSummary = nbOk > 0 ? `<div style="margin-top:8px;padding:8px 12px;background:rgba(0,200,117,.08);border-left:3px solid #00C875;border-radius:0 8px 8px 0;font-size:12px;color:#1a6e3c"><strong>${nbOk} recommandation(s) acceptée(s) ✓</strong></div>` : '';
 
-  return `<div class='card'><div class='card-head'><div class='card-title'><div class='card-dot' style='background:#6C47FF'></div>Observance PHV</div><span style='font-size:11px;color:var(--muted)'>${date}</span></div>
+  return `<div class='card'><div class='card-head'><div class='card-title'><div class='card-dot' style='background:#6C47FF'></div>Observance PHV</div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style='font-size:11px;color:var(--muted)'>${date}</span>
+      <button onclick="ouvrirAlternativesModal('${prenomEnc}','${nomEnc}','${ddnEnc}',-1)" style="padding:4px 10px;background:var(--ocre);color:white;border:none;border-radius:99px;font-size:11px;font-weight:600;cursor:pointer">Tous les refus ↗</button>
+    </div></div>
     <div class='card-body'>
-      <div style="display:flex;gap:16px;margin-bottom:12px">
-        <div style="text-align:center;flex:1;padding:8px;background:rgba(184,50,50,.06);border-radius:8px">
-          <div style="font-size:22px;font-weight:800;color:#E2445C">${nbRefus}</div>
+      <div style="display:flex;gap:12px;margin-bottom:14px">
+        <div style="text-align:center;flex:1;padding:10px 8px;background:rgba(184,50,50,.06);border-radius:8px">
+          <div style="font-size:24px;font-weight:800;color:#E2445C">${nbRefus}</div>
           <div style="font-size:11px;color:var(--muted)">Refusé(s)</div>
         </div>
-        <div style="text-align:center;flex:1;padding:8px;background:rgba(0,200,117,.06);border-radius:8px">
-          <div style="font-size:22px;font-weight:800;color:#00C875">${nbOk}</div>
+        <div style="text-align:center;flex:1;padding:10px 8px;background:rgba(0,200,117,.06);border-radius:8px">
+          <div style="font-size:24px;font-weight:800;color:#00C875">${nbOk}</div>
           <div style="font-size:11px;color:var(--muted)">Accepté(s)</div>
         </div>
-        <div style="text-align:center;flex:1;padding:8px;background:var(--off);border-radius:8px">
-          <div style="font-size:22px;font-weight:800;color:var(--ink)">${nbTotal}</div>
+        <div style="text-align:center;flex:1;padding:10px 8px;background:var(--off);border-radius:8px">
+          <div style="font-size:24px;font-weight:800;color:var(--ink)">${nbTotal}</div>
           <div style="font-size:11px;color:var(--muted)">Total</div>
         </div>
       </div>
@@ -1001,6 +1059,128 @@ function toast(msg,type){
 }
 
 document.addEventListener('DOMContentLoaded', init);
+
+// ── Ouvrir le PHV d'une cliente spécifique ──
+function ouvrirPHVCliente(clientId){
+  const c = db.clients.find(x=>x.id===clientId);
+  if(!c){ toast('Cliente introuvable','err'); return; }
+  // Charger les données de la cliente dans avita_session pour que phv-print puisse les lire
+  const session = {
+    prenom: c.prenom||'', nom: c.nom||'', ddn: c.ddn||'',
+    motifs: c.motifs||'', axes: c.axes||''
+  };
+  localStorage.setItem('avita_session', JSON.stringify(session));
+  window.open('phv-print.html', '_blank');
+}
+
+// ── Modale "Proposer une alternative" ──
+function ouvrirAlternativesModal(prenomEnc, nomEnc, ddnEnc, refusIdx){
+  const prenom = decodeURIComponent(prenomEnc);
+  const nom = decodeURIComponent(nomEnc);
+  const ddn = decodeURIComponent(ddnEnc);
+  // Trouver les mémos de cette cliente
+  const m = memoAlerts.find(x =>
+    (x.prenom||'').toLowerCase()===(prenom||'').toLowerCase() &&
+    (x.nom||'').toLowerCase()===(nom||'').toLowerCase()
+  );
+  if(!m || !m.refuses.length){ toast('Aucun refus trouvé','err'); return; }
+  const refuses = refusIdx >= 0 ? [m.refuses[refusIdx]] : m.refuses;
+
+  // Injecter la modale dans le DOM
+  const existing = document.getElementById('modal-alternatives');
+  if(existing) existing.remove();
+
+  const refusListHtml = refuses.map((r,i)=>`
+    <div style="margin-bottom:16px;padding:12px;background:rgba(184,50,50,.05);border:1px solid rgba(184,50,50,.15);border-radius:10px">
+      <div style="font-weight:700;color:#E2445C;font-size:12px;margin-bottom:4px">✗ ${escH(r.pilier.charAt(0).toUpperCase()+r.pilier.slice(1))}</div>
+      <div style="font-size:13px;color:var(--ardoise);line-height:1.5;margin-bottom:6px">${escH(r.texte)}</div>
+      ${r.raison?`<div style="font-size:11px;color:var(--muted);font-style:italic;margin-bottom:8px">« ${escH(r.raison)} »</div>`:''}
+      <textarea id="alt-text-${i}" rows="3" placeholder="Rédigez ici votre alternative personnalisée…" style="width:100%;font-family:'Be Vietnam Pro',sans-serif;font-size:12px;border:1px solid var(--taupe);border-radius:8px;padding:8px;resize:vertical;outline:none;color:var(--ardoise)"></textarea>
+      <button onclick="genererAlternativeIA(${i},'${escH(r.texte).replace(/'/g,"\\'")}','${escH(r.raison||'').replace(/'/g,"\\'")}','${escH(prenom)}')" style="margin-top:6px;padding:4px 12px;background:#6C47FF;color:white;border:none;border-radius:99px;font-size:11px;font-weight:600;cursor:pointer">✦ Générer avec IA</button>
+    </div>`).join('');
+
+  const modal = document.createElement('div');
+  modal.id = 'modal-alternatives';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.innerHTML = `
+    <div style="background:white;border-radius:16px;width:100%;max-width:600px;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+      <div style="padding:20px 24px;border-bottom:1px solid var(--grege);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:white;z-index:1">
+        <div>
+          <div style="font-family:'Cormorant Garamond',Georgia,serif;font-size:20px;font-weight:700;color:var(--ardoise)">Alternatives pour ${escH(prenom)} ${escH(nom)}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px">${refuses.length} recommandation(s) refusée(s)</div>
+        </div>
+        <button onclick="document.getElementById('modal-alternatives').remove()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted)">×</button>
+      </div>
+      <div style="padding:20px 24px" id="alt-refuses-list">${refusListHtml}</div>
+      <div style="padding:16px 24px;border-top:1px solid var(--grege);display:flex;justify-content:flex-end;gap:10px;position:sticky;bottom:0;background:white">
+        <button onclick="document.getElementById('modal-alternatives').remove()" style="padding:8px 20px;background:var(--grege);color:var(--ardoise);border:none;border-radius:99px;font-size:13px;font-weight:600;cursor:pointer">Fermer</button>
+        <button onclick="envoyerAlternatives('${escH(prenom)}','${escH(nom)}','${escH(ddn)}',${refusIdx})" style="padding:8px 20px;background:var(--ardoise);color:white;border:none;border-radius:99px;font-size:13px;font-weight:600;cursor:pointer">Enregistrer les alternatives ✓</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e=>{ if(e.target===modal) modal.remove(); });
+}
+
+async function genererAlternativeIA(idx, texteRefus, raison, prenom){
+  const ta = document.getElementById('alt-text-'+idx);
+  if(!ta) return;
+  ta.value = '✦ Génération en cours…';
+  ta.disabled = true;
+  try{
+    const r = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model:'claude-sonnet-4-6',
+        max_tokens:400,
+        messages:[{role:'user',content:`Tu es Sabrina Castelli, naturopathe. Une cliente a refusé cette recommandation de son protocole :
+
+"${texteRefus}"
+
+${raison ? `Raison donnée : "${raison}"` : ''}
+
+Propose une alternative concrète, bienveillante et réaliste, en 2-3 phrases maximum, en vouvoyant la cliente. Ne commence pas par "Je vous propose" mais directement par l'alternative.`}]
+      })
+    });
+    const data = await r.json();
+    ta.value = data.content?.[0]?.text || '';
+  }catch(e){
+    ta.value = '';
+    toast('Erreur génération IA : '+e.message,'err');
+  }
+  ta.disabled = false;
+}
+
+async function envoyerAlternatives(prenom, nom, ddn, refusIdx){
+  const m = memoAlerts.find(x =>
+    (x.prenom||'').toLowerCase()===(prenom||'').toLowerCase() &&
+    (x.nom||'').toLowerCase()===(nom||'').toLowerCase()
+  );
+  if(!m) return;
+  const refuses = refusIdx >= 0 ? [m.refuses[refusIdx]] : m.refuses;
+  const URL = 'https://bqhkdndwldwqacrrbbig.supabase.co/rest/v1/alternatives';
+  const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxaGtkbmR3bGR3cWFjcnJiYmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MzAyNTIsImV4cCI6MjA5NjMwNjI1Mn0.nH2UktMAVKYwng4L3SvW5F0fluV_sObGV0f3Mk1dnOY';
+  const clientId = `${nom.toLowerCase().replace(/\s+/g,'-')}-${prenom.toLowerCase().replace(/\s+/g,'-')}-${(ddn||'').replace(/-/g,'')}`;
+  let saved = 0;
+  for(let i=0; i<refuses.length; i++){
+    const ta = document.getElementById('alt-text-'+i);
+    const altText = ta?.value?.trim();
+    if(!altText) continue;
+    await fetch(URL, {
+      method:'POST',
+      headers:{'apikey':KEY,'Authorization':'Bearer '+KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},
+      body: JSON.stringify({
+        client_id: clientId, prenom, nom, ddn,
+        refus_texte: refuses[i].texte,
+        alternative_text: altText,
+        sent_at: new Date().toISOString()
+      })
+    });
+    saved++;
+  }
+  toast(saved+' alternative(s) enregistrée(s) ✓','ok');
+  document.getElementById('modal-alternatives')?.remove();
+}
 </script>
 </head>
 <body>
