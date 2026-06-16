@@ -753,7 +753,14 @@ function renderClients(){
 function filterC(v){curSearch=v;renderClients();}
 function setFilter(s,el){curFilter=s;document.querySelectorAll('.fchip').forEach(c=>c.classList.remove('on'));if(el)el.classList.add('on');renderClients();}
 
-function openFiche(id){const c=db.clients.find(x=>x.id===id);if(!c)return;nav('fiche',null);renderFiche(c);}
+async function openFiche(id){
+  const c=db.clients.find(x=>x.id===id);
+  if(!c)return;
+  nav('fiche',null);
+  renderFiche(c); // affichage immédiat
+  await loadMemoAlerts(); // rechargement frais depuis Supabase
+  renderFiche(c); // re-render avec données à jour
+}
 
 function renderFiche(c){
   const el=document.getElementById('fiche-box');if(!el)return;
