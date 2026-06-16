@@ -364,33 +364,44 @@ async function loadRdvs(){try{rdvs=await sb('rendez_vous?order=date.desc');}catc
 
 async function loadMemoAlerts(){
   try{
-    // Récupérer le dernier mémo par cliente (triés par date desc)
-    const rows = await sb('phv_memos?order=created_at.desc&limit=200');
-    // Garder seulement le plus récent par client_key
+    // Charger en parallèle les mémos et les alternatives déjà envoyées
+    const [memoRows, altRows] = await Promise.all([
+      sb('phv_memos?order=created_at.desc&limit=200'),
+      sb('alternatives?select=prenom,nom,refus_texte,alternative_text&order=sent_at.desc&limit=500')
+    ]);
+
+    // Construire un index des alternatives par "prenom|nom|refus40chars"
+    const altIndex = new Set();
+    altRows.forEach(a => {
+      const key = (a.prenom||'').toLowerCase() + '|' + (a.nom||'').toLowerCase() + '|' + (a.refus_texte||'').substring(0,40).toLowerCase();
+      altIndex.add(key);
+    });
+
+    // Garder seulement le mémo le plus récent par cliente
     const seen = new Set();
     const latest = [];
-    for(const r of rows){
-      if(!seen.has(r.client_key)){
-        seen.add(r.client_key);
-        latest.push(r);
-      }
+    for(const r of memoRows){
+      if(!seen.has(r.client_key)){ seen.add(r.client_key); latest.push(r); }
     }
-    // Ne garder que ceux qui ont au moins 1 refus
+
     memoAlerts = latest.filter(r => {
-      try{
-        const stats = typeof r.stats === 'string' ? JSON.parse(r.stats) : r.stats;
-        return stats && stats.non > 0;
-      }catch(e){ return false; }
+      try{ const s = typeof r.stats==='string'?JSON.parse(r.stats):r.stats; return s && s.non > 0; }
+      catch(e){ return false; }
     }).map(r => {
-      const stats = typeof r.stats === 'string' ? JSON.parse(r.stats) : r.stats;
-      const details = typeof r.details === 'string' ? JSON.parse(r.details) : r.details;
-      // Extraire les items refusés avec raison
+      const stats   = typeof r.stats==='string'?JSON.parse(r.stats):r.stats;
+      const details = typeof r.details==='string'?JSON.parse(r.details):r.details;
       const refuses = [];
       if(details){
         Object.entries(details).forEach(([pilier, items]) => {
           if(!Array.isArray(items)) return;
           items.filter(i => i.etat === 'non').forEach(i => {
-            refuses.push({ pilier, texte: i.texte, raison: i.raison || '' });
+            const altKey = (r.prenom||'').toLowerCase() + '|' + (r.nom||'').toLowerCase() + '|' + (i.texte||'').substring(0,40).toLowerCase();
+            refuses.push({
+              pilier,
+              texte: i.texte,
+              raison: i.raison || '',
+              aDejaReponse: altIndex.has(altKey)  // ← true si alternative déjà enregistrée
+            });
           });
         });
       }
@@ -400,13 +411,14 @@ async function loadMemoAlerts(){
         nom: r.nom,
         ddn: r.ddn,
         stats,
-        refuses,
+        refuses,                                           // tous les refus (pour le bloc Observance)
+        refusSansReponse: refuses.filter(x => !x.aDejaReponse), // uniquement ceux sans alternative
         created_at: r.created_at
       };
     });
-    // Mettre à jour le badge
+
     const badge = document.getElementById('tc-feed');
-    if(badge) badge.textContent = memoAlerts.length;
+    if(badge) badge.textContent = memoAlerts.filter(m => m.refusSansReponse.length > 0).length;
     console.log('[CRM] Mémo alertes refus:', memoAlerts.length);
   }catch(e){
     console.error('[CRM] Erreur loadMemoAlerts:', e.message);
@@ -487,13 +499,16 @@ function renderDashboard(){
   const sils=db.clients.filter(c=>{const l=c.timeline?.[c.timeline.length-1]?.date||c.date1;return l&&diffD(l)>30;});
 
   // Convertir les mémos-refus en alertes urgentes
-  const memoUrgAl = memoAlerts.map(m => {
-    const client = db.clients.find(c =>
-      (c.prenom||'').toLowerCase()===(m.prenom||'').toLowerCase() &&
-      (c.nom||'').toLowerCase()===(m.nom||'').toLowerCase()
-    );
-    return { client: client||{prenom:m.prenom,nom:m.nom,id:null}, memo:m, isMemo:true };
-  });
+  // Seulement les clientes avec au moins 1 refus sans réponse → TO DO list
+  const memoUrgAl = memoAlerts
+    .filter(m => m.refusSansReponse.length > 0)
+    .map(m => {
+      const client = db.clients.find(c =>
+        (c.prenom||'').toLowerCase()===(m.prenom||'').toLowerCase() &&
+        (c.nom||'').toLowerCase()===(m.nom||'').toLowerCase()
+      );
+      return { client: client||{prenom:m.prenom,nom:m.nom,id:null}, memo:m, isMemo:true };
+    });
 
   const totalAlerts = allAl.length + memoUrgAl.length;
   document.getElementById('kv-actives').textContent=actives.length;
@@ -521,10 +536,12 @@ function switchTab(tab,el){
   document.querySelectorAll('#tab-row .tab-btn').forEach(b=>b.classList.remove('active'));
   el.classList.add('active');
   const allAl=db.clients.flatMap(c=>getAlerts(c).map(a=>({client:c,alert:a})));
-  const memoUrgAl=memoAlerts.map(m=>{
-    const client=db.clients.find(c=>(c.prenom||'').toLowerCase()===(m.prenom||'').toLowerCase()&&(c.nom||'').toLowerCase()===(m.nom||'').toLowerCase());
-    return{client:client||{prenom:m.prenom,nom:m.nom,id:null},memo:m,isMemo:true};
-  });
+  const memoUrgAl=memoAlerts
+    .filter(m=>m.refusSansReponse.length>0)
+    .map(m=>{
+      const client=db.clients.find(c=>(c.prenom||'').toLowerCase()===(m.prenom||'').toLowerCase()&&(c.nom||'').toLowerCase()===(m.nom||'').toLowerCase());
+      return{client:client||{prenom:m.prenom,nom:m.nom,id:null},memo:m,isMemo:true};
+    });
   renderAlerts(tab,allAl.filter(a=>a.alert.isOvd),allAl.filter(a=>!a.alert.isOvd&&a.alert.isSoon),memoUrgAl);
 }
 
@@ -591,14 +608,14 @@ function renderAlerts(tab,urg,sem,memoUrgAl=[]){
       const col=avColor(m.prenom);
       const init=(m.prenom||'?')[0].toUpperCase();
       const date=m.created_at?new Date(m.created_at).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):'';
-      const refusList=m.refuses.slice(0,2).map(r=>{
+      const refusList=m.refusSansReponse.slice(0,2).map(r=>{
         const txt=(r.texte||'').substring(0,70)+(r.texte&&r.texte.length>70?'\u2026':'');
         return '<div style="font-size:11px;padding:4px 8px;margin:3px 0;background:rgba(184,50,50,.08);border-left:2px solid var(--rouge);border-radius:0 4px 4px 0">'+
           '<span style="color:var(--rouge)">\u2717</span> '+escH(txt)+
           (r.raison?'<div style="color:var(--muted);font-style:italic;font-size:10px">\u00ab '+escH(r.raison)+' \u00bb</div>':'')+
           '</div>';
       }).join('');
-      const plus=m.refuses.length>2?'<div style="font-size:10px;color:var(--muted);margin-top:2px">+ '+(m.refuses.length-2)+' autre(s)</div>':'';
+      const plus=m.refusSansReponse.length>2?'<div style="font-size:10px;color:var(--muted);margin-top:2px">+ '+(m.refusSansReponse.length-2)+' \u00e0 traiter</div>':'';
       const ficheId=c.id;
       const prenomEnc=encodeURIComponent(m.prenom||'');
       const nomEnc=encodeURIComponent(m.nom||'');
@@ -608,7 +625,7 @@ function renderAlerts(tab,urg,sem,memoUrgAl=[]){
         '<div class="al-av" style="background:'+col+'">'+init+'</div>'+
         '<div style="flex:1">'+
           '<div class="al-name">'+escH(m.prenom)+' '+escH(m.nom||'')+'</div>'+
-          '<div class="al-meta">'+date+' \u00b7 <span style="color:var(--rouge);font-weight:700">\ud83d\udd04 '+m.refuses.length+' refus de recommandation(s)</span></div>'+
+          '<div class="al-meta">'+date+' \u00b7 <span style="color:var(--rouge);font-weight:700">\ud83d\udd04 '+m.refusSansReponse.length+' à traiter</span></div>'+
         '</div></div>'+
         '<div style="width:100%;margin-top:8px">'+refusList+plus+'</div>'+
         '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">'+
@@ -823,20 +840,32 @@ function buildMemoBlock(c){
   const m = clientMemos[0];
   const date = m.created_at ? new Date(m.created_at).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}) : '';
   const nbRefus = m.refuses.length;
+  const nbRepondus = m.refuses.filter(r => r.aDejaReponse).length;
+  const nbEnAttente = nbRefus - nbRepondus;
   const nbOk = m.stats?.ok || 0;
   const nbTotal = m.stats?.total || 0;
   const prenomEnc = encodeURIComponent(m.prenom||'');
   const nomEnc = encodeURIComponent(m.nom||'');
   const ddnEnc = encodeURIComponent(m.ddn||'');
 
-  const refusHtml = m.refuses.map((r,i) =>
-    `<div style="margin:6px 0;padding:10px 12px;background:rgba(184,50,50,.06);border-left:3px solid #E2445C;border-radius:0 8px 8px 0;font-size:12px">
-      <div style="font-weight:700;color:#E2445C;margin-bottom:2px">✗ ${escH(r.pilier.charAt(0).toUpperCase()+r.pilier.slice(1))}</div>
-      <div style="color:var(--ink);line-height:1.5">${escH(r.texte)}</div>
+  const refusHtml = m.refuses.map((r,i) => {
+    const repondu = r.aDejaReponse;
+    const borderCol = repondu ? '#00C875' : '#E2445C';
+    const bg        = repondu ? 'rgba(0,200,117,.05)' : 'rgba(184,50,50,.06)';
+    const badge     = repondu
+      ? `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 10px;background:#00C875;color:white;border-radius:99px;font-size:10px;font-weight:700;margin-bottom:6px">✓ Alternative envoyée</span>`
+      : `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 10px;background:#E2445C;color:white;border-radius:99px;font-size:10px;font-weight:700;margin-bottom:6px">⏳ En attente de réponse</span>`;
+    const btn = !repondu
+      ? `<button onclick="ouvrirAlternativesModal('${prenomEnc}','${nomEnc}','${ddnEnc}',${i})" style="margin-top:8px;padding:4px 12px;background:var(--ocre);color:white;border:none;border-radius:99px;font-size:11px;font-weight:600;cursor:pointer">↗ Proposer une alternative</button>`
+      : `<button onclick="ouvrirAlternativesModal('${prenomEnc}','${nomEnc}','${ddnEnc}',${i})" style="margin-top:8px;padding:4px 12px;background:var(--grege);color:var(--ardoise);border:none;border-radius:99px;font-size:11px;font-weight:600;cursor:pointer">✎ Modifier l'alternative</button>`;
+    return `<div style="margin:6px 0;padding:10px 12px;background:${bg};border-left:3px solid ${borderCol};border-radius:0 8px 8px 0;font-size:12px">
+      ${badge}
+      <div style="font-weight:700;color:${borderCol};margin-bottom:2px">✗ ${escH((r.pilier||'').charAt(0).toUpperCase()+(r.pilier||'').slice(1))}</div>
+      <div style="color:var(--ink);line-height:1.5">${escH(r.texte||'')}</div>
       ${r.raison ? `<div style="color:var(--muted);margin-top:4px;font-style:italic;font-size:11px">« ${escH(r.raison)} »</div>` : ''}
-      <button onclick="ouvrirAlternativesModal('${prenomEnc}','${nomEnc}','${ddnEnc}',${i})" style="margin-top:8px;padding:4px 12px;background:var(--ocre);color:white;border:none;border-radius:99px;font-size:11px;font-weight:600;cursor:pointer">↗ Proposer une alternative</button>
-    </div>`
-  ).join('');
+      ${btn}
+    </div>`;
+  }).join('');
 
   const okSummary = nbOk > 0 ? `<div style="margin-top:8px;padding:8px 12px;background:rgba(0,200,117,.08);border-left:3px solid #00C875;border-radius:0 8px 8px 0;font-size:12px;color:#1a6e3c"><strong>${nbOk} recommandation(s) acceptée(s) ✓</strong></div>` : '';
 
@@ -848,12 +877,16 @@ function buildMemoBlock(c){
     <div class='card-body'>
       <div style="display:flex;gap:12px;margin-bottom:14px">
         <div style="text-align:center;flex:1;padding:10px 8px;background:rgba(184,50,50,.06);border-radius:8px">
-          <div style="font-size:24px;font-weight:800;color:#E2445C">${nbRefus}</div>
-          <div style="font-size:11px;color:var(--muted)">Refusé(s)</div>
+          <div style="font-size:24px;font-weight:800;color:#E2445C">${nbEnAttente}</div>
+          <div style="font-size:11px;color:var(--muted)">À traiter</div>
+        </div>
+        <div style="text-align:center;flex:1;padding:10px 8px;background:rgba(0,200,117,.06);border-radius:8px">
+          <div style="font-size:24px;font-weight:800;color:#00C875">${nbRepondus}</div>
+          <div style="font-size:11px;color:var(--muted)">Répondus ✓</div>
         </div>
         <div style="text-align:center;flex:1;padding:10px 8px;background:rgba(0,200,117,.06);border-radius:8px">
           <div style="font-size:24px;font-weight:800;color:#00C875">${nbOk}</div>
-          <div style="font-size:11px;color:var(--muted)">Accepté(s)</div>
+          <div style="font-size:11px;color:var(--muted)">Acceptés</div>
         </div>
         <div style="text-align:center;flex:1;padding:10px 8px;background:var(--off);border-radius:8px">
           <div style="font-size:24px;font-weight:800;color:var(--ink)">${nbTotal}</div>
