@@ -1223,79 +1223,103 @@ async function sauvegarderAlternatives(prenom, nom, ddn, email, refusIdx, envoye
   if(!saved){ toast('Aucune alternative saisie','warn'); return; }
 
   if(envoyer && email && altTextes.length){
-    // Envoyer via Brevo transactionnel
     try{
-      const corps = altTextes.map(a =>
-        `Recommandation que vous avez signalée comme difficile :\n"${a.refus}"\n\nAlternative proposée :\n${a.alt}`
-      ).join('\n\n---\n\n');
+      const brevoKey = db.settings?.brevoKey || sessionStorage.getItem('avs_brevo') || '';
+      let apiKeyBrevo = brevoKey;
+      if(!apiKeyBrevo){
+        apiKeyBrevo = prompt('Clé API Brevo (xkeysib-…) :') || '';
+        if(apiKeyBrevo) sessionStorage.setItem('avs_brevo', apiKeyBrevo);
+      }
+      if(!apiKeyBrevo){ toast('Clé Brevo requise pour l\'envoi','warn'); return; }
 
-      await fetch('https://api.brevo.com/v3/smtp/email', {
+      // Construire les blocs HTML pour chaque refus/alternative
+      const blocksHtml = altTextes.map(a => `
+        <div style="margin-bottom:24px;background:#FAFAF8;border-radius:12px;overflow:hidden;border:1px solid #E8E4DE">
+          <div style="padding:14px 18px;background:#F5F0E8;border-bottom:1px solid #E8E4DE">
+            <p style="margin:0;font-size:12px;font-weight:700;color:#8B6F47;text-transform:uppercase;letter-spacing:.08em">Ce que vous avez trouvé difficile</p>
+            <p style="margin:6px 0 0;font-size:13px;color:#3A3228;line-height:1.6;font-style:italic">${a.refus.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</p>
+          </div>
+          <div style="padding:16px 18px">
+            <p style="margin:0 0 6px;font-size:12px;font-weight:700;color:#C4A97D;text-transform:uppercase;letter-spacing:.08em">Alternative proposée</p>
+            <p style="margin:0;font-size:14px;color:#3A3228;line-height:1.7">${a.alt.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')}</p>
+          </div>
+        </div>`).join('');
+
+      const htmlContent = `<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#F5F0E8;font-family:'Helvetica Neue',Arial,sans-serif">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F5F0E8;padding:32px 16px">
+    <tr><td align="center">
+      <table width="100%" style="max-width:580px;background:white;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(58,50,40,.08)">
+
+        <!-- Header ardoise -->
+        <tr><td style="background:#3A3228;padding:32px 36px 28px;text-align:center">
+          <p style="margin:0 0 4px;font-size:10px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.5)">A Vita Serena</p>
+          <p style="margin:0;font-family:Georgia,serif;font-size:26px;font-weight:400;color:white;line-height:1.3">Une adaptation<br>pour votre protocole</p>
+        </td></tr>
+
+        <!-- Intro -->
+        <tr><td style="padding:28px 36px 20px">
+          <p style="margin:0;font-size:15px;color:#3A3228;line-height:1.8">Bonjour <strong>${prenom}</strong>,</p>
+          <p style="margin:12px 0 0;font-size:14px;color:#5A5248;line-height:1.8">Suite à vos retours sur votre Protocole d'Hygiène Vitale, voici des adaptations pensées spécialement pour vous. Ces alternatives tiennent compte de ce que vous m'avez partagé.</p>
+        </td></tr>
+
+        <!-- Séparateur ocre -->
+        <tr><td style="padding:0 36px"><div style="height:2px;background:linear-gradient(90deg,#C4A97D,#E8D5B0)"></div></td></tr>
+
+        <!-- Blocs refus/alternatives -->
+        <tr><td style="padding:24px 36px">${blocksHtml}</td></tr>
+
+        <!-- Bouton PHV -->
+        <tr><td style="padding:4px 36px 28px;text-align:center">
+          <p style="margin:0 0 16px;font-size:13px;color:#8B8078">Retrouvez l'ensemble de votre protocole en cliquant ci-dessous :</p>
+          <a href="https://avitaserena.com/outils/phv-print.html" style="display:inline-block;background:#3A3228;color:white;text-decoration:none;font-size:13px;font-weight:700;padding:13px 28px;border-radius:99px;letter-spacing:.04em">Consulter mon protocole →</a>
+        </td></tr>
+
+        <!-- Séparateur -->
+        <tr><td style="padding:0 36px"><div style="height:1px;background:#F0EBE3"></div></td></tr>
+
+        <!-- Signature -->
+        <tr><td style="padding:24px 36px 32px">
+          <p style="margin:0;font-size:13px;color:#5A5248;line-height:1.8">N'hésitez pas à me contacter si vous avez des questions ou si vous souhaitez ajuster d'autres points de votre protocole.</p>
+          <p style="margin:16px 0 0;font-size:14px;color:#3A3228;line-height:1.6">Avec bienveillance,<br><strong>Sabrina Castelli</strong><br><span style="color:#C4A97D;font-size:12px">Naturopathe · A Vita Serena</span></p>
+        </td></tr>
+
+        <!-- Footer -->
+        <tr><td style="background:#3A3228;padding:16px 36px;text-align:center">
+          <p style="margin:0;font-size:11px;color:rgba(255,255,255,.4)">A Vita Serena · Naturopathie · Porto-Vecchio, Corse · avitaserena.com</p>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+      const res = await fetch('https://api.brevo.com/v3/smtp/email', {
         method:'POST',
-        headers:{
-          'Content-Type':'application/json',
-          'api-key': db.settings?.brevoKey || prompt('Clé API Brevo :') || ''
-        },
+        headers:{'Content-Type':'application/json','api-key': apiKeyBrevo},
         body: JSON.stringify({
           sender:{ name:'Sabrina · A Vita Serena', email:'sabrina@avitaserena.com' },
           to:[{ email, name: prenom+' '+nom }],
-          subject: `${prenom}, voici des alternatives à votre protocole`,
-          textContent: `Bonjour ${prenom},\n\nSuite à vos retours sur votre Protocole d'Hygiène Vitale, voici des adaptations personnalisées :\n\n${corps}\n\nN'hésitez pas à me contacter si vous avez des questions.\n\nAvec bienveillance,\nSabrina Castelli\nA Vita Serena`
+          subject: `${prenom}, voici des adaptations pour votre protocole`,
+          htmlContent
         })
       });
-      toast(`${saved} alternative(s) envoyée(s) à ${email} ✓`, 'ok');
+      if(!res.ok){
+        const err = await res.json();
+        throw new Error(err.message || res.status);
+      }
+      toast(`Email envoyé à ${email} ✓`, 'ok');
     }catch(e){
-      toast('Alternatives enregistrées mais email échoué : '+e.message, 'warn');
+      toast('Alternatives enregistrées · Email échoué : '+e.message, 'warn');
     }
   } else {
     toast(`${saved} alternative(s) enregistrée(s) ✓`, 'ok');
   }
 
   document.getElementById('modal-alternatives')?.remove();
-}
-  const prenom = decodeURIComponent(prenomEnc);
-  const nom = decodeURIComponent(nomEnc);
-  const ddn = decodeURIComponent(ddnEnc);
-  // Trouver les mémos de cette cliente
-  const m = memoAlerts.find(x =>
-    (x.prenom||'').toLowerCase()===(prenom||'').toLowerCase() &&
-    (x.nom||'').toLowerCase()===(nom||'').toLowerCase()
-  );
-  if(!m || !m.refuses.length){ toast('Aucun refus trouvé','err'); return; }
-  const refuses = refusIdx >= 0 ? [m.refuses[refusIdx]] : m.refuses;
-
-  // Injecter la modale dans le DOM
-  const existing = document.getElementById('modal-alternatives');
-  if(existing) existing.remove();
-
-  const refusListHtml = refuses.map((r,i)=>`
-    <div style="margin-bottom:16px;padding:12px;background:rgba(184,50,50,.05);border:1px solid rgba(184,50,50,.15);border-radius:10px">
-      <div style="font-weight:700;color:#E2445C;font-size:12px;margin-bottom:4px">✗ ${escH(r.pilier.charAt(0).toUpperCase()+r.pilier.slice(1))}</div>
-      <div style="font-size:13px;color:var(--ardoise);line-height:1.5;margin-bottom:6px">${escH(r.texte)}</div>
-      ${r.raison?`<div style="font-size:11px;color:var(--muted);font-style:italic;margin-bottom:8px">« ${escH(r.raison)} »</div>`:''}
-      <textarea id="alt-text-${i}" rows="3" placeholder="Rédigez ici votre alternative personnalisée…" style="width:100%;font-family:'Be Vietnam Pro',sans-serif;font-size:12px;border:1px solid var(--taupe);border-radius:8px;padding:8px;resize:vertical;outline:none;color:var(--ardoise)"></textarea>
-      <button onclick="genererAlternativeIA(${i},'${escH(r.texte).replace(/'/g,"\\'")}','${escH(r.raison||'').replace(/'/g,"\\'")}','${escH(prenom)}')" style="margin-top:6px;padding:4px 12px;background:#6C47FF;color:white;border:none;border-radius:99px;font-size:11px;font-weight:600;cursor:pointer">✦ Générer avec IA</button>
-    </div>`).join('');
-
-  const modal = document.createElement('div');
-  modal.id = 'modal-alternatives';
-  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
-  modal.innerHTML = `
-    <div style="background:white;border-radius:16px;width:100%;max-width:600px;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)">
-      <div style="padding:20px 24px;border-bottom:1px solid var(--grege);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:white;z-index:1">
-        <div>
-          <div style="font-family:'Cormorant Garamond',Georgia,serif;font-size:20px;font-weight:700;color:var(--ardoise)">Alternatives pour ${escH(prenom)} ${escH(nom)}</div>
-          <div style="font-size:12px;color:var(--muted);margin-top:2px">${refuses.length} recommandation(s) refusée(s)</div>
-        </div>
-        <button onclick="document.getElementById('modal-alternatives').remove()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted)">×</button>
-      </div>
-      <div style="padding:20px 24px" id="alt-refuses-list">${refusListHtml}</div>
-      <div style="padding:16px 24px;border-top:1px solid var(--grege);display:flex;justify-content:flex-end;gap:10px;position:sticky;bottom:0;background:white">
-        <button onclick="document.getElementById('modal-alternatives').remove()" style="padding:8px 20px;background:var(--grege);color:var(--ardoise);border:none;border-radius:99px;font-size:13px;font-weight:600;cursor:pointer">Fermer</button>
-        <button onclick="envoyerAlternatives('${escH(prenom)}','${escH(nom)}','${escH(ddn)}',${refusIdx})" style="padding:8px 20px;background:var(--ardoise);color:white;border:none;border-radius:99px;font-size:13px;font-weight:600;cursor:pointer">Enregistrer les alternatives ✓</button>
-      </div>
-    </div>`;
-  document.body.appendChild(modal);
-  modal.addEventListener('click', e=>{ if(e.target===modal) modal.remove(); });
 }
 
 </script>
