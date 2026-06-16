@@ -1857,7 +1857,10 @@ function updateMemoSummary() {
 const _origMakeEditable = makeEditable;
 const makeEditableWithMemo = function() {
   _origMakeEditable();
-  setTimeout(loadMemoState, 150);
+  setTimeout(() => {
+    loadMemoState();
+    setTimeout(loadAlternatives, 300); // après que les états soient restaurés
+  }, 150);
 };
 window._makeEditableHooked = makeEditableWithMemo;
 
@@ -1868,6 +1871,82 @@ window.loadMemoState     = loadMemoState;
 window.moveMemoItem      = moveMemoItem;
 window.deleteMemoItem    = deleteMemoItem;
 window.updateMemoSummary = updateMemoSummary;
+
+// ── Chargement et affichage des alternatives proposées par Sabrina ──
+async function loadAlternatives() {
+  const cl = data?._client;
+  if (!cl?.prenom) return;
+
+  const SB_URL = 'https://bqhkdndwldwqacrrbbig.supabase.co/rest/v1';
+  const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxaGtkbmR3bGR3cWFjcnJiYmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MzAyNTIsImV4cCI6MjA5NjMwNjI1Mn0.nH2UktMAVKYwng4L3SvW5F0fluV_sObGV0f3Mk1dnOY';
+
+  const prenom = cl.prenom || '';
+  const nom    = cl.nom || '';
+
+  try {
+    const prenomQ = encodeURIComponent(prenom);
+    const nomQ    = encodeURIComponent(nom);
+    const res = await fetch(
+      `${SB_URL}/alternatives?prenom=ilike.${prenomQ}&nom=ilike.${nomQ}&order=sent_at.desc`,
+      { headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY } }
+    );
+    if (!res.ok) return;
+    const rows = await res.json();
+    if (!rows.length) return;
+
+    // Pour chaque item refusé dans la page mémo, chercher une alternative correspondante
+    document.querySelectorAll('.memo-item[data-state="non"]').forEach(item => {
+      const lbl = item.querySelector('.memo-label');
+      const texte = lbl?.textContent?.trim() || '';
+      if (!texte) return;
+
+      // Chercher la correspondance (fuzzy : les 40 premiers caractères)
+      const match = rows.find(r =>
+        (r.refus_texte || '').substring(0, 40).toLowerCase() ===
+        texte.substring(0, 40).toLowerCase()
+      );
+      if (!match || !match.alternative_text) return;
+
+      // Vérifier si le bloc alternative existe déjà
+      if (item.querySelector('.alternative-sabrina')) return;
+
+      const altBox = document.createElement('div');
+      altBox.className = 'alternative-sabrina';
+      altBox.style.cssText = 'margin-top:8px;padding:10px 12px;background:linear-gradient(135deg,rgba(196,169,125,.12),rgba(196,169,125,.06));border:1.5px solid rgba(196,169,125,.4);border-radius:8px;width:100%';
+
+      const header = document.createElement('div');
+      header.style.cssText = 'font-size:10px;font-weight:700;color:var(--ocre);letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px;display:flex;align-items:center;gap:5px';
+      header.innerHTML = '<span>✦</span><span>Alternative proposée par Sabrina</span>';
+
+      const txt = document.createElement('p');
+      txt.style.cssText = 'margin:0;font-size:12px;color:var(--ardoise);line-height:1.7;font-family:"Cormorant Garamond",Georgia,serif;font-style:italic;font-size:13px';
+      txt.textContent = match.alternative_text;
+
+      const date = match.sent_at ? new Date(match.sent_at).toLocaleDateString('fr-FR', { day:'numeric', month:'long' }) : '';
+      if (date) {
+        const dateLbl = document.createElement('div');
+        dateLbl.style.cssText = 'margin-top:5px;font-size:10px;color:var(--taupe)';
+        dateLbl.textContent = 'Reçu le ' + date;
+        altBox.appendChild(header);
+        altBox.appendChild(txt);
+        altBox.appendChild(dateLbl);
+      } else {
+        altBox.appendChild(header);
+        altBox.appendChild(txt);
+      }
+
+      // Insérer après la reason-box si elle existe, sinon à la fin de l'item
+      const reasonBox = item.querySelector('.memo-reason-box');
+      if (reasonBox) reasonBox.after(altBox);
+      else item.appendChild(altBox);
+    });
+
+    console.log('[PHV] Alternatives chargées :', rows.length);
+  } catch(e) {
+    console.warn('[PHV] Erreur chargement alternatives :', e.message);
+  }
+}
+window.loadAlternatives = loadAlternatives;
 
 // ── Envoi des retours avec feedback visuel ──
 async function envoyerRetours(btn) {
