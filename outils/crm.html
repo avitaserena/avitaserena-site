@@ -321,6 +321,7 @@ function saveL(d){localStorage.setItem(LKEY,JSON.stringify(d))}
 
 let db={clients:[],factures:[],settings:null,nextF:1};
 let taches=[],rdvs=[],emailCtx=null,curTab='urg',curSearch='',curFilter='all';
+let memoAlerts=[];
 
 // COLORS palette - vibrant Monday-style
 const COLORS=['#6C47FF','#FF4C8B','#00C875','#0096FF','#FF7B2C','#00C4D4','#E2445C','#FFCB00'];
@@ -332,7 +333,7 @@ async function init(){
   const loc=loadL();
   db.settings=loc.settings||defSettings();
   db.nextF=loc.nextF||1;
-  await Promise.all([loadClients(),loadFactures(),loadTaches(),loadRdvs()]);
+  await Promise.all([loadClients(),loadFactures(),loadTaches(),loadRdvs(),loadMemoAlerts()]);
   renderDashboard();
 }
 
@@ -360,6 +361,58 @@ async function loadFactures(){
 }
 async function loadTaches(){try{taches=await sb("taches?statut=neq.done&statut=neq.archive&order=echeance.asc.nullslast");}catch(e){taches=[];}}
 async function loadRdvs(){try{rdvs=await sb('rendez_vous?order=date.desc');}catch(e){rdvs=[];}}
+
+async function loadMemoAlerts(){
+  try{
+    // Récupérer le dernier mémo par cliente (triés par date desc)
+    const rows = await sb('phv_memos?order=created_at.desc&limit=200');
+    // Garder seulement le plus récent par client_key
+    const seen = new Set();
+    const latest = [];
+    for(const r of rows){
+      if(!seen.has(r.client_key)){
+        seen.add(r.client_key);
+        latest.push(r);
+      }
+    }
+    // Ne garder que ceux qui ont au moins 1 refus
+    memoAlerts = latest.filter(r => {
+      try{
+        const stats = typeof r.stats === 'string' ? JSON.parse(r.stats) : r.stats;
+        return stats && stats.non > 0;
+      }catch(e){ return false; }
+    }).map(r => {
+      const stats = typeof r.stats === 'string' ? JSON.parse(r.stats) : r.stats;
+      const details = typeof r.details === 'string' ? JSON.parse(r.details) : r.details;
+      // Extraire les items refusés avec raison
+      const refuses = [];
+      if(details){
+        Object.entries(details).forEach(([pilier, items]) => {
+          if(!Array.isArray(items)) return;
+          items.filter(i => i.etat === 'non').forEach(i => {
+            refuses.push({ pilier, texte: i.texte, raison: i.raison || '' });
+          });
+        });
+      }
+      return {
+        client_key: r.client_key,
+        prenom: r.prenom,
+        nom: r.nom,
+        ddn: r.ddn,
+        stats,
+        refuses,
+        created_at: r.created_at
+      };
+    });
+    // Mettre à jour le badge
+    const badge = document.getElementById('tc-feed');
+    if(badge) badge.textContent = memoAlerts.length;
+    console.log('[CRM] Mémo alertes refus:', memoAlerts.length);
+  }catch(e){
+    console.error('[CRM] Erreur loadMemoAlerts:', e.message);
+    memoAlerts = [];
+  }
+}
 
 function mapC(r){return{id:r.id,prenom:r.prenom,nom:r.nom,email:r.email,tel:r.tel,age:r.age,ddn:r.ddn,motifs:r.motifs,axes:r.axes,notes:r.notes,programme:r.programme,dureeTtt:r.duree_ttt,date1:r.date1,dateProtocole:r.date_protocole,timeline:r.timeline||[],workflowDone:r.workflow_done||{},createdAt:r.created_at};}
 
@@ -445,7 +498,7 @@ function renderDashboard(){
   const sem=allAl.filter(a=>!a.alert.isOvd&&a.alert.isSoon);
   document.getElementById('tc-urg').textContent=urg.length;
   document.getElementById('tc-sem').textContent=sem.length;
-  document.getElementById('tc-feed').textContent=0;
+  document.getElementById('tc-feed').textContent=memoAlerts.length;
   renderAlerts(curTab,urg,sem);
   renderPipeline(actives);
   renderCA();
@@ -463,7 +516,44 @@ function switchTab(tab,el){
 
 function renderAlerts(tab,urg,sem){
   const el=document.getElementById('alerts-box');if(!el)return;
-  if(tab==='feed'){el.innerHTML='<div class="empty"><div class="eicon">📬</div><div class="etitle">Aucun retour</div><div class="esub">Phase 2 à venir.</div></div>';return;}
+  if(tab==='feed'){
+    if(!memoAlerts.length){
+      el.innerHTML='<div class="empty"><div class="eicon">✅</div><div class="etitle">Aucun refus signalé</div><div class="esub">Vos clientes n\'ont pas encore signalé de difficultés.</div></div>';
+    } else {
+      el.innerHTML = memoAlerts.map(m => {
+        const col = avColor(m.prenom);
+        const init = (m.prenom||'?')[0].toUpperCase();
+        const date = m.created_at ? new Date(m.created_at).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}) : '';
+        const nbRefus = m.refuses.length;
+        const nbOk = m.stats?.ok || 0;
+        const refusHtml = m.refuses.slice(0,3).map(r =>
+          `<div style="margin:4px 0 0;padding:6px 10px;background:rgba(184,50,50,.06);border-left:3px solid var(--rouge);border-radius:0 6px 6px 0;font-size:11px;color:var(--ardoise)">
+            <span style="font-weight:600;color:var(--rouge)">✗</span> ${escH(r.texte.substring(0,80))}${r.texte.length>80?'…':''}
+            ${r.raison?`<div style="color:var(--muted);margin-top:2px;font-style:italic">« ${escH(r.raison)} »</div>`:''}
+          </div>`
+        ).join('');
+        const plusHtml = m.refuses.length > 3 ? `<div style="font-size:10px;color:var(--muted);margin-top:4px">+ ${m.refuses.length-3} autre(s) refus</div>` : '';
+        // Trouver la fiche cliente correspondante
+        const client = db.clients.find(c =>
+          (c.prenom||'').toLowerCase() === (m.prenom||'').toLowerCase() &&
+          (c.nom||'').toLowerCase() === (m.nom||'').toLowerCase()
+        );
+        const ficheBtn = client ? `<button onclick="openFiche('${client.id}')" style="margin-top:8px;padding:5px 12px;background:var(--ardoise);color:white;border:none;border-radius:99px;font-size:11px;font-weight:600;cursor:pointer">Voir la fiche →</button>` : '';
+        return `<div class="al-item urg" style="flex-direction:column;align-items:flex-start;padding:12px 14px">
+          <div style="display:flex;align-items:center;gap:10px;width:100%">
+            <div class="al-av" style="background:${col}">${init}</div>
+            <div style="flex:1">
+              <div class="al-name">${escH(m.prenom)} ${escH(m.nom||'')}</div>
+              <div class="al-meta">${date} · <span style="color:var(--rouge);font-weight:600">${nbRefus} refus</span>${nbOk>0?` · <span style="color:var(--vert)">${nbOk} acceptés</span>`:''}</div>
+            </div>
+            <span style="font-size:18px">🔄</span>
+          </div>
+          <div style="width:100%;margin-top:8px">${refusHtml}${plusHtml}${ficheBtn}</div>
+        </div>`;
+      }).join('');
+    }
+    return;
+  }
   const items=tab==='urg'?urg:sem;
   if(!items.length){el.innerHTML='<div class="empty"><div class="eicon">✅</div><div class="etitle">Tout est à jour</div></div>';return;}
   el.innerHTML=items.map(({client:c,alert:a})=>{
@@ -687,7 +777,52 @@ function renderFiche(c){
             "</div></div>" +
         "</div></div></div>" +
       "<div class='card'><div class='card-head'><div class='card-title'><div class='card-dot' style='background:#FF7B2C'></div>Timeline</div><button class='btn btn-ghost btn-xs' onclick=\"addTLEvent('"+c.id+"')\">+ Événement</button></div><div class='card-body'>"+tlH+"</div></div>" +
+      buildMemoBlock(c) +
     "</div></div>";
+}
+
+function buildMemoBlock(c){
+  // Trouver les mémos de cette cliente (matching prénom + nom)
+  const clientMemos = memoAlerts.filter(m =>
+    (m.prenom||'').toLowerCase() === (c.prenom||'').toLowerCase() &&
+    (m.nom||'').toLowerCase() === (c.nom||'').toLowerCase()
+  );
+  if(!clientMemos.length) return '';
+  const m = clientMemos[0]; // le plus récent
+  const date = m.created_at ? new Date(m.created_at).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}) : '';
+  const nbRefus = m.refuses.length;
+  const nbOk = m.stats?.ok || 0;
+  const nbTotal = m.stats?.total || 0;
+
+  const refusHtml = m.refuses.map(r =>
+    `<div style="margin:4px 0;padding:8px 10px;background:rgba(184,50,50,.06);border-left:3px solid #E2445C;border-radius:0 6px 6px 0;font-size:12px">
+      <div style="font-weight:600;color:#E2445C">✗ ${escH(r.pilier.charAt(0).toUpperCase()+r.pilier.slice(1))}</div>
+      <div style="color:var(--ink);margin-top:2px">${escH(r.texte)}</div>
+      ${r.raison ? `<div style="color:var(--muted);margin-top:3px;font-style:italic">Raison : « ${escH(r.raison)} »</div>` : ''}
+    </div>`
+  ).join('');
+
+  const okSummary = nbOk > 0 ? `<div style="margin-top:6px;padding:6px 10px;background:rgba(0,200,117,.08);border-left:3px solid #00C875;border-radius:0 6px 6px 0;font-size:12px;color:#1a6e3c"><strong>${nbOk} recommandation(s) acceptée(s)</strong> ✓</div>` : '';
+
+  return `<div class='card'><div class='card-head'><div class='card-title'><div class='card-dot' style='background:#6C47FF'></div>Observance PHV</div><span style='font-size:11px;color:var(--muted)'>${date}</span></div>
+    <div class='card-body'>
+      <div style="display:flex;gap:16px;margin-bottom:12px">
+        <div style="text-align:center;flex:1;padding:8px;background:rgba(184,50,50,.06);border-radius:8px">
+          <div style="font-size:22px;font-weight:800;color:#E2445C">${nbRefus}</div>
+          <div style="font-size:11px;color:var(--muted)">Refusé(s)</div>
+        </div>
+        <div style="text-align:center;flex:1;padding:8px;background:rgba(0,200,117,.06);border-radius:8px">
+          <div style="font-size:22px;font-weight:800;color:#00C875">${nbOk}</div>
+          <div style="font-size:11px;color:var(--muted)">Accepté(s)</div>
+        </div>
+        <div style="text-align:center;flex:1;padding:8px;background:var(--off);border-radius:8px">
+          <div style="font-size:22px;font-weight:800;color:var(--ink)">${nbTotal}</div>
+          <div style="font-size:11px;color:var(--muted)">Total</div>
+        </div>
+      </div>
+      ${refusHtml}
+      ${okSummary}
+    </div></div>`;
 }
 
 async function toggleWF(id,key){
