@@ -1064,7 +1064,6 @@ document.addEventListener('DOMContentLoaded', init);
 function ouvrirPHVCliente(clientId){
   const c = db.clients.find(x=>x.id===clientId);
   if(!c){ toast('Cliente introuvable','err'); return; }
-  // Charger les données de la cliente dans avita_session pour que phv-print puisse les lire
   const session = {
     prenom: c.prenom||'', nom: c.nom||'', ddn: c.ddn||'',
     motifs: c.motifs||'', axes: c.axes||''
@@ -1073,8 +1072,186 @@ function ouvrirPHVCliente(clientId){
   window.open('phv-print.html', '_blank');
 }
 
+// ── Clé API Anthropic (saisie une fois par session) ──
+function getAnthropicKey(){
+  let k = sessionStorage.getItem('avs_akey') || '';
+  if(!k || !k.startsWith('sk-ant')){
+    k = prompt('Clé API Anthropic (sk-ant-…) :') || '';
+    if(k.startsWith('sk-ant')) sessionStorage.setItem('avs_akey', k);
+  }
+  return k;
+}
+
 // ── Modale "Proposer une alternative" ──
 function ouvrirAlternativesModal(prenomEnc, nomEnc, ddnEnc, refusIdx){
+  const prenom = decodeURIComponent(prenomEnc);
+  const nom    = decodeURIComponent(nomEnc);
+  const ddn    = decodeURIComponent(ddnEnc);
+
+  const m = memoAlerts.find(x =>
+    (x.prenom||'').toLowerCase()===(prenom||'').toLowerCase() &&
+    (x.nom||'').toLowerCase()===(nom||'').toLowerCase()
+  );
+  if(!m || !m.refuses.length){ toast('Aucun refus trouvé','err'); return; }
+  const refuses = refusIdx >= 0 ? [m.refuses[refusIdx]] : m.refuses;
+
+  // Trouver l'email de la cliente
+  const client = db.clients.find(c =>
+    (c.prenom||'').toLowerCase()===(prenom||'').toLowerCase() &&
+    (c.nom||'').toLowerCase()===(nom||'').toLowerCase()
+  );
+  const email = client?.email || '';
+
+  const existing = document.getElementById('modal-alternatives');
+  if(existing) existing.remove();
+
+  const refusListHtml = refuses.map((r,i)=>`
+    <div style="margin-bottom:20px;padding:14px;background:rgba(184,50,50,.04);border:1.5px solid rgba(184,50,50,.15);border-radius:12px">
+      <div style="font-weight:700;color:#E2445C;font-size:12px;margin-bottom:4px">✗ ${escH((r.pilier||'').charAt(0).toUpperCase()+(r.pilier||'').slice(1))}</div>
+      <div style="font-size:13px;color:var(--ardoise);line-height:1.5;margin-bottom:6px">${escH(r.texte||'')}</div>
+      ${r.raison?`<div style="font-size:11px;color:var(--muted);font-style:italic;margin-bottom:10px;padding:6px 10px;background:rgba(0,0,0,.04);border-radius:6px">« ${escH(r.raison)} »</div>`:''}
+      <div style="margin-bottom:8px">
+        <label style="font-size:11px;font-weight:700;color:var(--ardoise);display:block;margin-bottom:4px">Votre alternative :</label>
+        <textarea id="alt-text-${i}" rows="4" placeholder="Rédigez ou générez une alternative…" style="width:100%;box-sizing:border-box;font-family:'Be Vietnam Pro',sans-serif;font-size:12px;border:1.5px solid var(--taupe);border-radius:8px;padding:10px;resize:vertical;outline:none;color:var(--ardoise);background:white;line-height:1.6"></textarea>
+      </div>
+      <button id="btn-gen-${i}" onclick="genererAlternativeIA(${i},${JSON.stringify(r.texte||'')},${JSON.stringify(r.raison||'')},${JSON.stringify(prenom)})" style="padding:6px 14px;background:#6C47FF;color:white;border:none;border-radius:99px;font-size:12px;font-weight:600;cursor:pointer;transition:opacity .2s">✦ Générer avec l'IA</button>
+    </div>`).join('');
+
+  const modal = document.createElement('div');
+  modal.id = 'modal-alternatives';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.innerHTML = `
+    <div style="background:white;border-radius:16px;width:100%;max-width:620px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.25)">
+      <div style="padding:20px 24px;border-bottom:1px solid var(--grege);display:flex;align-items:flex-start;justify-content:space-between;flex-shrink:0">
+        <div>
+          <div style="font-family:'Cormorant Garamond',Georgia,serif;font-size:20px;font-weight:700;color:var(--ardoise)">Alternatives pour ${escH(prenom)} ${escH(nom)}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:3px">${refuses.length} recommandation(s) refusée(s) · ${email?'📧 '+escH(email):'email non renseigné'}</div>
+        </div>
+        <button onclick="document.getElementById('modal-alternatives').remove()" style="background:none;border:none;font-size:24px;cursor:pointer;color:var(--muted);line-height:1;padding:0 0 0 16px">×</button>
+      </div>
+      <div style="padding:20px 24px;overflow-y:auto;flex:1" id="alt-refuses-list">${refusListHtml}</div>
+      <div style="padding:16px 24px;border-top:1px solid var(--grege);display:flex;justify-content:flex-end;gap:10px;flex-shrink:0;background:white;border-radius:0 0 16px 16px">
+        <button onclick="document.getElementById('modal-alternatives').remove()" style="padding:9px 20px;background:var(--grege);color:var(--ardoise);border:none;border-radius:99px;font-size:13px;font-weight:600;cursor:pointer">Annuler</button>
+        <button onclick="sauvegarderAlternatives(${JSON.stringify(prenom)},${JSON.stringify(nom)},${JSON.stringify(ddn)},${JSON.stringify(email)},${refusIdx},false)" style="padding:9px 20px;background:var(--ardoise);color:white;border:none;border-radius:99px;font-size:13px;font-weight:600;cursor:pointer">💾 Enregistrer</button>
+        ${email ? `<button onclick="sauvegarderAlternatives(${JSON.stringify(prenom)},${JSON.stringify(nom)},${JSON.stringify(ddn)},${JSON.stringify(email)},${refusIdx},true)" style="padding:9px 20px;background:var(--ocre);color:white;border:none;border-radius:99px;font-size:13px;font-weight:600;cursor:pointer">✉ Enregistrer & envoyer par email</button>` : ''}
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e=>{ if(e.target===modal) modal.remove(); });
+}
+
+async function genererAlternativeIA(idx, texteRefus, raison, prenom){
+  const ta  = document.getElementById('alt-text-'+idx);
+  const btn = document.getElementById('btn-gen-'+idx);
+  if(!ta) return;
+
+  const apiKey = getAnthropicKey();
+  if(!apiKey){ toast('Clé API requise','err'); return; }
+
+  ta.value = ''; ta.placeholder = '✦ Génération en cours…'; ta.disabled = true;
+  if(btn){ btn.disabled = true; btn.textContent = '⏳ En cours…'; }
+
+  try{
+    const prompt = `Tu es Sabrina Castelli, naturopathe spécialisée en santé digestive et équilibre hormonal.
+
+Une cliente a refusé cette recommandation de son protocole personnalisé :
+"${texteRefus}"
+${raison ? `\nRaison donnée par la cliente : "${raison}"` : ''}
+
+Propose une alternative concrète, bienveillante et réaliste en 2-3 phrases maximum. Tu tutvoies jamais la cliente — utilise toujours le vouvoiement. Ne commence pas par "Je vous propose" mais directement par la suggestion. Tiens compte de la raison si elle est donnée.`;
+
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 400,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    const data = await res.json();
+    if(data.error){ throw new Error(data.error.message); }
+    ta.value = data.content?.[0]?.text?.trim() || '';
+    ta.placeholder = 'Rédigez ou générez une alternative…';
+  }catch(e){
+    toast('Erreur IA : '+e.message, 'err');
+    ta.placeholder = 'Rédigez ou générez une alternative…';
+  }
+  ta.disabled = false;
+  if(btn){ btn.disabled = false; btn.textContent = '✦ Regénérer'; }
+}
+
+async function sauvegarderAlternatives(prenom, nom, ddn, email, refusIdx, envoyer){
+  const m = memoAlerts.find(x =>
+    (x.prenom||'').toLowerCase()===(prenom||'').toLowerCase() &&
+    (x.nom||'').toLowerCase()===(nom||'').toLowerCase()
+  );
+  if(!m){ toast('Mémo introuvable','err'); return; }
+  const refuses = refusIdx >= 0 ? [m.refuses[refusIdx]] : m.refuses;
+
+  const SBURL = 'https://bqhkdndwldwqacrrbbig.supabase.co/rest/v1/alternatives';
+  const KEY   = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxaGtkbmR3bGR3cWFjcnJiYmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MzAyNTIsImV4cCI6MjA5NjMwNjI1Mn0.nH2UktMAVKYwng4L3SvW5F0fluV_sObGV0f3Mk1dnOY';
+
+  const clientId = `${(nom||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'-')}-${(prenom||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'-')}-${(ddn||'').replace(/-/g,'')}`;
+
+  let saved = 0;
+  const altTextes = [];
+  for(let i=0; i<refuses.length; i++){
+    const ta = document.getElementById('alt-text-'+i);
+    const altText = ta?.value?.trim();
+    if(!altText) continue;
+    altTextes.push({ refus: refuses[i].texte, alt: altText });
+    await fetch(SBURL, {
+      method:'POST',
+      headers:{'apikey':KEY,'Authorization':'Bearer '+KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
+      body: JSON.stringify({
+        client_id: clientId, prenom, nom, ddn,
+        refus_texte: refuses[i].texte,
+        raison: refuses[i].raison || '',
+        alternative_text: altText,
+        sent_at: envoyer ? new Date().toISOString() : null
+      })
+    });
+    saved++;
+  }
+
+  if(!saved){ toast('Aucune alternative saisie','warn'); return; }
+
+  if(envoyer && email && altTextes.length){
+    // Envoyer via Brevo transactionnel
+    try{
+      const corps = altTextes.map(a =>
+        `Recommandation que vous avez signalée comme difficile :\n"${a.refus}"\n\nAlternative proposée :\n${a.alt}`
+      ).join('\n\n---\n\n');
+
+      await fetch('https://api.brevo.com/v3/smtp/email', {
+        method:'POST',
+        headers:{
+          'Content-Type':'application/json',
+          'api-key': db.settings?.brevoKey || prompt('Clé API Brevo :') || ''
+        },
+        body: JSON.stringify({
+          sender:{ name:'Sabrina · A Vita Serena', email:'sabrina@avitaserena.com' },
+          to:[{ email, name: prenom+' '+nom }],
+          subject: `${prenom}, voici des alternatives à votre protocole`,
+          textContent: `Bonjour ${prenom},\n\nSuite à vos retours sur votre Protocole d'Hygiène Vitale, voici des adaptations personnalisées :\n\n${corps}\n\nN'hésitez pas à me contacter si vous avez des questions.\n\nAvec bienveillance,\nSabrina Castelli\nA Vita Serena`
+        })
+      });
+      toast(`${saved} alternative(s) envoyée(s) à ${email} ✓`, 'ok');
+    }catch(e){
+      toast('Alternatives enregistrées mais email échoué : '+e.message, 'warn');
+    }
+  } else {
+    toast(`${saved} alternative(s) enregistrée(s) ✓`, 'ok');
+  }
+
+  document.getElementById('modal-alternatives')?.remove();
+}
   const prenom = decodeURIComponent(prenomEnc);
   const nom = decodeURIComponent(nomEnc);
   const ddn = decodeURIComponent(ddnEnc);
@@ -1121,66 +1298,6 @@ function ouvrirAlternativesModal(prenomEnc, nomEnc, ddnEnc, refusIdx){
   modal.addEventListener('click', e=>{ if(e.target===modal) modal.remove(); });
 }
 
-async function genererAlternativeIA(idx, texteRefus, raison, prenom){
-  const ta = document.getElementById('alt-text-'+idx);
-  if(!ta) return;
-  ta.value = '✦ Génération en cours…';
-  ta.disabled = true;
-  try{
-    const r = await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({
-        model:'claude-sonnet-4-6',
-        max_tokens:400,
-        messages:[{role:'user',content:`Tu es Sabrina Castelli, naturopathe. Une cliente a refusé cette recommandation de son protocole :
-
-"${texteRefus}"
-
-${raison ? `Raison donnée : "${raison}"` : ''}
-
-Propose une alternative concrète, bienveillante et réaliste, en 2-3 phrases maximum, en vouvoyant la cliente. Ne commence pas par "Je vous propose" mais directement par l'alternative.`}]
-      })
-    });
-    const data = await r.json();
-    ta.value = data.content?.[0]?.text || '';
-  }catch(e){
-    ta.value = '';
-    toast('Erreur génération IA : '+e.message,'err');
-  }
-  ta.disabled = false;
-}
-
-async function envoyerAlternatives(prenom, nom, ddn, refusIdx){
-  const m = memoAlerts.find(x =>
-    (x.prenom||'').toLowerCase()===(prenom||'').toLowerCase() &&
-    (x.nom||'').toLowerCase()===(nom||'').toLowerCase()
-  );
-  if(!m) return;
-  const refuses = refusIdx >= 0 ? [m.refuses[refusIdx]] : m.refuses;
-  const URL = 'https://bqhkdndwldwqacrrbbig.supabase.co/rest/v1/alternatives';
-  const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxaGtkbmR3bGR3cWFjcnJiYmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MzAyNTIsImV4cCI6MjA5NjMwNjI1Mn0.nH2UktMAVKYwng4L3SvW5F0fluV_sObGV0f3Mk1dnOY';
-  const clientId = `${nom.toLowerCase().replace(/\s+/g,'-')}-${prenom.toLowerCase().replace(/\s+/g,'-')}-${(ddn||'').replace(/-/g,'')}`;
-  let saved = 0;
-  for(let i=0; i<refuses.length; i++){
-    const ta = document.getElementById('alt-text-'+i);
-    const altText = ta?.value?.trim();
-    if(!altText) continue;
-    await fetch(URL, {
-      method:'POST',
-      headers:{'apikey':KEY,'Authorization':'Bearer '+KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},
-      body: JSON.stringify({
-        client_id: clientId, prenom, nom, ddn,
-        refus_texte: refuses[i].texte,
-        alternative_text: altText,
-        sent_at: new Date().toISOString()
-      })
-    });
-    saved++;
-  }
-  toast(saved+' alternative(s) enregistrée(s) ✓','ok');
-  document.getElementById('modal-alternatives')?.remove();
-}
 </script>
 </head>
 <body>
