@@ -824,7 +824,7 @@ function renderFiche(c){
           "<div class='efoot'><span style='font-size:12px;color:var(--muted)'>Avita Serena</span>" +
             "<div style='display:flex;gap:7px'>" +
               "<button class='btn btn-ghost btn-sm' onclick=\"logEmail('"+c.id+"')\">Logger</button>" +
-              "<button class='btn btn-primary btn-sm' onclick=\"sendBrevoFiche('"+c.id+"')\">Ouvrir Brevo ↗</button>" +
+              "<button class='btn btn-primary btn-sm' onclick=\"sendBrevoFiche('"+c.id+"')\">Envoyer ↗</button>" +
             "</div></div>" +
         "</div></div></div>" +
       "<div class='card'><div class='card-head'><div class='card-title'><div class='card-dot' style='background:#FF7B2C'></div>Timeline</div><button class='btn btn-ghost btn-xs' onclick=\"addTLEvent('"+c.id+"')\">+ Événement</button></div><div class='card-body'>"+tlH+"</div></div>" +
@@ -920,7 +920,42 @@ function openEmail(id,key){
 function loadTpl(key){if(!emailCtx)return;const t=tpls(emailCtx);if(t[key]){document.getElementById('em-sub').value=t[key].sub;document.getElementById('em-body').value=t[key].body;}}
 function loadFicheTpl(key,id){const c=db.clients.find(x=>x.id===id);if(!c)return;const t=tpls(c);if(t[key]){document.getElementById('fe-sub').value=t[key].sub;document.getElementById('fe-body').value=t[key].body;}}
 async function logEmail(id){const c=db.clients.find(x=>x.id===id);if(!c)return;const sub=document.getElementById('fe-sub')?.value||'Email';if(!c.timeline)c.timeline=[];c.timeline.push({type:'suivi',title:'✉ '+sub,icon:'✉',date:today()});await saveClient(c);renderFiche(c);toast('Loggé ✓','ok');}
-function sendBrevoFiche(id){logEmail(id);window.open('https://app.brevo.com','_blank');}
+async function sendBrevoFiche(id){
+  const c = db.clients.find(x=>x.id===id);
+  if(!c){ toast('Cliente introuvable','err'); return; }
+  const to  = document.getElementById('fe-to')?.value?.trim();
+  const sub = document.getElementById('fe-sub')?.value?.trim();
+  const body= document.getElementById('fe-body')?.value?.trim();
+  if(!to || !sub || !body){ toast('Destinataire, objet et message requis','warn'); return; }
+
+  const brevoKey = sessionStorage.getItem('avs_brevo') || '';
+  let apiKeyBrevo = brevoKey;
+  if(!apiKeyBrevo){
+    apiKeyBrevo = prompt('Clé API Brevo (xkeysib-…) :') || '';
+    if(apiKeyBrevo) sessionStorage.setItem('avs_brevo', apiKeyBrevo);
+  }
+  if(!apiKeyBrevo){ toast('Clé Brevo requise','warn'); return; }
+
+  try{
+    const res = await fetch('https://api.brevo.com/v3/smtp/email',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','api-key':apiKeyBrevo},
+      body: JSON.stringify({
+        sender:{ name:'Sabrina · A Vita Serena', email:'sabrina@avitaserena.com' },
+        to:[{ email: to, name: c.prenom+' '+c.nom }],
+        subject: sub,
+        textContent: body
+      })
+    });
+    if(!res.ok){ const e=await res.json(); throw new Error(e.message||res.status); }
+    await logEmail(id);
+    toast('Email envoyé à '+to+' ✓','ok');
+    document.getElementById('fe-sub').value='';
+    document.getElementById('fe-body').value='';
+  }catch(e){
+    toast('Erreur envoi : '+e.message,'err');
+  }
+}
 function openBrevo(){if(emailCtx)logEmail(emailCtx.id);window.open('https://app.brevo.com','_blank');closeM('m-email');}
 async function addTLEvent(id){const t=prompt("Titre de l\'événement :");if(!t)return;const c=db.clients.find(x=>x.id===id);if(!c)return;if(!c.timeline)c.timeline=[];c.timeline.push({type:'suivi',title:t,icon:'·',date:today()});await saveClient(c);renderFiche(c);toast('Événement ajouté ✓','ok');}
 
@@ -1094,52 +1129,126 @@ function ouvrirAlternativesModal(prenomEnc, nomEnc, ddnEnc, refusIdx){
   );
   if(!m || !m.refuses.length){ toast('Aucun refus trouvé','err'); return; }
   const refuses = refusIdx >= 0 ? [m.refuses[refusIdx]] : m.refuses;
-
-  // Trouver l'email de la cliente
-  const client = db.clients.find(c =>
+  const client  = db.clients.find(c =>
     (c.prenom||'').toLowerCase()===(prenom||'').toLowerCase() &&
     (c.nom||'').toLowerCase()===(nom||'').toLowerCase()
   );
   const email = client?.email || '';
 
-  const existing = document.getElementById('modal-alternatives');
-  if(existing) existing.remove();
+  document.getElementById('modal-alternatives')?.remove();
 
-  const refusListHtml = refuses.map((r,i)=>`
-    <div style="margin-bottom:20px;padding:14px;background:rgba(184,50,50,.04);border:1.5px solid rgba(184,50,50,.15);border-radius:12px">
-      <div style="font-weight:700;color:#E2445C;font-size:12px;margin-bottom:4px">✗ ${escH((r.pilier||'').charAt(0).toUpperCase()+(r.pilier||'').slice(1))}</div>
-      <div style="font-size:13px;color:var(--ardoise);line-height:1.5;margin-bottom:6px">${escH(r.texte||'')}</div>
-      ${r.raison?`<div style="font-size:11px;color:var(--muted);font-style:italic;margin-bottom:10px;padding:6px 10px;background:rgba(0,0,0,.04);border-radius:6px">« ${escH(r.raison)} »</div>`:''}
-      <div style="margin-bottom:8px">
-        <label style="font-size:11px;font-weight:700;color:var(--ardoise);display:block;margin-bottom:4px">Votre alternative :</label>
-        <textarea id="alt-text-${i}" rows="4" placeholder="Rédigez ou générez une alternative…" style="width:100%;box-sizing:border-box;font-family:'Be Vietnam Pro',sans-serif;font-size:12px;border:1.5px solid var(--taupe);border-radius:8px;padding:10px;resize:vertical;outline:none;color:var(--ardoise);background:white;line-height:1.6"></textarea>
-      </div>
-      <button id="btn-gen-${i}" onclick="genererAlternativeIA(${i},${JSON.stringify(r.texte||'')},${JSON.stringify(r.raison||'')},${JSON.stringify(prenom)})" style="padding:6px 14px;background:#6C47FF;color:white;border:none;border-radius:99px;font-size:12px;font-weight:600;cursor:pointer;transition:opacity .2s">✦ Générer avec l'IA</button>
-    </div>`).join('');
+  // Construire les blocs refus sans template literals imbriqués
+  const wrap = document.createElement('div');
+  refuses.forEach((r, i) => {
+    const bloc = document.createElement('div');
+    bloc.style.cssText = 'margin-bottom:20px;padding:14px;background:rgba(184,50,50,.04);border:1.5px solid rgba(184,50,50,.15);border-radius:12px';
 
+    // Pilier
+    const pilierDiv = document.createElement('div');
+    pilierDiv.style.cssText = 'font-weight:700;color:#E2445C;font-size:12px;margin-bottom:4px';
+    pilierDiv.textContent = '✗ ' + (r.pilier||'').charAt(0).toUpperCase() + (r.pilier||'').slice(1);
+    bloc.appendChild(pilierDiv);
+
+    // Texte refus
+    const texteDiv = document.createElement('div');
+    texteDiv.style.cssText = 'font-size:13px;color:var(--ardoise);line-height:1.5;margin-bottom:6px';
+    texteDiv.textContent = r.texte || '';
+    bloc.appendChild(texteDiv);
+
+    // Raison si présente
+    if(r.raison){
+      const raisonDiv = document.createElement('div');
+      raisonDiv.style.cssText = 'font-size:11px;color:var(--muted);font-style:italic;margin-bottom:10px;padding:6px 10px;background:rgba(0,0,0,.04);border-radius:6px';
+      raisonDiv.textContent = '« ' + r.raison + ' »';
+      bloc.appendChild(raisonDiv);
+    }
+
+    // Label
+    const label = document.createElement('label');
+    label.style.cssText = 'font-size:11px;font-weight:700;color:var(--ardoise);display:block;margin-bottom:4px';
+    label.textContent = 'Votre alternative :';
+    bloc.appendChild(label);
+
+    // Textarea
+    const ta = document.createElement('textarea');
+    ta.id = 'alt-text-' + i;
+    ta.rows = 4;
+    ta.placeholder = 'Rédigez ou générez une alternative…';
+    ta.style.cssText = 'width:100%;box-sizing:border-box;font-family:\'Be Vietnam Pro\',sans-serif;font-size:12px;border:1.5px solid var(--taupe);border-radius:8px;padding:10px;resize:vertical;outline:none;color:var(--ardoise);background:white;line-height:1.6;margin-bottom:8px';
+    bloc.appendChild(ta);
+
+    // Bouton IA
+    const btnIA = document.createElement('button');
+    btnIA.id = 'btn-gen-' + i;
+    btnIA.style.cssText = 'padding:6px 14px;background:#6C47FF;color:white;border:none;border-radius:99px;font-size:12px;font-weight:600;cursor:pointer';
+    btnIA.textContent = '✦ Générer avec l\'IA';
+    btnIA.onclick = () => genererAlternativeIA(i, r.texte||'', r.raison||'', prenom);
+    bloc.appendChild(btnIA);
+
+    wrap.appendChild(bloc);
+  });
+
+  // Modal container
   const modal = document.createElement('div');
   modal.id = 'modal-alternatives';
   modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
-  modal.innerHTML = `
-    <div style="background:white;border-radius:16px;width:100%;max-width:620px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.25)">
-      <div style="padding:20px 24px;border-bottom:1px solid var(--grege);display:flex;align-items:flex-start;justify-content:space-between;flex-shrink:0">
-        <div>
-          <div style="font-family:'Cormorant Garamond',Georgia,serif;font-size:20px;font-weight:700;color:var(--ardoise)">Alternatives pour ${escH(prenom)} ${escH(nom)}</div>
-          <div style="font-size:12px;color:var(--muted);margin-top:3px">${refuses.length} recommandation(s) refusée(s) · ${email?'📧 '+escH(email):'email non renseigné'}</div>
-        </div>
-        <button onclick="document.getElementById('modal-alternatives').remove()" style="background:none;border:none;font-size:24px;cursor:pointer;color:var(--muted);line-height:1;padding:0 0 0 16px">×</button>
-      </div>
-      <div style="padding:20px 24px;overflow-y:auto;flex:1" id="alt-refuses-list">${refusListHtml}</div>
-      <div style="padding:16px 24px;border-top:1px solid var(--grege);display:flex;justify-content:flex-end;gap:10px;flex-shrink:0;background:white;border-radius:0 0 16px 16px">
-        <button onclick="document.getElementById('modal-alternatives').remove()" style="padding:9px 20px;background:var(--grege);color:var(--ardoise);border:none;border-radius:99px;font-size:13px;font-weight:600;cursor:pointer">Annuler</button>
-        <button onclick="sauvegarderAlternatives(${JSON.stringify(prenom)},${JSON.stringify(nom)},${JSON.stringify(ddn)},${JSON.stringify(email)},${refusIdx},false)" style="padding:9px 20px;background:var(--ardoise);color:white;border:none;border-radius:99px;font-size:13px;font-weight:600;cursor:pointer">💾 Enregistrer</button>
-        ${email ? `<button onclick="sauvegarderAlternatives(${JSON.stringify(prenom)},${JSON.stringify(nom)},${JSON.stringify(ddn)},${JSON.stringify(email)},${refusIdx},true)" style="padding:9px 20px;background:var(--ocre);color:white;border:none;border-radius:99px;font-size:13px;font-weight:600;cursor:pointer">✉ Enregistrer & envoyer par email</button>` : ''}
-      </div>
-    </div>`;
-  document.body.appendChild(modal);
-  modal.addEventListener('click', e=>{ if(e.target===modal) modal.remove(); });
-}
 
+  // Inner
+  const inner = document.createElement('div');
+  inner.style.cssText = 'background:white;border-radius:16px;width:100%;max-width:620px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.25)';
+
+  // Header
+  const header = document.createElement('div');
+  header.style.cssText = 'padding:20px 24px;border-bottom:1px solid var(--grege);display:flex;align-items:flex-start;justify-content:space-between;flex-shrink:0';
+  const headerLeft = document.createElement('div');
+  const title = document.createElement('div');
+  title.style.cssText = 'font-family:\'Cormorant Garamond\',Georgia,serif;font-size:20px;font-weight:700;color:var(--ardoise)';
+  title.textContent = 'Alternatives pour ' + prenom + ' ' + nom;
+  const subtitle = document.createElement('div');
+  subtitle.style.cssText = 'font-size:12px;color:var(--muted);margin-top:3px';
+  subtitle.textContent = refuses.length + ' recommandation(s) refusée(s)' + (email ? ' · 📧 ' + email : ' · email non renseigné');
+  headerLeft.appendChild(title);
+  headerLeft.appendChild(subtitle);
+  const closeBtn = document.createElement('button');
+  closeBtn.style.cssText = 'background:none;border:none;font-size:24px;cursor:pointer;color:var(--muted);line-height:1;padding:0 0 0 16px';
+  closeBtn.textContent = '×';
+  closeBtn.onclick = () => modal.remove();
+  header.appendChild(headerLeft);
+  header.appendChild(closeBtn);
+
+  // Body
+  const body = document.createElement('div');
+  body.style.cssText = 'padding:20px 24px;overflow-y:auto;flex:1';
+  body.appendChild(wrap);
+
+  // Footer
+  const footer = document.createElement('div');
+  footer.style.cssText = 'padding:16px 24px;border-top:1px solid var(--grege);display:flex;justify-content:flex-end;gap:10px;flex-shrink:0;background:white;border-radius:0 0 16px 16px';
+  const btnAnnuler = document.createElement('button');
+  btnAnnuler.style.cssText = 'padding:9px 20px;background:var(--grege);color:var(--ardoise);border:none;border-radius:99px;font-size:13px;font-weight:600;cursor:pointer';
+  btnAnnuler.textContent = 'Annuler';
+  btnAnnuler.onclick = () => modal.remove();
+  const btnSave = document.createElement('button');
+  btnSave.style.cssText = 'padding:9px 20px;background:var(--ardoise);color:white;border:none;border-radius:99px;font-size:13px;font-weight:600;cursor:pointer';
+  btnSave.textContent = 'Enregistrer';
+  btnSave.onclick = () => sauvegarderAlternatives(prenom, nom, ddn, email, refusIdx, false);
+  footer.appendChild(btnAnnuler);
+  footer.appendChild(btnSave);
+  if(email){
+    const btnSend = document.createElement('button');
+    btnSend.style.cssText = 'padding:9px 20px;background:var(--ocre);color:white;border:none;border-radius:99px;font-size:13px;font-weight:600;cursor:pointer';
+    btnSend.textContent = '✉ Enregistrer & envoyer par email';
+    btnSend.onclick = () => sauvegarderAlternatives(prenom, nom, ddn, email, refusIdx, true);
+    footer.appendChild(btnSend);
+  }
+
+  inner.appendChild(header);
+  inner.appendChild(body);
+  inner.appendChild(footer);
+  modal.appendChild(inner);
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if(e.target === modal) modal.remove(); });
+}
 async function genererAlternativeIA(idx, texteRefus, raison, prenom){
   const ta  = document.getElementById('alt-text-'+idx);
   const btn = document.getElementById('btn-gen-'+idx);
