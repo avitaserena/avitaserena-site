@@ -756,7 +756,7 @@ function renderFiche(c){
   const wfH=wf.map(s=>{
     let cls=s.done?'done':s.isOvd?'overdue':s.isSoon?'soon':'';
     const sttxt=s.isOvd?"<span style='color:var(--red);font-weight:700'> · Retard</span>":s.isSoon?"<span style='color:var(--orange);font-weight:700'> · Cette semaine</span>":'';
-    const eBtn=s.tpl?"<button class='wf-ebtn' onclick=\"loadFicheTpl('"+s.tpl+"','"+c.id+"')\">Email</button>":'';
+    const eBtn=s.tpl?"<button class='wf-ebtn' onclick=\"ouvrirMailModal('"+c.id+"','"+s.tpl+"')\">✉ Email</button>":'';
     return "<div class='wf-item "+cls+"'>" +
       "<div class='wf-chk' onclick=\"toggleWF('"+c.id+"','"+s.key+"')\">"+( s.done?"✓":"")+"</div>" +
       "<div class='wf-info'><div class='wfj'>J+"+s.j+"</div><div class='wft'>"+escH(s.label)+"</div><div class='wfd'>"+(s.tgt?fmtDate(s.tgt):'—')+sttxt+"</div></div>" +
@@ -809,24 +809,6 @@ function renderFiche(c){
       "<div class='card'><div class='card-head'><div class='card-title'><div class='card-dot' style='background:#0096FF'></div>RDV</div><span style='font-size:11px;font-weight:600;color:var(--muted)'>"+cr.length+" au total</span></div><div class='card-body' style='padding:10px 18px'>"+rdvH+"</div></div>" +
     "</div><div class='fmain'>" +
       "<div class='card'><div class='card-head'><div class='card-title'><div class='card-dot' style='background:#E2445C'></div>Workflow de suivi</div></div><div class='card-body'>"+wfH+"</div></div>" +
-      "<div class='card'><div class='card-head'><div class='card-title'><div class='card-dot' style='background:#0096FF'></div>Communication</div><a href='https://app.brevo.com' target='_blank' class='btn btn-ghost btn-xs'>Brevo ↗</a></div>" +
-        "<div class='card-body' style='padding:0'><div class='ebox' style='border:none'>" +
-          "<div class='efield'><span class='elbl'>À</span><input type='email' class='einput' id='fe-to' value='"+escH(c.email||'')+"'></div>" +
-          "<div class='efield'><span class='elbl'>Objet</span><input type='text' class='einput' id='fe-sub' placeholder='Objet...'></div>" +
-          "<div class='etpls'><span style='font-size:10px;font-weight:700;color:var(--muted);flex-shrink:0;align-self:center'>Templates :</span>" +
-            "<button class='etpl' onclick=\"loadFicheTpl('j7','"+c.id+"')\">J+7</button>" +
-            "<button class='etpl' onclick=\"loadFicheTpl('j21','"+c.id+"')\">J+21</button>" +
-            "<button class='etpl' onclick=\"loadFicheTpl('suivi','"+c.id+"')\">Suivi</button>" +
-            "<button class='etpl' onclick=\"loadFicheTpl('fin_programme','"+c.id+"')\">Fin prog.</button>" +
-            "<button class='etpl' onclick=\"loadFicheTpl('relance','"+c.id+"')\">Relance</button>" +
-          "</div>" +
-          "<textarea class='ebody' id='fe-body' placeholder='Message...'></textarea>" +
-          "<div class='efoot'><span style='font-size:12px;color:var(--muted)'>Avita Serena</span>" +
-            "<div style='display:flex;gap:7px'>" +
-              "<button class='btn btn-ghost btn-sm' onclick=\"logEmail('"+c.id+"')\">Logger</button>" +
-              "<button class='btn btn-primary btn-sm' onclick=\"sendBrevoFiche('"+c.id+"')\">Envoyer ↗</button>" +
-            "</div></div>" +
-        "</div></div></div>" +
       "<div class='card'><div class='card-head'><div class='card-title'><div class='card-dot' style='background:#FF7B2C'></div>Timeline</div><button class='btn btn-ghost btn-xs' onclick=\"addTLEvent('"+c.id+"')\">+ Événement</button></div><div class='card-body'>"+tlH+"</div></div>" +
       buildMemoBlock(c) +
     "</div></div>";
@@ -921,40 +903,116 @@ function loadTpl(key){if(!emailCtx)return;const t=tpls(emailCtx);if(t[key]){docu
 function loadFicheTpl(key,id){const c=db.clients.find(x=>x.id===id);if(!c)return;const t=tpls(c);if(t[key]){document.getElementById('fe-sub').value=t[key].sub;document.getElementById('fe-body').value=t[key].body;}}
 async function logEmail(id){const c=db.clients.find(x=>x.id===id);if(!c)return;const sub=document.getElementById('fe-sub')?.value||'Email';if(!c.timeline)c.timeline=[];c.timeline.push({type:'suivi',title:'✉ '+sub,icon:'✉',date:today()});await saveClient(c);renderFiche(c);toast('Loggé ✓','ok');}
 async function sendBrevoFiche(id){
+  // Conservée pour compatibilité — utilise ouvrirMailModal maintenant
   const c = db.clients.find(x=>x.id===id);
+  if(c) ouvrirMailModal(id,'suivi');
+}
+
+function getBrevoKey(){
+  let k = localStorage.getItem('avs_brevo') || '';
+  if(!k){
+    k = prompt('Clé API Brevo (xkeysib-…) — sera mémorisée :') || '';
+    if(k) localStorage.setItem('avs_brevo', k);
+  }
+  return k;
+}
+
+function ouvrirMailModal(clientId, tplKey){
+  const c = db.clients.find(x=>x.id===clientId);
   if(!c){ toast('Cliente introuvable','err'); return; }
-  const to  = document.getElementById('fe-to')?.value?.trim();
-  const sub = document.getElementById('fe-sub')?.value?.trim();
-  const body= document.getElementById('fe-body')?.value?.trim();
-  if(!to || !sub || !body){ toast('Destinataire, objet et message requis','warn'); return; }
+  const t = tpls(c);
+  const tpl = t[tplKey] || { sub:'', body:'' };
+  const email = c.email || '';
 
-  const brevoKey = sessionStorage.getItem('avs_brevo') || '';
-  let apiKeyBrevo = brevoKey;
-  if(!apiKeyBrevo){
-    apiKeyBrevo = prompt('Clé API Brevo (xkeysib-…) :') || '';
-    if(apiKeyBrevo) sessionStorage.setItem('avs_brevo', apiKeyBrevo);
-  }
-  if(!apiKeyBrevo){ toast('Clé Brevo requise','warn'); return; }
+  document.getElementById('modal-mail')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'modal-mail';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
 
-  try{
-    const res = await fetch('https://api.brevo.com/v3/smtp/email',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','api-key':apiKeyBrevo},
-      body: JSON.stringify({
-        sender:{ name:'Sabrina · A Vita Serena', email:'sabrina@avitaserena.com' },
-        to:[{ email: to, name: c.prenom+' '+c.nom }],
-        subject: sub,
-        textContent: body
-      })
-    });
-    if(!res.ok){ const e=await res.json(); throw new Error(e.message||res.status); }
-    await logEmail(id);
-    toast('Email envoyé à '+to+' ✓','ok');
-    document.getElementById('fe-sub').value='';
-    document.getElementById('fe-body').value='';
-  }catch(e){
-    toast('Erreur envoi : '+e.message,'err');
-  }
+  const inner = document.createElement('div');
+  inner.style.cssText = 'background:white;border-radius:16px;width:100%;max-width:600px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.2)';
+
+  const header = document.createElement('div');
+  header.style.cssText = 'padding:18px 24px;border-bottom:1px solid var(--grege);display:flex;align-items:center;justify-content:space-between;flex-shrink:0';
+  const htitle = document.createElement('div');
+  htitle.style.cssText = "font-family:'Cormorant Garamond',Georgia,serif;font-size:18px;font-weight:700;color:var(--ardoise)";
+  htitle.textContent = 'Email à ' + c.prenom + ' ' + (c.nom||'');
+  const closeBtn = document.createElement('button');
+  closeBtn.textContent = '×'; closeBtn.style.cssText = 'background:none;border:none;font-size:24px;cursor:pointer;color:var(--muted)';
+  closeBtn.onclick = () => modal.remove();
+  header.appendChild(htitle); header.appendChild(closeBtn);
+
+  const body = document.createElement('div');
+  body.style.cssText = 'padding:20px 24px;display:flex;flex-direction:column;gap:12px;flex:1;overflow-y:auto';
+
+  const toRow = document.createElement('div');
+  toRow.style.cssText = 'display:flex;align-items:center;gap:10px';
+  const toLbl = document.createElement('span'); toLbl.textContent = 'À';
+  toLbl.style.cssText = 'font-size:11px;font-weight:700;color:var(--muted);min-width:40px';
+  const toInp = document.createElement('input'); toInp.type='email'; toInp.value=email; toInp.id='mm-to';
+  toInp.style.cssText = 'flex:1;border:1.5px solid var(--taupe);border-radius:8px;padding:8px 10px;font-size:13px;color:var(--ardoise);outline:none';
+  toRow.appendChild(toLbl); toRow.appendChild(toInp);
+
+  const subRow = document.createElement('div');
+  subRow.style.cssText = 'display:flex;align-items:center;gap:10px';
+  const subLbl = document.createElement('span'); subLbl.textContent = 'Objet';
+  subLbl.style.cssText = 'font-size:11px;font-weight:700;color:var(--muted);min-width:40px';
+  const subInp = document.createElement('input'); subInp.type='text'; subInp.value=tpl.sub||''; subInp.id='mm-sub';
+  subInp.style.cssText = 'flex:1;border:1.5px solid var(--taupe);border-radius:8px;padding:8px 10px;font-size:13px;color:var(--ardoise);outline:none';
+  subRow.appendChild(subLbl); subRow.appendChild(subInp);
+
+  const ta = document.createElement('textarea'); ta.id='mm-body';
+  ta.value = tpl.body || '';
+  ta.rows = 10;
+  ta.style.cssText = 'width:100%;box-sizing:border-box;border:1.5px solid var(--taupe);border-radius:8px;padding:10px;font-family:"Be Vietnam Pro",sans-serif;font-size:13px;color:var(--ardoise);resize:vertical;outline:none;line-height:1.7';
+
+  body.appendChild(toRow); body.appendChild(subRow); body.appendChild(ta);
+
+  const footer = document.createElement('div');
+  footer.style.cssText = 'padding:14px 24px;border-top:1px solid var(--grege);display:flex;justify-content:flex-end;gap:10px;flex-shrink:0';
+  const btnAnn = document.createElement('button');
+  btnAnn.textContent = 'Annuler';
+  btnAnn.style.cssText = 'padding:8px 18px;background:var(--grege);color:var(--ardoise);border:none;border-radius:99px;font-size:13px;font-weight:600;cursor:pointer';
+  btnAnn.onclick = () => modal.remove();
+
+  const btnSend = document.createElement('button');
+  btnSend.textContent = '\u2709 Envoyer';
+  btnSend.style.cssText = 'padding:8px 20px;background:var(--ardoise);color:white;border:none;border-radius:99px;font-size:13px;font-weight:600;cursor:pointer';
+  btnSend.onclick = async () => {
+    const to  = document.getElementById('mm-to')?.value?.trim();
+    const sub = document.getElementById('mm-sub')?.value?.trim();
+    const msg = document.getElementById('mm-body')?.value?.trim();
+    if(!to||!sub||!msg){ toast('Tous les champs sont requis','warn'); return; }
+    const apiKeyBrevo = getBrevoKey();
+    if(!apiKeyBrevo){ toast('Clé Brevo requise','warn'); return; }
+    btnSend.disabled = true; btnSend.textContent = '\u23f3 Envoi...';
+    try{
+      const res = await fetch('https://api.brevo.com/v3/smtp/email',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','api-key':apiKeyBrevo},
+        body: JSON.stringify({
+          sender:{ name:'Sabrina \u00b7 A Vita Serena', email:'sabrina@avitaserena.com' },
+          to:[{ email:to, name:c.prenom+' '+(c.nom||'') }],
+          subject: sub, textContent: msg
+        })
+      });
+      if(!res.ok){ const e=await res.json(); throw new Error(e.message||res.status); }
+      if(!c.timeline) c.timeline=[];
+      c.timeline.push({type:'suivi',title:'\u2709 '+sub,icon:'\u2709',date:today()});
+      await saveClient(c);
+      toast('Email envoy\u00e9 \u00e0 '+to+' \u2713','ok');
+      modal.remove();
+      renderFiche(c);
+    }catch(e){
+      toast('Erreur : '+e.message,'err');
+      btnSend.disabled=false; btnSend.textContent='\u2709 Envoyer';
+    }
+  };
+  footer.appendChild(btnAnn); footer.appendChild(btnSend);
+  inner.appendChild(header); inner.appendChild(body); inner.appendChild(footer);
+  modal.appendChild(inner);
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if(e.target===modal) modal.remove(); });
 }
 function openBrevo(){if(emailCtx)logEmail(emailCtx.id);window.open('https://app.brevo.com','_blank');closeM('m-email');}
 async function addTLEvent(id){const t=prompt("Titre de l\'événement :");if(!t)return;const c=db.clients.find(x=>x.id===id);if(!c)return;if(!c.timeline)c.timeline=[];c.timeline.push({type:'suivi',title:t,icon:'·',date:today()});await saveClient(c);renderFiche(c);toast('Événement ajouté ✓','ok');}
@@ -1333,12 +1391,7 @@ async function sauvegarderAlternatives(prenom, nom, ddn, email, refusIdx, envoye
 
   if(envoyer && email && altTextes.length){
     try{
-      const brevoKey = db.settings?.brevoKey || sessionStorage.getItem('avs_brevo') || '';
-      let apiKeyBrevo = brevoKey;
-      if(!apiKeyBrevo){
-        apiKeyBrevo = prompt('Clé API Brevo (xkeysib-…) :') || '';
-        if(apiKeyBrevo) sessionStorage.setItem('avs_brevo', apiKeyBrevo);
-      }
+      const apiKeyBrevo = getBrevoKey();
       if(!apiKeyBrevo){ toast('Clé Brevo requise pour l\'envoi','warn'); return; }
 
       // Construire les blocs HTML pour chaque refus/alternative
