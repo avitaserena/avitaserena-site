@@ -832,7 +832,50 @@ function buildClientData() {
   };
 }
 
+// ── Détection SIBO méthane (IMO) avéré ──
+// Cherche dans tous les champs texte pertinents une confirmation de SIBO méthane/IMO,
+// pas une simple suspicion. Utilisé pour déclencher l'ajout automatique du protocole
+// Teoliance Motilys + Permealine (L-Glutamine Pileje) dans le prompt.
+function detectSiboMethane(d) {
+  const champsTextuels = [
+    d.selects_complets, d.textes_libres, d.symptomes_coches, d.chips,
+    d.gyneco, d.notes_praticien, d.motifs
+  ].filter(Boolean).join(' \n ');
+
+  // Confirmation explicite du typage CH4/IMO/méthane
+  const confirmePattern = /confirmé[^\n]*?(ch4|méthane|imo)|(ch4|méthane|imo)[^\n]*?confirmé|test respiratoire ch4|sibo[\s-]?ch4|sibo[\s-]?méthane/i;
+  // Signes cliniques évocateurs (utilisés seulement en renfort, pas seuls)
+  const signesPattern = /constipation prédominante \(sibo-ch4\)|imo\b|methanobrevibacter/i;
+
+  return confirmePattern.test(champsTextuels) || signesPattern.test(champsTextuels);
+}
+
+// Retourne le bloc de règle additionnelle si SIBO méthane avéré, sinon chaîne vide.
+// Fonction séparée (et non template literal imbriqué) pour éviter tout conflit de backticks.
+function buildReglesSiboMethane(siboMethaneAvere) {
+  if (!siboMethaneAvere) return '';
+  return [
+    '',
+    '━━ RÈGLE N°5bis — SIBO MÉTHANE (IMO) AVÉRÉ DÉTECTÉ — PROTOCOLE OBLIGATOIRE ━━',
+    '⚠️ Les données de cette cliente indiquent un SIBO méthane (IMO) confirmé. Tu DOIS impérativement intégrer les deux soutiens suivants dans la section s3 [SOUTIENS CIBLÉS], en plus ou à la place des exemples génériques de la Règle N°5 — ce sont des compléments validés pour CETTE cliente, à intégrer prioritairement :',
+    '',
+    '1. TEOLIANCE® Motilys — probiotique ciblé sur le Complexe Moteur Migrant (CMM)',
+    '   Associe 3 souches déposées (Bifidobacterium lactis HN019, Bifidobacterium animalis lactis BS01, Bacillus coagulans IS-2), en gélules gastro-résistantes. Le CMM est le mécanisme de "nettoyage" naturel de l\'intestin grêle entre les repas (ondes toutes les 90-120 min) — sa défaillance est l\'une des causes racines les plus fréquentes de l\'IMO, donc soutenir son redémarrage limite le risque de rechute après l\'éradication.',
+    '   Posologie : reprendre celle indiquée dans le champ "Compléments déjà en cours" ou "Médicaments & allergies" si disponible (cette cliente l\'a généralement déjà sous prescription médicale) ; sinon mentionner "selon prescription de votre gastro-entérologue".',
+    '',
+    '2. Permealine® (Pileje) — L-Glutamine',
+    '   Principal carburant des entérocytes (cellules de la muqueuse intestinale). Soutient la réparation de la barrière intestinale, souvent fragilisée par la pullulation méthanogène et le ralentissement chronique du transit propre à l\'IMO.',
+    '   Posologie : reprendre celle indiquée dans les données de séance si disponible ; sinon mentionner "selon prescription de votre gastro-entérologue".',
+    '',
+    'Explique à la cliente, en langage non médical, POURQUOI ces deux soutiens sont spécifiquement pertinents pour son profil (lien avec la constipation et le ralentissement du transit caractéristiques du méthane, et le besoin de réparer la muqueuse après une période de déséquilibre prolongé). Si un protocole d\'éradication (allicine, lovastatine naturelle) est par ailleurs en cours ou mentionné dans les données, préciser que ces deux soutiens viennent en complément et non en remplacement.',
+    ''
+  ].join('\n');
+}
+
 function buildPrompt(d) {
+  const siboMethaneAvere = detectSiboMethane(d);
+  const reglesSiboMethane = buildReglesSiboMethane(siboMethaneAvere);
+
   return `Tu es Sabrina Castelli, naturopathe diplômée (Avita Serena, Porto-Vecchio, Corse), spécialisée en santé digestive et équilibre hormonal féminin. Tu génères le Protocole d'Hygiène Vitale (PHV) destiné à la cliente — un document qu'elle va lire, garder et appliquer.
 
 ━━ RÈGLE N°1 — FORMAT ET VOCABULAIRE ━━
@@ -882,7 +925,7 @@ Exemples concrets à adapter selon les axes prioritaires :
 - EPS (Extrait Phyto Standard) : Valériane EPS ou Passiflore EPS (Phytostandard Pileje) — si sommeil, anxiété
 - Chardon-marie EPS (Phytostandard Pileje) — si foie, détox, hormones
 TOUJOURS : posologie exacte (marque, forme, dose, fréquence, moment précis), et 1-2 phrases expliquant pourquoi CE choix pour ELLE.
-
+${reglesSiboMethane}
 ━━ RÈGLE N°6 — SÉCURITÉ ABSOLUE ━━
 Anticoagulants → éviter oméga-3 >2g/j, millepertuis, gingko
 ISRS/antidépresseurs → millepertuis INTERDIT absolument
