@@ -673,6 +673,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       </div>
     </div>
 
+    <!-- Consentement enregistrement consultation (facultatif) -->
+    <div class="qc rev r2">
+      <span class="qtag a">Optionnel</span>
+      <div class="qt">Puis-je enregistrer notre échange lors de la consultation ?</div>
+      <div class="qv">Cela me permet de rédiger un compte-rendu plus précis après notre rendez-vous, sans rien manquer de ce que vous partagez. L'enregistrement est strictement confidentiel, utilisé uniquement pour ma synthèse interne, et supprimé immédiatement après. Ce choix n'a aucune influence sur votre prise en charge — vous pouvez refuser sans rien indiquer.</div>
+      <div class="chips" style="margin-top:14px">
+        <span class="chip" id="consent-enregistrement" onclick="tog(this)"><span class="ck">✓</span>J'autorise l'enregistrement de la consultation à cette fin</span>
+      </div>
+    </div>
+
     <!-- Réassurance finale — fond crème -->
     <div class="rea rev">
       <div class="rea-ic">🌿</div>
@@ -775,6 +785,10 @@ function collectData(){
   document.querySelectorAll('.chip.on').forEach(el=>chips.push(el.textContent.replace('✓','').trim()));
   if(chips.length) data['Sélections cochées']=chips.join(', ');
 
+  // Consentement enregistrement (toujours renseigné, jamais bloquant)
+  const consentEl = document.getElementById('consent-enregistrement');
+  data['Consentement enregistrement consultation'] = (consentEl && consentEl.classList.contains('on')) ? 'Oui' : 'Non';
+
   // Radio cards
   const rc=document.querySelector('.rc.on');
   if(rc) data['Durée symptômes']=rc.querySelector('.rc-t').textContent.trim();
@@ -815,6 +829,7 @@ function sauvegarderPourConsultation(prenom, data) {
         return el?.value?.trim() || '';
       })(),
       symptomes: data['Symptômes cochés'] || '',
+      consentEnregistrement: data['Consentement enregistrement consultation'] || 'Non',
       scores: {
         energieReveil: document.getElementById('vb1')?.textContent || '',
         energieGlobale: document.getElementById('vb2')?.textContent || '',
