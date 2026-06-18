@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Résumé de consultation — Avita Serena</title>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --blanc:#FFFFFF;--off:#F7F6F4;--grege:#EDE9E1;--taupe:#D5CFC6;
+  --sable:#C4A882;--ocre:#B4906A;--ardoise:#1E1E1C;--gris:#6B6560;
+  --or-clair:#FBF3E4;--or:#9B7230;
+  --vert-clair:#EAF0E6;--vert:#3D6B2C;
+  --rose-clair:#F5EAEE;--rose:#8A3A52;
+  --rouge-clair:#F9EDEC;--rouge:#8B3A3A;
+  --bleu-clair:#EAF2F8;--bleu:#2C5E8A;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{font-family:'Be Vietnam Pro',sans-serif;color:var(--ardoise);background:var(--off);font-size:16px;line-height:1.65}
+body{max-width:880px;margin:0 auto;padding:0 0 80px}
+
+.hdr{background:var(--blanc);border-bottom:1px solid var(--taupe);padding:18px 36px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 1px 8px rgba(0,0,0,.04)}
+.logo .avita{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:24px;color:var(--ardoise)}
+.logo .serena{font-family:'Be Vietnam Pro',sans-serif;font-weight:800;font-size:24px;color:var(--ardoise)}
+.hdr-tag{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--gris);background:var(--grege);padding:4px 14px;border-radius:99px}
+.hdr-stripe{height:3px;background:linear-gradient(to right,var(--taupe),var(--sable),var(--ocre),var(--sable),var(--taupe))}
+
+.page{padding:28px 36px 40px}
+
+.intro{background:var(--blanc);border:1px solid var(--taupe);border-radius:14px;padding:20px 24px;margin-bottom:22px}
+.intro h2{font-family:'Cormorant Garamond',serif;font-weight:500;font-size:21px;margin-bottom:8px}
+.intro p{font-size:14px;color:var(--gris)}
+
+.card{background:var(--blanc);border:1px solid var(--taupe);border-radius:14px;padding:22px 24px;margin-bottom:20px}
+.card h3{font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ocre);margin-bottom:14px}
+
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+label.ml{font-size:12px;font-weight:700;color:var(--ardoise);display:block;margin-bottom:5px;letter-spacing:.03em}
+input.mf,select.mf,textarea.mf{width:100%;border:1.5px solid var(--taupe);border-radius:8px;padding:10px 13px;font-size:14px;font-family:inherit;color:var(--ardoise);background:var(--off);outline:none;resize:vertical;line-height:1.55}
+textarea.mf{min-height:80px}
+input.mf:focus,select.mf:focus,textarea.mf:focus{border-color:var(--ocre);background:var(--blanc)}
+
+#transcript{min-height:260px;font-size:13.5px;line-height:1.6}
+
+.plan-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:6px}
+.plan-card{border:1.5px solid var(--taupe);border-radius:10px;padding:12px 14px;cursor:pointer;transition:.15s;background:var(--off)}
+.plan-card:hover{border-color:var(--ocre)}
+.plan-card.on{border-color:var(--ocre);background:var(--or-clair);box-shadow:0 0 0 1px var(--ocre)}
+.plan-card .pc-ic{font-size:19px;margin-bottom:6px}
+.plan-card .pc-t{font-size:13px;font-weight:700;color:var(--ardoise)}
+.plan-card .pc-d{font-size:11.5px;color:var(--gris);margin-top:3px;line-height:1.4}
+
+.api-row{display:flex;gap:8px}
+.api-row input{flex:1}
+.api-btn{padding:10px 18px;background:var(--ardoise);color:var(--blanc);border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-size:13px;font-weight:500;white-space:nowrap}
+#key-status{font-size:12px;margin-top:6px}
+
+.gen-btn{width:100%;background:var(--ardoise);color:var(--blanc);border:none;border-radius:12px;padding:18px;font-size:16px;font-weight:600;cursor:pointer;font-family:inherit;transition:opacity .15s;letter-spacing:.04em;margin-bottom:8px}
+.gen-btn:hover{opacity:.88}
+.gen-btn:disabled{opacity:.35;cursor:not-allowed}
+.gen-note{font-size:12px;color:var(--gris);text-align:center}
+
+#loading-wrap{display:none;text-align:center;padding:60px 24px}
+.spinner{width:34px;height:34px;border:2px solid var(--taupe);border-top-color:var(--ardoise);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 18px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-msg{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:20px;color:var(--gris)}
+
+#preview-wrap{display:none}
+.prev-hero{background:linear-gradient(135deg,var(--or-clair),var(--grege));border:1.5px solid var(--sable);border-radius:14px;padding:22px 26px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.prev-name{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:24px;color:var(--ardoise)}
+.prev-sub{font-size:12.5px;color:var(--gris);margin-top:3px}
+.prev-acts{display:flex;gap:8px}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:99px;border:none;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;transition:.15s}
+.btn-dark{background:var(--ardoise);color:white}
+.btn-dark:hover{opacity:.88}
+.btn-ghost{background:white;color:var(--ardoise);border:1.5px solid var(--taupe)}
+.btn-ghost:hover{border-color:var(--ocre)}
+
+.resume-box{background:var(--blanc);border:1px solid var(--taupe);border-radius:14px;padding:30px 34px;margin-bottom:20px}
+.resume-box h4{font-family:'Cormorant Garamond',serif;font-weight:600;font-size:18px;color:var(--ardoise);margin:22px 0 8px;padding-top:10px;border-top:1px solid var(--grege)}
+.resume-box h4:first-child{margin-top:0;padding-top:0;border-top:none}
+.resume-box p{font-size:14.5px;color:#2A2620;margin-bottom:6px;white-space:pre-wrap}
+.resume-box ul{margin:6px 0 6px 20px}
+.resume-box li{font-size:14.5px;color:#2A2620;margin-bottom:4px}
+
+.save-status{font-size:13px;text-align:center;padding:10px;border-radius:8px;margin-top:6px}
+.save-ok{background:var(--vert-clair);color:var(--vert)}
+.save-err{background:var(--rouge-clair);color:var(--rouge)}
+
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ardoise);color:white;padding:12px 22px;border-radius:99px;font-size:13px;opacity:0;pointer-events:none;transition:.25s;z-index:999}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="logo"><span class="avita">avita</span><span class="serena">serena</span></div>
+  <div class="hdr-tag">Résumés de consultation</div>
+</div>
+<div class="hdr-stripe"></div>
+
+<div class="page">
+
+  <div class="intro">
+    <h2>Résumé structuré post-consultation</h2>
+    <p>Collez ici la retranscription (MacWhisper) de la consultation, choisissez le plan adapté, puis générez. Le résumé sera enregistré dans Supabase et visible dans la fiche cliente de la CRM. La transcription brute n'est jamais conservée — seul le résumé structuré est sauvegardé.</p>
+  </div>
+
+  <div class="card">
+    <h3>Identification de la cliente</h3>
+    <div class="g2">
+      <div><label class="ml">Prénom *</label><input class="mf" type="text" id="c-prenom" placeholder="Ex : Claire"></div>
+      <div><label class="ml">Nom *</label><input class="mf" type="text" id="c-nom" placeholder="Ex : Martin"></div>
+    </div>
+    <div class="g2">
+      <div><label class="ml">Date de naissance *</label><input class="mf" type="date" id="c-ddn"></div>
+      <div><label class="ml">Date de la consultation</label><input class="mf" type="date" id="c-date-consult"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Type de plan</h3>
+    <div class="plan-grid" id="plan-grid"><!-- injecté en JS --></div>
+  </div>
+
+  <div class="card">
+    <h3>Retranscription de la consultation</h3>
+    <label class="ml">Collez le texte brut issu de MacWhisper</label>
+    <textarea class="mf" id="transcript" placeholder="Collez ici l'intégralité de la retranscription…"></textarea>
+  </div>
+
+  <div class="card">
+    <h3>Clé API Anthropic</h3>
+    <div class="api-row">
+      <input class="mf" type="password" id="api-key" placeholder="sk-ant-…">
+      <button class="api-btn" onclick="saveKey()">Enregistrer</button>
+    </div>
+    <div id="key-status"></div>
+  </div>
+
+  <button class="gen-btn" id="gen-btn" onclick="generate()">Générer le résumé →</button>
+  <div class="gen-note">La transcription n'est envoyée qu'à l'API Claude pour la génération — elle n'est jamais stockée.</div>
+
+  <div id="loading-wrap">
+    <div class="spinner"></div>
+    <div class="loading-msg" id="loading-msg">Lecture de la retranscription…</div>
+  </div>
+
+  <div id="preview-wrap">
+    <div class="prev-hero">
+      <div>
+        <div class="prev-name" id="prev-name">—</div>
+        <div class="prev-sub" id="prev-sub">—</div>
+      </div>
+      <div class="prev-acts">
+        <button class="btn btn-ghost" onclick="downloadResume()">Télécharger ↓</button>
+        <button class="btn btn-dark" onclick="saveToSupabase()">Enregistrer dans le dossier client</button>
+      </div>
+    </div>
+    <div class="resume-box" id="resume-box"></div>
+    <div id="save-status"></div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="supabase-db.js"></script>
+<script>
+let apiKey = '';
+let selectedPlan = null;
+let generatedResume = null; // { titre, sections: [{label, contenu}] }
+
+/* ══════════════════════════════════════════════
+   DÉFINITION DES 7 PLANS DE RÉSUMÉ
+   ══════════════════════════════════════════════ */
+const PLANS = {
+  premier_rdv: {
+    label: 'Premier RDV — Bilan de vitalité',
+    icone: '🌿',
+    description: 'Bilan initial, 90 min',
+    sections: [
+      'Motif principal de consultation',
+      'Antécédents et contexte de vie évoqués',
+      'Troubles abordés (digestion, sommeil, énergie, hormones, stress)',
+      'Scores ressentis mentionnés à l\'oral (si évoqués)',
+      'Pistes des 3 piliers évoquées en séance (alimentation, psychologie, activité physique)',
+      'Compléments envisagés ou déjà pris, discutés en séance',
+      'Points de vigilance médicale signalés par la cliente',
+      'Prochaine étape convenue avec la cliente'
+    ]
+  },
+  suivi: {
+    label: 'Consultation de suivi',
+    icone: '🔄',
+    description: 'Suivi, 60 min',
+    sections: [
+      'Évolution depuis la dernière séance (ce qui va mieux, ce qui va moins bien)',
+      'Observance du protocole précédent (suivi, refusé, adapté, et pourquoi)',
+      'Nouveaux symptômes ou éléments apparus',
+      'Ajustements des 3 piliers décidés en séance',
+      'Ajustements compléments décidés en séance',
+      'Prochaine étape convenue avec la cliente'
+    ]
+  },
+  sibo: {
+    label: 'SIBO / troubles digestifs',
+    icone: '🦠',
+    description: 'Thématique digestive',
+    sections: [
+      'Symptômes digestifs précis évoqués (ballonnements, transit, douleurs, timing post-prandial)',
+      'Profil évoqué si mentionné (H₂, IMO/méthane, H₂S)',
+      'Lien alimentation-symptômes rapporté par la cliente',
+      'Évolution du protocole en cours (éradication, IMO/méthane ou autre)',
+      'Tolérance aux compléments en cours',
+      'Ajustements proposés en séance'
+    ]
+  },
+  sopk: {
+    label: 'SOPK',
+    icone: '🌙',
+    description: 'Thématique hormonale',
+    sections: [
+      'Cycle et symptômes hormonaux évoqués',
+      'Marqueurs ou résultats médicaux mentionnés par la cliente (si donnés à l\'oral)',
+      'Charge hépatique / détox œstrogènes abordée',
+      'Impact glycémique et alimentaire discuté',
+      'Ajustements des 3 piliers décidés en séance',
+      'Compléments discutés en séance',
+      'Coordination avec suivi médical mentionnée'
+    ]
+  },
+  endometriose: {
+    label: 'Endométriose',
+    icone: '🌸',
+    description: 'Thématique hormonale',
+    sections: [
+      'Douleurs et symptomatologie évoquées',
+      'Cycle et impact sur la vie quotidienne',
+      'Inflammation et alimentation anti-inflammatoire abordées',
+      'Gestion de la douleur — approches évoquées en séance',
+      'Coordination avec suivi médical/gynécologique mentionnée',
+      'Ajustements des 3 piliers et compléments discutés'
+    ]
+  },
+  menopause: {
+    label: 'Périménopause / ménopause',
+    icone: '🌕',
+    description: 'Thématique hormonale',
+    sections: [
+      'Symptômes évoqués (bouffées de chaleur, sommeil, humeur, sécheresse, etc.)',
+      'Évolution du cycle rapportée',
+      'Impact sur la qualité de vie',
+      'Pistes des 3 piliers discutées en séance',
+      'Compléments discutés en séance',
+      'Suivi médical mentionné (THM ou autre, si évoqué)'
+    ]
+  },
+  spm: {
+    label: 'SPM',
+    icone: '🌷',
+    description: 'Thématique hormonale',
+    sections: [
+      'Symptômes prémenstruels précis et timing dans le cycle',
+      'Intensité rapportée par la cliente',
+      'Causes profondes évoquées en séance (si abordées)',
+      'Vitex ou autres compléments discutés, avec vérification contraception hormonale',
+      'Ajustements des 3 piliers décidés en séance'
+    ]
+  }
+};
+
+/* ══════════════════════════════════════════════
+   RENDU DE LA GRILLE DE PLANS
+   ══════════════════════════════════════════════ */
+function renderPlanGrid() {
+  const grid = document.getElementById('plan-grid');
+  grid.innerHTML = Object.entries(PLANS).map(([key, p]) => `
+    <div class="plan-card" id="plan-${key}" onclick="selectPlan('${key}')">
+      <div class="pc-ic">${p.icone}</div>
+      <div class="pc-t">${p.label}</div>
+      <div class="pc-d">${p.description}</div>
+    </div>
+  `).join('');
+}
+
+function selectPlan(key) {
+  selectedPlan = key;
+  document.querySelectorAll('.plan-card').forEach(el => el.classList.remove('on'));
+  document.getElementById('plan-' + key).classList.add('on');
+}
+
+renderPlanGrid();
+
+/* ══════════════════════════════════════════════
+   CLÉ API
+   ══════════════════════════════════════════════ */
+function saveKey() {
+  const k = document.getElementById('api-key').value.trim();
+  if (!k.startsWith('sk-ant')) {
+    document.getElementById('key-status').innerHTML = '<span style="color:#8B3A3A">Clé invalide</span>';
+    return;
+  }
+  apiKey = k;
+  document.getElementById('key-status').innerHTML = '<span style="color:#3D6B2C">✓ Enregistrée</span>';
+}
+
+/* ══════════════════════════════════════════════
+   CONSTRUCTION DU PROMPT
+   ══════════════════════════════════════════════ */
+function buildPrompt(plan, transcript, prenom) {
+  const sectionsListe = plan.sections.map((s, i) => `${i + 1}. ${s}`).join('\n');
+
+  return `Tu es l'assistant de Sabrina Castelli, naturopathe diplômée (Avita Serena, Porto-Vecchio, Corse), spécialisée en santé digestive et équilibre hormonal féminin. Tu rédiges un résumé structuré et synthétique d'une consultation, à partir de sa retranscription brute, pour que Sabrina puisse s'y référer rapidement plus tard.
+
+━━ RÈGLES ABSOLUES ━━
+1. Ce résumé documente CE QUI A ÉTÉ DIT EN SÉANCE — ce n'est ni un diagnostic, ni un protocole, ni une analyse clinique de ta part. Utilise systématiquement des formulations du type "la cliente évoque…", "rapporté en séance…", "mentionné par la cliente…".
+2. Reste synthétique : chaque section doit faire 2 à 5 phrases ou puces courtes, jamais un résumé exhaustif phrase par phrase de la transcription.
+3. Vocabulaire naturopathique uniquement — pas de terme médical diagnostique (pas de "pathologie", "diagnostic", "traitement" sauf si tu rapportes un terme employé tel quel par la cliente elle-même, ex: "traitement prescrit par son médecin").
+4. Si une section n'a pas été abordée en séance, écris "Non évoqué en séance" — n'invente jamais de contenu.
+5. N'inclus aucune information qui ne provient pas explicitement de la transcription fournie.
+6. Vouvoiement non applicable ici : ce document est à usage interne pour Sabrina, rédige à la troisième personne en parlant de la cliente par son prénom.
+
+━━ PLAN À SUIVRE (dans cet ordre, sections suivantes) ━━
+${sectionsListe}
+
+━━ FORMAT DE SORTIE ━━
+Réponds UNIQUEMENT en JSON valide, structure exacte suivante, sans aucun texte avant ou après, sans balises markdown :
+{
+  "titre": "Résumé de consultation — ${prenom}",
+  "sections": [
+    { "label": "Titre exact de la section 1", "contenu": "Texte de synthèse de la section 1" },
+    { "label": "Titre exact de la section 2", "contenu": "Texte de synthèse de la section 2" }
+  ]
+}
+Utilise exactement les libellés de section listés ci-dessus, dans le même ordre. Le champ "contenu" peut utiliser des puces sous la forme "- élément" séparées par des retours à la ligne \\n si plusieurs points distincts, ou une simple phrase/paragraphe sinon.
+
+━━ RETRANSCRIPTION DE LA CONSULTATION ━━
+${transcript}`;
+}
+
+/* ══════════════════════════════════════════════
+   GÉNÉRATION
+   ══════════════════════════════════════════════ */
+const loadingMsgs = [
+  'Lecture de la retranscription…',
+  'Repérage des éléments clés évoqués…',
+  'Construction du résumé structuré…',
+  'Finalisation…'
+];
+
+async function generate() {
+  if (!apiKey) { alert('Veuillez d\'abord entrer votre clé API Anthropic.'); return; }
+  const prenom = document.getElementById('c-prenom').value.trim();
+  const nom = document.getElementById('c-nom').value.trim();
+  const ddn = document.getElementById('c-ddn').value;
+  const transcript = document.getElementById('transcript').value.trim();
+
+  if (!prenom || !nom || !ddn) { alert('Merci de renseigner prénom, nom et date de naissance de la cliente — ces informations servent à relier le résumé à son dossier.'); return; }
+  if (!selectedPlan) { alert('Merci de choisir un type de plan.'); return; }
+  if (!transcript || transcript.length < 50) { alert('La retranscription semble vide ou trop courte.'); return; }
+
+  const plan = PLANS[selectedPlan];
+
+  document.getElementById('gen-btn').disabled = true;
+  document.getElementById('loading-wrap').style.display = 'block';
+  document.getElementById('preview-wrap').style.display = 'none';
+  document.getElementById('loading-wrap').scrollIntoView({ behavior: 'smooth' });
+
+  let mi = 0;
+  const interval = setInterval(() => {
+    document.getElementById('loading-msg').textContent = loadingMsgs[Math.min(mi++, loadingMsgs.length - 1)];
+  }, 3500);
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-5',
+        max_tokens: 4000,
+        messages: [{ role: 'user', content: buildPrompt(plan, transcript, prenom) }]
+      })
+    });
+
+    clearInterval(interval);
+
+    if (!res.ok) {
+      const e = await res.json();
+      throw new Error(e.error?.message || 'Erreur API ' + res.status);
+    }
+
+    const result = await res.json();
+    const raw = result.content[0].text.replace(/```json|```/g, '').trim();
+    generatedResume = JSON.parse(raw);
+    generatedResume._meta = { prenom, nom, ddn, planKey: selectedPlan, planLabel: plan.label,
+      dateConsultation: document.getElementById('c-date-consult').value || null };
+
+    renderPreview();
+
+  } catch (err) {
+    clearInterval(interval);
+    document.getElementById('loading-wrap').style.display = 'none';
+    document.getElementById('gen-btn').disabled = false;
+    alert('Erreur : ' + err.message);
+  }
+}
+
+/* ══════════════════════════════════════════════
+   AFFICHAGE DU RÉSUMÉ
+   ══════════════════════════════════════════════ */
+function escH(s) {
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function contenuToHtml(contenu) {
+  const lignes = (contenu || '').split('\n').map(l => l.trim()).filter(Boolean);
+  const isPuces = lignes.length > 1 && lignes.every(l => l.startsWith('-'));
+  if (isPuces) {
+    return '<ul>' + lignes.map(l => '<li>' + escH(l.replace(/^- ?/, '')) + '</li>').join('') + '</ul>';
+  }
+  return lignes.map(l => '<p>' + escH(l.replace(/^- ?/, '')) + '</p>').join('');
+}
+
+function renderPreview() {
+  document.getElementById('loading-wrap').style.display = 'none';
+  document.getElementById('preview-wrap').style.display = 'block';
+  document.getElementById('gen-btn').disabled = false;
+
+  const m = generatedResume._meta;
+  document.getElementById('prev-name').textContent = generatedResume.titre || ('Résumé — ' + m.prenom);
+  document.getElementById('prev-sub').textContent = m.planLabel + (m.dateConsultation ? ' · ' + new Date(m.dateConsultation).toLocaleDateString('fr-FR') : '');
+
+  const box = document.getElementById('resume-box');
+  box.innerHTML = (generatedResume.sections || []).map(s =>
+    '<h4>' + escH(s.label) + '</h4>' + contenuToHtml(s.contenu)
+  ).join('');
+
+  document.getElementById('save-status').innerHTML = '';
+  document.getElementById('preview-wrap').scrollIntoView({ behavior: 'smooth' });
+}
+
+/* ══════════════════════════════════════════════
+   TÉLÉCHARGEMENT (markdown)
+   ══════════════════════════════════════════════ */
+function resumeToMarkdown() {
+  const m = generatedResume._meta;
+  let md = '# ' + (generatedResume.titre || 'Résumé de consultation') + '\n\n';
+  md += '*' + m.planLabel + (m.dateConsultation ? ' · ' + new Date(m.dateConsultation).toLocaleDateString('fr-FR') : '') + '*\n\n';
+  md += '---\n\n';
+  (generatedResume.sections || []).forEach(s => {
+    md += '## ' + s.label + '\n\n';
+    md += (s.contenu || '') + '\n\n';
+  });
+  return md;
+}
+
+function downloadResume() {
+  if (!generatedResume) return;
+  const md = resumeToMarkdown();
+  const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const m = generatedResume._meta;
+  const slug = (m.prenom + '-' + m.nom).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'-');
+  const dateSlug = (m.dateConsultation || new Date().toISOString().slice(0,10));
+  a.href = url;
+  a.download = 'resume-consultation-' + slug + '-' + dateSlug + '.md';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  toast('Résumé téléchargé ✓');
+}
+
+/* ══════════════════════════════════════════════
+   SAUVEGARDE SUPABASE
+   ══════════════════════════════════════════════ */
+async function saveToSupabase() {
+  if (!generatedResume) return;
+  const m = generatedResume._meta;
+  const statusEl = document.getElementById('save-status');
+  statusEl.innerHTML = '<div class="save-status">Enregistrement en cours…</div>';
+
+  try {
+    await DB.saveConsultationSummary(m.prenom, m.nom, m.ddn, {
+      planType: m.planKey,
+      planLabel: m.planLabel,
+      dateConsultation: m.dateConsultation,
+      resumeMd: resumeToMarkdown()
+    });
+    statusEl.innerHTML = '<div class="save-status save-ok">✓ Résumé enregistré dans le dossier client — visible dans la CRM</div>';
+    toast('Enregistré dans le dossier client ✓');
+  } catch (e) {
+    statusEl.innerHTML = '<div class="save-status save-err">Erreur d\'enregistrement : ' + escH(e.message) + '</div>';
+  }
+}
+
+/* ══════════════════════════════════════════════
+   TOAST
+   ══════════════════════════════════════════════ */
+function toast(msg, d = 3500) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), d);
+}
+</script>
+</body>
+</html>

@@ -322,6 +322,7 @@ function saveL(d){localStorage.setItem(LKEY,JSON.stringify(d))}
 let db={clients:[],factures:[],settings:null,nextF:1};
 let taches=[],rdvs=[],emailCtx=null,curTab='urg',curSearch='',curFilter='all';
 let memoAlerts=[];
+let resumesConsultation=[];
 
 // COLORS palette - vibrant Monday-style
 const COLORS=['#6C47FF','#FF4C8B','#00C875','#0096FF','#FF7B2C','#00C4D4','#E2445C','#FFCB00'];
@@ -333,7 +334,7 @@ async function init(){
   const loc=loadL();
   db.settings=loc.settings||defSettings();
   db.nextF=loc.nextF||1;
-  await Promise.all([loadClients(),loadFactures(),loadTaches(),loadRdvs(),loadMemoAlerts()]);
+  await Promise.all([loadClients(),loadFactures(),loadTaches(),loadRdvs(),loadMemoAlerts(),loadResumesConsultation()]);
   renderDashboard();
 }
 
@@ -426,6 +427,16 @@ async function loadMemoAlerts(){
   }
 }
 
+async function loadResumesConsultation(){
+  try{
+    resumesConsultation = await sb('consultation_summaries?order=created_at.desc&limit=500');
+    console.log('[CRM] Résumés de consultation chargés:', resumesConsultation.length);
+  }catch(e){
+    console.error('[CRM] Erreur loadResumesConsultation:', e.message);
+    resumesConsultation = [];
+  }
+}
+
 function mapC(r){return{id:r.id,prenom:r.prenom,nom:r.nom,email:r.email,tel:r.tel,age:r.age,ddn:r.ddn,motifs:r.motifs,axes:r.axes,notes:r.notes,programme:r.programme,dureeTtt:r.duree_ttt,date1:r.date1,dateProtocole:r.date_protocole,timeline:r.timeline||[],workflowDone:r.workflow_done||{},createdAt:r.created_at};}
 
 function today(){return new Date().toISOString().split('T')[0];}
@@ -455,32 +466,6 @@ function pDur(p){return p==='alba'?90:p==='aria'?180:p==='ora'?270:0;}
 function pCls(p){return p==='aria'?'aria':p==='ora'?'ora':'alba';}
 function pLbl(p){return p==='aria'?'Aria · 6 mois':p==='ora'?'Ora · 9 mois':p==='alba'?'Alba · 3 mois':'Consultation';}
 
-// Nombre de consultations de suivi mensuelles prévues par parcours (en plus du bilan initial à S0)
-function pNbSuivis(p){return p==='alba'?3:p==='aria'?6:p==='ora'?9:0;}
-
-// Grille de jalons : 1 suivi par mois à partir de la date du bilan initial.
-// Statut de chaque jalon : 'fait' (un RDV de suivi existe à/après cette échéance),
-// 'bientot' (échéance dans les 7 prochains jours, anticipation), 'retard' (échéance dépassée sans suivi), 'a_venir'.
-function buildJalonsParcours(c){
-  const nb=pNbSuivis(c.programme);
-  if(!nb)return[];
-  const debut=c.dateProtocole||c.date1;
-  if(!debut)return[];
-  const nbSuivisFaits=cRdvs(c).filter(r=>r.type==='suivi'&&r.status!=='annule').length;
-  const jalons=[];
-  for(let i=1;i<=nb;i++){
-    const echeance=addD(debut,i*30);
-    const fait=i<=nbSuivisFaits;
-    const j=diffD(echeance); // jours écoulés depuis l'échéance (positif = en retard)
-    let statut='a_venir';
-    if(fait)statut='fait';
-    else if(j>=0)statut='retard';
-    else if(j>=-7)statut='bientot';
-    jalons.push({numero:i,echeance,fait,statut,joursRetard:fait?0:Math.max(0,j),joursAvant:fait?0:Math.max(0,-j)});
-  }
-  return jalons;
-}
-
 function buildWF(c){
   const proto=c.dateProtocole;
   const dur=parseInt(c.dureeTtt)||60;
@@ -501,19 +486,7 @@ function buildWF(c){
     return{...s,tgt,done,isOvd,isSoon};
   });
 }
-function getAlerts(c){
-  const wfAl=c.dateProtocole?buildWF(c).filter(s=>!s.done&&(s.isOvd||s.isSoon)):[];
-  const jalons=buildJalonsParcours(c).filter(j=>j.statut==='retard'||j.statut==='bientot');
-  const jalonAl=jalons.map(j=>({
-    key:'jalon_suivi_'+j.numero,
-    label:'Suivi mensuel n°'+j.numero+' à programmer ('+pLbl(c.programme)+')',
-    tgt:j.echeance,
-    isOvd:j.statut==='retard',
-    isSoon:j.statut==='bientot',
-    tpl:null
-  }));
-  return [...wfAl,...jalonAl];
-}
+function getAlerts(c){if(!c.dateProtocole)return[];return buildWF(c).filter(s=>!s.done&&(s.isOvd||s.isSoon));}
 function getStatus(c){
   const al=getAlerts(c);
   const last=c.timeline?.[c.timeline.length-1]?.date||c.date1;
@@ -796,7 +769,7 @@ async function openFiche(id){
   if(!c)return;
   nav('fiche',null);
   renderFiche(c); // affichage immédiat
-  await loadMemoAlerts(); // rechargement frais depuis Supabase
+  await Promise.all([loadMemoAlerts(), loadResumesConsultation()]); // rechargement frais depuis Supabase
   renderFiche(c); // re-render avec données à jour
 }
 
@@ -838,21 +811,6 @@ function renderFiche(c){
   const endAlert=daysToEnd!==null&&daysToEnd<0&&daysToEnd>-30?
     "<div style='margin-top:11px;background:var(--orange-lt);border:1.5px solid var(--orange);border-radius:var(--r8);padding:9px 12px;font-size:12px;font-weight:600;color:var(--orange)'>⚠ Fin de programme dans "+Math.abs(daysToEnd)+" jour(s)</div>":'';
 
-  const jalons=buildJalonsParcours(c);
-  const jalonProchain=jalons.find(j=>j.statut==='retard')||jalons.find(j=>j.statut==='bientot');
-  const jalonAlert=jalonProchain?
-    (jalonProchain.statut==='retard'?
-      "<div style='margin-top:11px;background:var(--red-lt);border:1.5px solid var(--red);border-radius:var(--r8);padding:9px 12px;font-size:12px;font-weight:600;color:var(--red)'>⚠ Suivi mensuel n°"+jalonProchain.numero+" en retard de "+jalonProchain.joursRetard+" jour(s) — à programmer</div>":
-      "<div style='margin-top:11px;background:var(--orange-lt);border:1.5px solid var(--orange);border-radius:var(--r8);padding:9px 12px;font-size:12px;font-weight:600;color:var(--orange)'>🔔 Suivi mensuel n°"+jalonProchain.numero+" à programmer dans "+jalonProchain.joursAvant+" jour(s)</div>"):'';
-  const jalonsH=jalons.length>0?
-    "<div style='display:flex;gap:5px;flex-wrap:wrap;margin-top:10px'>"+
-    jalons.map(j=>{
-      const bg=j.fait?'#00C875':j.statut==='retard'?'var(--red)':j.statut==='bientot'?'var(--orange)':'var(--border)';
-      const fg=j.fait||j.statut==='retard'||j.statut==='bientot'?'#fff':'var(--muted)';
-      return "<span title='Suivi n°"+j.numero+" — échéance "+fmtShort(j.echeance)+"' style='display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:"+bg+";color:"+fg+";font-size:11px;font-weight:700'>"+j.numero+"</span>";
-    }).join('')+
-    "</div>":'';
-
   el.innerHTML=
     "<div class='fiche-hero' style='background:"+heroG+"'>" +
       "<div class='fiche-av' style='background:rgba(255,255,255,.2)'>"+init+"</div>" +
@@ -882,14 +840,13 @@ function renderFiche(c){
         "<div class='card'><div class='card-head'><div class='card-title'><div class='card-dot' style='background:#00C875'></div>Progression</div><span style='font-size:12px;font-weight:800;color:var(--ink)'>"+pct+"%</span></div><div class='card-body'>" +
         "<div style='display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:6px'><span>Début "+fmtShort(started)+"</span><span>Fin "+fmtShort(addD(started,dur))+"</span></div>" +
         "<div class='pbar'><div class='pfill' style='width:"+pct+"%;background:"+heroG+"'></div></div>" +
-        (jalonsH?"<div style='margin-top:14px;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)'>Suivis mensuels ("+jalons.filter(j=>j.fait).length+"/"+jalons.length+")</div>"+jalonsH:'')+
-        jalonAlert+
         endAlert+"</div></div>":'')+
       "<div class='card'><div class='card-head'><div class='card-title'><div class='card-dot' style='background:#0096FF'></div>RDV</div><span style='font-size:11px;font-weight:600;color:var(--muted)'>"+cr.length+" au total</span></div><div class='card-body' style='padding:10px 18px'>"+rdvH+"</div></div>" +
     "</div><div class='fmain'>" +
       "<div class='card'><div class='card-head'><div class='card-title'><div class='card-dot' style='background:#E2445C'></div>Workflow de suivi</div></div><div class='card-body'>"+wfH+"</div></div>" +
       "<div class='card'><div class='card-head'><div class='card-title'><div class='card-dot' style='background:#FF7B2C'></div>Timeline</div><button class='btn btn-ghost btn-xs' onclick=\"addTLEvent('"+c.id+"')\">+ Événement</button></div><div class='card-body'>"+tlH+"</div></div>" +
       buildMemoBlock(c) +
+      buildResumesConsultationBlock(c) +
     "</div></div>";
 }
 
@@ -958,6 +915,108 @@ function buildMemoBlock(c){
       ${refusHtml}
       ${okSummary}
     </div></div>`;
+}
+
+const PLAN_LABELS_RESUME = {
+  premier_rdv: { icone:'🌿', couleur:'#9B7230' },
+  suivi: { icone:'🔄', couleur:'#0096FF' },
+  sibo: { icone:'🦠', couleur:'#00C875' },
+  sopk: { icone:'🌙', couleur:'#6C47FF' },
+  endometriose: { icone:'🌸', couleur:'#FF4C8B' },
+  menopause: { icone:'🌕', couleur:'#FF7B2C' },
+  spm: { icone:'🌷', couleur:'#E2445C' }
+};
+
+function buildResumesConsultationBlock(c){
+  const clientResumes = resumesConsultation.filter(r =>
+    (r.prenom||'').toLowerCase() === (c.prenom||'').toLowerCase() &&
+    (r.nom||'').toLowerCase() === (c.nom||'').toLowerCase()
+  );
+  if(!clientResumes.length) return '';
+
+  const itemsHtml = clientResumes.map(r => {
+    const meta = PLAN_LABELS_RESUME[r.plan_type] || { icone:'📝', couleur:'#8888A8' };
+    const dateAffichee = r.date_consultation
+      ? new Date(r.date_consultation).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'})
+      : new Date(r.created_at).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'});
+    const idEsc = r.id.replace(/'/g,"\\'");
+    const badge = `<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 11px;background:${meta.couleur};color:white;border-radius:99px;font-size:11px;font-weight:700">${meta.icone} ${escH(r.plan_label||'Résumé')}</span>`;
+    return `<div style="border:1.5px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;background:var(--white)">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+        <div style="display:flex;align-items:center;gap:10px;min-width:0">
+          ${badge}
+          <span style="font-size:11px;color:var(--muted);flex-shrink:0">${dateAffichee}</span>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0">
+          <button class="btn btn-ghost btn-xs" onclick="toggleResumePreview('${idEsc}')" id="resume-btn-${idEsc}">Voir</button>
+          <button class="btn btn-ghost btn-xs" onclick="downloadResumeFromCRM('${idEsc}')">↓</button>
+        </div>
+      </div>
+      <div id="resume-preview-${idEsc}" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);max-height:380px;overflow-y:auto">${mdToHtmlLeger(r.resume_md||'')}</div>
+    </div>`;
+  }).join('');
+
+  return `<div class="card"><div class="card-head"><div class="card-title"><div class="card-dot" style="background:#9B7230"></div>Résumés de consultation</div><span style="font-size:11px;font-weight:600;color:var(--muted)">${clientResumes.length} au total</span></div><div class="card-body">${itemsHtml}</div></div>`;
+}
+
+/* ── Rendu markdown léger : titres ##, puces -, gras **texte** ──
+   Suffisant pour les résumés générés (structure simple et prévisible),
+   pas un parseur markdown complet. */
+function mdToHtmlLeger(md){
+  const lignes = (md||'').split('\n');
+  let html = '';
+  let enListe = false;
+
+  const fermerListe = () => { if(enListe){ html += '</ul>'; enListe = false; } };
+  const inlineFmt = (s) => escH(s).replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+
+  lignes.forEach(ligneBrute => {
+    const ligne = ligneBrute.trim();
+    if(!ligne || ligne === '---'){ fermerListe(); return; }
+    if(ligne.startsWith('# ')){
+      fermerListe();
+      html += `<div style="font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:17px;color:var(--ink);margin-bottom:6px">${inlineFmt(ligne.slice(2))}</div>`;
+    } else if(ligne.startsWith('## ')){
+      fermerListe();
+      html += `<div style="font-size:12px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#9B7230;margin:14px 0 6px">${inlineFmt(ligne.slice(3))}</div>`;
+    } else if(/^\*[^*].*[^*]\*$/.test(ligne)){
+      fermerListe();
+      html += `<div style="font-size:12px;color:var(--muted);font-style:italic;margin-bottom:8px">${inlineFmt(ligne.slice(1,-1))}</div>`;
+    } else if(ligne.startsWith('- ')){
+      if(!enListe){ html += '<ul style="margin:0 0 8px 18px;padding:0">'; enListe = true; }
+      html += `<li style="font-size:13px;color:var(--ink3);line-height:1.6;margin-bottom:3px">${inlineFmt(ligne.slice(2))}</li>`;
+    } else {
+      fermerListe();
+      html += `<p style="font-size:13px;color:var(--ink3);line-height:1.6;margin-bottom:6px">${inlineFmt(ligne)}</p>`;
+    }
+  });
+  fermerListe();
+  return html;
+}
+
+function toggleResumePreview(id){
+  const el = document.getElementById('resume-preview-'+id);
+  const btn = document.getElementById('resume-btn-'+id);
+  if(!el) return;
+  const ouvert = el.style.display !== 'none';
+  el.style.display = ouvert ? 'none' : 'block';
+  if(btn) btn.textContent = ouvert ? 'Voir' : 'Masquer';
+}
+
+function downloadResumeFromCRM(id){
+  const r = resumesConsultation.find(x => x.id === id);
+  if(!r) { toast('Résumé introuvable','err'); return; }
+  const blob = new Blob([r.resume_md||''], { type: 'text/markdown;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const slug = (r.prenom+'-'+r.nom).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'-');
+  const dateSlug = (r.date_consultation || r.created_at || '').slice(0,10);
+  a.href = url;
+  a.download = 'resume-consultation-'+slug+'-'+dateSlug+'.md';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }
 
 async function toggleWF(id,key){

@@ -210,6 +210,41 @@ const DB = {
     const rows = await this.getPHVMemos(prenom, nom, ddn);
     return rows?.[0] || null;
   },
+
+  /* ── Résumés de consultation (retranscriptions) ──────── */
+
+  async saveConsultationSummary(prenom, nom, ddn, payload) {
+    const client_key = this.clientKey(prenom, nom, ddn);
+    const id = 'resume_' + client_key + '_' + Date.now();
+    return await supaFetch('consultation_summaries', {
+      method: 'POST',
+      headers: { 'Prefer': 'return=representation' },
+      body: {
+        id,
+        client_key,
+        prenom:        prenom || null,
+        nom:           nom || null,
+        ddn:           ddn || null,
+        plan_type:     payload.planType || null,     // ex: 'premier_rdv', 'suivi', 'sibo', 'sopk', 'endometriose', 'menopause', 'spm'
+        plan_label:    payload.planLabel || null,     // libellé lisible affiché dans la CRM
+        date_consultation: payload.dateConsultation || null,
+        resume_md:     payload.resumeMd || '',         // résumé structuré, en markdown
+        transcript_brute: payload.transcriptBrute || null, // conservée uniquement si Sabrina le souhaite, jamais utilisée par le générateur
+        created_at:    new Date().toISOString(),
+        updated_at:    new Date().toISOString()
+      }
+    });
+  },
+
+  async getConsultationSummaries(prenom, nom, ddn) {
+    const client_key = this.clientKey(prenom, nom, ddn);
+    return await supaFetch('consultation_summaries?client_key=eq.' + encodeURIComponent(client_key) + '&order=created_at.desc');
+  },
+
+  async deleteConsultationSummary(id) {
+    return await supaFetch('consultation_summaries?id=eq.' + encodeURIComponent(id), { method: 'DELETE', prefer: '' });
+  },
+
   async getSettings() {
     const rows = await supaFetch('settings?id=eq.praticien');
     return rows?.[0]?.data || {};
