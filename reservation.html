@@ -146,6 +146,16 @@ textarea.fi{min-height:90px;resize:vertical;line-height:1.65}
 .btn-payer:hover{background:var(--or);transform:translateY(-2px);box-shadow:0 8px 24px rgba(180,144,106,.4)}
 .btn-payer:disabled{background:var(--taupe);cursor:not-allowed;transform:none;box-shadow:none}
 .btn-payer.loading::after{content:'';width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:white;border-radius:50%;animation:spin .8s linear infinite;margin-left:8px}
+
+/* ── CONSENTEMENT CGV / RGPD ── */
+.consent-row{display:flex;align-items:flex-start;gap:12px;background:var(--off);border:1px solid var(--taupe);border-radius:12px;padding:16px 18px;margin-bottom:18px}
+.consent-row input[type="checkbox"]{flex-shrink:0;width:19px;height:19px;margin-top:1px;accent-color:var(--ocre);cursor:pointer}
+.consent-row label{font-size:13px;line-height:1.65;color:var(--encre);cursor:pointer}
+.consent-row a{color:var(--ocre);font-weight:600;text-decoration:none;border-bottom:1px solid rgba(180,144,106,.4)}
+.consent-row a:hover{border-color:var(--ocre)}
+.consent-row.error{border-color:var(--rouge);background:var(--rouge-l)}
+.consent-error-msg{font-size:12px;color:var(--rouge);margin:-10px 0 18px 4px;display:none}
+.consent-error-msg.show{display:block}
 @keyframes spin{to{transform:rotate(360deg)}}
 
 .btn-nav{padding:12px 28px;border-radius:99px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;border:1.5px solid var(--taupe);background:var(--blanc);color:var(--ardoise);transition:all .13s}
@@ -659,6 +669,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
           <div class="stripe-element-wrap" id="card-element"></div>
           <div class="stripe-error" id="card-errors"></div>
         </div>
+
+        <div class="consent-row" id="consent-row">
+          <input type="checkbox" id="consent-cgv" onchange="document.getElementById('consent-error-msg').classList.remove('show');document.getElementById('consent-row').classList.remove('error')">
+          <label for="consent-cgv">J'ai lu et j'accepte les <a href="cgv.html" target="_blank">Conditions générales de vente</a>, et je consens explicitement au traitement de mes données de santé tel que décrit dans le <a href="consentement-donnees-sante.html" target="_blank">formulaire de consentement RGPD</a>.</label>
+        </div>
+        <div class="consent-error-msg" id="consent-error-msg">Merci de cocher cette case pour valider votre réservation.</div>
+
         <button class="btn-payer" id="btn-payer" onclick="lancerPaiement()">
           🔒 Payer <span id="btn-prix-affiche">—</span> en toute sécurité
         </button>
@@ -761,7 +778,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   </div>
   <div class="footer-bottom">
     <div class="footer-copy">© 2026 Avita Serena · Sabrina Castelli · Tous droits réservés</div>
-    <div class="footer-legal"><a href="#">Mentions légales</a><a href="#">Politique de confidentialité</a></div>
+    <div class="footer-legal"><a href="cgv.html">CGV</a><a href="mentions-legales.html">Mentions légales</a><a href="politique-confidentialite.html">Politique de confidentialité</a></div>
   </div>
 </footer>
 
@@ -922,6 +939,15 @@ async function lancerPaiement() {
   if(!state.stripeInitialized){showMsg('Stripe non initialisé');return;}
   if(!state.prestaId){showMsg('Aucune prestation sélectionnée');return;}
 
+  var consentBox = document.getElementById('consent-cgv');
+  if(!consentBox || !consentBox.checked){
+    document.getElementById('consent-error-msg').classList.add('show');
+    document.getElementById('consent-row').classList.add('error');
+    document.getElementById('consent-row').scrollIntoView({behavior:'smooth',block:'center'});
+    showMsg('Merci d\'accepter les CGV et le consentement RGPD avant de payer');
+    return;
+  }
+
   var btn = document.getElementById('btn-payer');
   btn.disabled = true;
   btn.classList.add('loading');
@@ -957,7 +983,9 @@ async function lancerPaiement() {
           mots_cles: state.mots_cles,
           objectif_6mois: state.objectif,
           message: state.message,
-          prestation: state.prestaLabel
+          prestation: state.prestaLabel,
+          cgv_rgpd_accepte: 'oui',
+          cgv_rgpd_horodatage: new Date().toISOString()
         }
       })
     });
