@@ -455,6 +455,32 @@ function pDur(p){return p==='alba'?90:p==='aria'?180:p==='ora'?270:0;}
 function pCls(p){return p==='aria'?'aria':p==='ora'?'ora':'alba';}
 function pLbl(p){return p==='aria'?'Aria · 6 mois':p==='ora'?'Ora · 9 mois':p==='alba'?'Alba · 3 mois':'Consultation';}
 
+// Nombre de consultations de suivi mensuelles prévues par parcours (en plus du bilan initial à S0)
+function pNbSuivis(p){return p==='alba'?3:p==='aria'?6:p==='ora'?9:0;}
+
+// Grille de jalons : 1 suivi par mois à partir de la date du bilan initial.
+// Statut de chaque jalon : 'fait' (un RDV de suivi existe à/après cette échéance),
+// 'bientot' (échéance dans les 7 prochains jours, anticipation), 'retard' (échéance dépassée sans suivi), 'a_venir'.
+function buildJalonsParcours(c){
+  const nb=pNbSuivis(c.programme);
+  if(!nb)return[];
+  const debut=c.dateProtocole||c.date1;
+  if(!debut)return[];
+  const nbSuivisFaits=cRdvs(c).filter(r=>r.type==='suivi'&&r.status!=='annule').length;
+  const jalons=[];
+  for(let i=1;i<=nb;i++){
+    const echeance=addD(debut,i*30);
+    const fait=i<=nbSuivisFaits;
+    const j=diffD(echeance); // jours écoulés depuis l'échéance (positif = en retard)
+    let statut='a_venir';
+    if(fait)statut='fait';
+    else if(j>=0)statut='retard';
+    else if(j>=-7)statut='bientot';
+    jalons.push({numero:i,echeance,fait,statut,joursRetard:fait?0:Math.max(0,j),joursAvant:fait?0:Math.max(0,-j)});
+  }
+  return jalons;
+}
+
 function buildWF(c){
   const proto=c.dateProtocole;
   const dur=parseInt(c.dureeTtt)||60;
@@ -475,7 +501,19 @@ function buildWF(c){
     return{...s,tgt,done,isOvd,isSoon};
   });
 }
-function getAlerts(c){if(!c.dateProtocole)return[];return buildWF(c).filter(s=>!s.done&&(s.isOvd||s.isSoon));}
+function getAlerts(c){
+  const wfAl=c.dateProtocole?buildWF(c).filter(s=>!s.done&&(s.isOvd||s.isSoon)):[];
+  const jalons=buildJalonsParcours(c).filter(j=>j.statut==='retard'||j.statut==='bientot');
+  const jalonAl=jalons.map(j=>({
+    key:'jalon_suivi_'+j.numero,
+    label:'Suivi mensuel n°'+j.numero+' à programmer ('+pLbl(c.programme)+')',
+    tgt:j.echeance,
+    isOvd:j.statut==='retard',
+    isSoon:j.statut==='bientot',
+    tpl:null
+  }));
+  return [...wfAl,...jalonAl];
+}
 function getStatus(c){
   const al=getAlerts(c);
   const last=c.timeline?.[c.timeline.length-1]?.date||c.date1;
@@ -800,6 +838,21 @@ function renderFiche(c){
   const endAlert=daysToEnd!==null&&daysToEnd<0&&daysToEnd>-30?
     "<div style='margin-top:11px;background:var(--orange-lt);border:1.5px solid var(--orange);border-radius:var(--r8);padding:9px 12px;font-size:12px;font-weight:600;color:var(--orange)'>⚠ Fin de programme dans "+Math.abs(daysToEnd)+" jour(s)</div>":'';
 
+  const jalons=buildJalonsParcours(c);
+  const jalonProchain=jalons.find(j=>j.statut==='retard')||jalons.find(j=>j.statut==='bientot');
+  const jalonAlert=jalonProchain?
+    (jalonProchain.statut==='retard'?
+      "<div style='margin-top:11px;background:var(--red-lt);border:1.5px solid var(--red);border-radius:var(--r8);padding:9px 12px;font-size:12px;font-weight:600;color:var(--red)'>⚠ Suivi mensuel n°"+jalonProchain.numero+" en retard de "+jalonProchain.joursRetard+" jour(s) — à programmer</div>":
+      "<div style='margin-top:11px;background:var(--orange-lt);border:1.5px solid var(--orange);border-radius:var(--r8);padding:9px 12px;font-size:12px;font-weight:600;color:var(--orange)'>🔔 Suivi mensuel n°"+jalonProchain.numero+" à programmer dans "+jalonProchain.joursAvant+" jour(s)</div>"):'';
+  const jalonsH=jalons.length>0?
+    "<div style='display:flex;gap:5px;flex-wrap:wrap;margin-top:10px'>"+
+    jalons.map(j=>{
+      const bg=j.fait?'#00C875':j.statut==='retard'?'var(--red)':j.statut==='bientot'?'var(--orange)':'var(--border)';
+      const fg=j.fait||j.statut==='retard'||j.statut==='bientot'?'#fff':'var(--muted)';
+      return "<span title='Suivi n°"+j.numero+" — échéance "+fmtShort(j.echeance)+"' style='display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:"+bg+";color:"+fg+";font-size:11px;font-weight:700'>"+j.numero+"</span>";
+    }).join('')+
+    "</div>":'';
+
   el.innerHTML=
     "<div class='fiche-hero' style='background:"+heroG+"'>" +
       "<div class='fiche-av' style='background:rgba(255,255,255,.2)'>"+init+"</div>" +
@@ -829,6 +882,8 @@ function renderFiche(c){
         "<div class='card'><div class='card-head'><div class='card-title'><div class='card-dot' style='background:#00C875'></div>Progression</div><span style='font-size:12px;font-weight:800;color:var(--ink)'>"+pct+"%</span></div><div class='card-body'>" +
         "<div style='display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:6px'><span>Début "+fmtShort(started)+"</span><span>Fin "+fmtShort(addD(started,dur))+"</span></div>" +
         "<div class='pbar'><div class='pfill' style='width:"+pct+"%;background:"+heroG+"'></div></div>" +
+        (jalonsH?"<div style='margin-top:14px;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)'>Suivis mensuels ("+jalons.filter(j=>j.fait).length+"/"+jalons.length+")</div>"+jalonsH:'')+
+        jalonAlert+
         endAlert+"</div></div>":'')+
       "<div class='card'><div class='card-head'><div class='card-title'><div class='card-dot' style='background:#0096FF'></div>RDV</div><span style='font-size:11px;font-weight:600;color:var(--muted)'>"+cr.length+" au total</span></div><div class='card-body' style='padding:10px 18px'>"+rdvH+"</div></div>" +
     "</div><div class='fmain'>" +

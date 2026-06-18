@@ -471,7 +471,12 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <div style="margin-top:15px"><div class="step-line" id="sline-2"></div></div>
       <div style="text-align:center;width:80px">
         <div class="step-dot future" id="sdot-3">3</div>
-        <div class="step-label" id="slbl-3">Paiement</div>
+        <div class="step-label" id="slbl-3">Créneau</div>
+      </div>
+      <div style="margin-top:15px"><div class="step-line" id="sline-3"></div></div>
+      <div style="text-align:center;width:80px">
+        <div class="step-dot future" id="sdot-4">4</div>
+        <div class="step-label" id="slbl-4">Paiement</div>
       </div>
     </div>
   </div>
@@ -595,12 +600,40 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
     <div style="display:flex;gap:12px;justify-content:space-between;align-items:center">
       <button class="btn-nav" onclick="allerEtape(1)">← Retour</button>
-      <button class="btn-nav primary" onclick="allerEtape3()">Continuer vers le paiement →</button>
+      <button class="btn-nav primary" onclick="allerEtape3()">Continuer vers le créneau →</button>
     </div>
   </div>
 
-  <!-- ÉTAPE 3 — PAIEMENT -->
+  <!-- ÉTAPE 3 — CHOIX DU CRÉNEAU -->
   <div class="booking-step" id="step-3">
+    <div class="form-card">
+      <div class="form-title">Choisissez votre créneau</div>
+      <div class="form-sub">Sélectionnez une date puis un horaire disponible. Durée de la séance : <span id="slot-duree-label">90 minutes</span>.</div>
+
+      <div id="slot-loading" style="text-align:center;padding:30px;color:var(--gris)">Chargement des disponibilités…</div>
+      <div id="slot-error" style="display:none;background:var(--rouge-l);border:1px solid rgba(139,58,58,.2);border-radius:10px;padding:14px 16px;font-size:13px;color:var(--rouge);margin-bottom:16px"></div>
+
+      <div id="slot-content" style="display:none">
+        <div style="margin-bottom:18px">
+          <label class="lbl">Date</label>
+          <div id="slot-dates" style="display:flex;gap:8px;overflow-x:auto;padding-bottom:6px"></div>
+        </div>
+        <div>
+          <label class="lbl">Horaire</label>
+          <div id="slot-times" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px"></div>
+          <div id="slot-times-empty" style="display:none;font-size:13px;color:var(--gris);font-style:italic;padding:12px 0">Aucun créneau disponible ce jour-là — choisissez une autre date.</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:12px;justify-content:space-between;align-items:center">
+      <button class="btn-nav" onclick="allerEtape(2)">← Retour</button>
+      <button class="btn-nav primary" id="btn-step3" onclick="allerEtape4()" disabled>Continuer vers le paiement →</button>
+    </div>
+  </div>
+
+  <!-- ÉTAPE 4 — PAIEMENT -->
+  <div class="booking-step" id="step-4">
 
     <!-- RÉCAPITULATIF -->
     <div class="recap-card" id="recap-display">
@@ -612,6 +645,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <div class="recap-row">
         <div class="recap-lbl">Cliente</div>
         <div class="recap-val" id="recap-client">—</div>
+      </div>
+      <div class="recap-row">
+        <div class="recap-lbl">Créneau</div>
+        <div class="recap-val" id="recap-creneau">—</div>
       </div>
       <div class="recap-row">
         <div class="recap-lbl">Format</div>
@@ -669,7 +706,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     </div>
 
     <div style="display:flex;gap:12px;justify-content:space-between">
-      <button class="btn-nav" onclick="allerEtape(2)">← Retour</button>
+      <button class="btn-nav" onclick="allerEtape(3)">← Retour</button>
     </div>
 
     <div class="garanties">
@@ -746,16 +783,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         <a href="specialites.html">Mes spécialités</a>
         <a href="programmes.html">Mes programmes</a>
         <a href="a-propos.html">Mon histoire</a>
+        <a href="a-propos.html">Le Manifeste</a>
       </div>
     </div>
     <div>
       <div class="footer-col-title">Spécialités</div>
       <div class="footer-links">
-        <a href="specialites.html#sibo">SIBO &amp; SII</a>
+        <a href="specialites.html#sibo">SIBO &amp; Santé digestive</a>
         <a href="specialites.html#hormones">Équilibre hormonal</a>
-        <a href="specialites.html#sopk">Syndrome des ovaires polykystiques</a>
-        <a href="specialites.html#endometriose">Endométriose</a>
-        <a href="specialites.html#spm">Syndrome prémenstruel</a>
+        <a href="specialites.html#sopk">SOPK · SPM · Endométriose</a>
+        <a href="specialites.html#menopause">Périménopause</a>
       </div>
     </div>
   </div>
@@ -775,13 +812,31 @@ var state = {
   prestaLabel: null,
   prestaPrix: null,
   prenom: '', nom: '', email: '', tel: '', motif: '', message: '',
+  dateRdv: null, heureRdv: null,
   stripe: null, cardElement: null, stripeInitialized: false
 };
 
 var PRESTATIONS = {
-  bilan:  {label:'Bilan de vitalité naturopathique (90 min)', prix:90,  id:'bilan'},
-  suivi:  {label:'Consultation de suivi (60 min)',            prix:65,  id:'suivi'}
+  bilan:  {label:'Bilan de vitalité naturopathique (90 min)', prix:90,  id:'bilan', duree:90, type:'initial'},
+  suivi:  {label:'Consultation de suivi (60 min)',            prix:65,  id:'suivi', duree:60, type:'suivi'}
 };
+
+// ════════════════════════════════
+// SUPABASE (lecture seule des disponibilités)
+// ════════════════════════════════
+const SUPA_URL = 'https://bqhkdndwldwqacrrbbig.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxaGtkbmR3bGR3cWFjcnJiYmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MzAyNTIsImV4cCI6MjA5NjMwNjI1Mn0.nH2UktMAVKYwng4L3SvW5F0fluV_sObGV0f3Mk1dnOY';
+
+async function supaFetch(path, opts) {
+  opts = opts || {};
+  const res = await fetch(SUPA_URL + '/rest/v1/' + path, {
+    headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json', 'Prefer': opts.prefer || 'return=representation', ...(opts.headers || {}) },
+    method: opts.method || 'GET',
+    body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined
+  });
+  if (!res.ok) { const e = await res.text(); throw new Error('Supabase ' + res.status + ': ' + e); }
+  const t = await res.text(); return t ? JSON.parse(t) : null;
+}
 
 /* ══════════════════════════════
    SÉLECTION PRESTATION
@@ -841,8 +896,14 @@ function allerEtape3() {
   state.mots_cles=[m1,m2,m3].filter(Boolean).join(' · ');
   state.objectif=document.getElementById('f-objectif').value.trim();
   state.message=document.getElementById('f-message').value.trim();
-  majRecap();
   allerEtape(3);
+  chargerCreneaux();
+}
+
+function allerEtape4() {
+  if(!state.dateRdv || !state.heureRdv){showMsg('Veuillez choisir un créneau');return;}
+  majRecap();
+  allerEtape(4);
   if(!state.stripeInitialized){
     var savedKey = localStorage.getItem('avita_stripe_pk');
     if(savedKey){
@@ -852,8 +913,167 @@ function allerEtape3() {
   }
 }
 
+/* ══════════════════════════════
+   CHOIX DU CRÉNEAU
+══════════════════════════════ */
+var creneauxState = { config: null, rdvsExistants: [], joursAffiches: [], dateSelectionnee: null };
+
+function timeToMins(t){ var p=t.split(':'); return parseInt(p[0])*60+parseInt(p[1]); }
+function minsToTime(m){ return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0'); }
+
+async function chargerCreneaux() {
+  var presta = PRESTATIONS[state.prestaId];
+  document.getElementById('slot-duree-label').textContent = presta.duree + ' minutes';
+  document.getElementById('slot-loading').style.display='block';
+  document.getElementById('slot-error').style.display='none';
+  document.getElementById('slot-content').style.display='none';
+  document.getElementById('btn-step3').disabled = true;
+
+  try {
+    var configRows = await supaFetch('agenda_config?id=eq.main');
+    var rdvRows = await supaFetch('rendez_vous?status=neq.annule&select=date,time,type');
+    creneauxState.config = (configRows && configRows[0]) ? configRows[0] : { slots: [], blocked: [], prep_time: 10 };
+    creneauxState.rdvsExistants = rdvRows || [];
+
+    construireJoursDisponibles();
+    document.getElementById('slot-loading').style.display='none';
+    document.getElementById('slot-content').style.display='block';
+  } catch(e) {
+    console.error('chargerCreneaux:', e);
+    document.getElementById('slot-loading').style.display='none';
+    document.getElementById('slot-error').style.display='block';
+    document.getElementById('slot-error').textContent = '⚠️ Impossible de charger les disponibilités pour le moment. Merci de réessayer ou de nous contacter directement.';
+  }
+}
+
+function construireJoursDisponibles() {
+  // Génère les 21 prochains jours, ne garde que ceux qui ont au moins une plage active ce jour de la semaine
+  var slots = creneauxState.config.slots || [];
+  var jours = [];
+  var today = new Date();
+  for (var i = 1; i <= 21; i++) {
+    var d = new Date(today);
+    d.setDate(today.getDate() + i);
+    var dateStr = d.toISOString().slice(0,10);
+    var dow = d.getDay();
+    var slotDuJour = slots.find(function(s){ return s.day === dow && s.on; });
+    if (slotDuJour && !estJourBloque(dateStr)) {
+      jours.push({ date: dateStr, dateObj: d, slot: slotDuJour });
+    }
+  }
+  creneauxState.joursAffiches = jours;
+  renderJours();
+  if (jours.length > 0) selectionnerJour(jours[0].date);
+  else {
+    document.getElementById('slot-times-empty').style.display='block';
+    document.getElementById('slot-times').innerHTML='';
+  }
+}
+
+function estJourBloque(dateStr) {
+  var blocked = creneauxState.config.blocked || [];
+  return blocked.some(function(b){ return dateStr >= b.start && dateStr <= b.end; });
+}
+
+var MOIS_COURT = ['janv','févr','mars','avr','mai','juin','juil','août','sept','oct','nov','déc'];
+var JOURS_COURT = ['dim','lun','mar','mer','jeu','ven','sam'];
+
+function renderJours() {
+  var el = document.getElementById('slot-dates');
+  el.innerHTML = '';
+  creneauxState.joursAffiches.forEach(function(j) {
+    var btn = document.createElement('button');
+    var actif = j.date === creneauxState.dateSelectionnee;
+    btn.type = 'button';
+    btn.style.cssText = 'flex:0 0 auto;min-width:64px;padding:10px 8px;border-radius:10px;border:1.5px solid '+(actif?'var(--ocre)':'var(--taupe)')+';background:'+(actif?'rgba(180,144,106,.1)':'#fff')+';cursor:pointer;font-family:inherit;text-align:center';
+    btn.innerHTML = '<div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--gris)">'+JOURS_COURT[j.dateObj.getDay()]+'</div><div style="font-size:16px;font-weight:600;color:var(--ardoise)">'+j.dateObj.getDate()+'</div><div style="font-size:10px;color:var(--gris)">'+MOIS_COURT[j.dateObj.getMonth()]+'</div>';
+    btn.onclick = function(){ selectionnerJour(j.date); };
+    el.appendChild(btn);
+  });
+}
+
+function selectionnerJour(dateStr) {
+  creneauxState.dateSelectionnee = dateStr;
+  state.dateRdv = dateStr;
+  state.heureRdv = null;
+  document.getElementById('btn-step3').disabled = true;
+  renderJours();
+  renderHoraires(dateStr);
+}
+
+function renderHoraires(dateStr) {
+  var presta = PRESTATIONS[state.prestaId];
+  var jourInfo = creneauxState.joursAffiches.find(function(j){ return j.date === dateStr; });
+  var el = document.getElementById('slot-times');
+  var empty = document.getElementById('slot-times-empty');
+  el.innerHTML = '';
+
+  if (!jourInfo) { empty.style.display='block'; return; }
+
+  var prep = creneauxState.config.prep_time || 0;
+  var startMins = timeToMins(jourInfo.slot.from);
+  var endMins = timeToMins(jourInfo.slot.to);
+  var pas = 30; // grille d'horaires toutes les 30 min
+  var dispo = [];
+
+  for (var t = startMins; t + presta.duree <= endMins; t += pas) {
+    var heure = minsToTime(t);
+    if (estCreneauLibre(dateStr, heure, presta.duree, prep)) dispo.push(heure);
+  }
+
+  if (dispo.length === 0) { empty.style.display='block'; return; }
+  empty.style.display='none';
+
+  dispo.forEach(function(heure) {
+    var btn = document.createElement('button');
+    var actif = heure === state.heureRdv;
+    btn.type='button';
+    btn.style.cssText='padding:10px 6px;border-radius:9px;border:1.5px solid '+(actif?'var(--ocre)':'var(--taupe)')+';background:'+(actif?'var(--ocre)':'#fff')+';color:'+(actif?'#fff':'var(--ardoise)')+';font-weight:600;font-size:13px;cursor:pointer;font-family:inherit';
+    btn.textContent = heure;
+    btn.onclick = function(){
+      state.heureRdv = heure;
+      renderHoraires(dateStr);
+      document.getElementById('btn-step3').disabled = false;
+    };
+    el.appendChild(btn);
+  });
+}
+
+function estCreneauLibre(dateStr, heure, duree, prep) {
+  var newStart = timeToMins(heure);
+  var newEnd = newStart + duree + prep;
+  return !creneauxState.rdvsExistants.some(function(r) {
+    if (r.date !== dateStr) return false;
+    var rDuree = r.type === 'initial' ? 90 : 60;
+    var rStart = timeToMins(r.time);
+    var rEnd = rStart + rDuree + prep;
+    return newStart < rEnd && newEnd > rStart;
+  });
+}
+
+// Dernière vérification juste avant paiement : le créneau est-il toujours libre ?
+async function verifierCreneauEncoreLibre() {
+  try {
+    var rdvRows = await supaFetch('rendez_vous?status=neq.annule&select=date,time,type&date=eq.' + state.dateRdv);
+    var presta = PRESTATIONS[state.prestaId];
+    var prep = (creneauxState.config && creneauxState.config.prep_time) || 0;
+    var newStart = timeToMins(state.heureRdv);
+    var newEnd = newStart + presta.duree + prep;
+    var conflit = (rdvRows || []).some(function(r) {
+      var rDuree = r.type === 'initial' ? 90 : 60;
+      var rStart = timeToMins(r.time);
+      var rEnd = rStart + rDuree + prep;
+      return newStart < rEnd && newEnd > rStart;
+    });
+    return !conflit;
+  } catch(e) {
+    console.error('verifierCreneauEncoreLibre:', e);
+    return true; // en cas d'erreur réseau, on ne bloque pas la cliente — le conflit sera visible dans agenda.html
+  }
+}
+
 function majIndicateur(step) {
-  for(var i=1;i<=3;i++){
+  for(var i=1;i<=4;i++){
     var dot=document.getElementById('sdot-'+i);
     var line=document.getElementById('sline-'+i);
     if(i<step){dot.className='step-dot done';dot.textContent='✓';}
@@ -866,9 +1086,18 @@ function majIndicateur(step) {
   }
 }
 
+function fmtCreneauRecap() {
+  if(!state.dateRdv || !state.heureRdv) return '—';
+  var d = new Date(state.dateRdv+'T12:00:00');
+  var JOURS_LONG=['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
+  var MOIS_LONG=['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+  return JOURS_LONG[d.getDay()]+' '+d.getDate()+' '+MOIS_LONG[d.getMonth()]+' à '+state.heureRdv;
+}
+
 function majRecap() {
   document.getElementById('recap-presta').textContent = state.prestaLabel||'—';
   document.getElementById('recap-client').textContent = state.prenom+' '+state.nom;
+  document.getElementById('recap-creneau').textContent = fmtCreneauRecap();
   document.getElementById('recap-prix').textContent = (state.prestaPrix||'—')+'€';
   document.getElementById('btn-prix-affiche').textContent = (state.prestaPrix||'—')+'€';
 }
@@ -921,10 +1150,25 @@ function initStripe() {
 async function lancerPaiement() {
   if(!state.stripeInitialized){showMsg('Stripe non initialisé');return;}
   if(!state.prestaId){showMsg('Aucune prestation sélectionnée');return;}
+  if(!state.dateRdv || !state.heureRdv){showMsg('Veuillez choisir un créneau');return;}
 
   var btn = document.getElementById('btn-payer');
   btn.disabled = true;
   btn.classList.add('loading');
+  btn.querySelector('span').textContent = 'Vérification du créneau…';
+
+  // Dernière vérification anti-double-booking : une autre cliente a pu réserver
+  // ce créneau pendant que celle-ci remplissait le formulaire.
+  var libre = await verifierCreneauEncoreLibre();
+  if (!libre) {
+    btn.disabled=false; btn.classList.remove('loading');
+    btn.querySelector('span').textContent = state.prestaPrix+'€';
+    showMsg('⚠️ Ce créneau vient d\'être pris par une autre personne — merci d\'en choisir un autre.');
+    allerEtape(3);
+    chargerCreneaux();
+    return;
+  }
+
   btn.querySelector('span').textContent = 'Traitement en cours…';
 
   // ── IMPORTANT : Cette fonction doit appeler votre backend pour créer un PaymentIntent ──
@@ -957,7 +1201,9 @@ async function lancerPaiement() {
           mots_cles: state.mots_cles,
           objectif_6mois: state.objectif,
           message: state.message,
-          prestation: state.prestaLabel
+          prestation: state.prestaLabel,
+          date_rdv: state.dateRdv,
+          heure_rdv: state.heureRdv
         }
       })
     });
@@ -985,7 +1231,7 @@ async function lancerPaiement() {
       btn.disabled=false;btn.classList.remove('loading');
       btn.querySelector('span').textContent = state.prestaPrix+'€';
     } else if(result.paymentIntent.status === 'succeeded') {
-      afficherSucces();
+      await afficherSucces();
     }
 
   } catch(e) {
@@ -993,7 +1239,7 @@ async function lancerPaiement() {
     if(e.message.indexOf('Failed to fetch')>=0 || e.message.indexOf('NetworkError')>=0) {
       // Simulation succès pour démonstration sans backend
       console.log('Mode démo : paiement simulé (backend non configuré)');
-      afficherSucces();
+      await afficherSucces();
     } else {
       document.getElementById('card-errors').textContent = e.message;
       document.getElementById('card-errors').style.display='block';
@@ -1003,7 +1249,144 @@ async function lancerPaiement() {
   }
 }
 
-function afficherSucces() {
+/* ══════════════════════════════
+   APRÈS PAIEMENT : RDV + FICHE CLIENTE + EMAIL
+══════════════════════════════ */
+
+// ID du template Brevo "Confirmation RDV" envoyé à la cliente
+// https://app.brevo.com/templates/email/edit/3
+var BREVO_TEMPLATE_CONFIRMATION_CLIENTE = 3;
+
+async function creerRdvSupabase() {
+  var presta = PRESTATIONS[state.prestaId];
+  var rdv = {
+    id: Date.now(),
+    name: state.prenom + ' ' + state.nom,
+    email: state.email,
+    date: state.dateRdv,
+    time: state.heureRdv,
+    type: presta.type,
+    status: 'confirme', // déjà payé → confirmé directement, pas de liste d'attente
+    notes: [state.motif, state.message].filter(Boolean).join(' — '),
+    parcours: null,
+    mails_done: {},
+    updated_at: new Date().toISOString()
+  };
+  await supaFetch('rendez_vous', {
+    method: 'POST',
+    headers: { 'Prefer': 'return=representation,resolution=merge-duplicates' },
+    body: rdv
+  });
+  return rdv;
+}
+
+async function creerOuLierFicheClient() {
+  try {
+    var existing = await supaFetch('clientes?email=eq.' + encodeURIComponent(state.email) + '&limit=1');
+    if (existing && existing.length > 0) return existing[0];
+
+    var idTemp = state.prenom.toLowerCase().replace(/[\s']/g,'_') + '-' + state.nom.toLowerCase().replace(/[\s']/g,'_') + '-' + Date.now();
+    var payload = {
+      id: idTemp,
+      prenom: state.prenom,
+      nom: state.nom,
+      email: state.email,
+      tel: state.tel || null,
+      motifs: state.motif || null,
+      notes: [state.duree ? 'Symptômes depuis : '+state.duree : '', state.mots_cles, state.objectif, state.message].filter(Boolean).join('\n'),
+      date1: state.dateRdv,
+      timeline: [{type:'creation', title:'Dossier créé depuis réservation en ligne', icon:'✦', date: new Date().toISOString().slice(0,10)}],
+      workflow_done: {},
+      created_at: new Date().toISOString()
+    };
+    await supaFetch('clientes', {
+      method: 'POST',
+      headers: { 'Prefer': 'return=representation,resolution=merge-duplicates' },
+      body: payload
+    });
+    return payload;
+  } catch(e) {
+    console.error('creerOuLierFicheClient:', e);
+    return null;
+  }
+}
+
+async function getBrevoConfig() {
+  try {
+    var rows = await supaFetch('settings?id=eq.brevo_config');
+    if (rows && rows[0] && rows[0].data) return rows[0].data;
+  } catch(e) { console.error('getBrevoConfig:', e); }
+  return { publicKey:null, serviceId:null, templateId:null };
+}
+
+async function envoyerConfirmationBrevoCliente() {
+  var cfg = await getBrevoConfig();
+  if (!cfg.publicKey) { console.warn('Brevo non configuré côté agenda — confirmation cliente non envoyée automatiquement'); return; }
+  var senderEmail = cfg.templateId || 'sabrina@avitaserena.com';
+
+  var d = new Date(state.dateRdv+'T12:00:00');
+  var JOURS_LONG=['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
+  var MOIS_LONG=['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+  var dateLabel = JOURS_LONG[d.getDay()]+' '+d.getDate()+' '+MOIS_LONG[d.getMonth()];
+
+  fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'api-key': cfg.publicKey },
+    body: JSON.stringify({
+      templateId: BREVO_TEMPLATE_CONFIRMATION_CLIENTE,
+      sender: { name: 'Avita Serena', email: senderEmail },
+      to: [{ email: state.email, name: state.prenom+' '+state.nom }],
+      params: {
+        client_name: state.prenom+' '+state.nom,
+        rdv_date: dateLabel,
+        rdv_time: state.heureRdv,
+        rdv_type: state.prestaLabel,
+        praticien_url: 'https://avitaserena.com',
+        lien_visio: 'https://meet.google.com/nqw-rpwq-rvi'
+      },
+      replyTo: { email: 'sabrina@avitaserena.com' }
+    })
+  }).catch(function(e){ console.error('Erreur envoi confirmation Brevo cliente:', e); });
+}
+
+async function notifierSabrinaNouvelleReservation() {
+  var cfg = await getBrevoConfig();
+  if (!cfg.publicKey || !cfg.serviceId) { console.warn('Brevo non configuré côté agenda — notif Sabrina non envoyée'); return; }
+  var senderEmail = cfg.templateId || 'sabrina@avitaserena.com';
+
+  fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'api-key': cfg.publicKey },
+    body: JSON.stringify({
+      templateId: parseInt(cfg.serviceId),
+      sender: { name: 'Avita Serena', email: senderEmail },
+      to: [{ email: 'sabrina@avitaserena.com', name: 'Sabrina — Avita Serena' }],
+      params: {
+        subject: '💳 Nouvelle réservation payée — ' + state.prenom + ' ' + state.nom,
+        client_name: state.prenom+' '+state.nom,
+        client_email: state.email,
+        rdv_date: state.dateRdv,
+        rdv_time: state.heureRdv,
+        rdv_type: state.prestaLabel,
+        rdv_status: 'Confirmé (payé en ligne)',
+        praticien_url: 'https://avitaserena.com/praticien'
+      },
+      replyTo: { email: state.email }
+    })
+  }).catch(function(e){ console.error('Erreur notif Sabrina:', e); });
+}
+
+async function afficherSucces() {
+  try {
+    await creerRdvSupabase();
+    await creerOuLierFicheClient();
+    await envoyerConfirmationBrevoCliente();
+    await notifierSabrinaNouvelleReservation();
+  } catch(e) {
+    console.error('Erreur post-paiement (RDV/fiche/email) :', e);
+    // Le paiement a réussi, on ne bloque jamais l'affichage du succès même si la synchro échoue.
+    // Sabrina devra vérifier manuellement l'agenda dans ce cas.
+  }
   document.querySelector('.main').style.display='none';
   document.getElementById('success-page').style.display='block';
   document.getElementById('success-prenom').textContent=state.prenom;

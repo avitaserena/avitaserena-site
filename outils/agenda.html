@@ -927,8 +927,9 @@ function confirmRdv(id) {
     rdv.status = 'confirme';
     saveRdvSupabase(rdv);
     updateStats(); renderWaitlist(); renderAgenda(); renderMiniCal(); renderAlertes();
-    sendEmailNotif(rdv, 'confirmed');
-    showToast('✅ RDV confirmé — email envoyé à ' + rdv.email, 'success');
+    sendEmailNotif(rdv, 'confirmed');       // notif interne → sabrina@avitaserena.com
+    sendClientConfirmation(rdv);             // confirmation réelle → la cliente (template Brevo #3)
+    showToast('✅ RDV confirmé', 'success');
   }
 }
 
@@ -939,7 +940,7 @@ function rejectRdv(id) {
     saveRdvSupabase(rdv);
     updateStats(); renderWaitlist(); renderAgenda(); renderMiniCal(); renderAlertes();
     sendEmailNotif(rdv, 'cancelled');
-    showToast('RDV annulé — cliente notifiée', 'warning');
+    showToast('RDV annulé', 'warning');
   }
 }
 
@@ -1049,7 +1050,7 @@ avitaserena.com`;
   document.getElementById('rdvModal').classList.add('open');
 }
 
-function saveRdv() {
+async function saveRdv() {
   const rdv = {
     name: document.getElementById('rdvName').value,
     email: document.getElementById('rdvEmail').value,
@@ -1073,38 +1074,49 @@ function saveRdv() {
   }
   updateStats(); renderAgenda(); renderWaitlist(); renderSemaine(); renderMiniCal(); renderAlertes();
 
-  // Notification email (simulée — à connecter à EmailJS ou Netlify Forms)
+  // Notification Brevo (vers Sabrina) + création/liaison fiche cliente
   if (!state.editingId) {
     showEmailNotif(rdv);
-    syncToCRM(rdv);
+    await syncToCRM(rdv);
   }
 
   closeModalDirect('rdvModal');
 }
 
 // ════════════════════════════════
-// EMAILJS
+// EMAILJS / BREVO (config partagée via Supabase pour être lisible depuis reservation.html)
 // ════════════════════════════════
 var ejsConfig = {publicKey:'', serviceId:'', templateId:''};
 
-function loadEmailJSConfig() {
+async function loadEmailJSConfig() {
   try {
-    var saved = localStorage.getItem('avs_emailjs');
-    if (saved) {
-      ejsConfig = JSON.parse(saved);
-      document.getElementById('ejs_public_key').value = ejsConfig.publicKey || '';
-      document.getElementById('ejs_service_id').value = ejsConfig.serviceId || '';
-      document.getElementById('ejs_template_id').value = ejsConfig.templateId || '';
-      updateEmailJSStatus();
+    // Priorité à Supabase (partagé entre tous les outils/appareils)
+    var rows = await supaFetch('settings?id=eq.brevo_config');
+    if (rows && rows[0] && rows[0].data) {
+      ejsConfig = rows[0].data;
+    } else {
+      var saved = localStorage.getItem('avs_emailjs');
+      if (saved) ejsConfig = JSON.parse(saved);
     }
-  } catch(e) {}
+    document.getElementById('ejs_public_key').value = ejsConfig.publicKey || '';
+    document.getElementById('ejs_service_id').value = ejsConfig.serviceId || '';
+    document.getElementById('ejs_template_id').value = ejsConfig.templateId || '';
+    updateEmailJSStatus();
+  } catch(e) { console.error('loadEmailJSConfig:', e); }
 }
 
-function saveEmailJSConfig() {
+async function saveEmailJSConfig() {
   ejsConfig.publicKey = document.getElementById('ejs_public_key').value.trim();
   ejsConfig.serviceId = document.getElementById('ejs_service_id').value.trim();
   ejsConfig.templateId = document.getElementById('ejs_template_id').value.trim();
   localStorage.setItem('avs_emailjs', JSON.stringify(ejsConfig));
+  try {
+    await supaFetch('settings', {
+      method: 'POST',
+      headers: { 'Prefer': 'return=representation,resolution=merge-duplicates' },
+      body: { id: 'brevo_config', data: ejsConfig, updated_at: new Date().toISOString() }
+    });
+  } catch(e) { console.error('Erreur sauvegarde config Brevo Supabase:', e); }
   updateEmailJSStatus();
   if (ejsConfig.publicKey) {
     emailjs.init({publicKey: ejsConfig.publicKey});
@@ -1145,16 +1157,19 @@ function testEmailJS() {
   });
 }
 
-function sendBrevoEmail(params, callback) {
+function sendBrevoEmail(params, callback, opts) {
   // Brevo transactional API — template
-  var templateId = parseInt(ejsConfig.serviceId);
+  opts = opts || {};
+  var templateId = opts.templateId ? parseInt(opts.templateId) : parseInt(ejsConfig.serviceId);
   var senderEmail = ejsConfig.templateId || 'sabrina@avitaserena.com';
+  var toEmail = opts.to || 'sabrina@avitaserena.com';
+  var toName = opts.toName || 'Sabrina — Avita Serena';
   var payload = {
     templateId: templateId,
     sender: { name: 'Avita Serena', email: senderEmail },
-    to: [{ email: 'sabrina@avitaserena.com', name: 'Sabrina — Avita Serena' }],
+    to: [{ email: toEmail, name: toName }],
     params: params,
-    replyTo: { email: params.client_email || 'noreply@avitaserena.com' }
+    replyTo: { email: opts.replyTo || params.client_email || 'noreply@avitaserena.com' }
   };
 
   fetch('https://api.brevo.com/v3/smtp/email', {
@@ -1179,75 +1194,36 @@ function sendBrevoEmail(params, callback) {
   });
 }
 
-function sendEmailNotif(rdv, action) {
-  if (!ejsConfig.publicKey || !ejsConfig.serviceId) {
-    showToast('📬 Brevo non configuré — notif non envoyée', 'warning');
+// ID du template Brevo "Confirmation RDV" envoyé à la cliente
+// https://app.brevo.com/templates/email/edit/3
+var BREVO_TEMPLATE_CONFIRMATION_CLIENTE = 3;
+
+function sendClientConfirmation(rdv) {
+  if (!rdv.email) { showToast('⚠️ Pas d\'email cliente — confirmation non envoyée', 'warning'); return; }
+  if (!ejsConfig.publicKey) {
+    showToast('📬 Brevo non configuré — confirmation cliente non envoyée', 'warning');
     return;
   }
   var d = new Date(rdv.date + 'T12:00:00');
   var dateLabel = JOURS_LONG[d.getDay()] + ' ' + d.getDate() + ' ' + MOIS[d.getMonth()] + ' à ' + rdv.time;
-  var subject = action === 'new'
-    ? '🌿 Nouvelle demande de RDV — ' + rdv.name
-    : (action === 'confirmed' ? '✅ RDV confirmé — ' + rdv.name : '❌ RDV annulé — ' + rdv.name);
 
   sendBrevoEmail({
-    subject: subject,
     client_name: rdv.name,
     client_email: rdv.email,
     rdv_date: dateLabel,
     rdv_time: rdv.time,
     rdv_type: getTypeLabel(rdv.type),
     rdv_parcours: rdv.parcours ? getParcoursLabel(rdv.parcours) : '—',
-    rdv_notes: rdv.notes || '—',
-    rdv_status: action === 'new' ? 'En attente de confirmation' : (action === 'confirmed' ? 'Confirmé' : 'Annulé'),
-    praticien_url: 'https://avitaserena.com/praticien'
+    praticien_url: 'https://avitaserena.com',
+    lien_visio: 'https://meet.google.com/nqw-rpwq-rvi'
   }, function(ok) {
-    if (ok) showToast('📬 Notification envoyée à sabrina@avitaserena.com', 'success');
-    else showToast('⚠️ Erreur Brevo — vérifie ta configuration', 'error');
+    if (ok) showToast('📬 Confirmation envoyée à ' + rdv.email, 'success');
+    else showToast('⚠️ Erreur Brevo — confirmation cliente non envoyée', 'error');
+  }, {
+    templateId: BREVO_TEMPLATE_CONFIRMATION_CLIENTE,
+    to: rdv.email,
+    toName: rdv.name
   });
-}
-
-function showEmailNotif(rdv) {
-  sendEmailNotif(rdv, 'new');
-}
-
-function showToast(msg, type) {
-  var colors = {success:'var(--ardoise)', error:'#8B2020', warning:'#7a5c3a'};
-  var notif = document.createElement('div');
-  notif.style.cssText = 'position:fixed;bottom:24px;right:24px;background:' + (colors[type]||colors.success) + ';color:#fff;padding:14px 18px;border-radius:12px;max-width:360px;z-index:9999;box-shadow:0 8px 32px rgba(0,0,0,.25);animation:slideIn .3s ease;font-size:13px;line-height:1.5';
-  notif.textContent = msg;
-  document.body.appendChild(notif);
-  setTimeout(function() {
-    notif.style.opacity = '0';
-    notif.style.transition = 'opacity .5s';
-    setTimeout(function() { notif.remove(); }, 500);
-  }, 4000);
-}
-
-function syncToCRM(rdv) {
-  try {
-    var crmData = localStorage.getItem('avs_crm_clients') ? JSON.parse(localStorage.getItem('avs_crm_clients')) : [];
-    var existing = crmData.find(function(c) { return c.email === rdv.email; });
-    if (!existing) {
-      var parts = rdv.name.split(' ');
-      var newClient = {
-        id: 'cli_' + Date.now(),
-        prenom: parts[0] || rdv.name,
-        nom: parts.slice(1).join(' ') || '',
-        email: rdv.email,
-        parcours: rdv.parcours || 'bilan',
-        statut: 'prospect',
-        notes: rdv.notes || '',
-        rdv_date: rdv.date,
-        rdv_time: rdv.time,
-        rdv_type: rdv.type,
-        created: new Date().toISOString().slice(0,10),
-        source: 'agenda'
-      };
-      crmData.push(newClient);
-      localStorage.setItem('avs_crm_clients', JSON.stringify(crmData));
-    }
-  } catch(e) {}
 }
 
 function deleteRdv() {
@@ -1305,30 +1281,43 @@ function showToast(msg, type) {
   }, 4000);
 }
 
-function syncToCRM(rdv) {
+// Sync RDV → fiche client (Supabase, table "clientes").
+// Cherche une fiche existante par email ; sinon en crée une nouvelle (DDN à compléter par Sabrina).
+async function syncToCRM(rdv) {
+  if (!rdv.email) return; // pas d'email = impossible de relier ou créer une fiche fiable
   try {
-    var crmData = localStorage.getItem('avs_crm_clients') ? JSON.parse(localStorage.getItem('avs_crm_clients')) : [];
-    var existing = crmData.find(function(c) { return c.email === rdv.email; });
-    if (!existing) {
-      var parts = rdv.name.split(' ');
-      var newClient = {
-        id: 'cli_' + Date.now(),
-        prenom: parts[0] || rdv.name,
-        nom: parts.slice(1).join(' ') || '',
-        email: rdv.email,
-        parcours: rdv.parcours || 'bilan',
-        statut: 'prospect',
-        notes: rdv.notes || '',
-        rdv_date: rdv.date,
-        rdv_time: rdv.time,
-        rdv_type: rdv.type,
-        created: new Date().toISOString().slice(0,10),
-        source: 'agenda'
-      };
-      crmData.push(newClient);
-      localStorage.setItem('avs_crm_clients', JSON.stringify(crmData));
+    var existing = await supaFetch('clientes?email=eq.' + encodeURIComponent(rdv.email) + '&limit=1');
+    if (existing && existing.length > 0) {
+      // Fiche déjà existante : on ne touche pas à ses données, le lien RDV↔fiche se fait par email/client_id
+      return existing[0];
     }
-  } catch(e) {}
+    var parts = rdv.name.trim().split(' ');
+    var prenom = parts[0] || rdv.name;
+    var nom = parts.slice(1).join(' ') || '';
+    var idTemp = prenom.toLowerCase().replace(/[\s']/g,'_') + (nom ? '-' + nom.toLowerCase().replace(/[\s']/g,'_') : '') + '-' + Date.now();
+    var payload = {
+      id: idTemp,
+      prenom: prenom,
+      nom: nom,
+      email: rdv.email,
+      programme: rdv.parcours && rdv.parcours !== 'bilan' ? rdv.parcours : null,
+      date1: rdv.date,
+      notes: rdv.notes || '',
+      timeline: [{type:'creation', title:'Dossier créé depuis réservation agenda', icon:'✦', date: new Date().toISOString().slice(0,10)}],
+      workflow_done: {},
+      created_at: new Date().toISOString()
+    };
+    await supaFetch('clientes', {
+      method: 'POST',
+      headers: { 'Prefer': 'return=representation,resolution=merge-duplicates' },
+      body: payload
+    });
+    showToast('🌿 Nouvelle fiche cliente créée — DDN à compléter dans le CRM', 'warning');
+    return payload;
+  } catch(e) {
+    console.error('syncToCRM:', e);
+    showToast('⚠️ Erreur synchronisation fiche cliente', 'warning');
+  }
 }
 
 // ════════════════════════════════
