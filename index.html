@@ -793,9 +793,15 @@ var cntObs = new IntersectionObserver(function(entries) {
       animCounter(e.target, parseInt(e.target.dataset.target));
     }
   });
-}, {threshold: 0.5});
+}, {threshold: 0.1, rootMargin: '0px 0px -50px 0px'});
 document.querySelectorAll('.p-stat-num[data-target]').forEach(function(el) {
   cntObs.observe(el);
+  // Fallback : si déjà visible au chargement
+  var r = el.getBoundingClientRect();
+  if (r.top < window.innerHeight && !el.dataset.counted) {
+    el.dataset.counted = '1';
+    animCounter(el, parseInt(el.dataset.target));
+  }
 });
 
 // Parallaxe
