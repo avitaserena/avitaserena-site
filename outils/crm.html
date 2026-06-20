@@ -322,7 +322,6 @@ function saveL(d){localStorage.setItem(LKEY,JSON.stringify(d))}
 let db={clients:[],factures:[],settings:null,nextF:1};
 let taches=[],rdvs=[],emailCtx=null,curTab='urg',curSearch='',curFilter='all';
 let memoAlerts=[];
-let resumesConsultation=[];
 
 // COLORS palette - vibrant Monday-style
 const COLORS=['#6C47FF','#FF4C8B','#00C875','#0096FF','#FF7B2C','#00C4D4','#E2445C','#FFCB00'];
@@ -334,7 +333,7 @@ async function init(){
   const loc=loadL();
   db.settings=loc.settings||defSettings();
   db.nextF=loc.nextF||1;
-  await Promise.all([loadClients(),loadFactures(),loadTaches(),loadRdvs(),loadMemoAlerts(),loadResumesConsultation()]);
+  await Promise.all([loadClients(),loadFactures(),loadTaches(),loadRdvs(),loadMemoAlerts()]);
   renderDashboard();
 }
 
@@ -424,16 +423,6 @@ async function loadMemoAlerts(){
   }catch(e){
     console.error('[CRM] Erreur loadMemoAlerts:', e.message);
     memoAlerts = [];
-  }
-}
-
-async function loadResumesConsultation(){
-  try{
-    resumesConsultation = await sb('consultation_summaries?order=created_at.desc&limit=500');
-    console.log('[CRM] Résumés de consultation chargés:', resumesConsultation.length);
-  }catch(e){
-    console.error('[CRM] Erreur loadResumesConsultation:', e.message);
-    resumesConsultation = [];
   }
 }
 
@@ -769,7 +758,7 @@ async function openFiche(id){
   if(!c)return;
   nav('fiche',null);
   renderFiche(c); // affichage immédiat
-  await Promise.all([loadMemoAlerts(), loadResumesConsultation()]); // rechargement frais depuis Supabase
+  await loadMemoAlerts(); // rechargement frais depuis Supabase
   renderFiche(c); // re-render avec données à jour
 }
 
@@ -821,6 +810,7 @@ function renderFiche(c){
         "<button class='btn btn-ghost btn-sm' style='border-color:rgba(255,255,255,.4);color:white' onclick=\"emailHeroBtn(this)\" data-id='"+c.id+"' >Email</button>" +
         "<button class='btn btn-ghost btn-sm' style='border-color:rgba(255,255,255,.4);color:white' onclick=\"window.open('generateur.html','_blank')\">Générer PHV ↗</button>" +
         "<button class='btn btn-ghost btn-sm' style='border-color:rgba(255,255,255,.4);color:white' onclick=\"ouvrirPHVCliente('"+c.id+"')\">PHV client ↗</button>" +
+        "<button class='btn btn-sm' style='background:rgba(196,169,125,.25);border:1px solid rgba(196,169,125,.5);color:white' onclick=\"ouvrirEnvoiProtocole('"+c.id+"')\">📨 Envoyer le protocole</button>" +
       "</div>" +
     "</div>" +
     "<div class='m3'>" +
@@ -846,7 +836,6 @@ function renderFiche(c){
       "<div class='card'><div class='card-head'><div class='card-title'><div class='card-dot' style='background:#E2445C'></div>Workflow de suivi</div></div><div class='card-body'>"+wfH+"</div></div>" +
       "<div class='card'><div class='card-head'><div class='card-title'><div class='card-dot' style='background:#FF7B2C'></div>Timeline</div><button class='btn btn-ghost btn-xs' onclick=\"addTLEvent('"+c.id+"')\">+ Événement</button></div><div class='card-body'>"+tlH+"</div></div>" +
       buildMemoBlock(c) +
-      buildResumesConsultationBlock(c) +
     "</div></div>";
 }
 
@@ -915,108 +904,6 @@ function buildMemoBlock(c){
       ${refusHtml}
       ${okSummary}
     </div></div>`;
-}
-
-const PLAN_LABELS_RESUME = {
-  premier_rdv: { icone:'🌿', couleur:'#9B7230' },
-  suivi: { icone:'🔄', couleur:'#0096FF' },
-  sibo: { icone:'🦠', couleur:'#00C875' },
-  sopk: { icone:'🌙', couleur:'#6C47FF' },
-  endometriose: { icone:'🌸', couleur:'#FF4C8B' },
-  menopause: { icone:'🌕', couleur:'#FF7B2C' },
-  spm: { icone:'🌷', couleur:'#E2445C' }
-};
-
-function buildResumesConsultationBlock(c){
-  const clientResumes = resumesConsultation.filter(r =>
-    (r.prenom||'').toLowerCase() === (c.prenom||'').toLowerCase() &&
-    (r.nom||'').toLowerCase() === (c.nom||'').toLowerCase()
-  );
-  if(!clientResumes.length) return '';
-
-  const itemsHtml = clientResumes.map(r => {
-    const meta = PLAN_LABELS_RESUME[r.plan_type] || { icone:'📝', couleur:'#8888A8' };
-    const dateAffichee = r.date_consultation
-      ? new Date(r.date_consultation).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'})
-      : new Date(r.created_at).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'});
-    const idEsc = r.id.replace(/'/g,"\\'");
-    const badge = `<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 11px;background:${meta.couleur};color:white;border-radius:99px;font-size:11px;font-weight:700">${meta.icone} ${escH(r.plan_label||'Résumé')}</span>`;
-    return `<div style="border:1.5px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;background:var(--white)">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
-        <div style="display:flex;align-items:center;gap:10px;min-width:0">
-          ${badge}
-          <span style="font-size:11px;color:var(--muted);flex-shrink:0">${dateAffichee}</span>
-        </div>
-        <div style="display:flex;gap:6px;flex-shrink:0">
-          <button class="btn btn-ghost btn-xs" onclick="toggleResumePreview('${idEsc}')" id="resume-btn-${idEsc}">Voir</button>
-          <button class="btn btn-ghost btn-xs" onclick="downloadResumeFromCRM('${idEsc}')">↓</button>
-        </div>
-      </div>
-      <div id="resume-preview-${idEsc}" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);max-height:380px;overflow-y:auto">${mdToHtmlLeger(r.resume_md||'')}</div>
-    </div>`;
-  }).join('');
-
-  return `<div class="card"><div class="card-head"><div class="card-title"><div class="card-dot" style="background:#9B7230"></div>Résumés de consultation</div><span style="font-size:11px;font-weight:600;color:var(--muted)">${clientResumes.length} au total</span></div><div class="card-body">${itemsHtml}</div></div>`;
-}
-
-/* ── Rendu markdown léger : titres ##, puces -, gras **texte** ──
-   Suffisant pour les résumés générés (structure simple et prévisible),
-   pas un parseur markdown complet. */
-function mdToHtmlLeger(md){
-  const lignes = (md||'').split('\n');
-  let html = '';
-  let enListe = false;
-
-  const fermerListe = () => { if(enListe){ html += '</ul>'; enListe = false; } };
-  const inlineFmt = (s) => escH(s).replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-
-  lignes.forEach(ligneBrute => {
-    const ligne = ligneBrute.trim();
-    if(!ligne || ligne === '---'){ fermerListe(); return; }
-    if(ligne.startsWith('# ')){
-      fermerListe();
-      html += `<div style="font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:17px;color:var(--ink);margin-bottom:6px">${inlineFmt(ligne.slice(2))}</div>`;
-    } else if(ligne.startsWith('## ')){
-      fermerListe();
-      html += `<div style="font-size:12px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#9B7230;margin:14px 0 6px">${inlineFmt(ligne.slice(3))}</div>`;
-    } else if(/^\*[^*].*[^*]\*$/.test(ligne)){
-      fermerListe();
-      html += `<div style="font-size:12px;color:var(--muted);font-style:italic;margin-bottom:8px">${inlineFmt(ligne.slice(1,-1))}</div>`;
-    } else if(ligne.startsWith('- ')){
-      if(!enListe){ html += '<ul style="margin:0 0 8px 18px;padding:0">'; enListe = true; }
-      html += `<li style="font-size:13px;color:var(--ink3);line-height:1.6;margin-bottom:3px">${inlineFmt(ligne.slice(2))}</li>`;
-    } else {
-      fermerListe();
-      html += `<p style="font-size:13px;color:var(--ink3);line-height:1.6;margin-bottom:6px">${inlineFmt(ligne)}</p>`;
-    }
-  });
-  fermerListe();
-  return html;
-}
-
-function toggleResumePreview(id){
-  const el = document.getElementById('resume-preview-'+id);
-  const btn = document.getElementById('resume-btn-'+id);
-  if(!el) return;
-  const ouvert = el.style.display !== 'none';
-  el.style.display = ouvert ? 'none' : 'block';
-  if(btn) btn.textContent = ouvert ? 'Voir' : 'Masquer';
-}
-
-function downloadResumeFromCRM(id){
-  const r = resumesConsultation.find(x => x.id === id);
-  if(!r) { toast('Résumé introuvable','err'); return; }
-  const blob = new Blob([r.resume_md||''], { type: 'text/markdown;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  const slug = (r.prenom+'-'+r.nom).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'-');
-  const dateSlug = (r.date_consultation || r.created_at || '').slice(0,10);
-  a.href = url;
-  a.download = 'resume-consultation-'+slug+'-'+dateSlug+'.md';
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
 }
 
 async function toggleWF(id,key){
@@ -1317,6 +1204,169 @@ function ouvrirPHVCliente(clientId){
   };
   localStorage.setItem('avita_session', JSON.stringify(session));
   window.open('phv-print.html', '_blank');
+}
+
+// ── Modale "Envoyer le protocole" ──
+function ouvrirEnvoiProtocole(clientId){
+  const c = db.clients.find(x=>x.id===clientId);
+  if(!c){ toast('Cliente introuvable','err'); return; }
+  document.getElementById('modal-envoi-protocole')?.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'modal-envoi-protocole';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:9000;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(28,28,46,.6);backdrop-filter:blur(4px)';
+
+  const ddnFormate = c.ddn ? c.ddn.split('-').reverse().join('/') : '—';
+
+  modal.innerHTML = `
+  <div style="background:#fff;border-radius:16px;width:100%;max-width:520px;box-shadow:0 8px 40px rgba(28,28,46,.2);overflow:hidden">
+    <!-- Header -->
+    <div style="background:#1E1E1C;padding:24px 28px 20px">
+      <div style="font-size:10px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:rgba(196,169,125,.5);margin-bottom:6px">A Vita Serena · CRM</div>
+      <div style="font-size:19px;font-weight:600;color:#fff;font-family:'Inter',sans-serif">Envoyer le protocole</div>
+      <div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:4px">${c.prenom} ${c.nom||''} · ${c.email||'—'}</div>
+    </div>
+    <!-- Corps -->
+    <div style="padding:24px 28px">
+      <!-- Destinataire -->
+      <div style="background:#F7F6F4;border-radius:10px;padding:14px 16px;margin-bottom:18px;border:1px solid #E4DFD8">
+        <div style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#B4906A;margin-bottom:8px">Destinataire</div>
+        <div style="font-size:13px;color:#1E1E1C;line-height:1.7">
+          <strong>${c.prenom} ${c.nom||''}</strong><br>
+          ${c.email||'<span style="color:#E2445C">⚠ Email manquant</span>'}<br>
+          <span style="color:#6B6560;font-size:12px">DDN : ${ddnFormate}</span>
+        </div>
+      </div>
+      <!-- Lien PHV -->
+      <div style="margin-bottom:20px">
+        <label style="display:block;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#6B6560;margin-bottom:7px">Lien vers le protocole (PHV)</label>
+        <input id="ep-lien-phv" type="url" placeholder="https://avitaserena.com/outils/phv-print.html?…"
+          style="width:100%;padding:11px 14px;border:1.5px solid #D5CFC6;border-radius:8px;font-size:13px;font-family:'Inter',sans-serif;outline:none;color:#1E1E1C;transition:border-color .2s"
+          onfocus="this.style.borderColor='#B4906A'" onblur="this.style.borderColor='#D5CFC6'">
+        <div style="font-size:11px;color:#8888A8;margin-top:5px">Copiez l'URL depuis l'onglet PHV client ouvert dans le générateur.</div>
+      </div>
+      <!-- Aperçu espace cliente -->
+      <div style="background:#F0EBE3;border-radius:8px;padding:12px 14px;border:1px solid #DDD8D0;margin-bottom:22px">
+        <div style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#8B7B6B;margin-bottom:6px">Inclus automatiquement dans l'email</div>
+        <div style="font-size:12px;color:#5A5248;line-height:1.7">
+          🔗 avitaserena.com/espace-clientes.html<br>
+          👤 Prénom : <strong>${c.prenom}</strong><br>
+          📅 Date de naissance : <strong>${ddnFormate}</strong>
+        </div>
+      </div>
+      <!-- Boutons -->
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button onclick="document.getElementById('modal-envoi-protocole').remove()"
+          style="padding:10px 20px;border:1.5px solid #E4E4F0;border-radius:8px;background:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;color:#6B6560">
+          Annuler
+        </button>
+        <button id="ep-send-btn" onclick="envoyerProtocole('${clientId}')"
+          style="padding:10px 24px;border:none;border-radius:8px;background:#1E1E1C;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;display:flex;align-items:center;gap:6px">
+          📨 Envoyer le protocole
+        </button>
+      </div>
+    </div>
+  </div>`;
+
+  modal.addEventListener('click', e => { if(e.target===modal) modal.remove(); });
+  document.body.appendChild(modal);
+  setTimeout(()=>document.getElementById('ep-lien-phv')?.focus(), 100);
+}
+
+async function envoyerProtocole(clientId){
+  const c = db.clients.find(x=>x.id===clientId);
+  if(!c){ toast('Cliente introuvable','err'); return; }
+  if(!c.email){ toast('Email manquant dans le dossier','err'); return; }
+
+  const lienPHV = document.getElementById('ep-lien-phv')?.value?.trim();
+  if(!lienPHV){ toast('Veuillez renseigner le lien PHV','warn'); return; }
+
+  const apiKey = getBrevoKey();
+  if(!apiKey){ toast('Clé Brevo requise','warn'); return; }
+
+  const btn = document.getElementById('ep-send-btn');
+  btn.textContent = 'Envoi en cours…'; btn.disabled = true;
+
+  const prenom = c.prenom || '';
+  const ddnFormate = c.ddn ? c.ddn.split('-').reverse().join('/') : '—';
+
+  const htmlContent = `<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#F5F0E8;font-family:'Helvetica Neue',Arial,sans-serif">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#F5F0E8;padding:32px 16px">
+  <tr><td align="center">
+    <table width="100%" style="max-width:580px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(58,50,40,.08)">
+      <tr><td style="background:#1E1E1C;padding:36px 40px 32px;text-align:center">
+        <p style="margin:0 0 6px;font-size:10px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:rgba(196,169,125,.5)">A Vita Serena</p>
+        <p style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:28px;font-weight:300;font-style:italic;color:#ffffff;line-height:1.25">Votre protocole<br>est prêt.</p>
+      </td></tr>
+      <tr><td style="padding:36px 40px 24px">
+        <p style="margin:0 0 16px;font-size:15px;color:#1E1E1C;line-height:1.8">Bonjour <strong>${prenom}</strong>,</p>
+        <p style="margin:0;font-size:14px;color:#5A5248;line-height:1.85">Comme promis, voici votre Protocole d'Hygiène Vitale — pensé spécifiquement pour vous, à partir de ce que vous m'avez partagé lors de notre consultation.</p>
+      </td></tr>
+      <tr><td style="padding:0 40px"><div style="height:1.5px;background:linear-gradient(90deg,#C4A97D,#E8D5B0,transparent)"></div></td></tr>
+      <tr><td style="padding:28px 40px">
+        <table width="100%" cellpadding="0" cellspacing="0" style="background:#F7F6F4;border-radius:12px;overflow:hidden;border:1px solid #E4DFD8">
+          <tr><td style="padding:24px 28px">
+            <p style="margin:0 0 6px;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#B4906A">Votre espace personnel</p>
+            <p style="margin:0 0 14px;font-family:Georgia,'Times New Roman',serif;font-size:19px;font-weight:300;color:#1E1E1C;line-height:1.35">Protocole d'Hygiène Vitale<br><em style="font-style:italic;color:#B4906A">${prenom}</em></p>
+            <p style="margin:0 0 20px;font-size:13px;color:#6B6560;line-height:1.7">Votre protocole est interactif — vous pouvez valider ou refuser chaque recommandation. Je vous proposerai des alternatives adaptées en temps réel.</p>
+            <a href="${lienPHV}" style="display:inline-block;background:#1E1E1C;color:#ffffff;text-decoration:none;font-size:13px;font-weight:600;letter-spacing:.06em;padding:13px 28px;border-radius:99px">Accéder à mon protocole →</a>
+          </td></tr>
+        </table>
+      </td></tr>
+      <tr><td style="padding:0 40px 28px">
+        <table width="100%" cellpadding="0" cellspacing="0" style="background:#F0EBE3;border-radius:10px;border:1px solid #DDD8D0">
+          <tr><td style="padding:18px 22px">
+            <p style="margin:0 0 10px;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#8B7B6B">Votre espace clientes</p>
+            <p style="margin:0 0 12px;font-size:13px;color:#5A5248;line-height:1.7">Retrouvez également votre protocole, vos fiches ressources et votre journal de suivi sur votre espace personnel :</p>
+            <p style="margin:0 0 8px;font-size:13px;color:#1E1E1C"><strong>Adresse :</strong> <a href="https://avitaserena.com/espace-clientes.html" style="color:#B4906A;text-decoration:none">avitaserena.com/espace-clientes.html</a></p>
+            <p style="margin:0 0 4px;font-size:13px;color:#1E1E1C"><strong>Prénom :</strong> ${prenom}</p>
+            <p style="margin:0;font-size:13px;color:#1E1E1C"><strong>Date de naissance :</strong> ${ddnFormate}</p>
+          </td></tr>
+        </table>
+      </td></tr>
+      <tr><td style="padding:0 40px"><div style="height:1px;background:#F0EBE3"></div></td></tr>
+      <tr><td style="padding:28px 40px 32px">
+        <p style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-size:16px;font-style:italic;color:#3A3228;line-height:1.75">« Ce protocole est un point de départ — pas un document figé. N'hésitez pas à me faire vos retours au fil des jours. C'est dans cet échange que le travail prend tout son sens. »</p>
+        <p style="margin:0;font-size:13px;color:#5A5248;line-height:1.8">Avec bienveillance,<br><strong style="color:#1E1E1C">Sabrina Castelli</strong><br><span style="color:#B4906A;font-size:12px">Naturopathe · A Vita Serena</span></p>
+      </td></tr>
+      <tr><td style="background:#1E1E1C;padding:20px 40px;text-align:center">
+        <p style="margin:0 0 6px;font-size:11px;color:rgba(255,255,255,.35)">Une question ? Répondez directement à cet email — je lis tout.</p>
+        <p style="margin:0;font-size:10px;color:rgba(255,255,255,.2)">A Vita Serena · Naturopathie · Porto-Vecchio, Corse · <a href="https://avitaserena.com" style="color:rgba(196,169,125,.4);text-decoration:none">avitaserena.com</a></p>
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body></html>`;
+
+  try {
+    const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'api-key': apiKey },
+      body: JSON.stringify({
+        sender: { name: 'Sabrina · A Vita Serena', email: 'sabrina@avitaserena.com' },
+        to: [{ email: c.email, name: prenom + ' ' + (c.nom||'') }],
+        subject: `${prenom}, votre protocole personnalisé est prêt`,
+        htmlContent
+      })
+    });
+    if(!res.ok){ const err = await res.json(); throw new Error(err.message||res.status); }
+
+    // Logger dans la timeline
+    if(!c.timeline) c.timeline = [];
+    c.timeline.push({ type:'protocole', title:'📨 Protocole envoyé par email', icon:'📨', date: today() });
+    if(!c.workflowDone) c.workflowDone = {};
+    c.workflowDone['protocole_envoye'] = true;
+    await saveClient(c);
+    renderFiche(c);
+
+    toast('✅ Protocole envoyé à ' + c.email, 'ok');
+    document.getElementById('modal-envoi-protocole')?.remove();
+  } catch(e) {
+    toast('❌ Erreur Brevo : ' + e.message, 'err');
+    btn.textContent = '📨 Envoyer le protocole'; btn.disabled = false;
+  }
 }
 
 // ── Clé API Anthropic (saisie une fois par session) ──
