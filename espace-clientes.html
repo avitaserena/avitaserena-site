@@ -216,18 +216,18 @@ body{min-height:100vh}
 
   <!-- ONGLETS -->
   <nav class="tabs-nav">
-    <button class="tab-btn active" onclick="switchTab('digestion')">🌿 Digestion & SIBO</button>
-    <button class="tab-btn" onclick="switchTab('hormones')">〰 Hormones & Cycle</button>
-    <button class="tab-btn" onclick="switchTab('bienetre')">♡ Bien-être</button>
-    <button class="tab-btn" onclick="switchTab('protocole')">📋 Mon protocole</button>
-    <button class="tab-btn" onclick="switchTab('journal')">📔 Mon journal</button>
+    <button class="tab-btn active" onclick="switchTab('protocole',this)">📋 Mon protocole</button>
+    <button class="tab-btn" onclick="switchTab('journal',this)">📔 Mon journal</button>
+    <button class="tab-btn" onclick="switchTab('digestion',this)">🌿 Digestion & SIBO</button>
+    <button class="tab-btn" onclick="switchTab('hormones',this)">〰 Hormones & Cycle</button>
+    <button class="tab-btn" onclick="switchTab('bienetre',this)">♡ Bien-être</button>
   </nav>
 
   <!-- MAIN -->
   <main class="space-main">
 
     <!-- ─── DIGESTION & SIBO ─── -->
-    <div class="tab-content active" id="tab-digestion">
+    <div class="tab-content" id="tab-digestion">
       <div class="section-eyebrow">Digestion & SIBO</div>
       <h2 class="section-h2">Comprendre et soutenir<br>votre intestin.</h2>
       <p class="section-sub">Fiches pratiques conçues pour accompagner votre protocole SIBO au quotidien. À lire à votre rythme, à garder sous la main.</p>
@@ -428,7 +428,7 @@ body{min-height:100vh}
     </div>
 
     <!-- ─── MON PROTOCOLE ─── -->
-    <div class="tab-content" id="tab-protocole">
+    <div class="tab-content active" id="tab-protocole">
       <div class="section-eyebrow">Mon protocole personnalisé</div>
       <h2 class="section-h2">Votre protocole d'hygiène<br>vitale — vivant et interactif.</h2>
       <p class="section-sub">Retrouvez votre protocole complet, validez ou refusez les recommandations, et signalez vos ressentis directement à Sabrina.</p>
@@ -597,6 +597,7 @@ function openSpace(prenom){
   document.getElementById('headerAvatar').textContent = prenom.charAt(0).toUpperCase();
   document.getElementById('headerName').textContent = prenom;
   document.getElementById('journalDate').textContent = new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  setTimeout(openTabFromHash, 50);
 }
 
 function doLogout(){
@@ -611,11 +612,21 @@ window.addEventListener('DOMContentLoaded', function(){
 });
 
 // ── ONGLETS ──
-function switchTab(id){
+function switchTab(id, btn){
   document.querySelectorAll('.tab-content').forEach(function(el){ el.classList.remove('active'); });
   document.querySelectorAll('.tab-btn').forEach(function(el){ el.classList.remove('active'); });
-  document.getElementById('tab-'+id).classList.add('active');
-  event.currentTarget.classList.add('active');
+  var el = document.getElementById('tab-'+id);
+  if(el) el.classList.add('active');
+  if(btn) btn.classList.add('active');
+  window.location.hash = id;
+}
+
+function openTabFromHash(){
+  var hash = window.location.hash.replace('#','');
+  var valid = ['protocole','journal','digestion','hormones','bienetre'];
+  if(hash && valid.indexOf(hash) > -1){
+    switchTab(hash);
+  }
 }
 
 // ── COHÉRENCE CARDIAQUE ──
