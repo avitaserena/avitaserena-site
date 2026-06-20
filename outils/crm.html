@@ -811,6 +811,7 @@ function renderFiche(c){
         "<button class='btn btn-ghost btn-sm' style='border-color:rgba(255,255,255,.4);color:white' onclick=\"window.open('generateur.html','_blank')\">Générer PHV ↗</button>" +
         "<button class='btn btn-ghost btn-sm' style='border-color:rgba(255,255,255,.4);color:white' onclick=\"ouvrirPHVCliente('"+c.id+"')\">PHV client ↗</button>" +
         "<button class='btn btn-sm' style='background:rgba(196,169,125,.25);border:1px solid rgba(196,169,125,.5);color:white' onclick=\"ouvrirEnvoiProtocole('"+c.id+"')\">📨 Envoyer le protocole</button>" +
+        "<button class='btn btn-ghost btn-sm' style='border-color:rgba(255,255,255,.4);color:white' onclick=\"ouvrirEditionCliente('"+c.id+"')\">✎ Modifier la fiche</button>" +
       "</div>" +
     "</div>" +
     "<div class='m3'>" +
@@ -819,7 +820,10 @@ function renderFiche(c){
       "<div class='mbox'><div class='mval'>"+(pct>0?pct+'%':'—')+"</div><div class='mlbl'>Programme</div></div>" +
     "</div>" +
     "<div class='fgrid'><div class='fside'>" +
-      "<div class='card'><div class='card-head'><div class='card-title'><div class='card-dot' style='background:#6C47FF'></div>Informations</div></div><div class='card-body'>" +
+      "<div class='card'><div class='card-head'><div class='card-title'><div class='card-dot' style='background:#6C47FF'></div>Informations</div><button class='btn btn-ghost btn-xs' onclick=\"ouvrirEditionCliente('"+c.id+"')\">✎ Modifier</button></div><div class='card-body'>" +
+        "<div class='ir'><div class='il'>Email</div><div class='iv'>"+(c.email?"<a href='mailto:"+escH(c.email)+"' style='color:var(--violet);text-decoration:none'>"+escH(c.email)+"</a>":"<span style='color:var(--red);font-weight:700'>⚠ Manquant</span>")+"</div></div>" +
+        "<div class='ir'><div class='il'>Téléphone</div><div class='iv'>"+(c.tel?"<a href='tel:"+escH(c.tel)+"' style='color:var(--ink);text-decoration:none'>"+escH(c.tel)+"</a>":"<span style='color:var(--muted)'>—</span>")+"</div></div>" +
+        "<div class='ir'><div class='il'>Date de naissance</div><div class='iv'>"+(c.ddn?fmtDate(c.ddn)+(age?" · <span style='color:var(--muted)'>"+age+" ans</span>":""):"<span style='color:var(--muted)'>—</span>")+"</div></div>" +
         "<div class='ir'><div class='il'>Programme</div><div class='iv'>"+(c.programme?"<span class='prog-badge pb-"+pCls(c.programme)+"'>"+pLbl(c.programme)+"</span>":"<span style='color:var(--muted)'>Consultation ponctuelle</span>")+"</div></div>" +
         "<div class='ir'><div class='il'>Motifs</div><div class='iv'>"+escH(c.motifs||'—')+"</div></div>" +
         "<div class='ir'><div class='il'>Axes</div><div class='iv'>"+escH(c.axes||'—')+"</div></div>" +
@@ -1193,6 +1197,126 @@ function toast(msg,type){
 }
 
 document.addEventListener('DOMContentLoaded', init);
+
+// ── Modale "Modifier la fiche cliente" ──
+function ouvrirEditionCliente(clientId){
+  const c = db.clients.find(x=>x.id===clientId);
+  if(!c){ toast('Cliente introuvable','err'); return; }
+  document.getElementById('modal-edit-cliente')?.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'modal-edit-cliente';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:9000;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(28,28,46,.6);backdrop-filter:blur(4px);overflow-y:auto';
+
+  const pLblM = p => p==='alba'?'Alba · 3 mois':p==='aria'?'Aria · 6 mois':p==='ora'?'Ora · 9 mois':'';
+  const sel = v => `
+    <option value="">— Consultation ponctuelle —</option>
+    <option value="alba" ${v==='alba'?'selected':''}>Alba · 3 mois · 320 €</option>
+    <option value="aria" ${v==='aria'?'selected':''}>Aria · 6 mois · 560 €</option>
+    <option value="ora" ${v==='ora'?'selected':''}>Ora · 9 mois · 780 €</option>
+  `;
+  const durSel = v => ['30','60','90','180','270'].map(d=>`<option value="${d}" ${v===d?'selected':''}>${d==='30'?'1 mois':d==='60'?'2 mois':d==='90'?'3 mois':d==='180'?'6 mois':'9 mois'}</option>`).join('');
+
+  modal.innerHTML = `
+  <div style="background:#fff;border-radius:16px;width:100%;max-width:560px;box-shadow:0 8px 40px rgba(28,28,46,.2);overflow:hidden;my-auto">
+    <div style="background:var(--ink);padding:20px 24px;display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:4px">Modifier la fiche</div>
+        <div style="font-size:17px;font-weight:700;color:#fff">${c.prenom} ${c.nom||''}</div>
+      </div>
+      <button onclick="document.getElementById('modal-edit-cliente').remove()" style="background:none;border:none;color:rgba(255,255,255,.4);font-size:22px;cursor:pointer;line-height:1;padding:4px">×</button>
+    </div>
+    <div style="padding:24px;display:flex;flex-direction:column;gap:16px;max-height:70vh;overflow-y:auto">
+      <!-- Identité -->
+      <div style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding-bottom:6px;border-bottom:1px solid var(--border)">Identité</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+        <div><label style="display:block;font-size:11px;font-weight:600;color:var(--muted);margin-bottom:4px">Prénom *</label>
+          <input id="ec-prenom" class="fi" value="${escH(c.prenom||'')}"></div>
+        <div><label style="display:block;font-size:11px;font-weight:600;color:var(--muted);margin-bottom:4px">Nom</label>
+          <input id="ec-nom" class="fi" value="${escH(c.nom||'')}"></div>
+        <div><label style="display:block;font-size:11px;font-weight:600;color:var(--muted);margin-bottom:4px">DDN *</label>
+          <input id="ec-ddn" class="fi" type="date" value="${c.ddn||''}"></div>
+      </div>
+      <!-- Contact -->
+      <div style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding-bottom:6px;border-bottom:1px solid var(--border)">Contact</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label style="display:block;font-size:11px;font-weight:600;color:var(--muted);margin-bottom:4px">Email</label>
+          <input id="ec-email" class="fi" type="email" value="${escH(c.email||'')}" placeholder="prenom@email.com"></div>
+        <div><label style="display:block;font-size:11px;font-weight:600;color:var(--muted);margin-bottom:4px">Téléphone</label>
+          <input id="ec-tel" class="fi" value="${escH(c.tel||'')}" placeholder="+33 6 00 00 00 00"></div>
+      </div>
+      <!-- Programme -->
+      <div style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding-bottom:6px;border-bottom:1px solid var(--border)">Programme & suivi</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label style="display:block;font-size:11px;font-weight:600;color:var(--muted);margin-bottom:4px">Programme</label>
+          <select id="ec-prog" class="fi fs">${sel(c.programme||'')}</select></div>
+        <div><label style="display:block;font-size:11px;font-weight:600;color:var(--muted);margin-bottom:4px">Durée traitement</label>
+          <select id="ec-duree" class="fi fs">${durSel(c.dureeTtt||'60')}</select></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label style="display:block;font-size:11px;font-weight:600;color:var(--muted);margin-bottom:4px">Date 1ère consultation</label>
+          <input id="ec-date1" class="fi" type="date" value="${c.date1||''}"></div>
+        <div><label style="display:block;font-size:11px;font-weight:600;color:var(--muted);margin-bottom:4px">Date envoi protocole</label>
+          <input id="ec-dateproto" class="fi" type="date" value="${c.dateProtocole||''}"></div>
+      </div>
+      <!-- Clinique -->
+      <div style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding-bottom:6px;border-bottom:1px solid var(--border)">Clinique</div>
+      <div><label style="display:block;font-size:11px;font-weight:600;color:var(--muted);margin-bottom:4px">Motifs principaux</label>
+        <input id="ec-motifs" class="fi" value="${escH(c.motifs||'')}" placeholder="SIBO, SPM, fatigue..."></div>
+      <div><label style="display:block;font-size:11px;font-weight:600;color:var(--muted);margin-bottom:4px">Axes prioritaires</label>
+        <input id="ec-axes" class="fi" value="${escH(c.axes||'')}" placeholder="Digestif · Hormonal..."></div>
+      <div><label style="display:block;font-size:11px;font-weight:600;color:var(--muted);margin-bottom:4px">Notes cliniques</label>
+        <textarea id="ec-notes" class="fi ft" placeholder="Terrain, antécédents...">${escH(c.notes||'')}</textarea></div>
+    </div>
+    <div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;background:var(--surface)">
+      <button onclick="document.getElementById('modal-edit-cliente').remove()"
+        style="padding:9px 20px;border:1.5px solid var(--border);border-radius:8px;background:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;color:var(--ink3)">
+        Annuler
+      </button>
+      <button onclick="sauvegarderEditionCliente('${clientId}')"
+        style="padding:9px 24px;border:none;border-radius:8px;background:var(--violet);color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif">
+        ✓ Enregistrer
+      </button>
+    </div>
+  </div>`;
+
+  modal.addEventListener('click', e => { if(e.target===modal) modal.remove(); });
+  document.body.appendChild(modal);
+}
+
+async function sauvegarderEditionCliente(clientId){
+  const c = db.clients.find(x=>x.id===clientId);
+  if(!c){ toast('Cliente introuvable','err'); return; }
+
+  const prenom = document.getElementById('ec-prenom')?.value?.trim();
+  const ddn    = document.getElementById('ec-ddn')?.value;
+  if(!prenom){ toast('Prénom requis','err'); return; }
+  if(!ddn){ toast('DDN requise','err'); return; }
+
+  c.prenom       = prenom;
+  c.nom          = document.getElementById('ec-nom')?.value?.trim() || c.nom;
+  c.ddn          = ddn;
+  c.email        = document.getElementById('ec-email')?.value?.trim() || '';
+  c.tel          = document.getElementById('ec-tel')?.value?.trim() || '';
+  c.programme    = document.getElementById('ec-prog')?.value || '';
+  c.dureeTtt     = document.getElementById('ec-duree')?.value || '60';
+  c.date1        = document.getElementById('ec-date1')?.value || c.date1;
+  c.dateProtocole= document.getElementById('ec-dateproto')?.value || '';
+  c.motifs       = document.getElementById('ec-motifs')?.value?.trim() || '';
+  c.axes         = document.getElementById('ec-axes')?.value?.trim() || '';
+  c.notes        = document.getElementById('ec-notes')?.value?.trim() || '';
+  c.age          = String(ageFrom(ddn)||'');
+
+  try {
+    await saveClient(c);
+    document.getElementById('modal-edit-cliente')?.remove();
+    renderFiche(c);
+    renderClients();
+    toast('Fiche mise à jour ✓','ok');
+  } catch(e) {
+    toast('Erreur : ' + e.message, 'err');
+  }
+}
 
 // ── Ouvrir le PHV d'une cliente spécifique ──
 function ouvrirPHVCliente(clientId){
