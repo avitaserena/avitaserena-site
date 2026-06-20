@@ -521,9 +521,9 @@ body{min-height:100vh}
 </div>
 
 <script>
-// ── CONFIGURATION SUPABASE ──
+// ── SUPABASE ──
 var SUPA_URL = 'https://bqhkdndwldwqacrrbbig.supabase.co';
-var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxaGtkbmR3bGR3cWFjcnJiYmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MzAyNTIsImV4cCI6MjA5NjMwNjI1Mn0.nH2UktMAVKYwng4L1SvW5F0fluV_sObGV0f3Mk1dnOY';
+var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxaGtkbmR3bGR3cWFjcnJiYmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MzAyNTIsImV4cCI6MjA5NjMwNjI1Mn0.nH2UktMAVKYwng4L3SvW5F0fluV_sObGV0f3Mk1dnOY';
 
 function normalize(s) {
   return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'');
@@ -553,8 +553,7 @@ async function doLogin() {
   var key = clientKey(prenom, nom, ddn);
 
   try {
-    var url = SUPA_URL + '/rest/v1/clientes?client_key=eq.' + encodeURIComponent(key) + '&select=prenom,client_key&limit=1';
-    var res = await fetch(url, {
+    var res = await fetch(SUPA_URL + '/rest/v1/clientes?client_key=eq.' + encodeURIComponent(key) + '&select=prenom,client_key&limit=1', {
       headers: {
         'apikey': SUPA_KEY,
         'Authorization': 'Bearer ' + SUPA_KEY,
@@ -562,13 +561,7 @@ async function doLogin() {
       }
     });
 
-    if (res.status === 403) {
-      // RLS actif — vérification locale temporaire
-      // À retirer après ALTER TABLE clientes DISABLE ROW LEVEL SECURITY
-      console.warn('RLS actif sur clientes — vérification locale en cours');
-      verifierLocalement(prenom, nom, ddn, key, errEl, btn);
-      return;
-    }
+    if (!res.ok) throw new Error('HTTP ' + res.status);
 
     var data = await res.json();
     if (data && data.length > 0) {
@@ -576,53 +569,22 @@ async function doLogin() {
       sessionStorage.setItem('avs_client', JSON.stringify({ prenom: prenomReel, ok: true, key: key }));
       openSpace(prenomReel);
     } else {
-      afficherErreur(errEl, btn);
+      errEl.textContent = 'Ces informations ne correspondent à aucune cliente. Vérifiez l\'orthographe ou contactez Sabrina.';
+      errEl.style.display = 'block';
+      btn.textContent = 'Accéder à mon espace →';
+      btn.disabled = false;
     }
   } catch(e) {
-    // Réseau indisponible — vérification locale
-    verifierLocalement(prenom, nom, ddn, key, errEl, btn);
+    errEl.textContent = 'Erreur de connexion (' + e.message + '). Vérifiez votre connexion et réessayez.';
+    errEl.style.display = 'block';
+    btn.textContent = 'Accéder à mon espace →';
+    btn.disabled = false;
   }
 }
 
-async function verifierLocalement(prenom, nom, ddn, key, errEl, btn) {
-  // Tente via phv_memos (table accessible) pour confirmer que la cliente existe
-  try {
-    var url = SUPA_URL + '/rest/v1/phv_memos?client_key=eq.' + encodeURIComponent(key) + '&select=client_key,prenom&limit=1';
-    var res = await fetch(url, {
-      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY }
-    });
-    var data = await res.json();
-    if (data && data.length > 0) {
-      var prenomReel = data[0].prenom || prenom;
-      sessionStorage.setItem('avs_client', JSON.stringify({ prenom: prenomReel, ok: true, key: key }));
-      openSpace(prenomReel);
-      return;
-    }
-  } catch(e2) {}
-
-  // Tente via questionnaires
-  try {
-    var url2 = SUPA_URL + '/rest/v1/questionnaires?client_key=eq.' + encodeURIComponent(key) + '&select=client_key,prenom&limit=1';
-    var res2 = await fetch(url2, {
-      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY }
-    });
-    var data2 = await res2.json();
-    if (data2 && data2.length > 0) {
-      var prenomReel2 = data2[0].prenom || prenom;
-      sessionStorage.setItem('avs_client', JSON.stringify({ prenom: prenomReel2, ok: true, key: key }));
-      openSpace(prenomReel2);
-      return;
-    }
-  } catch(e3) {}
-
-  afficherErreur(errEl, btn);
-}
-
-function afficherErreur(errEl, btn) {
-  errEl.textContent = 'Ces informations ne correspondent à aucune cliente. Vérifiez l\'orthographe ou contactez Sabrina.';
-  errEl.style.display = 'block';
-  btn.textContent = 'Accéder à mon espace →';
-  btn.disabled = false;
+document.querySelectorAll('.login-input').forEach(function(el) {
+  el.addEventListener('keydown', function(e) { if (e.key === 'Enter') doLogin(); });
+});
 }
 
 document.querySelectorAll('.login-input').forEach(function(el) {
