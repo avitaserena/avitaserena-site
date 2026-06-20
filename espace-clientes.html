@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Espace Clientes — A Vita Serena</title>
 <meta name="robots" content="noindex, nofollow">
-<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="icon" type="image/svg+xml" href="favicon.svg"><link rel="apple-touch-icon" href="logo_avitaserena02.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&family=Be+Vietnam+Pro:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -521,28 +521,67 @@ body{min-height:100vh}
 </div>
 
 <script>
-// ── CONNEXION ──
-var CLIENTS = [
-  {prenom:'sabrina',nom:'castelli',ddn:'2000-01-01'}
-];
+// ── CONFIGURATION SUPABASE ──
+var SUPA_URL = 'https://bqhkdndwldwqacrrbbig.supabase.co';
+var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxaGtkbmR3bGR3cWFjcnJiYmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MzAyNTIsImV4cCI6MjA5NjMwNjI1Mn0.nH2UktMAVKYwng4L3SvW5F0fluV_sObGV0f3Mk1dnOY';
 
-function normalize(s){ return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim(); }
+function normalize(s) {
+  return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+}
 
-function doLogin(){
-  var p = normalize(document.getElementById('loginPrenom').value);
-  var n = normalize(document.getElementById('loginNom').value);
-  var d = document.getElementById('loginDDN').value;
-  var ok = CLIENTS.find(function(c){ return normalize(c.prenom)===p && normalize(c.nom)===n && c.ddn===d; });
-  if(ok){
-    sessionStorage.setItem('avs_client', JSON.stringify({prenom:document.getElementById('loginPrenom').value.trim(), ok:true}));
-    openSpace(document.getElementById('loginPrenom').value.trim());
-  } else {
-    document.getElementById('loginError').style.display='block';
+function clientKey(prenom, nom, ddn) {
+  return normalize(prenom) + '-' + normalize(nom) + '-' + ddn.replace(/-/g,'');
+}
+
+async function doLogin() {
+  var prenom = document.getElementById('loginPrenom').value.trim();
+  var nom = document.getElementById('loginNom').value.trim();
+  var ddn = document.getElementById('loginDDN').value;
+  var errEl = document.getElementById('loginError');
+  var btn = document.querySelector('.login-btn');
+
+  if (!prenom || !nom || !ddn) {
+    errEl.textContent = 'Veuillez remplir tous les champs.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  btn.textContent = 'Vérification…';
+  btn.disabled = true;
+  errEl.style.display = 'none';
+
+  try {
+    var key = clientKey(prenom, nom, ddn);
+    var url = SUPA_URL + '/rest/v1/clientes?client_key=eq.' + encodeURIComponent(key) + '&select=prenom,nom,client_key&limit=1';
+    var res = await fetch(url, {
+      headers: {
+        'apikey': SUPA_KEY,
+        'Authorization': 'Bearer ' + SUPA_KEY,
+        'Content-Type': 'application/json'
+      }
+    });
+    var data = await res.json();
+
+    if (data && data.length > 0) {
+      var prenomReel = data[0].prenom || prenom;
+      sessionStorage.setItem('avs_client', JSON.stringify({ prenom: prenomReel, ok: true, key: key }));
+      openSpace(prenomReel);
+    } else {
+      errEl.textContent = 'Ces informations ne correspondent à aucune cliente. Vérifiez l\'orthographe ou contactez Sabrina.';
+      errEl.style.display = 'block';
+      btn.textContent = 'Accéder à mon espace →';
+      btn.disabled = false;
+    }
+  } catch (e) {
+    errEl.textContent = 'Erreur de connexion. Vérifiez votre connexion internet et réessayez.';
+    errEl.style.display = 'block';
+    btn.textContent = 'Accéder à mon espace →';
+    btn.disabled = false;
   }
 }
 
-document.querySelectorAll('.login-input').forEach(function(el){
-  el.addEventListener('keydown', function(e){ if(e.key==='Enter') doLogin(); });
+document.querySelectorAll('.login-input').forEach(function(el) {
+  el.addEventListener('keydown', function(e) { if (e.key === 'Enter') doLogin(); });
 });
 
 function openSpace(prenom){
