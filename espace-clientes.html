@@ -529,8 +529,12 @@ function normalize(s) {
   return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'');
 }
 
-function clientKey(prenom, nom, ddn) {
-  return [normalize(prenom), normalize(nom), normalize(ddn)].filter(Boolean).join('_');
+function clientId(prenom, nom, ddn) {
+  // Format identique au CRM : prenom-nom-AAAAMMJJ
+  var p = (prenom||'').toLowerCase().replace(/[\s']/g,'_');
+  var n = (nom||'').toLowerCase().replace(/[\s']/g,'_');
+  var d = (ddn||'').replace(/-/g,'');
+  return p + (n ? '-' + n : '') + '-' + d;
 }
 
 async function doLogin() {
@@ -550,10 +554,10 @@ async function doLogin() {
   btn.disabled = true;
   errEl.style.display = 'none';
 
-  var key = clientKey(prenom, nom, ddn);
+  var id = clientId(prenom, nom, ddn);
 
   try {
-    var res = await fetch(SUPA_URL + '/rest/v1/clientes?client_key=eq.' + encodeURIComponent(key) + '&select=prenom,client_key&limit=1', {
+    var res = await fetch(SUPA_URL + '/rest/v1/clientes?id=eq.' + encodeURIComponent(id) + '&select=prenom,id&limit=1', {
       headers: {
         'apikey': SUPA_KEY,
         'Authorization': 'Bearer ' + SUPA_KEY,
@@ -566,7 +570,7 @@ async function doLogin() {
     var data = await res.json();
     if (data && data.length > 0) {
       var prenomReel = data[0].prenom || prenom;
-      sessionStorage.setItem('avs_client', JSON.stringify({ prenom: prenomReel, ok: true, key: key }));
+      sessionStorage.setItem('avs_client', JSON.stringify({ prenom: prenomReel, ok: true, key: id }));
       openSpace(prenomReel);
     } else {
       errEl.textContent = 'Ces informations ne correspondent à aucune cliente. Vérifiez l\'orthographe ou contactez Sabrina.';
