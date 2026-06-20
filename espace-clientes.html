@@ -526,11 +526,12 @@ var SUPA_URL = 'https://bqhkdndwldwqacrrbbig.supabase.co';
 var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxaGtkbmR3bGR3cWFjcnJiYmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MzAyNTIsImV4cCI6MjA5NjMwNjI1Mn0.nH2UktMAVKYwng4L3SvW5F0fluV_sObGV0f3Mk1dnOY';
 
 function normalize(s) {
-  return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+  return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'');
 }
 
 function clientKey(prenom, nom, ddn) {
-  return normalize(prenom) + '-' + normalize(nom) + '-' + ddn.replace(/-/g,'');
+  // Format identique à supabase-db.js : normalize(prenom)_normalize(nom)_ddn
+  return [normalize(prenom), normalize(nom), normalize(ddn)].filter(Boolean).join('_');
 }
 
 async function doLogin() {
