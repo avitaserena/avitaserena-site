@@ -236,7 +236,7 @@ const html = `
         </div>
 
         <div class="avs-note">
-          <strong>Ce qui se passe ensuite :</strong> Sabrina vous contacte personnellement sous 48h pour confirmer votre place. Le paiement ne sera demandé qu'à partir de fin août — aucun engagement financier aujourd'hui.
+          <strong>Ce qui se passe ensuite :</strong> Sabrina vous contactera fin août pour fixer un créneau à partir du mois de septembre. Aucun engagement financier aujourd'hui.
         </div>
 
         <div class="avs-error" id="avs-error"></div>
@@ -250,10 +250,9 @@ const html = `
       <div id="avs-success">
         <div class="avs-success-icon">🌿</div>
         <div class="avs-success-title">Votre place est<br>réservée.</div>
-        <div class="avs-success-sub">Sabrina vous contacte personnellement sous 48h pour confirmer votre créneau.</div>
+        <div class="avs-success-sub">Sabrina vous contactera fin août pour fixer un créneau à partir du mois de septembre, sans engagement.</div>
         <div class="avs-success-steps">
-          <div class="avs-step-item"><span class="avs-step-icon">✉️</span><span>Un email de confirmation va vous parvenir dans quelques minutes</span></div>
-          <div class="avs-step-item"><span class="avs-step-icon">📞</span><span>Sabrina vous contacte sous 48h pour fixer le créneau ensemble</span></div>
+          <div class="avs-step-item"><span class="avs-step-icon">📞</span><span>Sabrina vous contactera fin août pour fixer un créneau à partir du mois de septembre, sans engagement</span></div>
           <div class="avs-step-item"><span class="avs-step-icon">📋</span><span>Un questionnaire de préparation vous sera envoyé avant la séance</span></div>
           <div class="avs-step-item"><span class="avs-step-icon">🔒</span><span>Lien de paiement Stripe envoyé à partir de fin août — aucun engagement aujourd'hui</span></div>
         </div>
