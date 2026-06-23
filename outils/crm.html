@@ -310,7 +310,8 @@ const SB='https://bqhkdndwldwqacrrbbig.supabase.co';
 const KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxaGtkbmR3bGR3cWFjcnJiYmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MzAyNTIsImV4cCI6MjA5NjMwNjI1Mn0.nH2UktMAVKYwng4L3SvW5F0fluV_sObGV0f3Mk1dnOY';
 
 async function sb(path,opts={}){
-  const r=await fetch(SB+'/rest/v1/'+path,{...opts,headers:{'apikey':KEY,'Authorization':'Bearer '+KEY,'Content-Type':'application/json','Prefer':opts.prefer||'return=representation',...(opts.headers||{})}});
+  const defaultPrefer=opts.method&&opts.method!=='GET'?'return=representation':'return=representation';
+  const r=await fetch(SB+'/rest/v1/'+path,{...opts,headers:{'apikey':KEY,'Authorization':'Bearer '+KEY,'Content-Type':'application/json','Prefer':defaultPrefer,...(opts.headers||{})}});
   if(!r.ok)throw new Error(await r.text());
   const t=await r.text();return t?JSON.parse(t):[];
 }
@@ -878,9 +879,9 @@ function renderFiche(c){
     "</div>" +
     "<div class='fgrid'><div class='fside'>" +
       "<div class='card'><div class='card-head'><div class='card-title'><div class='card-dot' style='background:#6C47FF'></div>Informations</div><button class='btn btn-ghost btn-xs' onclick=\"ouvrirEditionCliente('"+c.id+"')\">✎ Modifier</button></div><div class='card-body'>" +
-        "<div class='ir'><div class='il'>Email</div><div class='iv'>"+(c.email?\"<a href='mailto:\"+escH(c.email)+\"' style='color:var(--violet);text-decoration:none'>\"+escH(c.email)+\"</a>\":\"<span style='color:var(--red);font-weight:700'>⚠ Manquant</span>\")+\"</div></div>\" +
-        \"<div class='ir'><div class='il'>Téléphone</div><div class='iv'>\"+(c.tel?\"<a href='tel:\"+escH(c.tel)+\"' style='color:var(--ink);text-decoration:none'>\"+escH(c.tel)+\"</a>\":\"<span style='color:var(--muted)'>—</span>\")+\"</div></div>\" +
-        \"<div class='ir'><div class='il'>Date de naissance</div><div class='iv'>\"+(c.ddn?fmtDate(c.ddn)+(age?\" · <span style='color:var(--muted)'>\"+age+\" ans</span>\":\"\")+\"</div></div>\" +
+        "<div class='ir'><div class='il'>Email</div><div class='iv'>"+(c.email?"<a href='mailto:"+escH(c.email)+"' style='color:var(--violet);text-decoration:none'>"+escH(c.email)+"</a>":"<span style='color:var(--red);font-weight:700'>⚠ Manquant</span>")+"</div></div>" +
+        "<div class='ir'><div class='il'>Téléphone</div><div class='iv'>"+(c.tel?"<a href='tel:"+escH(c.tel)+"' style='color:var(--ink);text-decoration:none'>"+escH(c.tel)+"</a>":"<span style='color:var(--muted)'>—</span>")+"</div></div>" +
+        "<div class='ir'><div class='il'>Date de naissance</div><div class='iv'>"+(c.ddn?fmtDate(c.ddn)+(age?" · <span style='color:var(--muted)'>"+age+" ans</span>":"")+"</div></div>":"</div></div>") +
         "<div class='ir'><div class='il'>Programme</div><div class='iv'>"+(c.programme?"<span class='prog-badge pb-"+pCls(c.programme)+"'>"+pLbl(c.programme)+"</span>":"<span style='color:var(--muted)'>Consultation ponctuelle</span>")+"</div></div>" +
         "<div class='ir'><div class='il'>Motifs</div><div class='iv'>"+escH(c.motifs||'—')+"</div></div>" +
         "<div class='ir'><div class='il'>Axes</div><div class='iv'>"+escH(c.axes||'—')+"</div></div>" +
@@ -1125,6 +1126,7 @@ async function saveClient(c){
 }
 
 function showNewClientModal(){
+  if(!db){toast('Chargement en cours…','err');return;}
   ['nc-prenom','nc-nom','nc-email','nc-tel','nc-motifs','nc-axes','nc-notes'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   document.getElementById('nc-ddn').value='';
   document.getElementById('nc-prog').value='';
@@ -1149,29 +1151,46 @@ async function saveNewClient(){
   const id=prenom.toLowerCase().replace(/[\s\']/g,'_')+(nom?'-'+nom.toLowerCase().replace(/[\s\']/g,'_'):'')+'-'+ddn.replace(/-/g,'');
   const payload={id,prenom,nom,email:document.getElementById('nc-email')?.value||'',tel:document.getElementById('nc-tel')?.value||'',age:age?String(age):'',ddn,motifs:document.getElementById('nc-motifs')?.value||'',axes:document.getElementById('nc-axes')?.value||'',notes:document.getElementById('nc-notes')?.value||'',programme:document.getElementById('nc-prog')?.value||'',duree_ttt:document.getElementById('nc-duree')?.value||'60',date1:document.getElementById('nc-date1')?.value||today(),date_protocole:document.getElementById('nc-dateproto')?.value||'',timeline:[{type:'creation',title:'Dossier créé',icon:'✦',date:today()}],workflow_done:{},created_at:new Date().toISOString()};
   try{
-    await sb('clientes',{method:'POST',headers:{'Prefer':'return=representation,resolution=merge-duplicates'},body:JSON.stringify(payload)});
-    // Mettre à jour en mémoire (remplacer si existant, ajouter sinon)
-    const existIdx = db.clients.findIndex(c => c.id === payload.id);
-    if(existIdx > -1) db.clients[existIdx] = mapC(payload);
-    else db.clients.unshift(mapC(payload));
+    const rows=await sb('clientes',{method:'POST',headers:{'Prefer':'return=representation'},body:JSON.stringify(payload)});
+    const saved=Array.isArray(rows)&&rows.length?rows[0]:payload;
+    const existIdx=db.clients.findIndex(c=>c.id===saved.id||c.id===payload.id);
+    if(existIdx>-1) db.clients[existIdx]=mapC(saved);
+    else db.clients.unshift(mapC(saved));
     closeM('m-client');toast('Fiche créée ✓','ok');nav('clients',null);renderClients();
   }
-  catch(e){toast('Erreur: '+e.message,'err');}
+  catch(e){
+    let msg=e.message||'';
+    try{const j=JSON.parse(msg);msg=j.message||j.details||j.hint||msg;}catch(_){}
+    toast('Erreur création : '+msg,'err');
+    console.error('[CRM] saveNewClient error:',e.message);
+  }
 }
 
 async function addQuick(){
   const inp=document.getElementById('task-quick');const titre=(inp?.value||'').trim();if(!titre)return;
   const t={id:'t_'+Date.now(),titre,statut:'todo',priorite:'normale',created_at:new Date().toISOString()};
-  try{await sb('taches',{method:'POST',body:JSON.stringify(t)});taches.push(t);inp.value='';renderTaches();toast('Tâche ajoutée ✓','ok');}
-  catch(e){toast('Erreur','err');}
+  try{
+    const rows=await sb('taches',{method:'POST',body:JSON.stringify(t)});
+    const saved=Array.isArray(rows)&&rows.length?rows[0]:t;
+    taches.push(saved);inp.value='';renderTaches();toast('Tâche ajoutée ✓','ok');
+  }catch(e){
+    let msg=e.message||'';try{const j=JSON.parse(msg);msg=j.message||j.details||msg;}catch(_){}
+    toast('Erreur : '+msg,'err');console.error('[CRM] addQuick:',e.message);
+  }
 }
 async function saveTache(){
   const titre=(document.getElementById('t-titre')?.value||'').trim();if(!titre)return;
   const cid=document.getElementById('t-client')?.value||'';
   const cl=db.clients.find(c=>c.id===cid);
   const t={id:'t_'+Date.now(),titre,description:document.getElementById('t-desc')?.value||'',client_id:cid,client_nom:cl?cl.prenom+' '+(cl.nom||''):'',echeance:document.getElementById('t-ech')?.value||null,priorite:document.getElementById('t-prio')?.value||'normale',statut:'todo',created_at:new Date().toISOString()};
-  try{await sb('taches',{method:'POST',body:JSON.stringify(t)});taches.push(t);closeM('m-tache');document.getElementById('t-titre').value='';renderTaches();toast('Tâche créée ✓','ok');}
-  catch(e){toast('Erreur','err');}
+  try{
+    const rows=await sb('taches',{method:'POST',body:JSON.stringify(t)});
+    const saved=Array.isArray(rows)&&rows.length?rows[0]:t;
+    taches.push(saved);closeM('m-tache');document.getElementById('t-titre').value='';renderTaches();toast('Tâche créée ✓','ok');
+  }catch(e){
+    let msg=e.message||'';try{const j=JSON.parse(msg);msg=j.message||j.details||msg;}catch(_){}
+    toast('Erreur tâche : '+msg,'err');console.error('[CRM] saveTache:',e.message);
+  }
 }
 async function checkTask(id){try{await sb('taches?id=eq.'+id,{method:'PATCH',body:JSON.stringify({statut:'done'})});const t=taches.find(x=>x.id===id);if(t)t.statut='done';renderTaches();toast('✓ Done','ok');}catch(e){toast('Erreur','err');}}
 async function delTask(id){try{await sb('taches?id=eq.'+id,{method:'DELETE',prefer:'return=minimal'});taches=taches.filter(t=>t.id!==id);renderTaches();}catch(e){toast('Erreur','err');}}
@@ -1205,7 +1224,10 @@ async function saveFacture(){
     db.nextF=(db.nextF||1)+1;const loc=loadL();loc.nextF=db.nextF;saveL(loc);
     if(cid){const c=db.clients.find(x=>x.id===cid);if(c){if(!c.timeline)c.timeline=[];c.timeline.push({type:'facture',title:'Facture N°'+num+' — '+montant+' €',icon:'€',date,desc:prestaLbl});await saveClient(c);}}
     closeM('m-facture');renderFactures();toast('Facture enregistrée ✓','ok');
-  }catch(e){toast('Erreur: '+e.message,'err');}
+  }catch(e){
+    let msg=e.message||'';try{const j=JSON.parse(msg);msg=j.message||j.details||msg;}catch(_){}
+    toast('Erreur facture : '+msg,'err');console.error('[CRM] saveFacture:',e.message);
+  }
 }
 
 function renderFactures(){
@@ -1242,11 +1264,17 @@ async function migrate(){
 }
 
 function openM(id){
-  const m=document.getElementById(id);if(!m)return;m.classList.add('open');
+  const m=document.getElementById(id);if(!m){console.warn('[CRM] openM: element not found:',id);return;}
+  m.classList.add('open');
   if(id==='m-tache'){const sel=document.getElementById('t-client');if(sel){sel.innerHTML='<option value="">— Aucune —</option>';db.clients.forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=c.prenom+' '+(c.nom||'');sel.appendChild(o);});}}
 }
 function closeM(id){document.getElementById(id)?.classList.remove('open');}
-document.querySelectorAll('.modal-bg').forEach(m=>{m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');});});
+// Backdrop listeners attachés après DOM complet (évite le bug d'exécution avant les modales)
+function attachModalBackdrops(){
+  document.querySelectorAll('.modal-bg').forEach(m=>{
+    m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');});
+  });
+}
 
 function toast(msg,type){
   const t=document.getElementById('toast');t.textContent=msg;t.className='toast '+(type||'');
@@ -1268,8 +1296,7 @@ function exportCSV(){
       c.motifs||'',c.axes||'',c.date1||'',c.dateProtocole||'',status.label
     ].map(v=>'"'+String(v).replace(/"/g,'""')+'"');
   });
-  const csv=[headers.map(h=>'"'+h+'"').join(','),...rows.map(r=>r.join(','))].join('
-');
+  const csv=[headers.map(h=>'"'+h+'"').join(','),...rows.map(r=>r.join(','))].join('\n');
   const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');a.href=url;
@@ -1485,7 +1512,7 @@ function ouvrirEnvoiProtocole(clientId){
     <div style="background:var(--ink);padding:20px 24px 16px">
       <div style="font-size:9px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:5px">Envoyer le protocole</div>
       <div style="font-size:17px;font-weight:700;color:white">${escH(c.prenom)} ${escH(c.nom||'')}</div>
-      <div style="font-size:12px;color:${c.email?'rgba(255,255,255,.5)':'var(--red)'};margin-top:3px">${c.email||'⚠ Email manquant — modifiez la fiche d'abord'}</div>
+      <div style="font-size:12px;color:${c.email?'rgba(255,255,255,.5)':'var(--red)'};margin-top:3px">${c.email||'⚠ Email manquant — modifiez la fiche'}</div>
     </div>
     <div style="padding:20px 24px">
       <div style="background:var(--surface);border-radius:10px;padding:12px 14px;margin-bottom:14px;border:1px solid var(--border)">
@@ -1524,7 +1551,7 @@ async function envoyerProtocole(clientId){
   }catch(e){toast('Erreur Brevo : '+e.message,'err');btn.textContent='📨 Envoyer';btn.disabled=false;}
 }
 
-document.addEventListener('DOMContentLoaded', init);
+document.addEventListener('DOMContentLoaded', ()=>{ attachModalBackdrops(); init(); });
 
 // ── Ouvrir le PHV d'une cliente spécifique ──
 function ouvrirPHVCliente(clientId){
