@@ -1056,8 +1056,8 @@ async function generate() {
         'anthropic-dangerous-direct-browser-access': 'true'
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-5',
-        max_tokens: 8000,
+        model: 'claude-sonnet-4-6',
+        max_tokens: 16000,
         messages: [{ role: 'user', content: buildPrompt(d) }]
       })
     });
@@ -1070,7 +1070,14 @@ async function generate() {
     }
 
     const result = await res.json();
-    const raw = result.content[0].text.replace(/```json|```/g, '').trim();
+    let raw = result.content[0].text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+    // Robustesse : si le JSON est tronqué (finish_reason=max_tokens), on le détecte
+    if (result.stop_reason === 'max_tokens') {
+      throw new Error('Le protocole généré dépasse la limite de longueur. Réessayez en réduisant le nombre d\'axes ou de bilans sélectionnés.');
+    }
+    // Nettoyage : retirer tout ce qui précède le premier {
+    const jsonStart = raw.indexOf('{');
+    if (jsonStart > 0) raw = raw.slice(jsonStart);
     generatedData = JSON.parse(raw);
     generatedData._client = d;
 

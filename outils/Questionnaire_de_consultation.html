@@ -346,6 +346,13 @@ select.fi{height:44px;cursor:pointer}
 <div class="hdr">
   <div class="logo"><img src="logonoir.png" alt="Avita Serena" style="height:38px;display:block"></div>
   <div style="display:flex;align-items:center;gap:10px">
+    <!-- ── CHRONOMÈTRE 90 MIN ── -->
+    <div id="timer-wrap" style="display:flex;align-items:center;gap:8px;background:var(--grege);border:1.5px solid var(--taupe);border-radius:99px;padding:7px 16px;transition:background .3s,border-color .3s">
+      <span style="font-size:14px">⏱</span>
+      <span id="timer-display" style="font-family:'Be Vietnam Pro',sans-serif;font-size:15px;font-weight:700;color:var(--ardoise);letter-spacing:.04em;min-width:48px;text-align:center">1:30:00</span>
+      <button id="timer-btn" onclick="timerToggle()" style="background:var(--ardoise);color:var(--blanc);border:none;border-radius:99px;padding:3px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">▶ Démarrer</button>
+      <button onclick="timerReset()" style="background:transparent;color:var(--gris);border:none;cursor:pointer;font-size:13px;padding:2px 4px;font-family:inherit" title="Remettre à zéro">↺</button>
+    </div>
     <button class="btn-pause" onclick="nouvelleCliente()" title="Effacer et démarrer un nouveau questionnaire" style="background:var(--rouge-clair);border-color:var(--rouge);color:var(--rouge);font-weight:700">✦ Nouvelle cliente</button>
     <button class="btn-pause" onclick="ouvrirPause()" title="Mettre en pause et reprendre plus tard">⏸ Pause</button>
     <div class="hdr-counter" id="hdr-counter" title="Champs remplis">0 notes</div>
@@ -448,6 +455,37 @@ select.fi{height:44px;cursor:pointer}
         <div><label class="fl">Taille (cm)</label><input class="fi" type="number" id="taille" placeholder="165" oninput="calcIMC()"></div>
         <div><label class="fl">Poids (kg)</label><input class="fi" type="number" id="poids" placeholder="62" oninput="calcIMC()"></div>
         <div><label class="fl">IMC (calculé)</label><input class="fi" type="text" id="imc" placeholder="—" readonly style="background:var(--grege);cursor:default"></div>
+      </div>
+
+      <!-- ── FRISE IMAC ── -->
+      <div id="imac-frise-wrap" style="margin-top:14px;display:none">
+        <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--gris);margin-bottom:8px">Positionnement IMC</div>
+        <div style="position:relative;height:36px">
+          <!-- Barre dégradée -->
+          <div style="position:absolute;top:50%;transform:translateY(-50%);left:0;right:0;height:10px;border-radius:99px;background:linear-gradient(to right,#4A90D9 0%,#4CAF7A 16%,#6DBE6D 30%,#F0C040 50%,#E88A30 68%,#D94F4F 100%);overflow:hidden"></div>
+          <!-- Marqueur position cliente -->
+          <div id="imac-marker" style="position:absolute;top:50%;transform:translate(-50%,-50%);width:20px;height:20px;background:var(--ardoise);border:2px solid var(--blanc);border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,.25);transition:left .4s ease;z-index:2;left:30%"></div>
+          <!-- Étiquettes zones -->
+          <div style="position:absolute;top:0;left:0;right:0;display:flex;height:100%">
+            <div style="flex:0 0 16%;border-right:1px solid rgba(255,255,255,.4)"></div>
+            <div style="flex:0 0 14%;border-right:1px solid rgba(255,255,255,.4)"></div>
+            <div style="flex:0 0 20%;border-right:1px solid rgba(255,255,255,.4)"></div>
+            <div style="flex:0 0 18%;border-right:1px solid rgba(255,255,255,.4)"></div>
+            <div style="flex:0 0 16%;border-right:1px solid rgba(255,255,255,.4)"></div>
+            <div style="flex:1"></div>
+          </div>
+        </div>
+        <!-- Labels sous la frise -->
+        <div style="display:flex;margin-top:4px;font-size:9.5px;color:var(--gris);font-weight:600;letter-spacing:.02em">
+          <div style="flex:0 0 16%;text-align:center">Dénutrition<br><span style="color:#4A90D9;font-size:9px">&lt;16.5</span></div>
+          <div style="flex:0 0 14%;text-align:center">Maigreur<br><span style="color:#4CAF7A;font-size:9px">16.5–18.5</span></div>
+          <div style="flex:0 0 20%;text-align:center;font-weight:800;color:var(--ardoise)">✦ Normal<br><span style="color:#6DBE6D;font-size:9px">18.5–25</span></div>
+          <div style="flex:0 0 18%;text-align:center">Surpoids<br><span style="color:#F0C040;font-size:9px">25–30</span></div>
+          <div style="flex:0 0 16%;text-align:center">Obésité I<br><span style="color:#E88A30;font-size:9px">30–35</span></div>
+          <div style="flex:1;text-align:center">Obésité II+<br><span style="color:#D94F4F;font-size:9px">&gt;35</span></div>
+        </div>
+        <!-- Valeur + zone texte -->
+        <div id="imac-label" style="margin-top:8px;font-size:12px;font-weight:700;color:var(--ardoise);text-align:center;padding:6px 16px;background:var(--grege);border-radius:8px;display:inline-block"></div>
       </div>
 
     </div>
@@ -2839,9 +2877,105 @@ function calcIMC() {
     else if (val < 30) cat = ' — Surpoids';
     else cat = ' — Obésité';
     imc.value = val + cat;
+    updateImacFrise(parseFloat(val));
   } else {
     imc.value = '';
+    const wrap = document.getElementById('imac-frise-wrap');
+    if (wrap) wrap.style.display = 'none';
   }
+}
+
+function updateImacFrise(val) {
+  const wrap = document.getElementById('imac-frise-wrap');
+  const marker = document.getElementById('imac-marker');
+  const label = document.getElementById('imac-label');
+  if (!wrap || !marker || !label) return;
+  wrap.style.display = 'block';
+  // Échelle : 13 (0%) → 40 (100%) pour couvrir toutes les zones visibles
+  const minV = 13, maxV = 40;
+  const pct = Math.max(0, Math.min(100, ((val - minV) / (maxV - minV)) * 100));
+  marker.style.left = pct + '%';
+  // Zone et couleur
+  let zone, color;
+  if (val < 16.5)      { zone = 'Dénutrition sévère';   color = '#4A90D9'; }
+  else if (val < 18.5) { zone = 'Insuffisance pondérale'; color = '#4CAF7A'; }
+  else if (val < 25)   { zone = 'Corpulence normale ✦'; color = '#3D6B2C'; }
+  else if (val < 30)   { zone = 'Surpoids';              color = '#B07A00'; }
+  else if (val < 35)   { zone = 'Obésité modérée (I)';  color = '#C06010'; }
+  else                  { zone = 'Obésité sévère (II+)'; color = '#C03030'; }
+  label.textContent = 'IMC ' + val + ' · ' + zone;
+  label.style.color = color;
+  marker.style.background = color;
+}
+
+/* ── CHRONOMÈTRE 90 MIN ── */
+let timerTotal = 90 * 60; // secondes
+let timerRemaining = timerTotal;
+let timerInterval = null;
+let timerRunning = false;
+
+function timerToggle() {
+  const btn = document.getElementById('timer-btn');
+  if (timerRunning) {
+    clearInterval(timerInterval);
+    timerRunning = false;
+    if (btn) btn.textContent = '▶ Reprendre';
+  } else {
+    if (timerRemaining <= 0) { timerReset(); }
+    timerInterval = setInterval(() => {
+      timerRemaining--;
+      timerRender();
+      if (timerRemaining <= 0) {
+        clearInterval(timerInterval);
+        timerRunning = false;
+        timerAlert();
+      }
+    }, 1000);
+    timerRunning = true;
+    if (btn) btn.textContent = '⏸ Pause';
+  }
+}
+
+function timerReset() {
+  clearInterval(timerInterval);
+  timerRunning = false;
+  timerRemaining = timerTotal;
+  timerRender();
+  const btn = document.getElementById('timer-btn');
+  if (btn) btn.textContent = '▶ Démarrer';
+  const wrap = document.getElementById('timer-wrap');
+  if (wrap) { wrap.style.background = ''; wrap.style.borderColor = ''; }
+  const disp = document.getElementById('timer-display');
+  if (disp) disp.style.color = 'var(--ardoise)';
+}
+
+function timerRender() {
+  const disp = document.getElementById('timer-display');
+  const wrap = document.getElementById('timer-wrap');
+  if (!disp) return;
+  const h = Math.floor(timerRemaining / 3600);
+  const m = Math.floor((timerRemaining % 3600) / 60);
+  const s = timerRemaining % 60;
+  const txt = (h > 0 ? h + ':' : '') + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+  disp.textContent = txt;
+  // Rouge quand < 20 min
+  if (timerRemaining <= 20 * 60 && timerRemaining > 0) {
+    disp.style.color = '#C03030';
+    if (wrap) { wrap.style.background = '#FFF0F0'; wrap.style.borderColor = '#D94F4F'; }
+  } else {
+    disp.style.color = 'var(--ardoise)';
+    if (wrap) { wrap.style.background = ''; wrap.style.borderColor = ''; }
+  }
+}
+
+function timerAlert() {
+  const disp = document.getElementById('timer-display');
+  const wrap = document.getElementById('timer-wrap');
+  if (disp) { disp.textContent = '0:00:00'; disp.style.color = '#C03030'; }
+  if (wrap) { wrap.style.background = '#FFE0E0'; wrap.style.borderColor = '#C03030'; }
+  // Vibration si disponible
+  if (navigator.vibrate) navigator.vibrate([300, 100, 300]);
+  showToast('⏰ Temps écoulé — pensez à conclure la séance.');
 }
 
 /* ══════════════════════════════════════
