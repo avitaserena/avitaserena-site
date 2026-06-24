@@ -310,8 +310,7 @@ const SB='https://bqhkdndwldwqacrrbbig.supabase.co';
 const KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxaGtkbmR3bGR3cWFjcnJiYmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MzAyNTIsImV4cCI6MjA5NjMwNjI1Mn0.nH2UktMAVKYwng4L3SvW5F0fluV_sObGV0f3Mk1dnOY';
 
 async function sb(path,opts={}){
-  const defaultPrefer=opts.method&&opts.method!=='GET'?'return=representation':'return=representation';
-  const r=await fetch(SB+'/rest/v1/'+path,{...opts,headers:{'apikey':KEY,'Authorization':'Bearer '+KEY,'Content-Type':'application/json','Prefer':defaultPrefer,...(opts.headers||{})}});
+  const r=await fetch(SB+'/rest/v1/'+path,{...opts,headers:{'apikey':KEY,'Authorization':'Bearer '+KEY,'Content-Type':'application/json','Prefer':opts.prefer||'return=representation',...(opts.headers||{})}});
   if(!r.ok)throw new Error(await r.text());
   const t=await r.text();return t?JSON.parse(t):[];
 }
@@ -427,7 +426,7 @@ async function loadMemoAlerts(){
   }
 }
 
-function mapC(r){return{id:r.id,prenom:r.prenom,nom:r.nom,email:r.email,tel:r.tel,age:r.age,ddn:r.ddn,motifs:r.motifs,axes:r.axes,notes:r.notes,programme:r.programme,dureeTtt:r.duree_ttt,date1:r.date1,dateProtocole:r.date_protocole,timeline:r.timeline||[],workflowDone:r.workflow_done||{},createdAt:r.created_at};}
+function mapC(r){return{id:r.id,prenom:r.prenom,nom:r.nom,email:r.email,tel:r.tel,age:r.age,ddn:r.ddn,motifs:r.motifs,axes:r.axes,notes:r.notes,programme:r.programme,dureeTtt:r.duree_ttt,date1:r.date1,dateProtocole:r.date_protocole,phv_url:r.phv_url||'',timeline:r.timeline||[],workflowDone:r.workflow_done||{},createdAt:r.created_at};}
 
 function today(){return new Date().toISOString().split('T')[0];}
 function addD(d,n){if(!d)return null;const dt=new Date(d);dt.setDate(dt.getDate()+n);return dt.toISOString().split('T')[0];}
@@ -500,22 +499,6 @@ function renderDashboard(){
   const rdvM=rdvs.filter(r=>r.date&&mk(r.date)===curMk);
   const sils=db.clients.filter(c=>{const l=c.timeline?.[c.timeline.length-1]?.date||c.date1;return l&&diffD(l)>30;});
 
-  // CA jour
-  const todayStr=today();
-  const caJ=db.factures.filter(f=>f.statut==='payee'&&f.date===todayStr).reduce((s,f)=>s+(f.montant||0),0);
-
-  // CA semaine (lundi→dimanche)
-  const dow=now.getDay()===0?6:now.getDay()-1; // 0=lundi
-  const lundi=new Date(now); lundi.setDate(now.getDate()-dow); lundi.setHours(0,0,0,0);
-  const dimanche=new Date(lundi); dimanche.setDate(lundi.getDate()+6); dimanche.setHours(23,59,59,999);
-  const lundiStr=lundi.toISOString().split('T')[0];
-  const dimancheStr=dimanche.toISOString().split('T')[0];
-  const caS=db.factures.filter(f=>f.statut==='payee'&&f.date&&f.date>=lundiStr&&f.date<=dimancheStr).reduce((s,f)=>s+(f.montant||0),0);
-
-  // Stocker pour cycleCaPeriod
-  window._caValues={jour:caJ,semaine:caS,mois:caM};
-  updateCaKpi();
-
   // Convertir les mémos-refus en alertes urgentes
   // Seulement les clientes avec au moins 1 refus sans réponse → TO DO list
   const memoUrgAl = memoAlerts
@@ -532,6 +515,7 @@ function renderDashboard(){
   document.getElementById('kv-actives').textContent=actives.length;
   document.getElementById('kv-rdv').textContent=rdvM.length;
   document.getElementById('kv-alertes').textContent=totalAlerts;
+  document.getElementById('kv-ca').textContent=caM>0?caM.toFixed(0)+' €':'—';
   document.getElementById('kv-total').textContent=db.clients.length;
   const bdg=document.getElementById('badge-al');
   bdg.textContent=totalAlerts;bdg.classList.toggle('show',totalAlerts>0);
@@ -546,38 +530,6 @@ function renderDashboard(){
   renderCA();
   renderTaches();
   renderSilences(sils);
-}
-
-// ── CA KPI CYCLE ──
-var _caPeriod = 'mois'; // 'jour' | 'semaine' | 'mois'
-var _caLabels = {jour:'CA aujourd\'hui', semaine:'CA cette semaine', mois:'CA du mois'};
-var _caColors = {jour:'#0096FF', semaine:'#FF7B2C', mois:'#007A45'};
-var _caBg    = {jour:'#E0F2FF',  semaine:'#FFF0E5',  mois:'#DCFFF0'};
-
-function updateCaKpi(){
-  const vals=window._caValues||{jour:0,semaine:0,mois:0};
-  const v=vals[_caPeriod]||0;
-  const el=document.getElementById('kv-ca');
-  const lbl=document.getElementById('kv-ca-lbl');
-  const icon=document.querySelector('#kpi-ca-card .kpi-icon');
-  const acc=document.querySelector('#kpi-ca-card .kpi-acc');
-  if(el) el.textContent=v>0?v.toFixed(0)+' €':'—';
-  if(lbl) lbl.textContent=_caLabels[_caPeriod];
-  if(icon){ icon.style.color=_caColors[_caPeriod]; icon.style.background=_caBg[_caPeriod]; }
-  if(acc){
-    const g={jour:'linear-gradient(90deg,#0096FF,#00C4D4)',semaine:'linear-gradient(90deg,#FF7B2C,#FFCB00)',mois:'linear-gradient(90deg,#00C875,#FFCB00)'};
-    acc.style.background=g[_caPeriod];
-  }
-}
-
-function cycleCaPeriod(){
-  const order=['jour','semaine','mois'];
-  const i=order.indexOf(_caPeriod);
-  _caPeriod=order[(i+1)%3];
-  updateCaKpi();
-  // Petit flash visuel
-  const card=document.getElementById('kpi-ca-card');
-  if(card){card.style.opacity='.6';setTimeout(()=>card.style.opacity='1',150);}
 }
 
 function switchTab(tab,el){
@@ -879,9 +831,9 @@ function renderFiche(c){
     "</div>" +
     "<div class='fgrid'><div class='fside'>" +
       "<div class='card'><div class='card-head'><div class='card-title'><div class='card-dot' style='background:#6C47FF'></div>Informations</div><button class='btn btn-ghost btn-xs' onclick=\"ouvrirEditionCliente('"+c.id+"')\">✎ Modifier</button></div><div class='card-body'>" +
-        "<div class='ir'><div class='il'>Email</div><div class='iv'>"+(c.email?"<a href='mailto:"+escH(c.email)+"' style='color:var(--violet);text-decoration:none'>"+escH(c.email)+"</a>":"<span style='color:var(--red);font-weight:700'>⚠ Manquant</span>")+"</div></div>" +
-        "<div class='ir'><div class='il'>Téléphone</div><div class='iv'>"+(c.tel?"<a href='tel:"+escH(c.tel)+"' style='color:var(--ink);text-decoration:none'>"+escH(c.tel)+"</a>":"<span style='color:var(--muted)'>—</span>")+"</div></div>" +
-        "<div class='ir'><div class='il'>Date de naissance</div><div class='iv'>"+(c.ddn?fmtDate(c.ddn)+(age?" · <span style='color:var(--muted)'>"+age+" ans</span>":"")+"</div></div>":"</div></div>") +
+        "<div class='ir'><div class='il'>Email</div><div class='iv'>"+(c.email?\"<a href='mailto:\"+escH(c.email)+\"' style='color:var(--violet);text-decoration:none'>\"+escH(c.email)+\"</a>\":\"<span style='color:var(--red);font-weight:700'>⚠ Manquant</span>\")+\"</div></div>\" +
+        \"<div class='ir'><div class='il'>Téléphone</div><div class='iv'>\"+(c.tel?\"<a href='tel:\"+escH(c.tel)+\"' style='color:var(--ink);text-decoration:none'>\"+escH(c.tel)+\"</a>\":\"<span style='color:var(--muted)'>—</span>\")+\"</div></div>\" +
+        \"<div class='ir'><div class='il'>Date de naissance</div><div class='iv'>\"+(c.ddn?fmtDate(c.ddn)+(age?\" · <span style='color:var(--muted)'>\"+age+\" ans</span>\":\"\")+\"</div></div>\" +
         "<div class='ir'><div class='il'>Programme</div><div class='iv'>"+(c.programme?"<span class='prog-badge pb-"+pCls(c.programme)+"'>"+pLbl(c.programme)+"</span>":"<span style='color:var(--muted)'>Consultation ponctuelle</span>")+"</div></div>" +
         "<div class='ir'><div class='il'>Motifs</div><div class='iv'>"+escH(c.motifs||'—')+"</div></div>" +
         "<div class='ir'><div class='il'>Axes</div><div class='iv'>"+escH(c.axes||'—')+"</div></div>" +
@@ -1121,12 +1073,11 @@ function openBrevo(){if(emailCtx)logEmail(emailCtx.id);window.open('https://app.
 async function addTLEvent(id){const t=prompt("Titre de l\'événement :");if(!t)return;const c=db.clients.find(x=>x.id===id);if(!c)return;if(!c.timeline)c.timeline=[];c.timeline.push({type:'suivi',title:t,icon:'·',date:today()});await saveClient(c);renderFiche(c);toast('Événement ajouté ✓','ok');}
 
 async function saveClient(c){
-  const p={prenom:c.prenom,nom:c.nom,email:c.email,tel:c.tel,age:c.age,ddn:c.ddn,motifs:c.motifs,axes:c.axes,notes:c.notes,programme:c.programme,duree_ttt:c.dureeTtt,date1:c.date1,date_protocole:c.dateProtocole,timeline:c.timeline,workflow_done:c.workflowDone,updated_at:new Date().toISOString()};
+  const p={prenom:c.prenom,nom:c.nom,email:c.email,tel:c.tel,age:c.age,ddn:c.ddn,motifs:c.motifs,axes:c.axes,notes:c.notes,programme:c.programme,duree_ttt:c.dureeTtt,date1:c.date1,date_protocole:c.dateProtocole,phv_url:c.phv_url||null,timeline:c.timeline,workflow_done:c.workflowDone,updated_at:new Date().toISOString()};
   try{await sb('clientes?id=eq.'+c.id,{method:'PATCH',body:JSON.stringify(p)});}catch(e){console.error(e);}
 }
 
 function showNewClientModal(){
-  if(!db){toast('Chargement en cours…','err');return;}
   ['nc-prenom','nc-nom','nc-email','nc-tel','nc-motifs','nc-axes','nc-notes'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   document.getElementById('nc-ddn').value='';
   document.getElementById('nc-prog').value='';
@@ -1151,46 +1102,29 @@ async function saveNewClient(){
   const id=prenom.toLowerCase().replace(/[\s\']/g,'_')+(nom?'-'+nom.toLowerCase().replace(/[\s\']/g,'_'):'')+'-'+ddn.replace(/-/g,'');
   const payload={id,prenom,nom,email:document.getElementById('nc-email')?.value||'',tel:document.getElementById('nc-tel')?.value||'',age:age?String(age):'',ddn,motifs:document.getElementById('nc-motifs')?.value||'',axes:document.getElementById('nc-axes')?.value||'',notes:document.getElementById('nc-notes')?.value||'',programme:document.getElementById('nc-prog')?.value||'',duree_ttt:document.getElementById('nc-duree')?.value||'60',date1:document.getElementById('nc-date1')?.value||today(),date_protocole:document.getElementById('nc-dateproto')?.value||'',timeline:[{type:'creation',title:'Dossier créé',icon:'✦',date:today()}],workflow_done:{},created_at:new Date().toISOString()};
   try{
-    const rows=await sb('clientes',{method:'POST',headers:{'Prefer':'return=representation'},body:JSON.stringify(payload)});
-    const saved=Array.isArray(rows)&&rows.length?rows[0]:payload;
-    const existIdx=db.clients.findIndex(c=>c.id===saved.id||c.id===payload.id);
-    if(existIdx>-1) db.clients[existIdx]=mapC(saved);
-    else db.clients.unshift(mapC(saved));
+    await sb('clientes',{method:'POST',headers:{'Prefer':'return=representation,resolution=merge-duplicates'},body:JSON.stringify(payload)});
+    // Mettre à jour en mémoire (remplacer si existant, ajouter sinon)
+    const existIdx = db.clients.findIndex(c => c.id === payload.id);
+    if(existIdx > -1) db.clients[existIdx] = mapC(payload);
+    else db.clients.unshift(mapC(payload));
     closeM('m-client');toast('Fiche créée ✓','ok');nav('clients',null);renderClients();
   }
-  catch(e){
-    let msg=e.message||'';
-    try{const j=JSON.parse(msg);msg=j.message||j.details||j.hint||msg;}catch(_){}
-    toast('Erreur création : '+msg,'err');
-    console.error('[CRM] saveNewClient error:',e.message);
-  }
+  catch(e){toast('Erreur: '+e.message,'err');}
 }
 
 async function addQuick(){
   const inp=document.getElementById('task-quick');const titre=(inp?.value||'').trim();if(!titre)return;
   const t={id:'t_'+Date.now(),titre,statut:'todo',priorite:'normale',created_at:new Date().toISOString()};
-  try{
-    const rows=await sb('taches',{method:'POST',body:JSON.stringify(t)});
-    const saved=Array.isArray(rows)&&rows.length?rows[0]:t;
-    taches.push(saved);inp.value='';renderTaches();toast('Tâche ajoutée ✓','ok');
-  }catch(e){
-    let msg=e.message||'';try{const j=JSON.parse(msg);msg=j.message||j.details||msg;}catch(_){}
-    toast('Erreur : '+msg,'err');console.error('[CRM] addQuick:',e.message);
-  }
+  try{await sb('taches',{method:'POST',body:JSON.stringify(t)});taches.push(t);inp.value='';renderTaches();toast('Tâche ajoutée ✓','ok');}
+  catch(e){toast('Erreur','err');}
 }
 async function saveTache(){
   const titre=(document.getElementById('t-titre')?.value||'').trim();if(!titre)return;
   const cid=document.getElementById('t-client')?.value||'';
   const cl=db.clients.find(c=>c.id===cid);
   const t={id:'t_'+Date.now(),titre,description:document.getElementById('t-desc')?.value||'',client_id:cid,client_nom:cl?cl.prenom+' '+(cl.nom||''):'',echeance:document.getElementById('t-ech')?.value||null,priorite:document.getElementById('t-prio')?.value||'normale',statut:'todo',created_at:new Date().toISOString()};
-  try{
-    const rows=await sb('taches',{method:'POST',body:JSON.stringify(t)});
-    const saved=Array.isArray(rows)&&rows.length?rows[0]:t;
-    taches.push(saved);closeM('m-tache');document.getElementById('t-titre').value='';renderTaches();toast('Tâche créée ✓','ok');
-  }catch(e){
-    let msg=e.message||'';try{const j=JSON.parse(msg);msg=j.message||j.details||msg;}catch(_){}
-    toast('Erreur tâche : '+msg,'err');console.error('[CRM] saveTache:',e.message);
-  }
+  try{await sb('taches',{method:'POST',body:JSON.stringify(t)});taches.push(t);closeM('m-tache');document.getElementById('t-titre').value='';renderTaches();toast('Tâche créée ✓','ok');}
+  catch(e){toast('Erreur','err');}
 }
 async function checkTask(id){try{await sb('taches?id=eq.'+id,{method:'PATCH',body:JSON.stringify({statut:'done'})});const t=taches.find(x=>x.id===id);if(t)t.statut='done';renderTaches();toast('✓ Done','ok');}catch(e){toast('Erreur','err');}}
 async function delTask(id){try{await sb('taches?id=eq.'+id,{method:'DELETE',prefer:'return=minimal'});taches=taches.filter(t=>t.id!==id);renderTaches();}catch(e){toast('Erreur','err');}}
@@ -1224,10 +1158,7 @@ async function saveFacture(){
     db.nextF=(db.nextF||1)+1;const loc=loadL();loc.nextF=db.nextF;saveL(loc);
     if(cid){const c=db.clients.find(x=>x.id===cid);if(c){if(!c.timeline)c.timeline=[];c.timeline.push({type:'facture',title:'Facture N°'+num+' — '+montant+' €',icon:'€',date,desc:prestaLbl});await saveClient(c);}}
     closeM('m-facture');renderFactures();toast('Facture enregistrée ✓','ok');
-  }catch(e){
-    let msg=e.message||'';try{const j=JSON.parse(msg);msg=j.message||j.details||msg;}catch(_){}
-    toast('Erreur facture : '+msg,'err');console.error('[CRM] saveFacture:',e.message);
-  }
+  }catch(e){toast('Erreur: '+e.message,'err');}
 }
 
 function renderFactures(){
@@ -1264,17 +1195,11 @@ async function migrate(){
 }
 
 function openM(id){
-  const m=document.getElementById(id);if(!m){console.warn('[CRM] openM: element not found:',id);return;}
-  m.classList.add('open');
+  const m=document.getElementById(id);if(!m)return;m.classList.add('open');
   if(id==='m-tache'){const sel=document.getElementById('t-client');if(sel){sel.innerHTML='<option value="">— Aucune —</option>';db.clients.forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=c.prenom+' '+(c.nom||'');sel.appendChild(o);});}}
 }
 function closeM(id){document.getElementById(id)?.classList.remove('open');}
-// Backdrop listeners attachés après DOM complet (évite le bug d'exécution avant les modales)
-function attachModalBackdrops(){
-  document.querySelectorAll('.modal-bg').forEach(m=>{
-    m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');});
-  });
-}
+document.querySelectorAll('.modal-bg').forEach(m=>{m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');});});
 
 function toast(msg,type){
   const t=document.getElementById('toast');t.textContent=msg;t.className='toast '+(type||'');
@@ -1296,7 +1221,8 @@ function exportCSV(){
       c.motifs||'',c.axes||'',c.date1||'',c.dateProtocole||'',status.label
     ].map(v=>'"'+String(v).replace(/"/g,'""')+'"');
   });
-  const csv=[headers.map(h=>'"'+h+'"').join(','),...rows.map(r=>r.join(','))].join('\n');
+  const csv=[headers.map(h=>'"'+h+'"').join(','),...rows.map(r=>r.join(','))].join('
+');
   const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');a.href=url;
@@ -1512,7 +1438,7 @@ function ouvrirEnvoiProtocole(clientId){
     <div style="background:var(--ink);padding:20px 24px 16px">
       <div style="font-size:9px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:5px">Envoyer le protocole</div>
       <div style="font-size:17px;font-weight:700;color:white">${escH(c.prenom)} ${escH(c.nom||'')}</div>
-      <div style="font-size:12px;color:${c.email?'rgba(255,255,255,.5)':'var(--red)'};margin-top:3px">${c.email||'⚠ Email manquant — modifiez la fiche'}</div>
+      <div style="font-size:12px;color:${c.email?'rgba(255,255,255,.5)':'var(--red)'};margin-top:3px">${c.email||'⚠ Email manquant — modifiez la fiche d'abord'}</div>
     </div>
     <div style="padding:20px 24px">
       <div style="background:var(--surface);border-radius:10px;padding:12px 14px;margin-bottom:14px;border:1px solid var(--border)">
@@ -1520,7 +1446,8 @@ function ouvrirEnvoiProtocole(clientId){
         <div style="font-size:12px;color:var(--ink3);line-height:1.7">🔗 avitaserena.com/espace-clientes.html<br>👤 ${escH(c.prenom)} · 📅 ${ddnF}</div>
       </div>
       <label class="fl">Lien vers le protocole (PHV)</label>
-      <input id="ep-lien-phv" type="url" class="fi" placeholder="https://avitaserena.com/outils/phv-print.html?…" style="margin-bottom:16px">
+      <input id="ep-lien-phv" type="url" class="fi" placeholder="https://avitaserena.com/outils/phv-print.html?…" style="margin-bottom:4px">
+      <div id="ep-phv-hint" style="font-size:11px;color:var(--muted);margin-bottom:14px;min-height:16px"></div>
       <div style="display:flex;gap:8px;justify-content:flex-end">
         <button onclick="document.getElementById('modal-envoi-protocole').remove()" class="btn btn-ghost">Annuler</button>
         <button id="ep-send-btn" onclick="envoyerProtocole('${clientId}')" class="btn btn-primary">📨 Envoyer</button>
@@ -1529,7 +1456,35 @@ function ouvrirEnvoiProtocole(clientId){
   </div>`;
   modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
   document.body.appendChild(modal);
-  setTimeout(()=>document.getElementById('ep-lien-phv')?.focus(),100);
+
+  // Auto-remplir le lien PHV si disponible
+  const inp = document.getElementById('ep-lien-phv');
+  const hint = document.getElementById('ep-phv-hint');
+  if (c.phv_url) {
+    inp.value = c.phv_url;
+    if (hint) hint.innerHTML = '<span style="color:#3D6B2C">✓ URL récupérée automatiquement depuis le dossier</span>';
+  } else {
+    // Fallback localStorage
+    const slug = [c.prenom, c.nom, c.ddn].filter(Boolean).join('-').toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9\-]/g,'');
+    const cached = localStorage.getItem(`avita_phv_url_${slug}`);
+    if (cached) {
+      inp.value = cached;
+      if (hint) hint.innerHTML = '<span style="color:#B4906A">⚡ URL récupérée depuis le cache local — ouvrez phv-print.html pour confirmer</span>';
+    } else {
+      const lastRaw = localStorage.getItem('avita_phv_url_last');
+      if (lastRaw) {
+        try {
+          const last = JSON.parse(lastRaw);
+          if (last.prenom?.toLowerCase() === (c.prenom||'').toLowerCase()) {
+            inp.value = last.url;
+            if (hint) hint.innerHTML = '<span style="color:#B4906A">⚡ Dernier PHV généré · Vérifiez que c\'est bien pour cette cliente</span>';
+          }
+        } catch(e) {}
+      }
+      if (!inp.value && hint) hint.textContent = 'Ouvrez phv-print.html → cliquez "📤 Enregistrer & partager" pour générer l\'URL automatiquement.';
+    }
+  }
+  if (!c.phv_url) setTimeout(()=>inp?.focus(),100);
 }
 
 async function envoyerProtocole(clientId){
@@ -1551,7 +1506,7 @@ async function envoyerProtocole(clientId){
   }catch(e){toast('Erreur Brevo : '+e.message,'err');btn.textContent='📨 Envoyer';btn.disabled=false;}
 }
 
-document.addEventListener('DOMContentLoaded', ()=>{ attachModalBackdrops(); init(); });
+document.addEventListener('DOMContentLoaded', init);
 
 // ── Ouvrir le PHV d'une cliente spécifique ──
 function ouvrirPHVCliente(clientId){
@@ -1971,7 +1926,7 @@ async function sauvegarderAlternatives(prenom, nom, ddn, email, refusIdx, envoye
       <div class="kpi"><div class="kpi-acc" style="background:linear-gradient(90deg,#6C47FF,#FF4C8B)"></div><div class="kpi-icon" style="background:#EDE8FF;color:#6C47FF"><svg width="17" height="17" fill="none" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="2.5"/><circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="2.5"/></svg></div><div class="kpi-val" id="kv-actives">—</div><div class="kpi-lbl">En programme</div></div>
       <div class="kpi"><div class="kpi-acc" style="background:linear-gradient(90deg,#0096FF,#00C4D4)"></div><div class="kpi-icon" style="background:#E0F2FF;color:#0096FF"><svg width="17" height="17" fill="none" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" stroke-width="2.5"/><line x1="3" y1="10" x2="21" y2="10" stroke="currentColor" stroke-width="2.5"/></svg></div><div class="kpi-val" id="kv-rdv">—</div><div class="kpi-lbl">RDV ce mois</div></div>
       <div class="kpi"><div class="kpi-acc" style="background:linear-gradient(90deg,#E2445C,#FF7B2C)"></div><div class="kpi-icon" style="background:#FFE5EA;color:#E2445C"><svg width="17" height="17" fill="none" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" stroke="currentColor" stroke-width="2.5"/></svg></div><div class="kpi-val" id="kv-alertes">—</div><div class="kpi-lbl">Alertes</div></div>
-      <div class="kpi" id="kpi-ca-card" style="cursor:pointer" onclick="cycleCaPeriod()" title="Cliquer pour changer la période"><div class="kpi-acc" style="background:linear-gradient(90deg,#00C875,#FFCB00)"></div><div class="kpi-icon" style="background:#DCFFF0;color:#007A45"><svg width="17" height="17" fill="none" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23" stroke="currentColor" stroke-width="2.5"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg></div><div class="kpi-val sm" id="kv-ca">—</div><div class="kpi-lbl" id="kv-ca-lbl">CA du mois</div></div>
+      <div class="kpi"><div class="kpi-acc" style="background:linear-gradient(90deg,#00C875,#FFCB00)"></div><div class="kpi-icon" style="background:#DCFFF0;color:#007A45"><svg width="17" height="17" fill="none" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23" stroke="currentColor" stroke-width="2.5"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg></div><div class="kpi-val sm" id="kv-ca">—</div><div class="kpi-lbl">CA du mois</div></div>
       <div class="kpi"><div class="kpi-acc" style="background:linear-gradient(90deg,#FF4C8B,#FFCB00)"></div><div class="kpi-icon" style="background:#FFF9DC;color:#8A6800"><svg width="17" height="17" fill="none" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="2.5"/><circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="2.5"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" stroke-width="2.5"/></svg></div><div class="kpi-val" id="kv-total">—</div><div class="kpi-lbl">Total clientes</div></div>
     </div>
     <div class="dash-grid">
