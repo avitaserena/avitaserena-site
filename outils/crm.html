@@ -615,19 +615,23 @@ async function sendMailRdv(rdvId, key, tplId, subject, email, name, heure='', da
   try{
     let body;
     if(tplId){
-      // Envoi via template Brevo avec toutes les variables
+      // Params selon le template
+      const params = { PRENOM: name.split(' ')[0], NOM: name };
+      if(tplId === 3){ // Confirmation
+        params.DATE = date;
+        params.HEURE = heure;
+        params.LIEN_VISIO = 'https://meet.google.com/nqw-rpwq-rvi';
+      } else if(tplId === 4){ // Rappel J-1
+        params.DATE = date;
+        params.HEURE = heure;
+        params.MOTIF = motif || 'votre sant\u00e9';
+      }
+      // #17 H-1 : contact.FIRSTNAME lu par Brevo depuis le contact, lien Meet hardcod\u00e9 dans le template
       body = JSON.stringify({
-        sender:{name:'Sabrina · A Vita Serena',email:'sabrina@avitaserena.com'},
+        sender:{name:'Sabrina \u00b7 A Vita Serena',email:'sabrina@avitaserena.com'},
         to:[{email, name}],
         templateId: tplId,
-        params:{
-          PRENOM: name.split(' ')[0],
-          NOM: name,
-          HEURE: heure,
-          DATE: date,
-          MOTIF: motif || 'votre santé',
-          LIEN_VISIO: 'https://meet.google.com/nqw-rpwq-rvi'
-        }
+        params
       });
     } else {
       // Mail libre (suivi J+7 — pas de template)
@@ -1853,19 +1857,29 @@ async function envoyerProtocole(clientId){
   const lienPHV=document.getElementById('ep-lien-phv')?.value?.trim();if(!lienPHV){toast('Lien PHV requis','warn');return;}
   const apiKey=getBrevoKey();if(!apiKey){toast('Clé Brevo requise','warn');return;}
   const btn=document.getElementById('ep-send-btn');btn.textContent='Envoi…';btn.disabled=true;
-  const prenom=c.prenom||'';const ddnF=c.ddn?c.ddn.split('-').reverse().join('/'):'—';
-  const html=`<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"></head><body style="margin:0;padding:0;background:#F5F0E8;font-family:'Helvetica Neue',Arial,sans-serif"><table width="100%" cellpadding="0" cellspacing="0" style="background:#F5F0E8;padding:32px 16px"><tr><td align="center"><table width="100%" style="max-width:580px;background:#fff;border-radius:16px;overflow:hidden"><tr><td style="background:#1E1E1C;padding:36px 40px 32px;text-align:center"><p style="margin:0 0 6px;font-size:10px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:rgba(196,169,125,.5)">A Vita Serena</p><p style="margin:0;font-family:Georgia,serif;font-size:28px;font-weight:300;font-style:italic;color:#fff;line-height:1.25">Votre protocole<br>est prêt.</p></td></tr><tr><td style="padding:36px 40px 24px"><p style="margin:0 0 16px;font-size:15px;color:#1E1E1C;line-height:1.8">Bonjour <strong>${prenom}</strong>,</p><p style="margin:0;font-size:14px;color:#5A5248;line-height:1.85">Comme promis, voici votre Protocole d'Hygiène Vitale, pensé spécifiquement pour vous.</p></td></tr><tr><td style="padding:0 40px"><div style="height:1.5px;background:linear-gradient(90deg,#C4A97D,#E8D5B0,transparent)"></div></td></tr><tr><td style="padding:28px 40px"><table width="100%" cellpadding="0" cellspacing="0" style="background:#F7F6F4;border-radius:12px;border:1px solid #E4DFD8"><tr><td style="padding:24px 28px"><p style="margin:0 0 20px;font-size:13px;color:#6B6560;line-height:1.7">Votre protocole est interactif — validez ou refusez chaque recommandation.</p><a href="${lienPHV}" style="display:inline-block;background:#1E1E1C;color:#fff;text-decoration:none;font-size:13px;font-weight:600;padding:13px 28px;border-radius:99px">Accéder à mon protocole →</a></td></tr></table></td></tr><tr><td style="padding:0 40px 28px"><table width="100%" cellpadding="0" cellspacing="0" style="background:#F0EBE3;border-radius:10px;border:1px solid #DDD8D0"><tr><td style="padding:18px 22px"><p style="margin:0 0 10px;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#8B7B6B">Votre espace clientes</p><p style="margin:0 0 8px;font-size:13px;color:#1E1E1C"><strong>Adresse :</strong> <a href="https://avitaserena.com/espace-clientes.html" style="color:#B4906A;text-decoration:none">avitaserena.com/espace-clientes.html</a></p><p style="margin:0 0 4px;font-size:13px;color:#1E1E1C"><strong>Prénom :</strong> ${prenom}</p><p style="margin:0;font-size:13px;color:#1E1E1C"><strong>Date de naissance :</strong> ${ddnF}</p></td></tr></table></td></tr><tr><td style="padding:28px 40px 32px"><p style="margin:0 0 16px;font-family:Georgia,serif;font-size:16px;font-style:italic;color:#3A3228;line-height:1.75">« Ce protocole est un point de départ. N'hésitez pas à me faire vos retours. »</p><p style="margin:0;font-size:13px;color:#5A5248;line-height:1.8">Avec bienveillance,<br><strong style="color:#1E1E1C">Sabrina Castelli</strong><br><span style="color:#B4906A;font-size:12px">Naturopathe · A Vita Serena</span></p></td></tr><tr><td style="background:#1E1E1C;padding:20px 40px;text-align:center"><p style="margin:0;font-size:11px;color:rgba(255,255,255,.3)"><a href="https://avitaserena.com" style="color:rgba(196,169,125,.4);text-decoration:none">avitaserena.com</a></p></td></tr></table></td></tr></table></body></html>`;
+  const prenom=c.prenom||''; const ddnF=c.ddn?c.ddn.split('-').reverse().join('/'):'—';
   try{
-    const res=await fetch('https://api.brevo.com/v3/smtp/email',{method:'POST',headers:{'Content-Type':'application/json','api-key':apiKey},body:JSON.stringify({sender:{name:'Sabrina · A Vita Serena',email:'sabrina@avitaserena.com'},to:[{email:c.email,name:prenom+' '+(c.nom||'')}],subject:`${prenom}, votre protocole personnalisé est prêt`,htmlContent:html})});
+    const res=await fetch('https://api.brevo.com/v3/smtp/email',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','api-key':apiKey},
+      body:JSON.stringify({
+        sender:{name:'Sabrina · A Vita Serena',email:'sabrina@avitaserena.com'},
+        to:[{email:c.email,name:prenom+' '+(c.nom||'')}],
+        templateId: 16,
+        params:{PRENOM:prenom, LIEN_PHV:lienPHV, DDN:ddnF}
+      })
+    });
     if(!res.ok){const err=await res.json();throw new Error(err.message||res.status);}
     if(!c.timeline)c.timeline=[];
     c.timeline.push({type:'protocole',title:'📨 Protocole envoyé',icon:'📨',date:today()});
     if(!c.workflowDone)c.workflowDone={};c.workflowDone['protocole_envoye']=true;
+    c.phv_url=lienPHV;
     await saveClient(c);renderFiche(c);
     toast('✓ Protocole envoyé à '+c.email,'ok');
     document.getElementById('modal-envoi-protocole')?.remove();
   }catch(e){toast('Erreur Brevo : '+e.message,'err');btn.textContent='📨 Envoyer';btn.disabled=false;}
 }
+
 
 document.addEventListener('DOMContentLoaded', init);
 
