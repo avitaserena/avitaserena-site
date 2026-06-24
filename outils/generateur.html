@@ -843,31 +843,38 @@ function detectSiboMethane(d) {
   ].filter(Boolean).join(' \n ');
 
   // Confirmation explicite du typage CH4/IMO/méthane
-  const confirmePattern = /confirmé[^\n]*?(ch4|méthane|imo)|(ch4|méthane|imo)[^\n]*?confirmé|test respiratoire ch4|sibo[\s-]?ch4|sibo[\s-]?méthane/i;
+  const confirmePattern = /confirmé[^\n]*?(ch4|méthane|imo)|(ch4|méthane|imo)[^\n]*?confirmé|test respiratoire ch4|sibo[\s-]?ch4|sibo[\s-]?méthane|imo\s+confirmé|sibo\s+imo\s+confirmé|confirmé[^\n]*?imo/i;
   // Signes cliniques évocateurs (utilisés seulement en renfort, pas seuls)
-  const signesPattern = /constipation prédominante \(sibo-ch4\)|imo\b|methanobrevibacter/i;
+  const signesPattern = /constipation prédominante \(sibo-ch4\)|methanobrevibacter/i;
 
   return confirmePattern.test(champsTextuels) || signesPattern.test(champsTextuels);
 }
 
-// Retourne le bloc de règle additionnelle si SIBO méthane avéré, sinon chaîne vide.
-// Fonction séparée (et non template literal imbriqué) pour éviter tout conflit de backticks.
 function buildReglesSiboMethane(siboMethaneAvere) {
   if (!siboMethaneAvere) return '';
   return [
     '',
     '━━ RÈGLE N°5bis — SIBO MÉTHANE (IMO) AVÉRÉ DÉTECTÉ — PROTOCOLE OBLIGATOIRE ━━',
-    '⚠️ Les données de cette cliente indiquent un SIBO méthane (IMO) confirmé. Tu DOIS impérativement intégrer les deux soutiens suivants dans la section s3 [SOUTIENS CIBLÉS], en plus ou à la place des exemples génériques de la Règle N°5 — ce sont des compléments validés pour CETTE cliente, à intégrer prioritairement :',
+    '⚠️ Les données de cette cliente indiquent un SIBO méthane (IMO) confirmé. Tu DOIS impérativement intégrer les soutiens suivants dans la section s3 [SOUTIENS CIBLÉS]. Ces compléments Therascience sont validés pour ce profil IMO et doivent être mentionnés prioritairement. Note : ces produits relèvent d\'un protocole d\'éradication médical qui doit être prescrit et suivi par un gastro-entérologue — dans le PHV, tu les mentionnes en coordination avec le suivi médical, en expliquant leur rôle.',
     '',
-    '1. TEOLIANCE® Motilys — probiotique ciblé sur le Complexe Moteur Migrant (CMM)',
-    '   Associe 3 souches déposées (Bifidobacterium lactis HN019, Bifidobacterium animalis lactis BS01, Bacillus coagulans IS-2), en gélules gastro-résistantes. Le CMM est le mécanisme de "nettoyage" naturel de l\'intestin grêle entre les repas (ondes toutes les 90-120 min) — sa défaillance est l\'une des causes racines les plus fréquentes de l\'IMO, donc soutenir son redémarrage limite le risque de rechute après l\'éradication.',
-    '   Posologie : reprendre celle indiquée dans le champ "Compléments déjà en cours" ou "Médicaments & allergies" si disponible (cette cliente l\'a généralement déjà sous prescription médicale) ; sinon mentionner "selon prescription de votre gastro-entérologue".',
+    '1. Therascience Physiomance SIBO',
+    '   Complexe ciblé sur la prolifération bactérienne de l\'intestin grêle. Agit en synergie avec les autres soutiens anti-IMO.',
+    '   Posologie de référence : 2 gélules matin + 2 gélules soir, 15 minutes avant les repas, pendant 1 mois.',
+    '   ⚠️ Attention si la cliente prend des anticoagulants (R/ACG) ou des antidépresseurs — signaler la précaution explicitement.',
     '',
-    '2. Permealine® (Pileje) — L-Glutamine',
-    '   Principal carburant des entérocytes (cellules de la muqueuse intestinale). Soutient la réparation de la barrière intestinale, souvent fragilisée par la pullulation méthanogène et le ralentissement chronique du transit propre à l\'IMO.',
-    '   Posologie : reprendre celle indiquée dans les données de séance si disponible ; sinon mentionner "selon prescription de votre gastro-entérologue".',
+    '2. Therascience Physiomance ORIGAN',
+    '   L\'origan (carvacrol) est l\'un des antimicrobiens naturels les mieux documentés contre les archées méthanogènes (Methanobrevibacter smithii responsable de l\'IMO). Soutient l\'éradication progressive.',
+    '   Posologie de référence : 1 capsule à chaque fin de repas (3 capsules/j) pendant 15 jours, en commençant progressivement (1/j puis 2/j puis 3/j). À renouveler 2x à 1 mois d\'intervalle (3 cycles en tout).',
     '',
-    'Explique à la cliente, en langage non médical, POURQUOI ces deux soutiens sont spécifiquement pertinents pour son profil (lien avec la constipation et le ralentissement du transit caractéristiques du méthane, et le besoin de réparer la muqueuse après une période de déséquilibre prolongé). Si un protocole d\'éradication (allicine, lovastatine naturelle) est par ailleurs en cours ou mentionné dans les données, préciser que ces deux soutiens viennent en complément et non en remplacement.',
+    '3. Therascience Physiomance ALLICINE 500 mg',
+    '   L\'allicine (ail) agit en complément de l\'origan avec un spectre antimicrobien différent, particulièrement efficace sur les archées productrices de méthane. Association origan + allicine = protocole d\'éradication naturelle de référence en naturopathie.',
+    '   Posologie de référence : 1 gélule 3x/j aux repas pendant 15 jours, en commençant progressivement (1/j puis 2/j puis 3/j). À renouveler 2x à 1 mois d\'intervalle (3 cycles en tout).',
+    '',
+    '4. Therascience Teoliance MOTILYS — probiotique ciblé sur le Complexe Moteur Migrant (CMM)',
+    '   Le CMM est le mécanisme de "nettoyage" naturel de l\'intestin grêle entre les repas (ondes toutes les 90-120 min). Sa défaillance est l\'une des causes racines les plus fréquentes de l\'IMO — soutenir son redémarrage limite le risque de rechute après l\'éradication.',
+    '   Posologie de référence : 1 gélule/j, 30 minutes avant un repas, pendant 1 mois.',
+    '',
+    'Explique à la cliente, en langage non médical, POURQUOI ces soutiens sont spécifiquement pertinents pour son profil : lien avec la constipation et le ralentissement du transit caractéristiques du méthane, nécessité de soutenir la motilité intestinale (CMM) pour éviter la rechute, et action progressive de l\'origan et de l\'allicine sur les micro-organismes producteurs de méthane. Rappeler que ce protocole d\'éradication se fait sous suivi gastro-entérologique.',
     ''
   ].join('\n');
 }
@@ -906,16 +913,16 @@ Un protocole d'hygiène vitale n'est PAS une liste de compléments. Les 3 pilier
 
 ━━ RÈGLE N°4 — MODALITÉS AUTORISÉES ━━
 1. Phytothérapie — forme : EPS > TM > gélule extrait sec > tisane
-2. Compléments : UNIQUEMENT Pileje, Nutergia, Holistica, Nat & Form, Bionutrics
+2. Compléments : UNIQUEMENT Pileje, Nutergia, Holistica, Nat & Form, Bionutrics, Therascience
 3. Nutrition : simple, sans cuisine complexe, sans comptage calorique
 4. Produits de la ruche (miel, propolis, gelée royale)
 5. Argile, Fleurs de Bach
 6. Mouvement SANS matériel : marche, yoga doux, cohérence cardiaque, respiration, étirements
-JAMAIS : homéopathie, hydrolats, sophrologie, salle de sport, matériel de fitness
+JAMAIS : homéopathie, hydrolats, sophrologie, salle de sport, matériel de fitness, bouillon d'os
 
 ━━ RÈGLE N°5 — COMPLÉMENTS (2 À 3 OBLIGATOIRES) ━━
 IMPORTANT : Tu DOIS toujours proposer 2 à 3 compléments ciblés dans la section s3, même si les données sont incomplètes. Les compléments viennent EN COMPLÉMENT des 3 piliers, jamais à la place.
-Marques autorisées : Pileje, Nutergia, Holistica, Nat & Form, Bionutrics, Novoma, Nutripure, Nutrixeal
+Marques autorisées : Pileje, Nutergia, Holistica, Nat & Form, Bionutrics, Novoma, Nutripure, Nutrixeal, Therascience
 Exemples concrets à adapter selon les axes prioritaires :
 - Magnésium bisglycinate : Nutergia Ergymag ou Holistica Magnésium Bisglycinate, 300-400mg/j le soir — si stress, fatigue, crampes, insomnie
 - Oméga-3 EPA/DHA : Omégabiane EPA/DHA (Pileje), 2 gél/j au repas — si inflammation, humeur, sécheresse, hormones
