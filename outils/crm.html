@@ -191,7 +191,9 @@ body{font-family:'Inter',-apple-system,sans-serif;background:var(--surface);colo
 .fiche-sub{font-size:12px;color:rgba(255,255,255,.75);margin-top:5px}
 .fiche-htags{display:flex;gap:5px;flex-wrap:wrap;margin-top:9px}
 .htag{font-size:10px;font-weight:700;padding:3px 10px;border-radius:var(--r99);background:rgba(255,255,255,.15);color:rgba(255,255,255,.92);border:1px solid rgba(255,255,255,.2)}
-.fiche-acts{display:flex;flex-direction:column;gap:5px;flex-shrink:0}
+.fiche-acts{display:flex;flex-direction:column;gap:5px;flex-shrink:0;min-width:110px}
+.fiche-acts .btn{background:rgba(255,255,255,.15)!important;border-color:rgba(255,255,255,.4)!important;color:white!important;backdrop-filter:blur(4px);justify-content:center}
+.fiche-acts .btn:hover{background:rgba(255,255,255,.28)!important;border-color:rgba(255,255,255,.7)!important}
 .m3{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:18px}
 .mbox{background:var(--white);border-radius:var(--r12);border:1px solid var(--border);padding:14px 16px;text-align:center;box-shadow:var(--sh1)}
 .mval{font-size:24px;font-weight:800;color:var(--ink)}
@@ -910,10 +912,18 @@ function renderFiche(c){
 }
 
 function buildMemoBlock(c){
-  const clientMemos = memoAlerts.filter(m =>
-    (m.prenom||'').toLowerCase() === (c.prenom||'').toLowerCase() &&
-    (m.nom||'').toLowerCase() === (c.nom||'').toLowerCase()
-  );
+  // Filtrer par nom/prénom ET par date protocole (ignorer mémos antérieurs au protocole actuel)
+  const dateProto = c.dateProtocole ? new Date(c.dateProtocole).getTime() : 0;
+  const clientMemos = memoAlerts.filter(m => {
+    if((m.prenom||'').toLowerCase() !== (c.prenom||'').toLowerCase()) return false;
+    if((m.nom||'').toLowerCase() !== (c.nom||'').toLowerCase()) return false;
+    // Si la cliente a une date de protocole, on n'affiche que les mémos postérieurs
+    if(dateProto && m.created_at){
+      const memoDate = new Date(m.created_at).getTime();
+      if(memoDate < dateProto) return false;
+    }
+    return true;
+  });
   if(!clientMemos.length) return '';
   const m = clientMemos[0];
   const date = m.created_at ? new Date(m.created_at).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}) : '';
@@ -1557,6 +1567,8 @@ async function envoyerProtocole(clientId){
     if(!c.timeline)c.timeline=[];
     c.timeline.push({type:'protocole',title:'📨 Protocole envoyé',icon:'📨',date:today()});
     if(!c.workflowDone)c.workflowDone={};c.workflowDone['protocole_envoye']=true;
+    // Sauvegarder l'URL du PHV dans Supabase pour la retrouver automatiquement
+    c.phv_url = lienPHV;
     await saveClient(c);renderFiche(c);
     toast('✓ Protocole envoyé à '+c.email,'ok');
     document.getElementById('modal-envoi-protocole')?.remove();
