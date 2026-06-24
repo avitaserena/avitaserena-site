@@ -148,38 +148,6 @@ body{font-family:'Be Vietnam Pro',sans-serif;background:var(--off);color:var(--a
 
 @keyframes slideIn{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
 
-/* ══ ALERTES MAILS ══ */
-.alertes-widget{background:var(--blanc);border:1px solid var(--taupe);border-radius:14px;overflow:hidden}
-.alertes-hdr{background:var(--ardoise);padding:11px 16px;display:flex;align-items:center;justify-content:space-between}
-.alertes-hdr-title{font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.65)}
-.alertes-badge{font-size:10px;font-weight:800;padding:2px 9px;border-radius:99px;letter-spacing:.03em}
-.alertes-badge.has-actions{background:var(--rouge);color:#fff;animation:badgepulse 2s infinite}
-.alertes-badge.all-ok{background:rgba(61,107,44,.3);color:#a8d5a0}
-@keyframes badgepulse{0%,100%{opacity:1}50%{opacity:.75}}
-.alerte-row{padding:11px 14px;border-bottom:1px solid var(--grege);display:flex;align-items:flex-start;gap:10px;cursor:default;transition:background .12s}
-.alerte-row:last-child{border-bottom:none}
-.alerte-row:hover{background:var(--off)}
-.alerte-row.urgence-urgent{border-left:3px solid var(--rouge)}
-.alerte-row.urgence-warning{border-left:3px solid var(--ocre)}
-.alerte-row.urgence-ok{border-left:3px solid var(--vert)}
-.alerte-ic{font-size:16px;flex-shrink:0;margin-top:1px;line-height:1}
-.alerte-body{flex:1;min-width:0}
-.alerte-top{display:flex;align-items:flex-start;justify-content:space-between;gap:6px;flex-wrap:wrap}
-.alerte-label{font-size:11px;font-weight:700;color:var(--ardoise);line-height:1.35}
-.alerte-chip{font-size:9px;font-weight:700;padding:2px 7px;border-radius:99px;white-space:nowrap;flex-shrink:0}
-.chip-rouge{background:rgba(184,50,50,.1);color:var(--rouge)}
-.chip-ocre{background:rgba(180,144,106,.12);color:#7a5c2a}
-.chip-vert{background:rgba(61,107,44,.1);color:var(--vert)}
-.alerte-cliente{font-size:11px;color:var(--gris);margin-top:2px;line-height:1.4}
-.alerte-btns{display:flex;gap:5px;margin-top:7px;flex-wrap:wrap}
-.btn-al{padding:4px 10px;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;border:none;font-family:inherit;transition:all .14s;text-decoration:none;display:inline-flex;align-items:center;gap:3px}
-.btn-al-brevo{background:var(--ardoise);color:#fff}
-.btn-al-brevo:hover{background:#333}
-.btn-al-copy{background:var(--off);color:var(--gris);border:1px solid var(--taupe)}
-.btn-al-copy:hover{border-color:var(--sable);color:var(--ardoise)}
-.btn-al-done{background:rgba(61,107,44,.1);color:var(--vert);border:1px solid rgba(61,107,44,.2)}
-.btn-al-done:hover{background:var(--vert);color:#fff}
-.alertes-empty{padding:14px 16px;font-size:12px;color:var(--gris);font-style:italic;text-align:center}
 @media(max-width:900px){
   .app{grid-template-columns:1fr}
   .sidebar{display:none}
@@ -198,17 +166,6 @@ body{font-family:'Be Vietnam Pro',sans-serif;background:var(--off);color:var(--a
 <div class="app">
   <!-- SIDEBAR -->
   <div class="sidebar">
-    <!-- ALERTES MAILS -->
-    <div>
-      <div class="alertes-widget">
-        <div class="alertes-hdr">
-          <div class="alertes-hdr-title">📬 Mails à envoyer</div>
-          <div class="alertes-badge" id="alertesBadge">—</div>
-        </div>
-        <div id="alertesList"></div>
-      </div>
-    </div>
-
     <!-- Stats -->
     <div>
       <div class="sidebar-section-title">Vue d'ensemble</div>
@@ -910,7 +867,7 @@ function confirmRdv(id) {
   var rdv = state.rdvs.find(function(r) { return r.id === id; });
   if (rdv) {
     rdv.status = 'confirme';
-    save(); updateStats(); renderWaitlist(); renderAgenda(); renderMiniCal(); renderAlertes();
+    save(); updateStats(); renderWaitlist(); renderAgenda(); renderMiniCal();
     sendEmailNotif(rdv, 'confirmed');
     supaUpsertRdv(rdv).then(() => declencherEmailsAutomatiques());
     showToast('✅ RDV confirmé — email envoyé à ' + rdv.email, 'success');
@@ -921,7 +878,7 @@ function rejectRdv(id) {
   var rdv = state.rdvs.find(function(r) { return r.id === id; });
   if (rdv) {
     rdv.status = 'annule';
-    save(); updateStats(); renderWaitlist(); renderAgenda(); renderMiniCal(); renderAlertes();
+    save(); updateStats(); renderWaitlist(); renderAgenda(); renderMiniCal();
     sendEmailNotif(rdv, 'cancelled');
     showToast('RDV annulé — cliente notifiée', 'warning');
   }
@@ -1053,7 +1010,7 @@ function saveRdv() {
     rdv.id = Date.now();
     state.rdvs.push(rdv);
   }
-  save(); updateStats(); renderAgenda(); renderWaitlist(); renderSemaine(); renderMiniCal(); renderAlertes();
+  save(); updateStats(); renderAgenda(); renderWaitlist(); renderSemaine(); renderMiniCal();
   supaUpsertRdv({...rdv, id: state.editingId || rdv.id});
 
   // Notification email (simulée — à connecter à EmailJS ou Netlify Forms)
@@ -1237,7 +1194,7 @@ function deleteRdv() {
   if (!state.editingId) return;
   if (!confirm('Supprimer ce rendez-vous ?')) return;
   state.rdvs = state.rdvs.filter(r => r.id !== state.editingId);
-  save(); updateStats(); renderAgenda(); renderWaitlist(); renderSemaine(); renderMiniCal(); renderAlertes();
+  save(); updateStats(); renderAgenda(); renderWaitlist(); renderSemaine(); renderMiniCal();
 
   // Notification email (simulée — à connecter à EmailJS ou Netlify Forms)
   if (!state.editingId) {
@@ -1344,150 +1301,7 @@ function closeModal(e) { if (e.target.classList.contains('modal-overlay')) close
 function closeModalDirect(id) { document.getElementById(id).classList.remove('open'); }
 
 // ════════════════════════════════
-// ALERTES MAILS
-// ════════════════════════════════
-function addDays(d, n) {
-  const dt = new Date(d + 'T12:00:00');
-  dt.setDate(dt.getDate() + n);
-  return dt.toISOString().split('T')[0];
-}
-function diffDays(d) {
-  // positif = dans le futur, négatif = passé
-  const dt = new Date(d + 'T12:00:00');
-  const now = new Date(); now.setHours(12,0,0,0);
-  return Math.round((dt - now) / 86400000);
-}
-function fmtDateShort(d) {
-  return new Date(d + 'T12:00:00').toLocaleDateString('fr-FR', {weekday:'short', day:'numeric', month:'short'});
-}
 
-function getAlertesRdv(rdv) {
-  const d = diffDays(rdv.date);
-  const done = rdv.mailsDone || {};
-  const alertes = [];
-
-  // Mail 1 — Confirmation : RDV futur (≥ J+0) non confirmé
-  if (d >= 0 && !done.m1) {
-    alertes.push({
-      key: 'm1', urgence: d <= 2 ? 'warning' : 'ok',
-      ic: '✉️',
-      label: 'Mail 1 · Confirmation à envoyer',
-      chip: d === 0 ? 'Aujourd\'hui !' : d === 1 ? 'Demain' : `Dans ${d}j`,
-      chipClass: d <= 2 ? 'chip-ocre' : 'chip-vert',
-      template: 'Mail 1 — Confirmation RDV',
-      params: `DATE: ${fmtDateShort(rdv.date)}, HEURE: ${rdv.time}, LIEN_VISIO: [à coller]`
-    });
-  }
-
-  // Mail 2 — Rappel J-1 : fenêtre J-2 à J-1
-  if (d >= 0 && d <= 1 && !done.m2) {
-    alertes.push({
-      key: 'm2', urgence: d === 0 ? 'urgent' : 'warning',
-      ic: '🔔',
-      label: d === 0 ? 'Mail 2 · Rappel — séance DEMAIN, envoyer ce soir !' : 'Mail 2 · Rappel J-1 — séance aujourd\'hui',
-      chip: d === 0 ? '≤ 18h ce soir' : 'En retard !',
-      chipClass: 'chip-rouge',
-      template: 'Mail 2 — Rappel J-1',
-      params: `JOUR: ${fmtDateShort(rdv.date)}, HEURE: ${rdv.time}, LIEN_VISIO: [à coller]`
-    });
-  }
-
-  // Mail 3 — Clôture : J0 (le jour même) ou J+1 si oublié
-  if (d >= -1 && d <= 0 && !done.m3) {
-    alertes.push({
-      key: 'm3', urgence: 'urgent',
-      ic: '🌿',
-      label: d === 0 ? 'Mail 3 · Clôture — séance AUJOURD\'HUI, envoyer dans l\'heure' : 'Mail 3 · Clôture — pas encore envoyé !',
-      chip: d === 0 ? 'Dans l\'heure après' : 'En retard !',
-      chipClass: 'chip-rouge',
-      template: 'Mail 3 — Clôture post-séance',
-      params: '(aucun paramètre requis — juste sélectionner et envoyer)'
-    });
-  }
-
-  // Mail 4 — Suivi J+7 : fenêtre J+6 à J+10
-  const joursSuivi = -d;
-  if (joursSuivi >= 6 && joursSuivi <= 10 && !done.m4) {
-    alertes.push({
-      key: 'm4', urgence: joursSuivi >= 9 ? 'warning' : 'ok',
-      ic: '💫',
-      label: `Mail 4 · Suivi — J+${joursSuivi} depuis la séance`,
-      chip: joursSuivi >= 9 ? 'Avant demain' : 'Cette semaine',
-      chipClass: joursSuivi >= 9 ? 'chip-ocre' : 'chip-vert',
-      template: 'Mail 4 — Suivi J+7',
-      params: 'PERSONNALISATION: [votre phrase personnalisée — 1 ligne depuis la fiche cliente]'
-    });
-  }
-
-  return alertes;
-}
-
-function renderAlertes() {
-  const list = document.getElementById('alertesList');
-  const badge = document.getElementById('alertesBadge');
-  if (!list || !badge) return;
-
-  // Collecter toutes les alertes sur les RDV non annulés
-  const all = [];
-  state.rdvs.filter(r => r.status !== 'annule').forEach(rdv => {
-    getAlertesRdv(rdv).forEach(a => all.push({ rdv, a }));
-  });
-
-  // Trier : urgent > warning > ok, puis par date séance
-  const order = { urgent: 0, warning: 1, ok: 2 };
-  all.sort((x, y) => {
-    const od = order[x.a.urgence] - order[y.a.urgence];
-    return od !== 0 ? od : x.rdv.date.localeCompare(y.rdv.date);
-  });
-
-  // Badge
-  if (all.length === 0) {
-    badge.textContent = '✓ À jour';
-    badge.className = 'alertes-badge all-ok';
-    list.innerHTML = '<div class="alertes-empty">Tous les mails sont envoyés ✓</div>';
-    return;
-  }
-  badge.textContent = all.length + ' action' + (all.length > 1 ? 's' : '');
-  badge.className = 'alertes-badge has-actions';
-
-  list.innerHTML = all.map(({ rdv, a }) => `
-    <div class="alerte-row urgence-${a.urgence}">
-      <div class="alerte-ic">${a.ic}</div>
-      <div class="alerte-body">
-        <div class="alerte-top">
-          <div class="alerte-label">${a.label}</div>
-          <div class="alerte-chip ${a.chipClass}">${a.chip}</div>
-        </div>
-        <div class="alerte-cliente">👤 ${rdv.name} · ${rdv.time} · ${fmtDateShort(rdv.date)}</div>
-        <div class="alerte-btns">
-          <a class="btn-al btn-al-brevo" href="https://app.brevo.com/contacts" target="_blank" rel="noopener">Ouvrir Brevo →</a>
-          <button class="btn-al btn-al-copy" onclick="copyAlParams(${rdv.id},'${a.key}','${a.template.replace(/'/g,"\\'")}','${a.params.replace(/'/g,"\\'")}')">📋 Paramètres</button>
-          <button class="btn-al btn-al-done" onclick="markMailDone(${rdv.id},'${a.key}')">✓ Envoyé</button>
-        </div>
-      </div>
-    </div>
-  `).join('');
-}
-
-function markMailDone(rdvId, key) {
-  const rdv = state.rdvs.find(r => r.id === rdvId);
-  if (!rdv) return;
-  if (!rdv.mailsDone) rdv.mailsDone = {};
-  rdv.mailsDone[key] = true;
-  save();
-  renderAlertes();
-  showToast('✓ Mail marqué comme envoyé', 'success');
-}
-
-function copyAlParams(rdvId, key, template, params) {
-  const rdv = state.rdvs.find(r => r.id === rdvId);
-  const text = `Template : ${template}\nCliente : ${rdv.name} — ${rdv.email}\n${params}`;
-  navigator.clipboard.writeText(text).catch(() => {});
-  showToast('📋 Paramètres copiés dans le presse-papier', 'success');
-}
-
-// Refresh alertes toutes les 5 minutes
-setInterval(renderAlertes, 5 * 60 * 1000);
 
 // ════════════════════════════════
 // INIT
@@ -1499,7 +1313,7 @@ updateStats();
 renderSlotsDisplay();
 renderBlockedList();
 renderMiniCal();
-renderAlertes();
+
 </script>
 </body>
 </html>
