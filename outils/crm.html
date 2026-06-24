@@ -310,8 +310,12 @@ const SB='https://bqhkdndwldwqacrrbbig.supabase.co';
 const KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxaGtkbmR3bGR3cWFjcnJiYmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MzAyNTIsImV4cCI6MjA5NjMwNjI1Mn0.nH2UktMAVKYwng4L3SvW5F0fluV_sObGV0f3Mk1dnOY';
 
 async function sb(path,opts={}){
-  const r=await fetch(SB+'/rest/v1/'+path,{...opts,headers:{'apikey':KEY,'Authorization':'Bearer '+KEY,'Content-Type':'application/json','Prefer':opts.prefer||'return=representation',...(opts.headers||{})}});
-  if(!r.ok)throw new Error(await r.text());
+  const headers={'apikey':KEY,'Authorization':'Bearer '+KEY,'Content-Type':'application/json',...(opts.headers||{})};
+  if(opts.method&&opts.method!=='GET'&&opts.method!=='DELETE'){
+    headers['Prefer']=opts.prefer||'return=representation';
+  }
+  const r=await fetch(SB+'/rest/v1/'+path,{...opts,headers});
+  if(!r.ok){const txt=await r.text();throw new Error(txt);}
   const t=await r.text();return t?JSON.parse(t):[];
 }
 
@@ -329,38 +333,90 @@ function avColor(p){return COLORS[(p||'').charCodeAt(0)%COLORS.length];}
 
 async function init(){
   const titleEl = document.getElementById('page-title');
-  if(titleEl) titleEl.textContent='Tableau de bord';
+  if(titleEl) titleEl.textContent='Chargement…';
+
   const loc=loadL();
   db.settings=loc.settings||defSettings();
   db.nextF=loc.nextF||1;
-  await Promise.all([loadClients(),loadFactures(),loadTaches(),loadRdvs(),loadMemoAlerts()]);
+
+  // Chargement totalement isolé — une erreur ne bloque pas les autres
+  await Promise.allSettled([
+    loadClients(),
+    loadFactures(),
+    loadTaches(),
+    loadRdvs(),
+    loadMemoAlerts()
+  ]);
+
+  if(titleEl) titleEl.textContent='Tableau de bord';
   renderDashboard();
+
+  // Export CSV automatique hebdomadaire (silencieux)
+  autoExportCSV();
 }
 
 async function loadClients(){
   try{
-    const r=await sb('clientes?order=created_at.desc');
+    const r=await sb('clientes?order=created_at.desc&limit=500');
     db.clients=r.map(mapC);
-    console.log('[CRM] Clientes chargées depuis Supabase:', db.clients.length);
+    console.log('[CRM] ✓ Clientes:', db.clients.length);
   }catch(e){
-    console.error('[CRM] Erreur chargement clientes:', e.message);
-    // Ne PAS se replier sur localStorage — si Supabase échoue, on affiche l'erreur
+    console.error('[CRM] ✗ Clientes:', e.message);
     db.clients=[];
-    toast('Erreur chargement clientes : '+e.message,'err');
+    // Afficher l'erreur complète dans le toast pour diagnostic
+    setTimeout(()=>toast('⚠ Clientes non chargées — '+e.message.substring(0,120),'err'),500);
   }
 }
+
 async function loadFactures(){
   try{
-    const r=await sb('factures?order=date.desc');
+    const r=await sb('factures?order=date.desc&limit=500');
     db.factures=r.map(f=>({id:f.id,num:f.num,clientId:f.client_id,date:f.date,prestation:f.prestation,prestationLabel:f.prestation_label,montant:parseFloat(f.montant)||0,paiement:f.paiement,paiementLabel:f.paiement_label,statut:f.statut,deuxFois:f.deux_fois}));
-    console.log('[CRM] Factures chargées:', db.factures.length);
+    console.log('[CRM] ✓ Factures:', db.factures.length);
   }catch(e){
-    console.error('[CRM] Erreur chargement factures:', e.message);
+    console.error('[CRM] ✗ Factures:', e.message);
     db.factures=[];
   }
 }
-async function loadTaches(){try{taches=await sb("taches?statut=neq.done&statut=neq.archive&order=echeance.asc.nullslast");}catch(e){taches=[];}}
-async function loadRdvs(){try{rdvs=await sb('rendez_vous?order=date.desc');}catch(e){rdvs=[];}}
+
+async function loadTaches(){
+  try{
+    // Syntaxe PostgREST correcte pour exclure plusieurs valeurs : not.in.(val1,val2)
+    const r=await sb('taches?statut=not.in.(done,archive)&order=echeance.asc.nullslast&limit=200');
+    taches=r;
+    console.log('[CRM] ✓ Tâches:', taches.length);
+  }catch(e){
+    console.error('[CRM] ✗ Tâches (table peut-être absente):', e.message);
+    taches=[];
+  }
+}
+
+async function loadRdvs(){
+  try{
+    rdvs=await sb('rendez_vous?order=date.desc&limit=200');
+    console.log('[CRM] ✓ RDV:', rdvs.length);
+  }catch(e){
+    console.error('[CRM] ✗ RDV:', e.message);
+    rdvs=[];
+  }
+}
+
+// ── Export CSV hebdomadaire automatique ──────────────────────────────────────
+function autoExportCSV(){
+  try{
+    const KEY_LAST='avs_csv_last';
+    const last=localStorage.getItem(KEY_LAST);
+    const now=Date.now();
+    const SEMAINE=7*24*3600*1000;
+    if(last && now-parseInt(last)<SEMAINE) return; // déjà exporté cette semaine
+    if(db.clients.length===0) return; // pas de données = pas d'export
+    localStorage.setItem(KEY_LAST,String(now));
+    // Décaler de 3s pour ne pas gêner le chargement
+    setTimeout(()=>{
+      exportCSV(true); // true = silencieux (pas de toast)
+    },3000);
+  }catch(e){console.error('[CRM] autoExportCSV:',e);}
+}
 
 async function loadMemoAlerts(){
   try{
@@ -1210,7 +1266,8 @@ function toast(msg,type){
 // ══════════════════════════════════════
 // EXPORT CSV
 // ══════════════════════════════════════
-function exportCSV(){
+function exportCSV(silent=false){
+  if(!db.clients.length){if(!silent)toast('Aucune cliente à exporter','warn');return;}
   const headers=['Prénom','Nom','Email','Téléphone','DDN','Age','Programme','Motifs','Axes','1ère consultation','Date protocole','Statut'];
   const rows=db.clients.map(c=>{
     const status=getStatus(c);
@@ -1221,14 +1278,14 @@ function exportCSV(){
       c.motifs||'',c.axes||'',c.date1||'',c.dateProtocole||'',status.label
     ].map(v=>'"'+String(v).replace(/"/g,'""')+'"');
   });
-  const csv=[headers.map(h=>'"'+h+'"').join(','),...rows.map(r=>r.join(','))].join('
-');
-  const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'});
+  const csv=[headers.map(h=>'"'+h+'"').join(','),...rows.map(r=>r.join(','))].join('\n');
+  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');a.href=url;
   a.download='avitaserena-clientes-'+today()+'.csv';
   a.click();URL.revokeObjectURL(url);
-  toast('Export CSV téléchargé ✓','ok');
+  if(!silent) toast('Export CSV téléchargé ✓ ('+db.clients.length+' clientes)','ok');
+  else console.log('[CRM] ✓ Auto-export CSV hebdomadaire —',db.clients.length,'clientes');
 }
 
 // ══════════════════════════════════════
