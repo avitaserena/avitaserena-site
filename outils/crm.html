@@ -583,6 +583,9 @@ function renderActionsJour(){
           data-rdvid="${a.rdv.id}" data-key="${a.key}" data-tplid="${a.tplId||''}"
           data-email="${escH(email)}" data-name="${escH(nomCliente)}"
           data-subject="${escH(a.subject)}"
+          data-heure="${escH(a.rdv.time||'')}"
+          data-date="${escH(new Date((a.rdv.date||today())+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'}))}"
+          data-motif="${escH(a.client?.motifs||'')}"
           onclick="sendMailRdvFromBtn(this)"
           ${!email?'disabled title="Email manquant — vérifiez la fiche cliente"':''}>${sendLabel}</button>
       </div>
@@ -597,10 +600,13 @@ function sendMailRdvFromBtn(btn){
   const email = btn.dataset.email;
   const name = btn.dataset.name;
   const subject = btn.dataset.subject;
-  sendMailRdv(rdvId, key, tplId, subject, email, name);
+  const heure = btn.dataset.heure || '';
+  const date = btn.dataset.date || '';
+  const motif = btn.dataset.motif || '';
+  sendMailRdv(rdvId, key, tplId, subject, email, name, heure, date, motif);
 }
 
-async function sendMailRdv(rdvId, key, tplId, subject, email, name){
+async function sendMailRdv(rdvId, key, tplId, subject, email, name, heure='', date='', motif=''){
   if(!email){ toast('Email introuvable pour ce RDV','err'); return; }
   const apiKey = getBrevoKey(); if(!apiKey){ toast('Clé Brevo requise','warn'); return; }
   const btn = document.getElementById('ajd-send-'+rdvId+'-'+key);
@@ -609,7 +615,7 @@ async function sendMailRdv(rdvId, key, tplId, subject, email, name){
   try{
     let body;
     if(tplId){
-      // Envoi via template Brevo
+      // Envoi via template Brevo avec toutes les variables
       body = JSON.stringify({
         sender:{name:'Sabrina · A Vita Serena',email:'sabrina@avitaserena.com'},
         to:[{email, name}],
@@ -617,6 +623,9 @@ async function sendMailRdv(rdvId, key, tplId, subject, email, name){
         params:{
           PRENOM: name.split(' ')[0],
           NOM: name,
+          HEURE: heure,
+          DATE: date,
+          MOTIF: motif || 'votre santé',
           LIEN_VISIO: 'https://meet.google.com/nqw-rpwq-rvi'
         }
       });
