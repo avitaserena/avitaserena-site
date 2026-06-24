@@ -497,18 +497,33 @@ function getActionsJour(){
       });
     }
 
-    // Mail 3 — Clôture : J0 ou J+1
+    // Mail H-1 — Dans 1 heure : J0, à envoyer ~1h avant la séance
+    if(d === 0 && !done.mh1){
+      actions.push({
+        rdv, client,
+        key: 'mh1',
+        ic: '⏱',
+        label: 'H-1 — séance dans 1 heure',
+        chip: '1h avant la séance',
+        chipClass: 'chip-red',
+        urgence: 3,
+        subject: 'Dans 1 heure — '+(rdv.name||''),
+        tplId: 18
+      });
+    }
+
+    // Mail 3 — Clôture post-séance : J0 après ou J+1
     if(d >= -1 && d <= 0 && !done.m3){
       actions.push({
         rdv, client,
         key: 'm3',
         ic: '🌿',
-        label: d===0 ? 'Clôture — séance aujourd\'hui' : 'Clôture — en retard !',
+        label: d===0 ? 'Clôture — après la séance' : 'Clôture — en retard !',
         chip: d===0 ? 'Après la séance' : 'En retard',
         chipClass: 'chip-red',
         urgence: 3,
         subject: 'Suite à votre séance — '+(rdv.name||''),
-        tplId: 17
+        tplId: null  // pas encore de template dédié — à créer dans Brevo
       });
     }
 
@@ -626,7 +641,7 @@ async function sendMailRdv(rdvId, key, tplId, subject, email, name, heure='', da
         params.HEURE = heure;
         params.MOTIF = motif || 'votre sant\u00e9';
       }
-      // #17 H-1 : contact.FIRSTNAME lu par Brevo depuis le contact, lien Meet hardcod\u00e9 dans le template
+      // #18 H-1 : contact.FIRSTNAME lu par Brevo depuis le contact, lien Meet hardcod\u00e9 dans le template
       body = JSON.stringify({
         sender:{name:'Sabrina \u00b7 A Vita Serena',email:'sabrina@avitaserena.com'},
         to:[{email, name}],
