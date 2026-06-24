@@ -548,6 +548,61 @@ function save() {
 }
 
 // ════════════════════════════════
+// SUPABASE SYNC
+// ════════════════════════════════
+const SUPA_URL = 'https://bqhkdndwldwqacrrbbig.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxaGtkbmR3bGR3cWFjcnJiYmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MzAyNTIsImV4cCI6MjA5NjMwNjI1Mn0.nH2UktMAVKYwng4L3SvW5F0fluV_sObGV0f3Mk1dnOY';
+
+async function supaUpsertRdv(rdv) {
+  try {
+    await fetch(SUPA_URL + '/rest/v1/rendez_vous', {
+      method: 'POST',
+      headers: {
+        'apikey': SUPA_KEY,
+        'Authorization': 'Bearer ' + SUPA_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates,return=minimal'
+      },
+      body: JSON.stringify({
+        id:         rdv.id,
+        name:       rdv.name,
+        email:      rdv.email || null,
+        date:       rdv.date,
+        time:       rdv.time,
+        type:       rdv.type,
+        status:     rdv.status || 'attente',
+        notes:      rdv.notes || null,
+        parcours:   rdv.parcours || null,
+        mails_done: rdv.mails_done || {},
+        updated_at: new Date().toISOString()
+      })
+    });
+  } catch(e) { console.warn('Supabase sync RDV:', e); }
+}
+
+async function supaDeleteRdv(id) {
+  try {
+    await fetch(SUPA_URL + '/rest/v1/rendez_vous?id=eq.' + id, {
+      method: 'DELETE',
+      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY }
+    });
+  } catch(e) { console.warn('Supabase delete RDV:', e); }
+}
+
+async function declencherEmailsAutomatiques() {
+  try {
+    await fetch(SUPA_URL + '/functions/v1/super-api', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + SUPA_KEY
+      },
+      body: JSON.stringify({})
+    });
+  } catch(e) { console.warn('Edge function:', e); }
+}
+
+// ════════════════════════════════
 // STATS
 // ════════════════════════════════
 function updateStats() {
@@ -857,6 +912,7 @@ function confirmRdv(id) {
     rdv.status = 'confirme';
     save(); updateStats(); renderWaitlist(); renderAgenda(); renderMiniCal(); renderAlertes();
     sendEmailNotif(rdv, 'confirmed');
+    supaUpsertRdv(rdv).then(() => declencherEmailsAutomatiques());
     showToast('✅ RDV confirmé — email envoyé à ' + rdv.email, 'success');
   }
 }
@@ -998,6 +1054,7 @@ function saveRdv() {
     state.rdvs.push(rdv);
   }
   save(); updateStats(); renderAgenda(); renderWaitlist(); renderSemaine(); renderMiniCal(); renderAlertes();
+  supaUpsertRdv({...rdv, id: state.editingId || rdv.id});
 
   // Notification email (simulée — à connecter à EmailJS ou Netlify Forms)
   if (!state.editingId) {
