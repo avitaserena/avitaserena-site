@@ -251,8 +251,8 @@ input[type=range]{flex:1;accent-color:var(--ocre);height:4px;cursor:pointer}
     <div class="mesures-grid">
       <div class="mesure-item"><label>Taille (cm)</label><input class="fi" type="number" id="m-taille" placeholder="165" oninput="calcIMC()"></div>
       <div class="mesure-item"><label>Poids (kg)</label><input class="fi" type="number" id="m-poids" placeholder="62" oninput="calcIMC()"></div>
-      <div class="mesure-item"><label>Tour de taille (cm)</label><input class="fi" type="number" id="m-taille-tour" placeholder="74"></div>
-      <div class="mesure-item"><label>Tour de hanches (cm)</label><input class="fi" type="number" id="m-hanches" placeholder="96"></div>
+      <div class="mesure-item"><label>Tour de taille (cm)</label><input class="fi" type="number" id="m-taille-tour" placeholder="74" oninput="calcIMC()"></div>
+      <div class="mesure-item"><label>Tour de hanches (cm)</label><input class="fi" type="number" id="m-hanches" placeholder="96" oninput="calcIMC()"></div>
     </div>
     <div class="g2" style="margin-top:14px">
       <div class="imc-badge">
@@ -262,6 +262,7 @@ input[type=range]{flex:1;accent-color:var(--ocre);height:4px;cursor:pointer}
       <div class="imc-badge">
         <div class="imc-val" id="rth-val">—</div>
         <div class="imc-label">Ratio taille/hanches</div>
+        <div id="rth-interp" style="font-size:11px;margin-top:6px;font-weight:600;min-height:14px"></div>
       </div>
     </div>
   </div>
@@ -290,6 +291,8 @@ input[type=range]{flex:1;accent-color:var(--ocre);height:4px;cursor:pointer}
         <input class="fi" type="text" id="b-autres" placeholder="ex : Lactibiane Référence 5M">
       </div>
     </div>
+    <div id="mesures-interp" style="display:none;margin-top:14px;padding:14px 18px;border-radius:10px;font-size:13px;line-height:1.7;border:1.5px solid"></div>
+
     <div style="margin-top:12px">
       <label class="fl">Notes libres sur les bilans</label>
       <textarea class="fi" id="b-notes" placeholder="Bilans en attente, interprétation contextuelle, valeurs à surveiller…" style="min-height:60px"></textarea>
@@ -473,8 +476,64 @@ function calcIMC() {
   const p = parseFloat(document.getElementById('m-poids').value);
   const tw = parseFloat(document.getElementById('m-taille-tour').value);
   const h = parseFloat(document.getElementById('m-hanches').value);
-  document.getElementById('imc-val').textContent = (t && p) ? (p / (t * t)).toFixed(1) : '—';
-  document.getElementById('rth-val').textContent = (tw && h) ? (tw / h).toFixed(2) : '—';
+
+  // IMC
+  const imc = (t && p) ? (p / (t * t)) : null;
+  document.getElementById('imc-val').textContent = imc ? imc.toFixed(1) : '—';
+
+  // RTH
+  const rth = (tw && h) ? (tw / h) : null;
+  document.getElementById('rth-val').textContent = rth ? rth.toFixed(2) : '—';
+
+  // Interprétation RTH
+  const rthInterp = document.getElementById('rth-interp');
+  if (rth) {
+    const ok = rth < 0.85; // seuil femme
+    rthInterp.textContent = ok ? '✓ Risque cardiovasculaire faible' : '⚠ Adiposité abdominale — risque cardiovasculaire élevé';
+    rthInterp.style.color = ok ? 'var(--vert)' : '#C0392B';
+  } else {
+    rthInterp.textContent = '';
+  }
+
+  // Interprétation globale clinique
+  const zone = document.getElementById('mesures-interp');
+  if (!imc && !rth) { zone.style.display = 'none'; return; }
+
+  let msgs = [];
+  let couleur = 'var(--vert)';
+  let bg = 'var(--vert-clair)';
+
+  if (imc) {
+    if (imc < 18.5) {
+      msgs.push('⚠ <strong>Maigreur (IMC ' + imc.toFixed(1) + ')</strong> — risque de carences protéiques, déficit énergétique. Explorer une restriction alimentaire passée ou actuelle. Priorité : densité nutritionnelle.');
+      couleur = '#C0392B'; bg = '#FDECEA';
+    } else if (imc < 25) {
+      msgs.push('✓ <strong>IMC normal (' + imc.toFixed(1) + ')</strong> — poids de forme. Ne pas axer le protocole sur la perte de poids.');
+    } else if (imc < 30) {
+      msgs.push('→ <strong>Surpoids (IMC ' + imc.toFixed(1) + ')</strong> — explorer résistance à l'insuline, axe thyroïdien, cortisol chronique. Ne pas proposer de régime restrictif sans bilan hormonal préalable.');
+      couleur = '#9B7230'; bg = 'var(--or-clair)';
+    } else {
+      msgs.push('⚠ <strong>Obésité (IMC ' + imc.toFixed(1) + ')</strong> — inflammation de bas grade probable, résistance à l'insuline à évaluer (glycémie à jeun + insuline + HbA1c). Approche douce et non stigmatisante indispensable.');
+      couleur = '#C0392B'; bg = '#FDECEA';
+    }
+  }
+
+  if (rth) {
+    if (rth >= 0.85) {
+      msgs.push('⚠ <strong>RTH ' + rth.toFixed(2) + ' — adiposité abdominale</strong> — risque métabolique et cardiovasculaire élevé. Explorer cortisol (stress chronique → graisse viscérale), insulinorésistance, microbiote (dysbiose → perméabilité → inflammation → stockage abdominal).');
+      if (couleur !== '#C0392B') { couleur = '#9B7230'; bg = 'var(--or-clair)'; }
+    } else if (rth) {
+      msgs.push('✓ <strong>RTH ' + rth.toFixed(2) + '</strong> — répartition corporelle saine, pas d'adiposité abdominale significative.');
+    }
+  }
+
+  if (msgs.length) {
+    zone.style.display = 'block';
+    zone.style.background = bg;
+    zone.style.borderColor = couleur;
+    zone.style.color = 'var(--ardoise)';
+    zone.innerHTML = '<div style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:' + couleur + ';margin-bottom:8px">Lecture clinique · À dire à voix haute</div>' + msgs.map(m => '<div style="margin-bottom:6px">' + m + '</div>').join('');
+  }
 }
 
 /* ── DATE SCEAU ── */
@@ -511,13 +570,13 @@ function collect() {
   return {
     client_key: key,
     programme: selectedProg,
-    date_start: document.getElementById('date-start').value,
-    date_end: document.getElementById('date-end').value,
-    date_next: document.getElementById('date-next').value,
+    date_start: document.getElementById('date-start').value || null,
+    date_end: document.getElementById('date-end').value || null,
+    date_next: document.getElementById('date-next').value || null,
     prenom: document.getElementById('prenom').value,
     nom: document.getElementById('nom').value,
     email: document.getElementById('email').value,
-    ddn: document.getElementById('ddn').value,
+    ddn: document.getElementById('ddn').value || null,
     mot_depart: document.getElementById('mot-depart').value,
     scores_depart: scores,
     scores_contexte: document.getElementById('scores-contexte').value,
