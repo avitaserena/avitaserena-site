@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lettre clinique post-séance — Avita Serena</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --blanc:#FFFFFF; --off:#F7F6F4; --grege:#EDE9E1; --taupe:#D5CFC6;
+  --sable:#C4A882; --ocre:#B4906A; --ardoise:#1E1E1C; --gris:#6B6560;
+  --or-clair:#FBF3E4; --or:#9B7230;
+  --vert:#3D6B2C; --vert-clair:#EAF0E6;
+  --bleu:#2C5E8A; --bleu-clair:#EAF2F8;
+  --shadow:0 2px 12px rgba(30,30,28,.08);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{font-family:'Be Vietnam Pro',sans-serif;color:var(--ardoise);background:var(--off);font-size:16px;line-height:1.65}
+body{max-width:960px;margin:0 auto;padding:0 0 100px;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:auto 1fr;min-height:100vh}
+
+.hdr{grid-column:1/-1;background:var(--blanc);border-bottom:1px solid var(--taupe);padding:16px 36px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;box-shadow:var(--shadow)}
+.logo-avita{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:22px}
+.logo-serena{font-weight:800;font-size:22px}
+.hdr-badge{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--gris);background:var(--grege);padding:4px 12px;border-radius:99px}
+.hdr-stripe{grid-column:1/-1;height:3px;background:linear-gradient(to right,var(--taupe),var(--sable),var(--ocre),var(--sable),var(--taupe))}
+
+/* ── PANNEAU GAUCHE — SAISIE ── */
+.panel-left{padding:28px 32px;border-right:1px solid var(--grege);overflow-y:auto;max-height:calc(100vh - 72px);position:sticky;top:72px}
+.panel-title{font-size:14px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ocre);margin-bottom:18px}
+
+label.fl{display:block;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--gris);margin-bottom:6px;margin-top:14px}
+input.fi, textarea.fi, select.fi{width:100%;padding:10px 14px;border:1.5px solid var(--taupe);border-radius:8px;font-family:'Be Vietnam Pro',sans-serif;font-size:14px;color:var(--ardoise);background:var(--blanc);outline:none;transition:.15s}
+input.fi:focus, textarea.fi:focus{border-color:var(--ocre);box-shadow:0 0 0 3px rgba(180,144,106,.12)}
+textarea.fi{resize:vertical}
+.fi-sm{min-height:70px}
+.fi-md{min-height:100px}
+.fi-lg{min-height:140px}
+
+.type-chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.type-chip{padding:6px 14px;border-radius:99px;font-size:12px;font-weight:600;border:1.5px solid var(--taupe);cursor:pointer;transition:.15s;background:var(--blanc)}
+.type-chip:hover,.type-chip.on{border-color:var(--ocre);background:var(--or-clair);color:var(--ardoise)}
+
+.btn-gen{width:100%;margin-top:18px;padding:14px;background:var(--ardoise);color:white;border:none;border-radius:10px;font-family:'Be Vietnam Pro',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:.15s;display:flex;align-items:center;justify-content:center;gap:10px}
+.btn-gen:hover{background:#333}
+.btn-gen:disabled{background:var(--taupe);cursor:not-allowed}
+.loader{width:16px;height:16px;border:2.5px solid rgba(255,255,255,.3);border-top-color:white;border-radius:50%;animation:spin .7s linear infinite;display:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── PANNEAU DROIT — APERÇU ── */
+.panel-right{padding:28px 36px;overflow-y:auto;max-height:calc(100vh - 72px)}
+.preview-empty{text-align:center;padding:60px 20px;color:var(--gris)}
+.preview-empty-icon{font-size:40px;margin-bottom:14px;opacity:.4}
+.preview-empty-text{font-size:14px;line-height:1.7}
+
+/* ── LETTRE RENDUE ── */
+.lettre-wrap{background:var(--blanc);border-radius:16px;box-shadow:var(--shadow);overflow:hidden}
+.lettre-hdr{background:var(--ardoise);padding:28px 32px;position:relative}
+.lettre-hdr::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;background:linear-gradient(to right,var(--taupe),var(--sable),var(--ocre),var(--sable),var(--taupe))}
+.lettre-logo{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:20px;color:white;margin-bottom:4px}
+.lettre-meta{font-size:12px;color:rgba(255,255,255,.6)}
+.lettre-body{padding:32px}
+.lettre-content{font-size:14px;line-height:1.85;color:var(--ardoise);white-space:pre-wrap;font-family:'Be Vietnam Pro',sans-serif}
+.lettre-content h2{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:400;color:var(--ocre);margin:20px 0 8px;font-style:italic}
+.lettre-content strong{font-weight:700}
+.lettre-sig{border-top:1px solid var(--grege);padding:20px 32px;font-size:13px;color:var(--gris)}
+.lettre-sig strong{display:block;color:var(--ardoise);font-size:14px;margin-bottom:2px}
+
+/* ── ACTIONS ── */
+.lettre-actions{display:flex;gap:10px;padding:16px 32px;border-top:1px solid var(--grege);flex-wrap:wrap}
+.btn-action{padding:10px 20px;border-radius:8px;font-family:'Be Vietnam Pro',sans-serif;font-size:13px;font-weight:600;cursor:pointer;border:1.5px solid var(--taupe);background:var(--blanc);color:var(--ardoise);transition:.15s;display:flex;align-items:center;gap:7px}
+.btn-action:hover{border-color:var(--ocre);color:var(--ocre)}
+.btn-action.primary{background:var(--ocre);color:white;border-color:var(--ocre)}
+.btn-action.primary:hover{background:var(--or)}
+.btn-action.sent{background:var(--vert-clair);color:var(--vert);border-color:var(--vert);pointer-events:none}
+
+/* ── INFOS BOX ── */
+.info-box{background:var(--bleu-clair);border:1px solid var(--bleu);border-radius:10px;padding:14px 16px;font-size:12px;color:var(--bleu);line-height:1.7;margin-top:16px}
+.info-box strong{display:block;margin-bottom:3px}
+
+/* ── RESPONSIVE ── */
+@media(max-width:700px){
+  body{grid-template-columns:1fr;grid-template-rows:auto}
+  .panel-left,.panel-right{position:static;max-height:none}
+  .panel-left{border-right:none;border-bottom:1px solid var(--grege)}
+}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div><span class="logo-avita">Avita</span><span class="logo-serena"> Serena</span></div>
+  <span class="hdr-badge">Lettre clinique post-séance</span>
+</div>
+<div class="hdr-stripe"></div>
+
+<!-- ══ PANNEAU GAUCHE ══ -->
+<div class="panel-left">
+  <div class="panel-title">✦ Composer la lettre</div>
+
+  <label class="fl">Cliente</label>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+    <input class="fi" type="text" id="prenom" placeholder="Prénom">
+    <input class="fi" type="email" id="email" placeholder="Email">
+  </div>
+
+  <label class="fl">Type de séance</label>
+  <div class="type-chips">
+    <div class="type-chip on" onclick="selectType(this,'premiere')">1ère consultation</div>
+    <div class="type-chip" onclick="selectType(this,'suivi')">Suivi</div>
+    <div class="type-chip" onclick="selectType(this,'cloture')">Clôture de programme</div>
+  </div>
+  <input type="hidden" id="type-seance" value="premiere">
+
+  <label class="fl">Motif principal & spécialité</label>
+  <input class="fi" type="text" id="motif" placeholder="Ex. : SIBO H₂ confirmé, SPM sévère, fatigue chronique…">
+
+  <label class="fl">Ce qui a été compris / identifié en séance</label>
+  <textarea class="fi fi-md" id="terrain" placeholder="Profil dominant identifié, axes prioritaires, mécanismes expliqués à la cliente… Ex. : Profil surrénalien épuisé + dominance œstrogénique probable. Explication du lien entre son cortisol chronique et son SPM."></textarea>
+
+  <label class="fl">Le protocole mis en place (ou ajusté)</label>
+  <textarea class="fi fi-md" id="protocole" placeholder="Alimentation, compléments, hygiène de vie. Ex. : Suppression café à jeun, fenêtre 12h, magnésium bisglycinate le soir, cohérence cardiaque 3x/j."></textarea>
+
+  <label class="fl">La priorité numéro 1 pour le prochain mois</label>
+  <input class="fi" type="text" id="priorite" placeholder="Ex. : La cohérence cardiaque 5 min avant chaque repas — une seule chose, au-dessus de tout.">
+
+  <label class="fl">Ce que vous avez ressenti / observé (intuition clinique)</label>
+  <textarea class="fi fi-sm" id="intuition" placeholder="Ce que vous avez perçu en séance — ce qui mérite d'être dit dans la lettre avec douceur. Facultatif."></textarea>
+
+  <label class="fl">Bilans à réaliser</label>
+  <input class="fi" type="text" id="bilans" placeholder="Ex. : Ferritine + Vitamine D (à faire prescrire par votre médecin)">
+
+  <label class="fl">Prochaine séance</label>
+  <input class="fi" type="date" id="date-next">
+
+  <div class="info-box">
+    <strong>💡 Pourquoi cette lettre</strong>
+    Aucun naturopathe ne fait ça. La cliente reçoit dans les 24h un document personnalisé qui explique ce que vous avez compris de son corps — et pourquoi vous avez fait ces choix. Elle le montre à son conjoint, son médecin, sa mère. C'est votre carte de visite la plus puissante.
+  </div>
+
+  <button class="btn-gen" onclick="generer()" id="btn-gen">
+    <div class="loader" id="gen-loader"></div>
+    <span id="btn-gen-text">✦ Générer la lettre</span>
+  </button>
+</div>
+
+<!-- ══ PANNEAU DROIT ══ -->
+<div class="panel-right">
+  <div id="preview-empty" class="preview-empty">
+    <div class="preview-empty-icon">✉️</div>
+    <div class="preview-empty-text">
+      Remplissez les informations à gauche<br>et générez la lettre clinique.<br><br>
+      <span style="font-size:12px;opacity:.7">La lettre est générée par l'IA, relue par vous,<br>envoyée à la cliente dans les 24h.</span>
+    </div>
+  </div>
+
+  <div id="lettre-container" style="display:none">
+    <div class="lettre-wrap">
+      <div class="lettre-hdr">
+        <div class="lettre-logo">Avita Serena</div>
+        <div class="lettre-meta">Sabrina Castelli · Naturopathe · <span id="lettre-date">—</span></div>
+      </div>
+      <div class="lettre-body">
+        <div class="lettre-content" id="lettre-content" contenteditable="true" spellcheck="true"></div>
+      </div>
+      <div class="lettre-sig">
+        <strong>Sabrina Castelli</strong>
+        Naturopathe spécialisée santé digestive & équilibre hormonal féminin<br>
+        <a href="https://avitaserena.com" style="color:var(--ocre)">avitaserena.com</a> · Porto-Vecchio, Corse
+      </div>
+      <div class="lettre-actions">
+        <button class="btn-action" onclick="copier()">📋 Copier</button>
+        <button class="btn-action" onclick="regenerer()">↺ Regénérer</button>
+        <button class="btn-action" onclick="sauvegarderLettre()">💾 Sauvegarder</button>
+        <button class="btn-action primary" onclick="envoyerBrevo()" id="btn-envoyer">✉️ Envoyer par email</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ── CONFIG ── */
+const SUPA_URL = 'https://bqhkdndwldwqacrrbbig.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxaGtkbmR3bGR3cWFjcnJiYmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MzAyNTIsImV4cCI6MjA5NjMwNjI1Mn0.nH2UktMAVKYwng4L3SvW5F0fluV_sObGV0f3Mk1dnOY';
+
+async function supaFetch(path, opts = {}) {
+  const res = await fetch(SUPA_URL + '/rest/v1/' + path, {
+    headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY,
+      'Content-Type': 'application/json', 'Prefer': opts.prefer || 'return=representation', ...(opts.headers||{}) },
+    method: opts.method || 'GET', body: opts.body ? JSON.stringify(opts.body) : undefined
+  });
+  if (!res.ok) throw new Error(await res.text());
+  const t = await res.text(); return t ? JSON.parse(t) : null;
+}
+
+/* ── TYPE SÉANCE ── */
+function selectType(el, val) {
+  document.querySelectorAll('.type-chip').forEach(c => c.classList.remove('on'));
+  el.classList.add('on');
+  document.getElementById('type-seance').value = val;
+}
+
+/* ── GÉNÉRATION ── */
+let dernierContenu = '';
+
+async function generer() {
+  const prenom = document.getElementById('prenom').value.trim();
+  const email = document.getElementById('email').value.trim();
+  const type = document.getElementById('type-seance').value;
+  const motif = document.getElementById('motif').value.trim();
+  const terrain = document.getElementById('terrain').value.trim();
+  const protocole = document.getElementById('protocole').value.trim();
+  const priorite = document.getElementById('priorite').value.trim();
+  const intuition = document.getElementById('intuition').value.trim();
+  const bilans = document.getElementById('bilans').value.trim();
+  const dateNext = document.getElementById('date-next').value;
+
+  if (!prenom || !terrain) {
+    alert('Le prénom et les informations de séance sont requis.');
+    return;
+  }
+
+  const btn = document.getElementById('btn-gen');
+  const loader = document.getElementById('gen-loader');
+  const btnText = document.getElementById('btn-gen-text');
+  btn.disabled = true;
+  loader.style.display = 'block';
+  btnText.textContent = 'Génération en cours…';
+
+  const typeLabel = { premiere: 'première consultation', suivi: 'consultation de suivi', cloture: 'clôture de programme' }[type];
+
+  const prompt = `Tu es Sabrina Castelli, naturopathe diplômée, fondatrice d'Avita Serena (Porto-Vecchio, Corse). Tu rédiges une lettre clinique personnalisée à envoyer à ta cliente dans les 24h suivant sa ${typeLabel}.
+
+Cette lettre doit :
+— S'adresser directement à la cliente en vouvoiement (jamais tutoiement)
+— Avoir un ton chaleureux, expert, jamais condescendant
+— Expliquer CE QUE TU AS COMPRIS de son terrain (pas juste récapituler ce qu'elle a dit)
+— Expliquer POURQUOI tu as fait ces choix thérapeutiques (mécanismes vulgarisés)
+— Lui donner confiance dans le protocole
+— Se terminer sur une note d'encouragement sincère (pas générique)
+— Faire entre 350 et 500 mots
+
+INFORMATIONS DE SÉANCE :
+Cliente : ${prenom}
+Type de séance : ${typeLabel}
+Motif / spécialité : ${motif || 'Non précisé'}
+Ce qui a été identifié / compris : ${terrain}
+Protocole mis en place : ${protocole || 'Non précisé'}
+Priorité numéro 1 : ${priorite || 'Non précisée'}
+Intuition clinique / observations : ${intuition || 'Aucune note'}
+Bilans à réaliser : ${bilans || 'Aucun bilan immédiat'}
+Prochaine séance : ${dateNext ? new Date(dateNext).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Non précisée'}
+
+STRUCTURE DE LA LETTRE :
+1. Salutation personnalisée + phrase d'ouverture qui ancre ce qui s'est passé en séance
+2. "Ce que cette séance m'a appris sur vous" — explication du profil de terrain identifié
+3. "Pourquoi ce protocole, pour vous" — justification des choix avec mécanismes accessibles
+4. "Pour le prochain mois, une seule chose" — la priorité absolue formulée clairement
+5. Si bilans : une phrase sur leur importance
+6. Mot de fin sincère et personnalisé
+7. Ne PAS signer — la signature est déjà dans le template email
+
+VOCABULAIRE INTERDIT : pathologie, traitement médical, diagnostic, guérir, soigner, cure, thérapeutique, prescrire, symptômes.
+VOCABULAIRE À UTILISER : terrain, déséquilibre, vitalité, régulation, hygiène de vie, drainage, rééquilibrage, soutien.`;
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1000,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    const data = await response.json();
+    const texte = data.content?.[0]?.text || '';
+    dernierContenu = texte;
+
+    afficherLettre(prenom, texte, dateNext);
+  } catch(e) {
+    alert('Erreur de génération : ' + e.message);
+  } finally {
+    btn.disabled = false;
+    loader.style.display = 'none';
+    btnText.textContent = '✦ Générer la lettre';
+  }
+}
+
+function afficherLettre(prenom, texte, dateNext) {
+  document.getElementById('preview-empty').style.display = 'none';
+  document.getElementById('lettre-container').style.display = 'block';
+  document.getElementById('lettre-date').textContent = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+
+  const el = document.getElementById('lettre-content');
+  el.innerHTML = texte.replace(/\n/g, '<br>');
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function regenerer() {
+  document.getElementById('lettre-container').style.display = 'none';
+  document.getElementById('preview-empty').style.display = 'block';
+  generer();
+}
+
+/* ── COPIER ── */
+function copier() {
+  const texte = document.getElementById('lettre-content').innerText;
+  navigator.clipboard.writeText(texte).then(() => {
+    const btn = document.querySelector('.btn-action:first-child');
+    const orig = btn.innerHTML;
+    btn.innerHTML = '✓ Copié';
+    setTimeout(() => btn.innerHTML = orig, 2000);
+  });
+}
+
+/* ── SAUVEGARDER ── */
+async function sauvegarderLettre() {
+  const prenom = document.getElementById('prenom').value.trim();
+  const email = document.getElementById('email').value.trim();
+  const contenu = document.getElementById('lettre-content').innerText;
+  const key = prenom.toLowerCase().replace(/\s+/g, '-') + '-' + new Date().toISOString().slice(0,10).replace(/-/g,'');
+
+  try {
+    await supaFetch('lettres_cliniques', {
+      method: 'POST',
+      prefer: 'return=representation,resolution=merge-duplicates',
+      headers: { 'Prefer': 'return=representation,resolution=merge-duplicates' },
+      body: {
+        client_key: key, prenom, email,
+        type_seance: document.getElementById('type-seance').value,
+        motif: document.getElementById('motif').value,
+        contenu,
+        date_seance: new Date().toISOString().slice(0,10),
+        statut: 'draft',
+        created_at: new Date().toISOString()
+      }
+    });
+    alert('Lettre sauvegardée dans Supabase.');
+  } catch(e) {
+    // Fallback localStorage
+    const lettres = JSON.parse(localStorage.getItem('avita_lettres') || '[]');
+    lettres.push({ key, prenom, email, contenu, date: new Date().toISOString() });
+    localStorage.setItem('avita_lettres', JSON.stringify(lettres));
+    alert('Sauvegardée localement (Supabase indisponible).');
+  }
+}
+
+/* ── ENVOI BREVO ── */
+async function envoyerBrevo() {
+  const email = document.getElementById('email').value.trim();
+  const prenom = document.getElementById('prenom').value.trim();
+  const contenu = document.getElementById('lettre-content').innerText;
+  const dateNext = document.getElementById('date-next').value;
+
+  if (!email) { alert('Renseignez l\'email de la cliente pour envoyer.'); return; }
+
+  const dateNextFr = dateNext
+    ? new Date(dateNext).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
+    : '';
+
+  const confirmed = confirm(`Envoyer la lettre clinique à ${prenom} (${email}) ?\n\nLisez la lettre avant d'envoyer — vous ne pourrez pas la rappeler.`);
+  if (!confirmed) return;
+
+  const btn = document.getElementById('btn-envoyer');
+  btn.disabled = true;
+  btn.innerHTML = '⏳ Envoi…';
+
+  try {
+    // Envoi via Edge Function Supabase (qui détient la clé API Brevo côté serveur)
+    const res = await fetch(SUPA_URL + '/functions/v1/send-lettre-clinique', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPA_KEY },
+      body: JSON.stringify({
+        to_email: email, to_name: prenom,
+        contenu_lettre: contenu,
+        date_prochaine_seance: dateNextFr
+      })
+    });
+
+    if (!res.ok) throw new Error(await res.text());
+
+    btn.className = 'btn-action sent';
+    btn.innerHTML = '✓ Envoyée';
+
+    // Marquer comme envoyée en Supabase
+    await sauvegarderLettre();
+
+  } catch(e) {
+    alert('Erreur d\'envoi. Copiez la lettre et envoyez-la manuellement depuis votre messagerie.\n\n' + e.message);
+    btn.disabled = false;
+    btn.innerHTML = '✉️ Envoyer par email';
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Mon suivi hebdomadaire — Avita Serena</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --blanc:#FFFFFF; --off:#F7F6F4; --grege:#EDE9E1; --taupe:#D5CFC6;
+  --sable:#C4A882; --ocre:#B4906A; --ardoise:#1E1E1C; --gris:#6B6560;
+  --or-clair:#FBF3E4; --or:#9B7230;
+  --vert:#3D6B2C; --vert-clair:#EAF0E6;
+  --rose:#8A3A52; --rose-clair:#F5EAEE;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{font-family:'Be Vietnam Pro',sans-serif;color:var(--ardoise);background:var(--off);font-size:16px}
+body{max-width:480px;margin:0 auto;padding:0 0 100px;min-height:100vh}
+
+/* ── HEADER ── */
+.hdr{background:var(--ardoise);padding:20px 24px 16px;position:sticky;top:0;z-index:100}
+.hdr-logo{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:20px;color:white;margin-bottom:2px}
+.hdr-sub{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.5)}
+.hdr-stripe{height:3px;background:linear-gradient(to right,var(--taupe),var(--sable),var(--ocre),var(--sable),var(--taupe))}
+.hdr-week{background:var(--or-clair);border-bottom:1px solid var(--sable);padding:10px 24px;display:flex;justify-content:space-between;align-items:center}
+.hdr-week-label{font-size:12px;font-weight:700;color:var(--or);letter-spacing:.06em;text-transform:uppercase}
+.hdr-week-date{font-size:12px;color:var(--gris)}
+
+/* ── ÉCRAN ACCUEIL ── */
+.screen{display:none;animation:fadeIn .3s ease}
+.screen.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+.welcome{padding:32px 24px}
+.welcome-greeting{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:300;line-height:1.3;margin-bottom:10px}
+.welcome-greeting em{font-style:italic;color:var(--ocre)}
+.welcome-sub{font-size:14px;color:var(--gris);line-height:1.7;margin-bottom:24px}
+.welcome-time{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--gris);background:var(--grege);padding:8px 14px;border-radius:99px;width:fit-content;margin-bottom:28px}
+.streak-card{background:var(--ardoise);border-radius:16px;padding:20px 22px;margin-bottom:20px;display:flex;align-items:center;gap:16px}
+.streak-num{font-size:36px;font-weight:800;color:var(--ocre);line-height:1}
+.streak-label{color:white;font-size:13px;line-height:1.5}
+.streak-label strong{display:block;font-size:15px}
+
+/* ── HISTORIQUE MINI ── */
+.history-dots{display:flex;gap:6px;margin-bottom:24px;flex-wrap:wrap}
+.h-dot{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;cursor:pointer;transition:.15s}
+.h-dot.done{background:var(--ocre);color:white}
+.h-dot.missed{background:var(--grege);color:var(--taupe)}
+.h-dot.today{background:var(--ardoise);color:white;border:2px solid var(--ocre)}
+
+/* ── BOUTON PRINCIPAL ── */
+.btn-main{width:100%;padding:18px;background:var(--ocre);color:white;border:none;border-radius:14px;font-family:'Be Vietnam Pro',sans-serif;font-size:16px;font-weight:700;cursor:pointer;transition:.15s;letter-spacing:.03em}
+.btn-main:hover{background:var(--or)}
+.btn-main:active{transform:scale(.98)}
+.btn-secondary{width:100%;padding:14px;background:transparent;color:var(--gris);border:1.5px solid var(--taupe);border-radius:12px;font-family:'Be Vietnam Pro',sans-serif;font-size:14px;font-weight:500;cursor:pointer;margin-top:10px;transition:.15s}
+.btn-secondary:hover{border-color:var(--ocre);color:var(--ocre)}
+
+/* ── CHECK-IN FLOW ── */
+.checkin-wrap{padding:24px}
+.step-indicator{display:flex;gap:6px;margin-bottom:28px}
+.step-dot{height:4px;flex:1;border-radius:99px;background:var(--grege);transition:.3s}
+.step-dot.done{background:var(--ocre)}
+.step-dot.active{background:var(--sable)}
+
+.question-card{background:var(--blanc);border-radius:20px;padding:28px 24px;box-shadow:0 4px 20px rgba(30,30,28,.08);margin-bottom:20px}
+.q-num{font-size:10px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--ocre);margin-bottom:8px}
+.q-text{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:300;line-height:1.35;margin-bottom:6px}
+.q-sub{font-size:13px;color:var(--gris);line-height:1.6;margin-bottom:20px}
+
+/* ── CURSEUR ÉMOJI ── */
+.emoji-scale{display:flex;justify-content:space-between;margin-bottom:8px}
+.emoji-scale span{font-size:20px}
+input[type=range].big{width:100%;height:6px;accent-color:var(--ocre);cursor:pointer;margin:8px 0}
+.scale-val{text-align:center;font-size:28px;font-weight:800;color:var(--ocre);margin:6px 0}
+.scale-label{text-align:center;font-size:13px;color:var(--gris);min-height:20px}
+
+/* ── CHOIX RAPIDES ── */
+.quick-choices{display:flex;flex-direction:column;gap:10px}
+.qc-btn{padding:14px 18px;background:var(--off);border:1.5px solid var(--grege);border-radius:12px;font-family:'Be Vietnam Pro',sans-serif;font-size:14px;font-weight:500;color:var(--ardoise);cursor:pointer;text-align:left;transition:.15s;display:flex;align-items:center;gap:12px}
+.qc-btn:hover,.qc-btn.selected{border-color:var(--ocre);background:var(--or-clair);color:var(--ardoise)}
+.qc-btn .qc-icon{font-size:20px;flex-shrink:0}
+
+/* ── TEXTAREA ── */
+textarea.fi-mobile{width:100%;padding:14px;border:1.5px solid var(--taupe);border-radius:12px;font-family:'Be Vietnam Pro',sans-serif;font-size:15px;color:var(--ardoise);background:var(--blanc);resize:none;min-height:110px;outline:none;transition:.15s;line-height:1.6}
+textarea.fi-mobile:focus{border-color:var(--ocre);box-shadow:0 0 0 3px rgba(180,144,106,.12)}
+
+/* ── NAVIGATION ── */
+.nav-bottom{display:flex;gap:12px;padding:16px 24px;background:var(--blanc);border-top:1px solid var(--grege);position:sticky;bottom:0}
+.nav-back{padding:14px;background:var(--grege);border:none;border-radius:10px;font-size:20px;cursor:pointer;transition:.15s;flex-shrink:0}
+.nav-back:hover{background:var(--taupe)}
+.nav-next{flex:1;padding:14px;background:var(--ocre);color:white;border:none;border-radius:10px;font-family:'Be Vietnam Pro',sans-serif;font-size:15px;font-weight:700;cursor:pointer;transition:.15s}
+.nav-next:hover{background:var(--or)}
+.nav-next:disabled{background:var(--taupe);cursor:not-allowed}
+
+/* ── ÉCRAN DE CONFIRMATION ── */
+.confirm-screen{padding:36px 24px;text-align:center}
+.confirm-icon{font-size:56px;margin-bottom:16px}
+.confirm-title{font-family:'Cormorant Garamond',serif;font-size:30px;font-weight:300;margin-bottom:10px}
+.confirm-title em{color:var(--ocre);font-style:italic}
+.confirm-sub{font-size:14px;color:var(--gris);line-height:1.7;margin-bottom:28px}
+.confirm-card{background:var(--blanc);border-radius:16px;padding:20px;margin-bottom:20px;text-align:left}
+.confirm-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--grege);font-size:14px}
+.confirm-row:last-child{border-bottom:none}
+.confirm-score{font-weight:700;color:var(--ocre);font-size:16px}
+
+/* ── COURBES HISTORIQUE ── */
+.chart-screen{padding:24px}
+.chart-title{font-size:16px;font-weight:700;margin-bottom:4px}
+.chart-sub{font-size:12px;color:var(--gris);margin-bottom:20px}
+.chart-wrap{background:var(--blanc);border-radius:16px;padding:20px;box-shadow:0 2px 12px rgba(30,30,28,.06)}
+canvas{width:100%!important}
+.chart-legend{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.legend-item{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--gris)}
+.legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-logo">Avita Serena</div>
+  <div class="hdr-sub">Suivi hebdomadaire</div>
+</div>
+<div class="hdr-stripe"></div>
+<div class="hdr-week">
+  <span class="hdr-week-label">Semaine <span id="week-num">—</span></span>
+  <span class="hdr-week-date" id="week-date">—</span>
+</div>
+
+<!-- ═══ ÉCRAN 0 — ACCUEIL ═══ -->
+<div class="screen active" id="screen-home">
+  <div class="welcome">
+    <div class="welcome-greeting">Bonjour, <em><span id="prenom-display">—</span></em> ✦</div>
+    <p class="welcome-sub">Prenez 2 minutes pour noter comment vous vous sentez cette semaine. Ces informations aident Sabrina à suivre votre progression entre les séances.</p>
+    <div class="welcome-time">⏱ Environ 2 minutes</div>
+
+    <div class="streak-card" id="streak-card">
+      <div class="streak-num" id="streak-num">1</div>
+      <div class="streak-label">
+        <strong id="streak-text">Première semaine</strong>
+        <span id="streak-sub">Votre programme démarre — chaque semaine compte.</span>
+      </div>
+    </div>
+
+    <div class="history-dots" id="history-dots"></div>
+
+    <button class="btn-main" onclick="startCheckin()">Commencer le check-in →</button>
+    <button class="btn-secondary" onclick="showHistory()">📊 Voir ma progression</button>
+  </div>
+</div>
+
+<!-- ═══ ÉCRAN 1 — CHECK-IN FLOW ═══ -->
+<div class="screen" id="screen-checkin">
+  <div class="checkin-wrap">
+    <div class="step-indicator" id="step-indicator"></div>
+    <div id="question-container"></div>
+  </div>
+  <div class="nav-bottom">
+    <button class="nav-back" onclick="prevStep()" id="btn-back">←</button>
+    <button class="nav-next" onclick="nextStep()" id="btn-next">Continuer →</button>
+  </div>
+</div>
+
+<!-- ═══ ÉCRAN 2 — CONFIRMATION ═══ -->
+<div class="screen" id="screen-confirm">
+  <div class="confirm-screen">
+    <div class="confirm-icon">✦</div>
+    <div class="confirm-title">Noté,<br><em>merci à vous.</em></div>
+    <p class="confirm-sub">Sabrina verra cette mise à jour avant votre prochaine séance. Vos données sont sauvegardées.</p>
+    <div class="confirm-card" id="confirm-summary"></div>
+    <button class="btn-main" onclick="showScreen('screen-home')">Retour à l'accueil</button>
+    <button class="btn-secondary" onclick="showHistory()">Voir ma progression</button>
+  </div>
+</div>
+
+<!-- ═══ ÉCRAN 3 — HISTORIQUE ═══ -->
+<div class="screen" id="screen-history">
+  <div class="chart-screen">
+    <div class="chart-title">Ma progression</div>
+    <div class="chart-sub">Évolution de vos scores semaine après semaine</div>
+    <div class="chart-wrap">
+      <canvas id="progress-chart" height="220"></canvas>
+      <div class="chart-legend" id="chart-legend"></div>
+    </div>
+    <div style="margin-top:20px">
+      <button class="btn-main" onclick="showScreen('screen-home')">← Retour</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ── CONFIG ── */
+const SUPA_URL = 'https://bqhkdndwldwqacrrbbig.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxaGtkbmR3bGR3cWFjcnJiYmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MzAyNTIsImV4cCI6MjA5NjMwNjI1Mn0.nH2UktMAVKYwng4L3SvW5F0fluV_sObGV0f3Mk1dnOY';
+
+async function supaFetch(path, opts = {}) {
+  const res = await fetch(SUPA_URL + '/rest/v1/' + path, {
+    headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY,
+      'Content-Type': 'application/json', 'Prefer': opts.prefer || 'return=representation', ...(opts.headers||{}) },
+    method: opts.method || 'GET', body: opts.body ? JSON.stringify(opts.body) : undefined
+  });
+  if (!res.ok) throw new Error(await res.text());
+  const t = await res.text(); return t ? JSON.parse(t) : null;
+}
+
+/* ── PARAMÈTRES URL ── */
+const params = new URLSearchParams(window.location.search);
+const CLIENT_KEY = params.get('k') || localStorage.getItem('avita_checkin_key') || '';
+const PRENOM = (CLIENT_KEY.split('-')[0] || '').replace(/^\w/, c => c.toUpperCase());
+
+/* ── INIT ── */
+document.getElementById('prenom-display').textContent = PRENOM || 'vous';
+updateWeekHeader();
+loadHistory();
+
+function updateWeekHeader() {
+  const now = new Date();
+  const startOfYear = new Date(now.getFullYear(), 0, 1);
+  const week = Math.ceil(((now - startOfYear) / 86400000 + startOfYear.getDay() + 1) / 7);
+  document.getElementById('week-num').textContent = week;
+  document.getElementById('week-date').textContent = now.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
+}
+
+/* ── QUESTIONS ── */
+const QUESTIONS = [
+  {
+    id: 'energie', type: 'slider',
+    text: 'Comment était votre énergie cette semaine ?',
+    sub: 'Pensez à votre niveau général — pas juste aujourd\'hui.',
+    emojis: ['😴', '😔', '😐', '🙂', '⚡'],
+    labels: ['Épuisée', 'Fatigable', 'Variable', 'Bonne énergie', 'En pleine forme']
+  },
+  {
+    id: 'digestif', type: 'slider',
+    text: 'Comment était votre ventre cette semaine ?',
+    sub: 'Ballonnements, transit, confort après les repas.',
+    emojis: ['😣', '😕', '😐', '🙂', '😊'],
+    labels: ['Très difficile', 'Difficile', 'Moyen', 'Plutôt bien', 'Très confortable']
+  },
+  {
+    id: 'sommeil', type: 'slider',
+    text: 'Avez-vous bien dormi cette semaine ?',
+    sub: 'Qualité du sommeil, réveils nocturnes, réveil reposée.',
+    emojis: ['😰', '😔', '😴', '🙂', '✨'],
+    labels: ['Nuits très perturbées', 'Peu réparant', 'Moyen', 'Assez bien', 'Excellent']
+  },
+  {
+    id: 'moral', type: 'slider',
+    text: 'Comment était votre moral ?',
+    sub: 'Humeur, motivation, sentiment général de bien-être.',
+    emojis: ['😢', '😔', '😐', '😊', '🌟'],
+    labels: ['Très bas', 'Difficile', 'Neutre', 'Plutôt bien', 'Excellent']
+  },
+  {
+    id: 'protocole', type: 'choices',
+    text: 'Comment avez-vous suivi votre protocole cette semaine ?',
+    sub: 'Compléments, alimentation, pratiques de vie.',
+    choices: [
+      { icon: '🌟', label: 'J\'ai tout suivi avec régularité' },
+      { icon: '👍', label: 'J\'ai suivi l\'essentiel, quelques oublis' },
+      { icon: '😅', label: 'Semaine difficile, j\'ai beaucoup lâché' },
+      { icon: '❌', label: 'Je n\'ai presque pas suivi cette semaine' },
+    ]
+  },
+  {
+    id: 'mot', type: 'text',
+    text: 'Un mot ou une phrase sur cette semaine ?',
+    sub: 'Optionnel mais précieux. Ce que vous ressentez, ce qui a été difficile, ce qui vous a surprise.',
+    placeholder: 'Ex. : Beaucoup mieux sur le ventre depuis que j\'ai arrêté le café à jeun. Encore fatiguée le matin mais moins qu\'avant…'
+  }
+];
+
+/* ── ÉTAT ── */
+let currentStep = 0;
+const answers = {};
+
+function startCheckin() {
+  currentStep = 0;
+  showScreen('screen-checkin');
+  renderStep();
+}
+
+function renderStep() {
+  const q = QUESTIONS[currentStep];
+  buildStepIndicator();
+
+  const container = document.getElementById('question-container');
+  let html = `<div class="question-card">
+    <div class="q-num">Question ${currentStep + 1} sur ${QUESTIONS.length}</div>
+    <div class="q-text">${q.text}</div>
+    <div class="q-sub">${q.sub}</div>`;
+
+  if (q.type === 'slider') {
+    const val = answers[q.id] || 5;
+    html += `
+      <div class="emoji-scale">${q.emojis.map(e => `<span>${e}</span>`).join('')}</div>
+      <input type="range" class="big" min="1" max="10" value="${val}" id="slider-main"
+        oninput="updateSliderDisplay(this.value,'${q.id}')">
+      <div class="scale-val" id="scale-val">${val}</div>
+      <div class="scale-label" id="scale-label">${getSliderLabel(q, val)}</div>`;
+  } else if (q.type === 'choices') {
+    const sel = answers[q.id] || '';
+    html += `<div class="quick-choices">${q.choices.map((c, i) =>
+      `<button class="qc-btn ${sel === i ? 'selected' : ''}" onclick="selectChoice(${i},'${q.id}')">
+        <span class="qc-icon">${c.icon}</span><span>${c.label}</span>
+      </button>`).join('')}</div>`;
+  } else if (q.type === 'text') {
+    const val = answers[q.id] || '';
+    html += `<textarea class="fi-mobile" id="text-answer" placeholder="${q.placeholder}"
+      oninput="answers['${q.id}']=this.value">${val}</textarea>`;
+  }
+
+  html += `</div>`;
+  container.innerHTML = html;
+
+  document.getElementById('btn-back').style.visibility = currentStep === 0 ? 'hidden' : 'visible';
+  document.getElementById('btn-next').textContent = currentStep === QUESTIONS.length - 1 ? 'Terminer ✦' : 'Continuer →';
+}
+
+function getSliderLabel(q, val) {
+  const idx = Math.min(4, Math.floor((val - 1) / 2));
+  return q.labels[idx] || '';
+}
+
+function updateSliderDisplay(val, id) {
+  answers[id] = parseInt(val);
+  document.getElementById('scale-val').textContent = val;
+  const q = QUESTIONS.find(q => q.id === id);
+  if (q) document.getElementById('scale-label').textContent = getSliderLabel(q, val);
+}
+
+function selectChoice(i, id) {
+  answers[id] = i;
+  document.querySelectorAll('.qc-btn').forEach((b, idx) => b.classList.toggle('selected', idx === i));
+}
+
+function buildStepIndicator() {
+  document.getElementById('step-indicator').innerHTML = QUESTIONS.map((_, i) =>
+    `<div class="step-dot ${i < currentStep ? 'done' : i === currentStep ? 'active' : ''}"></div>`
+  ).join('');
+}
+
+function prevStep() {
+  if (currentStep > 0) { currentStep--; renderStep(); }
+}
+
+function nextStep() {
+  const q = QUESTIONS[currentStep];
+  if (q.type === 'slider' && !answers[q.id]) answers[q.id] = 5;
+  if (currentStep < QUESTIONS.length - 1) { currentStep++; renderStep(); }
+  else submitCheckin();
+}
+
+/* ── SOUMISSION ── */
+async function submitCheckin() {
+  const payload = {
+    client_key: CLIENT_KEY,
+    semaine: document.getElementById('week-num').textContent,
+    date_checkin: new Date().toISOString().slice(0, 10),
+    energie: answers.energie || 5,
+    digestif: answers.digestif || 5,
+    sommeil: answers.sommeil || 5,
+    moral: answers.moral || 5,
+    protocole: answers.protocole,
+    mot_semaine: answers.mot || '',
+    created_at: new Date().toISOString()
+  };
+
+  try {
+    await supaFetch('checkins_semaine', {
+      method: 'POST',
+      prefer: 'return=representation,resolution=merge-duplicates',
+      headers: { 'Prefer': 'return=representation,resolution=merge-duplicates' },
+      body: payload
+    });
+  } catch(e) {
+    // Sauvegarde locale en cas d'erreur réseau
+    const local = JSON.parse(localStorage.getItem('avita_checkins') || '[]');
+    local.push(payload);
+    localStorage.setItem('avita_checkins', JSON.stringify(local));
+  }
+
+  showConfirm(payload);
+}
+
+/* ── CONFIRMATION ── */
+const PROTOCOLE_LABELS = ['Suivi complet 🌟', 'Essentiel suivi 👍', 'Beaucoup lâché 😅', 'Peu suivi ❌'];
+const SCORE_LABELS = { energie: 'Énergie', digestif: 'Confort digestif', sommeil: 'Sommeil', moral: 'Moral' };
+
+function showConfirm(d) {
+  const rows = Object.entries(SCORE_LABELS).map(([k, l]) =>
+    `<div class="confirm-row"><span>${l}</span><span class="confirm-score">${d[k]}/10</span></div>`
+  ).join('');
+  const protocole = d.protocole !== undefined ? `<div class="confirm-row"><span>Protocole</span><span style="font-size:13px">${PROTOCOLE_LABELS[d.protocole]}</span></div>` : '';
+
+  document.getElementById('confirm-summary').innerHTML = rows + protocole;
+  showScreen('screen-confirm');
+  loadHistory();
+}
+
+/* ── HISTORIQUE ── */
+let historyData = [];
+
+async function loadHistory() {
+  if (!CLIENT_KEY) return;
+  try {
+    const rows = await supaFetch(
+      'checkins_semaine?client_key=eq.' + encodeURIComponent(CLIENT_KEY) + '&order=created_at.asc&limit=20',
+      { prefer: '' }
+    );
+    if (rows) historyData = rows;
+    buildHistoryDots();
+    updateStreak();
+  } catch(e) {
+    // Charger depuis localStorage
+    historyData = JSON.parse(localStorage.getItem('avita_checkins') || '[]')
+      .filter(c => c.client_key === CLIENT_KEY);
+    buildHistoryDots();
+    updateStreak();
+  }
+}
+
+function buildHistoryDots() {
+  const container = document.getElementById('history-dots');
+  const weeks = Math.max(historyData.length + 2, 8);
+  let html = '';
+  for (let i = 0; i < weeks; i++) {
+    const entry = historyData[i];
+    if (i === historyData.length) html += `<div class="h-dot today" title="Cette semaine">S${i+1}</div>`;
+    else if (entry) html += `<div class="h-dot done" title="Semaine ${i+1} · ${entry.energie}/10 énergie">✓</div>`;
+    else html += `<div class="h-dot missed" title="Semaine ${i+1}">—</div>`;
+  }
+  container.innerHTML = html;
+}
+
+function updateStreak() {
+  const streak = historyData.length;
+  document.getElementById('streak-num').textContent = streak;
+  if (streak === 0) {
+    document.getElementById('streak-text').textContent = 'Premier check-in';
+    document.getElementById('streak-sub').textContent = 'Chaque semaine notée est une semaine de progression documentée.';
+  } else if (streak < 4) {
+    document.getElementById('streak-text').textContent = streak + ' semaine' + (streak > 1 ? 's' : '') + ' de suivi';
+    document.getElementById('streak-sub').textContent = 'Vous construisez votre tableau de bord. Continuez !';
+  } else {
+    document.getElementById('streak-text').textContent = streak + ' semaines de suivi';
+    document.getElementById('streak-sub').textContent = 'Excellente régularité — Sabrina voit votre progression en temps réel.';
+  }
+}
+
+/* ── COURBES ── */
+function showHistory() {
+  showScreen('screen-history');
+  if (historyData.length < 2) {
+    document.getElementById('progress-chart').parentElement.innerHTML =
+      '<p style="text-align:center;color:var(--gris);padding:30px 0;font-size:14px">Remplissez au moins 2 check-ins pour voir votre courbe de progression.</p>';
+    return;
+  }
+  drawChart();
+}
+
+function drawChart() {
+  const canvas = document.getElementById('progress-chart');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.offsetWidth || 320;
+  const H = 200;
+  canvas.width = W * window.devicePixelRatio;
+  canvas.height = H * window.devicePixelRatio;
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+
+  const data = historyData;
+  const dims = [
+    { key: 'energie', color: '#B4906A', label: 'Énergie' },
+    { key: 'digestif', color: '#3D6B2C', label: 'Digestif' },
+    { key: 'sommeil', color: '#2C5E8A', label: 'Sommeil' },
+    { key: 'moral', color: '#8A3A52', label: 'Moral' }
+  ];
+
+  const pad = { t: 20, r: 20, b: 40, l: 30 };
+  const cW = W - pad.l - pad.r;
+  const cH = H - pad.t - pad.b;
+
+  ctx.clearRect(0, 0, W, H);
+
+  // Grille
+  ctx.strokeStyle = '#EDE9E1'; ctx.lineWidth = 1;
+  [2, 4, 6, 8, 10].forEach(v => {
+    const y = pad.t + cH - (v / 10) * cH;
+    ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(pad.l + cW, y); ctx.stroke();
+    ctx.fillStyle = '#9B9590'; ctx.font = '10px Be Vietnam Pro';
+    ctx.fillText(v, pad.l - 22, y + 4);
+  });
+
+  // Labels axe X
+  ctx.fillStyle = '#6B6560'; ctx.font = '10px Be Vietnam Pro';
+  data.forEach((d, i) => {
+    const x = pad.l + (i / (data.length - 1)) * cW;
+    ctx.fillText('S' + (i + 1), x - 6, H - 8);
+  });
+
+  // Lignes
+  dims.forEach(dim => {
+    ctx.strokeStyle = dim.color; ctx.lineWidth = 2.5;
+    ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    ctx.beginPath();
+    data.forEach((d, i) => {
+      const x = pad.l + (i / Math.max(data.length - 1, 1)) * cW;
+      const y = pad.t + cH - ((d[dim.key] || 5) / 10) * cH;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+
+    // Points
+    data.forEach((d, i) => {
+      const x = pad.l + (i / Math.max(data.length - 1, 1)) * cW;
+      const y = pad.t + cH - ((d[dim.key] || 5) / 10) * cH;
+      ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2);
+      ctx.fillStyle = dim.color; ctx.fill();
+    });
+  });
+
+  // Légende
+  document.getElementById('chart-legend').innerHTML = dims.map(d =>
+    `<div class="legend-item"><div class="legend-dot" style="background:${d.color}"></div>${d.label}</div>`
+  ).join('');
+}
+
+/* ── NAVIGATION ── */
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0, 0);
+}
+</script>
+</body>
+</html>
