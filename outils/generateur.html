@@ -850,6 +850,63 @@ function detectSiboMethane(d) {
   return confirmePattern.test(champsTextuels) || signesPattern.test(champsTextuels);
 }
 
+function buildReglesProtocoleCyclique(d) {
+  // Détecte si le profil est hormonal (SOPK, SPM, endométriose, périménopause)
+  const champsTextuels = [d.selects_complets, d.textes_libres, d.symptomes_coches, d.chips, d.gyneco, d.notes_praticien, d.motifs].filter(Boolean).join(' \n ');
+  const profilHormonal = /SOPK|SPM|endométriose|périménopause|ménopause|cycle|progesterone|oestrogène|estrogène|règles|menstruel|ovul/i.test(champsTextuels);
+  if (!profilHormonal) return '';
+
+  // Détecte quel profil hormonal précisément
+  const isSPM = /SPM|prémenstruel|premenstruel/i.test(champsTextuels);
+  const isSOPK = /SOPK|polykystique/i.test(champsTextuels);
+  const isEndo = /endométriose|endo\b|dysménorrhée|dyspareunie/i.test(champsTextuels);
+  const isMeno = /périménopause|ménopause|bouffées de chaleur|post.ménopause/i.test(champsTextuels);
+
+  const lines = [
+    '',
+    '━━ RÈGLE N°5ter — PROTOCOLE CYCLIQUE HORMONAL ━━',
+    '⚠️ Cette cliente présente un profil hormonal actif. Tu DOIS intégrer dans le PHV une section "Votre protocole selon votre cycle" qui adapte les recommandations aux 4 phases du cycle menstruel (ou à la périménopause si applicable). Cette section s\'intègre dans s2 [ALIMENTATION & RYTHME] ou dans une section dédiée après s3.',
+    '',
+    'STRUCTURE DE LA SECTION CYCLE À CRÉER :',
+    '',
+    '── Phase 1 — Folliculaire (J1 à J13 environ) ──',
+    'C\'est la phase de renouveau — les œstrogènes montent progressivement, l\'énergie revient, la tolérance aux efforts augmente.',
+    '• Alimentation : favoriser les aliments riches en fer (lentilles, épinards, graines de citrouille) pour compenser les pertes menstruelles. Protéines de qualité le matin pour soutenir la dopamine montante.',
+    '• Activité : c\'est la phase la plus propice aux efforts physiques — running, musculation, HIIT si souhaité. Le corps est en phase de reconstruction.',
+    '• Compléments : continuer le fer si prescrit, surtout les premiers jours.',
+    '',
+    '── Phase 2 — Ovulatoire (J13 à J16 environ) ──',
+    'Pic d\'œstrogènes et de LH — énergie maximale, tolérance au stress élevée, communication facilitée.',
+    '• Alimentation : crucifères cuits 2-3x/semaine (brocoli, chou-fleur) pour soutenir la détoxification des œstrogènes par le foie. Éviter l\'alcool et le café excessif qui surchargent la phase de détox hépatique.',
+    '• Activité : phase idéale pour les efforts intenses et les activités sociales. La force musculaire est à son maximum.',
+    '',
+    '── Phase 3 — Lutéale (J16 à J28 environ) ──',
+    'La progestérone monte — c\'est ici que le SPM s\'installe si le terrain est fragilisé. La chute de sérotonine et de dopamine est physiologique mais peut être soutenue.',
+    '• Alimentation : magnésium + aliments riches en tryptophane (précurseur de la sérotonine) : dinde, graines de courge, banane, chocolat noir 70%+. Réduire les sucres raffinés et l\'alcool qui aggravent les fluctuations glycémiques et amplifient l\'irritabilité.',
+    isSPM ? '• SPM spécifique : vitamines B6 (activer la conversion tryptophane → sérotonine), calcium 1000mg/j J14-J28 (réduit les crampes et l\'irritabilité de 48% selon les études). Gattilier si prescrit — 1 gélule/j le matin à jeun (ne pas prendre si sous contraception hormonale).' : '',
+    '• Activité : réduire l\'intensité en fin de phase. Privilégier yoga, marche, pilates. Le corps entre en phase de récupération.',
+    '',
+    '── Phase 4 — Menstruelle (J1-J5) ──',
+    'Repos actif — c\'est une phase de purge physiologique, pas de pathologie. Le niveau de tolérance à l\'effort et au stress est au minimum.',
+    '• Alimentation : chaleur digestive (bouillons, plats chauds, gingembre, curcuma). Fer héminique si règles abondantes. Éviter le café, l\'alcool, les aliments pro-inflammatoires (fast-food, huiles chauffées, sucre raffiné) qui amplifient les prostaglandines responsables des crampes.',
+    isEndo ? '• Endométriose spécifique : oméga-3 EPA/DHA en priorité absolue pendant les règles (anti-inflammatoire puissant sur les prostaglandines). Magnésium + curcumine. Éviter les produits laitiers et la viande rouge en particulier cette semaine.' : '',
+    '• Activité : marche douce, étirements, chaleur sur le bas-ventre. Pas d\'effort intense.',
+    '',
+  ];
+
+  if (isMeno) {
+    lines.push('── Périménopause — adaptation spécifique ──');
+    lines.push('En périménopause, le cycle devient irrégulier et les phases fluctuent. L\'approche est différente : stabiliser le terrain global plutôt que suivre un cycle précis.');
+    lines.push('• Alimentation : phytoestrogènes doux (graines de lin fraîchement moulues 1 c.s./j, miso, edamame — pas de compléments phytoestrogènes sans bilan hormonal). Calcium et magnésium quotidiens. Réduire les excitants (café, alcool, sucre) qui amplifient les bouffées de chaleur.');
+    lines.push('• Activité : musculation 2-3x/semaine (capital osseux + métabolisme). Cohérence cardiaque systématique pour moduler l\'axe HHS.');
+    lines.push('');
+  }
+
+  lines.push('Intègre cette section de façon pédagogique et accessible — avec un sous-titre par phase, en vouvoiement, en expliquant POURQUOI chaque recommandation est adaptée à cette phase hormonale. La cliente doit comprendre son cycle comme un outil, pas comme une contrainte.');
+
+  return lines.filter(l => l !== '').join('\n');
+}
+
 function buildReglesSiboMethane(siboMethaneAvere) {
   if (!siboMethaneAvere) return '';
   return [
@@ -962,6 +1019,7 @@ Exemples concrets à adapter selon les axes prioritaires :
 - Chardon-marie EPS (Phytostandard Pileje) — si foie, détox, hormones
 TOUJOURS : posologie exacte (marque, forme, dose, fréquence, moment précis), et 1-2 phrases expliquant pourquoi CE choix pour ELLE.
 ${reglesSiboMethane}
+${buildReglesProtocoleCyclique(d)}
 ━━ RÈGLE N°6 — SÉCURITÉ ABSOLUE ━━
 Anticoagulants → éviter oméga-3 >2g/j, millepertuis, gingko
 ISRS/antidépresseurs → millepertuis INTERDIT absolument
