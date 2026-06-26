@@ -274,6 +274,10 @@ body{font-family:'Inter',-apple-system,sans-serif;background:var(--surface);colo
 .wfd{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace}
 .wf-ebtn{font-size:11px;font-weight:700;padding:4px 9px;border-radius:var(--r4);background:var(--blue-lt);color:var(--blue);border:none;cursor:pointer;transition:var(--t)}
 .wf-ebtn:hover{background:var(--blue);color:white}
+.wf-btn-tool{background:var(--violet-lt,#F0EDF8)!important;color:var(--violet,#6C47FF)!important;text-decoration:none;display:inline-flex;align-items:center;gap:4px}
+.wf-btn-tool:hover{background:var(--violet,#6C47FF)!important;color:white!important}
+.wf-desc{font-size:11px;color:var(--muted);font-style:italic;margin-top:2px;line-height:1.4}
+.wf-icon{font-size:12px}
 
 /* TIMELINE */
 .tl-item{display:flex;gap:11px;padding-bottom:13px;position:relative}
@@ -813,21 +817,31 @@ function buildWF(c){
   const proto=c.dateProtocole;
   const dur=parseInt(c.dureeTtt)||60;
   const dp=pDur(c.programme);
+  const isProg=dp>0;
   const steps=[
-    {key:'protocole_envoye',j:0,label:'Protocole envoyé',tpl:null},
-    {key:'check_j7',j:7,label:'Check-in J+7',tpl:'j7'},
-    {key:'check_j21',j:21,label:'Point J+21',tpl:'j21'},
-    {key:'suivi_jX',j:dur,label:'Consultation de suivi (J+'+dur+')',tpl:'suivi'},
+    {key:'bilan_entree',     j:-1,  label:"Bilan d'entrée de programme",       tpl:null,         action:'bilan',   icon:'📋', desc:"Capturer le before documenté au démarrage"},
+    {key:'protocole_envoye', j:0,   label:'Protocole PHV envoyé',              tpl:null,         action:'phv',     icon:'✦',  desc:'Générer et envoyer le PHV'},
+    {key:'lettre_clinique',  j:1,   label:'Lettre clinique J+1',               tpl:null,         action:'lettre',  icon:'✉️', desc:'Envoyer la lettre clinique post-séance (< 24h)'},
+    {key:'checkin_active',   j:3,   label:'Lien check-in hebdo envoyé',        tpl:'checkin_lien',action:'checkin', icon:'📊', desc:'Envoyer le lien de suivi hebdomadaire personnalisé'},
+    {key:'check_j7',         j:7,   label:'Check-in J+7',                      tpl:'j7',         action:'email',   icon:'✉', desc:'Premier point après réception du protocole'},
+    {key:'check_j21',        j:21,  label:'Point J+21',                        tpl:'j21',        action:'email',   icon:'✉', desc:'Évaluation des premiers effets'},
+    {key:'suivi_jX',         j:dur, label:'Consultation de suivi (J+'+dur+')', tpl:'suivi',      action:'email',   icon:'📅', desc:'Planifier la séance de suivi'},
   ];
-  if(dp>0)steps.push({key:'fin_programme',j:dp,label:dp===90?'Fin Alba — continuation?':dp===180?'Fin Aria — continuation?':'Fin Ora — bilan final',tpl:'fin_programme'});
-  return steps.map(s=>{
-    const tgt=proto?addD(proto,s.j):null;
-    const done=!!(c.workflowDone?.[s.key]);
-    const dLeft=tgt?-diffD(tgt):null;
-    const isOvd=tgt&&!done&&diffD(tgt)>=0;
-    const isSoon=tgt&&!done&&dLeft!==null&&dLeft<=7&&dLeft>0;
-    return{...s,tgt,done,isOvd,isSoon};
+  if(isProg) steps.push({
+    key:'fin_programme', j:dp,
+    label: dp===90?'Clôture Alba — bilan before/after': dp===180?'Clôture Aria — bilan before/after':'Clôture Ora — bilan before/after',
+    tpl:'fin_programme', action:'cloture', icon:'🏆', desc:"Rouvrir le bilan d'entrée et comparer les scores"
   });
+  return steps
+    .filter(s => isProg || !['bilan_entree','checkin_active','fin_programme'].includes(s.key))
+    .map(s=>{
+      const tgt=proto?addD(proto,s.j):null;
+      const done=!!(c.workflowDone?.[s.key]);
+      const dLeft=tgt?-diffD(tgt):null;
+      const isOvd=tgt&&!done&&diffD(tgt)>=0;
+      const isSoon=tgt&&!done&&dLeft!==null&&dLeft<=7&&dLeft>0;
+      return{...s,tgt,done,isOvd,isSoon};
+    });
 }
 function getAlerts(c){if(!c.dateProtocole)return[];return buildWF(c).filter(s=>!s.done&&(s.isOvd||s.isSoon));}
 function getStatus(c){
@@ -1144,11 +1158,30 @@ function renderFiche(c){
   const wfH=wf.map(s=>{
     let cls=s.done?'done':s.isOvd?'overdue':s.isSoon?'soon':'';
     const sttxt=s.isOvd?"<span style='color:var(--red);font-weight:700'> · Retard</span>":s.isSoon?"<span style='color:var(--orange);font-weight:700'> · Cette semaine</span>":'';
-    const eBtn=s.tpl?"<button class='wf-ebtn' onclick=\"ouvrirMailModal('"+c.id+"','"+s.tpl+"')\">✉ Email</button>":'';
+    // Bouton d'action contextuel selon le type d'étape
+    let aBtn='';
+    const cid=c.id; const ckey=encodeURIComponent((c.id||''));
+    if(!s.done){
+      if(s.action==='bilan'){
+        aBtn="<button class='wf-ebtn wf-btn-tool' onclick=\"ouvrirBilanEntree('"+cid+"','depart')\">📋 Bilan</button>";
+      } else if(s.action==='phv'){
+        aBtn="<button class='wf-ebtn wf-btn-tool' onclick=\"ouvrirPHVCliente('"+cid+"')\">✦ PHV</button>";
+      } else if(s.action==='lettre'){
+        aBtn="<button class='wf-ebtn wf-btn-tool' onclick=\"ouvrirLettreSeance('"+cid+"')\">✉️ Lettre</button>";
+      } else if(s.action==='checkin'){
+        aBtn="<button class='wf-ebtn wf-btn-tool' onclick=\"envoyerCheckinBrevoTpl('"+cid+"')\">📊 Lien</button>";
+      } else if(s.action==='cloture'){
+        aBtn="<button class='wf-ebtn wf-btn-tool' onclick=\"ouvrirBilanEntree('"+cid+"','cloture')\">🏆 Clôture</button>";
+      } else if(s.tpl){
+        aBtn="<button class='wf-ebtn' onclick=\"ouvrirMailModal('"+cid+"','"+s.tpl+"')\">✉ Email</button>";
+      }
+    }
+    const jLabel=s.j<0?'Avant J0':'J+'+s.j;
+    const descH=s.desc?"<div class='wf-desc'>"+escH(s.desc)+"</div>":'';
     return "<div class='wf-item "+cls+"'>" +
-      "<div class='wf-chk' onclick=\"toggleWF('"+c.id+"','"+s.key+"')\">"+( s.done?"✓":"")+"</div>" +
-      "<div class='wf-info'><div class='wfj'>J+"+s.j+"</div><div class='wft'>"+escH(s.label)+"</div><div class='wfd'>"+(s.tgt?fmtDate(s.tgt):'—')+sttxt+"</div></div>" +
-      eBtn+"</div>";
+      "<div class='wf-chk' onclick=\"toggleWF('"+cid+"','"+s.key+"')\">"+( s.done?"✓":"")+"</div>" +
+      "<div class='wf-info'><div class='wfj'><span class='wf-icon'>"+escH(s.icon||'')+"</span> "+jLabel+"</div><div class='wft'>"+escH(s.label)+"</div>"+descH+"<div class='wfd'>"+(s.tgt?fmtDate(s.tgt):'—')+sttxt+"</div></div>" +
+      aBtn+"</div>";
   }).join('');
 
   const tlColors={facture:'#FF7B2C',suivi:'#00C875',creation:'#6C47FF',default:'#8888A8'};
@@ -1306,7 +1339,7 @@ async function toggleWF(id,key){
   const done=c.workflowDone[key];
   if(done){
     if(!c.timeline)c.timeline=[];
-    const lbs={protocole_envoye:'Protocole envoyé',check_j7:'Check-in J+7',check_j21:'Point J+21',suivi_jX:'Consultation de suivi',fin_programme:'Fin de programme'};
+    const lbs={bilan_entree:"Bilan d'entrée créé",protocole_envoye:'Protocole PHV envoyé',lettre_clinique:'Lettre clinique envoyée',checkin_active:'Lien check-in envoyé',check_j7:'Check-in J+7 fait',check_j21:'Point J+21 fait',suivi_jX:'Consultation de suivi',fin_programme:'Programme clôturé'};
     c.timeline.push({type:'suivi',title:lbs[key]||key,icon:'✓',date:today()});
   }
   await saveClient(c);renderFiche(c);toast(done?'Étape validée ✓':'Étape réouverte',done?'ok':'warn');
@@ -1319,7 +1352,11 @@ function tpls(c){
     j21:{sub:'Votre point à 3 semaines, '+p,body:'Bonjour '+p+',\n\nTrois semaines se sont écoulées. C\'est souvent à ce stade que les premiers effets se font sentir.\n\nComment vous sentez-vous ?\n\nAvec bienveillance,\n'+s.nom+'\nAvita Serena'},
     suivi:{sub:'Votre consultation de suivi, '+p,body:'Bonjour '+p+',\n\nNous approchons du temps prévu pour votre consultation de suivi.\n\nSeriez-vous disponible pour une visio prochainement ?\n\nCordialement,\n'+s.nom+'\nAvita Serena'},
     fin_programme:{sub:'La suite de votre parcours, '+p,body:'Bonjour '+p+',\n\nNous arrivons à la fin de votre programme. Je suis fière du chemin parcouru.\n\nÊtes-vous disponible pour un bilan final ?\n\nAvec douceur,\n'+s.nom+'\nAvita Serena'},
-    relance:{sub:'Je prends de vos nouvelles, '+p,body:'Bonjour '+p+',\n\nCela fait quelque temps que nous n\'avons pas échangé. Comment allez-vous ?\n\nAvec bienveillance,\n'+s.nom+'\nAvita Serena'}
+    relance:{sub:'Je prends de vos nouvelles, '+p,body:'Bonjour '+p+',\n\nCela fait quelque temps que nous n\'avons pas échangé. Comment allez-vous ?\n\nAvec bienveillance,\n'+s.nom+'\nAvita Serena'},
+    checkin_lien:{
+      sub:'Votre suivi hebdomadaire — Avita Serena',
+      body:'Bonjour '+p+',\n\nPour suivre votre progression entre nos séances, je vous invite à remplir un check-in rapide chaque semaine (2 minutes).\n\nVotre lien personnel :\nhttps://avitaserena.com/outils/check-in-semaine.html?k='+encodeURIComponent(c.id||'')+'\n\nCela me permet de voir comment vous évoluez en temps réel et d\'adapter votre protocole si nécessaire.\n\nAvec douceur,\n'+s.nom+'\nAvita Serena'
+    }
   };
 }
 
@@ -2227,6 +2264,63 @@ async function sauvegarderAlternatives(prenom, nom, ddn, email, refusIdx, envoye
   }
 
   document.getElementById('modal-alternatives')?.remove();
+}
+
+
+/* ══════════════════════════════════════════════
+   WORKFLOW PREMIUM — envois Brevo templates
+══════════════════════════════════════════════ */
+
+async function envoyerCheckinBrevoTpl(clientId){
+  const c = db.clients.find(x => x.id === clientId);
+  if(!c){ toast('Cliente introuvable','err'); return; }
+  if(!c.email){ toast('Email manquant','warn'); return; }
+  const apiKeyBrevo = getBrevoKey();
+  if(!apiKeyBrevo){ return; }
+  const lienCheckin = 'https://avitaserena.com/outils/check-in-semaine.html?k=' + encodeURIComponent(c.id||'');
+  const confirmed = confirm('Envoyer le lien check-in a ' + c.prenom + ' (' + c.email + ') ?');
+  if(!confirmed) return;
+  try{
+    const res = await fetch('https://api.brevo.com/v3/smtp/email',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','api-key':apiKeyBrevo},
+      body: JSON.stringify({
+        sender:{ name:'Sabrina - Avita Serena', email:'sabrina@avitaserena.com' },
+        to:[{ email: c.email, name: (c.prenom||'') + ' ' + (c.nom||'') }],
+        templateId: 20,
+        params:{ LIEN_CHECKIN: lienCheckin }
+      })
+    });
+    if(!res.ok){ const e=await res.json(); throw new Error(e.message||res.status); }
+    if(!c.timeline) c.timeline=[];
+    c.timeline.push({type:'suivi',title:'Lien check-in envoye',icon:'📊',date:today()});
+    if(!c.workflowDone) c.workflowDone={};
+    c.workflowDone['checkin_active'] = true;
+    await saveClient(c);
+    renderFiche(c);
+    toast('Lien check-in envoye a ' + c.email + ' ok','ok');
+  }catch(e){
+    toast('Erreur : ' + e.message,'err');
+  }
+}
+
+function ouvrirLettreSeance(clientId){
+  const c = db.clients.find(x => x.id === clientId);
+  if(!c){ toast('Cliente introuvable','err'); return; }
+  localStorage.setItem('avita_lettre_ctx', JSON.stringify({
+    prenom: c.prenom || '',
+    email: c.email || '',
+    motif: c.motifs ? c.motifs.split(/[,·]/)[0].trim() : '',
+    client_id: c.id
+  }));
+  window.open('lettre-seance.html', '_blank');
+}
+
+function ouvrirBilanEntree(clientId, mode){
+  const c = db.clients.find(x => x.id === clientId);
+  if(!c){ toast('Cliente introuvable','err'); return; }
+  const url = 'bilan-entree.html?k=' + encodeURIComponent(c.id||'') + (mode==='cloture'?'&mode=cloture':'');
+  window.open(url, '_blank');
 }
 
 </script>
