@@ -559,6 +559,16 @@ textarea.mf:focus,input.mf:focus,select.mf:focus{border-color:var(--ocre);backgr
         <option>Étudiante / jeune adulte</option>
       </select>
     </div>
+    <div class="p-sel-wide">
+      <label class="p-lbl">Tempérament constitutionnel <span style="font-weight:400;color:var(--gris)">(auto-importé du questionnaire visio)</span></label>
+      <select id="m-temperament">
+        <option value="">— Non renseigné</option>
+        <option value="nerveux">Nerveux (mélancolique, cérébral) — sec, froid, Terre</option>
+        <option value="lymphatique">Lymphatique (flegmatique, digestif) — humide, froid, Eau</option>
+        <option value="sanguin">Sanguin — humide, chaud, Air</option>
+        <option value="bilieux">Bilieux / Colérique (respiratoire) — sec, chaud, Feu</option>
+      </select>
+    </div>
   </div>
 
   <div class="pilier-note" style="margin-top:14px">
@@ -747,6 +757,19 @@ function prefillParams() {
     }
   });
   refreshAxesBadges();
+
+  // Auto-sélectionner le tempérament si importé depuis le questionnaire visio
+  if (sessionData.temperament) {
+    const tSelect = document.getElementById('m-temperament');
+    if (tSelect) {
+      for (let i = 0; i < tSelect.options.length; i++) {
+        if (tSelect.options[i].value === sessionData.temperament) {
+          tSelect.selectedIndex = i;
+          break;
+        }
+      }
+    }
+  }
 }
 
 function toggleManual() {
@@ -829,6 +852,8 @@ function buildClientData() {
     // Bilans
     bilans_a_recommander: bilansSelectionnes || s.bilans_recommandes || '',
     bilans_justif: gv('bilans-justif'),
+    // Tempérament constitutionnel (depuis questionnaire visio ou sélection manuelle dans le générateur)
+    temperament: gv('m-temperament') || s.temperament || '',
   };
 }
 
@@ -1028,8 +1053,54 @@ Cancer hormono-dépendant → JAMAIS Feminabiane Ménopause ni phytoestrogènes
 Hypothyroïdie (Lévothyrox) → espacer fer, calcium, magnésium de 4h
 Grossesse → aucune HE par voie interne, vérifier chaque plante
 
+━━ RÈGLE N°7 — TEMPÉRAMENT CONSTITUTIONNEL ━━
+${d.temperament ? `Le tempérament de cette cliente a été auto-identifié comme : ${d.temperament.toUpperCase()}.
+Intègre subtilement les orientations naturopatiques propres à ce tempérament dans les piliers alimentation, psychologie et activité physique — sans jamais nommer explicitement le "tempérament" dans le document rendu à la cliente (elle n'a pas besoin de ce cadre théorique, elle a besoin des conseils pratiques).
+
+NERVEUX (mélancolique, sec, froid, Terre) :
+- Alimentation : super-aliments (pollen, lithothamne, plasma de Quinton), petits repas fréquents (4-5/j) pour bien digérer, graisses de qualité 1ère pression à froid riches en oméga-3, protéines à chaque repas, fruits doux non acides, cuisson vapeur douce, manger chaud, éviter les jeûnes longs. Éviter l'acidification.
+- Activité : rituels de détente, méditation, exercices doux et modérés (yoga, Pilates, stretching, biokinésie). Sports de précision (fléchettes, golf, tir à l'arc). Judo, équithérapie, poterie. Pratiquer de façon modérée et régulière — l'exercice lui "vide la tête". Se coucher tôt (21h-22h).
+- Travail sur soi : ancrage au corps physique, marcher pieds nus dans la rosée, boire de l'eau chaude, EFT. Stimuler le côté sanguin pour lui donner envie.
+- Compléments prioritaires : magnésium, lithium, vitamine B, silicium (ortie + prêle). Oméga-3. Huile de ricin en massage.
+- Phytothérapie : plantes anti-anxiété et antispasmodiques — tilleul, passiflore, valériane, camomille matricaire, angélique, menthe poivrée, fenouil, anis vert.
+- Aromathérapie : gingembre (énergie, chaleur), bois de cèdre (antidépresseur), oliban (méditation), petit grain bigarade / marjolaine / lavande (calmantes), thym / sarriette (digestives), niaouli, pin sylvestre, mandarine, eucalyptus radiata.
+- Hydrologie : bains chauds avec sels d'Epsom (3 poignées + HE basilic), bouillotte ventre/dos, eau chaude peu minéralisée et vitalisée, affusions d'eau froide le long de la colonne.
+
+LYMPHATIQUE (flegmatique, humide, froid, Eau) :
+- Alimentation : à contrôler mais sans privation. Nourriture chaude, épices (excitants naturels), 1L d'eau/j minimum. Produits de la mer riches en iode. Éviter les adjuvants chimiques, les crudités en excès, les fruits aqueux et les aliments froids/humides. Manger aux mêmes heures, cuire al dente (IG plus bas). Éviter le grignotage.
+- Activité : peu mais régulièrement — 3 à 4 séances courtes de 30 min/semaine. Aquatique, aquabiking, tai-chi, yoga, gym douce, marche, sport de précision (tir à l'arc). Jardinage, pétanque.
+- Travail sur soi : aller de l'avant, être positive, intégrer l'hygiène énergétique chaque matin, pratiquer la "minute de santé".
+- Compléments prioritaires : vitamine C liposomale, sorbier (circulation), fragon (œdème), multi-vitamines et minéraux, Griffonia (5-HTP tryptophane).
+- Phytothérapie : orthosiphon (cellulite), lierre grimpant (surpoids), thé + guarana (stimulants), psyllium (constipation), plantes adaptogènes.
+- Aromathérapie : épinette noire (énergie, surrénales — 3 gouttes friction matin), petit grain bigarade (réconfort), orange/mandarine (rondeur), pin (surrénales), ravintsara, genévrier, cèdre.
+- Hydrologie : bains de mer, thalasso, bains d'algues, bains tièdes à refroidissement progressif, hydrothérapie du côlon, bains de mer.
+- Clés de santé : drainage lymphatique 1 fois/mois, fuir l'humidité.
+
+SANGUIN (humide, chaud, Air) :
+- Alimentation : ralentir la cadence sans régime drastique. Réduire viande et poisson, introduire plus de végétal. Favoriser les aliments antioxydants et dépaississants du sang. Limiter viandes rouges, charcuterie, alcool, tabac, gâteaux, grignotages. Oméga-3 (krill ou Pileje) pour le cardiovasculaire. 1 verre de jus de légumes/j.
+- Activité : sport avec objectif précis qui fait transpirer — cardio intensif (3 x 400m, rameur, vélo, elliptique). Promenades en plein air pour se décharger avec l'Air.
+- Travail sur soi : self-control, modération, connaissance de ses limites, sincérité, équanimité, humilité, écoute. Travailler l'autonomie.
+- Compléments prioritaires : chrome, oméga-3. 1 verre d'eau chaude le matin.
+- Phytothérapie : desmodium (détox foie), aubier de tilleul (surpoids 1-2 fois/an), vigne rouge (retour veineux), sorbier, aubépine, ail, noyer, cannelle.
+- Aromathérapie : cyprès (passage, séparation, structure), laurier noble (confiance, action, stress intense), lavande, eucalyptus radiata, romarin cinéole, citron, orange, petit grain bigarade, géranium rosat, ravintsara, genévrier, cèdre.
+- Hydrologie : eau froide (fin de douche froide), affusion membres, bains de pieds froids avec lavande, bains dérivatifs, douche écossaise, sauna/hammam, bains de mer.
+- Clés de santé : drainer foie et vésicule biliaire régulièrement, citron + eau chaude matin, cure œuf-citron, bouillotte foie le soir, marcher 15-20 min le soir.
+
+BILIEUX (colérique, sec, chaud, Feu) :
+- Alimentation : adapter selon sous-dominante (Sanguine ou Cérébrale). Bonne alimentation nutritive, éviter les excitants (thé, café, alcool, tabac). Introduire du cru à chaque repas pour soulager le foie. Légumes soufrés : radis, choux, oignons, asperges, ail, poireaux, navets. Éviter le sucre blanc, ajuster sucre et gras selon l'activité physique.
+- Activité : tous les sports, ne pas s'arrêter ! C'est dans le sport qu'il trouve son équilibre. Activité physique intensive 3-4 séances/semaine. Activité liée au plaisir pour se détendre. Sport extrême ou yoga dynamique selon préférence. Exercices respiratoires + pulmo-stimulateur + Bol d'air Jacquier.
+- Travail sur soi : passer de "faire" à "être". Humilité, lâcher-prise, perte de contrôle, désir de maîtriser. Ouvrir le chakra du cœur, arrêter de critiquer. Communication non violente.
+- Compléments prioritaires : vitamines D3 et K2, jus d'herbe d'orge, chlorophylle, germanium.
+- Phytothérapie : plantes du foie (artichaut, desmodium, cassis), fumeterre (allergies), plantes articulaires (harpagophytum), ORL (plantain, bouillon-blanc, sureau, propolis rouge).
+- Aromathérapie : santal (esprit bois, angoisse, déprime), menthe poivrée (lâcher-prise, mental apaisé), niaouli, pin sylvestre, basilic/estragon, mandarine, lavande, eucalyptus radiata, citron, ravintsara, cyprès, géranium rosat, gaulthérie, hélichryse italienne, vétiver.
+- Hydrologie : friction au gant de crin, sauna/hammam/bain dérivatif/douche écossaise, lavements au café, marcher pieds nus 5-10 min dans l'herbe avec la rosée du matin, watsu, bains de mer.
+- Cures : printemps (drainer foie par les plantes + reminéraliser + monodiètes + gelée royale, ginseng, éleuthérocoque). Automne (raisin, pollen frais).
+
+Si le tempérament n'est pas renseigné, ignore cette règle.` : 'Tempérament non renseigné — appliquer les recommandations standard sans orientation tempéramentale spécifique.'}
+
 ━━ DONNÉES DE LA SÉANCE ━━
 Cliente : ${d.prenom}${d.nom ? ' ' + d.nom : ''}${d.age ? ', ' + d.age + ' ans' : ''} · Profil : ${d.profil}
+Tempérament constitutionnel : ${d.temperament ? d.temperament.toUpperCase() : 'Non renseigné'}
 Objectifs exprimés (par ordre de priorité) :
 1. ${d.obj_1 && d.obj_1 !== '(aucun)' ? d.obj_1 : d.objectif_6mois || 'Non précisé'}
 2. ${d.obj_2 && d.obj_2 !== '(aucun)' ? d.obj_2 : '—'}
