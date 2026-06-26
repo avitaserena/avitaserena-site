@@ -504,26 +504,28 @@ function calcIMC() {
   let bg = 'var(--vert-clair)';
 
   if (imc) {
+    const imcV = imc.toFixed(1);
     if (imc < 18.5) {
-      msgs.push('⚠ <strong>Maigreur (IMC ' + imc.toFixed(1) + ')</strong> — risque de carences protéiques, déficit énergétique. Explorer une restriction alimentaire passée ou actuelle. Priorité : densité nutritionnelle.');
+      msgs.push("⚠ <strong>Maigreur (IMC " + imcV + ")</strong> — risque de carences protéiques, déficit énergétique. Explorer une restriction alimentaire passée ou actuelle. Priorité : densité nutritionnelle.");
       couleur = '#C0392B'; bg = '#FDECEA';
     } else if (imc < 25) {
-      msgs.push('✓ <strong>IMC normal (' + imc.toFixed(1) + ')</strong> — poids de forme. Ne pas axer le protocole sur la perte de poids.');
+      msgs.push("✓ <strong>IMC normal (" + imcV + ")</strong> — poids de forme. Ne pas axer le protocole sur la perte de poids.");
     } else if (imc < 30) {
-      msgs.push('→ <strong>Surpoids (IMC ' + imc.toFixed(1) + ')</strong> — explorer résistance à l'insuline, axe thyroïdien, cortisol chronique. Ne pas proposer de régime restrictif sans bilan hormonal préalable.');
+      msgs.push("→ <strong>Surpoids (IMC " + imcV + ")</strong> — explorer résistance à l'insuline, axe thyroïdien, cortisol chronique. Ne pas proposer de régime restrictif sans bilan hormonal préalable.");
       couleur = '#9B7230'; bg = 'var(--or-clair)';
     } else {
-      msgs.push('⚠ <strong>Obésité (IMC ' + imc.toFixed(1) + ')</strong> — inflammation de bas grade probable, résistance à l'insuline à évaluer (glycémie à jeun + insuline + HbA1c). Approche douce et non stigmatisante indispensable.');
+      msgs.push("⚠ <strong>Obésité (IMC " + imcV + ")</strong> — inflammation de bas grade probable, résistance à l'insuline à évaluer (glycémie à jeun + insuline + HbA1c). Approche douce et non stigmatisante indispensable.");
       couleur = '#C0392B'; bg = '#FDECEA';
     }
   }
 
   if (rth) {
+    const rthV = rth.toFixed(2);
     if (rth >= 0.85) {
-      msgs.push('⚠ <strong>RTH ' + rth.toFixed(2) + ' — adiposité abdominale</strong> — risque métabolique et cardiovasculaire élevé. Explorer cortisol (stress chronique → graisse viscérale), insulinorésistance, microbiote (dysbiose → perméabilité → inflammation → stockage abdominal).');
+      msgs.push("⚠ <strong>RTH " + rthV + " — adiposité abdominale</strong> — risque métabolique et cardiovasculaire élevé. Explorer cortisol (stress chronique), insulinorésistance, microbiote (dysbiose → perméabilité → inflammation → stockage abdominal).");
       if (couleur !== '#C0392B') { couleur = '#9B7230'; bg = 'var(--or-clair)'; }
     } else if (rth) {
-      msgs.push('✓ <strong>RTH ' + rth.toFixed(2) + '</strong> — répartition corporelle saine, pas d'adiposité abdominale significative.');
+      msgs.push("✓ <strong>RTH " + rthV + "</strong> — répartition corporelle saine, pas d'adiposité abdominale significative.");
     }
   }
 
@@ -756,8 +758,28 @@ function refreshDelta(el, id, before) {
 }
 
 /* ── INIT ── */
-buildSliders();
-updateSeal();
+document.addEventListener('DOMContentLoaded', () => {
+  buildSliders();
+  updateSeal();
+
+  // Préremplir depuis URL ?k=
+  const params = new URLSearchParams(window.location.search);
+  const k = params.get('k');
+  const mode = params.get('mode');
+  if (k) {
+    // Charger automatiquement le bilan existant
+    supaFetch('bilan_entree?client_key=eq.' + encodeURIComponent(k) + '&order=created_at.desc&limit=1', { prefer: '' })
+      .then(rows => {
+        if (rows && rows.length) {
+          restore(rows[0]);
+          if (mode === 'cloture') {
+            setTimeout(() => ouvrirComparaison(), 500);
+          }
+        }
+      })
+      .catch(() => {});
+  }
+});
 </script>
 </body>
 </html>
