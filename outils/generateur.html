@@ -854,6 +854,15 @@ function buildClientData() {
     bilans_justif: gv('bilans-justif'),
     // Tempérament constitutionnel (depuis questionnaire visio ou sélection manuelle dans le générateur)
     temperament: gv('m-temperament') || s.temperament || '',
+    // Terrains biologiques CHANBIO (depuis questionnaire de consultation)
+    chanbio_terrains: s.chanbio_terrains || '',
+    chanbio_notes: s.chanbio_notes || '',
+    // Pathologies digestives spécifiques (depuis questionnaire de consultation)
+    digestif_pathologies: s.digestif_pathologies || '',
+    digestif_notes: s.digestif_notes || '',
+    // Pathologies gynéco-hormonales spécifiques (depuis questionnaire de consultation)
+    gyneco_pathologies: s.gyneco_pathologies || '',
+    gyneco_notes: s.gyneco_notes || '',
   };
 }
 
@@ -877,15 +886,15 @@ function detectSiboMethane(d) {
 
 function buildReglesProtocoleCyclique(d) {
   // Détecte si le profil est hormonal (SOPK, SPM, endométriose, périménopause)
-  const champsTextuels = [d.selects_complets, d.textes_libres, d.symptomes_coches, d.chips, d.gyneco, d.notes_praticien, d.motifs].filter(Boolean).join(' \n ');
-  const profilHormonal = /SOPK|SPM|endométriose|périménopause|ménopause|cycle|progesterone|oestrogène|estrogène|règles|menstruel|ovul/i.test(champsTextuels);
+  const champsTextuels = [d.selects_complets, d.textes_libres, d.symptomes_coches, d.chips, d.gyneco, d.notes_praticien, d.motifs, d.gyneco_pathologies || ''].filter(Boolean).join(' \n ');
+  const profilHormonal = /SOPK|SPM|endométriose|périménopause|ménopause|cycle|progesterone|oestrogène|estrogène|règles|menstruel|ovul|aménorrhée/i.test(champsTextuels);
   if (!profilHormonal) return '';
 
-  // Détecte quel profil hormonal précisément
   const isSPM = /SPM|prémenstruel|premenstruel/i.test(champsTextuels);
   const isSOPK = /SOPK|polykystique/i.test(champsTextuels);
   const isEndo = /endométriose|endo\b|dysménorrhée|dyspareunie/i.test(champsTextuels);
   const isMeno = /périménopause|ménopause|bouffées de chaleur|post.ménopause/i.test(champsTextuels);
+  const isAmeno = /aménorrhée secondaire|aménorrhée/i.test(champsTextuels);
 
   const lines = [
     '',
@@ -919,18 +928,50 @@ function buildReglesProtocoleCyclique(d) {
     '',
   ];
 
-  if (isMeno) {
-    lines.push('── Périménopause — adaptation spécifique ──');
-    lines.push('En périménopause, le cycle devient irrégulier et les phases fluctuent. L\'approche est différente : stabiliser le terrain global plutôt que suivre un cycle précis.');
-    lines.push('• Alimentation : phytoestrogènes doux (graines de lin fraîchement moulues 1 c.s./j, miso, edamame — pas de compléments phytoestrogènes sans bilan hormonal). Calcium et magnésium quotidiens. Réduire les excitants (café, alcool, sucre) qui amplifient les bouffées de chaleur.');
-    lines.push('• Activité : musculation 2-3x/semaine (capital osseux + métabolisme). Cohérence cardiaque systématique pour moduler l\'axe HHS.');
+  if (isEndo) {
+    lines.push('━━ RÈGLE ENDOMÉTRIOSE — PROTOCOLE SPÉCIFIQUE ━━');
+    lines.push('⚠️ Pathologie inflammatoire chronique confirmée ou suspectée. Ces recommandations s\'ajoutent au protocole cyclique en soutien du suivi médical et gynécologique, jamais à sa place.');
+    lines.push('ALIMENTATION ANTI-INFLAMMATOIRE : à favoriser — légumes verts, fruits rouges et agrumes (antioxydants), céréales complètes, légumineuses, légumes crus ou cuits, kéfir/yaourts nature/choucroute/miso/kimchi (microbiote et régulation hormonale), protéines maigres (légumineuses, tofu, œufs, viandes blanches, poissons). À éviter — fritures, viandes transformées, produits industriels (graisses trans pro-inflammatoires) ; laitages (réduire selon tolérance individuelle) ; gluten (période d\'exclusion évaluable pendant les règles) ; sodas, pâtisseries, sucreries (sucre raffiné = inflammation) ; café et alcool.');
+    lines.push('COMPLÉMENTS ENDOMÉTRIOSE : Magnésium bisglycinate ou citrate (Nutergia Ergymag, NHCO ou Nutripure, 200 à 400 mg/j) ; Zinc bisglycinate (Nutripure Zinc ou NHCO, 10 à 20 mg/j, 3 mois — ⚠️ ne pas prendre en même temps que le fer) ; Oméga-3 EPA+DHA (Omégabiane EPA/DHA Pileje ou Nutripure, 500 mg à 1g/j, doubler si douleurs importantes) ; Vitamine B6 si absente du magnésium (Orfito, 35 à 140 mg/j, max 500 mg/j) ; Vitamine D (Nutripure/Pileje/Nutergia, 1000 à 2000 UI/j) ; L-Glutamine si porosité intestinale associée (Ergyprotect Confort Nutergia, 2 à 5g/j — ⚠️ CI hépatiques ou rénales).');
+    lines.push('PHYTOTHÉRAPIE ENDOMÉTRIOSE : Achillée millefeuille (antispasmodique et anti-inflammatoire pelvien — 1 c. à café feuilles séchées en infusion, de l\'ovulation au J1 des règles — ⚠️ CI femmes enceintes, pathologie hormono-dépendante, contraception hormonale) ; Framboisier (tonifie l\'utérus, réduit les douleurs menstruelles — 1 c. à soupe feuilles séchées, 3 fois/j pendant les règles — ⚠️ CI pathologie hormono-dépendante, grossesse < 36 SA) ; Gattilier (équilibre hormonal, régule la prolactine et l\'excès d\'œstrogènes — 25 à 30 gouttes 3 fois/j dans l\'eau froide, de l\'ovulation aux règles — ⚠️ CI cancer hormono-dépendant, grossesse, contraception hormonale, LH haute, traitement ovulation) ; Gingembre (anti-inflammatoire et anti-nausées — 1 à 2g râpé en frais dans eau chaude, 2 fois/j — ⚠️ CI obstruction voies biliaires).');
     lines.push('');
   }
 
-  lines.push('Intègre cette section de façon pédagogique et accessible — avec un sous-titre par phase, en vouvoiement, en expliquant POURQUOI chaque recommandation est adaptée à cette phase hormonale. La cliente doit comprendre son cycle comme un outil, pas comme une contrainte.');
+  if (isSOPK) {
+    lines.push('━━ RÈGLE SOPK — PROTOCOLE SPÉCIFIQUE ━━');
+    lines.push('Le SOPK associe résistance à l\'insuline, excès d\'androgènes et inflammation chronique. Les recommandations ci-dessous ciblent ces trois mécanismes.');
+    lines.push('ALIMENTATION SOPK : à favoriser — féculents complets et légumineuses (patates douces, quinoa, riz basmati, lentilles, pois chiches, millet, sarrasin, flocons d\'avoine — stabilisent la glycémie) ; fruits et légumes + graines de chia et de lin (25 à 30g fibres/j) ; protéines maigres (poissons, volailles, œufs, tofu, tempeh) ; graisses saines (avocats, huile d\'olive, noix, poissons gras) ; curcuma, cannelle (1 à 2g/j en épice — améliore la sensibilité à l\'insuline), gingembre, baies, légumes colorés, thé vert. À éviter — sodas, pâtisseries, sucreries (résistance à l\'insuline) ; produits ultra-transformés (graisses trans) ; plats préparés (perturbateurs endocriniens, bisphénol A — ne pas chauffer au micro-ondes dans des contenants plastiques).');
+    lines.push('COMPLÉMENTS SOPK : Inositol — myo-inositol + D-chiro-inositol, 2 à 4g/j souvent associé à 200 µg d\'acide folique (B9). Marques : Dynveo Inositol, Nutripure, ou Feminabiane SOPK (Pileje — intègre myo-inositol + B9). Alternative complexe : Zytolia (myo-inositol + B9 + D3 + chrome + zinc, complément SOPK de référence en France) ; Magnésium bisglycinate ou citrate (Nutripure, Dynveo ou NHCO, 200 à 400 mg/j) ; Oméga-3 EPA+DHA (Nutripure ou Nutergia Ergyfin, 500 mg/j) ; Vitamine D (Nutripure/Nutergia/Pileje, 1000 à 2000 UI/j — fréquemment carencée dans le SOPK) ; Zinc bisglycinate (Nutripure ou NHCO, 15 à 30 mg/j, 3 mois — ⚠️ ne pas prendre en même temps que le fer).');
+    lines.push('PHYTOTHÉRAPIE SOPK : Gattilier (régule le cycle menstruel, réduit la prolactine — 25 à 30 gouttes 3 fois/j dans l\'eau froide, de l\'ovulation aux règles ; si cycles très irréguliers : du J1 jusqu\'à l\'ovulation puis pause, ou quotidiennement 3 mois puis 1 mois de pause — ⚠️ CI cancer hormono-dépendant, grossesse, contraception hormonale, LH haute, traitement ovulation) ; Cannelle (épice culinaire 1 à 2g/j, améliore la sensibilité à l\'insuline) ; Menthe poivrée en tisane (réduit les androgènes et l\'hirsutisme — 1 à 2 tasses/j — ⚠️ CI grossesse, allaitement, RGO).');
+    lines.push('');
+  }
+
+  if (isMeno) {
+    lines.push('── Périménopause / Ménopause — adaptation spécifique ──');
+    lines.push('En périménopause, le cycle devient irrégulier et les phases fluctuent. L\'approche est différente : stabiliser le terrain global plutôt que suivre un cycle précis.');
+    lines.push('• Alimentation : phytoestrogènes doux (soja/tofu/tempeh/lait de soja, graines de lin fraîchement moulues 1 à 2 c. à soupe/j, miso, edamame — une fois par jour). ⚠️ Si hypothyroïdie traitée : éviter les phyto-œstrogènes dans les 3 à 4h après la prise médicamenteuse. Calcium et magnésium quotidiens. Réduire les excitants (café, alcool, sucre) qui amplifient les bouffées de chaleur. Protéines maigres pour soutenir la masse musculaire. Produits laitiers, légumes verts, amandes, sardines pour la densité osseuse.');
+    lines.push('• Activité : musculation 2-3x/semaine (capital osseux + métabolisme). Marche, vélo. Cohérence cardiaque systématique. Yoga, méditation, respiration profonde.');
+    lines.push('• Hydratation : 1,5 à 2 litres/j pour prévenir la sécheresse cutanée et les inconforts vaginaux.');
+    lines.push('COMPLÉMENTS MÉNOPAUSE : Vitamine D (Nutripure/Nutergia/Pileje, 1000 à 2000 UI/j — indispensable pour le calcium et la densité osseuse) ; Calcium 950 mg/j (sources alimentaires prioritaires : produits laitiers, légumes verts, amandes, tofu) ; Magnésium bisglycinate ou citrate (Nutergia Ergymag ou NHCO, 200 à 400 mg/j).');
+    lines.push('PHYTOTHÉRAPIE MÉNOPAUSE : Houblon (Humulus lupulus) — lutter contre les bouffées de chaleur, 300 mg/j en comprimés pendant 4 à 12 semaines (⚠️ CI antécédent cancer hormono-dépendant) ; Sauge officinale (feuilles séchées, 1 c. à café dans une tasse d\'eau chaude, 2 à 3 fois/j — réduit les bouffées de chaleur et sueurs nocturnes — ⚠️ CI épilepsie, grossesse, allaitement) ; Lin graines moulues (1 à 2 c. à soupe/j dans smoothies ou céréales — lignanes phytoestrogéniques) ; Trèfle rouge (teinture mère, 20 gouttes diluées dans eau, 2 fois/j, 3 semaines par mois — riche en isoflavones — ⚠️ CI cancer hormono-dépendant) ; Maca (poudre ou comprimés, 2g/j pendant 3 mois — plante adaptogène régulatrice hormonale — ⚠️ CI hypertension artérielle, hypothyroïdie).');
+    lines.push('');
+  }
+
+  if (isAmeno) {
+    lines.push('━━ RÈGLE AMÉNORRHÉE SECONDAIRE — PROTOCOLE SPÉCIFIQUE ━━');
+    lines.push('L\'aménorrhée secondaire (absence de règles > 3 cycles consécutifs chez une femme précédemment réglée) est un signal d\'alarme d\'un déséquilibre hormonal sous-jacent. Causes fréquentes : stress intense (cortisol inhibant la GnRH), carences nutritionnelles ou énergétiques, activité physique excessive, arrêt de contraception hormonale, déséquilibres thyroïdiens ou excès de prolactine. L\'objectif naturopathe est de nourrir le corps pour rétablir les fonctions hormonales et énergétiques.');
+    lines.push('ALIMENTATION AMÉNORRHÉE — nourrir le terrain hormonal : Graisses saines à CHAQUE repas (indispensables à la synthèse des œstrogènes) — avocats, huile d\'olive et colza, poissons gras, graines de chia et de lin. Protéines de qualité à chaque repas (acides aminés pour les glandes endocrines) — œufs, volailles, légumineuses, tofu. Féculents complets à chaque repas (glucides régulant le cortisol et soutenant les ovaires) — patates douces, quinoa, riz basmati, légumineuses, flocons d\'avoine. Apport calorique suffisant — l\'aménorrhée est souvent un signal de restriction énergétique, assurer un apport suffisant surtout si activité physique importante.');
+    lines.push('COMPLÉMENTS AMÉNORRHÉE : Magnésium bisglycinate ou citrate (NHCO, Dynveo ou Nutripure, 200 à 400 mg/j) ; Zinc bisglycinate (NHCO ou Nutripure, 15 à 30 mg/j, 3 mois — ⚠️ ne pas prendre en même temps que le fer) ; Oméga-3 EPA+DHA (Nutripure ou Omégabiane EPA/DHA Pileje, 500 mg/j) ; Vitamine D (Nutripure/Nutergia/Pileje, 1000 à 2000 UI/j).');
+    lines.push('PHYTOTHÉRAPIE AMÉNORRHÉE : Gattilier (Vitex agnus-castus) — régule l\'axe hormonal et stimule la production de progestérone. Tisane : 1 c. à soupe/tasse, 2 à 3 fois/j, 3 semaines puis 1 semaine d\'arrêt, pendant 3 mois. Teinture mère : 30 gouttes dans un peu d\'eau, 1 à 2 fois/j le matin à jeun, 3 semaines avec 1 semaine d\'arrêt pendant 3 mois. ⚠️ CI grossesse, allaitement, cancer hormono-dépendant, contraception hormonale, LH haute, traitement ovulation. HE Sauge sclarée — régule le taux d\'œstrogènes, massage bas-ventre 3 gouttes dans huile végétale d\'amande douce, 3 semaines avec 1 semaine d\'arrêt.');
+    lines.push('GESTION DU STRESS — PRIORITÉ ABSOLUE : Le cortisol est le premier frein à la GnRH et donc à tout le cycle menstruel. Les techniques psychocorporelles (yoga, cohérence cardiaque, méditation, sophrologie) sont au cœur du protocole, pas optionnelles. À intégrer systématiquement dans le pilier psychologie du PHV.');
+    lines.push('');
+  }
+
+  lines.push('Intègre ces recommandations spécifiques de façon pédagogique et accessible — avec un sous-titre par profil, en vouvoiement, en expliquant POURQUOI chaque recommandation est adaptée à ce terrain hormonal. La cliente doit comprendre ses déséquilibres comme des signaux à écouter, pas comme des fatalités.');
 
   return lines.filter(l => l !== '').join('\n');
 }
+
 
 function buildReglesSiboMethane(siboMethaneAvere) {
   if (!siboMethaneAvere) return '';
@@ -1098,6 +1139,68 @@ BILIEUX (colérique, sec, chaud, Feu) :
 
 Si le tempérament n'est pas renseigné, ignore cette règle.` : 'Tempérament non renseigné — appliquer les recommandations standard sans orientation tempéramentale spécifique.'}
 
+━━ RÈGLE N°9 — PATHOLOGIES DIGESTIVES SPÉCIFIQUES ━━
+${d.digestif_pathologies ? `Les pathologies digestives suivantes ont été identifiées par le praticien : ${d.digestif_pathologies}.
+${d.digestif_notes ? 'Contexte : ' + d.digestif_notes : ''}
+
+⚠️ IMPORTANT : Le SIBO/IMO est géré par la Règle N°5bis — NE PAS dupliquer ces recommandations ici. Les règles ci-dessous concernent uniquement les pathologies cochées.
+Intègre les recommandations correspondantes dans les piliers alimentation et soutiens ciblés. Les conseils hygiéno-diététiques (mastication, rythme, positionnement) vont dans le pilier alimentation. Les compléments s'ajoutent à la liste des soutiens ciblés dans la limite du quota global.
+
+UGD / GASTRITE / RGO (ulcère gastro-duodénal, gastrite chronique, reflux gastro-œsophagien) :
+- Objectif naturopathique : limiter l'acidité, traiter l'inflammation, favoriser la cicatrisation, traiter Helicobacter pylori si terrain déséquilibré.
+- Clés de santé OBLIGATOIRES dans le PHV : bien mâcher (30 mastications minimum), ne jamais prendre d'AINS (anti-inflammatoires) le ventre vide, se détendre à chaque repas (le stress augmente la production d'acide chlorhydrique), éviter alcool/café/chocolat/tomate/agrumes/moutarde/poivre si ces aliments aggravent, diminuer les produits laitiers et aliments gras. RGO spécifique : manger lentement, assiette aux 3/4 pleine, tête relevée de 15 cm pour dormir, éviter vêtements serrés à la taille, bouillotte chaude sur le ventre au besoin.
+- Phytothérapie : Réglisse déglycyrrhizinée (Glycyrrhiza glabra) — favorise la formation de mucus protecteur ; Aloé vera gel pur à 95% bio, 30 ml 2x/j, 1 à 3 mois — cicatrisant des muqueuses (NE PAS utiliser le suc qui est laxatif) ; Camomille romaine (Chamaemelum nobile) en tisane — antispasmodique digestive ; Bourgeon de figuier (Ficus carica) — apaisant du système digestif, 2 à 3x/j 7 gouttes dans un verre d'eau. Plantes pour soulager le foie (activent le péristaltisme) : artichaut, radis noir, chardon-Marie EPS Phytostandard.
+- Autres : bicarbonate de soude alimentaire 1 c. à café dans un verre d'eau (max 3x/j, 2h après repas, pas de contre-indication) ; argile verte 1 c. à soupe dans 200 ml d'eau (laisser reposer 12h, boire 2x/j une demi-heure avant repas principaux, pendant 21 jours — éviter de remuer, contre-indiqué femmes enceintes et enfants < 36 mois) ; massage circulaire de l'abdomen dans le sens des aiguilles d'une montre, 10 cercles minimum par séance.
+- Compléments : L-Glutamine 5g/j minimum 2 mois (Permealine Pileje) — carburant des entérocytes, cicatrisant muqueux.
+
+HYPERPERMÉABILITÉ INTESTINALE (HPI / Leaky Gut Syndrom) :
+- Objectif : restaurer l'intégrité de la muqueuse intestinale, réduire l'inflammation de bas grade, diversifier et renforcer le microbiote.
+- Alimentation prioritaire : supprimer les sucres raffinés (phénomènes de fermentation), les acides trans artificiels, les laitages (préférer brebis/chèvre si besoin), limiter la viande rouge. Eau en bouteille de verre. Se débarrasser des ustensiles en aluminium. Aliments riches en probiotiques naturels : choucroute crue, kéfir, kombucha, papaye fermentée, yaourt brebis/chèvre. Aliments riches en prébiotiques chaque jour : ail, artichaut, échalote, oignon, légumes verts frais bio. Réduire le stress (yoga, relaxation, méditation).
+- À éviter absolument : antibiotiques et corticoïdes per os si possible (écimer les souches bactériennes pathogènes), AINS, IPP au long cours (réduisent l'absorption de Mg, Fe, Ca, B12), fumer, expositions aux fumées secondaires.
+- Compléments prioritaires : L-Glutamine 5g/j minimum 2 mois (Permealine Pileje) ; Probiotiques Lactibiane Tolérance (Pileje) 1 gél/j ; Boswellia serrata extrait standardisé à 90% boswellines 1 à 1,5g/j de boswelline, minimum 3 mois (anti-inflammatoire muqueux puissant, large indication digestive/respiratoire) ; Oméga-3 EPA/DHA Omégabiane Pileje 2 gél/j au repas. Vitamine D3 800 UI/j en dehors des périodes printanière et estivale.
+
+SYNDROME DE L'INTESTIN IRRITABLE (SII / colopathie fonctionnelle) :
+- Causes fréquentes : altération du microbiote, carence en vitamine D, perturbateurs endocriniens, hypersensibilité au stress acquise dans l'enfance.
+- Alimentation : régime méditerranéen ou végétarien biologique en priorité. Si antécédent d'antibiothérapie, prébiotiques 6 semaines minimum. Si terrain inflammatoire associé (MICI, Crohn, rhumatisme articulaire) : Boswellia serrata. Si colopathie droite ("côlon droit") : régime sans FODMAP sur 3 mois minimum.
+- Vitamine D : complémentation entre le 15 octobre et le 15 avril (au minimum), 800 UI/j. Si carence objectivée par dosage sanguin, se référer au médecin traitant.
+- Gestion du stress : yoga, sophrologie, techniques psychocorporelles, reiki, EFT — l'hypersensibilité au stress est une indication majeure pour ces approches.
+- Compléments : Magnésium liposomal bisglycinate (bisglycinate + glycérophosphate) avec fixateurs intracellulaires (vitamine B6 + taurine) ; Lactibiane Référence 5M (Pileje) 1 gél/j 1 à 3 mois.
+
+BALLONNEMENTS / GAZ / MÉTÉORISME :
+- Cause principale : dysbiose (anomalie de la flore microbactérienne) ou fermentation liée à des repas trop rapides, association d'aliments incompatibles, défaut de mastication.
+- Règle d'or dans le PHV : bien mâcher et manger lentement — c'est le premier traitement du ballonnement. Manger loin des repas et placer le dessert et les fruits vers 17h soulage la digestion.
+- Phytothérapie : plantes carminatives (à graines) en infusion — anis vert, badiane (anis étoilé), fenouil, angélique ; tisane anis-carvi-fenouil : écraser les fruits à parts égales, 1 c. à café dans 200 ml eau chaude, infuser 20 min, 1 tasse après chaque repas (contre-indiqué femmes enceintes et antécédent cancer du sein).
+- Autres : charbon activé (absorbe les gaz) en poudre (1 c. à café dans un peu d'eau) ou gélule à jeun, à distance de tout autre complément ou médicament.
+- HE (usage externe sur le ventre, dilution 20% dans huile végétale) : estragon (Artemisia dracunculus) ou basilic exotique (Ocimum basilicum) — antispasmodiques intestinaux puissants, quelques gouttes sur le ventre au besoin (éviter femmes enceintes, enfants, anticoagulants, antécédent cancer du sein).
+
+COLIQUES / SPASMES INTESTINAUX :
+- Cause principale : contraction anormale des muscles de la paroi intestinale par hyperstimulation du système nerveux orthosympathique secondaire au stress. La guérison passe souvent par la relaxation et la psychologie.
+- Phytothérapie : Mélisse (Melissa officinalis) — plante antispasmodique de référence, 1 c. à café par tasse, infuser 10 minutes, à éviter chez les femmes enceintes.
+- HE (quelques gouttes dans huile végétale sur le ventre) : estragon et/ou basilic exotique, riches en méthylchavicol.
+- Hydrologie : capillothérapie Dr Salmanoff — appliquer 20 min une serviette mouillée très chaude sur le ventre, puis poser une bouillotte bien chaude sur la serviette pour éviter son refroidissement.
+
+CONSTIPATION CHRONIQUE :
+- Règle d'or : boire 1,5 à 2 litres d'eau/j (le manque d'hydratation est la 1ère cause), marcher (automassage du système digestif). Rituel selle : s'astreindre à des horaires fixes dans un moment calme et tranquille, boire un verre d'eau pure, faire quelques mouvements du buste avec des flexions, placer un petit tabouret sous les pieds (20 cm) pour surélever les cuisses, bassin vers l'arrière pour débloquer l'ampoule rectale.
+- Alimentation : fruits secs pruneaux/abricots réhydratés, mûres, framboises, dattes, amandes, carottes surtout en jus, figues fraîches et sèches, raisins, persil. Limiter : céréales, chocolat, riz blanc, viandes rouges, pomme de terre. Pensez au drainage du foie (artichaut ou radis noir en drainage hépatique) car la constipation entraîne une réabsorption des toxines hépatiques par l'intestin.
+- Laxatifs de lest (fibres solubles) : psyllium blond 1 c. à café avant les repas dans un grand verre d'eau (avaler rapidement), jusqu'à 1 c. à soupe (15g)/j ; boire davantage à chaque prise. Gommes (konjac, guar). À éviter en cas de diverticules coliques.
+- HE aromathérapie (massage ventre) : gingembre (Zingiber officinalis) dilué dans huile végétale de jojoba, 4 gouttes dans 1 c. à café, masser le ventre après le repas en tournant dans le sens des aiguilles d'une montre.
+
+MICI — MALADIE DE CROHN / RECTOCOLITE ULCÉRO-HÉMORRAGIQUE :
+- ⚠️ Pathologie médicale sérieuse — toutes les recommandations naturopatiques s'effectuent EN COMPLÉMENT du suivi médical et gastro-entérologique, jamais à sa place. Mentionner explicitement dans le PHV que ces conseils ne remplacent pas le traitement prescrit.
+- Alimentation pendant les phases calmes : petits repas fréquents, boire suffisamment (éviter les boissons gazeuses, alcoolisées, caféinées), légumes et fruits plutôt cuits que crus, limiter les aliments riches en fibres pendant les crises. Identifier les aliments déclencheurs individuels (tenir un journal alimentaire). Éviter l'aspirine et les AINS (préférer paracétamol max 3g/j). Surveiller le statut en vitamines et minéraux (A, B9, B12, C, D, E, K, calcium, cuivre, fer, magnésium, sélénium, zinc) car l'inflammation chronique et la malabsorption créent des carences sévères.
+- Gestion du stress : yoga, reiki, Qi gong, tai-chi, EFT, protocole de cohérence cardiaque — le stress entretient et aggrave l'inflammation, diminue significativement le seuil de tolérance à la douleur.
+- Activité physique : 20 à 30 min, 3x/semaine, rythme modéré ou soutenu suffisent — amélioration significative de toute la symptomatologie.
+- Compléments : Curcumine 1200mg/j (curcuma extrait standardisé en curcumine — anti-inflammatoire puissant via NF-kB, efficacité démontrée sur la rectocolite) ; Boswellia serrata extrait standardisé 1g/j de boswelline minimum 3 mois (voire plusieurs années en pathologie chronique) ; Oméga-3 EPA/DHA Omégabiane Pileje 1 capsule/j (huile de krill) ; Vitamine D3 800 UI/j d'octobre à mars ; Chlorophylle 20 gouttes dans 1 litre d'eau à boire chaque jour (régulateur de la fermentation intestinale, régénération de la flore) ; Probiotiques Lactibiane Référence 5M (Pileje) 1 gél/j.
+- Phytothérapie : Boswellia serrata (voir compléments ci-dessus) — peut diminuer progressivement les posologies des traitements allopathiques en phase de rémission, sous contrôle médical.
+
+CANDIDOSE CHRONIQUE :
+- ⚠️ Pathologie complexe nécessitant une prise en charge spécifique et un suivi renforcé. Préciser dans le PHV que ces conseils s'inscrivent dans un accompagnement global.
+- Alimentation — ÉVICTION STRICTE pendant minimum 3 mois : sucre sous toutes ses formes (bière, pain, gluten, produits laitiers) qui nourrissent le Candida. Privilégier fruits et légumes (prébiotiques FOS). Soigner l'hygiène corporelle et buccale (éviter les lotions, gels douches, dentifrices trop acides).
+- Compléments : Probiotiques Lactibiane Cnd 10M (Pileje) — contient Lactobacillus helveticus LA 401 candisis, efficace spécifiquement contre la candidose, 1 gél/j ; L-Glutamine 5g/j pour reconstituer la paroi intestinale (Permealine Pileje) ; Zinc 2 ampoules/j Granions (cofacteur enzymatique, besoins accrus par le système immunitaire).
+- Protocole d'éradication : argent colloïdal 20 PPM, 1 bouchon matin et soir, 20 min avant les repas ; complexe anti-Candida (type Cleans Candida Solaray) 1 gélule matin et soir pendant les repas ; chlorophylle 20 gouttes dans 1 litre d'eau à boire chaque jour.
+
+Si aucune pathologie digestive n'est renseignée ou si seul le SIBO/IMO est présent, ignore cette règle N°9.` : 'Aucune pathologie digestive spécifique renseignée.'}
+
 ━━ DONNÉES DE LA SÉANCE ━━
 Cliente : ${d.prenom}${d.nom ? ' ' + d.nom : ''}${d.age ? ', ' + d.age + ' ans' : ''} · Profil : ${d.profil}
 Tempérament constitutionnel : ${d.temperament ? d.temperament.toUpperCase() : 'Non renseigné'}
@@ -1132,6 +1235,10 @@ ${d.lifeline || '— Non renseigné'}
 
 🔬 ANALYSE CAUSALE PRATICIEN (cascade des premiers dominos) :
 ${d.notes_praticien || '— Non renseigné'}
+🫁 PATHOLOGIES DIGESTIVES SPÉCIFIQUES : ${d.digestif_pathologies || '— Non renseigné'}
+${d.digestif_notes ? '📝 Contexte digestif : ' + d.digestif_notes : ''}
+🌸 PATHOLOGIES GYNÉCO-HORMONALES : ${d.gyneco_pathologies || '— Non renseigné'}
+${d.gyneco_notes ? '📝 Contexte hormonal : ' + d.gyneco_notes : ''}
 
 ━━ PARAMÈTRES DU PROTOCOLE (définis par le praticien après séance) ━━
 🎯 Axes de travail prioritaires : ${d.axes_prioritaires}
