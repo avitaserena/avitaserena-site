@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lettre clinique · Avita Serena</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap" rel="stylesheet">
+<style>
+/* ── Variables ── */
+:root {
+  --ardoise:#1A1814; --ocre:#B07D3A; --sable:#F5F0E8; --grege:#E8E0D4;
+  --muted:#8A7B6B; --border:#D4C8B8; --violet:#6C47FF;
+  --ink:#2C2520; --ink2:#5A4F47;
+  --r4:4px; --r8:8px; --r12:12px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:14px}
+body{font-family:'Inter',-apple-system,sans-serif;background:#F0EBE3;color:var(--ink);min-height:100vh;-webkit-font-smoothing:antialiased}
+
+/* ── INTERFACE PRATICIEN ── */
+.ui-wrap{display:grid;grid-template-columns:320px 1fr;min-height:100vh;gap:0}
+
+/* Panneau latéral */
+.ui-panel{background:white;border-right:1.5px solid var(--border);padding:28px 24px;display:flex;flex-direction:column;gap:20px;position:sticky;top:0;height:100vh;overflow-y:auto}
+.ui-logo{display:flex;align-items:center;gap:10px;padding-bottom:18px;border-bottom:1px solid var(--border)}
+.ui-logo svg{width:120px;height:auto}
+.ui-section{display:flex;flex-direction:column;gap:10px}
+.ui-label{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.ui-field{display:flex;flex-direction:column;gap:5px}
+.ui-field label{font-size:12px;font-weight:600;color:var(--ink)}
+.ui-field input,
+.ui-field textarea,
+.ui-field select{width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--r8);font-family:'Inter',sans-serif;font-size:13px;color:var(--ink);background:var(--sable);transition:border-color .15s;resize:vertical}
+.ui-field input:focus,
+.ui-field textarea:focus,
+.ui-field select:focus{outline:none;border-color:var(--ocre)}
+.ui-field textarea{min-height:70px}
+.ui-divider{height:1px;background:var(--border)}
+.btn-print{width:100%;padding:13px;background:var(--ardoise);color:white;border:none;border-radius:var(--r8);font-family:'Inter',sans-serif;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.04em;transition:background .15s;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-print:hover{background:#2C2520}
+.btn-print svg{width:16px;height:16px;stroke:white;fill:none;stroke-width:2}
+.btn-save{width:100%;padding:10px;background:var(--ocre);color:white;border:none;border-radius:var(--r8);font-family:'Inter',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:background .15s;margin-top:4px}
+.btn-save:hover{background:#9A6D2A}
+.ui-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;background:rgba(176,125,58,.12);color:var(--ocre);border-radius:99px;font-size:10px;font-weight:700;letter-spacing:.05em}
+.client-card{background:var(--sable);border:1.5px solid var(--border);border-radius:var(--r8);padding:14px}
+.client-name{font-size:14px;font-weight:700;color:var(--ardoise)}
+.client-meta{font-size:11px;color:var(--ink2);margin-top:3px;line-height:1.6}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ardoise);color:white;padding:10px 20px;border-radius:99px;font-size:12px;font-weight:600;opacity:0;transition:opacity .25s;z-index:999;pointer-events:none}
+.toast.show{opacity:1}
+
+/* ── APERÇU LETTRE ── */
+.preview-area{padding:40px;display:flex;align-items:flex-start;justify-content:center;background:#E8E0D4}
+
+/* La lettre elle-même */
+.lettre{background:white;width:210mm;min-height:297mm;padding:20mm 22mm 20mm 22mm;box-shadow:0 8px 40px rgba(0,0,0,.15);position:relative;font-family:'Inter',sans-serif}
+
+/* En-tête */
+.lt-header{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:10mm;border-bottom:2px solid var(--ardoise);margin-bottom:9mm}
+.lt-brand{}
+.lt-brand-name{font-family:'Cormorant Garamond',Georgia,serif;font-size:22pt;font-weight:500;color:var(--ardoise);letter-spacing:.02em;line-height:1.1}
+.lt-brand-sub{font-size:7.5pt;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--ocre);margin-top:3px}
+.lt-brand-coords{margin-top:8px;font-size:7pt;color:var(--muted);line-height:1.8}
+.lt-meta{text-align:right}
+.lt-ref{font-size:7pt;color:var(--muted);line-height:1.8}
+.lt-ref strong{color:var(--ink);font-size:7.5pt}
+.lt-ref-line{margin-top:2px}
+
+/* Barre ocre décorative */
+.lt-accent{width:100%;height:2.5px;background:linear-gradient(90deg,var(--ocre),var(--grege),transparent);margin-bottom:9mm}
+
+/* Destinataire */
+.lt-to-block{margin-bottom:8mm}
+.lt-to-label{font-size:6.5pt;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--ocre);margin-bottom:3px}
+.lt-to-name{font-size:11pt;font-weight:700;color:var(--ardoise)}
+.lt-to-spec{font-size:8.5pt;color:var(--ink2)}
+.lt-to-addr{font-size:8pt;color:var(--muted);margin-top:2px;line-height:1.5}
+
+/* Objet */
+.lt-objet{background:var(--sable);border-left:3px solid var(--ocre);padding:8px 14px;margin-bottom:8mm;border-radius:0 var(--r4) var(--r4) 0}
+.lt-objet-label{font-size:6.5pt;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--ocre)}
+.lt-objet-text{font-size:9.5pt;font-weight:700;color:var(--ardoise);margin-top:2px;line-height:1.4}
+
+/* Corps */
+.lt-body{font-size:9pt;color:var(--ink);line-height:1.75}
+.lt-body p{margin-bottom:4mm}
+
+/* Section clinique */
+.lt-section{margin:6mm 0}
+.lt-section-title{font-size:7pt;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--ocre);padding-bottom:2px;border-bottom:1px solid var(--grege);margin-bottom:3mm}
+.lt-grid{display:grid;grid-template-columns:1fr 1fr;gap:3mm}
+.lt-item{background:var(--sable);border-radius:var(--r4);padding:5px 9px}
+.lt-item-label{font-size:6pt;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.lt-item-val{font-size:8.5pt;font-weight:600;color:var(--ardoise);margin-top:1px}
+.lt-full{background:var(--sable);border-radius:var(--r4);padding:6px 9px;grid-column:1/-1}
+.lt-full-label{font-size:6pt;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.lt-full-val{font-size:8.5pt;color:var(--ink);margin-top:2px;line-height:1.6}
+
+/* Protocole */
+.lt-proto{background:#FAF7F3;border:1px solid var(--border);border-radius:var(--r4);padding:8px 12px;margin:6mm 0}
+.lt-proto-title{font-size:6.5pt;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--ocre);margin-bottom:3px}
+.lt-proto-body{font-size:8pt;color:var(--ink);line-height:1.7}
+
+/* Signature */
+.lt-footer{margin-top:auto;padding-top:8mm;border-top:1px solid var(--grege)}
+.lt-sign-name{font-family:'Cormorant Garamond',Georgia,serif;font-size:14pt;font-style:italic;color:var(--ardoise)}
+.lt-sign-titre{font-size:7.5pt;font-weight:600;color:var(--ocre);letter-spacing:.06em;margin-top:2px}
+.lt-sign-coords{font-size:7pt;color:var(--muted);margin-top:5px;line-height:1.7}
+.lt-confidential{margin-top:8mm;padding:5px 10px;background:var(--sable);border-radius:var(--r4);text-align:center}
+.lt-confidential p{font-size:6pt;color:var(--muted);letter-spacing:.04em;font-style:italic}
+
+/* Numéro de page */
+.lt-page-num{position:absolute;bottom:12mm;right:22mm;font-size:6.5pt;color:var(--muted)}
+
+/* ── PRINT ── */
+@media print {
+  body{background:white}
+  .ui-wrap{display:block}
+  .ui-panel{display:none}
+  .preview-area{padding:0;background:white}
+  .lettre{box-shadow:none;width:100%;min-height:auto;padding:14mm 18mm 14mm 18mm}
+  .lt-header{padding-bottom:7mm;margin-bottom:7mm}
+  .lt-section{margin:4mm 0}
+  @page{size:A4;margin:0}
+}
+</style>
+</head>
+<body>
+
+<div class="ui-wrap">
+
+  <!-- ── PANNEAU LATÉRAL ── -->
+  <div class="ui-panel">
+    <div class="ui-logo">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 402.52 116.56" fill="currentColor">
+        <path d="M162.95,72.57l3.25-4.84,9.58.03c.78,3.69,3.67,5.27,7.1,4.22.97-.3,2.42-1.88,2.53-2.84s-1.28-2.97-2.28-3.23l-8.34-2.11c-4.91-1.24-8.06-4.75-8.47-9.24-.44-4.81,1.6-9.22,6.5-11.26,5-2.08,11.05-2.11,15.88.45,3.68,1.95,6.1,4.92,6.23,9.84l-10.51.07c-.76-2.47-1.97-3.74-3.8-4.03-1.71-.27-4.44.97-4.65,2.56-.86,6.57,11.83,2.59,18.58,11.21.11-7.57,1.63-13.97,7.28-18.15,6.72-4.98,17.13-4.76,23.14,1.18,4.79,4.73,5.31,11.39,4.95,17.87h-24.66c-.01,3.74,2.16,6.58,4.86,7.3,3.86,1.04,7.16-.25,9.01-3.73l10.55.08c-1.97,8.22-8.98,12.8-17.18,12.72-7.82-.07-14.07-4.26-16.92-12.24-.16,4.57-2.35,8.46-6.78,10.44-9.31,4.18-20.95.92-23.22-8.57l-2.64,2.24ZM219.57,57.17c-.25-5.88-3.7-7.48-7.43-7.39s-6.62,2.7-6.49,7.48l13.92-.09Z"/>
+        <path d="M253.59,52.74c-2.81-.51-5.64-.46-8,.7-1.91.94-3.41,4.33-3.42,6.93l-.08,19.66-10.92-.02v-37.4s10.75-.04,10.75-.04l.42,6.19c2.57-4.99,7.36-7.01,12.48-5.84l-.12,7.28c3.45-5.62,8.94-8.39,15.57-8.41,7.13-.03,13.34,3.65,15.77,10.49,1.34,3.77,1.62,7.78,1.41,12.02l-24.74.02c-.24,3.63,2.12,6.55,5.11,7.34,3.48.92,6.72-.17,8.55-3.72h10.71c-2.02,8.06-8.77,12.75-16.83,12.73-6.2-.01-12.06-2.5-15.18-7.95-3.56-6.22-3.82-13.17-1.48-19.98ZM276.83,57.27c.33-4.4-2.56-7.6-6.91-7.56-3.86.03-7.18,3.02-6.84,7.53l13.75.03Z"/>
+        <path d="M94.2,44.41c2.9,8.48-11.51,26.99-20.05,35.88-.7-10.41-.27-33.35-4.52-34.63l-4.38-1.33,11.07-2.5c3,9.31,2.78,18.37,3.47,29.21,5.58-7.06,16.12-20.81,14.41-26.63h0Z"/>
+        <path d="M60.34,42.58c-.58,10.18-2.65,18.44-1.5,29.26-4.35-10.09-12.15-23.33-9.98-28.72l-3.76,1.74,8.47-5.5c1.01,8.77,4.57,19.06,5.56,29.85.9-9.03-.43-18.01.56-26.63h.65Z"/>
+        <path d="M46.45,43.89l8.01-5.96-12.78,1.03c2.95,8.87,9.18,17.75,12.24,29.08-3.43-7.69-10.4-16.93-15.26-25.62l-.47.09-1.7,5.12,1.58-12.56c1.79,2.17,4.88,7.26,8.38,8.82Z"/>
+        <path d="M35.91,41.94l2.28-13.35-7.94,11.22c3.31,5.94,7.12,14.1,9.2,23.47-1.53-6.57-7.18-14.89-9.09-22.17l-3.85,3.21,5.85-11.91-2.35,3.19,5.9,6.34Z"/>
+        <path d="M28.1,40.5l3.44-14.84-10.49,13.53c3.89,4.21,8.33,10.79,10.69,18.83-2.58-5.94-7.58-12.67-9.97-18.97l-4.09,2.93,7.39-12.03-1.64,2.91,4.67,7.64Z"/>
+        <path d="M335.57,43.64l11.36-.04v37.41l-11.36.04v-37.41ZM335.49,35.85c0-3.38,2.58-5.85,6.03-5.85s5.93,2.48,5.93,5.85-2.48,5.85-5.93,5.85-6.03-2.48-6.03-5.85Z"/>
+        <path d="M378.56,43.64l11.08-.04v5.36c2.34-3.99,6.62-6.37,12.28-6.37v10.83c-7.05,0-12.28,2.48-12.28,11.07v16.58l-11.08.03v-37.46Z"/>
+        <path d="M306.52,43.64h11.12v5.24c2.2-3.99,7.14-6.37,13.24-6.37v10.51c-7.34,0-13.24,2.38-13.24,10.97v17.06h-11.12v-37.41Z"/>
+        <path d="M117.3,30.72l-11.54,49.26-10.06.05,7.46-34.19-13.45,34.26-7.82.03L76.13,45.69l-7.32,34.22-9.47.04L70.85,30.72h12.87l5.56,29.23,12.01-29.23h16.01Z"/>
+        <path d="M157.38,79.98l-10.92-.03-.12-5.02c-2.1,4.03-6.7,6.03-12.73,5.93-8.53-.16-13.78-5.72-13.78-14.32,0-9.83,6.43-14.61,18.88-14.61h7.06v-1.38c0-3.83-1.93-5.99-6.1-5.99-3.38,0-5.31,1.24-6.15,3.93h-10.78c.83-8.22,7.27-13.09,17.51-13.09,10.78,0,17.14,5.44,17.14,16.01v28.57ZM145.77,65.87v-2.69h-5.65c-5.79,0-8.63,1.79-8.63,5.99,0,3.24,2.07,5.17,5.72,5.17,5.03,0,8.56-3.04,8.56-8.47Z"/>
+      </svg>
+    </div>
+
+    <!-- Cliente -->
+    <div class="ui-section">
+      <div class="ui-label">Cliente</div>
+      <div class="client-card" id="client-card">
+        <div class="client-name" id="disp-nom">— Aucune cliente chargée —</div>
+        <div class="client-meta" id="disp-meta"></div>
+      </div>
+    </div>
+
+    <div class="ui-divider"></div>
+
+    <!-- Destinataire -->
+    <div class="ui-section">
+      <div class="ui-label">Destinataire</div>
+      <div class="ui-field">
+        <label>Titre / Genre</label>
+        <select id="dest-titre" oninput="updatePreview()">
+          <option value="Dr">Dr</option>
+          <option value="Pr">Pr</option>
+          <option value="Mme Dr">Mme Dr</option>
+          <option value="M. Dr">M. Dr</option>
+        </select>
+      </div>
+      <div class="ui-field">
+        <label>Nom du médecin</label>
+        <input id="dest-nom" type="text" placeholder="Dupont" oninput="updatePreview()">
+      </div>
+      <div class="ui-field">
+        <label>Prénom du médecin</label>
+        <input id="dest-prenom" type="text" placeholder="Marie" oninput="updatePreview()">
+      </div>
+      <div class="ui-field">
+        <label>Spécialité</label>
+        <select id="dest-spec" oninput="updatePreview()">
+          <option value="Gastro-entérologue">Gastro-entérologue</option>
+          <option value="Gynécologue">Gynécologue</option>
+          <option value="Médecin généraliste">Médecin généraliste</option>
+          <option value="Endocrinologue">Endocrinologue</option>
+          <option value="Rhumatologue">Rhumatologue</option>
+          <option value="Interniste">Interniste</option>
+          <option value="Autre spécialiste">Autre spécialiste</option>
+        </select>
+      </div>
+      <div class="ui-field">
+        <label>Cabinet / Établissement (optionnel)</label>
+        <input id="dest-cabinet" type="text" placeholder="Cabinet médical du centre" oninput="updatePreview()">
+      </div>
+      <div class="ui-field">
+        <label>Ville (optionnel)</label>
+        <input id="dest-ville" type="text" placeholder="Paris" oninput="updatePreview()">
+      </div>
+    </div>
+
+    <div class="ui-divider"></div>
+
+    <!-- Compléments -->
+    <div class="ui-section">
+      <div class="ui-label">Contenu complémentaire</div>
+      <div class="ui-field">
+        <label>Terrains identifiés (CHANBIO)</label>
+        <input id="comp-terrains" type="text" placeholder="Terrain digestif fermentatif, terrain hormonal" oninput="updatePreview()">
+      </div>
+      <div class="ui-field">
+        <label>Grands axes du PHV</label>
+        <textarea id="comp-axes" placeholder="Alimentation à faible charge fermentescible, gestion du stress, régulation du cycle circadien…" oninput="updatePreview()"></textarea>
+      </div>
+      <div class="ui-field">
+        <label>Point d'attention / message clé</label>
+        <textarea id="comp-attention" placeholder="Ex : La cliente présente une hypersensibilité aux probiotiques. Coordination souhaitée sur…" oninput="updatePreview()"></textarea>
+      </div>
+    </div>
+
+    <div class="ui-divider"></div>
+
+    <button class="btn-print" onclick="imprimer()">
+      <svg viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+      Imprimer / Exporter PDF
+    </button>
+    <button class="btn-save" onclick="sauvegarder()">💾 Enregistrer dans Supabase</button>
+
+    <div style="font-size:10px;color:var(--muted);text-align:center;line-height:1.6">
+      Pour enregistrer en PDF : dans la boîte de dialogue d'impression, choisir <strong>«&nbsp;Enregistrer en PDF&nbsp;»</strong> comme imprimante.
+    </div>
+  </div>
+
+  <!-- ── APERÇU LETTRE ── -->
+  <div class="preview-area">
+    <div class="lettre" id="lettre">
+
+      <!-- En-tête -->
+      <div class="lt-header">
+        <div class="lt-brand">
+          <div class="lt-brand-name">A Vita Serena</div>
+          <div class="lt-brand-sub">Naturopathie clinique</div>
+          <div class="lt-brand-coords">
+            Sabrina Castelli — Naturopathe<br>
+            Porto-Vecchio, Corse<br>
+            contact@avitaserena.com · avitaserena.com<br>
+            Consultations 100% en visio · France entière
+          </div>
+        </div>
+        <div class="lt-meta">
+          <div class="lt-ref">
+            <div class="lt-ref-line"><strong>Date :</strong> <span id="lt-date">—</span></div>
+            <div class="lt-ref-line"><strong>Référence :</strong> <span id="lt-ref">—</span></div>
+            <div class="lt-ref-line"><strong>Patiente :</strong> <span id="lt-patiente">—</span></div>
+            <div class="lt-ref-line" style="margin-top:6px"><span id="lt-badge"></span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="lt-accent"></div>
+
+      <!-- Destinataire -->
+      <div class="lt-to-block">
+        <div class="lt-to-label">À l'attention de</div>
+        <div class="lt-to-name" id="lt-to-name">—</div>
+        <div class="lt-to-spec" id="lt-to-spec">—</div>
+        <div class="lt-to-addr" id="lt-to-addr"></div>
+      </div>
+
+      <!-- Objet -->
+      <div class="lt-objet">
+        <div class="lt-objet-label">Objet</div>
+        <div class="lt-objet-text" id="lt-objet">—</div>
+      </div>
+
+      <!-- Corps -->
+      <div class="lt-body">
+        <p id="lt-intro">—</p>
+
+        <!-- Section clinique -->
+        <div class="lt-section">
+          <div class="lt-section-title">Bilan naturopathique initial</div>
+          <div class="lt-grid" id="lt-bilan-grid">
+          </div>
+        </div>
+
+        <!-- Terrains -->
+        <div class="lt-section" id="lt-terrains-section" style="display:none">
+          <div class="lt-section-title">Terrains biologiques identifiés</div>
+          <div class="lt-full">
+            <div class="lt-full-label">Terrains CHANBIO</div>
+            <div class="lt-full-val" id="lt-terrains-val">—</div>
+          </div>
+        </div>
+
+        <!-- Protocole -->
+        <div class="lt-section" id="lt-axes-section" style="display:none">
+          <div class="lt-section-title">Axes du Protocole d'Hygiène Vitale (PHV)</div>
+          <div class="lt-proto">
+            <div class="lt-proto-title">Orientations naturopathiques mises en place</div>
+            <div class="lt-proto-body" id="lt-axes-val">—</div>
+          </div>
+        </div>
+
+        <!-- Point d'attention -->
+        <div class="lt-section" id="lt-attention-section" style="display:none">
+          <div class="lt-section-title">Point d'attention — coordination souhaitée</div>
+          <div class="lt-full">
+            <div class="lt-full-val" id="lt-attention-val" style="font-style:italic"></div>
+          </div>
+        </div>
+
+        <p id="lt-closing">—</p>
+        <p id="lt-formule">—</p>
+      </div>
+
+      <!-- Signature -->
+      <div class="lt-footer">
+        <div class="lt-sign-name">Sabrina Castelli</div>
+        <div class="lt-sign-titre">Naturopathe · Spécialiste SIBO & Santé Hormonale Féminine</div>
+        <div class="lt-sign-coords">
+          avitaserena.com · contact@avitaserena.com<br>
+          Porto-Vecchio, Corse — Consultations en visio · France entière
+        </div>
+      </div>
+
+      <!-- Confidentialité -->
+      <div class="lt-confidential">
+        <p>Document confidentiel à usage professionnel exclusif · Ce courrier accompagne une prise en charge naturopathique complémentaire et ne se substitue en aucun cas au diagnostic ou au traitement médical.</p>
+      </div>
+
+      <div class="lt-page-num">1 / 1</div>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Config Supabase ──
+const SB = 'https://bqhkdndwldwqacrrbbig.supabase.co';
+const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxaGtkbmR3bGR3cWFjcnJiYmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MzAyNTIsImV4cCI6MjA5NjMwNjI1Mn0.nH2UktMAVKYwng4L3SvW5F0fluV_sObGV0f3Mk1dnOY';
+
+// ── Données cliente ──
+let clientData = null;
+
+// ── Helpers ──
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function today(){ return new Date().toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}); }
+function todayRef(){ const d=new Date(); return 'LC-'+d.getFullYear()+(d.getMonth()+1).toString().padStart(2,'0')+d.getDate().toString().padStart(2,'0'); }
+function age(ddn){ if(!ddn)return null; const d=new Date(ddn),n=new Date(); return Math.floor((n-d)/31557600000); }
+
+function toast(msg,type='ok'){
+  const el=document.getElementById('toast');
+  el.textContent=msg;
+  el.style.background=type==='ok'?'#1A1814':'#E2445C';
+  el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),2500);
+}
+
+// ── Chargement depuis sessionStorage (passé par le CRM) ──
+function chargerCliente(){
+  try{
+    const raw = sessionStorage.getItem('lc_cliente') || localStorage.getItem('lc_cliente');
+    if(!raw) return;
+    clientData = JSON.parse(raw);
+    // Alimenter le panneau
+    document.getElementById('disp-nom').textContent = [clientData.prenom, clientData.nom].filter(Boolean).join(' ');
+    const a = age(clientData.ddn);
+    let meta = '';
+    if(clientData.ddn) meta += (a?a+' ans · ':'') + 'née le ' + new Date(clientData.ddn).toLocaleDateString('fr-FR');
+    if(clientData.motifs) meta += (meta?'\n':'')+clientData.motifs;
+    if(clientData.programme) meta += (meta?'\n':'')+'Programme : '+clientData.programme;
+    document.getElementById('disp-meta').style.whiteSpace='pre-line';
+    document.getElementById('disp-meta').textContent = meta;
+    // Pré-remplir axes si présents
+    if(clientData.axes) document.getElementById('comp-axes').value = clientData.axes;
+  } catch(e){ console.warn('Pas de données cliente en session', e); }
+}
+
+// ── Mise à jour de l'aperçu ──
+function updatePreview(){
+  const c = clientData || {};
+  const prenomC = c.prenom || '—';
+  const nomC = c.nom || '';
+  const a = age(c.ddn);
+  const ddn = c.ddn ? new Date(c.ddn).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}) : null;
+
+  // Méta lettre
+  document.getElementById('lt-date').textContent = today();
+  document.getElementById('lt-ref').textContent = todayRef() + '-' + (prenomC[0]||'X') + (nomC[0]||'X');
+  document.getElementById('lt-patiente').textContent = [prenomC, nomC].filter(Boolean).join(' ') + (a?' ('+a+' ans)':'');
+
+  // Badge programme
+  const prog = c.programme;
+  const badgeEl = document.getElementById('lt-badge');
+  if(prog){
+    const colors = {alba:'#FF7B2C',aria:'#6C47FF',ora:'#00C875'};
+    const labels = {alba:'Programme Alba · 3 mois',aria:'Programme Aria · 6 mois',ora:'Programme Ora · 9 mois'};
+    const col = colors[prog] || '#8888A8';
+    const lbl = labels[prog] || prog;
+    badgeEl.innerHTML = '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;background:'+col+'18;color:'+col+';border-radius:99px;font-size:6pt;font-weight:700;letter-spacing:.08em">● '+lbl+'</span>';
+  } else { badgeEl.innerHTML = ''; }
+
+  // Destinataire
+  const titre = document.getElementById('dest-titre').value;
+  const destNom = document.getElementById('dest-nom').value.trim();
+  const destPrenom = document.getElementById('dest-prenom').value.trim();
+  const spec = document.getElementById('dest-spec').value;
+  const cabinet = document.getElementById('dest-cabinet').value.trim();
+  const ville = document.getElementById('dest-ville').value.trim();
+
+  const destFullName = [titre, destPrenom, destNom].filter(Boolean).join(' ') || '—';
+  document.getElementById('lt-to-name').textContent = destFullName;
+  document.getElementById('lt-to-spec').textContent = spec;
+  let addr = '';
+  if(cabinet) addr += cabinet;
+  if(ville) addr += (addr?'\n':'')+ville;
+  document.getElementById('lt-to-addr').style.whiteSpace='pre-line';
+  document.getElementById('lt-to-addr').textContent = addr;
+
+  // Objet
+  const motifsCourt = c.motifs ? c.motifs.split(/[,·]/)[0].trim() : 'bilan naturopathique';
+  document.getElementById('lt-objet').textContent =
+    'Prise en charge naturopathique complémentaire — ' + prenomC + ' ' + nomC + ' — ' + motifsCourt;
+
+  // Intro
+  const salut = destNom ? (titre+' '+destNom) : 'Confrère / Consœur';
+  document.getElementById('lt-intro').textContent =
+    salut + ', je me permets de vous adresser ce courrier afin de vous informer de la prise en charge naturopathique complémentaire que j\'assure auprès de '+(c.civilite||'Mme')+' '+prenomC+' '+nomC+(ddn?' (née le '+ddn+')':(a?', '+a+' ans':''))+', qui bénéficie par ailleurs de votre suivi médical spécialisé.';
+
+  // Bilan grid
+  const grid = document.getElementById('lt-bilan-grid');
+  const programme1 = c.programme ? ({'alba':'Alba — 3 mois','aria':'Aria — 6 mois','ora':'Ora — 9 mois'}[c.programme]||c.programme) : 'Consultation ponctuelle';
+  const date1Fmt = c.date1 ? new Date(c.date1).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}) : '—';
+  const motifsFull = c.motifs || '—';
+  const axesFull = c.axes || (document.getElementById('comp-axes').value||'—');
+
+  grid.innerHTML =
+    item('Date de prise en charge', date1Fmt) +
+    item('Cadre d\'accompagnement', programme1) +
+    item('Motifs de consultation', motifsFull, true) +
+    item('Axes de travail', axesFull, true);
+
+  // Terrains
+  const terrainsVal = document.getElementById('comp-terrains').value.trim();
+  const terrainsSection = document.getElementById('lt-terrains-section');
+  if(terrainsVal){
+    terrainsSection.style.display='block';
+    document.getElementById('lt-terrains-val').textContent = terrainsVal;
+  } else { terrainsSection.style.display='none'; }
+
+  // Axes PHV
+  const axesVal = document.getElementById('comp-axes').value.trim();
+  const axesSection = document.getElementById('lt-axes-section');
+  if(axesVal){
+    axesSection.style.display='block';
+    document.getElementById('lt-axes-val').textContent = axesVal;
+  } else { axesSection.style.display='none'; }
+
+  // Point d'attention
+  const attentionVal = document.getElementById('comp-attention').value.trim();
+  const attentionSection = document.getElementById('lt-attention-section');
+  if(attentionVal){
+    attentionSection.style.display='block';
+    document.getElementById('lt-attention-val').textContent = '« ' + attentionVal + ' »';
+  } else { attentionSection.style.display='none'; }
+
+  // Clôture
+  document.getElementById('lt-closing').textContent =
+    'Mon accompagnement s\'inscrit dans une démarche exclusivement complémentaire à votre prise en charge médicale. Je reste bien entendu disponible pour tout échange ou question que vous jugerez utile.';
+
+  document.getElementById('lt-formule').textContent =
+    'Je vous adresse, ' + salut + ', l\'expression de mes cordiales salutations professionnelles.';
+}
+
+function item(label, val, full=false){
+  if(full){
+    return '<div class="lt-full"><div class="lt-full-label">'+esc(label)+'</div><div class="lt-full-val">'+esc(val)+'</div></div>';
+  }
+  return '<div class="lt-item"><div class="lt-item-label">'+esc(label)+'</div><div class="lt-item-val">'+esc(val)+'</div></div>';
+}
+
+// ── Impression ──
+function imprimer(){
+  window.print();
+}
+
+// ── Sauvegarder dans Supabase ──
+async function sauvegarder(){
+  const c = clientData || {};
+  const destNom = document.getElementById('dest-nom').value.trim();
+  const destPrenom = document.getElementById('dest-prenom').value.trim();
+  const spec = document.getElementById('dest-spec').value;
+  const titre = document.getElementById('dest-titre').value;
+  const terrains = document.getElementById('comp-terrains').value.trim();
+  const axes = document.getElementById('comp-axes').value.trim();
+  const attention = document.getElementById('comp-attention').value.trim();
+
+  const payload = {
+    prenom: c.prenom || '',
+    nom: c.nom || '',
+    ddn: c.ddn || null,
+    client_key: c.prenom && c.nom && c.ddn ? (c.prenom+'-'+c.nom+'-'+c.ddn.replace(/-/g,'')).toLowerCase() : null,
+    medecin_titre: titre,
+    medecin_nom: destNom,
+    medecin_prenom: destPrenom,
+    medecin_specialite: spec,
+    terrains_chanbio: terrains,
+    axes_phv: axes,
+    point_attention: attention,
+    programme: c.programme || null,
+    motifs: c.motifs || null,
+    date_lettre: new Date().toISOString().split('T')[0],
+    created_at: new Date().toISOString()
+  };
+
+  try {
+    const r = await fetch(SB+'/rest/v1/lettres_cliniques', {
+      method: 'POST',
+      headers: {
+        'apikey': KEY,
+        'Authorization': 'Bearer '+KEY,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify(payload)
+    });
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    toast('Lettre enregistrée dans Supabase ✓');
+  } catch(e) {
+    console.error(e);
+    toast('Erreur d\'enregistrement', 'err');
+  }
+}
+
+// ── Init ──
+document.addEventListener('DOMContentLoaded', () => {
+  chargerCliente();
+  updatePreview();
+});
+</script>
+</body>
+</html>
