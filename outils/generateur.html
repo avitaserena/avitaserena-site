@@ -884,11 +884,12 @@ function detectSiboMethane(d) {
   return confirmePattern.test(champsTextuels) || signesPattern.test(champsTextuels);
 }
 
-// ── Détection signaux de digestion faible (mastication / hypochlorhydrie / bilio-pancréatique / stress) ──
+// ── Détection signaux de digestion faible (mastication / hypochlorhydrie / bilio-pancréatique / stress / IPP) ──
 // Cherche dans tous les champs texte/select/checkbox les signaux de mastication
 // insuffisante, d'hypochlorhydrie, d'insuffisance bilio-pancréatique, de stress
-// péri-prandial, de carences minérales liées, ou d'urgence médicale, pour piloter
-// la Règle N°9bis (toujours active) et la Règle N°6 (sécurité).
+// péri-prandial, de carences minérales liées, d'urgence médicale, et de demande
+// explicite de sevrage IPP — pilote la Règle N°9bis (toujours active) et la
+// Règle N°6 (sécurité).
 function detectDigestionFaible(d) {
   const champsTextuels = [
     d.selects_complets, d.textes_libres, d.symptomes_coches, d.chips
@@ -900,13 +901,20 @@ function detectDigestionFaible(d) {
   const stressDigestif = /régulièrement stressée \(travail|sous tension ou en plein conflit|bouche sèche.{0,20}(souvent|occasionnellement)|diarrhées ou urgences digestives déclenchées par le stress|nausées en période de stress|perte d.appétit marquée en période de stress|douleurs intestinales déclenchées par le stress|carence connue ou suspectée en magnésium/i.test(champsTextuels);
   const carenceMineraleHypochlorhydrie = (hypochlorhydrie || stressDigestif) && /\b(fer|zinc|cuivre|magnésium)\b/i.test(champsTextuels) && /carences? minérales? connues? ou suspectées?|carence connue ou suspectée en magnésium/i.test(champsTextuels);
   const urgenceLithiaseObstructive = /a déjà présenté ce tableau \(douleur intense \+ selles décolorées\)|douleur abdominale intense.{0,40}selles décolorées|selles décolorées.{0,40}douleur abdominale intense/i.test(champsTextuels);
+  const demandeSevrageIPP = /prise prolongée ou quotidienne d.ipp|demande d.accompagnement au sevrage/i.test(champsTextuels);
+  // Profil plante à recommander selon le contexte coché (sevrage IPP)
+  const profilGingembre = /pesanteur ou lenteur de digestion|digestion lente|digestion difficile/i.test(champsTextuels);
+  const profilMelisse = /spasmes|troubles gastriques influencés par le stress|coliques \/ spasmes intestinaux/i.test(champsTextuels);
+  const profilReglisse = /ugd \/ gastrite \/ rgo|brûlures|ulcère|helicobacter/i.test(champsTextuels);
 
   return {
     masticationFaible, hypochlorhydrie, insuffisanceBilioPancreatique, stressDigestif,
-    carenceMineraleHypochlorhydrie, urgenceLithiaseObstructive,
-    actif: masticationFaible || hypochlorhydrie || insuffisanceBilioPancreatique || stressDigestif
+    carenceMineraleHypochlorhydrie, urgenceLithiaseObstructive, demandeSevrageIPP,
+    profilGingembre, profilMelisse, profilReglisse,
+    actif: masticationFaible || hypochlorhydrie || insuffisanceBilioPancreatique || stressDigestif || demandeSevrageIPP
   };
 }
+
 
 function buildReglesProtocoleCyclique(d) {
   // Détecte si le profil est hormonal (SOPK, SPM, endométriose, périménopause)
@@ -1230,7 +1238,7 @@ ${/occlusion dentaire|dents manquantes|prothèse ou bridge/i.test([d.symptomes_c
 ${digestionFaible.hypochlorhydrie ? `SIGNES D'HYPOCHLORHYDRIE (acidité gastrique insuffisante) DÉTECTÉS — à intégrer dans le pilier alimentation du PHV :
 - Expliquer en 2-3 phrases simples que l'acidité gastrique est physiologique et nécessaire : elle dénature les protéines, active la pepsine (l'enzyme qui digère les protéines) et protège des bactéries indésirables. Ce n'est pas un excès à combattre — une insuffisance d'acide gastrique (souvent due au stress chronique, à l'âge, ou aux IPP au long cours) ralentit la digestion, favorise les ballonnements après repas et la dysbiose de putréfaction.
 - Consignes pratiques à inclure : manger dans le calme, sans stress (le stress chronique inhibe la sécrétion d'acide chlorhydrique), éviter de boire de grandes quantités pendant les repas (dilue l'acidité gastrique), bien mâcher (potentialise l'acidité gastrique en stimulant le nerf vague).
-${/ipp en cours ou prolongés/i.test([d.symptomes_coches].join(' \n ')) ? '- IPP au long cours signalés : mentionner avec prudence dans le PHV qu\'une sortie progressive des IPP, si envisagée, doit se faire avec l\'accord du médecin prescripteur (risque de rebond acide à l\'arrêt brutal). Ne jamais suggérer d\'arrêt sans avis médical.' : ''}
+${/ipp en cours ou prolongés/i.test([d.symptomes_coches].join(' \n ')) ? '- IPP au long cours signalés : mentionner avec prudence dans le PHV qu\'une sortie progressive des IPP, si envisagée, doit se faire avec l\'accord du médecin prescripteur (risque de rebond acide à l\'arrêt brutal). Ne jamais suggérer d\'arrêt sans avis médical. Si la cliente est en demande explicite de sevrage, voir le protocole dédié ci-dessous.' : ''}
 ${/carence en b12/i.test([d.symptomes_coches].join(' \n ')) ? '- Carence en B12 suspectée/connue, cohérente avec une hypochlorhydrie (déficit en facteur intrinsèque). Mentionner l\'intérêt d\'un dosage B12 actif (holotranscobalamine) si non déjà fait.' : ''}
 ${digestionFaible.carenceMineraleHypochlorhydrie ? '- Carence(s) minérale(s) signalée(s) (fer, zinc, cuivre et/ou magnésium) : expliquer dans le PHV, en termes simples, que l\'absorption de ces minéraux nécessite des ions H⁺ (acidité) dans l\'intestin — une hypochlorhydrie en réduit directement la biodisponibilité, même avec une alimentation qui en apporte suffisamment. Souligner qu\'une supplémentation isolée sans corriger l\'acidité gastrique aura un effet limité ; les deux axes doivent être travaillés ensemble.' : ''}` : ''}
 
@@ -1250,7 +1258,30 @@ ${/diarrhées ou urgences digestives déclenchées par le stress|nausées en pé
 ${/carence connue ou suspectée en magnésium/i.test([d.symptomes_coches].join(' \n ')) ? '- Carence en magnésium signalée en lien avec le stress digestif : mentionner que le magnésium, comme la régulation du stress, intervient dans le tonus normal des sphincters digestifs (Oddi, pylore) — une carence favorise leur spasme. Le magnésium bisglycinate est la forme à privilégier (meilleure tolérance digestive, meilleure biodisponibilité).' : ''}
 - Si pertinent : techniques de régulation du stress à intégrer dans le pilier psycho-émotionnel du PHV (cohérence cardiaque avant les repas en particulier, pas seulement en soirée).` : ''}
 
-${!digestionFaible.actif ? 'Aucun signal de mastication insuffisante, d\'hypochlorhydrie, d\'insuffisance bilio-pancréatique ou de stress péri-prandial n\'a été coché dans le questionnaire — intègre quand même, brièvement et positivement, un rappel sur l\'importance de bien mâcher et de manger dans le calme dans le pilier alimentation du PHV (clés de santé universelles, sans contre-indication).' : ''}
+${digestionFaible.demandeSevrageIPP ? `PROTOCOLE DE SEVRAGE IPP DEMANDÉ — la cliente a explicitement coché une demande d'accompagnement au sevrage des IPP (inhibiteurs de la pompe à protons). Tu DOIS intégrer dans le PHV une section ou un bloc dédié "Votre accompagnement de sevrage IPP" qui reprend les éléments suivants — en gardant le ton chaleureux et non médical habituel :
+
+PHASE 1 — PRÉPARATION (à mettre en place avant toute diminution de dose) :
+- Magnésium glycérophosphate ou bisglycinate, 300 à 400 mg de magnésium élément/j en 2-3 prises — limite les spasmes gastriques et compense le déficit fréquent en magnésium associé aux IPP au long cours.
+- Mastication systématique en bouillie à chaque bouchée — explique en 1-2 phrases simples que c'est la première étape digestive et qu'elle allège tout le travail de l'estomac.
+- Cohérence cardiaque avant chaque repas (3 à 5 minutes) — le stress ferme les sphincters digestifs et inhibe la sécrétion gastrique ; ce rituel bascule vers le mode parasympathique nécessaire à la digestion.
+
+PHASE 2 — SEVRAGE PROGRESSIF (une fois la phase 1 installée) :
+- Diminution progressive de la dose d'IPP, au rythme de la cliente — RAPPELER SYSTÉMATIQUEMENT que toute modification du traitement doit être validée avec le médecin prescripteur, jamais en autonomie complète.
+- Maintien de la mastication, de la cohérence cardiaque avant repas et du magnésium tout au long de cette phase.
+- Une plante de soutien selon le profil clinique, à choisir UNE SEULE parmi les trois :
+${digestionFaible.profilGingembre ? '  • Profil digestion lente / pesanteur après repas → Gingembre, 2 gélules 2-3x/j selon ressenti (ou poudre), réduit à 2 gélules matin et soir 5j/7 au-delà d\'1 mois.' : ''}
+${digestionFaible.profilMelisse ? '  • Profil spasmes liés au stress → Mélisse en EPS ou Quantis, 5 ml dans ½ verre d\'eau avant repas 2x/j, puis 5 ml le matin à jeun 5j/7 au-delà d\'1 mois.' : ''}
+${digestionFaible.profilReglisse ? '  • Profil brûlures / antécédent d\'ulcère ou Helicobacter pylori → Réglisse en EPS ou Quantis, même posologie que la mélisse. ⚠️ CONTRE-INDICATION FORMELLE : hypertension artérielle — vérifier systématiquement avant de la proposer.' : ''}
+${!digestionFaible.profilGingembre && !digestionFaible.profilMelisse && !digestionFaible.profilReglisse ? '  • Profil non encore précisé dans le questionnaire — présenter les 3 options (gingembre si digestion lente, mélisse si spasmes liés au stress, réglisse si brûlures/ulcère/Helicobacter — CI hypertension) et inviter la cliente à se reconnaître dans l\'une d\'elles.' : ''}
+
+SÉCURITÉ ABSOLUE — à mentionner explicitement dans le PHV :
+- Ce protocole ne s'adresse pas en autonomie complète aux personnes enceintes, allaitantes, aux enfants, ou en cas de prise d'autres médicaments — rediriger vers un suivi individualisé si l'un de ces cas s'applique.
+- Ce protocole ne remplace jamais une consultation médicale ni ne justifie une modification du traitement sans l'accord du médecin prescripteur.
+- Si malgré ce protocole les difficultés persistent, ne pas culpabiliser la cliente : cela signifie que la cause profonde des troubles gastriques n'est pas encore identifiée et nécessite une prise en charge individualisée plus poussée.
+
+Conclure ce bloc en recommandant à la cliente de consulter la fiche pratique dédiée "Sortir des IPP en douceur", disponible en téléchargement dans son espace clientes.` : ''}
+
+${!digestionFaible.actif ? 'Aucun signal de mastication insuffisante, d\'hypochlorhydrie, d\'insuffisance bilio-pancréatique, de stress péri-prandial ou de demande de sevrage IPP n\'a été coché dans le questionnaire — intègre quand même, brièvement et positivement, un rappel sur l\'importance de bien mâcher et de manger dans le calme dans le pilier alimentation du PHV (clés de santé universelles, sans contre-indication).' : ''}
 
 ━━ RÈGLE N°9 — PATHOLOGIES DIGESTIVES SPÉCIFIQUES ━━
 ${d.digestif_pathologies ? `Les pathologies digestives suivantes ont été identifiées par le praticien : ${d.digestif_pathologies}.
