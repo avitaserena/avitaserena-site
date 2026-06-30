@@ -887,8 +887,9 @@ function detectSiboMethane(d) {
 // ── Détection signaux de digestion faible (mastication / hypochlorhydrie / bilio-pancréatique / stress / IPP) ──
 // Cherche dans tous les champs texte/select/checkbox les signaux de mastication
 // insuffisante, d'hypochlorhydrie, d'insuffisance bilio-pancréatique, de stress
-// péri-prandial, de carences minérales liées, d'urgence médicale, et de demande
-// explicite de sevrage IPP — pilote la Règle N°9bis (toujours active) et la
+// péri-prandial, de carences minérales liées, d'urgence médicale, de demande
+// explicite de sevrage IPP, d'hypothyroïdie comme cause d'hypochlorhydrie, et du
+// test au bicarbonate de soude — pilote la Règle N°9bis (toujours active) et la
 // Règle N°6 (sécurité).
 function detectDigestionFaible(d) {
   const champsTextuels = [
@@ -896,12 +897,14 @@ function detectDigestionFaible(d) {
   ].filter(Boolean).join(' \n ');
 
   const masticationFaible = /(rarement|jamais).{0,15}(bouillie|gobe|morceaux)|très rapide|avale sans vraiment mâcher|occlusion dentaire|dents manquantes|prothèse ou bridge|douleurs? ou gêne à la mastication|mauvaise occlusion/i.test(champsTextuels);
-  const hypochlorhydrie = /pesanteur ou lenteur de digestion|éructations fréquentes|restent sur l.estomac|ballonnements qui apparaissent rapidement|ipp en cours ou prolongés|carence en b12/i.test(champsTextuels);
+  const hypochlorhydrie = /pesanteur ou lenteur de digestion|éructations fréquentes|restent sur l.estomac|ballonnements qui apparaissent rapidement|ipp en cours ou prolongés|carence en b12|haleine putride|test au bicarbonate.*>.*2 min|hypothyroïdie connue ou suspectée/i.test(champsTextuels);
   const insuffisanceBilioPancreatique = /selles grasses|pâles, malodorantes|stéatorrhée|intolérance ou inconfort marqué après un repas gras|douleurs 1 à 3h après le repas|hypochondre droit|lithiase|cholécystectomie|carence connue en vitamines liposolubles|constipation présente depuis l.enfance/i.test(champsTextuels);
   const stressDigestif = /régulièrement stressée \(travail|sous tension ou en plein conflit|bouche sèche.{0,20}(souvent|occasionnellement)|diarrhées ou urgences digestives déclenchées par le stress|nausées en période de stress|perte d.appétit marquée en période de stress|douleurs intestinales déclenchées par le stress|carence connue ou suspectée en magnésium/i.test(champsTextuels);
   const carenceMineraleHypochlorhydrie = (hypochlorhydrie || stressDigestif) && /\b(fer|zinc|cuivre|magnésium)\b/i.test(champsTextuels) && /carences? minérales? connues? ou suspectées?|carence connue ou suspectée en magnésium/i.test(champsTextuels);
   const urgenceLithiaseObstructive = /a déjà présenté ce tableau \(douleur intense \+ selles décolorées\)|douleur abdominale intense.{0,40}selles décolorées|selles décolorées.{0,40}douleur abdominale intense/i.test(champsTextuels);
   const demandeSevrageIPP = /prise prolongée ou quotidienne d.ipp|demande d.accompagnement au sevrage/i.test(champsTextuels);
+  const hypothyroïdieHypochlorhydrie = /hypothyroïdie connue ou suspectée/i.test(champsTextuels);
+  const bicarbonateTestPositif = /test au bicarbonate.*>.*2 min|bicarbonate.*(hypochlorhydrie probable)/i.test(champsTextuels);
   // Profil plante à recommander selon le contexte coché (sevrage IPP)
   const profilGingembre = /pesanteur ou lenteur de digestion|digestion lente|digestion difficile/i.test(champsTextuels);
   const profilMelisse = /spasmes|troubles gastriques influencés par le stress|coliques \/ spasmes intestinaux/i.test(champsTextuels);
@@ -910,6 +913,7 @@ function detectDigestionFaible(d) {
   return {
     masticationFaible, hypochlorhydrie, insuffisanceBilioPancreatique, stressDigestif,
     carenceMineraleHypochlorhydrie, urgenceLithiaseObstructive, demandeSevrageIPP,
+    hypothyroïdieHypochlorhydrie, bicarbonateTestPositif,
     profilGingembre, profilMelisse, profilReglisse,
     actif: masticationFaible || hypochlorhydrie || insuffisanceBilioPancreatique || stressDigestif || demandeSevrageIPP
   };
@@ -1249,11 +1253,13 @@ ${digestionFaible.masticationFaible ? `MASTICATION INSUFFISANTE DÉTECTÉE — �
 ${/occlusion dentaire|dents manquantes|prothèse ou bridge/i.test([d.symptomes_coches, d.textes_libres].join(' \n ')) ? '- Un obstacle mécanique a été identifié (occlusion dentaire, dents manquantes, prothèse/bridge). Mentionner dans le PHV qu\'un avis dentaire, kinésithérapeute maxillo-facial ou ostéopathe peut être pertinent en complément, sans poser de diagnostic dentaire.' : ''}` : ''}
 
 ${digestionFaible.hypochlorhydrie ? `SIGNES D'HYPOCHLORHYDRIE (acidité gastrique insuffisante) DÉTECTÉS — à intégrer dans le pilier alimentation du PHV :
-- Expliquer en 2-3 phrases simples que l'acidité gastrique est physiologique et nécessaire : elle dénature les protéines, active la pepsine (l'enzyme qui digère les protéines) et protège des bactéries indésirables. Ce n'est pas un excès à combattre — une insuffisance d'acide gastrique (souvent due au stress chronique, à l'âge, ou aux IPP au long cours) ralentit la digestion, favorise les ballonnements après repas et la dysbiose de putréfaction.
-- Consignes pratiques à inclure : manger dans le calme, sans stress (le stress chronique inhibe la sécrétion d'acide chlorhydrique), éviter de boire de grandes quantités pendant les repas (dilue l'acidité gastrique), bien mâcher (potentialise l'acidité gastrique en stimulant le nerf vague).
-${/ipp en cours ou prolongés/i.test([d.symptomes_coches].join(' \n ')) ? '- IPP au long cours signalés : mentionner avec prudence dans le PHV qu\'une sortie progressive des IPP, si envisagée, doit se faire avec l\'accord du médecin prescripteur (risque de rebond acide à l\'arrêt brutal). Ne jamais suggérer d\'arrêt sans avis médical. Si la cliente est en demande explicite de sevrage, voir le protocole dédié ci-dessous.' : ''}
+- Expliquer en 2-3 phrases simples que l'acidité gastrique est physiologique et nécessaire : elle dénature les protéines, active la pepsine (l'enzyme qui digère les protéines) et protège des bactéries indésirables. Ce n'est pas un excès à combattre — une insuffisance d'acide gastrique ralentit la digestion, favorise les ballonnements après repas et la dysbiose de putréfaction.
+- Consignes pratiques TOUJOURS présentes dans le PHV : manger dans le calme (le stress inhibe la sécrétion d'HCl), éviter de boire de grandes quantités pendant les repas (dilue l'acidité gastrique), bien mâcher, et surtout — ÉVITER L'EAU GAZEUSE ET LES ANTIACIDES PENDANT LES REPAS : ils neutralisent directement l'acidité gastrique nécessaire à la digestion, même en dehors de tout traitement médicamenteux.
+${/ipp en cours ou prolongés/i.test([d.symptomes_coches].join(' \n ')) ? '- IPP au long cours signalés : expliquer dans le PHV, avec bienveillance, le cercle vicieux possible — IPP → diminution de l\'HCl → SIBO + dysbiose → ballonnements → hyperpression abdominale → relâchement du cardia → reflux → aggravation du traitement. Ce cercle peut s\'auto-entretenir indéfiniment sans briser la cause racine. Mentionner avec prudence qu\'une sortie progressive, si envisagée, doit se faire avec l\'accord du médecin prescripteur (risque de rebond acide). Si la cliente est en demande explicite de sevrage, voir le protocole dédié ci-dessous.' : ''}
+${/hypothyroïdie connue ou suspectée/i.test([d.symptomes_coches].join(' \n ')) ? '- Hypothyroïdie signalée comme cause d\'hypochlorhydrie : mentionner dans le PHV que la thyroïde joue un rôle direct sur la sécrétion d\'acide gastrique — une hypothyroïdie, même infraclinique, peut provoquer une hypochlorhydrie indépendamment du stress ou des médicaments. Ces deux axes doivent être traités en parallèle : soutenir l\'acidité gastrique sans corriger la thyroïde ne donnera que des résultats partiels.' : ''}
 ${/carence en b12/i.test([d.symptomes_coches].join(' \n ')) ? '- Carence en B12 suspectée/connue, cohérente avec une hypochlorhydrie (déficit en facteur intrinsèque). Mentionner l\'intérêt d\'un dosage B12 actif (holotranscobalamine) si non déjà fait.' : ''}
-${digestionFaible.carenceMineraleHypochlorhydrie ? '- Carence(s) minérale(s) signalée(s) (fer, zinc, cuivre et/ou magnésium) : expliquer dans le PHV, en termes simples, que l\'absorption de ces minéraux nécessite des ions H⁺ (acidité) dans l\'intestin — une hypochlorhydrie en réduit directement la biodisponibilité, même avec une alimentation qui en apporte suffisamment. Souligner qu\'une supplémentation isolée sans corriger l\'acidité gastrique aura un effet limité ; les deux axes doivent être travaillés ensemble.' : ''}` : ''}
+${digestionFaible.carenceMineraleHypochlorhydrie ? '- Carence(s) minérale(s) signalée(s) (fer, zinc, cuivre et/ou magnésium) : expliquer dans le PHV, en termes simples, que l\'absorption de ces minéraux nécessite des ions H⁺ (acidité) dans l\'intestin — une hypochlorhydrie en réduit directement la biodisponibilité, même avec une alimentation qui en apporte suffisamment. Souligner qu\'une supplémentation isolée sans corriger l\'acidité gastrique aura un effet limité ; les deux axes doivent être travaillés ensemble.' : ''}
+- Option complémentaire (substitution de l\'acidité gastrique) — à proposer uniquement si les mesures hygiéno-diététiques sont insuffisantes et en l\'ABSENCE de CI : vinaigre de cidre dilué (1 c. à café dans un grand verre d\'eau avant le repas) comme soutien doux et accessible, ou HCl bétaïne (300 à 450 mg en début de repas) pour les cas plus marqués. ⚠️ CONTRE-INDICATIONS ABSOLUES à l\'HCl bétaïne : ulcère gastrique ou duodénal actif, oesophagite, traitement en cours par IPP — ne jamais suggérer sans vérification préalable.` : ''}
 
 ${digestionFaible.insuffisanceBilioPancreatique ? `SIGNES D'INSUFFISANCE BILIO-PANCRÉATIQUE DÉTECTÉS — à intégrer dans le pilier alimentation du PHV :
 - Expliquer en 2-3 phrases simples et non médicales : l'acidité gastrique déclenche la sécrétion de deux hormones duodénales (cholécystokinine et sécrétine) qui activent les enzymes pancréatiques (protéases — d'abord inactives pour éviter que le pancréas ne s'autodigère, puis activées dans le duodénum — amylase, lipase) ET la sécrétion biliaire. Le pancréas sécrète aussi des bicarbonates qui neutralisent l'acidité du bol alimentaire à son arrivée dans l'intestin. La bile transforme les graisses en micelles digestibles et permet l'absorption des vitamines liposolubles (A, D, E, K) — sans bile suffisante, les graisses sont mal digérées (selles grasses, pâles) et ces vitamines mal absorbées. La bile joue aussi un rôle de "nettoyage" naturel de l'intestin grêle — une insuffisance biliaire augmente le risque de prolifération bactérienne (SIBO).
