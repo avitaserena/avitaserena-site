@@ -884,6 +884,30 @@ function detectSiboMethane(d) {
   return confirmePattern.test(champsTextuels) || signesPattern.test(champsTextuels);
 }
 
+// ── Détection signaux de digestion faible (mastication / hypochlorhydrie / bilio-pancréatique / stress) ──
+// Cherche dans tous les champs texte/select/checkbox les signaux de mastication
+// insuffisante, d'hypochlorhydrie, d'insuffisance bilio-pancréatique, de stress
+// péri-prandial, de carences minérales liées, ou d'urgence médicale, pour piloter
+// la Règle N°9bis (toujours active) et la Règle N°6 (sécurité).
+function detectDigestionFaible(d) {
+  const champsTextuels = [
+    d.selects_complets, d.textes_libres, d.symptomes_coches, d.chips
+  ].filter(Boolean).join(' \n ');
+
+  const masticationFaible = /(rarement|jamais).{0,15}(bouillie|gobe|morceaux)|très rapide|avale sans vraiment mâcher|occlusion dentaire|dents manquantes|prothèse ou bridge|douleurs? ou gêne à la mastication|mauvaise occlusion/i.test(champsTextuels);
+  const hypochlorhydrie = /pesanteur ou lenteur de digestion|éructations fréquentes|restent sur l.estomac|ballonnements qui apparaissent rapidement|ipp en cours ou prolongés|carence en b12/i.test(champsTextuels);
+  const insuffisanceBilioPancreatique = /selles grasses|pâles, malodorantes|stéatorrhée|intolérance ou inconfort marqué après un repas gras|douleurs 1 à 3h après le repas|hypochondre droit|lithiase|cholécystectomie|carence connue en vitamines liposolubles|constipation présente depuis l.enfance/i.test(champsTextuels);
+  const stressDigestif = /régulièrement stressée \(travail|sous tension ou en plein conflit|bouche sèche.{0,20}(souvent|occasionnellement)|diarrhées ou urgences digestives déclenchées par le stress|nausées en période de stress|perte d.appétit marquée en période de stress|douleurs intestinales déclenchées par le stress|carence connue ou suspectée en magnésium/i.test(champsTextuels);
+  const carenceMineraleHypochlorhydrie = (hypochlorhydrie || stressDigestif) && /\b(fer|zinc|cuivre|magnésium)\b/i.test(champsTextuels) && /carences? minérales? connues? ou suspectées?|carence connue ou suspectée en magnésium/i.test(champsTextuels);
+  const urgenceLithiaseObstructive = /a déjà présenté ce tableau \(douleur intense \+ selles décolorées\)|douleur abdominale intense.{0,40}selles décolorées|selles décolorées.{0,40}douleur abdominale intense/i.test(champsTextuels);
+
+  return {
+    masticationFaible, hypochlorhydrie, insuffisanceBilioPancreatique, stressDigestif,
+    carenceMineraleHypochlorhydrie, urgenceLithiaseObstructive,
+    actif: masticationFaible || hypochlorhydrie || insuffisanceBilioPancreatique || stressDigestif
+  };
+}
+
 function buildReglesProtocoleCyclique(d) {
   // Détecte si le profil est hormonal (SOPK, SPM, endométriose, périménopause)
   const champsTextuels = [d.selects_complets, d.textes_libres, d.symptomes_coches, d.chips, d.gyneco, d.notes_praticien, d.motifs, d.gyneco_pathologies || ''].filter(Boolean).join(' \n ');
@@ -1034,6 +1058,7 @@ function buildReglesSiboMethane(siboMethaneAvere) {
 function buildPrompt(d) {
   const siboMethaneAvere = detectSiboMethane(d);
   const reglesSiboMethane = buildReglesSiboMethane(siboMethaneAvere);
+  const digestionFaible = detectDigestionFaible(d);
 
   return `Tu es Sabrina Castelli, naturopathe diplômée (Avita Serena, Porto-Vecchio, Corse), spécialisée en santé digestive et équilibre hormonal féminin. Tu génères le Protocole d'Hygiène Vitale (PHV) destiné à la cliente — un document qu'elle va lire, garder et appliquer.
 
@@ -1056,12 +1081,13 @@ Tu as ici la ligne de vie et l'analyse causale du praticien. Utilise-les pour do
 Repartir TOUJOURS de l'objectif exprimé par la cliente.
 
 ━━ RÈGLE N°3 — PRIORITÉ DES 3 PILIERS (ORDRE OBLIGATOIRE) ━━
+0. DIGESTION & ASSIMILATION — préalable absolu, voir Règle N°9bis. Aucune recommandation alimentaire ou complémentaire n'a de sens si la cliente ne digère et n'assimile pas correctement (mastication insuffisante, hypochlorhydrie). Ces deux leviers gratuits et sans contre-indication doivent TOUJOURS apparaître en premier dans le pilier alimentation s'ils sont déficients.
 1. ALIMENTATION — fondement de tout rééquilibrage du terrain
 2. PSYCHOLOGIE & ÉMOTIONS — gestion du stress, émotions, sommeil, rythmes de vie
 3. ACTIVITÉ PHYSIQUE — mouvement adapté, sans matériel, sans salle de sport
 4. Compléments ciblés — EN DERNIER, en soutien, MAXIMUM 3 (sauf terrain très complexe)
 
-Un protocole d'hygiène vitale n'est PAS une liste de compléments. Les 3 piliers sont le cœur du document.
+Un protocole d'hygiène vitale n'est PAS une liste de compléments. Les 3 piliers sont le cœur du document. Un protocole de compléments donné à une cliente qui n'assimile pas (mauvaise mastication, hypochlorhydrie) sera en grande partie inefficace — c'est pourquoi la digestion prime sur tout le reste.
 
 ━━ RÈGLE N°4 — MODALITÉS AUTORISÉES ━━
 1. Phytothérapie — forme : EPS > TM > gélule extrait sec > tisane
@@ -1112,6 +1138,8 @@ Anis vert / Fenouil / Angélique → action hormone-like → CI formelle en cas 
 Curcuma → CI obstruction des voies biliaires ; possible gêne gastrique chez les sujets hypersensibles — vérifier la tolérance
 Harpagophytum → CI grossesse, allaitement, ulcères gastriques actifs, interaction anticoagulants et antidiabétiques ; efficacité complète à attendre après 3 semaines de traitement minimum
 Pissenlit → à éviter en cas d\'occlusion des voies biliaires, maladies cardiaques ou rénales sévères ; risque d\'hypokaliémie à long cours → cures discontinues recommandées
+Lithiase(s) biliaire(s) connue(s) ou vésicule biliaire douloureuse → JAMAIS de drainage hépatique agressif, cure de citron/huile d\'olive à jeun, ni plantes cholérétiques à forte dose (artichaut haute dose, radis noir, romarin concentré) sans avis médical — risque de mobiliser un calcul et de provoquer une colique hépatique ou un blocage du sphincter d\'Oddi ; orienter vers avis médical/gastro-entérologique
+Douleur abdominale intense + selles décolorées/blanchâtres (signalée même ponctuellement) → URGENCE MÉDICALE ABSOLUE, calcul obstruant probable des voies biliaires : ne donner AUCUNE recommandation naturopathique sur ce point, mentionner explicitement dans le PHV qu'en cas de récidive il faut se rendre immédiatement aux urgences
 Framboisier → CI premiers mois de grossesse (action sur muscle lisse utérin)
 Achillée millefeuille → CI antécédent cancer du sein avec récepteurs de progestérone
 Eschscholtzia → CI glaucome, grossesse, allaitement, enfant < 12 ans ; peut diminuer la vigilance 1 à 2h après la prise ; prévenir la cliente que l\'effet peut prendre 15 jours à se manifester pleinement
@@ -1190,6 +1218,39 @@ BILIEUX (colérique, sec, chaud, Feu) :
 - Cures : printemps (drainer foie par les plantes + reminéraliser + monodiètes + gelée royale, ginseng, éleuthérocoque). Automne (raisin, pollen frais).
 
 Si le tempérament n'est pas renseigné, ignore cette règle.` : 'Tempérament non renseigné — appliquer les recommandations standard sans orientation tempéramentale spécifique.'}
+
+━━ RÈGLE N°9bis — DIGESTION & MASTICATION : PRÉALABLE TOUJOURS ÉVALUÉ ━━
+Principe fondamental, à respecter dans CHAQUE PHV même si rien n'est coché ci-dessous : aucune recommandation alimentaire ou complémentaire ne sert à grand-chose si la cliente ne digère et n'assimile pas correctement. Une mauvaise digestion des protéines peut faire pénétrer des fractions antigéniques à travers une barrière intestinale poreuse, activant le système immunitaire (inflammations, allergies, fausses intolérances). Un microbiote équilibré nécessite une alimentation ET une digestion optimales.
+
+${digestionFaible.masticationFaible ? `MASTICATION INSUFFISANTE DÉTECTÉE — à intégrer en tête du pilier alimentation du PHV :
+- Expliquer en 2-3 phrases simples et non médicales pourquoi la mastication est la base de tout : mâcher dénature mécaniquement les protéines pour les rendre digestibles, casse les fibres végétales (que le corps ne peut pas casser seul, faute d'enzyme cellulase), et prépare tout le système digestif via le nerf vague. Une mastication insuffisante favorise les dysbioses de putréfaction et de fermentation, les ballonnements et une mauvaise absorption des nutriments — même avec une alimentation par ailleurs excellente.
+- Consigne pratique OBLIGATOIRE dans le PHV : "Mâchez chaque bouchée jusqu'à obtenir une consistance de bouillie avant d'avaler — comptez environ 20 à 30 mastications par bouchée."
+${/occlusion dentaire|dents manquantes|prothèse ou bridge/i.test([d.symptomes_coches, d.textes_libres].join(' \n ')) ? '- Un obstacle mécanique a été identifié (occlusion dentaire, dents manquantes, prothèse/bridge). Mentionner dans le PHV qu\'un avis dentaire, kinésithérapeute maxillo-facial ou ostéopathe peut être pertinent en complément, sans poser de diagnostic dentaire.' : ''}` : ''}
+
+${digestionFaible.hypochlorhydrie ? `SIGNES D'HYPOCHLORHYDRIE (acidité gastrique insuffisante) DÉTECTÉS — à intégrer dans le pilier alimentation du PHV :
+- Expliquer en 2-3 phrases simples que l'acidité gastrique est physiologique et nécessaire : elle dénature les protéines, active la pepsine (l'enzyme qui digère les protéines) et protège des bactéries indésirables. Ce n'est pas un excès à combattre — une insuffisance d'acide gastrique (souvent due au stress chronique, à l'âge, ou aux IPP au long cours) ralentit la digestion, favorise les ballonnements après repas et la dysbiose de putréfaction.
+- Consignes pratiques à inclure : manger dans le calme, sans stress (le stress chronique inhibe la sécrétion d'acide chlorhydrique), éviter de boire de grandes quantités pendant les repas (dilue l'acidité gastrique), bien mâcher (potentialise l'acidité gastrique en stimulant le nerf vague).
+${/ipp en cours ou prolongés/i.test([d.symptomes_coches].join(' \n ')) ? '- IPP au long cours signalés : mentionner avec prudence dans le PHV qu\'une sortie progressive des IPP, si envisagée, doit se faire avec l\'accord du médecin prescripteur (risque de rebond acide à l\'arrêt brutal). Ne jamais suggérer d\'arrêt sans avis médical.' : ''}
+${/carence en b12/i.test([d.symptomes_coches].join(' \n ')) ? '- Carence en B12 suspectée/connue, cohérente avec une hypochlorhydrie (déficit en facteur intrinsèque). Mentionner l\'intérêt d\'un dosage B12 actif (holotranscobalamine) si non déjà fait.' : ''}
+${digestionFaible.carenceMineraleHypochlorhydrie ? '- Carence(s) minérale(s) signalée(s) (fer, zinc, cuivre et/ou magnésium) : expliquer dans le PHV, en termes simples, que l\'absorption de ces minéraux nécessite des ions H⁺ (acidité) dans l\'intestin — une hypochlorhydrie en réduit directement la biodisponibilité, même avec une alimentation qui en apporte suffisamment. Souligner qu\'une supplémentation isolée sans corriger l\'acidité gastrique aura un effet limité ; les deux axes doivent être travaillés ensemble.' : ''}` : ''}
+
+${digestionFaible.insuffisanceBilioPancreatique ? `SIGNES D'INSUFFISANCE BILIO-PANCRÉATIQUE DÉTECTÉS — à intégrer dans le pilier alimentation du PHV :
+- Expliquer en 2-3 phrases simples et non médicales : l'acidité gastrique déclenche la sécrétion de deux hormones duodénales (cholécystokinine et sécrétine) qui activent les enzymes pancréatiques (protéases — d'abord inactives pour éviter que le pancréas ne s'autodigère, puis activées dans le duodénum — amylase, lipase) ET la sécrétion biliaire. Le pancréas sécrète aussi des bicarbonates qui neutralisent l'acidité du bol alimentaire à son arrivée dans l'intestin. La bile transforme les graisses en micelles digestibles et permet l'absorption des vitamines liposolubles (A, D, E, K) — sans bile suffisante, les graisses sont mal digérées (selles grasses, pâles) et ces vitamines mal absorbées. La bile joue aussi un rôle de "nettoyage" naturel de l'intestin grêle — une insuffisance biliaire augmente le risque de prolifération bactérienne (SIBO).
+- Si constipation présente depuis l'enfance signalée (en l'absence d'autre cause identifiée) : mentionner avec prudence, sans poser de diagnostic, qu'une faible capacité de synthèse d'acides biliaires constitutionnelle peut en être une des causes possibles — la bile active le transit intestinal.
+${/cholécystectomie/i.test([d.symptomes_coches].join(' \n ')) ? '- Cholécystectomie (ablation de la vésicule biliaire) signalée : rassurer la cliente avec nuance dans le PHV — une dysfonction biliaire (souvent des lithiases) préexistait généralement avant l\'opération, et beaucoup de patientes se sentent mieux après qu\'avant. Sans vésicule, le foie continue à fabriquer la bile mais la déverse en continu dans le cholédoque, de façon désynchronisée avec les repas : moins de bile disponible pendant la digestion des graisses, donc recommander des repas plus fractionnés et moins gras en une fois, et mentionner qu\'un soutien digestif (bile de bœuf ou acides biliaires, complexe enzymatique digestif) peut être pertinent en complément.' : ''}
+- Si lithiase(s) biliaire(s) connue(s) ou vésicule biliaire douloureuse signalée (hors urgence) : ⚠️ ne jamais recommander de "drainage hépatique" agressif, de cure de citron/huile d'olive à jeun, ni de plantes cholérétiques puissantes (artichaut à haute dose, radis noir, romarin à forte dose) sans avis médical — le risque de mobiliser un calcul et de provoquer une colique hépatique ou un blocage du sphincter d'Oddi est réel. Orienter vers un avis médical/gastro-entérologique si non déjà fait.
+- Compléments à considérer si pertinent (hors lithiase active) : enzymes digestives globales (protéase, amylase, lipase) au début des repas copieux ; oméga-3 émulsifiés pour faciliter l'absorption lipidique.
+- Carence en vitamines liposolubles signalée : mentionner l'intérêt d'un dosage sanguin (A, D, E, K) si non déjà fait, et la nécessité d'une digestion biliaire fonctionnelle pour que toute supplémentation en D3/E soit réellement absorbée.
+${digestionFaible.urgenceLithiaseObstructive ? '\n⚠️⚠️ ALERTE SÉCURITÉ MAJEURE : un épisode de douleur abdominale intense associée à des selles décolorées/blanchâtres a été signalé — ceci évoque un calcul obstruant complètement les voies biliaires, c\'est une URGENCE MÉDICALE. Le PHV DOIT mentionner explicitement, en début de document si possible, qu\'en cas de récidive de ce tableau (douleur intense + selles décolorées) la cliente doit se rendre immédiatement aux urgences, et que ceci dépasse le cadre d\'un accompagnement naturopathique. Ne proposer AUCUNE recommandation cholérétique ou de drainage dans ce cas.' : ''}` : ''}
+
+${digestionFaible.stressDigestif ? `STRESS PÉRI-PRANDIAL / CHASSE BILIAIRE DÉSYNCHRONISÉE DÉTECTÉS — axe à traiter en PRIORITÉ, avant tout ajustement alimentaire fin :
+- Expliquer en 2-3 phrases simples et non médicales : la digestion est pilotée par le système parasympathique ("repos et digestion") — le stress chronique active son opposé, l'orthosympathique, qui assèche les sécrétions digestives (salive, sucs gastriques, sucs pancréatiques) et ferme les sphincters digestifs (Oddi, pylore). Manger stressée, même avec une assiette parfaite, peut donc suffire à mal digérer. Point clinique à mentionner si pertinent : en stress chronique, l'estomac peut sur-produire de l'acide en dehors des repas, épuisant les réserves disponibles au moment du repas — d'où une hypochlorhydrie fonctionnelle au moment de digérer, même chez une personne qui "a trop d'acidité" en apparence.
+- Consigne pratique OBLIGATOIRE dans le PHV : instaurer un rituel de transition de 2 à 3 minutes avant chaque repas (quelques respirations profondes, cohérence cardiaque, ou simplement s'asseoir et faire une pause) pour basculer vers le mode parasympathique avant de manger. C'est un levier gratuit et immédiatement actionnable.
+${/diarrhées ou urgences digestives déclenchées par le stress|nausées en période de stress|perte d.appétit marquée en période de stress|douleurs intestinales déclenchées par le stress/i.test([d.symptomes_coches].join(' \n ')) ? '- Signes de chasse biliaire désynchronisée identifiés (diarrhée, nausées, perte d\'appétit ou douleurs intestinales déclenchées par le stress, hors repas) : expliquer que le stress peut déclencher une libération de bile au mauvais moment — hors digestion, les sels biliaires sont corrosifs pour un intestin vide, ce qui explique douleurs et diarrhées ; la bile elle-même est émétique (nausées) et anorexigène (coupe-faim). Le levier prioritaire est la régulation du stress (cohérence cardiaque, gestion de la charge mentale) plutôt qu\'un protocole digestif ciblé qui resterait inefficace tant que le stress n\'est pas adressé.' : ''}
+${/carence connue ou suspectée en magnésium/i.test([d.symptomes_coches].join(' \n ')) ? '- Carence en magnésium signalée en lien avec le stress digestif : mentionner que le magnésium, comme la régulation du stress, intervient dans le tonus normal des sphincters digestifs (Oddi, pylore) — une carence favorise leur spasme. Le magnésium bisglycinate est la forme à privilégier (meilleure tolérance digestive, meilleure biodisponibilité).' : ''}
+- Si pertinent : techniques de régulation du stress à intégrer dans le pilier psycho-émotionnel du PHV (cohérence cardiaque avant les repas en particulier, pas seulement en soirée).` : ''}
+
+${!digestionFaible.actif ? 'Aucun signal de mastication insuffisante, d\'hypochlorhydrie, d\'insuffisance bilio-pancréatique ou de stress péri-prandial n\'a été coché dans le questionnaire — intègre quand même, brièvement et positivement, un rappel sur l\'importance de bien mâcher et de manger dans le calme dans le pilier alimentation du PHV (clés de santé universelles, sans contre-indication).' : ''}
 
 ━━ RÈGLE N°9 — PATHOLOGIES DIGESTIVES SPÉCIFIQUES ━━
 ${d.digestif_pathologies ? `Les pathologies digestives suivantes ont été identifiées par le praticien : ${d.digestif_pathologies}.
