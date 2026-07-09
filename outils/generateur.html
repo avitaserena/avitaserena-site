@@ -884,6 +884,57 @@ function detectSiboMethane(d) {
   return confirmePattern.test(champsTextuels) || signesPattern.test(champsTextuels);
 }
 
+// ── Détection dysbiose de fermentation colique (non-SIBO) ──
+// Distincte du SIBO : ici la pullulation de bactéries fermentaires (lactobacilles,
+// bifidobactéries en excès, ou baisse de diversité) se situe dans le CÔLON, pas le grêle.
+// Signature différentielle : délai 2-3h post-repas (vs 60-90 min pour le SIBO grêle),
+// gaz abondants mais NON odorants, aggravation par les fibres/prébiotiques, douleur/gaz
+// à la palpation du colon ascendant/caecum. Pilote la Règle N°9ter (protocole dédié :
+// pas de prébiotiques, pas d'ajout systématique de probiotiques).
+function detectDysbioseFermentation(d) {
+  const champsTextuels = [
+    d.selects_complets, d.textes_libres, d.symptomes_coches, d.chips,
+    d.notes_praticien, d.motifs, d.digestif_notes || ''
+  ].filter(Boolean).join(' \n ');
+
+  const gazNonOdorants = /gaz non odorants?|gaz inodores?|ballonnements? sans odeur/i.test(champsTextuels);
+  const delaiColique = /2.?3\s?h(eures)? après|2 à 3 heures après le repas|ballonnements? .{0,20}(2|3)\s?h/i.test(champsTextuels);
+  const aggravationFibres = /aggrav\w* (par|avec) les fibres|ballonne.{0,20}(fibres|légumineuses|crudités|choux|topinambour|prébiotiques)|intolérance aux fibres/i.test(champsTextuels);
+  const palpationColique = /douleurs? (et |ou )?gaz.{0,20}(colon ascendant|caecum|cæcum)|colon ascendant.{0,20}douleur/i.test(champsTextuels);
+  // Exclusion : si SIBO/IMO déjà confirmé, ce protocole spécifique ne s'applique pas
+  // (le SIBO a déjà sa propre Règle N°5bis, plus adaptée à une pullulation du grêle).
+  const siboConfirme = /sibo.{0,15}confirmé|confirmé.{0,15}sibo|test respiratoire (positif|ch4|h2)/i.test(champsTextuels);
+
+  const signesFermentation = gazNonOdorants || delaiColique || aggravationFibres || palpationColique;
+  return signesFermentation && !siboConfirme;
+}
+
+// ── Détection dysbiose de putréfaction ──
+// Bactéries protéolytiques (Bactéroïdes, Clostridium...) en excès, terrain alcalin,
+// substrat protéique excédentaire (excès de consommation OU défaut de digestion des
+// protéines/graisses animales). Signature différentielle par rapport à la fermentation :
+// gaz ODORANTS (vs non odorants), ballonnements moins importants en quantité, douleur/gaz
+// à la palpation du colon descendant/sigmoïde (vs colon ascendant/caecum pour la
+// fermentation). Pilote la Règle N°9quater (protocole dédié : affamer + nourrir les
+// compétiteurs + éliminer les pathogènes, à l'opposé de la fermentation qui exclut les
+// prébiotiques et les antibactériens en 1ère intention).
+function detectDysbiosePutrefaction(d) {
+  const champsTextuels = [
+    d.selects_complets, d.textes_libres, d.symptomes_coches, d.chips,
+    d.notes_praticien, d.motifs, d.digestif_notes || ''
+  ].filter(Boolean).join(' \n ');
+
+  const gazOdorants = /gaz odorants?|gaz malodorants?|odeur (de |d')?(soufre|œuf pourri|oeuf pourri)/i.test(champsTextuels);
+  const sellesOdorantes = /selles odorantes|selles malodorantes/i.test(champsTextuels);
+  const haleinePutride = /haleine putride|mauvaise haleine (chronique|persistante)/i.test(champsTextuels);
+  const palpationDescendant = /douleurs? (et |ou )?gaz.{0,20}(colon descendant|sigmoïde|sigmoide)|colon descendant.{0,20}douleur/i.test(champsTextuels);
+  const eauGazeuseRepas = /eau gazeuse.{0,20}(repas|table)|eau riche en bicarbonate.{0,20}repas/i.test(champsTextuels);
+  const excesProteinesAnimales = /excès de (viande|protéines animales|graisses animales)|consommation excessive de (viande|protéines)/i.test(champsTextuels);
+
+  const signesPutrefaction = gazOdorants || sellesOdorantes || haleinePutride || palpationDescendant;
+  return signesPutrefaction || (eauGazeuseRepas && excesProteinesAnimales);
+}
+
 // ── Détection signaux de digestion faible (mastication / hypochlorhydrie / bilio-pancréatique / stress / IPP) ──
 // Cherche dans tous les champs texte/select/checkbox les signaux de mastication
 // insuffisante, d'hypochlorhydrie, d'insuffisance bilio-pancréatique, de stress
@@ -1067,9 +1118,84 @@ function buildReglesSiboMethane(siboMethaneAvere) {
   ].join('\n');
 }
 
+function buildReglesFermentation(fermentationAveree) {
+  if (!fermentationAveree) return '';
+  return [
+    '',
+    '━━ RÈGLE N°9ter — DYSBIOSE DE FERMENTATION COLIQUE DÉTECTÉE (NON-SIBO) ━━',
+    '⚠️ Les données de cette cliente évoquent une dysbiose de fermentation colique : prolifération de bactéries fermentaires (souvent des lactobacilles/bifidobactéries en excès) ou baisse de diversité bactérienne, dans le CÔLON — à ne pas confondre avec un SIBO (grêle). Signature typique : ballonnements abondants mais gaz NON odorants, apparaissant 2 à 3h après un repas riche en fibres/prébiotiques (vs 60-90 min pour le SIBO), douleur/gaz à la palpation du colon ascendant et du caecum. Ce ne sont PAS des bactéries dangereuses — juste en excès. Le protocole est donc volontairement doux et NE DOIT PAS être confondu avec celui de la putréfaction ou du SIBO.',
+    '',
+    '⚠️ DEUX INTERDITS ABSOLUS POUR CE PROFIL :',
+    '1. NE JAMAIS recommander de prébiotiques (fibres fermentescibles, FOS, inuline) dans le PHV de cette cliente — même si une autre règle de ce prompt (ex. barrière intestinale / LGS) les mentionne par défaut. Cette cliente a déjà un excès de bactéries fermentaires : les nourrir avec des prébiotiques aggraverait ses symptômes. Si un autre axe (LGS, hyperperméabilité) est aussi présent, retire ou neutralise toute recommandation de prébiotiques et explique brièvement pourquoi dans le PHV.',
+    '2. NE PAS ajouter de probiotiques par défaut dans les compléments (section s3) pour ce seul motif. Un ajout de probiotiques reviendrait à ajouter encore des bactéries de fermentation à un terrain qui en a déjà trop. Exception : si les données de séance indiquent que la cliente en prend déjà spontanément avec un bénéfice perçu, tu peux mentionner de les poursuivre sans les intensifier — jamais en initier de nouveaux pour ce motif.',
+    '',
+    'PROTOCOLE À INTÉGRER DANS LE PHV (pilier alimentation en priorité, avant tout complément) :',
+    '- Éviction 1 mois, à dose de tolérance individuelle, des aliments les plus fermentescibles : crudités, légumineuses, choux, ail, oignon, topinambour, poireau. Réintroduction ensuite progressive, aliment par aliment, à la dose que la cliente tolère — jamais une éviction prolongée ou totale.',
+    '- Semi-complet plutôt que complet (céréales, riz) pendant cette phase — le complet est trop fermentescible tant que la flore n\'est pas rééquilibrée.',
+    '- Peu de sucres rapides et d\'aliments à charge glycémique élevée (nourrissent aussi la fermentation).',
+    '- Éviter les repas tardifs ou, si inévitable, privilégier un repas très léger (soupe) — le péristaltisme ralentit en fin de journée et favorise la fermentation.',
+    '- Technique de préparation des légumineuses pour mieux les tolérer : tremper une nuit puis rincer matin et soir jusqu\'à apparition d\'un germe — cette pré-germination augmente la densité en micronutriments et rend les légumineuses nettement plus digestes. En phase de réintroduction, privilégier les légumineuses en boîte (déjà bien trempées) ou mixées (houmous) pour commencer.',
+    '',
+    'OPTIMISATION DIGESTIVE (à croiser avec la Règle N°9bis) :',
+    '- Mastication systématiquement renforcée — c\'est souvent le levier le plus efficace ici.',
+    '- Investiguer et traiter si présents : hypochlorhydrie, insuffisance biliaire (cf. Règle N°9bis).',
+    '- Stress : cohérence cardiaque 5 minutes avant les repas, magnésium bisglycinate le soir, manger dans le calme et sans écran. Corriger un éventuel déficit en sérotonine si le contexte s\'y prête.',
+    '- Limiter les médicaments non indispensables qui perturbent le microbiote (IPP, AINS, antibiotiques) — toujours en lien avec le médecin prescripteur, jamais en incitant à un arrêt brutal.',
+    '',
+    'PHYTOTHÉRAPIE — EN DERNIER RECOURS SEULEMENT :',
+    'Ne proposer une plante antibactérienne QUE si l\'optimisation nutritionnelle et digestive ci-dessus est insuffisante après un temps raisonnable d\'essai. Dans ce cas, privilégier la phytothérapie douce (ex. ORIGAN Nutergia par voie orale) plutôt que l\'huile essentielle d\'origan compact — réservée aux dysbioses de putréfaction, à la candidose et au SIBO où la pullulation doit être traitée plus fermement. Si une plante antibactérienne est malgré tout utilisée ici, ne pas systématiser l\'ajout de probiotiques derrière (contrairement à la putréfaction) puisque l\'objectif n\'est pas de réensemencer une flore appauvrie mais de calmer un excès.',
+    '',
+    'Dans le PHV, formuler simplement, sans jargon : "Vos ballonnements viennent de bonnes bactéries de votre intestin qui, en ce moment, sont un peu trop nombreuses et fermentent activement les fibres — ce n\'est pas dangereux, juste inconfortable. On va leur donner moins à fermenter le temps que l\'équilibre revienne, sans se priver des légumineuses pour autant : juste autrement, et progressivement." [Interdit dans le PHV : "dysbiose de fermentation", "bactéries fermentaires", "prébiotiques" sans reformulation accessible]',
+    ''
+  ].join('\n');
+}
+
+function buildReglesPutrefaction(putrefactionAveree) {
+  if (!putrefactionAveree) return '';
+  return [
+    '',
+    '━━ RÈGLE N°9quater — DYSBIOSE DE PUTRÉFACTION DÉTECTÉE ━━',
+    '⚠️ Les données de cette cliente évoquent une dysbiose de putréfaction : prolifération de bactéries protéolytiques (genre Bactéroïdes, Clostridium — souvent Gram négatives), qui se développent en milieu alcalin en présence d\'un excès de substrat protéique dans le côlon (excès de consommation de protéines/graisses animales OU, plus souvent, défaut de digestion des protéines par mastication insuffisante, hypochlorhydrie, insuffisance biliaire ou pancréatique). Signature typique : gaz ODORANTS (à l\'inverse de la fermentation), parfois selles odorantes, haleine putride, douleur/gaz à la palpation du colon descendant et du sigmoïde (fosse iliaque gauche). Contrairement à la fermentation, ce sont ici de véritables bactéries à traiter fermement : leurs LPS activent une immunité pro-inflammatoire de type TH1, diminuent le butyrate protecteur, et leurs amines (tyramine, histamine, putrescine, cadavérine) et toxines (ammoniac, phénols, indole, scatol, hydrogène sulfuré) surchargent le foie.',
+    '',
+    'Le protocole suit 3 axes complémentaires, à intégrer dans cet ordre :',
+    '',
+    '1. AFFAMER LES BACTÉRIES DE PUTRÉFACTION (pilier alimentation, en tête) :',
+    '   - Si excès réel de consommation de protéines/graisses animales (à investiguer avant de conclure, ne jamais réduire sans avoir vérifié l\'assiette réelle) : ramener à un repère simple, environ 1g de protéines par kg de poids corporel et par jour, dont la moitié animale (~0,5g/kg/j) et la moitié végétale — viande/poisson/œufs le midi de préférence, protéines végétales le soir (légumineuses, tofu, tempeh) pour ne pas gêner la synthèse nocturne de sérotonine.',
+    '   - Si le volume de protéines est déjà raisonnable, ne pas le réduire davantage — le vrai levier est alors la digestion (voir point 2).',
+    '   - Manger dans le calme, cohérence cardiaque si stress associé.',
+    '   - Retirer l\'eau gazeuse ou riche en bicarbonates PENDANT les repas (elle neutralise l\'acidité gastrique nécessaire à la digestion des protéines) — formule mnémotechnique à transmettre à la cliente si utile à l\'oral : "pas d\'eau qui pique pour pas de gaz qui piquent". L\'eau gazeuse reste possible en dehors des repas si elle est appréciée.',
+    '',
+    '2. OPTIMISER LA DIGESTION DES PROTÉINES ET GRAISSES ANIMALES (cf. Règle N°9bis pour le détail) :',
+    '   - Investiguer et prendre en charge en priorité : hypochlorhydrie, insuffisance biliaire et/ou pancréatique — ce sont les causes les plus fréquentes de dysbiose de putréfaction, y compris chez des personnes qui ne mangent pas beaucoup de viande (cela concerne aussi certains profils végétariens).',
+    '   - Si nécessaire, enzymes digestives : Enzynutrics Total (Bionutrics) — complexe protéase/amylase/lipase, sans HCl, utilisable même sans hypochlorhydrie confirmée.',
+    '   - Si hypochlorhydrie confirmée associée : évoquer une association HCl bétaïne + enzymes digestives (se référer au protocole détaillé de la Règle N°9bis).',
+    '',
+    '3. NOURRIR LES BACTÉRIES COMPÉTITRICES (bactéries de fermentation) — ICI LES PRÉBIOTIQUES SONT RECOMMANDÉS, à l\'inverse de la dysbiose de fermentation :',
+    '   - Alimentation à dominance végétale : environ 2 fois plus de légumes que de protéines animales, et 2 fois plus de légumes que de féculents. Cette cliente n\'a en général pas de mauvaise tolérance aux fibres — les intégrer largement et sans crainte.',
+    '   - Si l\'appétence pour les légumes est un frein réel (pas par intolérance, mais par goût ou habitude), proposer des pistes concrètes (nouvelles recettes, cuisine simple) avant d\'envisager un complément prébiotique isolé.',
+    '   - Prébiotique en complément uniquement si le levier alimentaire est documenté comme insuffisant après un temps d\'essai raisonnable : fucosyllactose en première intention. Rappeler que les prébiotiques isolés n\'égalent jamais la richesse d\'une assiette végétale variée (polyphénols, antioxydants, vitamines).',
+    '   - ⚠️ Repère à ne pas oublier : apport français moyen ≈10g/j de fibres prébiotiques, besoins ≈30g/j, optimum ≈50g/j — un écart qui se comble presque toujours par l\'assiette plutôt que par un complément.',
+    '',
+    '4. ÉLIMINER LES PATHOGÈNES — seul axe de ce protocole où l\'attaque directe est justifiée (bactéries réellement délétères, à l\'inverse de la fermentation) :',
+    '   Privilégier une forme gastro-résistante d\'huile essentielle d\'origan compact (jamais en goutte directe : trop agressif pour l\'œsophage/estomac, favorise le reflux et l\'arrêt du traitement) :',
+    '   - ADP (Energetica Natura) ou Origan Plus (Nutrixeal) — 2 gélules matin + 2 gélules soir, au milieu du repas, 5 jours sur 7, pendant 3 semaines (soit 15 jours de prise effective).',
+    '   - Alternative budget : Origan Plus (Pranarôm) — moins cher mais davantage de reflux rapporté (environ 20% des clientes ne le tolèrent pas) ; à proposer seulement si le budget est une contrainte réelle.',
+    '   - ⚠️ Hépatotoxique à dose excessive : respecter strictement la posologie et la durée (3 semaines, jamais en continu au-delà). Contre-indiqué en cas de souffrance hépatique préexistante (marqueurs hépatiques élevés), grossesse, allaitement, et chez l\'enfant de moins de 12 ans.',
+    '   - Alternative plus douce si souffrance hépatique, grossesse/allaitement (à écarter alors aussi), ou enfant : ERGYPAR (Nutergia) — complexe phytothérapique (thym, noyer, mauve entre autres), moins puissant que l\'origan compact mais mieux toléré.',
+    '   - JUSTE APRÈS la fin du protocole d\'origan (jamais pendant), probiotiques à forte dose pour ré-ensemencer : Vivomixx 1 sachet/jour à jeun pendant 20 jours (environ 400 milliards de CFU/sachet) ; si rupture de stock, alternative Lactibiane Actif Choc (Pileje) 2 gélules matin à jeun pendant 30 jours.',
+    '',
+    'Dans le PHV, formuler simplement, sans jargon : "Ces gaz très odorants viennent de bactéries qui aiment digérer ce qui reste de protéines mal digérées dans votre intestin — elles produisent des substances qui fatiguent votre foie et peuvent jouer sur votre moral. On va leur couper les vivres en améliorant votre digestion des protéines, nourrir vos bonnes bactéries avec des légumes en quantité, et si besoin, les calmer directement avec une plante antibactérienne bien tolérée." [Interdit dans le PHV : "dysbiose de putréfaction", "bactéries protéolytiques", "LPS", "Bactéroïdes", "Clostridium" sans reformulation accessible]',
+    ''
+  ].join('\n');
+}
+
 function buildPrompt(d) {
   const siboMethaneAvere = detectSiboMethane(d);
   const reglesSiboMethane = buildReglesSiboMethane(siboMethaneAvere);
+  const fermentationAveree = detectDysbioseFermentation(d);
+  const reglesFermentation = buildReglesFermentation(fermentationAveree);
+  const putrefactionAveree = detectDysbiosePutrefaction(d);
+  const reglesPutrefaction = buildReglesPutrefaction(putrefactionAveree);
   const digestionFaible = detectDigestionFaible(d);
 
   return `Tu es Sabrina Castelli, naturopathe diplômée (Avita Serena, Porto-Vecchio, Corse), spécialisée en santé digestive et équilibre hormonal féminin. Tu génères le Protocole d'Hygiène Vitale (PHV) destiné à la cliente — un document qu'elle va lire, garder et appliquer.
@@ -1132,6 +1258,7 @@ Barrière intestinale :
 • "dysbiose" → "votre flore intestinale est déséquilibrée" ou "votre microbiote manque de diversité"
 • "eubiose" → "un microbiote équilibré et diversifié"
 • "dysbiose de putréfaction" → "des bactéries qui fermentent les protéines mal digérées dans votre intestin"
+• "dysbiose de fermentation" → "des bonnes bactéries de votre intestin qui sont en ce moment un peu trop nombreuses et fermentent activement vos fibres"
 • "mucine" → "les glycoprotéines qui forment le mucus" → ne pas mentionner, formuler : "le mucus protecteur de votre intestin"
 
 Microbiote & SIBO :
@@ -1250,7 +1377,7 @@ Exemples concrets à adapter selon les axes prioritaires :
 - Vitamine C : besoins adultes 110 mg/j (fumeurs et sportifs jusqu'à 250 mg/j). Sources alimentaires remarquables : kiwi (95-150 mg/fruit), poivron rouge cru (121 mg/100g), goyave, orange, fraise, brocoli cru. Préférer la forme naturelle (acérola) ou liposomale (encapsulée dans liposomes — meilleure absorption intracellulaire). Posologie supplémentation : 2-3 g/j acérola ; liposomale 2 g/j, jusqu'à 5 g/j en infection/convalescence (ne pas dépasser sans suivi médical). Indications : fatigue, immunité, stress oxydatif, convalescence, antioxydant, soutien fer non héminique (augmente absorption). ÉVITER la vitamine C de synthèse de bas de gamme (Vitascorbol) : acide non tamponné, moins bien toléré. ⚠️ doses > 5 g/j peuvent provoquer diarrhées — monter progressivement. Compatible grossesse et allaitement. Marques recommandées : Onatera, Sunday Natural (liposomale).
 - Oméga-3 EPA/DHA : Omégabiane EPA/DHA (Pileje) ou Nutripure Oméga-3, 2 gél/j au repas — si inflammation, humeur, sécheresse cutanée, hormones, cardiovasculaire. Précision clinique : maintenir un rapport oméga-6/oméga-3 de 4/1 (notre alimentation est souvent à 15-20/1) — compléter en réduisant les huiles de tournesol/maïs et en augmentant lin, cameline, noix. ⚠️ CI anticoagulants au-delà de 2g/j.
 - CoQ10 (coenzyme Q10) : 60 à 100mg/j en cure de 2-3 mois (Nutripure ou Nutrixeal CoQ10) — indiqué si fatigue profonde résistante, sensation d'épuisement cellulaire, prise de statines (les statines bloquent la synthèse endogène de CoQ10, le manque peut causer myalgies et fatigue musculaire), maladies cardiovasculaires, hypertension. Le CoQ10 est un transporteur d'électrons dans la chaîne respiratoire mitochondriale — c'est le carburant de toutes nos cellules. L'organisme le synthétise mais la production décline avec l'âge. Pas de contre-indication ni d'effet secondaire signalé.
-- Probiotiques ciblés Pileje : Lactibiane Référence 5M (côlon irritable), Lactibiane Iki (fermentation/SIBO/ballonnements), Lactibiane Tolérance (hyperperméabilité/SIBO/porosité), Gynophilus (flore vaginale), Feminabiane SPM (SPM) — selon axe digestif/hormonal
+- Probiotiques ciblés Pileje : Lactibiane Référence 5M (côlon irritable), Lactibiane Iki (fermentation/SIBO/ballonnements), Lactibiane Tolérance (hyperperméabilité/SIBO/porosité), Gynophilus (flore vaginale), Feminabiane SPM (SPM) — selon axe digestif/hormonal. ⚠️ Exception : en cas de dysbiose de fermentation colique (voir Règle N°9ter si active), ne pas ajouter Lactibiane Iki ni aucun autre probiotique pour ce seul motif — cf. règle dédiée.
 - Vitamine D3 + K2 : Pileje D3K2 ou Nutripure D3K2, 1 gél/j — si fatigue profonde, immunité, santé osseuse, prévention ostéoporose. La D3 est la seule forme vraiment efficace (la D2 végétale est moins biodisponible). La K2 MK-7 est indispensable pour orienter le calcium vers les os et non vers les artères — toujours les associer. Niveaux sanguins de référence (25-OH-D) : optimal = 30-50 ng/ml ; insuffisance < 30 ; carence < 20 ; carence sévère < 10. Posologies indicatives : entretien = 1000-2000 UI/j ; insuffisance légère = 50 000 UI/semaine × 4-8 semaines puis 20 000 UI/mois ; carence modérée = 2000-5000 UI/j. ⚠️ Ne pas dépasser 4000 UI/j en automédication sans bilan sanguin — excès potentiel au-delà de 100 ng/ml (250 nmol/l).
 - Zinc bisglycinate : Nutripure Zinc ou Novoma, 15mg/j (max 40mg/j — dose quotidienne tolérable à ne jamais dépasser) — si acné, immunité, hormones, Hashimoto, fertilité, peau sensible, cycles irréguliers. Cures d'1 à 3 mois recommandées. ⚠️ Un excès de zinc interfère avec l'absorption du cuivre et du fer → toujours respecter la posologie. Ne jamais associer bisglycinate de zinc et bisglycinate de fer à la même prise. Symptômes de surdosage : nausées, vomissements, crampes, maux de tête, immunité affaiblie.
 - Iode (kelp ou iodure de potassium) : 150 µg/j (adulte) — uniquement si carence documentée ou alimentation sans poisson/fruits de mer, végétarienne/végane. ⚠️ L'iode est sensible : un excès peut provoquer ou aggraver les maladies thyroïdiennes — NE JAMAIS supplémenter sans certitude clinique. CI : hyperthyroïdie, thyroïdite auto-immune active (Hashimoto instable), grossesse sans suivi médical.
@@ -1265,6 +1392,8 @@ Exemples concrets à adapter selon les axes prioritaires :
 - Extrait de pépins de pamplemousse (EPP) : 15 à 25 gouttes, 3 fois/j dans un verre d'eau — si infections récurrentes (ORL, urinaires, digestives, cutanées), candidose chronique, grippe, rhume, angine, toux, terrain immunitaire fragilisé. L'EPP renforce la résistance de l'organisme même en cas de changements de saison. Pas de contre-indication chez l'enfant et l'adulte. ⚠️ Interaction médicamenteuse possible (comme le pamplemousse fruit) — vérifier si la cliente est sous médicaments métabolisés par le cytochrome P450.
 TOUJOURS : posologie exacte (marque, forme, dose, fréquence, moment précis), et 1-2 phrases expliquant pourquoi CE choix pour ELLE.
 ${reglesSiboMethane}
+${reglesFermentation}
+${reglesPutrefaction}
 ${buildReglesProtocoleCyclique(d)}
 ━━ RÈGLE N°6 — SÉCURITÉ ABSOLUE ━━
 Anticoagulants → éviter oméga-3 >2g/j, millepertuis, gingko
@@ -1507,7 +1636,7 @@ OBJECTIF NATUROPATIQUE : réparer la paroi intestinale, calmer l'inflammation de
   • Boswellia serrata 1 à 1,5g de principe actif/j, minimum 3 mois → dans le PHV : "La résine de Boswellia est l'un des anti-inflammatoires naturels les mieux documentés pour calmer l'inflammation chronique de la paroi intestinale — elle agit là où les autres approches ne suffisent pas."
   • Oméga-3 EPA/DHA Omégabiane Pileje 2 gél/j au repas → dans le PHV : "Les oméga-3 réduisent l'inflammation de votre muqueuse. Important : pour qu'ils soient absorbés, votre digestion doit fonctionner correctement — c'est pourquoi on travaille aussi votre bile en parallèle."
   • Vitamine D3 800 UI/j → dans le PHV : "La vitamine D renforce les coutures de votre paroi intestinale et aide votre intestin à fabriquer les anticorps qui protègent toutes vos muqueuses."
-  • Prébiotiques (fibres fermentescibles) — indispensables avant ou avec les probiotiques : dans le PHV : 'Les probiotiques sont comme des graines que vous plantez dans un jardin. Mais si la terre n'est pas fertilisée, les graines ne poussent pas. Les fibres prébiotiques sont ce fertilisant — elles nourrissent vos bonnes bactéries, qui les fermentent pour produire des molécules protectrices qui sont le carburant de votre côlon. Sans fibres, les probiotiques s'installent difficilement et votre côlon reste fragilisé.' Sources à recommander : ail, oignon, artichaut, échalote, poireau, banane légèrement verte, orge, avoine, légumineuses. Introduire progressivement pour éviter les ballonnements de transition.
+  • Prébiotiques (fibres fermentescibles) — indispensables avant ou avec les probiotiques, SAUF en cas de dysbiose de fermentation colique OU de SIBO associé (voir Règles N°9ter / N°5bis si actives — dans ces cas, ne recommande AUCUN prébiotique et retire cette recommandation) : dans le PHV : 'Les probiotiques sont comme des graines que vous plantez dans un jardin. Mais si la terre n'est pas fertilisée, les graines ne poussent pas. Les fibres prébiotiques sont ce fertilisant — elles nourrissent vos bonnes bactéries, qui les fermentent pour produire des molécules protectrices qui sont le carburant de votre côlon. Sans fibres, les probiotiques s'installent difficilement et votre côlon reste fragilisé.' Sources à recommander : ail, oignon, artichaut, échalote, poireau, banane légèrement verte, orge, avoine, légumineuses. Introduire progressivement pour éviter les ballonnements de transition.
   • Zinc carnosine si muqueuse très irritée → dans le PHV : "Le zinc carnosine apaise et répare en profondeur les cellules de votre muqueuse intestinale — il agit en synergie avec la L-Glutamine."
 [Ne jamais écrire dans le PHV : 'boswellines', 'leucotriènes', 'occludine', 'claudines', 'IgA sécrétoires', 'entérocytes']
 
@@ -1555,7 +1684,7 @@ CANDIDOSE CHRONIQUE :
 Si aucune pathologie digestive n'est renseignée ou si seul le SIBO/IMO est présent, ignore cette règle N°9.
 
 SIGNATURE DIGESTIVE COMPLÉMENTAIRE (si renseignée dans le questionnaire) :
-- Gaz intestinaux très odorants / odeur de soufre / œuf pourri → signature de dysbiose de putréfaction : les bactéries protéolytiques du côlon descendant (pH 7,5-8) dégradent les résidus protéiques en ammoniac, indole, scatol, cadavérine, putrescine, H₂S. Dans le PHV : 'Vos gaz très odorants sont la signature d'une digestion incomplète des protéines — les bactéries de votre intestin fermentent ce que votre estomac n'a pas terminé, en produisant des gaz malodorants. La solution est de mieux digérer les protéines en amont, pas de les supprimer.' Causes à explorer : hypochlorhydrie, mastication insuffisante, protéines en excès. SIBO H₂S possible si gaz odorants 60-90 min post-repas (grêle). Mentionner dans le PHV (pilier alimentation) : limiter les aliments très soufrés (oeufs, viandes rouges, choux, ail cuit, poireaux en grande quantité), soutenir la digestion des protéines (HCl bétaïne à évaluer), motilité à soutenir (gingembre, artichaut). Ne pas dupliquer si SIBO H₂S déjà traité en Règle 5bis.
+- Gaz intestinaux très odorants / odeur de soufre / œuf pourri → signature de dysbiose de putréfaction : les bactéries protéolytiques du côlon descendant (pH 7,5-8) dégradent les résidus protéiques en ammoniac, indole, scatol, cadavérine, putrescine, H₂S. Dans le PHV : 'Vos gaz très odorants sont la signature d'une digestion incomplète des protéines — les bactéries de votre intestin fermentent ce que votre estomac n'a pas terminé, en produisant des gaz malodorants. La solution est de mieux digérer les protéines en amont, pas de les supprimer.' Causes à explorer : hypochlorhydrie, mastication insuffisante, protéines en excès. SIBO H₂S possible si gaz odorants 60-90 min post-repas (grêle). Mentionner dans le PHV (pilier alimentation) : limiter les aliments très soufrés (oeufs, viandes rouges, choux, ail cuit, poireaux en grande quantité), soutenir la digestion des protéines (HCl bétaïne à évaluer), motilité à soutenir (gingembre, artichaut). Ne pas dupliquer si SIBO H₂S déjà traité en Règle 5bis. Si la Règle N°9quater (dysbiose de putréfaction) est active plus haut dans ce prompt, c'est elle qui prime pour le protocole complet et les compléments — cette ligne ne sert alors que de rappel du mécanisme, ne pas répéter deux fois les mêmes compléments dans le PHV.
 - Gaz inodores abondants → fermentation glucidique : évoquer déficit en amylase / mastication insuffisante / excès de glucides fermentescibles. Mentionner dans le PHV : bien mâcher, limiter les sucres rapides et les féculents en excès le soir.
 - Éructations fréquentes → hypochlorhydrie ou fermentation haute : mentionner dans le PHV (pilier alimentation) : manger lentement, éviter de boire pendant les repas, éviter les boissons gazeuses. Si IPP en cours : noter la dépendance possible au rebond acide et l'importance d'une sortie progressive (avec accord médecin).
 - Mauvaise mastication signalée → TOUJOURS inclure dans le pilier alimentation du PHV : "Mâchez chaque bouchée au minimum 20 à 30 fois avant d'avaler — la digestion commence dans la bouche et une mauvaise mastication perturbe en cascade toutes les étapes digestives."` : 'Aucune pathologie digestive spécifique renseignée.'}
