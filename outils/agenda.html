@@ -155,6 +155,7 @@ body{font-family:'Be Vietnam Pro',sans-serif;background:var(--off);color:var(--a
   .modal-field.full{grid-column:span 1}
 }
 </style>
+<script src="auth-guard.js"></script>
 </head>
 <body>
 
@@ -487,16 +488,8 @@ function load() {
       state.prepTime = saved.prepTime !== undefined ? saved.prepTime : 10;
       document.getElementById('prepTime').value = state.prepTime;
     }
-    // Données de démonstration si vide
-    if (state.rdvs.length === 0) {
-      state.rdvs = [
-        {id:1, name:'Marie Laurent', email:'marie@email.com', date:'2026-09-15', time:'10:00', type:'initial', status:'attente', notes:'SIBO suspecté, ballonnements chroniques', parcours:'alba'},
-        {id:2, name:'Sophie Renard', email:'sophie@email.com', date:'2026-09-15', time:'14:00', type:'initial', status:'attente', notes:'SOPK diagnostiqué, acné hormonale', parcours:'aria'},
-        {id:3, name:'Camille Dumont', email:'cam@email.com', date:'2026-09-16', time:'10:00', type:'initial', status:'attente', notes:'SPM sévère, cycles irréguliers', parcours:'alba'},
-        {id:4, name:'Lucie Martin', email:'lucie@email.com', date:'2026-09-17', time:'09:00', type:'initial', status:'attente', notes:'Endométriose stade 2, fatigue', parcours:'aria'},
-        {id:5, name:'Nathalie Blanc', email:'nat@email.com', date:'2026-09-18', time:'11:00', type:'initial', status:'attente', notes:'Périménopause, bouffées de chaleur', parcours:'ora'},
-      ];
-    }
+    // Note : plus de données de démonstration ici — l'affichage local sert uniquement
+    // de cache instantané en attendant la synchronisation Supabase (voir supaLoadRdvs).
   } catch(e) {}
 }
 
@@ -512,11 +505,16 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
 
 async function supaUpsertRdv(rdv) {
   try {
+    let authToken = SUPA_KEY;
+    if (typeof Auth !== 'undefined') {
+      const token = await Auth.getValidAccessToken();
+      if (token) authToken = token;
+    }
     await fetch(SUPA_URL + '/rest/v1/rendez_vous', {
       method: 'POST',
       headers: {
         'apikey': SUPA_KEY,
-        'Authorization': 'Bearer ' + SUPA_KEY,
+        'Authorization': 'Bearer ' + authToken,
         'Content-Type': 'application/json',
         'Prefer': 'resolution=merge-duplicates,return=minimal'
       },
@@ -539,11 +537,57 @@ async function supaUpsertRdv(rdv) {
 
 async function supaDeleteRdv(id) {
   try {
+    let authToken = SUPA_KEY;
+    if (typeof Auth !== 'undefined') {
+      const token = await Auth.getValidAccessToken();
+      if (token) authToken = token;
+    }
     await fetch(SUPA_URL + '/rest/v1/rendez_vous?id=eq.' + id, {
       method: 'DELETE',
-      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY }
+      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + authToken }
     });
   } catch(e) { console.warn('Supabase delete RDV:', e); }
+}
+
+/* ── Charge tous les RDV réels depuis Supabase (réservations du site public
+   ET créations manuelles) — remplace le cache local par la source de vérité. ── */
+async function supaLoadRdvs() {
+  try {
+    let authToken = SUPA_KEY;
+    if (typeof Auth !== 'undefined') {
+      const token = await Auth.getValidAccessToken();
+      if (token) authToken = token;
+    }
+    const res = await fetch(SUPA_URL + '/rest/v1/rendez_vous?order=date.asc,time.asc', {
+      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + authToken }
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const rows = await res.json();
+    return rows.map(r => ({
+      id: r.id,
+      name: r.name,
+      email: r.email,
+      date: r.date,
+      time: r.time,
+      type: r.type,
+      status: r.status || 'attente',
+      notes: r.notes,
+      parcours: r.parcours,
+      mails_done: r.mails_done || {}
+    }));
+  } catch(e) {
+    console.warn('Erreur chargement RDV depuis Supabase (affichage du cache local en attendant) :', e);
+    return null;
+  }
+}
+
+/* ── Rafraîchit l'agenda avec les données Supabase, dès que la connexion est prête ── */
+async function syncRdvsDepuisSupabase() {
+  const rdvsDistants = await supaLoadRdvs();
+  if (rdvsDistants === null) return; // échec réseau : on garde le cache local affiché
+  state.rdvs = rdvsDistants;
+  save();
+  updateStats(); renderAgenda(); renderWaitlist(); renderSemaine(); renderMiniCal();
 }
 
 async function declencherEmailsAutomatiques() {
@@ -1306,13 +1350,17 @@ function closeModalDirect(id) { document.getElementById(id).classList.remove('op
 // ════════════════════════════════
 // INIT
 // ════════════════════════════════
-load();
-loadEmailJSConfig();
-selectDate(new Date().toISOString().slice(0,10));
-updateStats();
-renderSlotsDisplay();
-renderBlockedList();
-renderMiniCal();
+function initAgenda() {
+  load();
+  loadEmailJSConfig();
+  selectDate(new Date().toISOString().slice(0,10));
+  updateStats();
+  renderSlotsDisplay();
+  renderBlockedList();
+  renderMiniCal();
+  syncRdvsDepuisSupabase(); // charge les vraies réservations (site public inclus) en arrière-plan
+}
+showAuthGate('praticienne', () => { removeAuthGate(); initAgenda(); });
 
 </script>
 </body>
