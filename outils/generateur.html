@@ -172,6 +172,7 @@ textarea.mf:focus,input.mf:focus,select.mf:focus{border-color:var(--ocre);backgr
 .p-toggle.on .priority-badge { display: inline-flex; }
 
 </style>
+<script src="supabase-db.js"></script>
 </head>
 <body>
 
@@ -559,16 +560,6 @@ textarea.mf:focus,input.mf:focus,select.mf:focus{border-color:var(--ocre);backgr
         <option>Étudiante / jeune adulte</option>
       </select>
     </div>
-    <div class="p-sel-wide">
-      <label class="p-lbl">Tempérament constitutionnel <span style="font-weight:400;color:var(--gris)">(auto-importé du questionnaire visio)</span></label>
-      <select id="m-temperament">
-        <option value="">— Non renseigné</option>
-        <option value="nerveux">Nerveux (mélancolique, cérébral) — sec, froid, Terre</option>
-        <option value="lymphatique">Lymphatique (flegmatique, digestif) — humide, froid, Eau</option>
-        <option value="sanguin">Sanguin — humide, chaud, Air</option>
-        <option value="bilieux">Bilieux / Colérique (respiratoire) — sec, chaud, Feu</option>
-      </select>
-    </div>
   </div>
 
   <div class="pilier-note" style="margin-top:14px">
@@ -757,19 +748,6 @@ function prefillParams() {
     }
   });
   refreshAxesBadges();
-
-  // Auto-sélectionner le tempérament si importé depuis le questionnaire visio
-  if (sessionData.temperament) {
-    const tSelect = document.getElementById('m-temperament');
-    if (tSelect) {
-      for (let i = 0; i < tSelect.options.length; i++) {
-        if (tSelect.options[i].value === sessionData.temperament) {
-          tSelect.selectedIndex = i;
-          break;
-        }
-      }
-    }
-  }
 }
 
 function toggleManual() {
@@ -852,17 +830,6 @@ function buildClientData() {
     // Bilans
     bilans_a_recommander: bilansSelectionnes || s.bilans_recommandes || '',
     bilans_justif: gv('bilans-justif'),
-    // Tempérament constitutionnel (depuis questionnaire visio ou sélection manuelle dans le générateur)
-    temperament: gv('m-temperament') || s.temperament || '',
-    // Terrains biologiques CHANBIO (depuis questionnaire de consultation)
-    chanbio_terrains: s.chanbio_terrains || '',
-    chanbio_notes: s.chanbio_notes || '',
-    // Pathologies digestives spécifiques (depuis questionnaire de consultation)
-    digestif_pathologies: s.digestif_pathologies || '',
-    digestif_notes: s.digestif_notes || '',
-    // Pathologies gynéco-hormonales spécifiques (depuis questionnaire de consultation)
-    gyneco_pathologies: s.gyneco_pathologies || '',
-    gyneco_notes: s.gyneco_notes || '',
   };
 }
 
@@ -877,349 +844,31 @@ function detectSiboMethane(d) {
   ].filter(Boolean).join(' \n ');
 
   // Confirmation explicite du typage CH4/IMO/méthane
-  const confirmePattern = /confirmé[^\n]*?(ch4|méthane|imo)|(ch4|méthane|imo)[^\n]*?confirmé|test respiratoire ch4|sibo[\s-]?ch4|sibo[\s-]?méthane|imo\s+confirmé|sibo\s+imo\s+confirmé|confirmé[^\n]*?imo/i;
+  const confirmePattern = /confirmé[^\n]*?(ch4|méthane|imo)|(ch4|méthane|imo)[^\n]*?confirmé|test respiratoire ch4|sibo[\s-]?ch4|sibo[\s-]?méthane/i;
   // Signes cliniques évocateurs (utilisés seulement en renfort, pas seuls)
-  const signesPattern = /constipation prédominante \(sibo-ch4\)|methanobrevibacter/i;
+  const signesPattern = /constipation prédominante \(sibo-ch4\)|imo\b|methanobrevibacter/i;
 
   return confirmePattern.test(champsTextuels) || signesPattern.test(champsTextuels);
 }
 
-// ── Détection dysbiose de fermentation colique (non-SIBO) ──
-// Distincte du SIBO : ici la pullulation de bactéries fermentaires (lactobacilles,
-// bifidobactéries en excès, ou baisse de diversité) se situe dans le CÔLON, pas le grêle.
-// Signature différentielle : délai 2-3h post-repas (vs 60-90 min pour le SIBO grêle),
-// gaz abondants mais NON odorants, aggravation par les fibres/prébiotiques, douleur/gaz
-// à la palpation du colon ascendant/caecum. Pilote la Règle N°9ter (protocole dédié :
-// pas de prébiotiques, pas d'ajout systématique de probiotiques).
-function detectDysbioseFermentation(d) {
-  const champsTextuels = [
-    d.selects_complets, d.textes_libres, d.symptomes_coches, d.chips,
-    d.notes_praticien, d.motifs, d.digestif_notes || ''
-  ].filter(Boolean).join(' \n ');
-
-  const gazNonOdorants = /gaz non odorants?|gaz inodores?|ballonnements? sans odeur/i.test(champsTextuels);
-  const delaiColique = /2.?3\s?h(eures)? après|2 à 3 heures après le repas|ballonnements? .{0,20}(2|3)\s?h/i.test(champsTextuels);
-  const aggravationFibres = /aggrav\w* (par|avec) les fibres|ballonne.{0,20}(fibres|légumineuses|crudités|choux|topinambour|prébiotiques)|intolérance aux fibres/i.test(champsTextuels);
-  const palpationColique = /douleurs? (et |ou )?gaz.{0,20}(colon ascendant|caecum|cæcum)|colon ascendant.{0,20}douleur/i.test(champsTextuels);
-  // Exclusion : si SIBO/IMO déjà confirmé, ce protocole spécifique ne s'applique pas
-  // (le SIBO a déjà sa propre Règle N°5bis, plus adaptée à une pullulation du grêle).
-  const siboConfirme = /sibo.{0,15}confirmé|confirmé.{0,15}sibo|test respiratoire (positif|ch4|h2)/i.test(champsTextuels);
-
-  const signesFermentation = gazNonOdorants || delaiColique || aggravationFibres || palpationColique;
-  return signesFermentation && !siboConfirme;
-}
-
-// ── Détection dysbiose de putréfaction ──
-// Bactéries protéolytiques (Bactéroïdes, Clostridium...) en excès, terrain alcalin,
-// substrat protéique excédentaire (excès de consommation OU défaut de digestion des
-// protéines/graisses animales). Signature différentielle par rapport à la fermentation :
-// gaz ODORANTS (vs non odorants), ballonnements moins importants en quantité, douleur/gaz
-// à la palpation du colon descendant/sigmoïde (vs colon ascendant/caecum pour la
-// fermentation). Pilote la Règle N°9quater (protocole dédié : affamer + nourrir les
-// compétiteurs + éliminer les pathogènes, à l'opposé de la fermentation qui exclut les
-// prébiotiques et les antibactériens en 1ère intention).
-function detectDysbiosePutrefaction(d) {
-  const champsTextuels = [
-    d.selects_complets, d.textes_libres, d.symptomes_coches, d.chips,
-    d.notes_praticien, d.motifs, d.digestif_notes || ''
-  ].filter(Boolean).join(' \n ');
-
-  const gazOdorants = /gaz odorants?|gaz malodorants?|odeur (de |d')?(soufre|œuf pourri|oeuf pourri)/i.test(champsTextuels);
-  const sellesOdorantes = /selles odorantes|selles malodorantes/i.test(champsTextuels);
-  const haleinePutride = /haleine putride|mauvaise haleine (chronique|persistante)/i.test(champsTextuels);
-  const palpationDescendant = /douleurs? (et |ou )?gaz.{0,20}(colon descendant|sigmoïde|sigmoide)|colon descendant.{0,20}douleur/i.test(champsTextuels);
-  const eauGazeuseRepas = /eau gazeuse.{0,20}(repas|table)|eau riche en bicarbonate.{0,20}repas/i.test(champsTextuels);
-  const excesProteinesAnimales = /excès de (viande|protéines animales|graisses animales)|consommation excessive de (viande|protéines)/i.test(champsTextuels);
-
-  const signesPutrefaction = gazOdorants || sellesOdorantes || haleinePutride || palpationDescendant;
-  return signesPutrefaction || (eauGazeuseRepas && excesProteinesAnimales);
-}
-
-// ── Détection signaux évocateurs de candidose (NON confirmée biologiquement) ──
-// La candidose se développe TOUJOURS sur un terrain dysbiotique (jamais sur un
-// microbiote équilibré) et se nourrit de sucre/aliments à index glycémique élevé.
-// Les signes cliniques (fatigue, déprime, mycoses, envie de sucre, ballonnements,
-// langue chargée, prurit anal) sont NOMBREUX mais PEU SPÉCIFIQUES — chacun peut avoir
-// une autre origine (cortisol bas, sérotonine basse, insulinorésistance, hypothyroïdie,
-// dysbiose de fermentation/putréfaction, SIBO). Cette fonction ne sert donc PAS à
-// déclencher automatiquement le protocole complet (Règle N°9 — CANDIDOSE CHRONIQUE),
-// qui reste piloté par la case à cocher explicite du praticien (profil confirmé ou
-// fortement suspecté). Elle sert à faire remonter une note de vigilance/investigation
-// quand plusieurs signes évocateurs coexistent sans que la case candidose soit cochée.
-function detectCandidose(d) {
-  const champsTextuels = [
-    d.selects_complets, d.textes_libres, d.symptomes_coches, d.chips,
-    d.gyneco, d.notes_praticien, d.motifs, d.digestif_notes || ''
-  ].filter(Boolean).join(' \n ');
-
-  const mycosesRepetition = /mycoses? (vaginales? )?récidivantes?|mycose.{0,15}(ongles?|pied d.athlète|muguet|gland)|candidose vaginale/i.test(champsTextuels);
-  const envieSucreIrrepressible = /envie de sucre irrépressible|envie de sucre incontrôlable|envie de sucre.{0,20}difficile à contrôler/i.test(champsTextuels);
-  const balonnementsSucre = /ballonnements?.{0,30}(aggrav\w*|augment\w*).{0,20}(sucre|pain blanc|pâtes blanches|index glycémique élevé|charge glycémique élevée)/i.test(champsTextuels);
-  const pruritAnal = /prurit anal/i.test(champsTextuels);
-  const langueFissureePerleche = /langue fissurée|perlèche/i.test(champsTextuels);
-  const langueBlancheEpaisse = /enduit blanc épais|langue.{0,15}enduit blanc/i.test(champsTextuels);
-  const caseCandidoseCochee = /candidose chronique/i.test(champsTextuels);
-
-  const nombreSignes = [mycosesRepetition, envieSucreIrrepressible, balonnementsSucre, pruritAnal, langueFissureePerleche, langueBlancheEpaisse].filter(Boolean).length;
-
-  return {
-    evocateur: nombreSignes >= 2 && !caseCandidoseCochee,
-    caseCochee: caseCandidoseCochee,
-    nombreSignes
-  };
-}
-
-// ── Détection signaux de digestion faible (mastication / hypochlorhydrie / bilio-pancréatique / stress / IPP) ──
-// Cherche dans tous les champs texte/select/checkbox les signaux de mastication
-// insuffisante, d'hypochlorhydrie, d'insuffisance bilio-pancréatique, de stress
-// péri-prandial, de carences minérales liées, d'urgence médicale, de demande
-// explicite de sevrage IPP, d'hypothyroïdie comme cause d'hypochlorhydrie, et du
-// test au bicarbonate de soude — pilote la Règle N°9bis (toujours active) et la
-// Règle N°6 (sécurité).
-function detectDigestionFaible(d) {
-  const champsTextuels = [
-    d.selects_complets, d.textes_libres, d.symptomes_coches, d.chips
-  ].filter(Boolean).join(' \n ');
-
-  const masticationFaible = /(rarement|jamais).{0,15}(bouillie|gobe|morceaux)|très rapide|avale sans vraiment mâcher|occlusion dentaire|dents manquantes|prothèse ou bridge|douleurs? ou gêne à la mastication|mauvaise occlusion/i.test(champsTextuels);
-  const hypochlorhydrie = /pesanteur ou lenteur de digestion|éructations fréquentes|restent sur l.estomac|ballonnements qui apparaissent rapidement|ipp en cours ou prolongés|carence en b12|haleine putride|test au bicarbonate.*>.*2 min|hypothyroïdie connue ou suspectée/i.test(champsTextuels);
-  const insuffisanceBilioPancreatique = /selles grasses|pâles, malodorantes|stéatorrhée|selles salissantes|selles collantes|flottantes|écœurée.*repas gras|barbouillée.*repas gras|intolérance ou inconfort marqué après un repas gras|douleurs 1 à 3h après le repas|hypochondre droit|lithiase|cholécystectomie|carence connue en vitamines liposolubles|oméga-3.*sans résultat|constipation présente depuis l.enfance|constipation ancienne|alternance diarrhée.*constipation|sphincter d.Oddi|insuffisance biliaire|bile de bœuf|cholestérol élevé sans raison|fumeterre|curcuma.*bile/i.test(champsTextuels);
-  const stressDigestif = /régulièrement stressée \(travail|sous tension ou en plein conflit|bouche sèche.{0,20}(souvent|occasionnellement)|diarrhées ou urgences digestives déclenchées par le stress|nausées en période de stress|perte d.appétit marquée en période de stress|douleurs intestinales déclenchées par le stress|carence connue ou suspectée en magnésium/i.test(champsTextuels);
-  const carenceMineraleHypochlorhydrie = (hypochlorhydrie || stressDigestif) && /\b(fer|zinc|cuivre|magnésium)\b/i.test(champsTextuels) && /carences? minérales? connues? ou suspectées?|carence connue ou suspectée en magnésium/i.test(champsTextuels);
-  const urgenceLithiaseObstructive = /a déjà présenté ce tableau \(douleur intense \+ selles décolorées\)|douleur abdominale intense.{0,40}selles décolorées|selles décolorées.{0,40}douleur abdominale intense/i.test(champsTextuels);
-  const demandeSevrageIPP = /prise prolongée ou quotidienne d.ipp|demande d.accompagnement au sevrage/i.test(champsTextuels);
-  const hypothyroïdieHypochlorhydrie = /hypothyroïdie connue ou suspectée/i.test(champsTextuels);
-  const bicarbonateTestPositif = /test au bicarbonate.*>.*2 min|bicarbonate.*(hypochlorhydrie probable)/i.test(champsTextuels);
-  // Profil plante à recommander selon le contexte coché (sevrage IPP)
-  const profilGingembre = /pesanteur ou lenteur de digestion|digestion lente|digestion difficile/i.test(champsTextuels);
-  const profilMelisse = /spasmes|troubles gastriques influencés par le stress|coliques \/ spasmes intestinaux/i.test(champsTextuels);
-  const profilReglisse = /ugd \/ gastrite \/ rgo|brûlures|ulcère|helicobacter/i.test(champsTextuels);
-
-  return {
-    masticationFaible, hypochlorhydrie, insuffisanceBilioPancreatique, stressDigestif,
-    carenceMineraleHypochlorhydrie, urgenceLithiaseObstructive, demandeSevrageIPP,
-    hypothyroïdieHypochlorhydrie, bicarbonateTestPositif,
-    profilGingembre, profilMelisse, profilReglisse,
-    actif: masticationFaible || hypochlorhydrie || insuffisanceBilioPancreatique || stressDigestif || demandeSevrageIPP
-  };
-}
-
-
-function buildReglesProtocoleCyclique(d) {
-  // Détecte si le profil est hormonal (SOPK, SPM, endométriose, périménopause)
-  const champsTextuels = [d.selects_complets, d.textes_libres, d.symptomes_coches, d.chips, d.gyneco, d.notes_praticien, d.motifs, d.gyneco_pathologies || ''].filter(Boolean).join(' \n ');
-  const profilHormonal = /SOPK|SPM|endométriose|périménopause|ménopause|cycle|progesterone|oestrogène|estrogène|règles|menstruel|ovul|aménorrhée/i.test(champsTextuels);
-  if (!profilHormonal) return '';
-
-  const isSPM = /SPM|prémenstruel|premenstruel/i.test(champsTextuels);
-  const isSOPK = /SOPK|polykystique/i.test(champsTextuels);
-  const isEndo = /endométriose|endo\b|dysménorrhée|dyspareunie/i.test(champsTextuels);
-  const isMeno = /périménopause|ménopause|bouffées de chaleur|post.ménopause/i.test(champsTextuels);
-  const isAmeno = /aménorrhée secondaire|aménorrhée/i.test(champsTextuels);
-
-  const lines = [
-    '',
-    '━━ RÈGLE N°5ter — PROTOCOLE CYCLIQUE HORMONAL ━━',
-    '⚠️ Cette cliente présente un profil hormonal actif. Tu DOIS intégrer dans le PHV une section "Votre protocole selon votre cycle" qui adapte les recommandations aux 4 phases du cycle menstruel (ou à la périménopause si applicable). Cette section s\'intègre dans s2 [ALIMENTATION & RYTHME] ou dans une section dédiée après s3.',
-    '',
-    'STRUCTURE DE LA SECTION CYCLE À CRÉER :',
-    '',
-    '── Phase 1 — Folliculaire (J1 à J13 environ) ──',
-    'C\'est la phase de renouveau — les œstrogènes montent progressivement, l\'énergie revient, la tolérance aux efforts augmente.',
-    '• Alimentation : favoriser les aliments riches en fer (lentilles, épinards, graines de citrouille) pour compenser les pertes menstruelles. Protéines de qualité le matin pour soutenir la dopamine montante.',
-    '• Activité : c\'est la phase la plus propice aux efforts physiques — running, musculation, HIIT si souhaité. Le corps est en phase de reconstruction.',
-    '• Compléments : continuer le fer si prescrit, surtout les premiers jours.',
-    '',
-    '── Phase 2 — Ovulatoire (J13 à J16 environ) ──',
-    'Pic d\'œstrogènes et de LH — énergie maximale, tolérance au stress élevée, communication facilitée.',
-    '• Alimentation : crucifères cuits 2-3x/semaine (brocoli, chou-fleur) pour soutenir la détoxification des œstrogènes par le foie. Éviter l\'alcool et le café excessif qui surchargent la phase de détox hépatique.',
-    '• Activité : phase idéale pour les efforts intenses et les activités sociales. La force musculaire est à son maximum.',
-    '',
-    '── Phase 3 — Lutéale (J16 à J28 environ) ──',
-    'La progestérone monte — c\'est ici que le SPM s\'installe si le terrain est fragilisé. La chute de sérotonine et de dopamine est physiologique mais peut être soutenue.',
-    '• Alimentation : magnésium + aliments riches en tryptophane (précurseur de la sérotonine) : dinde, graines de courge, banane, chocolat noir 70%+. Réduire les sucres raffinés et l\'alcool qui aggravent les fluctuations glycémiques et amplifient l\'irritabilité.',
-    isSPM ? '• SPM spécifique : vitamines B6 (activer la conversion tryptophane → sérotonine), calcium 1000mg/j J14-J28 (réduit les crampes et l\'irritabilité de 48% selon les études). Gattilier si prescrit — 1 gélule/j le matin à jeun (ne pas prendre si sous contraception hormonale). Mélilot si oedèmes et rétention prémenstruelle marqués (veinotonique et décongestionnant pelvien — tisane 1 à 3g/tasse 3 fois/j — ⚠️ CI grossesse, interaction anticoagulants). Marron d\'Inde si congestion pelvienne et jambes lourdes (anti-oedémateux vasoconstricteur — crème ou tisane — ⚠️ fruit toxique, adulte uniquement). Griffonia (5-HTP) si irritabilité, humeur instable et fringales sucrées en phase lutéale — la baisse de sérotonine prémenstruelle peut induire une attirance pour les sucres — à associer à l\'Alchémille — posologie selon galénique — ⚠️ CI sclérodermie, tumeur carcinoïde, grossesse, allaitement, enfants trisomiques, association antidépresseurs nécessite avis médical.' : '',
-    '• Activité : réduire l\'intensité en fin de phase. Privilégier yoga, marche, pilates. Le corps entre en phase de récupération.',
-    '',
-    '── Phase 4 — Menstruelle (J1-J5) ──',
-    'Repos actif — c\'est une phase de purge physiologique, pas de pathologie. Le niveau de tolérance à l\'effort et au stress est au minimum.',
-    '• Alimentation : chaleur digestive (bouillons, plats chauds, gingembre, curcuma). Fer héminique si règles abondantes. Éviter le café, l\'alcool, les aliments pro-inflammatoires (fast-food, huiles chauffées, sucre raffiné) qui amplifient les prostaglandines responsables des crampes.',
-    isEndo ? '• Endométriose spécifique : oméga-3 EPA/DHA en priorité absolue pendant les règles (anti-inflammatoire puissant sur les prostaglandines). Magnésium + curcumine. Éviter les produits laitiers et la viande rouge en particulier cette semaine.' : '',
-    '• Activité : marche douce, étirements, chaleur sur le bas-ventre. Pas d\'effort intense.',
-    '',
-  ];
-
-  if (isEndo) {
-    lines.push('━━ RÈGLE ENDOMÉTRIOSE — PROTOCOLE SPÉCIFIQUE ━━');
-    lines.push('⚠️ Pathologie inflammatoire chronique confirmée ou suspectée. Ces recommandations s\'ajoutent au protocole cyclique en soutien du suivi médical et gynécologique, jamais à sa place.');
-    lines.push('ALIMENTATION ANTI-INFLAMMATOIRE : à favoriser — légumes verts, fruits rouges et agrumes (antioxydants), céréales complètes, légumineuses, légumes crus ou cuits, kéfir/yaourts nature/choucroute/miso/kimchi (microbiote et régulation hormonale), protéines maigres (légumineuses, tofu, œufs, viandes blanches, poissons). À éviter — fritures, viandes transformées, produits industriels (graisses trans pro-inflammatoires) ; laitages (réduire selon tolérance individuelle) ; gluten (période d\'exclusion évaluable pendant les règles) ; sodas, pâtisseries, sucreries (sucre raffiné = inflammation) ; café et alcool.');
-    lines.push('COMPLÉMENTS ENDOMÉTRIOSE : Magnésium bisglycinate ou citrate (Nutergia Ergymag, NHCO ou Nutripure, 200 à 400 mg/j) ; Zinc bisglycinate (Nutripure Zinc ou NHCO, 10 à 20 mg/j, 3 mois — ⚠️ ne pas prendre en même temps que le fer) ; Oméga-3 EPA+DHA (Omégabiane EPA/DHA Pileje ou Nutripure, 500 mg à 1g/j, doubler si douleurs importantes) ; Vitamine B6 si absente du magnésium (Orfito, 35 à 140 mg/j, max 500 mg/j) ; Vitamine D (Nutripure/Pileje/Nutergia, 1000 à 2000 UI/j) ; L-Glutamine si porosité intestinale associée (Ergyprotect Confort Nutergia, 2 à 5g/j — ⚠️ CI hépatiques ou rénales).');
-    lines.push('PHYTOTHÉRAPIE ENDOMÉTRIOSE : Achillée millefeuille (antispasmodique et anti-inflammatoire pelvien — 1 c. à café feuilles séchées en infusion, de l\'ovulation au J1 des règles — ⚠️ CI femmes enceintes, pathologie hormono-dépendante, contraception hormonale, antécédent cancer du sein avec récepteurs de progestérone) ; Framboisier (tonifie l\'utérus, réduit les douleurs menstruelles — 1 c. à soupe feuilles séchées, 3 fois/j pendant les règles — ⚠️ CI pathologie hormono-dépendante, premiers mois de grossesse car action sur le muscle lisse utérin) ; Gattilier (équilibre hormonal, régule la prolactine et l\'excès d\'œstrogènes — 25 à 30 gouttes 3 fois/j dans l\'eau froide, de l\'ovulation aux règles — ⚠️ CI cancer hormono-dépendant, grossesse, contraception hormonale, LH haute, traitement ovulation) ; Gingembre (anti-inflammatoire et anti-nausées — 1 à 2g râpé en frais dans eau chaude, 2 fois/j — ⚠️ CI obstruction voies biliaires) ; Mélilot (Melilotus officinalis — décongestionnant pelvien, réduit la rétention prémenstruelle, veinotonique, anti-inflammatoire, améliore l\'oxygénation tissulaire — tisane 1 à 3g par tasse 3 fois/j — ⚠️ CI grossesse, interaction anticoagulants, déconseillé avant 18 ans).');
-    lines.push('');
-  }
-
-  if (isSOPK) {
-    lines.push('━━ RÈGLE SOPK — PROTOCOLE SPÉCIFIQUE ━━');
-    lines.push('Le SOPK associe résistance à l\'insuline, excès d\'androgènes et inflammation chronique. Les recommandations ci-dessous ciblent ces trois mécanismes.');
-    lines.push('ALIMENTATION SOPK : à favoriser — féculents complets et légumineuses (patates douces, quinoa, riz basmati, lentilles, pois chiches, millet, sarrasin, flocons d\'avoine — stabilisent la glycémie) ; fruits et légumes + graines de chia et de lin (25 à 30g fibres/j) ; protéines maigres (poissons, volailles, œufs, tofu, tempeh) ; graisses saines (avocats, huile d\'olive, noix, poissons gras) ; curcuma, cannelle (1 à 2g/j en épice — améliore la sensibilité à l\'insuline), gingembre, baies, légumes colorés, thé vert. À éviter — sodas, pâtisseries, sucreries (résistance à l\'insuline) ; produits ultra-transformés (graisses trans) ; plats préparés (perturbateurs endocriniens, bisphénol A — ne pas chauffer au micro-ondes dans des contenants plastiques).');
-    lines.push('COMPLÉMENTS SOPK : Inositol — myo-inositol + D-chiro-inositol, 2 à 4g/j souvent associé à 200 µg d\'acide folique (B9). Marques : Dynveo Inositol, Nutripure, ou Feminabiane SOPK (Pileje — intègre myo-inositol + B9). Alternative complexe : Zytolia (myo-inositol + B9 + D3 + chrome + zinc, complément SOPK de référence en France) ; Magnésium bisglycinate ou citrate (Nutripure, Dynveo ou NHCO, 200 à 400 mg/j) ; Oméga-3 EPA+DHA (Nutripure ou Nutergia Ergyfin, 500 mg/j) ; Vitamine D (Nutripure/Nutergia/Pileje, 1000 à 2000 UI/j — fréquemment carencée dans le SOPK) ; Zinc bisglycinate (Nutripure ou NHCO, 15 à 30 mg/j, 3 mois — ⚠️ ne pas prendre en même temps que le fer).');
-    lines.push('PHYTOTHÉRAPIE SOPK : Gattilier (régule le cycle menstruel, réduit la prolactine — 25 à 30 gouttes 3 fois/j dans l\'eau froide, de l\'ovulation aux règles ; si cycles très irréguliers : du J1 jusqu\'à l\'ovulation puis pause, ou quotidiennement 3 mois puis 1 mois de pause — ⚠️ CI cancer hormono-dépendant, grossesse, contraception hormonale, LH haute, traitement ovulation) ; Cannelle (épice culinaire 1 à 2g/j, améliore la sensibilité à l\'insuline) ; Menthe poivrée en tisane (réduit les androgènes et l\'hirsutisme — 1 à 2 tasses/j — ⚠️ CI grossesse, allaitement, RGO).');
-    lines.push('');
-  }
-
-  if (isMeno) {
-    lines.push('── Périménopause / Ménopause — adaptation spécifique ──');
-    lines.push('En périménopause, le cycle devient irrégulier et les phases fluctuent. L\'approche est différente : stabiliser le terrain global plutôt que suivre un cycle précis.');
-    lines.push('• Alimentation : phytoestrogènes doux (soja/tofu/tempeh/lait de soja, graines de lin fraîchement moulues 1 à 2 c. à soupe/j, miso, edamame — une fois par jour). ⚠️ Si hypothyroïdie traitée : éviter les phyto-œstrogènes dans les 3 à 4h après la prise médicamenteuse. Calcium et magnésium quotidiens. Réduire les excitants (café, alcool, sucre) qui amplifient les bouffées de chaleur. Protéines maigres pour soutenir la masse musculaire. Produits laitiers, légumes verts, amandes, sardines pour la densité osseuse.');
-    lines.push('• Activité : musculation 2-3x/semaine (capital osseux + métabolisme). Marche, vélo. Cohérence cardiaque systématique. Yoga, méditation, respiration profonde.');
-    lines.push('• Hydratation : 1,5 à 2 litres/j pour prévenir la sécheresse cutanée et les inconforts vaginaux.');
-    lines.push('COMPLÉMENTS MÉNOPAUSE : Vitamine D (Nutripure/Nutergia/Pileje, 1000 à 2000 UI/j — indispensable pour le calcium et la densité osseuse) ; Calcium 950 mg/j (sources alimentaires prioritaires : produits laitiers, légumes verts, amandes, tofu) ; Magnésium bisglycinate ou citrate (Nutergia Ergymag ou NHCO, 200 à 400 mg/j).');
-    lines.push('PHYTOTHÉRAPIE MÉNOPAUSE : Houblon (Humulus lupulus) — lutter contre les bouffées de chaleur, 300 mg/j en comprimés pendant 4 à 12 semaines (⚠️ CI antécédent cancer hormono-dépendant) ; Sauge officinale (feuilles séchées, 1 c. à café dans une tasse d\'eau chaude, 2 à 3 fois/j — réduit les bouffées de chaleur et sueurs nocturnes — ⚠️ CI épilepsie, grossesse, allaitement) ; Lin graines moulues (1 à 2 c. à soupe/j dans smoothies ou céréales — lignanes phytoestrogéniques) ; Trèfle rouge (teinture mère, 20 gouttes diluées dans eau, 2 fois/j, 3 semaines par mois — riche en isoflavones — ⚠️ CI cancer hormono-dépendant) ; Maca (poudre ou comprimés, 2g/j pendant 3 mois — plante adaptogène régulatrice hormonale — ⚠️ CI hypertension artérielle, hypothyroïdie) ; Mélilot (Melilotus officinalis — veinotonique, décongestionnant pelvien, améliore la circulation veineuse et l\'oxygénation tissulaire, anti-oedémateux, antispasmodique — tisane 1 à 3g par tasse 3 fois/j — indiqué si jambes lourdes, varices, rétention hydrique, colite spasmodique — ⚠️ CI grossesse, interaction anticoagulants et anti-agrégants, déconseillé avant 18 ans) ; Marron d\'Inde (Aesculus hippocastanum — anti-inflammatoire, anti-oedémateux, vasoconstricteur veineux et lymphatique, renforce la paroi capillaire, antioxydant — crème locale ou tisane écorce/graines — indiqué si jambes lourdes, paresthésies, crampes, oedèmes membres inférieurs, varices, hémorroïdes — ⚠️ fruit toxique, usage réservé adulte) ; Hamamelis (Hamamelis virginiana — astringent, veinotrope, antioxydant, antihemorragique, cicatrisant, anti-inflammatoire — voie orale ou pommade — indiqué si ménorragies péri-ménopausiques, dysménorrhées, jambes lourdes, varices, hémorroïdes — ⚠️ déconseillé avant 18 ans) ; Eschscholtzia (Eschscholtzia californica — sédatif et hypnotique par diminution de la synthèse d\'adrénaline, anxiolytique, antispasmodique intestinal, antidépresseur type inhibiteur recapture sérotonine — indiqué insomnie par nervosité et difficulté d\'endormissement et réveils nocturnes chez la femme ménopausée — associer au houblon en péri-ménopause — posologie selon galénique, effet rapide — ⚠️ CI glaucome, grossesse, allaitement, enfant < 12 ans, diminution vigilance possible 1 à 2h après la prise — IMPORTANT à signaler à la cliente : peut mettre 15 jours à agir, ne pas arrêter prématurément).');
-    lines.push('');
-  }
-
-  if (isAmeno) {
-    lines.push('━━ RÈGLE AMÉNORRHÉE SECONDAIRE — PROTOCOLE SPÉCIFIQUE ━━');
-    lines.push('L\'aménorrhée secondaire (absence de règles > 3 cycles consécutifs chez une femme précédemment réglée) est un signal d\'alarme d\'un déséquilibre hormonal sous-jacent. Causes fréquentes : stress intense (cortisol inhibant la GnRH), carences nutritionnelles ou énergétiques, activité physique excessive, arrêt de contraception hormonale, déséquilibres thyroïdiens ou excès de prolactine. L\'objectif naturopathe est de nourrir le corps pour rétablir les fonctions hormonales et énergétiques.');
-    lines.push('ALIMENTATION AMÉNORRHÉE — nourrir le terrain hormonal : Graisses saines à CHAQUE repas (indispensables à la synthèse des œstrogènes) — avocats, huile d\'olive et colza, poissons gras, graines de chia et de lin. Protéines de qualité à chaque repas (acides aminés pour les glandes endocrines) — œufs, volailles, légumineuses, tofu. Féculents complets à chaque repas (glucides régulant le cortisol et soutenant les ovaires) — patates douces, quinoa, riz basmati, légumineuses, flocons d\'avoine. Apport calorique suffisant — l\'aménorrhée est souvent un signal de restriction énergétique, assurer un apport suffisant surtout si activité physique importante.');
-    lines.push('COMPLÉMENTS AMÉNORRHÉE : Magnésium bisglycinate ou citrate (NHCO, Dynveo ou Nutripure, 200 à 400 mg/j) ; Zinc bisglycinate (NHCO ou Nutripure, 15 à 30 mg/j, 3 mois — ⚠️ ne pas prendre en même temps que le fer) ; Oméga-3 EPA+DHA (Nutripure ou Omégabiane EPA/DHA Pileje, 500 mg/j) ; Vitamine D (Nutripure/Nutergia/Pileje, 1000 à 2000 UI/j) ; Plasma de Quinton isotonique (1 à 3 ampoules/j à jeun — indiqué dans l\'aménorrhée car ce terrain est souvent très déminéralisé, nerveux et épuisé ; le Quinton reminéralise en profondeur et soutient les fonctions endocrines) ; Vitamine C acérola (1 à 2g/j — soutient la synthèse des hormones stéroïdiennes surrénaliennes, combat le cortisol chronique responsable de la suppression de la GnRH — Nat & Form Acérola Bio ou Holistica).');
-    lines.push('PHYTOTHÉRAPIE AMÉNORRHÉE : Gattilier (Vitex agnus-castus) — régule l\'axe hormonal et stimule la production de progestérone. Tisane : 1 c. à soupe/tasse, 2 à 3 fois/j, 3 semaines puis 1 semaine d\'arrêt, pendant 3 mois. Teinture mère : 30 gouttes dans un peu d\'eau, 1 à 2 fois/j le matin à jeun, 3 semaines avec 1 semaine d\'arrêt pendant 3 mois. ⚠️ CI grossesse, allaitement, cancer hormono-dépendant, contraception hormonale, LH haute, traitement ovulation. HE Sauge sclarée — régule le taux d\'œstrogènes, massage bas-ventre 3 gouttes dans huile végétale d\'amande douce, 3 semaines avec 1 semaine d\'arrêt.');
-    lines.push('GESTION DU STRESS — PRIORITÉ ABSOLUE : Le cortisol est le premier frein à la GnRH et donc à tout le cycle menstruel. Les techniques psychocorporelles (yoga, cohérence cardiaque, méditation, sophrologie) sont au cœur du protocole, pas optionnelles. À intégrer systématiquement dans le pilier psychologie du PHV.');
-    lines.push('');
-  }
-
-  lines.push('Intègre ces recommandations spécifiques de façon pédagogique et accessible — avec un sous-titre par profil, en vouvoiement, en expliquant POURQUOI chaque recommandation est adaptée à ce terrain hormonal. La cliente doit comprendre ses déséquilibres comme des signaux à écouter, pas comme des fatalités.');
-
-  return lines.filter(l => l !== '').join('\n');
-}
-
-
+// Retourne le bloc de règle additionnelle si SIBO méthane avéré, sinon chaîne vide.
+// Fonction séparée (et non template literal imbriqué) pour éviter tout conflit de backticks.
 function buildReglesSiboMethane(siboMethaneAvere) {
   if (!siboMethaneAvere) return '';
   return [
     '',
     '━━ RÈGLE N°5bis — SIBO MÉTHANE (IMO) AVÉRÉ DÉTECTÉ — PROTOCOLE OBLIGATOIRE ━━',
-    '⚠️ Les données de cette cliente indiquent un SIBO méthane (IMO) confirmé. Tu DOIS impérativement intégrer les soutiens suivants dans la section s3 [SOUTIENS CIBLÉS]. Ces compléments Therascience sont validés pour ce profil IMO et doivent être mentionnés prioritairement. Note : ces produits relèvent d\'un protocole d\'éradication médical qui doit être prescrit et suivi par un gastro-entérologue — dans le PHV, tu les mentionnes en coordination avec le suivi médical, en expliquant leur rôle.',
+    '⚠️ Les données de cette cliente indiquent un SIBO méthane (IMO) confirmé. Tu DOIS impérativement intégrer les deux soutiens suivants dans la section s3 [SOUTIENS CIBLÉS], en plus ou à la place des exemples génériques de la Règle N°5 — ce sont des compléments validés pour CETTE cliente, à intégrer prioritairement :',
     '',
-    '1. Therascience Physiomance SIBO',
-    '   Complexe ciblé sur la prolifération bactérienne de l\'intestin grêle. Agit en synergie avec les autres soutiens anti-IMO.',
-    '   Posologie de référence : 2 gélules matin + 2 gélules soir, 15 minutes avant les repas, pendant 1 mois.',
-    '   ⚠️ Attention si la cliente prend des anticoagulants (R/ACG) ou des antidépresseurs — signaler la précaution explicitement.',
+    '1. TEOLIANCE® Motilys — probiotique ciblé sur le Complexe Moteur Migrant (CMM)',
+    '   Associe 3 souches déposées (Bifidobacterium lactis HN019, Bifidobacterium animalis lactis BS01, Bacillus coagulans IS-2), en gélules gastro-résistantes. Le CMM est le mécanisme de "nettoyage" naturel de l\'intestin grêle entre les repas (ondes toutes les 90-120 min) — sa défaillance est l\'une des causes racines les plus fréquentes de l\'IMO, donc soutenir son redémarrage limite le risque de rechute après l\'éradication.',
+    '   Posologie : reprendre celle indiquée dans le champ "Compléments déjà en cours" ou "Médicaments & allergies" si disponible (cette cliente l\'a généralement déjà sous prescription médicale) ; sinon mentionner "selon prescription de votre gastro-entérologue".',
     '',
-    '2. Therascience Physiomance ORIGAN',
-    '   L\'origan (carvacrol) est l\'un des antimicrobiens naturels les mieux documentés contre les archées méthanogènes (Methanobrevibacter smithii responsable de l\'IMO). Soutient l\'éradication progressive.',
-    '   Posologie de référence : 1 capsule à chaque fin de repas (3 capsules/j) pendant 15 jours, en commençant progressivement (1/j puis 2/j puis 3/j). À renouveler 2x à 1 mois d\'intervalle (3 cycles en tout).',
+    '2. Permealine® (Pileje) — L-Glutamine',
+    '   Principal carburant des entérocytes (cellules de la muqueuse intestinale). Soutient la réparation de la barrière intestinale, souvent fragilisée par la pullulation méthanogène et le ralentissement chronique du transit propre à l\'IMO.',
+    '   Posologie : reprendre celle indiquée dans les données de séance si disponible ; sinon mentionner "selon prescription de votre gastro-entérologue".',
     '',
-    '3. Therascience Physiomance ALLICINE 500 mg',
-    '   L\'allicine (ail) agit en complément de l\'origan avec un spectre antimicrobien différent, particulièrement efficace sur les archées productrices de méthane. Association origan + allicine = protocole d\'éradication naturelle de référence en naturopathie.',
-    '   Posologie de référence : 1 gélule 3x/j aux repas pendant 15 jours, en commençant progressivement (1/j puis 2/j puis 3/j). À renouveler 2x à 1 mois d\'intervalle (3 cycles en tout).',
-    '',
-    '4. Therascience Teoliance MOTILYS — probiotique ciblé sur le Complexe Moteur Migrant (CMM)',
-    '   Le CMM est le mécanisme de "nettoyage" naturel de l\'intestin grêle entre les repas (ondes toutes les 90-120 min). Sa défaillance est l\'une des causes racines les plus fréquentes de l\'IMO — soutenir son redémarrage limite le risque de rechute après l\'éradication.',
-    '   Posologie de référence : 1 gélule/j, 30 minutes avant un repas, pendant 1 mois.',
-    '',
-    '5. Permealine® (Pileje) — L-Glutamine',
-    '   Principal carburant des entérocytes (cellules de la muqueuse intestinale). Soutient la réparation de la barrière intestinale, souvent fragilisée par la pullulation méthanogène et le ralentissement chronique du transit.',
-    '   Posologie de référence : selon prescription ou indication du gastro-entérologue.',
-    '',
-    '━━ RECOMMANDATIONS HYGIÈNE DE VIE SYSTÉMATIQUES EN CAS D\'IMO ━━',
-    '⚠️ Ces recommandations sont OBLIGATOIRES pour ce profil IMO. Elles ne comptent PAS dans le quota des 3 compléments — ce sont des mesures hygiéno-diététiques. Les intégrer impérativement dans les sections alimentation (s2) et/ou bien-être (s4) du PHV.',
-    '',
-    'A. GINGEMBRE — Procinétique naturel de référence',
-    '   Le méthane agit directement comme un agent paralysant sur les muscles intestinaux. Le gingembre est le procinétique naturel le mieux documenté : il stimule la motiline (l\'hormone duodénale qui déclenche la vague contractile du CMM), augmente le péristaltisme intestinal, est spasmolytique, diminue la pression au niveau du cardia (utile aussi en sevrage IPP), diminue les ballonnements, accélère la vidange gastrique et a un effet anti-nauséeux, anti-inflammatoire et antioxydant.',
-    '   En pratique : extrait standardisé (gélules) ou infusion concentrée de racine fraîche.',
-    '   Moment optimal : le soir au coucher (à distance du dernier repas) pour soutenir le CMM nocturne, OU 30 minutes avant les repas.',
-    '   Formuler en langage accessible : "Le gingembre agit comme un chef d\'orchestre pour vos muscles intestinaux — il relance la vague de nettoyage que votre intestin fait normalement à jeun."',
-    '   Note pour la praticienne (mécanisme complémentaire, pas à formuler tel quel dans le PHV) : le CMM est déclenché par la motiline qui active les récepteurs intestinaux à la sérotonine, entraînant une production d\'acétylcholine. Le safran (Crocus sativus) agit sur ce même axe sérotoninergique et peut être une alternative ou un complément au gingembre — particulièrement pertinent si la cliente est sous ISRS (le millepertuis y est alors contre-indiqué, le safran devient l\'option de choix). La vitamine B5 (acide pantothénique) et la L-carnitine soutiennent la synthèse d\'acétylcholine elle-même — c\'est la logique de composition derrière des complexes comme Therascience Teoliance MOTILYS déjà recommandé ci-dessus ; ne pas superposer un second produit sur ce même axe sans raison clinique claire.',
-    '',
-    'B. ESPACEMENT DES REPAS — Respecter le CMM',
-    '   Le Complexe Moteur Migrant (CMM) — le "camion-poubelle" de l\'intestin grêle — ne peut s\'activer que si le système digestif est totalement au repos. Chaque prise alimentaire (y compris un café au lait, un bonbon, une tisane sucrée) stoppe immédiatement le CMM.',
-    '   Règles à transmettre :',
-    '   - Espacement idéal : 4 à 5 heures entre chaque repas, sans aucun grignotage.',
-    '   - Fenêtre nocturne : 12 à 16 heures de jeûne (ex : dîner à 20h → petit-déjeuner à 8h minimum).',
-    '   - Boissons autorisées à jeun : eau plate, eau gazeuse, infusions sans sucre uniquement.',
-    '   Formuler en langage accessible : "L\'IMO prospère précisément parce que votre intestin n\'a pas le temps de se nettoyer. Chaque fois que vous grignotez, vous annulez ce travail de nettoyage."',
-    '',
-    'C. SYSTÈME NERVEUX / NERF VAGUE — Condition sine qua non',
-    '   Le péristaltisme est gouverné par le système parasympathique. En état de stress chronique (mode sympathique), le transit s\'arrête — aggravant directement l\'IMO. La stimulation du nerf vague est donc un prérequis, non un "bonus".',
-    '   Pratiques à recommander :',
-    '   - Cohérence cardiaque : 5 minutes avant chaque repas (inspiration 5s / expiration 5s). Accessible via l\'application RespiRelax+ ou Kardia.',
-    '   - Massages abdominaux doux dans le sens des aiguilles d\'une montre, 5 minutes le matin à jeun.',
-    '   - Stimulation du nerf vague : gargarismes prolongés (30 secondes matin et soir), chants, humming.',
-    '   Formuler en langage accessible : "Votre intestin ne peut travailler que si votre système nerveux lui donne la permission. Tant que votre corps est en mode stress, votre transit sera en pause — quelle que soit la qualité de vos compléments."',
-    '',
-    'Dans le PHV, explique à la cliente POURQUOI chaque recommandation la concerne — en langage simple, sans aucun terme médical. Par exemple : pourquoi le méthane ralentit son transit → "Ces micro-organismes produisent un gaz qui agit comme un anesthésiant sur les muscles de votre intestin — c\'est pour ça que votre transit est si lent, et que les laxatifs n\'aident pas.". Pourquoi l\'espacement des repas est indispensable → "Votre intestin ne peut faire son nettoyage naturel entre les repas que si vous lui laissez du silence — pas de grignotage, pas de boisson sucrée, même une tisane non sucrée.". Comment l\'origan et l\'ail agissent → "Ce sont deux antimicrobiens naturels puissants qui s\'attaquent progressivement aux micro-organismes qui colonisent votre intestin là où ils ne devraient pas être.". Souligne que les gestes quotidiens (gingembre, espacement des repas, cohérence cardiaque) sont aussi importants que les compléments — sans eux, le protocole sera incomplet. Rappelle que le suivi gastro-entérologique est indispensable. [Interdit dans le PHV : "CMM", "archées", "Methanobrevibacter", "carvacrol", "allicine", "IMO" sans explication]',
-    ''
-  ].join('\n');
-}
-
-function buildReglesFermentation(fermentationAveree) {
-  if (!fermentationAveree) return '';
-  return [
-    '',
-    '━━ RÈGLE N°9ter — DYSBIOSE DE FERMENTATION COLIQUE DÉTECTÉE (NON-SIBO) ━━',
-    '⚠️ Les données de cette cliente évoquent une dysbiose de fermentation colique : prolifération de bactéries fermentaires (souvent des lactobacilles/bifidobactéries en excès) ou baisse de diversité bactérienne, dans le CÔLON — à ne pas confondre avec un SIBO (grêle). Signature typique : ballonnements abondants mais gaz NON odorants, apparaissant 2 à 3h après un repas riche en fibres/prébiotiques (vs 60-90 min pour le SIBO), douleur/gaz à la palpation du colon ascendant et du caecum. Ce ne sont PAS des bactéries dangereuses — juste en excès. Le protocole est donc volontairement doux et NE DOIT PAS être confondu avec celui de la putréfaction ou du SIBO.',
-    '',
-    '⚠️ DEUX INTERDITS ABSOLUS POUR CE PROFIL :',
-    '1. NE JAMAIS recommander de prébiotiques (fibres fermentescibles, FOS, inuline) dans le PHV de cette cliente — même si une autre règle de ce prompt (ex. barrière intestinale / LGS) les mentionne par défaut. Cette cliente a déjà un excès de bactéries fermentaires : les nourrir avec des prébiotiques aggraverait ses symptômes. Si un autre axe (LGS, hyperperméabilité) est aussi présent, retire ou neutralise toute recommandation de prébiotiques et explique brièvement pourquoi dans le PHV.',
-    '2. NE PAS ajouter de probiotiques par défaut dans les compléments (section s3) pour ce seul motif. Un ajout de probiotiques reviendrait à ajouter encore des bactéries de fermentation à un terrain qui en a déjà trop. Exception : si les données de séance indiquent que la cliente en prend déjà spontanément avec un bénéfice perçu, tu peux mentionner de les poursuivre sans les intensifier — jamais en initier de nouveaux pour ce motif.',
-    '',
-    'PROTOCOLE À INTÉGRER DANS LE PHV (pilier alimentation en priorité, avant tout complément) :',
-    '- Éviction 1 mois, à dose de tolérance individuelle, des aliments les plus fermentescibles : crudités, légumineuses, choux, ail, oignon, topinambour, poireau. Réintroduction ensuite progressive, aliment par aliment, à la dose que la cliente tolère — jamais une éviction prolongée ou totale.',
-    '- Semi-complet plutôt que complet (céréales, riz) pendant cette phase — le complet est trop fermentescible tant que la flore n\'est pas rééquilibrée.',
-    '- Peu de sucres rapides et d\'aliments à charge glycémique élevée (nourrissent aussi la fermentation).',
-    '- Éviter les repas tardifs ou, si inévitable, privilégier un repas très léger (soupe) — le péristaltisme ralentit en fin de journée et favorise la fermentation.',
-    '- Technique de préparation des légumineuses pour mieux les tolérer : tremper une nuit puis rincer matin et soir jusqu\'à apparition d\'un germe — cette pré-germination augmente la densité en micronutriments et rend les légumineuses nettement plus digestes. En phase de réintroduction, privilégier les légumineuses en boîte (déjà bien trempées) ou mixées (houmous) pour commencer.',
-    '',
-    'OPTIMISATION DIGESTIVE (à croiser avec la Règle N°9bis) :',
-    '- Mastication systématiquement renforcée — c\'est souvent le levier le plus efficace ici.',
-    '- Investiguer et traiter si présents : hypochlorhydrie, insuffisance biliaire (cf. Règle N°9bis).',
-    '- Stress : cohérence cardiaque 5 minutes avant les repas, magnésium bisglycinate le soir, manger dans le calme et sans écran. Corriger un éventuel déficit en sérotonine si le contexte s\'y prête.',
-    '- Limiter les médicaments non indispensables qui perturbent le microbiote (IPP, AINS, antibiotiques) — toujours en lien avec le médecin prescripteur, jamais en incitant à un arrêt brutal.',
-    '',
-    'PHYTOTHÉRAPIE — EN DERNIER RECOURS SEULEMENT :',
-    'Ne proposer une plante antibactérienne QUE si l\'optimisation nutritionnelle et digestive ci-dessus est insuffisante après un temps raisonnable d\'essai. Dans ce cas, privilégier la phytothérapie douce (ex. ORIGAN Nutergia par voie orale) plutôt que l\'huile essentielle d\'origan compact — réservée aux dysbioses de putréfaction, à la candidose et au SIBO où la pullulation doit être traitée plus fermement. Si une plante antibactérienne est malgré tout utilisée ici, ne pas systématiser l\'ajout de probiotiques derrière (contrairement à la putréfaction) puisque l\'objectif n\'est pas de réensemencer une flore appauvrie mais de calmer un excès.',
-    '',
-    'Dans le PHV, formuler simplement, sans jargon : "Vos ballonnements viennent de bonnes bactéries de votre intestin qui, en ce moment, sont un peu trop nombreuses et fermentent activement les fibres — ce n\'est pas dangereux, juste inconfortable. On va leur donner moins à fermenter le temps que l\'équilibre revienne, sans se priver des légumineuses pour autant : juste autrement, et progressivement." [Interdit dans le PHV : "dysbiose de fermentation", "bactéries fermentaires", "prébiotiques" sans reformulation accessible]',
-    ''
-  ].join('\n');
-}
-
-function buildReglesPutrefaction(putrefactionAveree) {
-  if (!putrefactionAveree) return '';
-  return [
-    '',
-    '━━ RÈGLE N°9quater — DYSBIOSE DE PUTRÉFACTION DÉTECTÉE ━━',
-    '⚠️ Les données de cette cliente évoquent une dysbiose de putréfaction : prolifération de bactéries protéolytiques (genre Bactéroïdes, Clostridium — souvent Gram négatives), qui se développent en milieu alcalin en présence d\'un excès de substrat protéique dans le côlon (excès de consommation de protéines/graisses animales OU, plus souvent, défaut de digestion des protéines par mastication insuffisante, hypochlorhydrie, insuffisance biliaire ou pancréatique). Signature typique : gaz ODORANTS (à l\'inverse de la fermentation), parfois selles odorantes, haleine putride, douleur/gaz à la palpation du colon descendant et du sigmoïde (fosse iliaque gauche). Contrairement à la fermentation, ce sont ici de véritables bactéries à traiter fermement : leurs LPS activent une immunité pro-inflammatoire de type TH1, diminuent le butyrate protecteur, et leurs amines (tyramine, histamine, putrescine, cadavérine) et toxines (ammoniac, phénols, indole, scatol, hydrogène sulfuré) surchargent le foie.',
-    '',
-    'Le protocole suit 3 axes complémentaires, à intégrer dans cet ordre :',
-    '',
-    '1. AFFAMER LES BACTÉRIES DE PUTRÉFACTION (pilier alimentation, en tête) :',
-    '   - Si excès réel de consommation de protéines/graisses animales (à investiguer avant de conclure, ne jamais réduire sans avoir vérifié l\'assiette réelle) : ramener à un repère simple, environ 1g de protéines par kg de poids corporel et par jour, dont la moitié animale (~0,5g/kg/j) et la moitié végétale — viande/poisson/œufs le midi de préférence, protéines végétales le soir (légumineuses, tofu, tempeh) pour ne pas gêner la synthèse nocturne de sérotonine.',
-    '   - Si le volume de protéines est déjà raisonnable, ne pas le réduire davantage — le vrai levier est alors la digestion (voir point 2).',
-    '   - Manger dans le calme, cohérence cardiaque si stress associé.',
-    '   - Retirer l\'eau gazeuse ou riche en bicarbonates PENDANT les repas (elle neutralise l\'acidité gastrique nécessaire à la digestion des protéines) — formule mnémotechnique à transmettre à la cliente si utile à l\'oral : "pas d\'eau qui pique pour pas de gaz qui piquent". L\'eau gazeuse reste possible en dehors des repas si elle est appréciée.',
-    '',
-    '2. OPTIMISER LA DIGESTION DES PROTÉINES ET GRAISSES ANIMALES (cf. Règle N°9bis pour le détail) :',
-    '   - Investiguer et prendre en charge en priorité : hypochlorhydrie, insuffisance biliaire et/ou pancréatique — ce sont les causes les plus fréquentes de dysbiose de putréfaction, y compris chez des personnes qui ne mangent pas beaucoup de viande (cela concerne aussi certains profils végétariens).',
-    '   - Si nécessaire, enzymes digestives : Enzynutrics Total (Bionutrics) — complexe protéase/amylase/lipase, sans HCl, utilisable même sans hypochlorhydrie confirmée.',
-    '   - Si hypochlorhydrie confirmée associée : évoquer une association HCl bétaïne + enzymes digestives (se référer au protocole détaillé de la Règle N°9bis).',
-    '',
-    '3. NOURRIR LES BACTÉRIES COMPÉTITRICES (bactéries de fermentation) — ICI LES PRÉBIOTIQUES SONT RECOMMANDÉS, à l\'inverse de la dysbiose de fermentation :',
-    '   - Alimentation à dominance végétale : environ 2 fois plus de légumes que de protéines animales, et 2 fois plus de légumes que de féculents. Cette cliente n\'a en général pas de mauvaise tolérance aux fibres — les intégrer largement et sans crainte.',
-    '   - Si l\'appétence pour les légumes est un frein réel (pas par intolérance, mais par goût ou habitude), proposer des pistes concrètes (nouvelles recettes, cuisine simple) avant d\'envisager un complément prébiotique isolé.',
-    '   - Prébiotique en complément uniquement si le levier alimentaire est documenté comme insuffisant après un temps d\'essai raisonnable : fucosyllactose en première intention. Rappeler que les prébiotiques isolés n\'égalent jamais la richesse d\'une assiette végétale variée (polyphénols, antioxydants, vitamines).',
-    '   - ⚠️ Repère à ne pas oublier : apport français moyen ≈10g/j de fibres prébiotiques, besoins ≈30g/j, optimum ≈50g/j — un écart qui se comble presque toujours par l\'assiette plutôt que par un complément.',
-    '',
-    '4. ÉLIMINER LES PATHOGÈNES — seul axe de ce protocole où l\'attaque directe est justifiée (bactéries réellement délétères, à l\'inverse de la fermentation) :',
-    '   Privilégier une forme gastro-résistante d\'huile essentielle d\'origan compact (jamais en goutte directe : trop agressif pour l\'œsophage/estomac, favorise le reflux et l\'arrêt du traitement) :',
-    '   - ADP (Energetica Natura) ou Origan Plus (Nutrixeal) — 2 gélules matin + 2 gélules soir, au milieu du repas, 5 jours sur 7, pendant 3 semaines (soit 15 jours de prise effective).',
-    '   - Alternative budget : Origan Plus (Pranarôm) — moins cher mais davantage de reflux rapporté (environ 20% des clientes ne le tolèrent pas) ; à proposer seulement si le budget est une contrainte réelle.',
-    '   - ⚠️ Hépatotoxique à dose excessive : respecter strictement la posologie et la durée (3 semaines, jamais en continu au-delà). Contre-indiqué en cas de souffrance hépatique préexistante (marqueurs hépatiques élevés), grossesse, allaitement, et chez l\'enfant de moins de 12 ans.',
-    '   - Alternative plus douce si souffrance hépatique, grossesse/allaitement (à écarter alors aussi), ou enfant : ERGYPAR (Nutergia) — complexe phytothérapique (thym, noyer, mauve entre autres), moins puissant que l\'origan compact mais mieux toléré.',
-    '   - JUSTE APRÈS la fin du protocole d\'origan (jamais pendant), probiotiques à forte dose pour ré-ensemencer : Vivomixx 1 sachet/jour à jeun pendant 20 jours (environ 400 milliards de CFU/sachet) ; si rupture de stock, alternative Lactibiane Actif Choc (Pileje) 2 gélules matin à jeun pendant 30 jours.',
-    '',
-    'Dans le PHV, formuler simplement, sans jargon : "Ces gaz très odorants viennent de bactéries qui aiment digérer ce qui reste de protéines mal digérées dans votre intestin — elles produisent des substances qui fatiguent votre foie et peuvent jouer sur votre moral. On va leur couper les vivres en améliorant votre digestion des protéines, nourrir vos bonnes bactéries avec des légumes en quantité, et si besoin, les calmer directement avec une plante antibactérienne bien tolérée." [Interdit dans le PHV : "dysbiose de putréfaction", "bactéries protéolytiques", "LPS", "Bactéroïdes", "Clostridium" sans reformulation accessible]',
+    'Explique à la cliente, en langage non médical, POURQUOI ces deux soutiens sont spécifiquement pertinents pour son profil (lien avec la constipation et le ralentissement du transit caractéristiques du méthane, et le besoin de réparer la muqueuse après une période de déséquilibre prolongé). Si un protocole d\'éradication (allicine, lovastatine naturelle) est par ailleurs en cours ou mentionné dans les données, préciser que ces deux soutiens viennent en complément et non en remplacement.',
     ''
   ].join('\n');
 }
@@ -1227,12 +876,6 @@ function buildReglesPutrefaction(putrefactionAveree) {
 function buildPrompt(d) {
   const siboMethaneAvere = detectSiboMethane(d);
   const reglesSiboMethane = buildReglesSiboMethane(siboMethaneAvere);
-  const fermentationAveree = detectDysbioseFermentation(d);
-  const reglesFermentation = buildReglesFermentation(fermentationAveree);
-  const putrefactionAveree = detectDysbiosePutrefaction(d);
-  const reglesPutrefaction = buildReglesPutrefaction(putrefactionAveree);
-  const digestionFaible = detectDigestionFaible(d);
-  const candidoseSignal = detectCandidose(d);
 
   return `Tu es Sabrina Castelli, naturopathe diplômée (Avita Serena, Porto-Vecchio, Corse), spécialisée en santé digestive et équilibre hormonal féminin. Tu génères le Protocole d'Hygiène Vitale (PHV) destiné à la cliente — un document qu'elle va lire, garder et appliquer.
 
@@ -1249,195 +892,41 @@ VOCABULAIRE — INTERDIT (trop médical ou posture de guérisseur) :
 VOCABULAIRE — À UTILISER :
 "terrain", "déséquilibre", "vitalité", "encrassement", "régulation", "hygiène de vie", "drainage", "énergie", "rééquilibrage", "soutien", "ressources naturelles", "ressentis"
 
-━━ RÈGLE N°1bis — GLOSSAIRE DE TRADUCTION OBLIGATOIRE ━━
-Ces termes techniques sont utilisés dans les instructions ci-dessous pour que tu comprennes les mécanismes. Mais ils sont STRICTEMENT INTERDITS dans le PHV remis à la cliente. Tu dois SYSTÉMATIQUEMENT utiliser la formulation client à la place. Ce n'est pas une simplification — c'est un changement total de registre.
-
-TERMES INTERDITS dans le PHV → FORMULATIONS CLIENT OBLIGATOIRES :
-
-Digestion & acidité :
-• "hypochlorhydrie" → "votre estomac ne produit pas assez d'acide pour bien digérer" ou "votre acidité gastrique est insuffisante"
-• "HCl" / "acide chlorhydrique" → "l'acide de votre estomac" ou "le suc gastrique"
-• "pepsine" → "l'enzyme qui digère vos protéines"
-• "CCK" / "cholécystokinine" / "sécrétine" → "les messagers qui déclenchent la sécrétion de bile et d'enzymes digestives"
-• "gastrine" → "l'hormone qui commande la production d'acide dans votre estomac"
-• "rebond acide" → "l'acide revient en force à l'arrêt du médicament"
-• "procinétique" → "qui relance le mouvement naturel de votre intestin"
-• "CMM" / "complexe moteur migrant" → "le mécanisme de nettoyage naturel de votre intestin entre les repas" — formuler ainsi : "votre intestin effectue un grand ménage entre les repas, comme un camion-poubelle — pour ça, il a besoin de silence : pas de grignotage, pas de boisson sucrée"
-• "vidange gastrique" → "la vitesse à laquelle votre estomac se vide"
-• "bol alimentaire" → "ce que vous avez mangé"
-
-Bile & foie :
-• "cholérétique" → "favorise la production de bile par le foie"
-• "cholagogue" → "favorise l'écoulement de la bile vers l'intestin"
-• "amphocholérétique" → "régule la bile dans les deux sens selon ce dont votre corps a besoin"
-• "acides biliaires primaires" → "les acides fabriqués directement par votre foie"
-• "sphincter d'Oddi" → "la valve qui libère la bile et les enzymes dans votre intestin"
-• "spasme du sphincter d'Oddi" → "la valve biliaire se contracte et ne s'ouvre pas bien"
-• "cholécystectomie" → "l'ablation de votre vésicule biliaire"
-• "stéatorrhée" → "des selles grasses"
-• "hépatoprotecteur" → "protège les cellules de votre foie"
-• "karcher biliaire" → "la bile nettoie naturellement votre intestin grêle en éliminant les bactéries indésirables"
-• "phase 2 de détox" → "la deuxième étape par laquelle votre foie transforme les toxines pour les éliminer"
-
-Barrière intestinale :
-• "entérocytes" → "les cellules qui tapissent votre intestin" ou "les cellules de votre muqueuse intestinale"
-• "jonctions serrées" → "les 'coutures' qui maintiennent vos cellules intestinales bien soudées entre elles"
-• "hyperperméabilité intestinale" / "leaky gut" / "HPI" → "votre muqueuse intestinale est trop perméable" ou "la paroi de votre intestin laisse passer ce qu'elle ne devrait pas"
-• "occludine" / "claudines" / "ZO-1" → ne JAMAIS mentionner ces termes dans le PHV — formuler : "les protéines qui maintiennent vos cellules intestinales bien soudées"
-• "pompes PGP" → "les systèmes de défense de votre intestin qui rejettent les toxiques avant qu'ils ne soient absorbés"
-• "DMT1" → ne pas mentionner — formuler : "les transporteurs qui captent le fer dans votre intestin"
-• "polarité des entérocytes" → ne pas mentionner — formuler : "vos cellules intestinales ne fonctionnent correctement que si leur structure est intacte"
-• "IgA sécrétoires" → "les anticorps que fabrique votre intestin pour protéger toutes vos muqueuses" — puis expliquer en 1 phrase ce que ça signifie concrètement pour elle (protège la muqueuse vaginale, pulmonaire, nasale...)
-• "GALT" → "votre système immunitaire intestinal" ou "les cellules immunitaires qui vivent dans vos intestins"
-• "cellules M" → ne pas mentionner — formuler : "les cellules sentinelles de votre intestin qui éduquent votre immunité"
-• "tolérance orale" → "votre intestin apprend à reconnaître vos aliments comme non-dangereux"
-• "dysbiose" → "votre flore intestinale est déséquilibrée" ou "votre microbiote manque de diversité"
-• "eubiose" → "un microbiote équilibré et diversifié"
-• "dysbiose de putréfaction" → "des bactéries qui fermentent les protéines mal digérées dans votre intestin"
-• "dysbiose de fermentation" → "des bonnes bactéries de votre intestin qui sont en ce moment un peu trop nombreuses et fermentent activement vos fibres"
-• "mucine" → "les glycoprotéines qui forment le mucus" → ne pas mentionner, formuler : "le mucus protecteur de votre intestin"
-
-Microbiote & SIBO :
-• "archées méthanogènes" → "des micro-organismes qui produisent du méthane dans votre intestin grêle"
-• "Methanobrevibacter smithii" → ne pas mentionner, formuler : "les micro-organismes responsables de l'IMO"
-• "biofilm" → "la couche protectrice que forment les bactéries pour résister aux traitements"
-• "SIBO H₂" / "SIBO CH₄" / "IMO" → dans le PHV, toujours expliquer en une phrase : "une prolifération bactérienne dans votre intestin grêle, là où les bactéries ne devraient pas se trouver en trop grand nombre"
-• "carvacrol" → "le principe actif de l'origan"
-• "allicine" → "le principe actif de l'ail"
-• "eubiose" → "un équilibre sain de votre microbiote"
-• "prébiotiques" → "les fibres qui nourrissent vos bonnes bactéries"
-
-Candidose :
-• "forme filamenteuse" / "mycélienne" → "sa forme active et agressive" (par opposition à "sa forme dormante et inoffensive")
-• "Th1/Th2" / "déséquilibre immunitaire Th1/Th2" → "les deux façons dont votre immunité peut réagir — l'une plus tournée vers la lutte anti-infectieuse, l'autre vers les réactions allergiques"
-• "candidine" / "toxines opioïdes" / "acide tartrique" → ne pas nommer — dire simplement : "les substances qu'elle produit et qui expliquent une partie de votre fatigue, de vos envies de sucre et de votre moral en berne"
-• "cycle de Krebs" → "le moteur qui produit votre énergie cellulaire"
-• "mimétisme croisé" (Candida/gluten) → "votre système immunitaire peut confondre certains composants du blé avec ceux du Candida, ce qui entretient l'inflammation"
-
-Hormones & cerveau :
-• "axe HPA" → "l'axe stress-surrénales"
-• "cortisol awakening response" → "le pic naturel de cortisol au réveil"
-• "orthosympathique" → "le système nerveux d'urgence, de la réponse au stress"
-• "parasympathique" → "le système nerveux du calme, de la digestion et de la récupération"
-• "prostaglandines" → "les médiateurs de l'inflammation" ou simplement "l'inflammation"
-• "DIM" / "diindolylméthane" → "un composé actif des légumes crucifères qui aide le foie à éliminer les œstrogènes"
-• "sulforaphane" → "un composé actif du brocoli"
-• "phosphatidylsérine" → laisser le nom, expliquer en 1 phrase : "un nutriment qui aide à réguler le cortisol en soirée"
-• "5-HTP" → laisser le nom, expliquer : "un précurseur de la sérotonine, l'hormone du bien-être"
-
-Compléments & formes galéniques :
-• "bisglycinate" → "une forme très bien absorbée et bien tolérée par l'intestin"
-• "glycérophosphate" → "une forme de magnésium particulièrement efficace sur le système nerveux"
-• "EPS" → "extrait de plante en format liquide concentré, très bien absorbé"
-• "boswellines" → "le principe actif du Boswellia, une résine anti-inflammatoire"
-• "holotranscobalamine" → "la forme active de la B12, la seule qui compte vraiment dans votre sang"
-• "méthylcobalamine" → "la forme de B12 directement utilisable par votre corps, sans transformation"
-• "P5P" → "la forme active de la vitamine B6, directement utilisable"
-• "méthylfolate" → "la forme active de la B9, que votre corps utilise directement"
-• "liposomal" → "encapsulé dans de petites bulles grasses pour une absorption maximale"
-• "KSM-66" → laisser le nom, préciser : "la forme d'ashwagandha la plus étudiée scientifiquement"
-• "sélénométhionine" → "la forme de sélénium la mieux absorbée"
-• "butyrate" / "AGCC" / "acides gras à chaîne courte" → dans le PHV : "des molécules protectrices produites par vos bonnes bactéries" ou "le carburant naturel de votre côlon" — ne jamais nommer le butyrate en face de la cliente
-• "fucosyllactose" → ne pas mentionner — dire : "un sucre protecteur présent dans le lait maternel qui nourrit spécifiquement les bonnes bactéries"
-• "bifidobactéries" / "lactobacilles" → "vos bonnes bactéries intestinales" ou "les bactéries protectrices de votre flore" (ces mots peuvent être utilisés si la cliente les connaît déjà, sinon les éviter)
-• "coprostanol" → ne pas mentionner
-• "cadavérine" / "putrescine" / "indole" / "scatol" → ne jamais mentionner — dire "des déchets gazeux malodorants produits lors de la fermentation des protéines non digérées"
-
-PRINCIPE CARDINAL DE RÉDACTION DU PHV :
-Chaque mécanisme physiologique doit être expliqué avec une analogie ou une image concrète du quotidien. Exemples validés :
-→ Les jonctions serrées : "les coutures de votre paroi intestinale"
-→ Le microbiote : "l'écosystème qui vit dans votre intestin"
-→ Le CMM : "le camion-poubelle naturel de votre intestin"
-→ La bile insuffisante pour les oméga-3 : "sans émulsifiant, l'huile et l'eau ne se mélangent pas — vos oméga-3 partent dans les toilettes sans être absorbés"
-→ La L-Glutamine : "le carburant de reconstruction des cellules qui tapissent votre intestin — comme des briques pour réparer un mur"
-→ Les IgA : "les gardiens que fabrique votre intestin pour protéger toutes vos muqueuses à distance"
-→ L'hypochlorhydrie : "votre estomac manque d'acide pour finir le travail — même une assiette parfaite ne sera pas bien digérée"
-→ La barrière intestinale poreuse : "la paroi de votre intestin est comme un filet — quand les mailles s'élargissent, ce qui devrait rester dehors rentre dans votre sang"
-
 ━━ RÈGLE N°2 — PHILOSOPHIE NATUROPATHE : LA CASCADE ━━
 La naturopathie remonte la chaîne des causes. Le ressenti actuel est le dernier domino.
 Tu as ici la ligne de vie et l'analyse causale du praticien. Utilise-les pour donner du sens aux recommandations et expliquer POURQUOI ces déséquilibres sont apparus.
 Repartir TOUJOURS de l'objectif exprimé par la cliente.
 
-━━ RÈGLE N°2bis-CAUSALITE — ARGUMENTER PAR LES MÉCANISMES PHYSIOLOGIQUES ━━
-C'est la règle qui distingue un PHV générique d'un PHV que la cliente va lire et relire.
-
-Pour CHAQUE recommandation (alimentation, comportement, complément), tu dois obligatoirement relier la recommandation à un mécanisme physiologique tiré des données de la séance.
-
-Structure attendue pour chaque recommandation importante :
-[Ce qui s'est passé dans son organisme] → [pourquoi ça crée les symptômes qu'elle vit] → [pourquoi CETTE recommandation agit précisément sur ce mécanisme]
-
-EXEMPLES DE TOURNURES À UTILISER :
-- "Vos antibiotiques répétés dans l'enfance ont réduit la diversité de votre microbiote — les études montrent que cette perte persiste jusqu'à 24 mois après une cure. C'est pourquoi nous allons reconstruire cette diversité avec des probiotiques multi-souches adaptés à votre profil, et non des probiotiques génériques."
-- "La pilule que vous avez prise pendant X ans a progressivement épuisé vos réserves de magnésium, de B6 et de zinc — des cofacteurs essentiels à la production de sérotonine et à l'équilibre hormonal. Ce n'est pas un hasard si votre SPM a empiré depuis l'arrêt : votre corps révèle maintenant ce qui était masqué."
-- "Votre réveil entre 1h et 3h du matin correspond exactement au pic d'activité métabolique du foie. Quand il est surchargé, il vous réveille. En soutenant la détoxification hépatique, on cible directement la cause de cette insomnie — pas le symptôme."
-- "La gastro-entérite que vous avez contractée en voyage a probablement lésé les cellules interstitielles de Cajal — les 'pacemakers' de votre intestin grêle. Sans ces cellules fonctionnelles, le complexe moteur migrant ne peut plus nettoyer l'intestin grêle entre les repas. C'est la porte d'entrée la plus fréquente du SIBO."
-
-PRINCIPE ABSOLU :
-Ne jamais écrire "Je vous recommande [X]" sans expliquer POURQUOI cette recommandation est pertinente pour SON terrain spécifique, en citant un mécanisme issu de ses données.
-Utiliser les connexions causales identifiées dans la ligne de vie et les notes du praticien pour relier les événements du passé aux déséquilibres actuels.
-
-━━ RÈGLE N°2bis — SOCLE DE L'ASSIETTE FONCTIONNELLE (base alimentaire systématique) ━━
-Au-delà des recommandations spécifiques à la pathologie ou au terrain de la cliente, le pilier ALIMENTATION du PHV doit toujours s'appuyer sur ces principes de fond — ce sont les fondations sur lesquelles viennent ensuite se greffer les ajustements personnalisés (FODMAP, anti-inflammatoire, hormonal, etc.). Ne pas les développer tous en détail dans chaque PHV (cela alourdirait le document), mais piocher 2 à 4 d'entre eux qui sont les plus pertinents pour le profil de la cliente, et les formuler simplement, dans le ton chaleureux habituel — jamais sous forme de liste de règles strictes.
-
-1. ÉQUILIBRE DES ACIDES GRAS (oméga-3/oméga-6) : verser 1 c. à soupe d'huile riche en oméga-3 (colza, lin, cameline — jamais cuite) dans l'assiette au moment de passer à table ; consommer environ 300g/semaine de petits poissons gras (sardines, maquereaux, anchois, harengs) ; limiter les huiles riches en oméga-6 (tournesol, maïs, pépins de raisin) et les produits industriels qui en sont chargés. Pertinent en particulier pour tout terrain inflammatoire, SOPK, endométriose, SPM, ou objectif cardiovasculaire/cognitif.
-2. ANTIOXYDANTS & POLYPHÉNOLS : "mettre de la couleur dans l'assiette" — épices (curcuma en priorité, gingembre, cannelle), aromates frais, fruits et légumes colorés (baies, tomates, oignons rouges), thé vert. Toujours associer un peu de gras pour optimiser l'absorption des caroténoïdes et polyphénols. Pertinent pour tout terrain de stress oxydatif, vieillissement cellulaire, ou intoxication.
-3. CHARGE GLYCÉMIQUE MAÎTRISÉE : éviter les aliments très transformés et raffinés (pain blanc, riz blanc, pâtes blanches, jus de fruits, viennoiseries) ; privilégier légumineuses, céréales complètes, légumes à volonté, et toujours associer un féculent à des protéines et des fibres pour lisser la réponse glycémique. Pertinent en particulier pour SOPK, dysrégulation glycémique, fringales, objectif de poids, terrain inflammatoire.
-4. RYTHME DES REPAS (chronobiologie) : petit-déjeuner protéiné et peu glucidique le matin (soutient la dopamine — motivation, énergie) ; dîner plus léger et végétal le soir (favorise la sérotonine — sommeil, apaisement). Pertinent pour troubles de l'humeur, fatigue, troubles du sommeil, dérèglements du rythme circadien.
-5. QUALITÉ DES ALIMENTS : préférer les aliments bruts et peu transformés, varier cuit et cru selon les nutriments recherchés, privilégier une cuisson douce (vapeur, basse température) et des produits locaux, de saison, bio ou raisonnés quand c'est accessible pour la cliente.
-
-⚠️ Si la cliente a un profil SIBO en cours d'éradication ou pauvre en FODMAP (Règle N°5bis) : ne JAMAIS recommander les légumineuses, crudités à volonté ou crucifères de ce socle sans le mentionner explicitement comme un ajustement temporaire — préciser que ces aliments seront réintroduits progressivement une fois la phase d'éradication terminée.
-
-Pour aller plus loin, tu peux mentionner à la cliente que la fiche "L'assiette fonctionnelle", disponible en téléchargement dans son espace clientes, reprend ces principes en détail si elle souhaite une référence complète à garder sous la main.
-
 ━━ RÈGLE N°3 — PRIORITÉ DES 3 PILIERS (ORDRE OBLIGATOIRE) ━━
-0. DIGESTION & ASSIMILATION — préalable absolu, voir Règle N°9bis. Aucune recommandation alimentaire ou complémentaire n'a de sens si la cliente ne digère et n'assimile pas correctement (mastication insuffisante, hypochlorhydrie). Ces deux leviers gratuits et sans contre-indication doivent TOUJOURS apparaître en premier dans le pilier alimentation s'ils sont déficients.
 1. ALIMENTATION — fondement de tout rééquilibrage du terrain
 2. PSYCHOLOGIE & ÉMOTIONS — gestion du stress, émotions, sommeil, rythmes de vie
 3. ACTIVITÉ PHYSIQUE — mouvement adapté, sans matériel, sans salle de sport
 4. Compléments ciblés — EN DERNIER, en soutien, MAXIMUM 3 (sauf terrain très complexe)
 
-Un protocole d'hygiène vitale n'est PAS une liste de compléments. Les 3 piliers sont le cœur du document. Un protocole de compléments donné à une cliente qui n'assimile pas (mauvaise mastication, hypochlorhydrie) sera en grande partie inefficace — c'est pourquoi la digestion prime sur tout le reste.
+Un protocole d'hygiène vitale n'est PAS une liste de compléments. Les 3 piliers sont le cœur du document.
 
 ━━ RÈGLE N°4 — MODALITÉS AUTORISÉES ━━
 1. Phytothérapie — forme : EPS > TM > gélule extrait sec > tisane
-2. Compléments : UNIQUEMENT Pileje, Nutergia, Holistica, Nat & Form, Bionutrics, Therascience, Novoma, Nutripure, Nutrixeal
+2. Compléments : UNIQUEMENT Pileje, Nutergia, Holistica, Nat & Form, Bionutrics
 3. Nutrition : simple, sans cuisine complexe, sans comptage calorique
-4. Produits de la ruche (miel, propolis, pollen, gelée royale)
-5. Argile verte, Fleurs de Bach, bicarbonate de soude alimentaire, charbon végétal activé
+4. Produits de la ruche (miel, propolis, gelée royale)
+5. Argile, Fleurs de Bach
 6. Mouvement SANS matériel : marche, yoga doux, cohérence cardiaque, respiration, étirements
-7. Plasma de Quinton (eau de mer isotonique) — modalité autorisée pour les terrains épuisés et convalescents
-8. Spiruline — super-aliment autorisé comme soutien nutritionnel (fer, protéines, vitamines)
-9. Extrait de pépins de pamplemousse (EPP) — anti-infectieux naturel autorisé
-10. Chlorophylle liquide — autorisée comme soutien digestif et détox
-JAMAIS : homéopathie, hydrolats, sophrologie, salle de sport, matériel de fitness, bouillon d'os
+JAMAIS : homéopathie, hydrolats, sophrologie, salle de sport, matériel de fitness
 
 ━━ RÈGLE N°5 — COMPLÉMENTS (2 À 3 OBLIGATOIRES) ━━
 IMPORTANT : Tu DOIS toujours proposer 2 à 3 compléments ciblés dans la section s3, même si les données sont incomplètes. Les compléments viennent EN COMPLÉMENT des 3 piliers, jamais à la place.
-Marques autorisées : Pileje, Nutergia, Holistica, Nat & Form, Bionutrics, Novoma, Nutripure, Nutrixeal, Therascience
+Marques autorisées : Pileje, Nutergia, Holistica, Nat & Form, Bionutrics, Novoma, Nutripure, Nutrixeal
 Exemples concrets à adapter selon les axes prioritaires :
-- Magnésium bisglycinate ou glycérophosphate : besoins adultes = 6 mg/kg/j (70 kg → 420 mg/j) ; femmes enceintes = 300-360 mg/j. Formes recommandées : bisglycinate (Nutergia Ergymag, Holistica) si transit normal — excellente absorption, doux, non laxatif ; citrate si constipation associée — léger effet laxatif bénéfique ; glycérophosphate (D-Stress Synergia, Pileje) si anxiété majeure ou terrain très nerveux — forme liposoluble, passe mieux la barrière hémato-encéphalique. Posologie : 200-400 mg de magnésium élémentaire/j le soir, commencer à 200 mg et augmenter progressivement (diarrhée = signe de dose trop élevée). Indications : stress, fatigue, crampes, insomnie, spasmophilie, fibromyalgie, SPM. ÉVITER : chlorure de magnésium chimique en sachet, ampoules Mag 2 ou Magné B6 (formes peu assimilables). En cas de troubles digestifs majeurs : bain de pieds avec 2-3 c. à soupe de chlorure de magnésium (supplémentation percutanée sans désagréments intestinaux). Pas besoin de prise de sang pour initier une cure — observer les symptômes suffit.
-- Vitamine C : besoins adultes 110 mg/j (fumeurs et sportifs jusqu'à 250 mg/j). Sources alimentaires remarquables : kiwi (95-150 mg/fruit), poivron rouge cru (121 mg/100g), goyave, orange, fraise, brocoli cru. Préférer la forme naturelle (acérola) ou liposomale (encapsulée dans liposomes — meilleure absorption intracellulaire). Posologie supplémentation : 2-3 g/j acérola ; liposomale 2 g/j, jusqu'à 5 g/j en infection/convalescence (ne pas dépasser sans suivi médical). Indications : fatigue, immunité, stress oxydatif, convalescence, antioxydant, soutien fer non héminique (augmente absorption). ÉVITER la vitamine C de synthèse de bas de gamme (Vitascorbol) : acide non tamponné, moins bien toléré. ⚠️ doses > 5 g/j peuvent provoquer diarrhées — monter progressivement. Compatible grossesse et allaitement. Marques recommandées : Onatera, Sunday Natural (liposomale).
-- Oméga-3 EPA/DHA : Omégabiane EPA/DHA (Pileje) ou Nutripure Oméga-3, 2 gél/j au repas — si inflammation, humeur, sécheresse cutanée, hormones, cardiovasculaire. Précision clinique : maintenir un rapport oméga-6/oméga-3 de 4/1 (notre alimentation est souvent à 15-20/1) — compléter en réduisant les huiles de tournesol/maïs et en augmentant lin, cameline, noix. ⚠️ CI anticoagulants au-delà de 2g/j.
-- CoQ10 (coenzyme Q10) : 60 à 100mg/j en cure de 2-3 mois (Nutripure ou Nutrixeal CoQ10) — indiqué si fatigue profonde résistante, sensation d'épuisement cellulaire, prise de statines (les statines bloquent la synthèse endogène de CoQ10, le manque peut causer myalgies et fatigue musculaire), maladies cardiovasculaires, hypertension. Le CoQ10 est un transporteur d'électrons dans la chaîne respiratoire mitochondriale — c'est le carburant de toutes nos cellules. L'organisme le synthétise mais la production décline avec l'âge. Pas de contre-indication ni d'effet secondaire signalé.
-- Probiotiques ciblés Pileje : Lactibiane Référence 5M (côlon irritable), Lactibiane Iki (fermentation/SIBO/ballonnements), Lactibiane Tolérance (hyperperméabilité/SIBO/porosité), Gynophilus (flore vaginale), Feminabiane SPM (SPM) — selon axe digestif/hormonal. ⚠️ Exception : en cas de dysbiose de fermentation colique (voir Règle N°9ter si active), ne pas ajouter Lactibiane Iki ni aucun autre probiotique pour ce seul motif — cf. règle dédiée.
-- Vitamine D3 + K2 : Pileje D3K2 ou Nutripure D3K2, 1 gél/j — si fatigue profonde, immunité, santé osseuse, prévention ostéoporose. La D3 est la seule forme vraiment efficace (la D2 végétale est moins biodisponible). La K2 MK-7 est indispensable pour orienter le calcium vers les os et non vers les artères — toujours les associer. Niveaux sanguins de référence (25-OH-D) : optimal = 30-50 ng/ml ; insuffisance < 30 ; carence < 20 ; carence sévère < 10. Posologies indicatives : entretien = 1000-2000 UI/j ; insuffisance légère = 50 000 UI/semaine × 4-8 semaines puis 20 000 UI/mois ; carence modérée = 2000-5000 UI/j. ⚠️ Ne pas dépasser 4000 UI/j en automédication sans bilan sanguin — excès potentiel au-delà de 100 ng/ml (250 nmol/l).
-- Zinc bisglycinate : Nutripure Zinc ou Novoma, 15mg/j (max 40mg/j — dose quotidienne tolérable à ne jamais dépasser) — si acné, immunité, hormones, Hashimoto, fertilité, peau sensible, cycles irréguliers. Cures d'1 à 3 mois recommandées. ⚠️ Un excès de zinc interfère avec l'absorption du cuivre et du fer → toujours respecter la posologie. Ne jamais associer bisglycinate de zinc et bisglycinate de fer à la même prise. Symptômes de surdosage : nausées, vomissements, crampes, maux de tête, immunité affaiblie.
-- Iode (kelp ou iodure de potassium) : 150 µg/j (adulte) — uniquement si carence documentée ou alimentation sans poisson/fruits de mer, végétarienne/végane. ⚠️ L'iode est sensible : un excès peut provoquer ou aggraver les maladies thyroïdiennes — NE JAMAIS supplémenter sans certitude clinique. CI : hyperthyroïdie, thyroïdite auto-immune active (Hashimoto instable), grossesse sans suivi médical.
-- Sélénium : 55 µg/j (adulte, dose RNP) — si fatigue persistante, troubles thyroïdiens (Hashimoto, hypothyroïdie), immunité affaiblie, fertilité masculine. Le sélénium est indispensable à la conversion T4→T3 et à la protection de la glande thyroïde contre le stress oxydatif. ⚠️ Dose maximale tolérable : 300 µg/j — un surdosage chronique provoque sélénose (ongles cassants, chute de cheveux, neuropathies). Formes recommandées : sélénométhionine ou sélénite de sodium. 1 noix du Brésil = environ 70-90 µg.
-- Cuivre : rarement nécessaire en supplément isolé (apports couverts par une alimentation variée incluant noix, graines, son de blé, abats). Supplémenter uniquement si excès de zinc confirmé (le zinc inhibe l'absorption du cuivre). Dose adulte : 900 µg/j (RNP). ⚠️ Excès toxique possible — ne jamais supplémenter sans indication.
-- Vitamine B12 (méthylcobalamine) : 25-100 µg/j ou 2000 µg/semaine ou 5000 µg/mois — INDISPENSABLE si régime végétarien/végétalien ou tout régime excluant les produits d'origine animale. Après 50 ans : 200 µg/j minimum (absorption intestinale décline avec l'âge). Signes de carence : fatigue persistante, troubles cognitifs, fourmillements, anémie pernicieuse. Forme recommandée : méthylcobalamine (forme active, meilleure rétention). Marques : Pileje, Nutripure, Novoma B12.
+- Magnésium bisglycinate : Nutergia Ergymag ou Holistica Magnésium Bisglycinate, 300-400mg/j le soir — si stress, fatigue, crampes, insomnie
+- Oméga-3 EPA/DHA : Omégabiane EPA/DHA (Pileje), 2 gél/j au repas — si inflammation, humeur, sécheresse, hormones
+- Probiotiques ciblés Pileje : Lactibiane Référence 5M (côlon irritable), Lactibiane Iki (fermentation/SIBO/ballonnements), Lactibiane Tolérance (hyperperméabilité/SIBO/porosité), Gynophilus (flore vaginale), Feminabiane SPM (SPM) — selon axe digestif/hormonal
+- Vitamine D3 + K2 : Pileje D3K2, 1 gél/j — si fatigue profonde, immunité, osseux
+- Zinc bisglycinate : Nutripure Zinc, 15mg/j — si acné, immunité, hormones, Hashimoto
 - EPS (Extrait Phyto Standard) : Valériane EPS ou Passiflore EPS (Phytostandard Pileje) — si sommeil, anxiété
 - Chardon-marie EPS (Phytostandard Pileje) — si foie, détox, hormones
-- Fer bisglycinate : Nutripure Fer bisglycinate ou Novoma Fer bisglycinate — si anémie ferriprive suspectée, fatigue intense avec teint pâle, règles abondantes, grossesse, végétarienne/végane, sportive d'endurance. Posologie selon sévérité : 14-30 mg de fer élémentaire/j. Avantage du bisglycinate : ne provoque pas de troubles digestifs (nausées, constipation) contrairement au sulfate ferreux (Tardyferon). ⚠️ NE JAMAIS prendre avec bisglycinate de zinc (même moment) — compétition d'absorption. Favoriser l'absorption : prendre avec vitamine C (agrumes, poivron). Inhibiteurs à espacer de 2h : thé, café, calcium en grande quantité, phytates (céréales complètes). La viande rouge, volaille et poisson apportent du fer héminique (absorption 25-30%) bien supérieur au fer non héminique végétal (5-10%). Tardyferon (sulfate ferreux) : efficace mais digestivement agressif — à conserver si bien toléré, conseillé chez la femme enceinte.
-- Spiruline : 3 à 5g/j pendant 3 semaines en cure (ex. Nutripure Spiruline ou Nat & Form Spiruline Bio), à prendre en dehors des repas le matin — si fatigue, carence en fer suspectée, profil végétarien/végan, convalescence, sportive, manque de protéines. La spiruline est une algue avec 60-70% de protéines, riche en fer biodisponible, en vitamines B, en minéraux (calcium, magnésium, phosphore, potassium, sélénium, zinc, chrome, manganèse), en bêta-carotène et en chlorophylle. Elle soutient l'effort physique, l'immunité et le microbiote. ⚠️ Vérifier la qualité sanitaire (risque de métaux lourds ou de cyanotoxines sur certains produits) — choisir une marque avec traçabilité. Précautions : hypertension artérielle, hémochromatose, maladies auto-immunes, phénylcétonurie. Les personnes atteintes d'hyperparathyroïdie présentent des signaux d'effet indésirable. Pas de contre-indication chez l'enfant ni la femme enceinte si qualité vérifiée, 3 à 5g max.
-- Plasma de Quinton (eau de mer isotonique) : 1-3 ampoules/j à jeun le matin — si épuisement nerveux, convalescence, fatigue chronique, déminéralisation, spasmophilie, stress chronique, fibromyalgie, problèmes articulaires, récupération sportive, aménorrhée. Le plasma de Quinton est l'eau de mer prélevée dans des tourbillons planctoniques, ultra-filtrée à froid, qui reproduit exactement la composition du plasma sanguin humain. Contient tous les minéraux et oligo-éléments du tableau de Mendeleïev (calcium, magnésium, potassium, sodium, fer, iode, silicium, sélénium, chrome, molybdène, lithium, cobalt, vanadium…). Idéal pour les profils de terrain très épuisés et les convalescences. Pas de contre-indication chez l'adulte hors hypertension artérielle (forme isotonique seulement). En cas de problème rénal : diminuer les doses.
-- Extrait de pépins de pamplemousse (EPP) : 15 à 25 gouttes, 3 fois/j dans un verre d'eau — si infections récurrentes (ORL, urinaires, digestives, cutanées), candidose chronique, grippe, rhume, angine, toux, terrain immunitaire fragilisé. L'EPP renforce la résistance de l'organisme même en cas de changements de saison. Pas de contre-indication chez l'enfant et l'adulte. ⚠️ Interaction médicamenteuse possible (comme le pamplemousse fruit) — vérifier si la cliente est sous médicaments métabolisés par le cytochrome P450.
 TOUJOURS : posologie exacte (marque, forme, dose, fréquence, moment précis), et 1-2 phrases expliquant pourquoi CE choix pour ELLE.
 ${reglesSiboMethane}
-${reglesFermentation}
-${reglesPutrefaction}
-${buildReglesProtocoleCyclique(d)}
 ━━ RÈGLE N°6 — SÉCURITÉ ABSOLUE ━━
 Anticoagulants → éviter oméga-3 >2g/j, millepertuis, gingko
 ISRS/antidépresseurs → millepertuis INTERDIT absolument
@@ -1445,317 +934,9 @@ Pilule/THM → attention phytoestrogènes
 Cancer hormono-dépendant → JAMAIS Feminabiane Ménopause ni phytoestrogènes
 Hypothyroïdie (Lévothyrox) → espacer fer, calcium, magnésium de 4h
 Grossesse → aucune HE par voie interne, vérifier chaque plante
-Millepertuis → photosensibilisant (exposition solaire à éviter), interaction cytochrome P450 MAJEURE : réduit l\'efficacité des contraceptifs oraux, digoxine, antidépresseurs, anticoagulants → mentionner systématiquement si la cliente est sous l\'un de ces médicaments ; usage sous avis médical en cas de trouble bipolaire
-Anis vert / Fenouil / Angélique → action hormone-like → CI formelle en cas d\'antécédent de cancer hormono-dépendant
-Curcuma → CI obstruction des voies biliaires ; possible gêne gastrique chez les sujets hypersensibles — vérifier la tolérance
-Harpagophytum → CI grossesse, allaitement, ulcères gastriques actifs, interaction anticoagulants et antidiabétiques ; efficacité complète à attendre après 3 semaines de traitement minimum
-Pissenlit → à éviter en cas d\'occlusion des voies biliaires, maladies cardiaques ou rénales sévères ; risque d\'hypokaliémie à long cours → cures discontinues recommandées
-Lithiase(s) biliaire(s) connue(s) ou vésicule biliaire douloureuse → JAMAIS de drainage hépatique agressif, cure de citron/huile d\'olive à jeun, ni plantes cholérétiques à forte dose (artichaut haute dose, radis noir, romarin concentré) sans avis médical — risque de mobiliser un calcul et de provoquer une colique hépatique ou un blocage du sphincter d\'Oddi ; orienter vers avis médical/gastro-entérologique
-Douleur abdominale intense + selles décolorées/blanchâtres (signalée même ponctuellement) → URGENCE MÉDICALE ABSOLUE, calcul obstruant probable des voies biliaires : ne donner AUCUNE recommandation naturopathique sur ce point, mentionner explicitement dans le PHV qu'en cas de récidive il faut se rendre immédiatement aux urgences
-Framboisier → CI premiers mois de grossesse (action sur muscle lisse utérin)
-Achillée millefeuille → CI antécédent cancer du sein avec récepteurs de progestérone
-Eschscholtzia → CI glaucome, grossesse, allaitement, enfant < 12 ans ; peut diminuer la vigilance 1 à 2h après la prise ; prévenir la cliente que l\'effet peut prendre 15 jours à se manifester pleinement
-Mélilot → CI grossesse, interaction médicaments anti-agrégants et anticoagulants, déconseillé avant 18 ans
-Marron d\'Inde → fruit toxique — usage réservé à l\'adulte ; utiliser uniquement graines/écorce de tige en tisane ou crème externe
-Charbon végétal activé → CI absolue avec médicaments (adsorbe et neutralise leur effet) — espacer de 2h minimum de tout médicament ; ne pas utiliser en continu sur plus de 3-4h
-Extrait de pépins de pamplemousse (EPP) → interaction cytochrome P450 possible comme le pamplemousse fruit — vérifier systématiquement si la cliente est sous médicaments avant de recommander
-CoQ10 → généralement très bien toléré ; prudence en cas de traitement anticoagulant (peut réduire l'efficacité des AVK) ; pas de CI chez la femme enceinte ou allaitante mais données insuffisantes — ne pas recommander par précaution
-Spiruline → vérifier la qualité sanitaire obligatoirement (risque cyanotoxines, métaux lourds selon l'origine) — choisir des marques avec certificat d'analyse ; CI phénylcétonurie, hémochromatose ; prudence maladies auto-immunes ; précaution en cas d'hyperthyroïdie
-Plasma de Quinton → CI hypertension artérielle (forme hypertonique uniquement) ; la forme isotonique est sans CI chez l'adulte hors insuffisance rénale sévère
-Argile verte → CI absolue avec médicaments (adsorbe les principes actifs) — espacer de 2h minimum ; CI femmes enceintes et enfants < 36 mois par voie orale ; ne pas utiliser d'ustensile métallique
-Bicarbonate de soude → ne pas utiliser plus de 10 jours consécutifs ; CI si HTA, insuffisance cardiaque ou rénale, régime sans sel
-Fer (supplémentation) → ne jamais supplémenter sans suspicion clinique — excès de fer (hémochromatose) : toxique pour foie, cœur, articulations ; ne pas associer fer + zinc bisglycinate à la même prise ; thé, café, calcium inhibent l'absorption — espacer de 2h ; vitamine C améliore l'absorption — combiner si possible ; Tardyferon peut causer nausées/constipation — préférer bisglycinate si intolérance
-Vitamine B12 → essentielle chez tout régime végétarien/végétalien — ne pas attendre les signes de carence (irréversibles neurologiquement à long terme) ; formes actives uniquement : méthylcobalamine ou adénosylcobalamine (pas cyanocobalamine)
-Zinc (supplémentation) → ne jamais dépasser 40 mg/j (dose quotidienne tolérable absolue) — surdosage = nausées, crampes, inhibition absorption du cuivre et du fer ; ne pas associer zinc + fer bisglycinate à la même prise de la journée
-Sélénium (supplémentation) → ne jamais dépasser 300 µg/j — surdosage chronique (sélénose) : chute de cheveux, ongles cassants, neuropathies ; 1 noix du Brésil/j suffit souvent
-Iode (supplémentation) → PRUDENCE MAXIMALE : ne pas recommander sans certitude clinique — un excès peut déclencher ou aggraver une maladie thyroïdienne (Hashimoto, hyperthyroïdie) ; CI : hyperthyroïdie, thyroïdite auto-immune active
-Vitamine D (supplémentation) → ne pas dépasser 4000 UI/j sans bilan sanguin — excès potentiel (>100 ng/ml) → hypercalcémie, calcifications ; toujours associer K2 MK-7
-Calcium (supplémentation) → inutile si alimentation variée ; en cas de supplémentation, ne jamais dépasser 1200 mg/j — risque cardiovasculaire et rénal documenté ; toujours associer D3 + K2
-Potassium → NE JAMAIS supplémenter sans indication médicale — hyperkaliémie potentiellement cardiaque ; besoins à couvrir exclusivement par alimentation
-Vitamines liposolubles (A, D, E, K) → s'accumulent dans l'organisme (stockées dans graisses et foie) — risque d'hypervitaminose : maux de tête, nausées, vomissements, calculs rénaux, troubles cardiovasculaires ; NE JAMAIS empiler plusieurs sources (multivitamines + monocompléments) sans calcul de dose cumulée
-Vitamine A (rétinol) → TÉRATOGÈNE en excès — femmes enceintes : éviter compléments dosés en rétinol et consommation régulière de foie ; le bêta-carotène végétal est sans risque
-Calcium (supplémentation) → excès → dépôts calcifiés dans artères, calculs rénaux, risque cardiovasculaire — NE JAMAIS supplémenter sans accord médical
-Fer (excès) → hémochromatose secondaire — dommages foie, cœur, articulations ; ne jamais supplémenter sans bilan sanguin (ferritine + CRP)
-Interactions médicamenteuses critiques à vérifier systématiquement :
-  → Oméga-3 + anticoagulants (warfarine) : augmente risque de saignement au-delà de 2 g/j
-  → Millepertuis : interaction cytochrome P450 MAJEURE → réduit efficacité contraceptifs, anticoagulants, antidépresseurs, traitements anticancéreux
-  → Magnésium + antibiotiques (tétracyclines, fluoroquinolones) : réduit absorption de l'antibiotique — espacer de 2-3h
-  → Zinc en excès → inhibe absorption cuivre et fer
-  → Calcium + fer → compétition d'absorption intestinale — espacer de 2h
-Insuffisance rénale → prudence maximale avec potassium, magnésium, calcium — accumulation possible
-Populations particulièrement vulnérables : femmes enceintes (vitamine A, HE, plantes), enfants (doses strictement adaptées), personnes âgées (interactions poly-médicamenteuses), insuffisants rénaux ou hépatiques
-Qualité produit : privilégier marques avec certificats d'analyse tiers (COA), éviter plateformes de vente en ligne non réglementées et prix anormalement bas (signe de mauvaise qualité ou dosages inexacts)
-
-━━ RÈGLE N°7 — TEMPÉRAMENT CONSTITUTIONNEL ━━
-${d.temperament ? `Le tempérament de cette cliente a été auto-identifié comme : ${d.temperament.toUpperCase()}.
-Intègre subtilement les orientations naturopatiques propres à ce tempérament dans les piliers alimentation, psychologie et activité physique — sans jamais nommer explicitement le "tempérament" dans le document rendu à la cliente (elle n'a pas besoin de ce cadre théorique, elle a besoin des conseils pratiques).
-
-NERVEUX (mélancolique, sec, froid, Terre) :
-- Alimentation : super-aliments (pollen, lithothamne, plasma de Quinton), petits repas fréquents (4-5/j) pour bien digérer, graisses de qualité 1ère pression à froid riches en oméga-3, protéines à chaque repas, fruits doux non acides, cuisson vapeur douce, manger chaud, éviter les jeûnes longs. Éviter l'acidification.
-- Activité : rituels de détente, méditation, exercices doux et modérés (yoga, Pilates, stretching, biokinésie). Sports de précision (fléchettes, golf, tir à l'arc). Judo, équithérapie, poterie. Pratiquer de façon modérée et régulière — l'exercice lui "vide la tête". Se coucher tôt (21h-22h).
-- Travail sur soi : ancrage au corps physique, marcher pieds nus dans la rosée, boire de l'eau chaude, EFT. Stimuler le côté sanguin pour lui donner envie.
-- Compléments prioritaires : magnésium glycérophosphate ou bisglycinate (forme liposoluble privilégiée pour ce tempérament très nerveux — D-Stress Synergia ou NuMagnesium Nutritinge, 300-400mg/j soir), plasma de Quinton isotonique (reminéralisant et tonifiant nerveux — 1 à 3 ampoules/j à jeun, idéal pour ce profil épuisé et déminéralisé), lithium oligothérapie, vitamine B complexe, silicium (ortie + prêle), spiruline si profil végétarien ou fatigue profonde (3g/j le matin). Oméga-3.
-- Phytothérapie : plantes anti-anxiété et antispasmodiques — tilleul, passiflore, valériane, camomille matricaire, angélique, menthe poivrée, fenouil, anis vert.
-- Aromathérapie : gingembre (énergie, chaleur), bois de cèdre (antidépresseur), oliban (méditation), petit grain bigarade / marjolaine / lavande (calmantes), thym / sarriette (digestives), niaouli, pin sylvestre, mandarine, eucalyptus radiata.
-- Hydrologie : bains chauds avec sels d'Epsom (3 poignées + HE basilic), bouillotte ventre/dos, eau chaude peu minéralisée et vitalisée, affusions d'eau froide le long de la colonne.
-
-LYMPHATIQUE (flegmatique, humide, froid, Eau) :
-- Alimentation : à contrôler mais sans privation. Nourriture chaude, épices (excitants naturels), 1L d'eau/j minimum. Produits de la mer riches en iode. Éviter les adjuvants chimiques, les crudités en excès, les fruits aqueux et les aliments froids/humides. Manger aux mêmes heures, cuire al dente (IG plus bas). Éviter le grignotage.
-- Activité : peu mais régulièrement — 3 à 4 séances courtes de 30 min/semaine. Aquatique, aquabiking, tai-chi, yoga, gym douce, marche, sport de précision (tir à l'arc). Jardinage, pétanque.
-- Travail sur soi : aller de l'avant, être positive, intégrer l'hygiène énergétique chaque matin, pratiquer la "minute de santé".
-- Compléments prioritaires : vitamine C liposomale (2g/j — ce tempérament métabolise très rapidement la vitamine C, notamment en période de stress ou d'infections hivernales répétées — l'acérola ou la liposomale sont les formes à privilégier absolument, jamais la synthèse), sorbier (circulation), fragon (œdème), multi-vitamines et minéraux, Griffonia (5-HTP tryptophane), spiruline en cure (3g/j le matin — ce profil bénéficie de la spiruline pour son apport en fer biodisponible, bêta-carotène et soutien immunitaire), EPP si infections récurrentes (15 gouttes 3x/j).
-- Phytothérapie : orthosiphon (cellulite), lierre grimpant (surpoids), thé + guarana (stimulants), psyllium (constipation), plantes adaptogènes.
-- Aromathérapie : épinette noire (énergie, surrénales — 3 gouttes friction matin), petit grain bigarade (réconfort), orange/mandarine (rondeur), pin (surrénales), ravintsara, genévrier, cèdre.
-- Hydrologie : bains de mer, thalasso, bains d'algues, bains tièdes à refroidissement progressif, hydrothérapie du côlon, bains de mer.
-- Clés de santé : drainage lymphatique 1 fois/mois, fuir l'humidité.
-
-SANGUIN (humide, chaud, Air) :
-- Alimentation : ralentir la cadence sans régime drastique. Réduire viande et poisson, introduire plus de végétal. Favoriser les aliments antioxydants et dépaississants du sang. Limiter viandes rouges, charcuterie, alcool, tabac, gâteaux, grignotages. Oméga-3 (krill ou Pileje) pour le cardiovasculaire. 1 verre de jus de légumes/j.
-- Activité : sport avec objectif précis qui fait transpirer — cardio intensif (3 x 400m, rameur, vélo, elliptique). Promenades en plein air pour se décharger avec l'Air.
-- Travail sur soi : self-control, modération, connaissance de ses limites, sincérité, équanimité, humilité, écoute. Travailler l'autonomie.
-- Compléments prioritaires : chrome, oméga-3. 1 verre d'eau chaude le matin.
-- Phytothérapie : desmodium (détox foie), aubier de tilleul (surpoids 1-2 fois/an), vigne rouge (Vitis vinifera — protecteur vasculaire, veinotonique, antioxydant, réduit la perméabilité capillaire, améliore la circulation sanguine — retour veineux, oedèmes d\'origine vasculaire, fragilité capillaire, HTA — tisane 15 min, 5 à 20g/j en 3 fois — ⚠️ rares gastralgies, prudence femme enceinte, déconseillé avant 18 ans), sorbier, aubépine (Crataegus — régulateur du rythme cardiaque et du débit coronarien, léger hypotenseur, vascularisation et nutrition du myocarde, indiqué palpitations, extrasystoles, tachycardie, HTA neurotonique, anxiété et nervosité, insomnie chez les sujets émotifs — 160 à 900mg extrait sec hydro-alcoolique/j — ⚠️ pas de CI chez l\'adulte hors grossesse), ail (Allium sativum — prévention vasculaire, hypoglycémiant, hypocholestérolémiant, fongicide sur Candida, prévention cancer — 6g poudre bulbe/j ou 1g ail déshydraté/j — ⚠️ usage prolongé peut engendrer des brûlures gastriques), noyer, cannelle.
-- Aromathérapie : cyprès (passage, séparation, structure), laurier noble (confiance, action, stress intense), lavande, eucalyptus radiata, romarin cinéole, citron, orange, petit grain bigarade, géranium rosat, ravintsara, genévrier, cèdre.
-- Hydrologie : eau froide (fin de douche froide), affusion membres, bains de pieds froids avec lavande, bains dérivatifs, douche écossaise, sauna/hammam, bains de mer.
-- Clés de santé : drainer foie et vésicule biliaire régulièrement, citron + eau chaude matin, cure œuf-citron, bouillotte foie le soir, marcher 15-20 min le soir.
-
-BILIEUX (colérique, sec, chaud, Feu) :
-- Alimentation : adapter selon sous-dominante (Sanguine ou Cérébrale). Bonne alimentation nutritive, éviter les excitants (thé, café, alcool, tabac). Introduire du cru à chaque repas pour soulager le foie. Légumes soufrés : radis, choux, oignons, asperges, ail, poireaux, navets. Éviter le sucre blanc, ajuster sucre et gras selon l'activité physique.
-- Activité : tous les sports, ne pas s'arrêter ! C'est dans le sport qu'il trouve son équilibre. Activité physique intensive 3-4 séances/semaine. Activité liée au plaisir pour se détendre. Sport extrême ou yoga dynamique selon préférence. Exercices respiratoires + pulmo-stimulateur + Bol d'air Jacquier.
-- Travail sur soi : passer de "faire" à "être". Humilité, lâcher-prise, perte de contrôle, désir de maîtriser. Ouvrir le chakra du cœur, arrêter de critiquer. Communication non violente.
-- Compléments prioritaires : vitamines D3 et K2, jus d'herbe d'orge, chlorophylle, germanium.
-- Phytothérapie : plantes du foie (artichaut Cynara scolymus — cholérétique, hépatoprotecteur, hypocholestérolémiant, diurétique, diminue le LDL et augmente le HDL — infusion 6g dans la journée en fin de repas — ⚠️ CI obstruction biliaire, déconseillé enfant < 12 ans ; cassis Ribes nigrum — analgésique, anti-inflammatoire, antioxydant, diurétique, indiqué arthrose et douleurs rhumatismales — pas de CI formelle sauf insuffisance cardiaque ou rénale sévère), fumeterre (drainage hépatique et cutané, allergies, eczéma), Curcuma si inflammation articulaire associée au profil hépatique (potentialisé par le poivre noir — ⚠️ CI obstruction biliaire, hypersensibilité gastrique), plantes articulaires (harpagophytum — anti-inflammatoire et analgésique articulaire puissant, indiqué arthrite, arthrose, lumbago, tendinite, bursite — décoction 10g/l boire 4 à 6 tasses/j ou 1 à 6g poudre totale/j — ⚠️ CI grossesse, allaitement, ulcères gastriques, allergie, interaction anticoagulants et antidiabétiques — prévenir la cliente : efficacité complète après 3 semaines minimum, poursuivre 2 à 3 mois), ORL (plantain Plantago major — antiallergique, anti-inflammatoire, antibactérien, antihistaminique — tisane 4 à 6g/j — ⚠️ déconseillé enfant < 3 ans ; bouillon-blanc : adoucissant expectorant antitussif — sureau, propolis rouge).
-- Aromathérapie : santal (esprit bois, angoisse, déprime), menthe poivrée (lâcher-prise, mental apaisé), niaouli, pin sylvestre, basilic/estragon, mandarine, lavande, eucalyptus radiata, citron, ravintsara, cyprès, géranium rosat, gaulthérie, hélichryse italienne, vétiver.
-- Hydrologie : friction au gant de crin, sauna/hammam/bain dérivatif/douche écossaise, lavements au café, marcher pieds nus 5-10 min dans l'herbe avec la rosée du matin, watsu, bains de mer.
-- Cures : printemps (drainer foie par les plantes + reminéraliser + monodiètes + gelée royale, ginseng, éleuthérocoque). Automne (raisin, pollen frais).
-
-Si le tempérament n'est pas renseigné, ignore cette règle.` : 'Tempérament non renseigné — appliquer les recommandations standard sans orientation tempéramentale spécifique.'}
-
-━━ RÈGLE N°9bis — DIGESTION & MASTICATION : PRÉALABLE TOUJOURS ÉVALUÉ ━━
-Principe fondamental, à respecter dans CHAQUE PHV même si rien n'est coché ci-dessous : aucune recommandation alimentaire ou complémentaire ne sert à grand-chose si la cliente ne digère et n'assimile pas correctement. Une mauvaise digestion des protéines peut faire pénétrer des fractions antigéniques à travers une barrière intestinale poreuse, activant le système immunitaire (inflammations, allergies, fausses intolérances). Un microbiote équilibré nécessite une alimentation ET une digestion optimales.
-
-${digestionFaible.masticationFaible ? `MASTICATION INSUFFISANTE DÉTECTÉE — à intégrer en tête du pilier alimentation du PHV :
-- Expliquer en 2-3 phrases simples et non médicales pourquoi la mastication est la base de tout : mâcher dénature mécaniquement les protéines pour les rendre digestibles, casse les fibres végétales (que le corps ne peut pas casser seul, faute d'enzyme cellulase), et prépare tout le système digestif via le nerf vague. Une mastication insuffisante favorise les dysbioses de putréfaction et de fermentation, les ballonnements et une mauvaise absorption des nutriments — même avec une alimentation par ailleurs excellente.
-- Consigne pratique OBLIGATOIRE dans le PHV : "Mâchez chaque bouchée jusqu'à obtenir une consistance de bouillie avant d'avaler — comptez environ 20 à 30 mastications par bouchée."
-${/occlusion dentaire|dents manquantes|prothèse ou bridge/i.test([d.symptomes_coches, d.textes_libres].join(' \n ')) ? '- Un obstacle mécanique a été identifié (occlusion dentaire, dents manquantes, prothèse/bridge). Mentionner dans le PHV qu\'un avis dentaire, kinésithérapeute maxillo-facial ou ostéopathe peut être pertinent en complément, sans poser de diagnostic dentaire.' : ''}` : ''}
-
-${digestionFaible.hypochlorhydrie ? `SIGNES D'HYPOCHLORHYDRIE (acidité gastrique insuffisante) DÉTECTÉS — à intégrer dans le pilier alimentation du PHV :
-- Expliquer en 2-3 phrases simples que l'acidité gastrique est physiologique et nécessaire : elle dénature les protéines, active la pepsine (l'enzyme qui digère les protéines) et protège des bactéries indésirables. Ce n'est pas un excès à combattre — une insuffisance d'acide gastrique ralentit la digestion, favorise les ballonnements après repas et la dysbiose de putréfaction.
-- Consignes pratiques TOUJOURS présentes dans le PHV : manger dans le calme (le stress inhibe la sécrétion d'HCl), éviter de boire de grandes quantités pendant les repas (dilue l'acidité gastrique), bien mâcher, et surtout — ÉVITER L'EAU GAZEUSE ET LES ANTIACIDES PENDANT LES REPAS : ils neutralisent directement l'acidité gastrique nécessaire à la digestion, même en dehors de tout traitement médicamenteux.
-${/ipp en cours ou prolongés/i.test([d.symptomes_coches].join(' \n ')) ? '- IPP au long cours signalés : expliquer dans le PHV, avec bienveillance, le cercle vicieux possible — IPP → diminution de l\'HCl → SIBO + dysbiose → ballonnements → hyperpression abdominale → relâchement du cardia → reflux → aggravation du traitement. Ce cercle peut s\'auto-entretenir indéfiniment sans briser la cause racine. Mentionner avec prudence qu\'une sortie progressive, si envisagée, doit se faire avec l\'accord du médecin prescripteur (risque de rebond acide). Si la cliente est en demande explicite de sevrage, voir le protocole dédié ci-dessous.' : ''}
-${/hypothyroïdie connue ou suspectée/i.test([d.symptomes_coches].join(' \n ')) ? '- Hypothyroïdie signalée comme cause d\'hypochlorhydrie : mentionner dans le PHV que la thyroïde joue un rôle direct sur la sécrétion d\'acide gastrique — une hypothyroïdie, même infraclinique, peut provoquer une hypochlorhydrie indépendamment du stress ou des médicaments. Ces deux axes doivent être traités en parallèle : soutenir l\'acidité gastrique sans corriger la thyroïde ne donnera que des résultats partiels.' : ''}
-${/carence en b12/i.test([d.symptomes_coches].join(' \n ')) ? '- Carence en B12 suspectée/connue, cohérente avec une hypochlorhydrie (déficit en facteur intrinsèque). Mentionner l\'intérêt d\'un dosage B12 actif (holotranscobalamine) si non déjà fait.' : ''}
-${digestionFaible.carenceMineraleHypochlorhydrie ? '- Carence(s) minérale(s) signalée(s) (fer, zinc, cuivre et/ou magnésium) : expliquer dans le PHV, en termes simples, que l\'absorption de ces minéraux nécessite des ions H⁺ (acidité) dans l\'intestin — une hypochlorhydrie en réduit directement la biodisponibilité, même avec une alimentation qui en apporte suffisamment. Souligner qu\'une supplémentation isolée sans corriger l\'acidité gastrique aura un effet limité ; les deux axes doivent être travaillés ensemble.' : ''}
-- Option complémentaire (substitution de l\'acidité gastrique) — à proposer uniquement si les mesures hygiéno-diététiques sont insuffisantes, si le sevrage IPP est complètement terminé, et en l\'ABSENCE de CI : vinaigre de cidre dilué (1 c. à café dans un grand verre d\'eau avant le repas) comme soutien doux et accessible, ou HCl bétaïne (300 à 450 mg en début de repas — Therascience HCl bétaïne de référence) pour les cas plus marqués où le test thérapeutique confirme l\'hypochlorhydrie. ⚠️ CONTRE-INDICATIONS ABSOLUES à l\'HCl bétaïne : ulcère gastrique ou duodénal actif, oesophagite, traitement en cours par IPP (ne jamais associer), prise récente d\'AINS — ne jamais suggérer sans vérification préalable. Si prise d\'enzymes digestives associée (protéases, lipase, amylase) : privilégier après le sevrage IPP complet, car l\'hypochlorhydrie s\'accompagne quasi systématiquement d\'une insuffisance enzymatique pancréatique (la cascade CCK/sécrétine est bloquée).
-- Cohérence cardiaque avant les repas (3×/j × 5 min) — à intégrer systématiquement en cas d\'hypochlorhydrie liée au stress : cette pratique rééquilibre le système nerveux végétatif (orthosympathique → parasympathique), ce qui relance les sécrétions salivaires, gastriques et pancréatiques. C\'est un levier gratuit, sans contre-indication, immédiatement actionnable. En cas de composante stress identifiée, mentionner dans le PHV : \'Faites 5 minutes de cohérence cardiaque avant chaque repas — votre système digestif ne peut fonctionner pleinement qu\'en mode parasympathique.\'` : ''}
-
-${digestionFaible.insuffisanceBilioPancreatique ? `SIGNES D'INSUFFISANCE BILIO-PANCRÉATIQUE DÉTECTÉS — à intégrer dans le pilier alimentation du PHV :
-- Dans le PHV, formuler ainsi : "Quand votre estomac est suffisamment acide, il envoie un signal à votre foie et à votre pancréas : libérez la bile et les enzymes. Sans ce signal, les graisses ne sont pas digérées, les vitamines A, D, E et K ne passent pas, et votre intestin grêle devient moins bien protégé contre les bactéries indésirables." [Interdit dans le PHV : 'cholécystokinine', 'sécrétine', 'protéases', 'micelles' — dire 'les enzymes digestives', 'la bile', 'votre intestin grêle est moins protégé']
-- Si constipation présente depuis l'enfance signalée (en l'absence d'autre cause identifiée) : mentionner avec prudence, sans poser de diagnostic, qu'une faible capacité de synthèse d'acides biliaires constitutionnelle peut en être une des causes possibles — la bile active le transit intestinal.
-${/cholécystectomie/i.test([d.symptomes_coches].join(' \n ')) ? '- Cholécystectomie (ablation de la vésicule biliaire) signalée : rassurer la cliente avec nuance dans le PHV — une dysfonction biliaire (souvent des lithiases) préexistait généralement avant l\'opération, et beaucoup de patientes se sentent mieux après qu\'avant. Sans vésicule, le foie continue à fabriquer la bile mais la déverse en continu dans le cholédoque, de façon désynchronisée avec les repas : moins de bile disponible pendant la digestion des graisses, donc recommander des repas plus fractionnés et moins gras en une fois, et mentionner qu\'un soutien digestif (bile de bœuf ou acides biliaires, complexe enzymatique digestif) peut être pertinent en complément.' : ''}
-- Si lithiase(s) biliaire(s) connue(s) ou vésicule biliaire douloureuse signalée (hors urgence) : ⚠️ ne jamais recommander de "drainage hépatique" agressif, de cure de citron/huile d'olive à jeun, ni de plantes cholérétiques puissantes (artichaut à haute dose, radis noir, romarin à forte dose) sans avis médical — le risque de mobiliser un calcul et de provoquer une colique hépatique ou un blocage du sphincter d'Oddi est réel. Orienter vers un avis médical/gastro-entérologique si non déjà fait.
-- Compléments à considérer si pertinent (hors lithiase active) : enzymes digestives globales (protéase, amylase, lipase) au début des repas copieux ; oméga-3 émulsifiés pour faciliter l'absorption lipidique.
-- Carence en vitamines liposolubles signalée : mentionner l'intérêt d'un dosage sanguin (A, D, E, K) si non déjà fait, et la nécessité d'une digestion biliaire fonctionnelle pour que toute supplémentation en D3/E soit réellement absorbée.
-- Carence en oméga-3 malgré supplémentation, ou oméga-3 prescrits sans résultat : mentionner explicitement dans le PHV que les oméga-3 sont des graisses liposolubles qui nécessitent la bile pour être émulsionnés et absorbés. Supplémenter en oméga-3 sans corriger l'insuffisance biliaire = les envoyer dans les selles sans bénéfice. Corriger la bile avant ou en même temps que la supplémentation oméga-3.
-- Cholestérol élevé sans raison alimentaire évidente signalé : la bile est la principale voie d'élimination du cholestérol — une insuffisance biliaire peut faire monter le cholestérol indépendamment de l'alimentation. Mentionner ce lien dans le PHV sans poser de diagnostic, et orienter vers un soutien de la fonction biliaire comme levier prioritaire.
-- Dominance oestrogénique + signe d'insuffisance biliaire coexistants : mentionner que la bile transporte les oestrogènes conjugués par le foie pour les éliminer dans les selles. En cas d'insuffisance biliaire, cette élimination est compromise — la dominance oestrogénique peut donc être aggravée par une bile insuffisante indépendamment du foie lui-même.
-- Spasme du sphincter d'Oddi identifié (douleur à la palpation, stress chronique, carence en magnésium) : mentionner que le sphincter d'Oddi est la 'vanne' de la bile et des enzymes pancréatiques dans le duodénum. Son spasme prive la digestion de bile même si le foie en fabrique suffisamment. Lien direct avec le stress (orthosympathique ferme le sphincter) et la carence en magnésium (qui favorise les spasmes des muscles lisses). Solutions : magnésium bisglycinate 300 mg/j, cohérence cardiaque avant les repas, fumeterre (spasmolytique sphincter d'Oddi).
-
-PHYTOTHÉRAPIE ET COMPLÉMENTS BILIAIRES — à intégrer dans les soutiens ciblés si insuffisance biliaire confirmée :
-
-Association de référence (si pas de calculs avérés, pas de grossesse) :
-• EPS Fumeterre + Curcuma (Pileje) : 5 ml matin + 5 ml soir dans ½ verre d'eau AVANT les repas, 1 mois minimum. En entretien : 5 ml/j × 5j/7. La fumeterre est amphocholérétique (régule la bile dans les deux sens selon le besoin — pas de risque de sur-stimulation), cholagogue, spasmolytique sphincter d'Oddi et intestinal, hépatoprotectrice. Le curcuma est cholérétique (augmente acides biliaires), augmente le tonus et la contraction de la vésicule biliaire, spasmolytique intestinal, hépatoprotecteur, stimule la phase 2 de détox, altère les biofilms HP/Candida/E.coli/salmonelle. Association synergique : curcuma contracte la vésicule + fumeterre ouvre le sphincter d'Oddi → déversement optimal de la bile dans le duodénum.
-• ⚠️ CI fumeterre : grossesse, calculs vésiculaires avérés, cyclosporine, neuroleptiques.
-• ⚠️ CI curcuma : grossesse, obstruction des voies biliaires, anticoagulants (AVK, AINS, salicylés).
-
-Aliments bétaïne (à intégrer dans le pilier alimentation — augmente la synthèse des acides biliaires primaires) :
-• Betterave crue râpée ou en jus (betterave + citron + peu de pomme), épinards, quinoa — à consommer régulièrement, surtout si constipation chronique ancienne.
-
-Enzymes digestives si maldigestion des graisses marquée :
-• Lipase + Pancréatine (Enzy Veste Lipide — Bionutrics) au début des repas contenant des graisses.
-
-Substitution biliaire (cholécystectomie ou insuffisance sévère) :
-• Bile de bœuf : Beta Plus (Energetica Natura) — à prendre aux repas. Alternative naturopathique à l'acide ursodésoxycholique médical. Particulièrement indiqué post-cholécystectomie.
-
-Tisane de soutien léger (insuffisance modérée sans calculs) :
-• Achillée millefeuille + camomille matricaire en mélange.
-
-En cas de calculs biliaires avérés (ne jamais proposer fumeterre + curcuma à forte dose) :
-• Fumeterre + pissenlit (doux, cholagogue sans risque de mobilisation brutale) ou Resolvum (Energetica Natura, complexe de lyse des calculs biliaires) — avec suivi échographique.
-${digestionFaible.urgenceLithiaseObstructive ? '\n⚠️⚠️ ALERTE SÉCURITÉ MAJEURE : un épisode de douleur abdominale intense associée à des selles décolorées/blanchâtres a été signalé — ceci évoque un calcul obstruant complètement les voies biliaires, c\'est une URGENCE MÉDICALE. Le PHV DOIT mentionner explicitement, en début de document si possible, qu\'en cas de récidive de ce tableau (douleur intense + selles décolorées) la cliente doit se rendre immédiatement aux urgences, et que ceci dépasse le cadre d\'un accompagnement naturopathique. Ne proposer AUCUNE recommandation cholérétique ou de drainage dans ce cas.' : ''}` : ''}
-
-${digestionFaible.stressDigestif ? `STRESS PÉRI-PRANDIAL / CHASSE BILIAIRE DÉSYNCHRONISÉE DÉTECTÉS — axe à traiter en PRIORITÉ, avant tout ajustement alimentaire fin :
-- Dans le PHV, formuler ainsi : "Votre corps ne peut pas digérer et se défendre en même temps. Quand vous êtes sous pression, votre système nerveux passe en mode 'urgence' — et dans ce mode, il coupe la digestion. Les sécrétions digestives diminuent, les muscles intestinaux se contractent. Même une assiette parfaite mangée dans le stress sera mal digérée. Et paradoxe supplémentaire : votre estomac peut produire trop d'acide hors des repas, et en manquer précisément au moment de digérer." [Interdit dans le PHV : 'orthosympathique', 'parasympathique', 'sphincter d'Oddi', 'hypochlorhydrie fonctionnelle' — dire 'le système nerveux d'urgence', 'le système nerveux du calme']
-- Consigne pratique OBLIGATOIRE dans le PHV : instaurer un rituel de transition de 2 à 3 minutes avant chaque repas (quelques respirations profondes, cohérence cardiaque, ou simplement s'asseoir et faire une pause) pour basculer vers le mode parasympathique avant de manger. C'est un levier gratuit et immédiatement actionnable.
-${/diarrhées ou urgences digestives déclenchées par le stress|nausées en période de stress|perte d.appétit marquée en période de stress|douleurs intestinales déclenchées par le stress/i.test([d.symptomes_coches].join(' \n ')) ? '- Signes de chasse biliaire désynchronisée identifiés (diarrhée, nausées, perte d\'appétit ou douleurs intestinales déclenchées par le stress, hors repas) : expliquer que le stress peut déclencher une libération de bile au mauvais moment — hors digestion, les sels biliaires sont corrosifs pour un intestin vide, ce qui explique douleurs et diarrhées ; la bile elle-même est émétique (nausées) et anorexigène (coupe-faim). Le levier prioritaire est la régulation du stress (cohérence cardiaque, gestion de la charge mentale) plutôt qu\'un protocole digestif ciblé qui resterait inefficace tant que le stress n\'est pas adressé.' : ''}
-${/carence connue ou suspectée en magnésium/i.test([d.symptomes_coches].join(' \n ')) ? '- Carence en magnésium signalée en lien avec le stress digestif : mentionner que le magnésium, comme la régulation du stress, intervient dans le tonus normal des sphincters digestifs (Oddi, pylore) — une carence favorise leur spasme. Le magnésium bisglycinate est la forme à privilégier (meilleure tolérance digestive, meilleure biodisponibilité).' : ''}
-- Si pertinent : techniques de régulation du stress à intégrer dans le pilier psycho-émotionnel du PHV (cohérence cardiaque avant les repas en particulier, pas seulement en soirée).
-- Mentionner également, en complément de la cohérence cardiaque, l'exercice d'activation du nerf vague (respiration abdominale avec mains de contrôle et temps de rétention) — particulièrement adapté en flash avant un repas pour préparer la digestion, ou en cas de pic de stress aigu. Renvoyer vers la fiche pratique "Activer le nerf vague", disponible en téléchargement dans l'espace clientes.` : ''}
-
-${digestionFaible.demandeSevrageIPP ? `PROTOCOLE DE SEVRAGE IPP DEMANDÉ — la cliente a explicitement coché une demande d'accompagnement au sevrage des IPP (inhibiteurs de la pompe à protons). Tu DOIS intégrer dans le PHV une section ou un bloc dédié "Votre accompagnement de sevrage IPP" qui reprend les éléments suivants — en gardant le ton chaleureux et non médical habituel :
-
-PHASE 1 — PRÉPARATION (à mettre en place avant toute diminution de dose) :
-- Magnésium glycérophosphate ou bisglycinate, 300 à 400 mg de magnésium élément/j en 2-3 prises — limite les spasmes gastriques et compense le déficit fréquent en magnésium associé aux IPP au long cours.
-- Mastication systématique en bouillie à chaque bouchée — explique en 1-2 phrases simples que c'est la première étape digestive et qu'elle allège tout le travail de l'estomac.
-- Cohérence cardiaque avant chaque repas (3 à 5 minutes) — le stress ferme les sphincters digestifs et inhibe la sécrétion gastrique ; ce rituel bascule vers le mode parasympathique nécessaire à la digestion.
-
-PHASE 2 — SEVRAGE PROGRESSIF (une fois la phase 1 installée) :
-- Diminution progressive de la dose d'IPP, au rythme de la cliente — RAPPELER SYSTÉMATIQUEMENT que toute modification du traitement doit être validée avec le médecin prescripteur, jamais en autonomie complète.
-- Maintien de la mastication, de la cohérence cardiaque avant repas et du magnésium tout au long de cette phase.
-- Commencer le magnésium 1 MOIS AVANT le début du sevrage (indispensable, souvent ignoré) : bisglycinate ou glycérophosphate, 300 mg/j en 3 prises (100 mg matin/midi/soir). Expliquer à la cliente pourquoi : les IPP bloquent l'absorption du magnésium depuis des mois ou des années — le déficit en magnésium provoque des spasmes du muscle gastrique, qui augmentent la pression mécanique sur le cardia et aggravent le reflux à l'arrêt des IPP. Restaurer le magnésium avant le sevrage lève les spasmes et rend l'arrêt beaucoup mieux toléré.
-- Sevrage progressif OBLIGATOIRE (fractionner les doses, jamais arrêt brutal) — dans le PHV, expliquer ainsi : "Votre estomac a appris à compenser l'effet de ce médicament en produisant une hormone qui lui ordonne de faire plus d'acide. Quand vous arrêtez d'un coup, cette hormone est encore là et déclenche une sur-production d'acide intense — c'est pour ça qu'on dit 'l'effet rebond'. Il faut diminuer progressivement, en fractionnant les doses." [Interdit dans le PHV : 'gastrine', 'HCl']
-- Commencer le gingembre 5 jours avant le début du sevrage : 2 gélules 3x/j — procinétique naturel qui relance la motilité gastrique et réduit les ballonnements liés au SIBO, cause mécanique principale du reflux.
-- ⚠️ JAMAIS d'HCl bétaïne pendant le sevrage IPP — la gastrine élevée fait déjà monter l'HCl ; ajouter de l'HCl bétaïne aggraverait les brûlures. L'HCl bétaïne est un outil pour APRÈS le sevrage complet, si hypochlorhydrie confirmée.
-- Une plante de soutien selon le profil clinique, à choisir UNE SEULE parmi les trois :
-${digestionFaible.profilGingembre ? '  • Profil digestion lente / pesanteur après repas → Gingembre, 2 gélules 3x/j pendant le sevrage, réduit à 2x/j ensuite. Procinétique gastrique, stimule la motilité intestinale, anti-nauséeux. ⚠️ CI : obstruction des voies biliaires.' : ''}
-${digestionFaible.profilMelisse ? '  • Profil spasmes gastriques liés au stress → Mélisse en EPS ou Quantis, 5 ml dans ½ verre d\'eau avant repas 2x/j. Antispasmodique doux, sédatif léger, adapté quand le stress est le principal déclencheur. ⚠️ CI : femmes enceintes.' : ''}
-${digestionFaible.profilReglisse ? '  • Profil brûlures / antécédent d\'ulcère ou Helicobacter pylori → Réglisse déglycyrrhizinée en EPS ou Quantis, 5 ml dans ½ verre d\'eau avant repas 2x/j, max 4 à 6 semaines. Favorise la formation de mucus protecteur, cicatrisante de la muqueuse gastrique. ⚠️ CONTRE-INDICATION ABSOLUE : hypertension artérielle — vérifier impérativement avant de proposer.' : ''}
-${!digestionFaible.profilGingembre && !digestionFaible.profilMelisse && !digestionFaible.profilReglisse ? '  • Profil clinique non encore précisé — présenter les 3 options à la cliente et l\'inviter à se reconnaître dans l\'une d\'elles : gingembre si digestion lente ou pesanteur post-repas ; mélisse si spasmes et stress déclencheur principal ; réglisse si brûlures ou antécédent d\'ulcère/HP (vérifier l\'absence d\'HTA).' : ''}
-
-SÉCURITÉ ABSOLUE — à mentionner explicitement dans le PHV :
-- Ce protocole ne s'adresse pas en autonomie complète aux personnes enceintes, allaitantes, aux enfants, ou en cas de prise d'autres médicaments — rediriger vers un suivi individualisé si l'un de ces cas s'applique.
-- Ce protocole ne remplace jamais une consultation médicale ni ne justifie une modification du traitement sans l'accord du médecin prescripteur.
-- Si malgré ce protocole les difficultés persistent, ne pas culpabiliser la cliente : cela signifie que la cause profonde des troubles gastriques n'est pas encore identifiée et nécessite une prise en charge individualisée plus poussée.
-
-Conclure ce bloc en recommandant à la cliente de consulter la fiche pratique dédiée "Sortir des IPP en douceur", disponible en téléchargement dans son espace clientes.` : ''}
-
-${!digestionFaible.actif ? 'Aucun signal de mastication insuffisante, d\'hypochlorhydrie, d\'insuffisance bilio-pancréatique, de stress péri-prandial ou de demande de sevrage IPP n\'a été coché dans le questionnaire — intègre quand même, brièvement et positivement, un rappel sur l\'importance de bien mâcher et de manger dans le calme dans le pilier alimentation du PHV (clés de santé universelles, sans contre-indication).' : ''}
-
-PRINCIPE DE L'ÉCOSYSTÈME INTESTINAL (à intégrer dans le PHV si plusieurs signaux digestifs sont présents) :
-L'intestin fonctionne comme un écosystème avec 3 acteurs interdépendants : la barrière intestinale, le microbiote et le système immunitaire (GALT). L'altération de l'un affecte les deux autres. La restauration de l'un nécessite d'optimiser les deux autres.
-Facteurs qui ont façonné le microbiote de cette cliente — à lire dans les données et utiliser pour argumenter le PHV :
-• Naissance par césarienne : colonisation bactéries hospitalières plutôt que microbiote maternel → terrain dysbiose depuis la naissance → reconstitution longue durée (6-12 mois) nécessaire
-• Absence d'allaitement : pas de fucosyllactose (prébiotique des bifidobactéries), pas d'IgA maternelles → microbiote moins protecteur dès le départ
-• Antibiotiques dans l'enfance (<2 ans) : impact maximal (microbiote en construction jusqu'à 3 ans) → diversité bactérienne réduite durablement
-• AINS chroniques : inhibent COX → moins de prostaglandines → moins de mucus intestinal → perte du substrat des bifidobactéries + dysbiose
-• IPP au long cours : hausse du pH → dysbiose putréfaction + favorise pullulation bactéries pathogènes
-• Alimentation pauvre en fibres végétales : pas de substrat pour les bactéries de fermentation → pas de butyrate → fragilité colique
-• Stress chronique : perturbe la motilité et le pH intestinal → dysbiose
-• Pesticides (alimentation non bio, zones agricoles) : effet 'antibiotique doux' sur le microbiote → réduction diversité bactérienne
-Note : le microbiote est unique comme une empreinte digitale — 1000 espèces répertoriées chez l'humain, environ 150 espèces prédominantes chez chaque individu Si plusieurs axes digestifs sont présents chez cette cliente (dysbiose + HPI + SIBO par exemple), structurer le protocole dans cet ordre : 1/ Digestion en amont (mastication + HCl + bile) — sans ça rien ne fonctionne ; 2/ Barrière intestinale (L-Glutamine + réduction des facteurs de perméabilité) ; 3/ Microbiote (probiotiques + prébiotiques — inutiles si la barrière est encore poreuse).
-
-━━ RÈGLE N°9 — PATHOLOGIES DIGESTIVES SPÉCIFIQUES ━━
-${d.digestif_pathologies ? `Les pathologies digestives suivantes ont été identifiées par le praticien : ${d.digestif_pathologies}.
-${d.digestif_notes ? 'Contexte : ' + d.digestif_notes : ''}
-
-⚠️ IMPORTANT : Le SIBO/IMO est géré par la Règle N°5bis — NE PAS dupliquer ces recommandations ici. Les règles ci-dessous concernent uniquement les pathologies cochées.
-Intègre les recommandations correspondantes dans les piliers alimentation et soutiens ciblés. Les conseils hygiéno-diététiques (mastication, rythme, positionnement) vont dans le pilier alimentation. Les compléments s'ajoutent à la liste des soutiens ciblés dans la limite du quota global.
-
-UGD / GASTRITE / RGO (ulcère gastro-duodénal, gastrite chronique, reflux gastro-œsophagien) :
-- Objectif naturopathique : limiter l'acidité, traiter l'inflammation, favoriser la cicatrisation, traiter Helicobacter pylori si terrain déséquilibré.
-- Clés de santé OBLIGATOIRES dans le PHV : bien mâcher (30 mastications minimum), ne jamais prendre d'AINS (anti-inflammatoires) le ventre vide, se détendre à chaque repas (le stress augmente la production d'acide chlorhydrique), éviter alcool/café/chocolat/tomate/agrumes/moutarde/poivre si ces aliments aggravent, diminuer les produits laitiers et aliments gras. RGO spécifique : manger lentement, assiette aux 3/4 pleine, tête relevée de 15 cm pour dormir, éviter vêtements serrés à la taille, bouillotte chaude sur le ventre au besoin.
-- Phytothérapie : Réglisse déglycyrrhizinée (Glycyrrhiza glabra) — favorise la formation de mucus protecteur ; Aloé vera gel pur à 95% bio, 30 ml 2x/j, 1 à 3 mois — cicatrisant des muqueuses (NE PAS utiliser le suc qui est laxatif) ; Camomille romaine (Chamaemelum nobile) en tisane — antispasmodique digestive ; Bourgeon de figuier (Ficus carica) — apaisant du système digestif, 2 à 3x/j 7 gouttes dans un verre d'eau. Plantes pour soulager le foie (activent le péristaltisme) : artichaut, radis noir, chardon-Marie EPS Phytostandard.
-- Autres : bicarbonate de soude alimentaire 1 c. à café dans un verre d'eau (max 3x/j, 2h après repas — rôle rééquilibrant acido-basique, très efficace en cas de brûlure d'estomac ou d'acidité de rebond ⚠️ ne pas utiliser plus de 10 jours consécutifs, éviter si HTA ou régime sans sel) ; argile verte (adsorbant naturel hautement poreux : fixe les toxines, les bactéries pathogènes et les agents irritants dans le tube digestif, reconstitue la muqueuse, action anti-inflammatoire et cicatrisante — 1 c. à soupe dans un verre d'eau non métallique, laisser reposer 12h sans remuer, boire l'eau argileuse — en cure de 21 jours, 2x/j une demi-heure avant les repas principaux, pause de 10 jours avant de reprendre si besoin — boire ensuite un verre d'eau supplémentaire pour éviter la constipation ⚠️ CI femmes enceintes, enfants < 36 mois, ne jamais prendre avec des médicaments car l'argile les adsorbe — espacer de 2h minimum) ; massage circulaire de l'abdomen dans le sens des aiguilles d'une montre, 10 cercles minimum par séance.
-- Compléments : L-Glutamine 5g/j minimum 2 mois (Permealine Pileje) — carburant des entérocytes, cicatrisant muqueux.
-
-HYPERPERMÉABILITÉ INTESTINALE (HPI / muqueuse intestinale trop perméable) :
-⚠️ INSTRUCTION DE RÉDACTION : Ce qui suit contient des termes techniques indispensables pour que tu comprennes les mécanismes. Ces termes ne doivent JAMAIS apparaître dans le PHV. Utilise les formulations client indiquées dans chaque passage.
-
-PRINCIPE À TRANSMETTRE à la cliente — formuler ainsi dans le PHV :
-"Votre intestin a un double rôle paradoxal : absorber ce qui vous nourrit ET bloquer ce qui vous nuit. Ces deux missions reposent sur une paroi incroyablement fine. Quand cette paroi est fragilisée, les deux missions s'inversent : vous absorbez moins bien vos bons nutriments, et certaines substances que vous ne voulez pas dans votre sang passent plus facilement. C'est pourquoi vos suppléments de fer ou de zinc peuvent ne donner aucun résultat malgré des mois d'effort — et pourquoi on va d'abord réparer cette paroi avant tout le reste."
-[Ne jamais écrire : 'entérocytes', 'jonctions serrées', 'DMT1', 'pompes PGP', 'HPI', 'leaky gut' — écrire : 'la paroi de votre intestin', 'les cellules qui tapissent votre intestin', 'les coutures de votre muqueuse']
-
-LES 3 LEVIERS INTERDÉPENDANTS — toujours traiter les 3 ensemble :
-1. Réparer la paroi intestinale (cellules + coutures + mucus protecteur)
-2. Rééquilibrer la flore intestinale (un déséquilibre fragilise la paroi, et une paroi fragilisée aggrave le déséquilibre)
-3. Soutenir l'immunité intestinale (qui protège aussi toutes les autres muqueuses du corps)
-Travailler sur l'un seul des trois = résultat partiel et rechute.
-
-ANTICORPS DES MUQUEUSES — à intégrer si infections muqueuses récidivantes (vaginales, ORL, urinaires) :
-[Instructions pour Claude : les IgA sécrétoires intestinales protègent toutes les muqueuses. Ne jamais écrire 'IgA sécrétoires', 'GALT', 'cellules M', 'tolérance orale' dans le PHV.]
-Dans le PHV, formuler ainsi : "Votre intestin fabrique des anticorps qui défendent aussi votre muqueuse vaginale [ou nasale, ou urinaire]. Quand votre flore intestinale est déséquilibrée, cette protection s'affaiblit partout à la fois. C'est pourquoi ces infections reviennent malgré les traitements locaux — la cause est dans l'intestin, pas à l'endroit où vous avez les symptômes."
-Lien intolérances alimentaires fluctuantes : quand la flore est déséquilibrée, votre intestin réagit aux aliments comme à des menaces — c'est pour ça que les intolérances changent d'un mois à l'autre. Ce ne sont pas les aliments qui varient, c'est l'état de votre flore.
-
-LE BOUCLIER PROTECTEUR — mucus intestinal (à mentionner si flore déséquilibrée ou HP ou infections récidivantes) :
-[Instructions pour Claude : ne jamais écrire 'cellules caliciformes', 'mucine', 'eubiose' dans le PHV.]
-Dans le PHV, formuler ainsi : "Votre intestin produit un mucus naturel qui le protège comme un bouclier. Une flore équilibrée entretient ce bouclier. Et ce bouclier en retour protège votre flore. Certaines bactéries comme l'Helicobacter pylori désactivent ce bouclier — ce qui explique pourquoi une infection à HP crée souvent une cascade de problèmes digestifs bien au-delà de l'estomac."
-
-OBJECTIF NATUROPATIQUE : réparer la paroi intestinale, calmer l'inflammation de fond, diversifier et rééquilibrer la flore, renforcer la protection immunitaire des muqueuses.
-- Alimentation prioritaire : supprimer les sucres raffinés (favorisent la fermentation), les graisses artificielles, limiter les laitages (préférer chèvre/brebis si besoin) et la viande rouge. Eau en bouteille de verre. Aliments fermentés naturels : choucroute crue, kéfir, kombucha, yaourt chèvre/brebis. Fibres prébiotiques chaque jour : ail, artichaut, échalote, oignon, légumes verts bio frais. Réduire le stress — le stress chronique fragilise directement les coutures de la paroi intestinale.
-- À éviter absolument : anti-douleurs type ibuprofène, aspirine, diclofénac (fragilisent directement la paroi intestinale), médicaments réducteurs d'acidité au long cours (aggravent le déséquilibre de la flore), alcool quotidien même modéré (perturbe la paroi et le mucus protecteur), tabac.
-- Compléments prioritaires — formuler le rôle de chacun ainsi dans le PHV :
-  • L-Glutamine 5g/j minimum 2 mois (Permealine Pileje ou Ergyprotect Confort Nutergia) → dans le PHV : "Les cellules qui tapissent votre intestin se renouvellent toutes les 36 heures. Pour se reconstruire, elles ont besoin d'un carburant spécifique : la L-Glutamine. Sans elle, votre paroi intestinale ne peut pas se réparer, quelle que soit la qualité de votre alimentation."
-  • Probiotiques Lactibiane Tolérance (Pileje) 1 gél/j → dans le PHV : "Ce probiotique a été sélectionné pour ses souches spécifiques à la restauration de la flore quand la paroi intestinale est fragilisée — il travaille les deux en même temps."
-  • Boswellia serrata 1 à 1,5g de principe actif/j, minimum 3 mois → dans le PHV : "La résine de Boswellia est l'un des anti-inflammatoires naturels les mieux documentés pour calmer l'inflammation chronique de la paroi intestinale — elle agit là où les autres approches ne suffisent pas."
-  • Oméga-3 EPA/DHA Omégabiane Pileje 2 gél/j au repas → dans le PHV : "Les oméga-3 réduisent l'inflammation de votre muqueuse. Important : pour qu'ils soient absorbés, votre digestion doit fonctionner correctement — c'est pourquoi on travaille aussi votre bile en parallèle."
-  • Vitamine D3 800 UI/j → dans le PHV : "La vitamine D renforce les coutures de votre paroi intestinale et aide votre intestin à fabriquer les anticorps qui protègent toutes vos muqueuses."
-  • Prébiotiques (fibres fermentescibles) — indispensables avant ou avec les probiotiques, SAUF en cas de dysbiose de fermentation colique OU de SIBO associé (voir Règles N°9ter / N°5bis si actives — dans ces cas, ne recommande AUCUN prébiotique et retire cette recommandation) : dans le PHV : 'Les probiotiques sont comme des graines que vous plantez dans un jardin. Mais si la terre n'est pas fertilisée, les graines ne poussent pas. Les fibres prébiotiques sont ce fertilisant — elles nourrissent vos bonnes bactéries, qui les fermentent pour produire des molécules protectrices qui sont le carburant de votre côlon. Sans fibres, les probiotiques s'installent difficilement et votre côlon reste fragilisé.' Sources à recommander : ail, oignon, artichaut, échalote, poireau, banane légèrement verte, orge, avoine, légumineuses. Introduire progressivement pour éviter les ballonnements de transition.
-  • Zinc carnosine si muqueuse très irritée → dans le PHV : "Le zinc carnosine apaise et répare en profondeur les cellules de votre muqueuse intestinale — il agit en synergie avec la L-Glutamine."
-[Ne jamais écrire dans le PHV : 'boswellines', 'leucotriènes', 'occludine', 'claudines', 'IgA sécrétoires', 'entérocytes']
-
-SYNDROME DE L'INTESTIN IRRITABLE (SII / colopathie fonctionnelle) :
-- Causes fréquentes : altération du microbiote, carence en vitamine D, perturbateurs endocriniens, hypersensibilité au stress acquise dans l'enfance.
-- Alimentation : régime méditerranéen ou végétarien biologique en priorité. Si antécédent d'antibiothérapie, prébiotiques 6 semaines minimum. Si terrain inflammatoire associé (MICI, Crohn, rhumatisme articulaire) : Boswellia serrata. Si colopathie droite ("côlon droit") : régime sans FODMAP sur 3 mois minimum.
-- Vitamine D : complémentation entre le 15 octobre et le 15 avril (au minimum), 800 UI/j. Si carence objectivée par dosage sanguin, se référer au médecin traitant.
-- Gestion du stress : yoga, sophrologie, techniques psychocorporelles, reiki, EFT — l'hypersensibilité au stress est une indication majeure pour ces approches.
-- Compléments : Magnésium liposomal bisglycinate (bisglycinate + glycérophosphate) avec fixateurs intracellulaires (vitamine B6 + taurine) ; Lactibiane Référence 5M (Pileje) 1 gél/j 1 à 3 mois.
-
-BALLONNEMENTS / GAZ / MÉTÉORISME :
-- Mécanisme physiologique à expliquer dans le PHV (vulgarisé) : 'Les bonnes bactéries de votre intestin fermentent les fibres alimentaires pour produire des acides gras qui protègent votre côlon. Une fermentation modérée est normale et saine — c'est l'excès qui crée les ballonnements. Cet excès peut venir de fibres arrivant trop vite (mastication insuffisante), d'un déséquilibre de la flore, ou de protéines mal digérées en amont qui fermentent elles aussi. La solution n'est pas d'éviter les légumes — c'est de mieux digérer en amont.'
-- Cause principale : dysbiose (anomalie de la flore microbactérienne) ou fermentation liée à des repas trop rapides, association d'aliments incompatibles, défaut de mastication.
-- Règle d'or dans le PHV : bien mâcher et manger lentement — c'est le premier traitement du ballonnement. Manger loin des repas et placer le dessert et les fruits vers 17h soulage la digestion.
-- Phytothérapie : plantes carminatives (à graines) en infusion — anis vert, badiane (anis étoilé), fenouil, angélique ; tisane anis-carvi-fenouil : écraser les fruits à parts égales, 1 c. à café dans 200 ml eau chaude, infuser 20 min, 1 tasse après chaque repas (⚠️ CI femmes enceintes, antécédent cancer du sein, antécédent cancer hormono-dépendant — anis vert et fenouil ont une action hormone-like). Angélique (Angelica archangelica — carminative, antispasmodique, tonique digestive, stimule les sécrétions gastriques et pancréatiques, antiballonnante — excellente pour les spasmes digestifs post-SIBO et les ballonnements chroniques résistants — tisane 1 c. à café, infuser 10 min, 1 tasse après les repas — ⚠️ CI action hormone-like donc antécédent cancer hormono-dépendant ; photosensibilisante : éviter l\'exposition solaire prolongée après consommation).
-- Charbon végétal activé : adsorbant intestinal très puissant qui fixe et retient les gaz, les toxines, les métaux lourds, les pesticides, les additifs alimentaires et les médicaments présents dans l'intestin (sans les assimiler) — il les emporte dans les selles. IMPORTANT : le charbon végétal actif n'est PAS un chélateur — il ne fixe rien dans le sang, son action s'arrête à l'intestin. Utiliser en poudre (1 c. à café dans un verre d'eau, 3 à 4 fois par jour, au moins 2h après tout médicament ou complément) ou en gélule (jusqu'à 100mg sans risque, posologie variable en fonction de l'utilisation). Indications principales : ballonnements, flatulences, gaz, intoxication alimentaire légère, aérophagie. ⚠️ CI ABSOLUE : ne jamais prendre en même temps que des médicaments car le charbon les adsorbe et annule leur effet — espacer de 2h minimum. Ne pas dépasser 3-4h d'utilisation continue car il peut provoquer des carences en nutriments. Les enfants de plus de 6 ans peuvent en prendre (2 à 6 gélules par jour).
-- HE (usage externe sur le ventre, dilution 20% dans huile végétale) : estragon (Artemisia dracunculus) ou basilic exotique (Ocimum basilicum) — antispasmodiques intestinaux puissants, quelques gouttes sur le ventre au besoin (éviter femmes enceintes, enfants, anticoagulants, antécédent cancer du sein).
-
-COLIQUES / SPASMES INTESTINAUX :
-- Cause principale : contraction anormale des muscles de la paroi intestinale par hyperstimulation du système nerveux orthosympathique secondaire au stress. La guérison passe souvent par la relaxation et la psychologie.
-- Phytothérapie : Mélisse (Melissa officinalis) — antispasmodique de référence, spasmolytique sur muscles lisses intestinaux, sédative légère à expression cardiaque et digestive, active dans la nervosité avec troubles digestifs — 1 c. à café par tasse, infuser 10 minutes (⚠️ à éviter chez les femmes enceintes). Eschscholtzia (Eschscholtzia californica) si composante anxieuse majeure (antispasmodique intestinal + anxiolytique — ⚠️ CI glaucome, grossesse, enfant < 12 ans — peut diminuer la vigilance 1 à 2h après la prise — peut prendre 15 jours à agir). DISTINCTION CLINIQUE IMPORTANTE : si l\'anxiété est surtout diurne et les spasmes apparaissent pendant la journée, préférer la Passiflore (Passiflora incarnata — petit effet d\'éveil, meilleure en journée, anxiolytique, efficace en 8 jours, 300 à 400mg extrait sec) ; si la composante est nocturne avec réveils, stress chronique et ruminations, préférer la Valériane (Valeriana officinalis — contient du GABA, relaxante musculaire, améliore le sommeil profond et paradoxal, réduit les réveils nocturnes — 100mg anxiolytique, 400mg sédatif et somnifère).
-- HE (quelques gouttes dans huile végétale sur le ventre) : estragon et/ou basilic exotique, riches en méthylchavicol.
-- Hydrologie : capillothérapie Dr Salmanoff — appliquer 20 min une serviette mouillée très chaude sur le ventre, puis poser une bouillotte bien chaude sur la serviette pour éviter son refroidissement.
-
-CONSTIPATION CHRONIQUE :
-- Règle d'or : boire 1,5 à 2 litres d'eau/j (le manque d'hydratation est la 1ère cause), marcher (automassage du système digestif). Rituel selle : s'astreindre à des horaires fixes dans un moment calme et tranquille, boire un verre d'eau pure, faire quelques mouvements du buste avec des flexions, placer un petit tabouret sous les pieds (20 cm) pour surélever les cuisses, bassin vers l'arrière pour débloquer l'ampoule rectale.
-- Alimentation : fruits secs pruneaux/abricots réhydratés, mûres, framboises, dattes, amandes, carottes surtout en jus, figues fraîches et sèches, raisins, persil. Limiter : céréales, chocolat, riz blanc, viandes rouges, pomme de terre. Pensez au drainage du foie (artichaut ou radis noir en drainage hépatique) car la constipation entraîne une réabsorption des toxines hépatiques par l'intestin.
-- Laxatifs de lest (fibres solubles) : psyllium blond (Plantago afra — laxatif de lest proche du plantain, indiqué constipation, douleurs à la défécation, hémorroïdes, et post-opératoire digestif — 1 c. à café avant les repas dans un grand verre d'eau, avaler rapidement, jusqu'à 1 c. à soupe (15g)/j ; boire davantage à chaque prise — voir CI spécifiques selon la galénique). Gommes (konjac, guar). À éviter en cas de diverticules coliques.
-- HE aromathérapie (massage ventre) : gingembre (Zingiber officinalis) dilué dans huile végétale de jojoba, 4 gouttes dans 1 c. à café, masser le ventre après le repas en tournant dans le sens des aiguilles d'une montre.
-
-MICI — MALADIE DE CROHN / RECTOCOLITE ULCÉRO-HÉMORRAGIQUE :
-- ⚠️ Pathologie médicale sérieuse — toutes les recommandations naturopatiques s'effectuent EN COMPLÉMENT du suivi médical et gastro-entérologique, jamais à sa place. Mentionner explicitement dans le PHV que ces conseils ne remplacent pas le traitement prescrit.
-- Alimentation pendant les phases calmes : petits repas fréquents, boire suffisamment (éviter les boissons gazeuses, alcoolisées, caféinées), légumes et fruits plutôt cuits que crus, limiter les aliments riches en fibres pendant les crises. Identifier les aliments déclencheurs individuels (tenir un journal alimentaire). Éviter l'aspirine et les AINS (préférer paracétamol max 3g/j). Surveiller le statut en vitamines et minéraux (A, B9, B12, C, D, E, K, calcium, cuivre, fer, magnésium, sélénium, zinc) car l'inflammation chronique et la malabsorption créent des carences sévères.
-- Gestion du stress : yoga, reiki, Qi gong, tai-chi, EFT, protocole de cohérence cardiaque — le stress entretient et aggrave l'inflammation, diminue significativement le seuil de tolérance à la douleur.
-- Activité physique : 20 à 30 min, 3x/semaine, rythme modéré ou soutenu suffisent — amélioration significative de toute la symptomatologie.
-- Compléments : Curcumine 1200mg/j (curcuma extrait standardisé en curcumine — anti-inflammatoire puissant via NF-kB, efficacité démontrée sur la rectocolite — potentialisé par le poivre noir qui multiplie l'absorption par 20 — ⚠️ CI obstruction des voies biliaires, grossesse ; en cas d'hypersensibilité gastrique, peut aggraver les symptômes dans 15% des cas — vérifier la tolérance) ; Boswellia serrata extrait standardisé 1g/j de boswelline minimum 3 mois (voire plusieurs années en pathologie chronique) ; Oméga-3 EPA/DHA Omégabiane Pileje 1 capsule/j (huile de krill) ; Vitamine D3 800 UI/j d'octobre à mars ; Chlorophylle liquide 10 à 15 gouttes dans un verre d'eau, 2 à 3 fois/j entre les repas (régulateur puissant de la fermentation intestinale — la chlorophylle est le pigment vert des plantes, très proche de l'hémoglobine humaine par sa structure, elle oxygène l'organisme, favorise la régénération de la flore, rééquilibre le pH intestinal, aide à la détoxification du foie, prévient la candidose chronique, réduit les inflammations — choisir une chlorophylle naturelle sans conservateurs, 3 à 5g/j maximum ⚠️ peut colorer les selles en vert) ; Probiotiques Lactibiane Référence 5M (Pileje) 1 gél/j.
-- Phytothérapie : Boswellia serrata (voir compléments ci-dessus) — peut diminuer progressivement les posologies des traitements allopathiques en phase de rémission, sous contrôle médical.
-
-CANDIDOSE CHRONIQUE :
-⚠️ MÉCANISME (instructions pour toi, jamais ces termes dans le PHV — cf. Règle N°1bis) : Candida albicans est un hôte normal du microbiote, présent chez tout le monde sous forme de spore inoffensive tant que le terrain reste équilibré. La candidose n'apparaît JAMAIS sur un microbiote sain — elle est toujours secondaire à une dysbiose préexistante, qui laisse la place à sa prolifération. Elle se nourrit prioritairement de sucre et d'aliments à index/charge glycémique élevés. Sous la pression d'un terrain dysbiotique et sucré, le Candida passe de la forme spore à une forme filamenteuse beaucoup plus agressive : cette forme franchit plus facilement la barrière intestinale (contribuant à l'hyperperméabilité), résiste à la phagocytose, et s'organise en biofilm protecteur qui la met à l'abri des radicaux libres du système immunitaire tout en empêchant les bifidobactéries de se réinstaller. Elle déséquilibre la balance immunitaire Th1/Th2 en faveur du Th2 (immunité moins combative contre les infections/virus, terrain plus propice aux allergies — asthme, eczéma, urticaire) et fabrique plusieurs toxines : candidine (neurotoxique), acétaldéhyde (abaisse la dopamine — d'où une fatigue et une humeur basse proches d'un état de "gueule de bois" chronique), acide tartrique (bloque le cycle de Krebs → baisse de production d'énergie cellulaire), et des toxines opioïdes qui abaissent le seuil de la douleur ET entretiennent des envies de sucre irrépressibles (le Candida "pilote" littéralement l'envie de sucre de la cliente pour assurer sa propre prolifération). Ses enzymes (aspartyl-protéinase, lipases, phospholipases) dégradent le mucus protecteur de l'estomac et de l'intestin, aggravant l'hyperperméabilité. Elle peut essaimer à distance sur toutes les muqueuses : vaginale (la plus fréquente et la plus souvent traitée), mais aussi génitale masculine (gland — beaucoup moins symptomatique et donc sous-diagnostiquée, sujet plus tabou chez les hommes), ongles, pieds (pied d'athlète), buccale (muguet), plis de peau. Une candidose vaginale qui revient sans cesse malgré des traitements locaux répétés (ovules antifongiques) est, dans l'immense majorité des cas, le signe d'une niche intestinale non traitée : le traitement local seul ne suffira jamais à empêcher la récidive, il faut systématiquement traiter le terrain intestinal en parallèle.
-
-⚠️ RIGUEUR CLINIQUE OBLIGATOIRE — signes peu spécifiques : fatigue, déprime, anxiété, immunité fragile, terrain allergique, ballonnements et gaz, mycoses, prurit anal, langue chargée/fissurée ou perlèche, et envies de sucre irrépressibles peuvent TOUS avoir d'autres causes (hypothyroïdie, cortisol bas, sérotonine basse, insulinorésistance, dopamine basse, dysbiose de fermentation ou de putréfaction, SIBO). Ne jamais conclure à une candidose sur un seul signe isolé — rechercher la CONVERGENCE de plusieurs signes, en particulier : ballonnements qui s'aggravent spécifiquement après consommation de sucre ou d'aliments à IG élevé (signature la plus discriminante), mycoses à répétition (vaginales et/ou ongles/pieds/muguet), envie de sucre décrite comme "irrépressible" et non liée aux classiques coups de barre de 16-17h (cf. Règle glycémie), langue fissurée ou perlèche (candidose ancienne installée). Différencier systématiquement l'envie de sucre d'origine candidosique de ses autres causes avant de traiter : un dosage de cortisol, de sérotonine ou un bilan glycémique mal interprété conduit à traiter la mauvaise cause. En cas de doute, orienter vers une confirmation biologique avant un protocole d'attaque complet : sérologie (anticorps anti-Candida albicans), coproculture, ou profil des acides organiques urinaires (marqueurs tartarate, citramalate, D-arabinitol).
-${candidoseSignal && candidoseSignal.evocateur ? `\n⚠️ SIGNAL DÉTECTÉ DANS LE QUESTIONNAIRE : plusieurs signes évocateurs de candidose coexistent (${candidoseSignal.nombreSignes} signes) sans que la pathologie n'ait été cochée explicitement par la praticienne. Ne PAS lancer le protocole d'éradication complet sur cette seule base — mentionner dans le PHV une piste à explorer et suggérer une confirmation biologique, en gardant un ton mesuré ("un terrain à surveiller" plutôt qu'un diagnostic).\n` : ''}
-- Alimentation (pilier 1, à traiter AVANT tout complément) : éviction stricte du sucre sous toutes ses formes et des aliments à IG élevé pendant minimum 3 mois — sucre, miel, biscuits/viennoiseries/bonbons, mais aussi et surtout les céréales raffinées que la cliente ne perçoit pas comme "sucrées" (pain blanc, riz blanc, pâtes blanches, pommes de terre en purée) : ce sont de véritables bombes glycémiques une fois le son retiré. La pomme de terre refroidie après cuisson (amidon résistant) a une charge glycémique nettement réduite et reste autorisée. Se méfier des aliments industriels où le sucre est masqué sous "amidon" sans être nommé comme tel. Réduire le lactose (fromages longuement affinés et yaourts fermentés plus de 12h en contiennent très peu, généralement bien tolérés). Éviter le gluten pendant la phase d'éradication : il existe un mimétisme croisé documenté entre les filaments du Candida et la gliadine du blé, pouvant entretenir une réaction immunitaire croisée. NE PAS faire éviter les levures et moisissures alimentaires à la cliente — c'est une idée reçue sans fondement : le Saccharomyces boulardii (levure probiotique) a au contraire montré un effet antagoniste documenté sur le Candida albicans (inhibition de sa transformation en forme filamenteuse, de son adhésion et de la formation de biofilm, via la sécrétion d'acide caprique) sans déséquilibrer le microbiote global. Recommander une consommation large de légumes (nourrit les bifidobactéries compétitrices) et des aliments à visée antifongique en cuisine : ail, épices, cannelle, gingembre, thym, mélisse, romarin, et un peu d'huile de coco (acide caprylique/caprique) en petite quantité, sans remplacer les huiles végétales de colza/olive/lin. Insister sur la mastication.
-- Protocole micronutritionnel — ADULTE ou enfant > 14 ans SANS fragilité hépatique (aligné sur le protocole origan déjà utilisé en Règle N°9quater, pour rester cohérent) :
-   1. Attaque J1 à J19-21 : ADP (Energetica Natura) ou Origan Plus (Nutrixeal) 2 gélules matin + 2 gélules soir au milieu du repas, 5 jours sur 7 pendant 3 semaines puis stop. Alternative budget : Origan Plus (Pranarôm), moins cher mais davantage de reflux rapporté. ⚠️ CI : fragilité/souffrance hépatique, grossesse, allaitement, enfant < 12 ans.
-   2. Juste après (jamais pendant) : Vivomixx 1 sachet/jour à jeun pendant 20 jours ; alternative si rupture de stock : Lactibiane Actif Choc (Pileje) 2 gélules le matin à jeun pendant 30 jours.
-   3. En entretien, 3 à 6 mois, par alternances de 15 jours : EPP (extrait de pépins de pamplemousse) 20 gouttes 3 fois/jour dans un verre d'eau, en alternance avec chlorophylle liquide (Sofibio ou Nutrixeal) 1 gélule matin + 1 gélule soir, Ecodyn (Bionutrics) ou Paracid (Energetica Natura). ⚠️ EPP : interaction cytochrome P450 possible si la cliente est sous médicaments — à vérifier systématiquement.
-   4. En parallèle et jusqu'à J90 : réparation de la paroi intestinale avec un complexe glutamine + probiotiques + un peu de prébiotique (type Ultradyn Impact, Bionutrics) — ce volet ne doit jamais être omis, la porosité intestinale associée à la candidose ne se referme pas d'elle-même.
-- Profil fragilité hépatique, grossesse/allaitement à écarter de l'origan compact, ou enfant 12-14 ans : remplacer l'attaque par Ergypar (Nutergia) 10 à 20 ml/jour dans un demi-verre d'eau, 5 jours sur 7 pendant 2 mois — plus doux que l'origan compact. Puis EPP 20 gouttes 3 fois/jour en alternance avec chlorophylle (1 gélule/jour), pendant 3 à 6 mois. Ensuite Vivomixx 1 sachet/jour à jeun 20 jours ou Lactibiane Actif Choc (Pileje) 2 gélules avant le petit-déjeuner pendant 1 mois. Même volet de cicatrisation intestinale (Ultradyn Impact, Bionutrics) sur J1 à J90.
-- Bébé, jeune enfant, femme enceinte ou allaitante (population où l'on peut le moins intervenir — rester sur le plus doux) : EPP seul, adulte/femme enceinte-allaitante > 12 ans 20 gouttes 3 fois/jour pendant 3 à 6 mois ; enfant 1 goutte pour 2 kg de poids corporel par jour pendant 3 mois. Probiotiques : adulte Lactibiane Cnd (Pileje) ; enfant Lactibiane enfant 1 sachet dans de l'eau le matin pendant 3 mois. Homéopathie possible en soutien (à intégrer si la cliente y est réceptive) : 1 dose de chacun par semaine, minimum 3 mois — Monilia Albicans 15CH, Dulcamara 9CH, Natrum Sulfuricum 15CH (à faire préparer en monodoses par le pharmacien). Si candidose vaginale associée chez la femme enceinte : traiter aussi le microbiote vaginal en parallèle avec des probiotiques en ovules (type Gynophilus) jusqu'à l'accouchement, en plus de l'EPP et du Lactibiane Cnd — ne jamais se limiter au traitement vaginal local seul.
-- Dans le PHV, formuler simplement, sans jamais utiliser les termes techniques ci-dessus (cf. Règle N°1bis) : "Ce candidat un peu envahissant fait partie de votre flore normale — le problème n'est pas sa présence mais sa prolifération, qui se nourrit de sucre et s'installe quand votre microbiote est déséquilibré. On va donc à la fois lui couper les vivres, la faire reculer fermement, puis reconstruire un microbiote équilibré pour qu'elle ne revienne pas."
-
-Si aucune pathologie digestive n'est renseignée ou si seul le SIBO/IMO est présent, ignore cette règle N°9.
-
-SIGNATURE DIGESTIVE COMPLÉMENTAIRE (si renseignée dans le questionnaire) :
-- Gaz intestinaux très odorants / odeur de soufre / œuf pourri → signature de dysbiose de putréfaction : les bactéries protéolytiques du côlon descendant (pH 7,5-8) dégradent les résidus protéiques en ammoniac, indole, scatol, cadavérine, putrescine, H₂S. Dans le PHV : 'Vos gaz très odorants sont la signature d'une digestion incomplète des protéines — les bactéries de votre intestin fermentent ce que votre estomac n'a pas terminé, en produisant des gaz malodorants. La solution est de mieux digérer les protéines en amont, pas de les supprimer.' Causes à explorer : hypochlorhydrie, mastication insuffisante, protéines en excès. SIBO H₂S possible si gaz odorants 60-90 min post-repas (grêle). Mentionner dans le PHV (pilier alimentation) : limiter les aliments très soufrés (oeufs, viandes rouges, choux, ail cuit, poireaux en grande quantité), soutenir la digestion des protéines (HCl bétaïne à évaluer), motilité à soutenir (gingembre, artichaut). Ne pas dupliquer si SIBO H₂S déjà traité en Règle 5bis. Si la Règle N°9quater (dysbiose de putréfaction) est active plus haut dans ce prompt, c'est elle qui prime pour le protocole complet et les compléments — cette ligne ne sert alors que de rappel du mécanisme, ne pas répéter deux fois les mêmes compléments dans le PHV.
-- Gaz inodores abondants → fermentation glucidique : évoquer déficit en amylase / mastication insuffisante / excès de glucides fermentescibles. Mentionner dans le PHV : bien mâcher, limiter les sucres rapides et les féculents en excès le soir.
-- Éructations fréquentes → hypochlorhydrie ou fermentation haute : mentionner dans le PHV (pilier alimentation) : manger lentement, éviter de boire pendant les repas, éviter les boissons gazeuses. Si IPP en cours : noter la dépendance possible au rebond acide et l'importance d'une sortie progressive (avec accord médecin).
-- Mauvaise mastication signalée → TOUJOURS inclure dans le pilier alimentation du PHV : "Mâchez chaque bouchée au minimum 20 à 30 fois avant d'avaler — la digestion commence dans la bouche et une mauvaise mastication perturbe en cascade toutes les étapes digestives."
-- Ballonnements qui s'aggravent spécifiquement après consommation de sucre ou d'aliments à IG élevé (et non après les fibres/prébiotiques, ni odorants comme la putréfaction) → signature évocatrice de candidose, à distinguer des dysbioses de fermentation/putréfaction. Si la case "Candidose chronique" n'a pas été cochée par la praticienne, ne pas lancer le protocole complet — se référer à la note de vigilance de la Règle N°9 (candidose) et proposer une confirmation biologique avant d'aller plus loin.
-- Envie de sucre décrite comme "irrépressible" ou "incontrôlable" → ne jamais l'attribuer par défaut à une candidose : investiguer d'abord cortisol bas, sérotonine basse, insulinorésistance et dopamine basse (cf. Règle N°9 — candidose, paragraphe rigueur clinique) avant de conclure.` : 'Aucune pathologie digestive spécifique renseignée.'}
-
-━━ RÈGLE N°2ter — LIRE LES DÉCLENCHEURS DU PASSÉ ━━
-Dans les données ci-dessous, certains champs peuvent contenir des informations sur des événements passés que la cliente a révélés pendant la consultation grâce aux questions de déclencheurs : antibiotiques anciens, pilule longue, gastro-entérite à l'étranger, chirurgies, stress majeur, amalgames, cosmétiques, moisissures...
-
-Pour CHAQUE déclencheur passé identifié dans les données :
-1. Nommer l'événement dans la section s1 en expliquant son rôle de "premier domino"
-2. Expliquer le mécanisme physiologique qui relie cet événement aux symptômes actuels
-3. Montrer comment chaque recommandation du protocole agit PRÉCISÉMENT sur ce mécanisme
-
-La cliente qui lit son PHV doit avoir un moment "ah, enfin quelqu'un comprend d'où ça vient" — ce moment se crée par la connexion entre un événement passé qu'elle avait banalisé et les symptômes qu'elle vit aujourd'hui.
 
 ━━ DONNÉES DE LA SÉANCE ━━
 Cliente : ${d.prenom}${d.nom ? ' ' + d.nom : ''}${d.age ? ', ' + d.age + ' ans' : ''} · Profil : ${d.profil}
-Tempérament constitutionnel : ${d.temperament ? d.temperament.toUpperCase() : 'Non renseigné'}
 Objectifs exprimés (par ordre de priorité) :
 1. ${d.obj_1 && d.obj_1 !== '(aucun)' ? d.obj_1 : d.objectif_6mois || 'Non précisé'}
 2. ${d.obj_2 && d.obj_2 !== '(aucun)' ? d.obj_2 : '—'}
@@ -1787,10 +968,6 @@ ${d.lifeline || '— Non renseigné'}
 
 🔬 ANALYSE CAUSALE PRATICIEN (cascade des premiers dominos) :
 ${d.notes_praticien || '— Non renseigné'}
-🫁 PATHOLOGIES DIGESTIVES SPÉCIFIQUES : ${d.digestif_pathologies || '— Non renseigné'}
-${d.digestif_notes ? '📝 Contexte digestif : ' + d.digestif_notes : ''}
-🌸 PATHOLOGIES GYNÉCO-HORMONALES : ${d.gyneco_pathologies || '— Non renseigné'}
-${d.gyneco_notes ? '📝 Contexte hormonal : ' + d.gyneco_notes : ''}
 
 ━━ PARAMÈTRES DU PROTOCOLE (définis par le praticien après séance) ━━
 🎯 Axes de travail prioritaires : ${d.axes_prioritaires}
@@ -1842,134 +1019,6 @@ Réponds UNIQUEMENT avec le JSON pur, sans markdown, sans backticks.
 
 }
 
-━━ RÈGLE N°10 — VITAMINES, MINÉRAUX & OLIGO-ÉLÉMENTS : PRÉCISIONS CLINIQUES ━━
-Cette règle guide les recommandations alimentaires ET la supplémentation en micronutriments. Les données ci-dessous doivent enrichir le PILIER ALIMENTATION (sources alimentaires prioritaires) et la section SOUTIENS CIBLÉS (supplémentation si nécessaire).
-
-— VITAMINE D —
-• Niveaux sanguins de référence (25-OH-D) : optimal 30-50 ng/ml ; insuffisance 20-30 ; carence < 20 ; carence sévère < 10.
-• Sources alimentaires : poisson gras (saumon, sardine, maquereau), jaune d'œuf, champignons exposés au soleil, foie de morue.
-• Supplémentation uniquement D3 (jamais D2 végétale — moins efficace). Toujours associer K2 MK-7. Posologies : entretien 1000-2000 UI/j ; insuffisance légère 50 000 UI/semaine × 4-8 sem ; carence modérée 2000-5000 UI/j.
-• ⚠️ Surdosage (hypervitaminose D) : rare mais grave — nausées, vomissements, faiblesse musculaire, hypercalcémie, dommages rénaux et cardiaques en cas extrême. Ne pas dépasser 4000 UI/j sans bilan sanguin.
-• Facteurs réduisant l'absorption/synthèse : surpoids (stockée dans tissu graisseux, moins disponible), âge (la peau synthétise moins), peau foncée (mélanine = barrière aux UVB), troubles digestifs (Crohn, cœliaque — absorption intestinale réduite), faible ensoleillement.
-• 15-20 minutes d'exposition solaire quotidienne = apport suffisant en été (peau claire, bras et visage exposés).
-
-— VITAMINE K —
-• Rôles : coagulation sanguine, minéralisation osseuse (active l'ostéocalcine), protection cardiovasculaire (K2 prévient la calcification artérielle).
-• RNP adultes : 79 µg/j — généralement couverts par une alimentation riche en légumes verts à feuilles.
-• Sources K1 : épinards, choux, brocolis, salade. Sources K2 : natto, miso, fromages affinés, jaune d'œuf.
-• Carence : ecchymoses, saignements de nez, règles abondantes, ostéoporose. Rare avec alimentation équilibrée.
-• ⚠️ CI supplémentation K : patients sous anticoagulants (AVK) — interaction majeure, à signaler impérativement.
-
-— MAGNÉSIUM —
-• RNP adultes : 6 mg/kg/j. Femmes enceintes : 300-360 mg/j.
-• Sources : chocolat noir, amandes, noix, légumineuses, céréales complètes, légumes verts.
-• Formes biodisponibles : bisglycinate > citrate > glycérophosphate > malate. À éviter : chlorure, oxyde (très peu absorbés).
-• Carence fréquente en alimentation moderne (stress, raffinage) — pas besoin de bilan sanguin pour supplémenter.
-• ⚠️ Surdosage : diarrhée (signe précoce à surveiller), crampes à forte dose. Aucun risque sévère par voie orale à doses physiologiques.
-
-— CALCIUM —
-• RNP adultes : 1000-1200 mg/j. Principalement couvert par alimentation.
-• Sources : produits laitiers, sardines avec arêtes, brocolis, amandes, tofu, eaux calciques.
-• ⚠️ Supplémentation : inutile si alimentation variée. En cas de supplémentation, toujours associer D3 + K2 pour orienter le calcium vers les os. Ne jamais dépasser 1200 mg/j en supplément — risque cardiovasculaire et rénal.
-• Cofacteurs indispensables à l'absorption : vitamine D (essentielle), K2 (oriente vers les os), magnésium (régule le calcium intracellulaire). Alimentation riche en sel = augmente l'excrétion urinaire de calcium.
-
-— POTASSIUM —
-• RNP adultes : 2000-3500 mg/j.
-• Sources : banane, avocat, légumineuses, légumes verts, fruits secs, pommes de terre.
-• Carence (hypokaliémie) : fatigue, crampes, arythmies — peut survenir en cas de diarrhées chroniques, vomissements, malnutrition.
-• ⚠️ Ne jamais supplémenter sans indication médicale — risque d'hyperkaliémie cardiaque. Couvrir les besoins exclusivement par l'alimentation.
-• Déséquilibre sodium/potassium (alimentation industrielle riche en sel = trop de sodium, pas assez de potassium) → rôle dans les maladies cardiovasculaires. Conseil alimentation : réduire le sel industriel, augmenter légumes/fruits.
-
-— ZINC —
-• RNP : adultes hommes 9-14 mg/j ; femmes 7,5-11 mg/j ; femmes enceintes 9-11 mg/j ; allaitantes 10-13 mg/j.
-• Sources : huîtres (très riches), viande rouge, noix, légumineuses, graines de courge.
-• Indications supplémentation : acné, immunité, hormones sexuelles, Hashimoto, fertilité (hommes : qualité sperme ; femmes : ovulation), peau sensible.
-• ⚠️ DOSE QUOTIDIENNE TOLÉRABLE : 40 mg/j — ne jamais dépasser sauf avis médical. Surdosage = nausées, vomissements, crampes, baisse d'immunité, carence secondaire en cuivre et fer. JAMAIS associer bisglycinate de zinc + bisglycinate de fer au même moment de la journée. Forme recommandée : bisglycinate (meilleure absorption, bonne tolérance). Cures de 1 à 3 mois.
-
-— SÉLÉNIUM —
-• RNP adultes : 55-70 µg/j. Source alimentaire remarquable : 1 noix du Brésil ≈ 70-90 µg.
-• Sources : noix du Brésil, poissons, viandes, œufs, céréales complètes (teneur variable selon sol).
-• Indications : protection antioxydante, conversion T4→T3 (essentiel en hypothyroïdie/Hashimoto), immunité, fertilité masculine.
-• ⚠️ DOSE MAXIMALE TOLÉRABLE : 300 µg/j. Surdosage chronique (sélénose) : ongles cassants, chute de cheveux, neuropathies. Ne pas supplémenter à des doses élevées sans suivi.
-
-— IODE —
-• RNP : adultes 150 µg/j ; femmes enceintes 200 µg/j.
-• Sources : algues (très concentrées), poissons et fruits de mer, sel iodé, produits laitiers.
-• Indications supplémentation : végétarien/végan sans poisson ni fruits de mer, grossesse avec alimentation restrictive.
-• ⚠️ PRUDENCE MAXIMALE : un excès d'iode peut déclencher ou aggraver une maladie thyroïdienne (hyperthyroïdie OU paradoxalement hypothyroïdie). Symptômes d'excès : accélération du rythme cardiaque, perte de poids inexpliquée, nervosité, tremblements. Algues marines très concentrées en iode — ne jamais consommer en grandes quantités sans surveillance. Sel iodé = source suffisante pour la majorité de la population (Hashimoto, hyperthyroïdie). NE JAMAIS supplémenter en iode sans certitude clinique. CI : hyperthyroïdie, Hashimoto actif, nodules thyroïdiens non bilan.
-
-— CUIVRE —
-• RNP adultes : 900 µg/j — largement couvert par alimentation variée (noix, graines, abats, son de blé, chocolat noir).
-• Indications supplémentation isolée : quasi inexistantes (sauf excès de zinc documenté — le zinc inhibe l'absorption du cuivre).
-• ⚠️ Toxique en excès — ne jamais supplémenter sans indication précise.
-
-— PHOSPHORE —
-• Largement présent dans tous les aliments (produits animaux, céréales, légumineuses). Carence quasi impossible avec alimentation normale. Supplémentation inutile et déconseillée.
-
-— SODIUM —
-• Besoins adultes : 1500 mg/j (≈ 5g de sel). La grande majorité de la population française dépasse les recommandations.
-• Excès : hypertension, rétention d'eau, insuffisance rénale à long terme, ostéoporose (augmente l'excrétion calcique).
-• Conseil alimentation : herbes aromatiques à la place du sel, éviter produits ultra-transformés, lire les étiquettes (chlorure de sodium).
-
-— FER —
-• RNP adultes : 11 mg/j (hommes et femmes ménopausées) ; femmes en âge de procréer : 16 mg/j ; femmes enceintes/allaitantes : 16 mg/j ; sportives d'endurance : besoins majorés.
-• Deux formes alimentaires : fer héminique (viande rouge, volaille, poisson — absorption 25-30%) >> fer non héminique (légumineuses, épinards, tofu — absorption 5-10%).
-• Facteurs améliorant l'absorption du fer non héminique : vitamine C (agrumes, poivron, fraise, tomate — consommer au même repas), cuisson légère.
-• Facteurs inhibant l'absorption : thé et café (polyphénols → complexes insolubles — espacer de 2h après repas), phytates (céréales complètes, graines), calcium en grande quantité (compétition intestinale).
-• Carence : anémie ferriprive (fatigue, teint pâle, essoufflement, troubles cognitifs, chute de cheveux).
-• Supplémentation : bisglycinate de fer (meilleure tolérance digestive) > sulfate ferreux (Tardyferon, efficace mais constipant/nausées).
-• ⚠️ Ne jamais supplémenter sans suspicion clinique — excès de fer est toxique (hémochromatose).
-
-— VITAMINE C —
-• RNP adultes : 110 mg/j. Fumeurs et sportifs : jusqu'à 250 mg/j.
-• Sources alimentaires : poivron rouge cru (121 mg/100g), kiwi (95 mg), goyave, orange (70 mg), fraise, brocoli cru (90 mg), persil.
-• Vitamine hydrosoluble → non stockée → apport quotidien indispensable.
-• Rôles : antioxydant puissant (neutralise les radicaux libres, prévient vieillissement cellulaire), synthèse du collagène (indispensable pour peau, os, cartilages, tendons, vaisseaux), immunité (stimule globules blancs, accélère cicatrisation), absorption du fer non héminique (rôle synergique clé — consommer au même repas que source de fer végétale), protection cardiovasculaire. Carence grave → scorbut (saignements gingivaux, douleurs articulaires, fragilité vasculaire) — rare mais à connaître.
-• Formes supplémentation : acérola (naturel) ou liposomale (meilleure absorption intracellulaire — marques : Onatera, Sunday Natural). Éviter vitamine C de synthèse bas de gamme non tamponnée.
-• ⚠️ Doses > 5 g/j : diarrhées et coliques — monter progressivement.
-
-— VITAMINES DU GROUPE B —
-• Vitamines hydrosolubles → non stockées → apport alimentaire quotidien indispensable.
-• B1 (thiamine) : métabolisme glucides, système nerveux. Sources : céréales complètes, légumineuses.
-• B2 (riboflavine) : métabolisme graisses et protéines, santé peau/muqueuses. Sources : produits laitiers, œufs, viande.
-• B3 (niacine) : énergie, santé peau et système nerveux. Sources : viande, poisson, champignons.
-• B5 (acide pantothénique) : synthèse de la coenzyme A, hormones. Sources : presque tous les aliments.
-• B6 (pyridoxine) : neurotransmetteurs (sérotonine, dopamine), hémoglobine, hormones. Sources : viande, banane, pomme de terre.
-• B9 (folate/acide folique) : synthèse ADN, division cellulaire. Indispensable grossesse (prévention malformations). Sources : légumes verts à feuilles, légumineuses.
-• B12 (cobalamine) : UNIQUEMENT dans produits d'origine animale. Carence systématique en régime végétalien et fréquente chez végétarien. Déficit → anémie pernicieuse, neuropathies irréversibles. Supplémentation obligatoire si régime végé : 25-100 µg/j ou 2000 µg/semaine. Après 50 ans : 200 µg/j minimum. Forme recommandée : méthylcobalamine (forme active).
-
-— VITAMINE A —
-• RNP : hommes 750 µg ER/j ; femmes 650 µg ER/j ; enfants 450-550 µg ER/j.
-• Deux formes : rétinol (animale : foie, jaune d'œuf, produits laitiers) + bêta-carotène (végétale, précurseur : carottes, patate douce, épinards, mangue).
-• Rôles : vision (cécité nocturne si carence), immunité, croissance cellulaire, santé peau et muqueuses.
-• ⚠️ TOXICITÉ DU RÉTINOL : un excès sous forme de rétinol pur peut être toxique (tératogène). Femmes enceintes : NE PAS consommer régulièrement du foie ni de compléments dosés en rétinol → risque malformatif. Le bêta-carotène végétal n'est pas toxique (conversion régulée par l'organisme).
-
-— VITAMINE E —
-• RNP adultes : hommes 10 mg/j ; femmes 9 mg/j.
-• Sources : huiles végétales 1ère pression à froid (tournesol, germe de blé, noisette), amandes, noisettes, graines de tournesol, avocat.
-• Rôles : antioxydant puissant (protection membranes cellulaires, lipides, protéines), immunité, santé cutanée (cosmétiques), prévention maladies cardiovasculaires et neurodégénératives.
-• Carence : extrêmement rare avec alimentation variée. Supplémentation rarement nécessaire.
-• ⚠️ Forme active : alpha-tocophérol. Éviter les formes synthétiques dl-alpha-tocophérol (moins biodisponibles que d-alpha-tocophérol naturel).
-
-— NORMES DE QUALITÉ POUR LES COMPLÉMENTS ALIMENTAIRES —
-Critères à systématiquement orienter les clientes vers :
-• Formes biodisponibles (bisglycinate pour zinc et magnésium ; D3 pas D2 ; MK-7 pour K2 ; sélénométhionine pour sélénium).
-• Absence d'additifs inutiles (stéarate de magnésium en excès, dioxyde de titane E171, colorants artificiels, édulcorants).
-• Traçabilité et certificat d'analyse COA (Certificate of Analysis) obligatoire pour : spiruline, algues (risque cyanotoxines et métaux lourds), oméga-3 (indice TOTOX pour fraîcheur), plasma de Quinton.
-• Labels qualité oméga-3 : IFOS (International Fish Oil Standards), GOED (Global Organization for EPA & DHA) — garantissent pureté et concentration en EPA/DHA ; MSC (Marine Stewardship Council) et Friend of the Sea pour la durabilité.
-• Étiquetage à vérifier : liste complète des ingrédients, dose exacte par nutriment/substance active, mises en garde et contre-indications clairement mentionnées.
-• Origine du produit : privilégier fabricants certifiés (BPF/GMP), éviter plateformes de vente en ligne non réglementées et produits à prix anormalement bas.
-• Méfiance : allégations spectaculaires (perte de poids miraculeuse, guérison…) → signe de produit non conforme.
-• Marques fiables validées : Pileje, Nutergia, Nutripure, Novoma, Nutrixeal, Holistica, Therascience, Phytostandard, Nat & Form Bio.
-• Risque d'empilement (stacking) : plusieurs compléments simultanément (multivitamines + monocompléments + aliments enrichis) → doses cumulées dépassant les seuils de sécurité sans s'en rendre compte. Toujours calculer la dose totale.
-
-— PRINCIPES FONDAMENTAUX DE LA SUPPLÉMENTATION RAISONNÉE —
-• Les nutriments interagissent entre eux pour fonctionner de façon optimale — un excès de l'un peut inhiber l'absorption d'un autre (zinc/cuivre/fer, calcium/fer, vitamine D/K2).
-• Les vitamines liposolubles (A, D, E, K) s'accumulent dans l'organisme → risque de toxicité à long terme si surdosage chronique.
-• Les vitamines hydrosolubles (B, C) ne sont pas stockées → apport régulier nécessaire, mais excès éliminé dans les urines (moins de risque de toxicité, sauf doses très élevées de B6 : neuropathies).
-• L'alimentation variée reste la base — les compléments ne compensent pas une mauvaise alimentation.
-• Un professionnel de santé formé en micronutrition doit guider la supplémentation : diagnostiquer les carences réelles, éviter les interactions, adapter aux pathologies et traitements en cours.
-
 RÈGLES IMPÉRATIVES :
 1. JAMAIS de vocabulaire médical ni de récapitulatif de séance dans le document
 2. Les 3 PILIERS sont le cœur du document — les compléments viennent après, en nombre limité
@@ -2008,8 +1057,8 @@ async function generate() {
         'anthropic-dangerous-direct-browser-access': 'true'
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 16000,
+        model: 'claude-sonnet-4-5',
+        max_tokens: 8000,
         messages: [{ role: 'user', content: buildPrompt(d) }]
       })
     });
@@ -2022,14 +1071,7 @@ async function generate() {
     }
 
     const result = await res.json();
-    let raw = result.content[0].text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
-    // Robustesse : si le JSON est tronqué (finish_reason=max_tokens), on le détecte
-    if (result.stop_reason === 'max_tokens') {
-      throw new Error('Le protocole généré dépasse la limite de longueur. Réessayez en réduisant le nombre d\'axes ou de bilans sélectionnés.');
-    }
-    // Nettoyage : retirer tout ce qui précède le premier {
-    const jsonStart = raw.indexOf('{');
-    if (jsonStart > 0) raw = raw.slice(jsonStart);
+    const raw = result.content[0].text.replace(/```json|```/g, '').trim();
     generatedData = JSON.parse(raw);
     generatedData._client = d;
 
@@ -2157,6 +1199,18 @@ function ouvrirProtocole() {
   const prenomSlug = (generatedData.prenom || 'cliente').toLowerCase().replace(/\s+/g,'-');
   const archiveKey = `avita_phv_archive_${prenomSlug}_${Date.now()}`;
   localStorage.setItem(archiveKey, JSON.stringify({ data: { ...generatedData, ts: Date.now() }, blocks }));
+
+  // ── Sauvegarde Supabase : rend le protocole accessible depuis n'importe quel appareil
+  // (espace clientes, lien email) et alimente le contexte de Serena.
+  if (generatedData.prenom && generatedData.ddn) {
+    const clientKey = DB.clientKey(generatedData.prenom, generatedData.nom || '', generatedData.ddn);
+    DB.saveProtocoleClient(clientKey, generatedData, blocks)
+      .then(() => console.log('✓ Protocole synchronisé sur Supabase :', clientKey))
+      .catch(e => console.warn('⚠ Échec de synchronisation Supabase (le protocole reste disponible en local) :', e));
+  } else {
+    console.warn('⚠ Prénom/date de naissance manquants — protocole non synchronisé sur Supabase.');
+  }
+
   window.open('phv-print.html', '_blank');
 }
 

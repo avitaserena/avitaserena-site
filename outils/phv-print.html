@@ -110,20 +110,6 @@ body {
   transition: all .15s;
 }
 .btn-back:hover { color: #fff; border-color: rgba(255,255,255,.6); }
-.btn-save {
-  background: transparent;
-  color: var(--sable);
-  border: 1px solid rgba(196,168,130,.45);
-  border-radius: 99px;
-  padding: 8px 18px;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  font-family: 'Be Vietnam Pro', sans-serif;
-  transition: all .15s;
-}
-.btn-save:hover { color: #fff; border-color: var(--sable); }
-.btn-save.saving { opacity: .55; cursor: wait; }
 .print-tip {
   font-size: 11px;
   color: rgba(255,255,255,.45);
@@ -1002,11 +988,9 @@ body {
   <div class="toolbar-right">
     <span class="print-tip">Fichier → Imprimer → Enregistrer en PDF<br>Désactiver les en-têtes/pieds de page</span>
     <button class="btn-back" onclick="history.back()">← Retour</button>
-    <button class="btn-save" id="btn-save-phv" onclick="sauvegarderEtPartager()">📤 Enregistrer & partager</button>
     <button class="btn-print" onclick="window.print()">🖨 Télécharger le PDF</button>
   </div>
 </div>
-<div id="phv-save-toast" style="display:none;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ardoise);color:#fff;padding:12px 22px;border-radius:99px;font-size:13px;font-weight:500;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.22);min-width:300px;max-width:90vw;text-align:center"></div>
 
 <!-- LOADING -->
 <div id="loading">
@@ -1519,7 +1503,40 @@ function buildMemoPage(prenom, pageNum) {
 /* ═══════════════════════════════════════════════
    INIT
 ═══════════════════════════════════════════════ */
-function init() {
+async function init() {
+  const params = new URLSearchParams(window.location.search);
+  const clientKey = params.get('client');
+
+  // ── 1. Lien envoyé à une cliente (?client=prenom-nom-AAAAMMJJ) → Supabase ──
+  if (clientKey) {
+    try {
+      const row = await DB.getProtocoleClient(clientKey);
+      const pd = row?.data?.protocolData;
+      const bl = row?.data?.blocks;
+      if (!pd || !bl || !bl.length) throw new Error('Aucun protocole enregistré pour cette cliente.');
+      data = pd;
+      blocks = bl;
+      setTimeout(() => {
+        buildDoc();
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('doc-wrap').style.display = 'flex';
+      }, 300);
+      return;
+    } catch(e) {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('doc-wrap').style.display = 'flex';
+      document.getElementById('doc-wrap').innerHTML = `
+        <div id="error-state" style="display:block;text-align:center;padding:80px 24px;color:var(--gris)">
+          <div style="font-size:40px;margin-bottom:16px">📋</div>
+          <p style="font-size:16px;margin-bottom:8px">Impossible de charger ce protocole.</p>
+          <p style="font-size:13px">Vérifiez le lien, ou contactez Sabrina si le problème persiste.</p>
+        </div>`;
+      console.error('Erreur chargement protocole Supabase:', e);
+      return;
+    }
+  }
+
+  // ── 2. Mode local : Sabrina vient de générer le PHV dans le même navigateur ──
   try {
     const raw = localStorage.getItem('avita_phv_print');
     if (!raw) throw new Error('no data');
@@ -1963,115 +1980,6 @@ async function loadAlternatives() {
   }
 }
 window.loadAlternatives = loadAlternatives;
-
-// ── Enregistrement PHV dans Supabase + URL copiée ──
-async function sauvegarderEtPartager() {
-  const btn = document.getElementById('btn-save-phv');
-  const toast = document.getElementById('phv-save-toast');
-
-  function showToast(msg, color) {
-    toast.textContent = msg;
-    toast.style.display = 'block';
-    toast.style.background = color || 'var(--ardoise)';
-    clearTimeout(toast._t);
-    toast._t = setTimeout(() => { toast.style.display = 'none'; }, 5000);
-  }
-
-  if (!data || !blocks.length) { showToast('⚠ Aucun protocole chargé', '#8B3A3A'); return; }
-  const cl = data._client;
-  if (!cl?.prenom) { showToast('⚠ Prénom introuvable — rechargez depuis le générateur', '#8B3A3A'); return; }
-
-  btn.classList.add('saving');
-  btn.textContent = '⏳ Enregistrement…';
-  showToast('Enregistrement en cours…');
-
-  const SB_URL = 'https://bqhkdndwldwqacrrbbig.supabase.co';
-  const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxaGtkbmR3bGR3cWFjcnJiYmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MzAyNTIsImV4cCI6MjA5NjMwNjI1Mn0.nH2UktMAVKYwng4L3SvW5F0fluV_sObGV0f3Mk1dnOY';
-  const HEADERS = { 'Content-Type': 'application/json', 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY };
-
-  // Construire le payload JSON du PHV
-  const prenom = cl.prenom || '';
-  const nom = cl.nom || '';
-  const ddn = cl.ddn || '';
-  const dateStr = new Date().toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric' });
-  const slug = [prenom, nom, ddn].filter(Boolean).join('-').toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9\-]/g,'');
-  const fileName = `phv_${slug}_${Date.now()}.json`;
-
-  const payload = {
-    version: 1,
-    generated_at: new Date().toISOString(),
-    client: { prenom, nom, ddn },
-    blocks,
-    data: { ...data, _client: cl }
-  };
-
-  try {
-    // 1. Upload dans Supabase Storage bucket "phv-pdfs"
-    const uploadRes = await fetch(`${SB_URL}/storage/v1/object/phv-pdfs/${fileName}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': SB_KEY,
-        'Authorization': 'Bearer ' + SB_KEY,
-      },
-      body: JSON.stringify(payload)
-    });
-
-    let phvUrl;
-    if (uploadRes.ok) {
-      phvUrl = `${SB_URL}/storage/v1/object/public/phv-pdfs/${fileName}`;
-    } else {
-      // Bucket peut ne pas exister encore — on stocke l'URL calculée quand même et on la sauvegarde en DB
-      phvUrl = `${SB_URL}/storage/v1/object/public/phv-pdfs/${fileName}`;
-      console.warn('[PHV] Upload Storage échoué (bucket existant ?):', await uploadRes.text());
-    }
-
-    // 2. Mettre à jour la colonne phv_url dans clientes
-    // Chercher la cliente par prenom + nom + ddn
-    const searchParams = new URLSearchParams();
-    if (prenom) searchParams.set('prenom', `ilike.${prenom}`);
-    if (nom) searchParams.set('nom', `ilike.${nom}`);
-    const searchRes = await fetch(`${SB_URL}/rest/v1/clientes?${searchParams.toString()}&select=id,ddn`, {
-      headers: HEADERS
-    });
-    const clients = searchRes.ok ? await searchRes.json() : [];
-    // Trouver le bon client (si plusieurs homonymes, matcher par DDN)
-    let clientId = null;
-    if (clients.length === 1) {
-      clientId = clients[0].id;
-    } else if (clients.length > 1 && ddn) {
-      const match = clients.find(c => c.ddn === ddn);
-      if (match) clientId = match.id;
-      else clientId = clients[0].id;
-    }
-
-    if (clientId) {
-      await fetch(`${SB_URL}/rest/v1/clientes?id=eq.${clientId}`, {
-        method: 'PATCH',
-        headers: { ...HEADERS, 'Prefer': 'return=minimal' },
-        body: JSON.stringify({ phv_url: phvUrl, date_protocole: new Date().toISOString().slice(0,10) })
-      });
-    }
-
-    // 3. Copier l'URL dans le clipboard
-    try { await navigator.clipboard.writeText(phvUrl); } catch(e) {}
-
-    // 4. Aussi stocker dans localStorage pour le CRM (fallback)
-    localStorage.setItem(`avita_phv_url_${slug}`, phvUrl);
-    localStorage.setItem('avita_phv_url_last', JSON.stringify({ prenom, nom, ddn, url: phvUrl, ts: Date.now() }));
-
-    btn.textContent = '✓ Enregistré';
-    btn.classList.remove('saving');
-    showToast(`✓ Protocole enregistré · URL copiée dans le presse-papier`, '#3D6B2C');
-
-  } catch(e) {
-    btn.textContent = '📤 Enregistrer & partager';
-    btn.classList.remove('saving');
-    showToast('⚠ Erreur : ' + e.message, '#8B3A3A');
-    console.error('[PHV] Erreur sauvegarderEtPartager:', e);
-  }
-}
-window.sauvegarderEtPartager = sauvegarderEtPartager;
 
 // ── Envoi des retours avec feedback visuel ──
 async function envoyerRetours(btn) {
