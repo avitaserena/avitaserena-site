@@ -1249,12 +1249,18 @@ body {
 ::-webkit-scrollbar-track { background: transparent }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px }
 </style>
+<script src="auth-guard.js"></script>
 <script>
 const SB='https://bqhkdndwldwqacrrbbig.supabase.co';
 const KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxaGtkbmR3bGR3cWFjcnJiYmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MzAyNTIsImV4cCI6MjA5NjMwNjI1Mn0.nH2UktMAVKYwng4L3SvW5F0fluV_sObGV0f3Mk1dnOY';
 
 async function sb(path,opts={}){
-  const headers={'apikey':KEY,'Authorization':'Bearer '+KEY,'Content-Type':'application/json',...(opts.headers||{})};
+  let authToken = KEY;
+  if (typeof Auth !== 'undefined') {
+    const token = await Auth.getValidAccessToken();
+    if (token) authToken = token;
+  }
+  const headers={'apikey':KEY,'Authorization':'Bearer '+authToken,'Content-Type':'application/json',...(opts.headers||{})};
   if(opts.method&&opts.method!=='GET'&&opts.method!=='DELETE'){
     headers['Prefer']=opts.prefer||'return=representation';
   }
@@ -2948,7 +2954,9 @@ async function envoyerProtocole(clientId){
 }
 
 
-document.addEventListener('DOMContentLoaded', init);
+document.addEventListener('DOMContentLoaded', () => {
+  showAuthGate('praticienne', () => { removeAuthGate(); init(); });
+});
 
 // ── Ouvrir le PHV d'une cliente spécifique ──
 function ouvrirPHVCliente(clientId){
