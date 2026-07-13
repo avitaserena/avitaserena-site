@@ -196,20 +196,12 @@ body{min-height:100vh}
     <h2 class="login-title">Bienvenue dans<br>votre espace privilégié</h2>
     <p class="login-sub">Votre espace personnel — fiches pratiques, outils de suivi, ressources exclusives. Réservé aux clientes d'A Vita Serena.</p>
     <div class="login-field">
-      <label class="login-label">Votre prénom</label>
-      <input class="login-input" type="text" id="loginPrenom" placeholder="Sabrina" autocomplete="given-name">
+      <label class="login-label">Votre email</label>
+      <input class="login-input" type="email" id="loginEmail" placeholder="vous@email.com" autocomplete="email">
     </div>
-    <div class="login-field">
-      <label class="login-label">Votre nom de famille</label>
-      <input class="login-input" type="text" id="loginNom" placeholder="Castelli" autocomplete="family-name">
-    </div>
-    <div class="login-field">
-      <label class="login-label">Votre date de naissance</label>
-      <input class="login-input" type="date" id="loginDDN" autocomplete="bday">
-    </div>
-    <button class="login-btn" onclick="doLogin()">Accéder à mon espace →</button>
-    <div class="login-error" id="loginError">Ces informations ne correspondent à aucune cliente. Vérifiez l'orthographe ou contactez Sabrina.</div>
-    <p class="login-hint">Vos données ne sont jamais partagées. Accès sécurisé réservé à vos informations personnelles de consultation.</p>
+    <button class="login-btn" onclick="doLogin()">Recevoir un lien de connexion →</button>
+    <div class="login-error" id="loginError">Cet email ne correspond à aucune cliente. Vérifiez l'orthographe ou contactez Sabrina.</div>
+    <p class="login-hint" id="loginHint">Nous vous envoyons un lien sécurisé par email — pas de mot de passe à retenir.</p>
   </div>
 </div>
 
@@ -265,6 +257,7 @@ body{min-height:100vh}
     <button class="tab-btn" onclick="switchTab('digestion',this)">🌿 Digestion & SIBO</button>
     <button class="tab-btn" onclick="switchTab('hormones',this)">〰 Hormones & Cycle</button>
     <button class="tab-btn" onclick="switchTab('bienetre',this)">♡ Bien-être</button>
+    <button class="tab-btn" onclick="switchTab('serena',this)" style="color:var(--sable)">✦ Serena</button>
   </nav>
 
   <!-- MAIN -->
@@ -506,6 +499,40 @@ body{min-height:100vh}
       </div>
     </div>
 
+    <!-- ─── SERENA (ASSISTANTE IA) ─── -->
+    <div class="tab-content" id="tab-serena">
+      <div class="section-eyebrow">Votre assistante personnelle</div>
+      <h2 class="section-h2">Serena — dans le cadre<br>de votre protocole validé.</h2>
+      <p class="section-sub">Posez une question sur votre alimentation, envoyez la photo d'un plat, demandez un rappel de votre protocole. Serena répond uniquement dans le cadre de ce que Sabrina a validé pour vous — pour toute nouvelle recommandation, elle vous redirige vers elle.</p>
+
+      <div style="background:#1a1815;border-radius:20px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.18);max-width:640px">
+        <div style="display:flex;align-items:center;gap:10px;padding:16px 20px;border-bottom:1px solid rgba(255,255,255,.07)">
+          <div style="width:30px;height:30px;border-radius:50%;background:var(--ocre);display:flex;align-items:center;justify-content:center;font-size:13px;color:#fff;flex-shrink:0">✦</div>
+          <div>
+            <div style="font-size:13px;font-weight:600;color:#fff">Serena</div>
+            <div style="font-size:10.5px;color:rgba(255,255,255,.35)">Assistante A Vita Serena · dans le cadre de votre PHV</div>
+          </div>
+        </div>
+
+        <div id="serenaMessages" style="padding:20px;max-height:420px;overflow-y:auto;display:flex;flex-direction:column;gap:12px">
+          <div style="align-self:flex-start;max-width:85%;background:rgba(255,255,255,.05);border-radius:12px;padding:12px 15px;font-size:13px;color:rgba(237,233,225,.85);line-height:1.6">
+            Bonjour ! Je suis Serena. Je peux vous aider à appliquer votre protocole au quotidien — une question sur un aliment, une photo de votre assiette, un rappel d'une recommandation. Comment puis-je vous aider ?
+          </div>
+        </div>
+
+        <div id="serenaImgPreview" style="display:none;padding:0 20px 10px"></div>
+
+        <div style="padding:14px 16px;border-top:1px solid rgba(255,255,255,.07);display:flex;gap:8px;align-items:flex-end">
+          <button onclick="document.getElementById('serenaFileInput').click()" title="Ajouter une photo" style="width:38px;height:38px;flex-shrink:0;border-radius:50%;border:1px solid rgba(255,255,255,.15);background:none;color:rgba(255,255,255,.55);font-size:15px;cursor:pointer">📷</button>
+          <input type="file" id="serenaFileInput" accept="image/*" style="display:none" onchange="serenaHandleImage(event)">
+          <textarea id="serenaInput" rows="1" placeholder="Écrivez votre question à Serena…" style="flex:1;resize:none;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:10px 14px;font-size:13px;color:#fff;font-family:'Be Vietnam Pro',sans-serif;max-height:100px" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();serenaSend();}"></textarea>
+          <button id="serenaSendBtn" onclick="serenaSend()" style="background:var(--ocre);color:#fff;border:none;padding:10px 18px;border-radius:99px;font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0">Envoyer</button>
+        </div>
+      </div>
+
+      <p style="font-size:11px;color:var(--gris);line-height:1.7;max-width:640px;margin-top:14px">Serena s'appuie sur les informations de votre dossier et reste strictement dans le cadre de votre protocole validé par Sabrina. Elle ne remplace jamais une consultation ni un avis médical, et transmet à Sabrina toute question qui sort de ce cadre.</p>
+    </div>
+
     <!-- ─── MON JOURNAL ─── -->
     <div class="tab-content" id="tab-journal">
       <div class="section-eyebrow">Mon journal de suivi</div>
@@ -565,6 +592,11 @@ body{min-height:100vh}
 </div>
 
 <script>
+var SUPA_URL = 'https://bqhkdndwldwqacrrbbig.supabase.co';
+var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxaGtkbmR3bGR3cWFjcnJiYmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MzAyNTIsImV4cCI6MjA5NjMwNjI1Mn0.nH2UktMAVKYwng4L3SvW5F0fluV_sObGV0f3Mk1dnOY';
+</script>
+<script src="auth-guard.js"></script>
+<script>
 // ── SUPABASE ──
 var SUPA_URL = 'https://bqhkdndwldwqacrrbbig.supabase.co';
 var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxaGtkbmR3bGR3cWFjcnJiYmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MzAyNTIsImV4cCI6MjA5NjMwNjI1Mn0.nH2UktMAVKYwng4L3SvW5F0fluV_sObGV0f3Mk1dnOY';
@@ -582,57 +614,71 @@ function clientId(prenom, nom, ddn) {
 }
 
 async function doLogin() {
-  var prenom = document.getElementById('loginPrenom').value.trim();
-  var nom = document.getElementById('loginNom').value.trim();
-  var ddn = document.getElementById('loginDDN').value;
+  var email = document.getElementById('loginEmail').value.trim();
   var errEl = document.getElementById('loginError');
   var btn = document.querySelector('.login-btn');
 
-  if (!prenom || !nom || !ddn) {
-    errEl.textContent = 'Veuillez remplir tous les champs.';
+  if (!email) {
+    errEl.textContent = 'Merci de renseigner votre email.';
     errEl.style.display = 'block';
     return;
   }
 
-  btn.textContent = 'Vérification…';
+  btn.textContent = 'Envoi…';
   btn.disabled = true;
   errEl.style.display = 'none';
 
-  var id = clientId(prenom, nom, ddn);
-
   try {
-    var res = await fetch(SUPA_URL + '/rest/v1/clientes?id=eq.' + encodeURIComponent(id) + '&select=prenom,id&limit=1', {
-      headers: {
-        'apikey': SUPA_KEY,
-        'Authorization': 'Bearer ' + SUPA_KEY,
-        'Content-Type': 'application/json'
-      }
-    });
-
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-
-    var data = await res.json();
-    if (data && data.length > 0) {
-      var prenomReel = data[0].prenom || prenom;
-      localStorage.setItem('avs_client', JSON.stringify({ prenom: prenomReel, ok: true, key: id }));
-      openSpace(prenomReel);
-    } else {
-      errEl.textContent = 'Ces informations ne correspondent à aucune cliente. Vérifiez l\'orthographe ou contactez Sabrina.';
-      errEl.style.display = 'block';
-      btn.textContent = 'Accéder à mon espace →';
-      btn.disabled = false;
-    }
+    await Auth.requestMagicLink(email, window.location.origin + '/espace-clientes.html');
+    document.getElementById('loginHint').textContent = 'Lien envoyé ! Vérifiez votre boîte mail (' + email + ') et cliquez sur le lien pour accéder à votre espace.';
+    document.getElementById('loginHint').style.color = '#3D6B2C';
+    btn.textContent = 'Lien envoyé ✓';
   } catch(e) {
-    errEl.textContent = 'Erreur de connexion (' + e.message + '). Vérifiez votre connexion et réessayez.';
+    errEl.textContent = "Erreur : impossible d'envoyer le lien. Réessayez.";
     errEl.style.display = 'block';
-    btn.textContent = 'Accéder à mon espace →';
+    btn.textContent = 'Recevoir un lien de connexion →';
     btn.disabled = false;
+    console.error(e);
   }
 }
 
 document.querySelectorAll('.login-input').forEach(function(el) {
   el.addEventListener('keydown', function(e) { if (e.key === 'Enter') doLogin(); });
 });
+
+/* ── Après clic sur le lien magique : récupérer la fiche cliente ──
+   RLS filtre automatiquement : cette requête ne renvoie QUE la ligne
+   de la cliente connectée (grâce à current_client_key() côté serveur). */
+async function tryAutoLogin() {
+  Auth.handleRedirect();
+  if (!Auth.isLoggedIn()) return false;
+
+  try {
+    const rows = await DB_getOwnClientRow();
+    if (rows && rows.length > 0) {
+      const c = rows[0];
+      localStorage.setItem('avs_client', JSON.stringify({ prenom: c.prenom, ok: true, key: c.id }));
+      openSpace(c.prenom);
+      return true;
+    } else {
+      document.getElementById('loginError').textContent = "Votre email est confirmé, mais aucune fiche cliente n'y est associée. Contactez Sabrina.";
+      document.getElementById('loginError').style.display = 'block';
+      return false;
+    }
+  } catch(e) {
+    console.error('Erreur récupération fiche cliente:', e);
+    return false;
+  }
+}
+
+async function DB_getOwnClientRow() {
+  const token = await Auth.getValidAccessToken();
+  const res = await fetch(SUPA_URL + '/rest/v1/clientes?select=id,prenom', {
+    headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + token }
+  });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  return await res.json();
+}
 
 function openSpace(prenom){
   document.getElementById('loginScreen').style.display='none';
@@ -651,7 +697,12 @@ function doLogout(){
   document.getElementById('mainContent').style.display='none';
 }
 
-window.addEventListener('DOMContentLoaded', function(){
+window.addEventListener('DOMContentLoaded', async function(){
+  // 1. Retour du lien magique (email cliqué) → priorité
+  const cameFromMagicLink = await tryAutoLogin();
+  if (cameFromMagicLink) return;
+
+  // 2. Session déjà active sur cet appareil
   var saved = localStorage.getItem('avs_client') || sessionStorage.getItem('avs_client');
   if(saved){ try{ var c=JSON.parse(saved); if(c.ok) openSpace(c.prenom); }catch(e){} }
 });
@@ -840,6 +891,112 @@ window.addEventListener('appinstalled', function(){
 window.addEventListener('DOMContentLoaded', function(){
   setTimeout(pwaShowBanner, 800);
 });
+
+// ═══════════════════════════════════════
+// SERENA — ASSISTANTE IA (Phase 2)
+// ═══════════════════════════════════════
+
+// ⚠️ À remplacer par l'URL réelle une fois la fonction déployée :
+// https://bqhkdndwldwqacrrbbig.supabase.co/functions/v1/serena-chat
+var SERENA_ENDPOINT = SUPA_URL + '/functions/v1/serena-chat';
+
+var serenaHistory = [];       // historique de la conversation (texte uniquement, pour le contexte)
+var serenaPendingImage = null; // { base64, mediaType } en attente d'envoi
+
+function serenaScrollBottom(){
+  var box = document.getElementById('serenaMessages');
+  box.scrollTop = box.scrollHeight;
+}
+
+function serenaAddBubble(text, who){
+  var box = document.getElementById('serenaMessages');
+  var bubble = document.createElement('div');
+  var isUser = who === 'user';
+  bubble.style.cssText = 'align-self:' + (isUser ? 'flex-end' : 'flex-start') +
+    ';max-width:85%;border-radius:12px;padding:12px 15px;font-size:13px;line-height:1.6;white-space:pre-wrap' +
+    (isUser
+      ? ';background:var(--ocre);color:#fff'
+      : ';background:rgba(255,255,255,.05);color:rgba(237,233,225,.85)');
+  bubble.textContent = text;
+  box.appendChild(bubble);
+  serenaScrollBottom();
+  return bubble;
+}
+
+function serenaHandleImage(e){
+  var file = e.target.files[0];
+  if(!file) return;
+  var reader = new FileReader();
+  reader.onload = function(){
+    var base64 = reader.result.split(',')[1];
+    serenaPendingImage = { base64: base64, mediaType: file.type || 'image/jpeg' };
+    var preview = document.getElementById('serenaImgPreview');
+    preview.style.display = 'block';
+    preview.innerHTML =
+      '<div style="display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.06);border-radius:10px;padding:6px 10px">' +
+      '<img src="' + reader.result + '" style="width:34px;height:34px;object-fit:cover;border-radius:6px">' +
+      '<span style="font-size:11px;color:rgba(255,255,255,.6)">Photo prête à envoyer</span>' +
+      '<button onclick="serenaClearImage()" style="background:none;border:none;color:rgba(255,255,255,.4);cursor:pointer;font-size:14px">×</button>' +
+      '</div>';
+  };
+  reader.readAsDataURL(file);
+}
+
+function serenaClearImage(){
+  serenaPendingImage = null;
+  document.getElementById('serenaImgPreview').style.display = 'none';
+  document.getElementById('serenaImgPreview').innerHTML = '';
+  document.getElementById('serenaFileInput').value = '';
+}
+
+async function serenaSend(){
+  var input = document.getElementById('serenaInput');
+  var text = input.value.trim();
+  if(!text && !serenaPendingImage) return;
+
+  var accessToken = await Auth.getValidAccessToken();
+  if(!accessToken){ serenaAddBubble('Session expirée — merci de vous reconnecter.', 'serena'); return; }
+
+  serenaAddBubble(text || '📷 Photo envoyée', 'user');
+  var imgToSend = serenaPendingImage;
+  input.value = '';
+  serenaClearImage();
+
+  var btn = document.getElementById('serenaSendBtn');
+  btn.disabled = true; btn.textContent = '…';
+  var typingBubble = serenaAddBubble('Serena réfléchit…', 'serena');
+
+  try {
+    var res = await fetch(SERENA_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPA_KEY,
+        'Authorization': 'Bearer ' + accessToken
+      },
+      body: JSON.stringify({
+        message: text,
+        image: imgToSend, // { base64, mediaType } ou null
+        history: serenaHistory.slice(-10) // 10 derniers échanges pour le contexte
+      })
+    });
+
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    var data = await res.json();
+    typingBubble.remove();
+    serenaAddBubble(data.reply || "Désolée, je n'ai pas pu générer de réponse.", 'serena');
+
+    serenaHistory.push({ role: 'user', content: text || '[photo envoyée]' });
+    serenaHistory.push({ role: 'assistant', content: data.reply || '' });
+
+  } catch(err){
+    typingBubble.remove();
+    serenaAddBubble("Une erreur est survenue. Vérifiez votre connexion, ou contactez Sabrina directement si le problème persiste.", 'serena');
+    console.error('Erreur Serena:', err);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Envoyer';
+  }
+}
 </script>
 </body>
 </html>
