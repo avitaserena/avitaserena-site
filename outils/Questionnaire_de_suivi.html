@@ -275,6 +275,7 @@ select.fi{height:44px;cursor:pointer}
   .ard-grid{grid-template-columns:1fr}
 }
 </style>
+<script src="auth-guard.js"></script>
 </head>
 <body>
 
@@ -1398,16 +1399,19 @@ const AXES = [
    INIT
 ══════════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', () => {
-  buildScores();
-  buildProtoInitTable();
-  buildObservanceTable();
-  setDefaultDate();
-  restaurerDraft();
-  startAutosave();
-  initNotesCounter();
-  document.addEventListener('input', () => { formTouched = true; updateCounter(); });
-  window.addEventListener('beforeunload', e => {
-    if (formTouched) { e.preventDefault(); e.returnValue = ''; }
+  showAuthGate('praticienne', () => {
+    removeAuthGate();
+    buildScores();
+    buildProtoInitTable();
+    buildObservanceTable();
+    setDefaultDate();
+    restaurerDraft();
+    startAutosave();
+    initNotesCounter();
+    document.addEventListener('input', () => { formTouched = true; updateCounter(); });
+    window.addEventListener('beforeunload', e => {
+      if (formTouched) { e.preventDefault(); e.returnValue = ''; }
+    });
   });
 });
 
@@ -1630,15 +1634,20 @@ async function chargerDossierSupabase() {
   const key = document.getElementById('client-key')?.value?.trim();
   if (!key) { toast('Entrez la clé cliente (prenom-nom-AAAAMMJJ)'); return; }
   toast('Chargement depuis Supabase…');
+  let authToken = SUPA_KEY;
+  if (typeof Auth !== 'undefined') {
+    const token = await Auth.getValidAccessToken();
+    if (token) authToken = token;
+  }
   try {
     const r = await fetch(SUPA_URL+'/rest/v1/questionnaires?id=eq.'+encodeURIComponent(key)+'&select=*', {
-      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}
+      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+authToken}
     });
     const rows = await r.json();
     if (!rows||!rows.length) {
       // Essayer avec préfixe consultation_
       const r2 = await fetch(SUPA_URL+'/rest/v1/questionnaires?id=like.*'+encodeURIComponent(key.split('-').slice(0,2).join('-'))+'*&select=*&order=created_at.desc&limit=1', {
-        headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}
+        headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+authToken}
       });
       const rows2 = await r2.json();
       if(!rows2||!rows2.length){ toast('Aucun dossier trouvé pour cette clé'); return; }
@@ -1701,10 +1710,15 @@ async function sauvegarderSupabase(snapshot) {
   const prenom = document.getElementById('prenom')?.value?.trim()||'Inconnue';
   const numSuivi = document.getElementById('num-suivi')?.value||'1';
   const id = 'suivi_'+numSuivi+'_'+(document.getElementById('client-key')?.value?.trim()||Date.now());
+  let authToken = SUPA_KEY;
+  if (typeof Auth !== 'undefined') {
+    const token = await Auth.getValidAccessToken();
+    if (token) authToken = token;
+  }
   try {
     await fetch(SUPA_URL+'/rest/v1/questionnaires', {
       method:'POST',
-      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+authToken,'Content-Type':'application/json','Prefer':'return=minimal'},
       body:JSON.stringify({id, type:'suivi', prenom, snapshot, created_at:new Date().toISOString(), updated_at:new Date().toISOString()})
     });
   } catch(e){ console.warn('Supabase save failed', e); }

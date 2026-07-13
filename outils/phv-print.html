@@ -6,6 +6,7 @@
 <title>Protocole d'Hygiène Vitale — A Vita Serena</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500;1,600&family=Be+Vietnam+Pro:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="supabase-db.js"></script>
+<script src="auth-guard.js"></script>
 <style>
 
 /* ═══════════════════════════════════════════════
@@ -1503,40 +1504,33 @@ function buildMemoPage(prenom, pageNum) {
 /* ═══════════════════════════════════════════════
    INIT
 ═══════════════════════════════════════════════ */
-async function init() {
-  const params = new URLSearchParams(window.location.search);
-  const clientKey = params.get('client');
-
-  // ── 1. Lien envoyé à une cliente (?client=prenom-nom-AAAAMMJJ) → Supabase ──
-  if (clientKey) {
-    try {
-      const row = await DB.getProtocoleClient(clientKey);
-      const pd = row?.data?.protocolData;
-      const bl = row?.data?.blocks;
-      if (!pd || !bl || !bl.length) throw new Error('Aucun protocole enregistré pour cette cliente.');
-      data = pd;
-      blocks = bl;
-      setTimeout(() => {
-        buildDoc();
-        document.getElementById('loading').style.display = 'none';
-        document.getElementById('doc-wrap').style.display = 'flex';
-      }, 300);
-      return;
-    } catch(e) {
+async function chargerProtocoleCliente(clientKey) {
+  try {
+    const row = await DB.getProtocoleClient(clientKey);
+    const pd = row?.data?.protocolData;
+    const bl = row?.data?.blocks;
+    if (!pd || !bl || !bl.length) throw new Error('Aucun protocole enregistré pour cette cliente.');
+    data = pd;
+    blocks = bl;
+    setTimeout(() => {
+      buildDoc();
       document.getElementById('loading').style.display = 'none';
       document.getElementById('doc-wrap').style.display = 'flex';
-      document.getElementById('doc-wrap').innerHTML = `
-        <div id="error-state" style="display:block;text-align:center;padding:80px 24px;color:var(--gris)">
-          <div style="font-size:40px;margin-bottom:16px">📋</div>
-          <p style="font-size:16px;margin-bottom:8px">Impossible de charger ce protocole.</p>
-          <p style="font-size:13px">Vérifiez le lien, ou contactez Sabrina si le problème persiste.</p>
-        </div>`;
-      console.error('Erreur chargement protocole Supabase:', e);
-      return;
-    }
+    }, 300);
+  } catch(e) {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('doc-wrap').style.display = 'flex';
+    document.getElementById('doc-wrap').innerHTML = `
+      <div id="error-state" style="display:block;text-align:center;padding:80px 24px;color:var(--gris)">
+        <div style="font-size:40px;margin-bottom:16px">📋</div>
+        <p style="font-size:16px;margin-bottom:8px">Impossible de charger ce protocole.</p>
+        <p style="font-size:13px">Vérifiez que vous êtes bien connectée avec l'email associé à votre dossier, ou contactez Sabrina si le problème persiste.</p>
+      </div>`;
+    console.error('Erreur chargement protocole Supabase:', e);
   }
+}
 
-  // ── 2. Mode local : Sabrina vient de générer le PHV dans le même navigateur ──
+function chargerProtocoleLocal() {
   try {
     const raw = localStorage.getItem('avita_phv_print');
     if (!raw) throw new Error('no data');
@@ -1560,6 +1554,27 @@ async function init() {
         <p style="font-size:13px">Retournez dans le <a href="generateur.html" style="color:var(--ocre)">Générateur PHV</a> et cliquez sur "Télécharger le PDF".</p>
       </div>`;
   }
+}
+
+async function init() {
+  const params = new URLSearchParams(window.location.search);
+  const clientKey = params.get('client');
+
+  if (clientKey) {
+    // ── Lien envoyé à une cliente : elle doit se connecter (lien magique)
+    //    pour que RLS l'autorise à lire son propre protocole ──
+    showAuthGate('cliente', () => {
+      removeAuthGate();
+      chargerProtocoleCliente(clientKey);
+    });
+    return;
+  }
+
+  // ── Praticienne : ouvert depuis le générateur, sur son propre appareil ──
+  showAuthGate('praticienne', () => {
+    removeAuthGate();
+    chargerProtocoleLocal();
+  });
 }
 
 init();

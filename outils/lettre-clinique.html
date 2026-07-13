@@ -327,6 +327,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:#DDD5CA;min-height:100v
   @page{size:A4;margin:0}
 }
 </style>
+<script src="auth-guard.js"></script>
 </head>
 <body>
 <div class="wrap">
@@ -771,10 +772,15 @@ async function sauvegarder(){
     created_at       : new Date().toISOString()
   };
   try{
+    let authToken = KEY;
+    if (typeof Auth !== 'undefined') {
+      const token = await Auth.getValidAccessToken();
+      if (token) authToken = token;
+    }
     const r = await fetch(SB+'/rest/v1/lettres_cliniques',{
       method:'POST',
       headers:{
-        'apikey':KEY,'Authorization':'Bearer '+KEY,
+        'apikey':KEY,'Authorization':'Bearer '+authToken,
         'Content-Type':'application/json','Prefer':'return=minimal'
       },
       body: JSON.stringify(payload)
@@ -791,8 +797,11 @@ async function sauvegarder(){
    INIT
 ══════════════════════════════ */
 document.addEventListener('DOMContentLoaded',()=>{
-  chargerCliente();
-  render();
+  showAuthGate('praticienne', () => {
+    removeAuthGate();
+    chargerCliente();
+    render();
+  });
 });
 </script>
 </body>
