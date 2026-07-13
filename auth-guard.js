@@ -21,6 +21,26 @@ const Auth = {
     return true;
   },
 
+  /* ── Vérifier un code à 6 chiffres reçu par email (contourne le pré-clic des scanners) ── */
+  async verifyOtp(email, token) {
+    const res = await fetch(SUPA_URL + '/auth/v1/verify', {
+      method: 'POST',
+      headers: { 'apikey': SUPA_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'email', email, token })
+    });
+    if (!res.ok) throw new Error('Code invalide ou expiré : ' + (await res.text()));
+    const data = await res.json();
+    if (!data.access_token) throw new Error('Réponse invalide du serveur');
+
+    const session = {
+      access_token: data.access_token,
+      refresh_token: data.refresh_token,
+      expires_at: Date.now() + (data.expires_in || 3600) * 1000
+    };
+    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
+    return true;
+  },
+
   /* ── Récupérer les tokens depuis le hash d'URL après clic sur le lien ── */
   handleRedirect() {
     if (!window.location.hash || window.location.hash.indexOf('access_token') === -1) return false;
@@ -105,8 +125,14 @@ function showAuthGate(profil, onSuccess) {
       <div style="font-family:Georgia,serif;font-size:22px;font-style:italic;color:#1E1E1C;margin-bottom:8px">A Vita Serena</div>
       <p style="font-size:13px;color:#6B6560;margin-bottom:24px">${isPraticienne ? 'Connexion praticienne' : 'Connectez-vous pour accéder à votre espace'}</p>
       <input id="auth-email-input" type="email" placeholder="Votre email" style="width:100%;padding:12px 14px;border:1px solid #D5CFC6;border-radius:8px;font-size:14px;margin-bottom:12px;box-sizing:border-box">
-      <button id="auth-submit-btn" style="width:100%;background:#1E1E1C;color:#fff;border:none;padding:13px;border-radius:99px;font-size:13px;font-weight:600;cursor:pointer">Recevoir un lien de connexion →</button>
+      <button id="auth-submit-btn" style="width:100%;background:#1E1E1C;color:#fff;border:none;padding:13px;border-radius:99px;font-size:13px;font-weight:600;cursor:pointer">Recevoir un code de connexion →</button>
       <p id="auth-status-msg" style="font-size:12px;color:#6B6560;margin-top:16px;line-height:1.6"></p>
+
+      <div id="auth-code-block" style="display:none;margin-top:18px;padding-top:18px;border-top:1px solid #E4DFD8">
+        <p style="font-size:12px;color:#6B6560;margin-bottom:10px">Entrez le code à 6 chiffres reçu par email :</p>
+        <input id="auth-code-input" type="text" inputmode="numeric" maxlength="6" placeholder="000000" style="width:100%;padding:12px 14px;border:1px solid #D5CFC6;border-radius:8px;font-size:20px;letter-spacing:.3em;text-align:center;margin-bottom:12px;box-sizing:border-box">
+        <button id="auth-verify-btn" style="width:100%;background:var(--ocre,#B4906A);color:#fff;border:none;padding:13px;border-radius:99px;font-size:13px;font-weight:600;cursor:pointer">Valider le code →</button>
+      </div>
     </div>`;
   document.body.appendChild(overlay);
 
@@ -119,12 +145,32 @@ function showAuthGate(profil, onSuccess) {
     try {
       await Auth.requestMagicLink(email);
       msg.style.color = '#3D6B2C';
-      msg.textContent = 'Lien envoyé ! Vérifiez votre boîte mail et cliquez sur le lien pour continuer.';
-      btn.textContent = 'Lien envoyé ✓';
+      msg.textContent = 'Email envoyé ! Cliquez sur le lien, ou entrez le code reçu ci-dessous.';
+      btn.textContent = 'Renvoyer un code';
+      btn.disabled = false;
+      document.getElementById('auth-code-block').style.display = 'block';
     } catch(e) {
       msg.style.color = '#C0392B';
-      msg.textContent = "Erreur : impossible d'envoyer le lien. Réessayez.";
-      btn.disabled = false; btn.textContent = 'Recevoir un lien de connexion →';
+      msg.textContent = "Erreur : impossible d'envoyer le code. Réessayez.";
+      btn.disabled = false; btn.textContent = 'Recevoir un code de connexion →';
+      console.error(e);
+    }
+  };
+
+  document.getElementById('auth-verify-btn').onclick = async () => {
+    const email = document.getElementById('auth-email-input').value.trim();
+    const code = document.getElementById('auth-code-input').value.trim();
+    const btn = document.getElementById('auth-verify-btn');
+    const msg = document.getElementById('auth-status-msg');
+    if (!code || code.length < 6) { msg.textContent = 'Entrez le code à 6 chiffres complet.'; msg.style.color = '#C0392B'; return; }
+    btn.disabled = true; btn.textContent = 'Vérification…';
+    try {
+      await Auth.verifyOtp(email, code);
+      onSuccess();
+    } catch(e) {
+      msg.style.color = '#C0392B';
+      msg.textContent = 'Code invalide ou expiré — redemandez un code.';
+      btn.disabled = false; btn.textContent = 'Valider le code →';
       console.error(e);
     }
   };

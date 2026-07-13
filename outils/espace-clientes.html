@@ -196,20 +196,18 @@ body{min-height:100vh}
     <h2 class="login-title">Bienvenue dans<br>votre espace privilégié</h2>
     <p class="login-sub">Votre espace personnel — fiches pratiques, outils de suivi, ressources exclusives. Réservé aux clientes d'A Vita Serena.</p>
     <div class="login-field">
-      <label class="login-label">Votre prénom</label>
-      <input class="login-input" type="text" id="loginPrenom" placeholder="Sabrina" autocomplete="given-name">
+      <label class="login-label">Votre email</label>
+      <input class="login-input" type="email" id="loginEmail" placeholder="vous@email.com" autocomplete="email">
     </div>
-    <div class="login-field">
-      <label class="login-label">Votre nom de famille</label>
-      <input class="login-input" type="text" id="loginNom" placeholder="Castelli" autocomplete="family-name">
+    <button class="login-btn" id="loginSubmitBtn" onclick="doLogin()">Recevoir un code de connexion →</button>
+    <div class="login-error" id="loginError">Cet email ne correspond à aucune cliente. Vérifiez l'orthographe ou contactez Sabrina.</div>
+    <p class="login-hint" id="loginHint">Nous vous envoyons un code sécurisé par email — pas de mot de passe à retenir.</p>
+
+    <div id="codeBlock" style="display:none;margin-top:16px;padding-top:16px;border-top:1px solid #E4DFD8">
+      <p style="font-size:12px;color:#6B6560;margin-bottom:10px">Ou entrez directement le code reçu par email :</p>
+      <input class="login-input" type="text" id="loginCode" inputmode="numeric" maxlength="12" placeholder="Votre code" style="font-size:18px;letter-spacing:.15em;text-align:center">
+      <button class="login-btn" onclick="verifyCode()" style="background:var(--ardoise)">Valider le code →</button>
     </div>
-    <div class="login-field">
-      <label class="login-label">Votre date de naissance</label>
-      <input class="login-input" type="date" id="loginDDN" autocomplete="bday">
-    </div>
-    <button class="login-btn" onclick="doLogin()">Accéder à mon espace →</button>
-    <div class="login-error" id="loginError">Ces informations ne correspondent à aucune cliente. Vérifiez l'orthographe ou contactez Sabrina.</div>
-    <p class="login-hint">Vos données ne sont jamais partagées. Accès sécurisé réservé à vos informations personnelles de consultation.</p>
   </div>
 </div>
 
@@ -600,6 +598,11 @@ body{min-height:100vh}
 </div>
 
 <script>
+var SUPA_URL = 'https://bqhkdndwldwqacrrbbig.supabase.co';
+var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxaGtkbmR3bGR3cWFjcnJiYmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MzAyNTIsImV4cCI6MjA5NjMwNjI1Mn0.nH2UktMAVKYwng4L3SvW5F0fluV_sObGV0f3Mk1dnOY';
+</script>
+<script src="auth-guard.js"></script>
+<script>
 // ── SUPABASE ──
 var SUPA_URL = 'https://bqhkdndwldwqacrrbbig.supabase.co';
 var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxaGtkbmR3bGR3cWFjcnJiYmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MzAyNTIsImV4cCI6MjA5NjMwNjI1Mn0.nH2UktMAVKYwng4L3SvW5F0fluV_sObGV0f3Mk1dnOY';
@@ -617,14 +620,50 @@ function clientId(prenom, nom, ddn) {
 }
 
 async function doLogin() {
-  var prenom = document.getElementById('loginPrenom').value.trim();
-  var nom = document.getElementById('loginNom').value.trim();
-  var ddn = document.getElementById('loginDDN').value;
+  var email = document.getElementById('loginEmail').value.trim();
   var errEl = document.getElementById('loginError');
-  var btn = document.querySelector('.login-btn');
+  var btn = document.getElementById('loginSubmitBtn');
 
-  if (!prenom || !nom || !ddn) {
-    errEl.textContent = 'Veuillez remplir tous les champs.';
+  if (!email) {
+    errEl.textContent = 'Merci de renseigner votre email.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  btn.textContent = 'Envoi…';
+  btn.disabled = true;
+  errEl.style.display = 'none';
+
+  try {
+    await Auth.requestMagicLink(email, window.location.origin + '/espace-clientes.html');
+    document.getElementById('loginHint').textContent = 'Email envoyé (' + email + ') ! Cliquez sur le lien, ou entrez le code ci-dessous.';
+    document.getElementById('loginHint').style.color = '#3D6B2C';
+    document.getElementById('codeBlock').style.display = 'block';
+    btn.textContent = 'Renvoyer un code';
+    btn.disabled = false;
+  } catch(e) {
+    errEl.textContent = "Erreur : impossible d'envoyer le code. Réessayez.";
+    errEl.style.display = 'block';
+    btn.textContent = 'Recevoir un code de connexion →';
+    btn.disabled = false;
+    console.error(e);
+  }
+}
+
+document.querySelectorAll('.login-input').forEach(function(el) {
+  if (el.id === 'loginCode') return; // géré séparément ci-dessous
+  el.addEventListener('keydown', function(e) { if (e.key === 'Enter') doLogin(); });
+});
+document.getElementById('loginCode').addEventListener('keydown', function(e) { if (e.key === 'Enter') verifyCode(); });
+
+async function verifyCode() {
+  var email = document.getElementById('loginEmail').value.trim();
+  var code = document.getElementById('loginCode').value.trim();
+  var errEl = document.getElementById('loginError');
+  var btn = document.querySelector('#codeBlock .login-btn');
+
+  if (!code || code.length < 4) {
+    errEl.textContent = 'Entrez le code complet.';
     errEl.style.display = 'block';
     return;
   }
@@ -633,41 +672,51 @@ async function doLogin() {
   btn.disabled = true;
   errEl.style.display = 'none';
 
-  var id = clientId(prenom, nom, ddn);
-
   try {
-    var res = await fetch(SUPA_URL + '/rest/v1/clientes?id=eq.' + encodeURIComponent(id) + '&select=prenom,id&limit=1', {
-      headers: {
-        'apikey': SUPA_KEY,
-        'Authorization': 'Bearer ' + SUPA_KEY,
-        'Content-Type': 'application/json'
-      }
-    });
-
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-
-    var data = await res.json();
-    if (data && data.length > 0) {
-      var prenomReel = data[0].prenom || prenom;
-      localStorage.setItem('avs_client', JSON.stringify({ prenom: prenomReel, ok: true, key: id }));
-      openSpace(prenomReel);
-    } else {
-      errEl.textContent = 'Ces informations ne correspondent à aucune cliente. Vérifiez l\'orthographe ou contactez Sabrina.';
-      errEl.style.display = 'block';
-      btn.textContent = 'Accéder à mon espace →';
-      btn.disabled = false;
-    }
+    await Auth.verifyOtp(email, code);
+    await tryAutoLogin();
   } catch(e) {
-    errEl.textContent = 'Erreur de connexion (' + e.message + '). Vérifiez votre connexion et réessayez.';
+    errEl.textContent = 'Code invalide ou expiré — redemandez un code.';
     errEl.style.display = 'block';
-    btn.textContent = 'Accéder à mon espace →';
+    btn.textContent = 'Valider le code →';
     btn.disabled = false;
+    console.error(e);
   }
 }
 
-document.querySelectorAll('.login-input').forEach(function(el) {
-  el.addEventListener('keydown', function(e) { if (e.key === 'Enter') doLogin(); });
-});
+/* ── Après clic sur le lien magique : récupérer la fiche cliente ──
+   RLS filtre automatiquement : cette requête ne renvoie QUE la ligne
+   de la cliente connectée (grâce à current_client_key() côté serveur). */
+async function tryAutoLogin() {
+  Auth.handleRedirect();
+  if (!Auth.isLoggedIn()) return false;
+
+  try {
+    const rows = await DB_getOwnClientRow();
+    if (rows && rows.length > 0) {
+      const c = rows[0];
+      localStorage.setItem('avs_client', JSON.stringify({ prenom: c.prenom, ok: true, key: c.id }));
+      openSpace(c.prenom);
+      return true;
+    } else {
+      document.getElementById('loginError').textContent = "Votre email est confirmé, mais aucune fiche cliente n'y est associée. Contactez Sabrina.";
+      document.getElementById('loginError').style.display = 'block';
+      return false;
+    }
+  } catch(e) {
+    console.error('Erreur récupération fiche cliente:', e);
+    return false;
+  }
+}
+
+async function DB_getOwnClientRow() {
+  const token = await Auth.getValidAccessToken();
+  const res = await fetch(SUPA_URL + '/rest/v1/clientes?select=id,prenom', {
+    headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + token }
+  });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  return await res.json();
+}
 
 function openSpace(prenom){
   document.getElementById('loginScreen').style.display='none';
@@ -686,7 +735,12 @@ function doLogout(){
   document.getElementById('mainContent').style.display='none';
 }
 
-window.addEventListener('DOMContentLoaded', function(){
+window.addEventListener('DOMContentLoaded', async function(){
+  // 1. Retour du lien magique (email cliqué) → priorité
+  const cameFromMagicLink = await tryAutoLogin();
+  if (cameFromMagicLink) return;
+
+  // 2. Session déjà active sur cet appareil
   var saved = localStorage.getItem('avs_client') || sessionStorage.getItem('avs_client');
   if(saved){ try{ var c=JSON.parse(saved); if(c.ok) openSpace(c.prenom); }catch(e){} }
 });
@@ -938,8 +992,8 @@ async function serenaSend(){
   var text = input.value.trim();
   if(!text && !serenaPendingImage) return;
 
-  var session = JSON.parse(localStorage.getItem('avs_client') || sessionStorage.getItem('avs_client') || '{}');
-  if(!session.key){ serenaAddBubble('Session expirée — merci de vous reconnecter.', 'serena'); return; }
+  var accessToken = await Auth.getValidAccessToken();
+  if(!accessToken){ serenaAddBubble('Session expirée — merci de vous reconnecter.', 'serena'); return; }
 
   serenaAddBubble(text || '📷 Photo envoyée', 'user');
   var imgToSend = serenaPendingImage;
@@ -956,10 +1010,9 @@ async function serenaSend(){
       headers: {
         'Content-Type': 'application/json',
         'apikey': SUPA_KEY,
-        'Authorization': 'Bearer ' + SUPA_KEY
+        'Authorization': 'Bearer ' + accessToken
       },
       body: JSON.stringify({
-        clientKey: session.key,
         message: text,
         image: imgToSend, // { base64, mediaType } ou null
         history: serenaHistory.slice(-10) // 10 derniers échanges pour le contexte
