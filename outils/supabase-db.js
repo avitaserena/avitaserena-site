@@ -263,6 +263,30 @@ const DB = {
     const factures = await supaFetch('factures?select=num&order=num.desc&limit=1');
     if (!factures || factures.length === 0) return 1;
     return parseInt(factures[0].num || '0') + 1;
+  },
+
+  /* ── Protocole structuré (PHV en JSON, source pour Serena) ── */
+  async saveProtocoleClient(client_key, protocolData, blocks) {
+    // On préserve les champs déjà existants (checks/notes/journal) s'il y en a,
+    // en ne remplaçant que le contenu du protocole lui-même.
+    let existing = {};
+    try {
+      const rows = await supaFetch('protocoles_client?client_id=eq.' + encodeURIComponent(client_key) + '&select=data');
+      existing = rows?.[0]?.data || {};
+    } catch(e) { /* pas de ligne existante, on repart de zéro */ }
+
+    const merged = { ...existing, protocolData, blocks, savedAt: new Date().toISOString() };
+
+    return await supaFetch('protocoles_client?on_conflict=client_id', {
+      method: 'POST',
+      headers: { 'Prefer': 'return=representation,resolution=merge-duplicates' },
+      body: { client_id: client_key, data: merged, updated_at: new Date().toISOString() }
+    });
+  },
+
+  async getProtocoleClient(client_key) {
+    const rows = await supaFetch('protocoles_client?client_id=eq.' + encodeURIComponent(client_key) + '&select=data,updated_at');
+    return rows?.[0] || null;
   }
 };
 
