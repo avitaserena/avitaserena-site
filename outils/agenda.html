@@ -495,6 +495,38 @@ function load() {
 
 function save() {
   try { localStorage.setItem('avs_agenda', JSON.stringify({rdvs:state.rdvs, blocked:state.blocked, slots:state.slots, prepTime:state.prepTime})); } catch(e) {}
+  syncConfigVersSupabase();
+}
+
+/* ── Synchronise le modèle de disponibilités (pas les RDV) vers Supabase,
+   pour que le calendrier public de reservation.html puisse le lire. ── */
+var _syncConfigTimer = null;
+function syncConfigVersSupabase() {
+  clearTimeout(_syncConfigTimer);
+  _syncConfigTimer = setTimeout(async function() {
+    try {
+      let authToken = SUPA_KEY;
+      if (typeof Auth !== 'undefined') {
+        const token = await Auth.getValidAccessToken();
+        if (token) authToken = token;
+      }
+      await fetch(SUPA_URL + '/rest/v1/agenda_config?id=eq.main', {
+        method: 'PATCH',
+        headers: {
+          'apikey': SUPA_KEY,
+          'Authorization': 'Bearer ' + authToken,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify({
+          slots: state.slots,
+          blocked: state.blocked,
+          prep_time: state.prepTime,
+          updated_at: new Date().toISOString()
+        })
+      });
+    } catch(e) { console.warn('Sync disponibilités Supabase:', e); }
+  }, 800); // léger anti-rebond pour éviter une écriture à chaque frappe
 }
 
 // ════════════════════════════════
