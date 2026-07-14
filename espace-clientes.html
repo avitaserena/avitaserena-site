@@ -657,8 +657,8 @@ async function tryAutoLogin() {
     const rows = await DB_getOwnClientRow();
     if (rows && rows.length > 0) {
       const c = rows[0];
-      localStorage.setItem('avs_client', JSON.stringify({ prenom: c.prenom, ok: true, key: c.id }));
-      openSpace(c.prenom);
+      localStorage.setItem('avs_client', JSON.stringify({ prenom: c.prenom, ok: true, key: c.id, programme: c.programme || '' }));
+      openSpace(c.prenom, c.programme);
       return true;
     } else {
       document.getElementById('loginError').textContent = "Votre email est confirmé, mais aucune fiche cliente n'y est associée. Contactez Sabrina.";
@@ -673,20 +673,32 @@ async function tryAutoLogin() {
 
 async function DB_getOwnClientRow() {
   const token = await Auth.getValidAccessToken();
-  const res = await fetch(SUPA_URL + '/rest/v1/clientes?select=id,prenom', {
+  const res = await fetch(SUPA_URL + '/rest/v1/clientes?select=id,prenom,programme', {
     headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + token }
   });
   if (!res.ok) throw new Error('HTTP ' + res.status);
   return await res.json();
 }
 
-function openSpace(prenom){
+/* ── Serena (+ photo) réservée aux clientes en parcours (Alba/Aria/Ora) —
+   jamais aux consultations ponctuelles (Bilan/Suivi seul). ── */
+var PARCOURS_AVEC_SERENA = ['alba', 'aria', 'ora'];
+function appliquerAccesSerena(programme) {
+  const aAcces = programme && PARCOURS_AVEC_SERENA.indexOf(String(programme).toLowerCase()) > -1;
+  const onglet = document.querySelector('.tab-btn[onclick*="serena"]');
+  const contenu = document.getElementById('tab-serena');
+  if (onglet) onglet.style.display = aAcces ? '' : 'none';
+  if (contenu && !aAcces) contenu.classList.remove('active');
+}
+
+function openSpace(prenom, programme){
   document.getElementById('loginScreen').style.display='none';
   document.getElementById('mainContent').style.display='block';
   document.getElementById('heroPrenom').textContent = prenom;
   document.getElementById('headerAvatar').textContent = prenom.charAt(0).toUpperCase();
   document.getElementById('headerName').textContent = prenom;
   document.getElementById('journalDate').textContent = new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  appliquerAccesSerena(programme);
   setTimeout(openTabFromHash, 50);
 }
 
@@ -704,7 +716,7 @@ window.addEventListener('DOMContentLoaded', async function(){
 
   // 2. Session déjà active sur cet appareil
   var saved = localStorage.getItem('avs_client') || sessionStorage.getItem('avs_client');
-  if(saved){ try{ var c=JSON.parse(saved); if(c.ok) openSpace(c.prenom); }catch(e){} }
+  if(saved){ try{ var c=JSON.parse(saved); if(c.ok) openSpace(c.prenom, c.programme); }catch(e){} }
 });
 
 // ── ONGLETS ──

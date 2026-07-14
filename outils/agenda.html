@@ -1095,7 +1095,51 @@ function saveRdv() {
     syncToCRM(rdv);
   }
 
+  // Rappel automatique : si ce RDV fait partie d'un parcours, créer une tâche
+  // pour ne pas oublier de programmer la séance suivante.
+  if (rdv.parcours) {
+    creerTacheRappelProchaineSeance(rdv);
+  }
+
   closeModalDirect('rdvModal');
+}
+
+/* ── Crée une tâche CRM rappelant de programmer la prochaine séance
+   d'un parcours, ~3 semaines après la séance qu'on vient d'enregistrer. ── */
+async function creerTacheRappelProchaineSeance(rdv) {
+  try {
+    let authToken = SUPA_KEY;
+    if (typeof Auth !== 'undefined') {
+      const token = await Auth.getValidAccessToken();
+      if (token) authToken = token;
+    }
+    const dateSeance = new Date(rdv.date + 'T00:00:00');
+    const echeance = new Date(dateSeance);
+    echeance.setDate(echeance.getDate() + 21); // cadence par défaut : 3 semaines, à ajuster si besoin
+
+    const parcoursLabels = {alba:'Alba', aria:'Aria', ora:'Ora'};
+    const libelleParcours = parcoursLabels[rdv.parcours] || rdv.parcours;
+
+    await fetch(SUPA_URL + '/rest/v1/taches', {
+      method: 'POST',
+      headers: {
+        'apikey': SUPA_KEY,
+        'Authorization': 'Bearer ' + authToken,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify({
+        id: 'tache_' + Date.now(),
+        titre: 'Programmer la prochaine séance — ' + rdv.name + ' (Parcours ' + libelleParcours + ')',
+        description: 'Séance du ' + rdv.date + ' à ' + rdv.time + ' enregistrée. Penser à fixer la suivante avec la cliente.',
+        client_id: null,
+        client_nom: rdv.name,
+        echeance: echeance.toISOString().slice(0,10),
+        priorite: 'normale',
+        statut: 'a_faire'
+      })
+    });
+  } catch(e) { console.warn('Création tâche de rappel:', e); }
 }
 
 // ════════════════════════════════

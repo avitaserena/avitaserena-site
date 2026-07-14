@@ -76,7 +76,9 @@ const css = `
   font-family:'Be Vietnam Pro',system-ui,sans-serif;
 }
 .avs-presta:hover{border-color:#C4A882}
-.avs-presta.selected{border-color:#B4906A;background:rgba(180,144,106,.06)}
+.avs-presta{position:relative}
+.avs-presta.selected{border-color:#B4906A;border-width:2px;background:#FBF7F1;box-shadow:0 6px 18px rgba(180,144,106,.22)}
+.avs-presta.selected::after{content:'✓';position:absolute;top:10px;right:10px;width:20px;height:20px;background:#B4906A;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700}
 .avs-presta-name{font-size:13px;font-weight:700;color:#1E1E1C;margin-bottom:3px}
 .avs-presta-detail{font-size:11px;color:#8B7B6A;line-height:1.4}
 .avs-presta-prix{font-size:14px;font-weight:700;color:#B4906A;margin-top:7px}
@@ -200,7 +202,7 @@ const html = `
           </div>
           <div class="avs-presta" id="avs-p-suivi" onclick="AVS.selectPresta('suivi',this)">
             <div class="avs-presta-name">Consultation de suivi</div>
-            <div class="avs-presta-detail">Pour clientes existantes · 60 min · Ajustement du protocole</div>
+            <div class="avs-presta-detail">Pour clientes existantes · 45 min · Ajustement du protocole</div>
             <div class="avs-presta-prix">65 €</div>
           </div>
           <div class="avs-presta" id="avs-p-alba" onclick="AVS.selectPresta('alba',this)">
@@ -212,6 +214,11 @@ const html = `
             <div class="avs-presta-name">Parcours Aria ✦</div>
             <div class="avs-presta-detail">6 mois · Le plus choisi · SIBO, hormones, terrain complexe</div>
             <div class="avs-presta-prix">560 €</div>
+          </div>
+          <div class="avs-presta" id="avs-p-ora" onclick="AVS.selectPresta('ora',this)">
+            <div class="avs-presta-name">Parcours Ora</div>
+            <div class="avs-presta-detail">9 mois · Terrains complexes, périménopause, SIBO récidivant</div>
+            <div class="avs-presta-prix">780 €</div>
           </div>
         </div>
 
@@ -324,7 +331,7 @@ window.AVS = {
 
     const prestaLabels = {
       bilan:'Bilan de vitalité (90 € · 90 min)',
-      suivi:'Consultation de suivi (65 € · 60 min)',
+      suivi:'Consultation de suivi (65 € · 45 min)',
       alba:'Parcours Alba (320 € · 3 mois)',
       aria:'Parcours Aria (560 € · 6 mois)',
       ora:'Parcours Ora (780 € · 9 mois)'
