@@ -709,6 +709,36 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         </div>
       </div>
 
+      <div class="presta-card" id="pc-alba" onclick="selectionnerPresta('alba')">
+        <div class="pc-badge">✦ Parcours 3 mois</div>
+        <div class="pc-name">Parcours Alba</div>
+        <div class="pc-desc">Bilan de vitalité initial + 2 consultations de suivi + protocole évolutif sur 3 mois. Le Gardien de Longévité inclus tout au long du parcours.</div>
+        <div class="pc-meta">
+          <div class="pc-duree"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Bilan 90 min pour démarrer</div>
+          <div class="pc-prix">320 <span>€</span></div>
+        </div>
+      </div>
+
+      <div class="presta-card" id="pc-aria" onclick="selectionnerPresta('aria')">
+        <div class="pc-badge">✦ Parcours 6 mois · Le plus choisi</div>
+        <div class="pc-name">Parcours Aria</div>
+        <div class="pc-desc">Bilan de vitalité initial + 4 consultations de suivi approfondies. Recommandé pour SIBO, SOPK, endométriose, déséquilibres hormonaux installés.</div>
+        <div class="pc-meta">
+          <div class="pc-duree"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Bilan 90 min pour démarrer</div>
+          <div class="pc-prix">560 <span>€</span></div>
+        </div>
+      </div>
+
+      <div class="presta-card" id="pc-ora" onclick="selectionnerPresta('ora')">
+        <div class="pc-badge">✦ Parcours 9 mois</div>
+        <div class="pc-name">Parcours Ora</div>
+        <div class="pc-desc">Pour les terrains complexes, pathologies chroniques, périménopause &amp; ménopause, SIBO récidivant. Le temps long d'une vraie transformation de fond.</div>
+        <div class="pc-meta">
+          <div class="pc-duree"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Bilan 90 min pour démarrer</div>
+          <div class="pc-prix">780 <span>€</span></div>
+        </div>
+      </div>
+
     </div>
 
     <div style="text-align:center">
@@ -1013,7 +1043,10 @@ var state = {
 
 var PRESTATIONS = {
   bilan:  {label:'Bilan de vitalité naturopathique (90 min)', prix:110,  id:'bilan'},
-  suivi:  {label:'Consultation de suivi (45 min)',            prix:70,  id:'suivi'}
+  suivi:  {label:'Consultation de suivi (45 min)',            prix:70,  id:'suivi'},
+  alba:   {label:'Parcours Alba (3 mois) — Bilan de démarrage', prix:320, id:'alba'},
+  aria:   {label:'Parcours Aria (6 mois) — Bilan de démarrage', prix:560, id:'aria'},
+  ora:    {label:'Parcours Ora (9 mois) — Bilan de démarrage',  prix:780, id:'ora'}
 };
 
 /* ══════════════════════════════
@@ -1123,7 +1156,7 @@ async function chargerCreneauxMois() {
   fin.setMonth(fin.getMonth()+1);
   fin.setDate(0); // dernier jour du mois affiché
 
-  var duree = state.prestaId === 'bilan' ? 90 : 45;
+  var duree = state.prestaId === 'suivi' ? 45 : 90; // bilan + tous les parcours démarrent par un bilan 90 min
 
   document.getElementById('calendrier-mois-texte').textContent = MOIS_NOMS[calendrierMoisAffiche.getMonth()] + ' ' + calendrierMoisAffiche.getFullYear();
   document.getElementById('calendrier-grille').innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:20px;color:var(--gris);font-size:13px">Chargement des disponibilités…</div>';
@@ -1323,6 +1356,7 @@ async function lancerPaiement() {
           objectif_6mois: state.objectif,
           message: state.message,
           prestation: state.prestaLabel,
+          parcours: ['alba','aria','ora'].indexOf(state.prestaId) >= 0 ? state.prestaId : '',
           date: state.creneauDate,
           time: state.creneauHeure
         }
