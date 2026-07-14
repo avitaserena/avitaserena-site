@@ -258,6 +258,7 @@ body{min-height:100vh}
     <button class="tab-btn" onclick="switchTab('hormones',this)">〰 Hormones & Cycle</button>
     <button class="tab-btn" onclick="switchTab('bienetre',this)">♡ Bien-être</button>
     <button class="tab-btn" onclick="switchTab('serena',this)" style="color:var(--sable)">✦ Serena</button>
+    <button class="tab-btn" onclick="switchTab('rdv',this)" style="color:var(--ocre)">📅 Mon prochain RDV</button>
   </nav>
 
   <!-- MAIN -->
@@ -533,8 +534,37 @@ body{min-height:100vh}
       <p style="font-size:11px;color:var(--gris);line-height:1.7;max-width:640px;margin-top:14px">Serena s'appuie sur les informations de votre dossier et reste strictement dans le cadre de votre protocole validé par Sabrina. Elle ne remplace jamais une consultation ni un avis médical, et transmet à Sabrina toute question qui sort de ce cadre.</p>
     </div>
 
-    <!-- ─── MON JOURNAL ─── -->
-    <div class="tab-content" id="tab-journal">
+    <!-- ─── MON PROCHAIN RDV (reprogrammation, parcours uniquement) ─── -->
+    <div class="tab-content" id="tab-rdv">
+      <div class="section-eyebrow">Votre parcours</div>
+      <h2 class="section-h2">Programmez votre<br>prochaine séance.</h2>
+      <p class="section-sub">Choisissez un créneau qui vous convient — il apparaît instantanément dans l'agenda de Sabrina, sans paiement supplémentaire (déjà inclus dans votre parcours).</p>
+
+      <div class="form-card" style="max-width:640px;background:#fff;border-radius:20px;padding:32px;border:1px solid var(--taupe,#D5CFC6)">
+        <div id="rdv-mois-label" style="text-align:center;font-family:'Cormorant Garamond',serif;font-size:20px;color:var(--ardoise);margin-bottom:16px;display:flex;align-items:center;justify-content:center;gap:16px">
+          <button onclick="rdvChangerMois(-1)" style="background:none;border:1px solid var(--taupe,#D5CFC6);border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:14px;color:var(--ardoise)">←</button>
+          <span id="rdv-mois-texte">—</span>
+          <button onclick="rdvChangerMois(1)" style="background:none;border:1px solid var(--taupe,#D5CFC6);border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:14px;color:var(--ardoise)">→</button>
+        </div>
+
+        <div id="rdv-grille" style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:24px;font-size:12px"></div>
+
+        <div id="rdv-creneaux-bloc" style="display:none;margin-bottom:16px">
+          <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--gris,#6B6560);margin-bottom:10px" id="rdv-date-label">Horaires disponibles</div>
+          <div id="rdv-creneaux-liste" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+        </div>
+
+        <div id="rdv-vide" style="display:none;text-align:center;font-size:13px;color:var(--gris,#6B6560);padding:16px 0">
+          Aucun créneau disponible à cette date — essayez un autre jour, ou contactez Sabrina directement.
+        </div>
+
+        <div id="rdv-confirmation" style="display:none;text-align:center;padding:20px;background:#F0FBF0;border-radius:12px;margin-top:16px">
+          <p style="margin:0;font-size:14px;color:#3D6B2C;font-weight:600">✓ Rendez-vous programmé !</p>
+          <p style="margin:6px 0 0;font-size:12.5px;color:#5A5248">Sabrina le confirmera prochainement. Retrouvez-le dans votre récapitulatif ci-dessus.</p>
+        </div>
+      </div>
+    </div>
+
       <div class="section-eyebrow">Mon journal de suivi</div>
       <h2 class="section-h2">Notez vos ressentis<br>entre les séances.</h2>
       <p class="section-sub">Ce journal est votre fil conducteur. Chaque note que vous prenez aide Sabrina à affiner votre protocole à la séance suivante.</p>
@@ -657,7 +687,7 @@ async function tryAutoLogin() {
     const rows = await DB_getOwnClientRow();
     if (rows && rows.length > 0) {
       const c = rows[0];
-      localStorage.setItem('avs_client', JSON.stringify({ prenom: c.prenom, ok: true, key: c.id, programme: c.programme || '' }));
+      localStorage.setItem('avs_client', JSON.stringify({ prenom: c.prenom, nom: c.nom, email: c.email, ok: true, key: c.id, programme: c.programme || '' }));
       openSpace(c.prenom, c.programme);
       return true;
     } else {
@@ -673,22 +703,29 @@ async function tryAutoLogin() {
 
 async function DB_getOwnClientRow() {
   const token = await Auth.getValidAccessToken();
-  const res = await fetch(SUPA_URL + '/rest/v1/clientes?select=id,prenom,programme', {
+  const res = await fetch(SUPA_URL + '/rest/v1/clientes?select=id,prenom,nom,email,programme', {
     headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + token }
   });
   if (!res.ok) throw new Error('HTTP ' + res.status);
   return await res.json();
 }
 
-/* ── Serena (+ photo) réservée aux clientes en parcours (Alba/Aria/Ora) —
-   jamais aux consultations ponctuelles (Bilan/Suivi seul). ── */
+/* ── Serena (+ photo) et la reprogrammation de RDV sont réservées aux
+   clientes en parcours (Alba/Aria/Ora) — jamais aux consultations ponctuelles. ── */
 var PARCOURS_AVEC_SERENA = ['alba', 'aria', 'ora'];
 function appliquerAccesSerena(programme) {
   const aAcces = programme && PARCOURS_AVEC_SERENA.indexOf(String(programme).toLowerCase()) > -1;
-  const onglet = document.querySelector('.tab-btn[onclick*="serena"]');
-  const contenu = document.getElementById('tab-serena');
-  if (onglet) onglet.style.display = aAcces ? '' : 'none';
-  if (contenu && !aAcces) contenu.classList.remove('active');
+  const ongletSerena = document.querySelector('.tab-btn[onclick*="serena"]');
+  const contenuSerena = document.getElementById('tab-serena');
+  if (ongletSerena) ongletSerena.style.display = aAcces ? '' : 'none';
+  if (contenuSerena && !aAcces) contenuSerena.classList.remove('active');
+
+  const ongletRdv = document.querySelector('.tab-btn[onclick*="\'rdv\'"]');
+  const contenuRdv = document.getElementById('tab-rdv');
+  if (ongletRdv) ongletRdv.style.display = aAcces ? '' : 'none';
+  if (contenuRdv && !aAcces) contenuRdv.classList.remove('active');
+
+  if (aAcces) { window._clientProgramme = String(programme).toLowerCase(); }
 }
 
 function openSpace(prenom, programme){
@@ -727,6 +764,7 @@ function switchTab(id, btn){
   if(el) el.classList.add('active');
   if(btn) btn.classList.add('active');
   window.location.hash = id;
+  if(id === 'rdv') initTabRdv();
 }
 
 function openTabFromHash(){
@@ -1007,6 +1045,149 @@ async function serenaSend(){
     console.error('Erreur Serena:', err);
   } finally {
     btn.disabled = false; btn.textContent = 'Envoyer';
+  }
+}
+
+// ═══════════════════════════════════════
+// MON PROCHAIN RDV — reprogrammation (parcours uniquement)
+// ═══════════════════════════════════════
+var RDV_MOIS_NOMS = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+var RDV_JOURS_SEMAINE = ['D','L','M','M','J','V','S'];
+var rdvMoisAffiche = null;
+var rdvCreneauxDispo = {};
+var rdvDateChoisie = null;
+var rdvInit = false;
+
+// Durée des suivis en parcours : 45 min par défaut (confirmé pour Alba,
+// à ajuster ici si Aria/Ora ont une durée différente — voir DUREE_SUIVI_PARCOURS).
+var DUREE_SUIVI_PARCOURS = 45;
+
+function initTabRdv() {
+  if (rdvInit) return;
+  rdvInit = true;
+  rdvMoisAffiche = new Date();
+  rdvMoisAffiche.setDate(1);
+  rdvChargerMois();
+}
+
+async function rdvChargerMois() {
+  var debut = new Date(rdvMoisAffiche);
+  var fin = new Date(rdvMoisAffiche);
+  fin.setMonth(fin.getMonth()+1);
+  fin.setDate(0);
+
+  document.getElementById('rdv-mois-texte').textContent = RDV_MOIS_NOMS[rdvMoisAffiche.getMonth()] + ' ' + rdvMoisAffiche.getFullYear();
+  document.getElementById('rdv-grille').innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:20px;color:var(--gris,#6B6560);font-size:13px">Chargement des disponibilités…</div>';
+
+  try {
+    var res = await fetch(SUPA_URL + '/functions/v1/get-available-slots', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY },
+      body: JSON.stringify({
+        from: debut.toISOString().slice(0,10),
+        to: fin.toISOString().slice(0,10),
+        durationMinutes: DUREE_SUIVI_PARCOURS
+      })
+    });
+    var data = await res.json();
+    rdvCreneauxDispo = data.slots || {};
+  } catch(e) {
+    console.error('Erreur chargement créneaux:', e);
+    rdvCreneauxDispo = {};
+  }
+
+  rdvRenderGrille(debut, fin);
+}
+
+function rdvRenderGrille(debut, fin) {
+  var grille = document.getElementById('rdv-grille');
+  var html = '';
+  RDV_JOURS_SEMAINE.forEach(function(j){ html += '<div style="text-align:center;font-weight:600;color:var(--gris,#6B6560);padding:4px 0">'+j+'</div>'; });
+
+  var premierJour = debut.getDay();
+  for (var i=0;i<premierJour;i++){ html += '<div></div>'; }
+
+  var today = new Date().toISOString().slice(0,10);
+  for (var d=new Date(debut); d<=fin; d.setDate(d.getDate()+1)) {
+    var dStr = d.toISOString().slice(0,10);
+    var nb = (rdvCreneauxDispo[dStr]||[]).length;
+    var estPasse = dStr < today;
+    var dispo = nb > 0 && !estPasse;
+    var choisi = dStr === rdvDateChoisie;
+
+    var style = 'aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:8px;font-size:13px;cursor:'+(dispo?'pointer':'default')+';';
+    if (choisi) style += 'background:var(--ardoise);color:#fff;font-weight:700;';
+    else if (dispo) style += 'background:#F7F6F4;color:var(--ardoise);border:1px solid var(--taupe,#D5CFC6);font-weight:600;';
+    else style += 'color:var(--taupe,#D5CFC6);';
+
+    html += '<div style="'+style+'" '+(dispo?'onclick="rdvSelectionnerDate(\''+dStr+'\')"':'')+'>'+d.getDate()+'</div>';
+  }
+  grille.innerHTML = html;
+}
+
+function rdvChangerMois(delta) {
+  rdvMoisAffiche.setMonth(rdvMoisAffiche.getMonth()+delta);
+  rdvChargerMois();
+}
+
+function rdvSelectionnerDate(dStr) {
+  rdvDateChoisie = dStr;
+  var d = new Date(dStr+'T12:00:00');
+  var joursLongs = ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+  document.getElementById('rdv-date-label').textContent = joursLongs[d.getDay()]+' '+d.getDate()+' '+RDV_MOIS_NOMS[d.getMonth()];
+
+  var heures = rdvCreneauxDispo[dStr] || [];
+  var liste = document.getElementById('rdv-creneaux-liste');
+
+  if (heures.length === 0) {
+    document.getElementById('rdv-creneaux-bloc').style.display='none';
+    document.getElementById('rdv-vide').style.display='block';
+  } else {
+    document.getElementById('rdv-vide').style.display='none';
+    document.getElementById('rdv-creneaux-bloc').style.display='block';
+    liste.innerHTML = heures.map(function(h){
+      return '<button onclick="rdvConfirmer(\''+dStr+'\',\''+h+'\')" style="padding:9px 16px;border-radius:8px;border:1px solid var(--taupe,#D5CFC6);background:#fff;color:var(--ardoise);font-size:13px;cursor:pointer;font-family:inherit">'+h+'</button>';
+    }).join('');
+  }
+
+  var debut = new Date(rdvMoisAffiche);
+  var fin = new Date(rdvMoisAffiche); fin.setMonth(fin.getMonth()+1); fin.setDate(0);
+  rdvRenderGrille(debut, fin);
+}
+
+async function rdvConfirmer(dStr, heure) {
+  var session = JSON.parse(localStorage.getItem('avs_client') || sessionStorage.getItem('avs_client') || '{}');
+  if (!session.key) { alert('Session expirée — merci de vous reconnecter.'); return; }
+
+  try {
+    var token = await Auth.getValidAccessToken();
+    await fetch(SUPA_URL + '/rest/v1/rendez_vous', {
+      method: 'POST',
+      headers: {
+        'apikey': SUPA_KEY,
+        'Authorization': 'Bearer ' + (token || SUPA_KEY),
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify({
+        id: Date.now(),
+        name: (session.prenom||'') + ' ' + (session.nom||''),
+        email: session.email || '',
+        date: dStr,
+        time: heure,
+        type: 'Consultation de suivi (parcours)',
+        status: 'attente',
+        notes: 'Reprogrammé par la cliente depuis son espace clientes.',
+        parcours: session.programme || null,
+        updated_at: new Date().toISOString()
+      })
+    });
+
+    document.getElementById('rdv-creneaux-bloc').style.display = 'none';
+    document.getElementById('rdv-confirmation').style.display = 'block';
+  } catch(e) {
+    console.error('Erreur création RDV:', e);
+    alert("Une erreur est survenue. Réessayez, ou contactez Sabrina directement.");
   }
 }
 </script>
