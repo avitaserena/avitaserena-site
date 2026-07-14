@@ -199,9 +199,15 @@ body{min-height:100vh}
       <label class="login-label">Votre email</label>
       <input class="login-input" type="email" id="loginEmail" placeholder="vous@email.com" autocomplete="email">
     </div>
-    <button class="login-btn" onclick="doLogin()">Recevoir un lien de connexion →</button>
+    <button class="login-btn" id="loginSubmitBtn" onclick="doLogin()">Recevoir un code de connexion →</button>
     <div class="login-error" id="loginError">Cet email ne correspond à aucune cliente. Vérifiez l'orthographe ou contactez Sabrina.</div>
-    <p class="login-hint" id="loginHint">Nous vous envoyons un lien sécurisé par email — pas de mot de passe à retenir.</p>
+    <p class="login-hint" id="loginHint">Nous vous envoyons un code sécurisé par email — pas de mot de passe à retenir.</p>
+
+    <div id="codeBlock" style="display:none;margin-top:16px;padding-top:16px;border-top:1px solid #E4DFD8">
+      <p style="font-size:12px;color:#6B6560;margin-bottom:10px">Ou entrez directement le code reçu par email :</p>
+      <input class="login-input" type="text" id="loginCode" inputmode="numeric" maxlength="12" placeholder="Votre code" style="font-size:18px;letter-spacing:.15em;text-align:center">
+      <button class="login-btn" onclick="verifyCode()" style="background:var(--ardoise)">Valider le code →</button>
+    </div>
   </div>
 </div>
 
@@ -646,7 +652,7 @@ function clientId(prenom, nom, ddn) {
 async function doLogin() {
   var email = document.getElementById('loginEmail').value.trim();
   var errEl = document.getElementById('loginError');
-  var btn = document.querySelector('.login-btn');
+  var btn = document.getElementById('loginSubmitBtn');
 
   if (!email) {
     errEl.textContent = 'Merci de renseigner votre email.';
@@ -660,21 +666,53 @@ async function doLogin() {
 
   try {
     await Auth.requestMagicLink(email, window.location.origin + '/espace-clientes.html');
-    document.getElementById('loginHint').textContent = 'Lien envoyé ! Vérifiez votre boîte mail (' + email + ') et cliquez sur le lien pour accéder à votre espace.';
+    document.getElementById('loginHint').textContent = 'Email envoyé (' + email + ') ! Cliquez sur le lien, ou entrez le code ci-dessous.';
     document.getElementById('loginHint').style.color = '#3D6B2C';
-    btn.textContent = 'Lien envoyé ✓';
+    document.getElementById('codeBlock').style.display = 'block';
+    btn.textContent = 'Renvoyer un code';
+    btn.disabled = false;
   } catch(e) {
-    errEl.textContent = "Erreur : impossible d'envoyer le lien. Réessayez.";
+    errEl.textContent = "Erreur : impossible d'envoyer le code. Réessayez.";
     errEl.style.display = 'block';
-    btn.textContent = 'Recevoir un lien de connexion →';
+    btn.textContent = 'Recevoir un code de connexion →';
     btn.disabled = false;
     console.error(e);
   }
 }
 
 document.querySelectorAll('.login-input').forEach(function(el) {
+  if (el.id === 'loginCode') return;
   el.addEventListener('keydown', function(e) { if (e.key === 'Enter') doLogin(); });
 });
+document.getElementById('loginCode').addEventListener('keydown', function(e) { if (e.key === 'Enter') verifyCode(); });
+
+async function verifyCode() {
+  var email = document.getElementById('loginEmail').value.trim();
+  var code = document.getElementById('loginCode').value.trim();
+  var errEl = document.getElementById('loginError');
+  var btn = document.querySelector('#codeBlock .login-btn');
+
+  if (!code || code.length < 4) {
+    errEl.textContent = 'Entrez le code complet.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  btn.textContent = 'Vérification…';
+  btn.disabled = true;
+  errEl.style.display = 'none';
+
+  try {
+    await Auth.verifyOtp(email, code);
+    await tryAutoLogin();
+  } catch(e) {
+    errEl.textContent = 'Code invalide ou expiré — redemandez un code.';
+    errEl.style.display = 'block';
+    btn.textContent = 'Valider le code →';
+    btn.disabled = false;
+    console.error(e);
+  }
+}
 
 /* ── Après clic sur le lien magique : récupérer la fiche cliente ──
    RLS filtre automatiquement : cette requête ne renvoie QUE la ligne
