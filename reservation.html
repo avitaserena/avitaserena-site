@@ -829,29 +829,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <div class="form-title">Paiement sécurisé</div>
       <div class="form-sub">Vos données bancaires sont chiffrées et traitées exclusivement par Stripe. Avita Serena n'y a jamais accès.</div>
 
-      <!-- CONFIGURATION PRATICIEN (masqué en production) -->
-      <div id="config-praticien" style="background:#FFF7F0;border:1px solid rgba(180,144,106,.3);border-radius:10px;padding:16px;margin-bottom:20px">
-        <div style="font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--ocre);margin-bottom:12px">⚙️ Configuration Stripe — Sabrina (visible uniquement par vous)</div>
-        <div style="margin-bottom:10px">
-          <label class="lbl">Votre clé publique Stripe (pk_live_…)</label>
-          <input class="fi" type="text" id="stripe-pk" placeholder="pk_live_… ou pk_test_… pour les tests" style="font-size:12px">
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-          <div>
-            <label class="lbl">Prix Bilan (€)</label>
-            <input class="fi" type="number" id="prix-bilan" value="110" min="1">
-          </div>
-          <div>
-            <label class="lbl">Prix Suivi (€)</label>
-            <input class="fi" type="number" id="prix-suivi" value="70" min="1">
-          </div>
-        </div>
-        <button onclick="initStripe()" style="padding:8px 18px;border-radius:99px;background:var(--ardoise);color:white;border:none;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Initialiser Stripe avec ces paramètres</button>
-        <div style="margin-top:8px;font-size:11px;color:var(--gris-l);font-style:italic">Ces paramètres sont sauvegardés dans le navigateur. Masquez ce bloc en production en ajoutant display:none à #config-praticien.</div>
-      </div>
+      <!-- Configuration Stripe : clé publique en dur dans le JS (voir initStripe()) -->
 
-      <div id="stripe-not-init" style="background:var(--or-clair);border:1px solid rgba(155,114,48,.2);border-radius:10px;padding:16px;text-align:center;font-size:13px;color:var(--encre)">
-        ⚠️ Stripe non encore initialisé. Renseignez votre clé publique ci-dessus et cliquez "Initialiser".
+      <div id="stripe-not-init" style="background:var(--or-clair);border:1px solid rgba(155,114,48,.2);border-radius:10px;padding:16px;text-align:center;font-size:13px;color:var(--encre);display:none">
+        ⚠️ Stripe non encore initialisé.
       </div>
 
       <div id="stripe-ready" style="display:none">
@@ -1056,11 +1037,7 @@ function allerEtape3() {
   majRecap();
   allerEtape(3);
   if(!state.stripeInitialized){
-    var savedKey = localStorage.getItem('avita_stripe_pk');
-    if(savedKey){
-      document.getElementById('stripe-pk').value=savedKey;
-      initStripe();
-    }
+    initStripe();
   }
 }
 
@@ -1085,13 +1062,13 @@ function majRecap() {
   document.getElementById('btn-prix-affiche').textContent = (state.prestaPrix||'—')+'€';
 }
 
+var STRIPE_PUBLISHABLE_KEY = 'pk_live_51TZucy6JYeTGQPo1F5ANTxC8yBB3ieKF2QpZjfBa2UL1XF8WPmdROcukLxWQzgdQFrh7qsjdY9B86nH98huMEPJJ00je8qE3VX';
+
 /* ══════════════════════════════
    STRIPE INIT
 ══════════════════════════════ */
 function initStripe() {
-  var pk = document.getElementById('stripe-pk').value.trim();
-  if(!pk){showMsg('Entrez votre clé publique Stripe (pk_live_… ou pk_test_…)');return;}
-  localStorage.setItem('avita_stripe_pk', pk);
+  var pk = STRIPE_PUBLISHABLE_KEY;
 
   try {
     state.stripe = Stripe(pk);
@@ -1121,9 +1098,9 @@ function initStripe() {
     document.getElementById('stripe-not-init').style.display='none';
     document.getElementById('stripe-ready').style.display='block';
     majRecap();
-    showMsg('✓ Stripe initialisé avec succès !');
   } catch(e) {
-    showMsg('Erreur Stripe : '+e.message+'. Vérifiez votre clé publique.');
+    showMsg('Erreur Stripe : '+e.message+'.');
+    document.getElementById('stripe-not-init').style.display='block';
   }
 }
 
@@ -1139,20 +1116,16 @@ async function lancerPaiement() {
   btn.classList.add('loading');
   btn.querySelector('span').textContent = 'Traitement en cours…';
 
-  // ── IMPORTANT : Cette fonction doit appeler votre backend pour créer un PaymentIntent ──
-  // En production, vous devez avoir un serveur (ou Netlify Function) qui :
-  // 1. Reçoit le montant et les infos client
-  // 2. Crée un PaymentIntent Stripe avec votre clé SECRÈTE (sk_live_…)
-  // 3. Retourne le client_secret au navigateur
-  //
-  // Exemple avec Netlify Function (fichier /.netlify/functions/create-payment-intent.js)
-  // Le code de cette fonction est fourni dans le fichier netlify_function.js joint.
-
   try {
-    // Appel à votre Netlify Function (ou autre backend)
-    var response = await fetch('/.netlify/functions/create-payment-intent', {
+    // Appel à l'Edge Function Supabase — crée le PaymentIntent côté serveur,
+    // la clé secrète Stripe ne quitte jamais Supabase.
+    var response = await fetch('https://bqhkdndwldwqacrrbbig.supabase.co/functions/v1/create-payment-intent', {
       method: 'POST',
-      headers: {'Content-Type':'application/json'},
+      headers: {
+        'Content-Type':'application/json',
+        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxaGtkbmR3bGR3cWFjcnJiYmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MzAyNTIsImV4cCI6MjA5NjMwNjI1Mn0.nH2UktMAVKYwng4L3SvW5F0fluV_sObGV0f3Mk1dnOY',
+        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxaGtkbmR3bGR3cWFjcnJiYmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MzAyNTIsImV4cCI6MjA5NjMwNjI1Mn0.nH2UktMAVKYwng4L3SvW5F0fluV_sObGV0f3Mk1dnOY'
+      },
       body: JSON.stringify({
         amount: (state.prestaPrix||0) * 100, // en centimes
         currency: 'eur',
@@ -1177,7 +1150,7 @@ async function lancerPaiement() {
     if(!response.ok) throw new Error('Erreur serveur : '+response.status);
     var data = await response.json();
 
-    if(!data.clientSecret) throw new Error('Pas de clientSecret reçu du serveur');
+    if(!data.clientSecret) throw new Error(data.error || 'Pas de clientSecret reçu du serveur');
 
     // Confirmer le paiement avec Stripe
     var result = await state.stripe.confirmCardPayment(data.clientSecret, {
@@ -1197,21 +1170,16 @@ async function lancerPaiement() {
       btn.disabled=false;btn.classList.remove('loading');
       btn.querySelector('span').textContent = state.prestaPrix+'€';
     } else if(result.paymentIntent.status === 'succeeded') {
+      // La réservation est enregistrée côté serveur par le webhook Stripe
+      // (stripe-webhook), jamais depuis ce code navigateur.
       afficherSucces();
     }
 
   } catch(e) {
-    // En mode test (sans backend), afficher un succès simulé
-    if(e.message.indexOf('Failed to fetch')>=0 || e.message.indexOf('NetworkError')>=0) {
-      // Simulation succès pour démonstration sans backend
-      console.log('Mode démo : paiement simulé (backend non configuré)');
-      afficherSucces();
-    } else {
-      document.getElementById('card-errors').textContent = e.message;
-      document.getElementById('card-errors').style.display='block';
-      btn.disabled=false;btn.classList.remove('loading');
-      if(btn.querySelector('span')) btn.querySelector('span').textContent=state.prestaPrix+'€';
-    }
+    document.getElementById('card-errors').textContent = 'Une erreur est survenue : '+e.message+'. Aucun montant n\'a été prélevé — contactez Sabrina si le problème persiste.';
+    document.getElementById('card-errors').style.display='block';
+    btn.disabled=false;btn.classList.remove('loading');
+    if(btn.querySelector('span')) btn.querySelector('span').textContent=state.prestaPrix+'€';
   }
 }
 
@@ -1237,18 +1205,7 @@ function showMsg(msg) {
   clearTimeout(t._t);t._t=setTimeout(function(){t.style.opacity='0';t.style.transform='translateX(-50%) translateY(20px)';},4000);
 }
 
-// Init
-var savedPk=localStorage.getItem('avita_stripe_pk');
-if(savedPk){
-  document.getElementById('stripe-pk').value=savedPk;
-  var savedPrix={bilan:localStorage.getItem('avita_prix_bilan'),suivi:localStorage.getItem('avita_prix_suivi')};
-  if(savedPrix.bilan) document.getElementById('prix-bilan').value=savedPrix.bilan;
-  if(savedPrix.suivi) document.getElementById('prix-suivi').value=savedPrix.suivi;
-}
-['bilan','suivi'].forEach(function(id){
-  var el=document.getElementById('prix-'+id);
-  if(el) el.addEventListener('change',function(){localStorage.setItem('avita_prix_'+id,el.value);if(state.prestaId===id)state.prestaPrix=parseInt(el.value)||PRESTATIONS[id].prix;});
-});
+// Init — plus de configuration à restaurer (clé Stripe et prix fixes en dur)
 
 /* ── NAV ── */
 function toggleMenu() {
