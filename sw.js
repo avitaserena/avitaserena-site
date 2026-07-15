@@ -53,6 +53,10 @@ self.addEventListener('fetch', function (event) {
   // Uniquement les GET
   if (req.method !== 'GET') return;
 
+  // Jamais d'interception ni de cache pour les outils praticien —
+  // ils doivent toujours être servis frais depuis le réseau
+  if (url.pathname.indexOf('/outils/') > -1) return;
+
   // Jamais d'interception : Supabase, analytics, API externes
   if (url.hostname.indexOf('supabase.co') > -1 ||
       url.hostname.indexOf('googletagmanager.com') > -1 ||
