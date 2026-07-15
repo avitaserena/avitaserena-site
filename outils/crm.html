@@ -1473,10 +1473,7 @@ function getActionsJour(){
   rdvs.filter(r => r.status !== 'annule').forEach(rdv => {
     const d = diffD(rdv.date);
     const done = rdv.mails_done || {};
-    const client = db.clients.find(c =>
-      (c.email && rdv.email && c.email.toLowerCase() === rdv.email.toLowerCase()) ||
-      (rdv.name||'').toLowerCase().includes((c.prenom||'').toLowerCase())
-    );
+    const client = matchClientForRdv(rdv);
 
     // Mail 1 — Confirmation : RDV futur (≥ J+0) non confirmé
     if(d >= 0 && !done.m1){
@@ -1581,8 +1578,7 @@ function renderActionsJour(){
   const tdy = today();
   const rdvJour = rdvs.filter(r => r.date === tdy).sort((a,b) => (a.time||'').localeCompare(b.time||''));
   const rdvHtml = rdvJour.map(r => {
-    const cl = db.clients.find(c => r.email && c.email && c.email.toLowerCase() === r.email.toLowerCase())
-      || db.clients.find(c => c.prenom && (r.name||'').toLowerCase().includes(c.prenom.toLowerCase()));
+    const cl = matchClientForRdv(r);
     return "<div class='ajd-row rdv'>" +
       "<div class='ajd-time'>" + escH(r.time || '—') + "</div>" +
       "<div><div class='ajd-label'>Visio · " + escH(r.name || '—') + "</div>" +
@@ -1876,7 +1872,26 @@ function getStatus(c){
   if(c.programme)return{label:'En programme',cl:'green'};
   return{label:'Consultée',cl:'gray'};
 }
-function cRdvs(c){return rdvs.filter(r=>{const nm=(r.name||'').toLowerCase().includes((c.prenom||'').toLowerCase());const em=r.email&&c.email&&r.email.toLowerCase()===c.email.toLowerCase();return nm||em;});}
+// ── Rattachement RDV ↔ fiche cliente ────────────────────────────────────────
+// Règle : email exact (le plus fiable) OU prénom ET nom exacts tous les deux.
+// On évite volontairement le matching "nom contient prénom", trop permissif
+// (faux positifs sur homonymes, prénoms courts inclus dans un autre nom, etc.)
+function splitRdvName(name){
+  name = (name||'').trim();
+  const i = name.indexOf(' ');
+  if(i === -1) return {prenom:name, nom:''};
+  return {prenom:name.slice(0,i), nom:name.slice(i+1)};
+}
+function rdvMatchesClient(rdv, c){
+  if(!rdv || !c) return false;
+  if(rdv.email && c.email && rdv.email.toLowerCase() === c.email.toLowerCase()) return true;
+  const parts = splitRdvName(rdv.name);
+  return !!(parts.prenom && parts.nom && c.prenom && c.nom &&
+    parts.prenom.toLowerCase() === c.prenom.toLowerCase() &&
+    parts.nom.toLowerCase() === c.nom.toLowerCase());
+}
+function matchClientForRdv(rdv){ return db.clients.find(c => rdvMatchesClient(rdv, c)) || null; }
+function cRdvs(c){ return rdvs.filter(r => rdvMatchesClient(r, c)); }
 
 function renderDashboard(){
   const now=new Date();
