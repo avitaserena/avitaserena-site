@@ -258,282 +258,6 @@ body{-webkit-font-smoothing:antialiased}
 .dashboard-greeting em{font-style:italic;color:var(--ocre)}
 .dashboard-date{font-size:13.5px;color:var(--gris);margin-bottom:28px}
 
-/* ─── RAPPEL COMPLÉMENTS DU JOUR ─── */
-var MOMENT_LABELS = { matin:'☀️ Le matin', midi:'🌤️ Le midi', soir:'🌙 Le soir', coucher:'🛏️ Au coucher' };
-var MOMENT_ORDER = ['matin','midi','soir','coucher'];
-
-async function loadRappelComplements(){
-  var session = JSON.parse(localStorage.getItem('avs_client') || sessionStorage.getItem('avs_client') || '{}');
-  var box = document.getElementById('rappelComplementsBox');
-  if(!session.key || !box) return;
-  try {
-    var token = await Auth.getValidAccessToken();
-    var res = await fetch(SUPA_URL + '/rest/v1/protocoles_client?client_id=eq.' + encodeURIComponent(session.key) + '&select=data', {
-      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (token || SUPA_KEY) }
-    });
-    if(!res.ok) throw new Error('HTTP '+res.status);
-    var rows = await res.json();
-    var rappel = rows?.[0]?.data?.protocolData?.complements_rappel;
-    if(!Array.isArray(rappel) || !rappel.length){ box.style.display='none'; return; }
-
-    var todayKey = 'avs_rappel_' + new Date().toISOString().slice(0,10);
-    var cochés = JSON.parse(localStorage.getItem(todayKey) || '{}');
-
-    var parMoment = {};
-    rappel.forEach(function(r,i){
-      var m = MOMENT_ORDER.indexOf(r.moment)>-1 ? r.moment : 'matin';
-      if(!parMoment[m]) parMoment[m]=[];
-      parMoment[m].push({ idx:i, nom:r.nom });
-    });
-
-    var html = '<div style="background:var(--blanc);border:1px solid var(--taupe);border-radius:16px;padding:20px 22px;margin-bottom:20px">' +
-      '<div style="font-size:14px;font-weight:700;color:var(--ardoise);margin-bottom:12px">💊 Vos compléments aujourd\'hui</div>' +
-      MOMENT_ORDER.filter(function(m){ return parMoment[m]; }).map(function(m){
-        return '<div style="margin-bottom:10px">' +
-          '<div style="font-size:11px;font-weight:600;color:var(--ocre);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">'+MOMENT_LABELS[m]+'</div>' +
-          parMoment[m].map(function(item){
-            var checked = cochés[item.idx] ? 'checked' : '';
-            return '<label style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13.5px;color:var(--ardoise);cursor:pointer">' +
-              '<input type="checkbox" '+checked+' onchange="toggleRappelComplement('+item.idx+',this.checked,\''+todayKey+'\')" style="width:16px;height:16px;accent-color:var(--ocre)">' +
-              '<span style="'+(checked?'text-decoration:line-through;color:var(--gris)':'')+'">'+escHtml(item.nom)+'</span>' +
-            '</label>';
-          }).join('') +
-        '</div>';
-      }).join('') +
-      '<div style="font-size:11px;color:var(--gris);margin-top:6px">Coché ici uniquement pour vous aider à ne rien oublier — non transmis à Sabrina.</div>' +
-      '</div>';
-
-    box.innerHTML = html;
-    box.style.display='block';
-  } catch(e){
-    console.warn('Rappel compléments non chargé :', e);
-    box.style.display='none';
-  }
-}
-
-function toggleRappelComplement(idx, checked, todayKey){
-  var cochés = JSON.parse(localStorage.getItem(todayKey) || '{}');
-  cochés[idx] = checked;
-  localStorage.setItem(todayKey, JSON.stringify(cochés));
-  loadRappelComplements();
-}
-
-/* ─── VOS JALONS (dashboard) ─── */
-async function loadJalons(){
-  var session = JSON.parse(localStorage.getItem('avs_client') || sessionStorage.getItem('avs_client') || '{}');
-  var box = document.getElementById('jalonsBox');
-  if(!session.key || !box) return;
-  try {
-    var token = await Auth.getValidAccessToken();
-    var headers = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (token || SUPA_KEY) };
-
-    var [clientRes, journalRes, ccRes] = await Promise.all([
-      fetch(SUPA_URL + '/rest/v1/clientes?id=eq.' + encodeURIComponent(session.key) + '&select=date_protocole,programme,duree_ttt', { headers: headers }),
-      fetch(SUPA_URL + '/rest/v1/journal_entries?client_key=eq.' + encodeURIComponent(session.key) + '&select=id', { headers: headers }),
-      fetch(SUPA_URL + '/rest/v1/coherence_sessions?client_key=eq.' + encodeURIComponent(session.key) + '&select=id', { headers: headers })
-    ]);
-
-    var client = clientRes.ok ? (await clientRes.json())[0] : null;
-    var journalCount = journalRes.ok ? (await journalRes.json()).length : 0;
-    var ccCount = ccRes.ok ? (await ccRes.json()).length : 0;
-
-    var items = [];
-
-    if(client && client.date_protocole && client.programme){
-      var dureeMap = { alba:90, aria:180, ora:270 };
-      var duree = dureeMap[client.programme] || null;
-      var jour = Math.max(1, Math.floor((Date.now() - new Date(client.date_protocole)) / 86400000) + 1);
-      if(duree){
-        var pct = Math.min(100, Math.round(jour/duree*100));
-        items.push({ icon:'🌿', label:'Jour ' + Math.min(jour,duree) + ' / ' + duree, sub:'Parcours ' + client.programme.charAt(0).toUpperCase()+client.programme.slice(1) + ' · ' + pct + '%' });
-      }
-    }
-    items.push({ icon:'📝', label: journalCount + ' entrée' + (journalCount>1?'s':''), sub:'dans votre journal de suivi' });
-    items.push({ icon:'🫁', label: ccCount + ' séance' + (ccCount>1?'s':''), sub:'de cohérence cardiaque complétées' });
-
-    if(!items.length){ box.style.display='none'; return; }
-
-    box.innerHTML = '<div style="background:var(--blanc);border:1px solid var(--taupe);border-radius:16px;padding:20px 22px;margin-bottom:20px;display:flex;gap:24px;flex-wrap:wrap">' +
-      items.map(function(it){
-        return '<div style="display:flex;align-items:center;gap:10px;flex:1;min-width:160px">' +
-          '<div style="font-size:22px">'+it.icon+'</div>' +
-          '<div><div style="font-size:14px;font-weight:700;color:var(--ardoise)">'+it.label+'</div>' +
-          '<div style="font-size:11.5px;color:var(--gris)">'+it.sub+'</div></div>' +
-        '</div>';
-      }).join('') +
-      '</div>';
-    box.style.display='block';
-  } catch(e){
-    console.warn('Jalons non chargés :', e);
-    box.style.display='none';
-  }
-}
-
-/* ─── SUIVI DE CYCLE ─── */
-async function saveCycleEntry(){
-  var session = JSON.parse(localStorage.getItem('avs_client') || sessionStorage.getItem('avs_client') || '{}');
-  if(!session.key) return;
-  var data = {
-    client_key: session.key,
-    date: new Date().toISOString().slice(0,10),
-    phase: document.getElementById('cyclePhase').value,
-    flux: document.getElementById('cycleFlux').value,
-    humeur: document.getElementById('cycleHumeur').value,
-    symptomes: document.getElementById('cycleSymptomes').value,
-    note: document.getElementById('cycleNote').value
-  };
-  try {
-    var token = await Auth.getValidAccessToken();
-    await fetch(SUPA_URL + '/rest/v1/cycle_entries', {
-      method: 'POST',
-      headers: {
-        'apikey': SUPA_KEY,
-        'Authorization': 'Bearer ' + (token || SUPA_KEY),
-        'Content-Type': 'application/json',
-        'Prefer': 'return=minimal'
-      },
-      body: JSON.stringify(data)
-    });
-    document.getElementById('cycleSuccess').style.display='block';
-    setTimeout(function(){ document.getElementById('cycleSuccess').style.display='none'; },4000);
-    document.getElementById('cycleSymptomes').value='';
-    document.getElementById('cycleNote').value='';
-    loadCycleHistory();
-  } catch(e){ console.warn('Entrée de cycle non enregistrée :', e); }
-}
-
-async function loadCycleHistory(){
-  var session = JSON.parse(localStorage.getItem('avs_client') || sessionStorage.getItem('avs_client') || '{}');
-  var box = document.getElementById('cycleHistory');
-  if(!session.key || !box) return;
-  try {
-    var token = await Auth.getValidAccessToken();
-    var res = await fetch(SUPA_URL + '/rest/v1/cycle_entries?client_key=eq.' + encodeURIComponent(session.key) + '&order=date.desc&limit=5', {
-      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (token || SUPA_KEY) }
-    });
-    if(!res.ok) return;
-    var rows = await res.json();
-    var phaseLabels = { regles:'Règles', folliculaire:'Phase folliculaire', ovulation:'Ovulation', luteale:'Phase lutéale', inconnue:'—' };
-    box.innerHTML = rows.map(function(e){
-      var d = new Date(e.date).toLocaleDateString('fr-FR',{day:'numeric',month:'short'});
-      var pills = [];
-      if(e.phase) pills.push(phaseLabels[e.phase] || e.phase);
-      if(e.humeur) pills.push(e.humeur);
-      if(e.symptomes) pills.push(e.symptomes);
-      return '<div style="background:var(--blanc);border:1px solid var(--taupe);border-radius:12px;padding:14px 16px">' +
-        '<div style="font-size:11px;font-weight:600;color:var(--ocre);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">'+d+'</div>' +
-        '<div style="font-size:13px;color:var(--ardoise)">'+escHtml(pills.join(' · '))+'</div>' +
-      '</div>';
-    }).join('');
-  } catch(e){ console.warn('Historique de cycle non chargé :', e); }
-}
-
-/* ─── RECETTES ─── */
-var recettesLoaded = false;
-var recettesData = [];
-async function loadRecettes(){
-  try {
-    var token = await Auth.getValidAccessToken();
-    var res = await fetch(SUPA_URL + '/rest/v1/recettes?publie=eq.true&order=created_at.desc', {
-      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (token || SUPA_KEY) }
-    });
-    if(!res.ok) throw new Error('HTTP '+res.status);
-    recettesData = await res.json();
-    recettesLoaded = true;
-    renderRecettesGrid(recettesData);
-  } catch(e){
-    console.warn('Recettes non chargées :', e);
-    document.getElementById('recettesEmpty').style.display='block';
-    document.getElementById('recettesEmpty').textContent = 'Impossible de charger les recettes pour le moment.';
-  }
-}
-
-function filtrerRecettes(tag, btn){
-  document.querySelectorAll('#recettesFilters .j-tab').forEach(function(b){ b.classList.remove('active'); });
-  if(btn) btn.classList.add('active');
-  var filtered = tag ? recettesData.filter(function(r){ return (r.tags||[]).indexOf(tag) > -1; }) : recettesData;
-  renderRecettesGrid(filtered);
-}
-
-function renderRecettesGrid(list){
-  var grid = document.getElementById('recettesGrid');
-  var empty = document.getElementById('recettesEmpty');
-  if(!list.length){ grid.innerHTML=''; empty.style.display='block'; return; }
-  empty.style.display='none';
-  grid.innerHTML = list.map(function(r){
-    var ingredients = (r.ingredients||[]).map(function(i){ return '<li>'+escHtml(i)+'</li>'; }).join('');
-    var etapes = (r.etapes||[]).map(function(e,i){ return '<li>'+escHtml(e)+'</li>'; }).join('');
-    var detailId = 'recette-detail-' + r.id;
-    return '<div class="fiche-card" style="cursor:pointer" onclick="var d=document.getElementById(\''+detailId+'\');d.style.display=d.style.display===\'none\'?\'block\':\'none\'">' +
-      '<div class="fiche-icon"><svg viewBox="0 0 24 24"><path d="M3 2v7c0 1.1.9 2 2 2h1v11M11 2v20M15 2c-1.5 3-1.5 6 0 9s1.5 6 0 9"/></svg></div>' +
-      '<div class="fiche-title">'+escHtml(r.titre)+'</div>' +
-      '<div class="fiche-desc">'+escHtml(r.description||'')+'</div>' +
-      '<div class="fiche-meta"><span class="fiche-type">'+escHtml(r.temps_prepa||'')+(r.portions?' · '+escHtml(r.portions):'')+'</span><span class="fiche-action">Voir →</span></div>' +
-      '<div id="'+detailId+'" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--taupe);font-size:12.5px;color:var(--ardoise);line-height:1.6">' +
-        (ingredients ? '<strong>Ingrédients</strong><ul style="margin:4px 0 10px 18px">'+ingredients+'</ul>' : '') +
-        (etapes ? '<strong>Étapes</strong><ol style="margin:4px 0 0 18px">'+etapes+'</ol>' : '') +
-      '</div>' +
-    '</div>';
-  }).join('');
-}
-
-/* ─── BILANS BIOLOGIQUES ─── */
-async function loadBilans(){
-  var session = JSON.parse(localStorage.getItem('avs_client') || sessionStorage.getItem('avs_client') || '{}');
-  var list = document.getElementById('bilansList');
-  var empty = document.getElementById('bilansEmpty');
-  if(!session.key || !list) return;
-  try {
-    var token = await Auth.getValidAccessToken();
-    var res = await fetch(SUPA_URL + '/rest/v1/bilans_biologiques?client_key=eq.' + encodeURIComponent(session.key) + '&order=date_bilan.desc', {
-      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (token || SUPA_KEY) }
-    });
-    if(!res.ok) throw new Error('HTTP '+res.status);
-    var rows = await res.json();
-    if(!rows.length){ list.innerHTML=''; empty.style.display='block'; return; }
-    empty.style.display='none';
-    list.innerHTML = rows.map(function(b){
-      var url = SUPA_URL + '/storage/v1/object/public/avs-bilans/' + b.storage_path;
-      var d = b.date_bilan ? new Date(b.date_bilan).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}) : '';
-      return '<a href="'+url+'" target="_blank" class="dl-item">' +
-        '<div class="dl-icon"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>' +
-        '<div class="dl-info"><div class="dl-title">'+escHtml(b.nom_fichier||b.type||'Bilan')+'</div><div class="dl-sub">'+d+'</div></div>' +
-        '<span class="dl-btn">Voir →</span>' +
-      '</a>';
-    }).join('');
-  } catch(e){
-    console.warn('Bilans non chargés :', e);
-    empty.style.display='block';
-  }
-}
-
-/* ─── HISTORIQUE DES SÉANCES ─── */
-async function loadSeances(){
-  var session = JSON.parse(localStorage.getItem('avs_client') || sessionStorage.getItem('avs_client') || '{}');
-  var list = document.getElementById('seancesList');
-  var empty = document.getElementById('seancesEmpty');
-  if(!session.key || !list) return;
-  try {
-    var token = await Auth.getValidAccessToken();
-    var res = await fetch(SUPA_URL + '/rest/v1/consultation_summaries?client_key=eq.' + encodeURIComponent(session.key) + '&resume_client_md=not.is.null&order=date_consultation.desc', {
-      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (token || SUPA_KEY) }
-    });
-    if(!res.ok) throw new Error('HTTP '+res.status);
-    var rows = await res.json();
-    if(!rows.length){ list.innerHTML=''; empty.style.display='block'; return; }
-    empty.style.display='none';
-    list.innerHTML = rows.map(function(s){
-      var d = s.date_consultation ? new Date(s.date_consultation).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}) : '';
-      return '<div style="background:var(--blanc);border:1px solid var(--taupe);border-radius:12px;padding:16px 18px">' +
-        '<div style="font-size:11px;font-weight:600;color:var(--ocre);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">'+d+' · '+escHtml(s.plan_label||'')+'</div>' +
-        '<div style="font-size:13.5px;color:var(--ardoise);line-height:1.7">'+escHtml(s.resume_client_md||'')+'</div>' +
-      '</div>';
-    }).join('');
-  } catch(e){
-    console.warn('Séances non chargées :', e);
-    empty.style.display='block';
-  }
-}
 
 /* ─── HISTORIQUE JOURNAL ─── */
 .journal-tabs{display:flex;gap:8px;margin-bottom:28px}
@@ -2240,6 +1964,283 @@ function initProgressChart(){
 }
 
 // ═══════════════════════════════════════
+/* ─── RAPPEL COMPLÉMENTS DU JOUR ─── */
+var MOMENT_LABELS = { matin:'☀️ Le matin', midi:'🌤️ Le midi', soir:'🌙 Le soir', coucher:'🛏️ Au coucher' };
+var MOMENT_ORDER = ['matin','midi','soir','coucher'];
+
+async function loadRappelComplements(){
+  var session = JSON.parse(localStorage.getItem('avs_client') || sessionStorage.getItem('avs_client') || '{}');
+  var box = document.getElementById('rappelComplementsBox');
+  if(!session.key || !box) return;
+  try {
+    var token = await Auth.getValidAccessToken();
+    var res = await fetch(SUPA_URL + '/rest/v1/protocoles_client?client_id=eq.' + encodeURIComponent(session.key) + '&select=data', {
+      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (token || SUPA_KEY) }
+    });
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    var rows = await res.json();
+    var rappel = rows?.[0]?.data?.protocolData?.complements_rappel;
+    if(!Array.isArray(rappel) || !rappel.length){ box.style.display='none'; return; }
+
+    var todayKey = 'avs_rappel_' + new Date().toISOString().slice(0,10);
+    var cochés = JSON.parse(localStorage.getItem(todayKey) || '{}');
+
+    var parMoment = {};
+    rappel.forEach(function(r,i){
+      var m = MOMENT_ORDER.indexOf(r.moment)>-1 ? r.moment : 'matin';
+      if(!parMoment[m]) parMoment[m]=[];
+      parMoment[m].push({ idx:i, nom:r.nom });
+    });
+
+    var html = '<div style="background:var(--blanc);border:1px solid var(--taupe);border-radius:16px;padding:20px 22px;margin-bottom:20px">' +
+      '<div style="font-size:14px;font-weight:700;color:var(--ardoise);margin-bottom:12px">💊 Vos compléments aujourd\'hui</div>' +
+      MOMENT_ORDER.filter(function(m){ return parMoment[m]; }).map(function(m){
+        return '<div style="margin-bottom:10px">' +
+          '<div style="font-size:11px;font-weight:600;color:var(--ocre);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">'+MOMENT_LABELS[m]+'</div>' +
+          parMoment[m].map(function(item){
+            var checked = cochés[item.idx] ? 'checked' : '';
+            return '<label style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13.5px;color:var(--ardoise);cursor:pointer">' +
+              '<input type="checkbox" '+checked+' onchange="toggleRappelComplement('+item.idx+',this.checked,\''+todayKey+'\')" style="width:16px;height:16px;accent-color:var(--ocre)">' +
+              '<span style="'+(checked?'text-decoration:line-through;color:var(--gris)':'')+'">'+escHtml(item.nom)+'</span>' +
+            '</label>';
+          }).join('') +
+        '</div>';
+      }).join('') +
+      '<div style="font-size:11px;color:var(--gris);margin-top:6px">Coché ici uniquement pour vous aider à ne rien oublier — non transmis à Sabrina.</div>' +
+      '</div>';
+
+    box.innerHTML = html;
+    box.style.display='block';
+  } catch(e){
+    console.warn('Rappel compléments non chargé :', e);
+    box.style.display='none';
+  }
+}
+
+function toggleRappelComplement(idx, checked, todayKey){
+  var cochés = JSON.parse(localStorage.getItem(todayKey) || '{}');
+  cochés[idx] = checked;
+  localStorage.setItem(todayKey, JSON.stringify(cochés));
+  loadRappelComplements();
+}
+
+/* ─── VOS JALONS (dashboard) ─── */
+async function loadJalons(){
+  var session = JSON.parse(localStorage.getItem('avs_client') || sessionStorage.getItem('avs_client') || '{}');
+  var box = document.getElementById('jalonsBox');
+  if(!session.key || !box) return;
+  try {
+    var token = await Auth.getValidAccessToken();
+    var headers = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (token || SUPA_KEY) };
+
+    var [clientRes, journalRes, ccRes] = await Promise.all([
+      fetch(SUPA_URL + '/rest/v1/clientes?id=eq.' + encodeURIComponent(session.key) + '&select=date_protocole,programme,duree_ttt', { headers: headers }),
+      fetch(SUPA_URL + '/rest/v1/journal_entries?client_key=eq.' + encodeURIComponent(session.key) + '&select=id', { headers: headers }),
+      fetch(SUPA_URL + '/rest/v1/coherence_sessions?client_key=eq.' + encodeURIComponent(session.key) + '&select=id', { headers: headers })
+    ]);
+
+    var client = clientRes.ok ? (await clientRes.json())[0] : null;
+    var journalCount = journalRes.ok ? (await journalRes.json()).length : 0;
+    var ccCount = ccRes.ok ? (await ccRes.json()).length : 0;
+
+    var items = [];
+
+    if(client && client.date_protocole && client.programme){
+      var dureeMap = { alba:90, aria:180, ora:270 };
+      var duree = dureeMap[client.programme] || null;
+      var jour = Math.max(1, Math.floor((Date.now() - new Date(client.date_protocole)) / 86400000) + 1);
+      if(duree){
+        var pct = Math.min(100, Math.round(jour/duree*100));
+        items.push({ icon:'🌿', label:'Jour ' + Math.min(jour,duree) + ' / ' + duree, sub:'Parcours ' + client.programme.charAt(0).toUpperCase()+client.programme.slice(1) + ' · ' + pct + '%' });
+      }
+    }
+    items.push({ icon:'📝', label: journalCount + ' entrée' + (journalCount>1?'s':''), sub:'dans votre journal de suivi' });
+    items.push({ icon:'🫁', label: ccCount + ' séance' + (ccCount>1?'s':''), sub:'de cohérence cardiaque complétées' });
+
+    if(!items.length){ box.style.display='none'; return; }
+
+    box.innerHTML = '<div style="background:var(--blanc);border:1px solid var(--taupe);border-radius:16px;padding:20px 22px;margin-bottom:20px;display:flex;gap:24px;flex-wrap:wrap">' +
+      items.map(function(it){
+        return '<div style="display:flex;align-items:center;gap:10px;flex:1;min-width:160px">' +
+          '<div style="font-size:22px">'+it.icon+'</div>' +
+          '<div><div style="font-size:14px;font-weight:700;color:var(--ardoise)">'+it.label+'</div>' +
+          '<div style="font-size:11.5px;color:var(--gris)">'+it.sub+'</div></div>' +
+        '</div>';
+      }).join('') +
+      '</div>';
+    box.style.display='block';
+  } catch(e){
+    console.warn('Jalons non chargés :', e);
+    box.style.display='none';
+  }
+}
+
+/* ─── SUIVI DE CYCLE ─── */
+async function saveCycleEntry(){
+  var session = JSON.parse(localStorage.getItem('avs_client') || sessionStorage.getItem('avs_client') || '{}');
+  if(!session.key) return;
+  var data = {
+    client_key: session.key,
+    date: new Date().toISOString().slice(0,10),
+    phase: document.getElementById('cyclePhase').value,
+    flux: document.getElementById('cycleFlux').value,
+    humeur: document.getElementById('cycleHumeur').value,
+    symptomes: document.getElementById('cycleSymptomes').value,
+    note: document.getElementById('cycleNote').value
+  };
+  try {
+    var token = await Auth.getValidAccessToken();
+    await fetch(SUPA_URL + '/rest/v1/cycle_entries', {
+      method: 'POST',
+      headers: {
+        'apikey': SUPA_KEY,
+        'Authorization': 'Bearer ' + (token || SUPA_KEY),
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify(data)
+    });
+    document.getElementById('cycleSuccess').style.display='block';
+    setTimeout(function(){ document.getElementById('cycleSuccess').style.display='none'; },4000);
+    document.getElementById('cycleSymptomes').value='';
+    document.getElementById('cycleNote').value='';
+    loadCycleHistory();
+  } catch(e){ console.warn('Entrée de cycle non enregistrée :', e); }
+}
+
+async function loadCycleHistory(){
+  var session = JSON.parse(localStorage.getItem('avs_client') || sessionStorage.getItem('avs_client') || '{}');
+  var box = document.getElementById('cycleHistory');
+  if(!session.key || !box) return;
+  try {
+    var token = await Auth.getValidAccessToken();
+    var res = await fetch(SUPA_URL + '/rest/v1/cycle_entries?client_key=eq.' + encodeURIComponent(session.key) + '&order=date.desc&limit=5', {
+      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (token || SUPA_KEY) }
+    });
+    if(!res.ok) return;
+    var rows = await res.json();
+    var phaseLabels = { regles:'Règles', folliculaire:'Phase folliculaire', ovulation:'Ovulation', luteale:'Phase lutéale', inconnue:'—' };
+    box.innerHTML = rows.map(function(e){
+      var d = new Date(e.date).toLocaleDateString('fr-FR',{day:'numeric',month:'short'});
+      var pills = [];
+      if(e.phase) pills.push(phaseLabels[e.phase] || e.phase);
+      if(e.humeur) pills.push(e.humeur);
+      if(e.symptomes) pills.push(e.symptomes);
+      return '<div style="background:var(--blanc);border:1px solid var(--taupe);border-radius:12px;padding:14px 16px">' +
+        '<div style="font-size:11px;font-weight:600;color:var(--ocre);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">'+d+'</div>' +
+        '<div style="font-size:13px;color:var(--ardoise)">'+escHtml(pills.join(' · '))+'</div>' +
+      '</div>';
+    }).join('');
+  } catch(e){ console.warn('Historique de cycle non chargé :', e); }
+}
+
+/* ─── RECETTES ─── */
+var recettesLoaded = false;
+var recettesData = [];
+async function loadRecettes(){
+  try {
+    var token = await Auth.getValidAccessToken();
+    var res = await fetch(SUPA_URL + '/rest/v1/recettes?publie=eq.true&order=created_at.desc', {
+      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (token || SUPA_KEY) }
+    });
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    recettesData = await res.json();
+    recettesLoaded = true;
+    renderRecettesGrid(recettesData);
+  } catch(e){
+    console.warn('Recettes non chargées :', e);
+    document.getElementById('recettesEmpty').style.display='block';
+    document.getElementById('recettesEmpty').textContent = 'Impossible de charger les recettes pour le moment.';
+  }
+}
+
+function filtrerRecettes(tag, btn){
+  document.querySelectorAll('#recettesFilters .j-tab').forEach(function(b){ b.classList.remove('active'); });
+  if(btn) btn.classList.add('active');
+  var filtered = tag ? recettesData.filter(function(r){ return (r.tags||[]).indexOf(tag) > -1; }) : recettesData;
+  renderRecettesGrid(filtered);
+}
+
+function renderRecettesGrid(list){
+  var grid = document.getElementById('recettesGrid');
+  var empty = document.getElementById('recettesEmpty');
+  if(!list.length){ grid.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
+  grid.innerHTML = list.map(function(r){
+    var ingredients = (r.ingredients||[]).map(function(i){ return '<li>'+escHtml(i)+'</li>'; }).join('');
+    var etapes = (r.etapes||[]).map(function(e,i){ return '<li>'+escHtml(e)+'</li>'; }).join('');
+    var detailId = 'recette-detail-' + r.id;
+    return '<div class="fiche-card" style="cursor:pointer" onclick="var d=document.getElementById(\''+detailId+'\');d.style.display=d.style.display===\'none\'?\'block\':\'none\'">' +
+      '<div class="fiche-icon"><svg viewBox="0 0 24 24"><path d="M3 2v7c0 1.1.9 2 2 2h1v11M11 2v20M15 2c-1.5 3-1.5 6 0 9s1.5 6 0 9"/></svg></div>' +
+      '<div class="fiche-title">'+escHtml(r.titre)+'</div>' +
+      '<div class="fiche-desc">'+escHtml(r.description||'')+'</div>' +
+      '<div class="fiche-meta"><span class="fiche-type">'+escHtml(r.temps_prepa||'')+(r.portions?' · '+escHtml(r.portions):'')+'</span><span class="fiche-action">Voir →</span></div>' +
+      '<div id="'+detailId+'" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--taupe);font-size:12.5px;color:var(--ardoise);line-height:1.6">' +
+        (ingredients ? '<strong>Ingrédients</strong><ul style="margin:4px 0 10px 18px">'+ingredients+'</ul>' : '') +
+        (etapes ? '<strong>Étapes</strong><ol style="margin:4px 0 0 18px">'+etapes+'</ol>' : '') +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+/* ─── BILANS BIOLOGIQUES ─── */
+async function loadBilans(){
+  var session = JSON.parse(localStorage.getItem('avs_client') || sessionStorage.getItem('avs_client') || '{}');
+  var list = document.getElementById('bilansList');
+  var empty = document.getElementById('bilansEmpty');
+  if(!session.key || !list) return;
+  try {
+    var token = await Auth.getValidAccessToken();
+    var res = await fetch(SUPA_URL + '/rest/v1/bilans_biologiques?client_key=eq.' + encodeURIComponent(session.key) + '&order=date_bilan.desc', {
+      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (token || SUPA_KEY) }
+    });
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    var rows = await res.json();
+    if(!rows.length){ list.innerHTML=''; empty.style.display='block'; return; }
+    empty.style.display='none';
+    list.innerHTML = rows.map(function(b){
+      var url = SUPA_URL + '/storage/v1/object/public/avs-bilans/' + b.storage_path;
+      var d = b.date_bilan ? new Date(b.date_bilan).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}) : '';
+      return '<a href="'+url+'" target="_blank" class="dl-item">' +
+        '<div class="dl-icon"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>' +
+        '<div class="dl-info"><div class="dl-title">'+escHtml(b.nom_fichier||b.type||'Bilan')+'</div><div class="dl-sub">'+d+'</div></div>' +
+        '<span class="dl-btn">Voir →</span>' +
+      '</a>';
+    }).join('');
+  } catch(e){
+    console.warn('Bilans non chargés :', e);
+    empty.style.display='block';
+  }
+}
+
+/* ─── HISTORIQUE DES SÉANCES ─── */
+async function loadSeances(){
+  var session = JSON.parse(localStorage.getItem('avs_client') || sessionStorage.getItem('avs_client') || '{}');
+  var list = document.getElementById('seancesList');
+  var empty = document.getElementById('seancesEmpty');
+  if(!session.key || !list) return;
+  try {
+    var token = await Auth.getValidAccessToken();
+    var res = await fetch(SUPA_URL + '/rest/v1/consultation_summaries?client_key=eq.' + encodeURIComponent(session.key) + '&resume_client_md=not.is.null&order=date_consultation.desc', {
+      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (token || SUPA_KEY) }
+    });
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    var rows = await res.json();
+    if(!rows.length){ list.innerHTML=''; empty.style.display='block'; return; }
+    empty.style.display='none';
+    list.innerHTML = rows.map(function(s){
+      var d = s.date_consultation ? new Date(s.date_consultation).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}) : '';
+      return '<div style="background:var(--blanc);border:1px solid var(--taupe);border-radius:12px;padding:16px 18px">' +
+        '<div style="font-size:11px;font-weight:600;color:var(--ocre);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">'+d+' · '+escHtml(s.plan_label||'')+'</div>' +
+        '<div style="font-size:13.5px;color:var(--ardoise);line-height:1.7">'+escHtml(s.resume_client_md||'')+'</div>' +
+      '</div>';
+    }).join('');
+  } catch(e){
+    console.warn('Séances non chargées :', e);
+    empty.style.display='block';
+  }
+}
+
 // HISTORIQUE JOURNAL
 // ═══════════════════════════════════════
 function getJournalEntries(){
