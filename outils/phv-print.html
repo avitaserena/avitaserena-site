@@ -1008,6 +1008,7 @@ body {
 ═══════════════════════════════════════════════ */
 let data = null;
 let blocks = [];
+let clientProgramme = '';
 
 const PILIER_CSS = {
   alimentation: 'pc-alim',
@@ -1219,6 +1220,12 @@ function buildDoc() {
     i++;
   }
 
+  // ── PAGE PROGRAMME (uniquement si la cliente n'a pas déjà de programme actif) ──
+  if (!clientProgramme) {
+    pages.push(buildProgrammePage(prenom, pageNum));
+    pageNum++;
+  }
+
   // ── DERNIÈRE PAGE : FICHE MÉMO ──
   pages.push(buildMemoPage(prenom, pageNum));
 
@@ -1324,6 +1331,72 @@ function buildContentPage(b, contentHtml, prenom, pageNum) {
 }
 
 
+
+function buildProgrammePage(prenom, pageNum) {
+  return `
+<div class="page content-page">
+  <div class="page-header" style="position:relative">
+    <div class="ph-logo"><img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iYSIgZmlsbD0id2hpdGUiIGRhdGEtbmFtZT0iQ2FscXVlIDEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgdmlld0JveD0iMCAwIDQwMi41MiAxMTYuNTYiPgogIDxwYXRoIGQ9Ik0xNjIuOTUsNzIuNTdsMy4yNS00Ljg0LDkuNTguMDNjLjc4LDMuNjksMy42Nyw1LjI3LDcuMSw0LjIyLjk3LS4zLDIuNDItMS44OCwyLjUzLTIuODRzLTEuMjgtMi45Ny0yLjI4LTMuMjNsLTguMzQtMi4xMWMtNC45MS0xLjI0LTguMDYtNC43NS04LjQ3LTkuMjQtLjQ0LTQuODEsMS42LTkuMjIsNi41LTExLjI2LDUtMi4wOCwxMS4wNS0yLjExLDE1Ljg4LjQ1LDMuNjgsMS45NSw2LjEsNC45Miw2LjIzLDkuODRsLTEwLjUxLjA3Yy0uNzYtMi40Ny0xLjk3LTMuNzQtMy44LTQuMDMtMS43MS0uMjctNC40NC45Ny00LjY1LDIuNTYtLjg2LDYuNTcsMTEuODMsMi41OSwxOC41OCwxMS4yMS4xMS03LjU3LDEuNjMtMTMuOTcsNy4yOC0xOC4xNSw2LjcyLTQuOTgsMTcuMTMtNC43NiwyMy4xNCwxLjE4LDQuNzksNC43Myw1LjMxLDExLjM5LDQuOTUsMTcuODdoLTI0LjY2Yy0uMDEsMy43NCwyLjE2LDYuNTgsNC44Niw3LjMsMy44NiwxLjA0LDcuMTYtLjI1LDkuMDEtMy43M2wxMC41NS4wOGMtMS45Nyw4LjIyLTguOTgsMTIuOC0xNy4xOCwxMi43Mi03LjgyLS4wNy0xNC4wNy00LjI2LTE2LjkyLTEyLjI0LS4xNiw0LjU3LTIuMzUsOC40Ni02Ljc4LDEwLjQ0LTkuMzEsNC4xOC0yMC45NS45Mi0yMy4yMi04LjU3bC0yLjY0LDIuMjRaTTIxOS41Nyw1Ny4xN2MtLjI1LTUuODgtMy43LTcuNDgtNy40My03LjM5cy02LjYyLDIuNy02LjQ5LDcuNDhsMTMuOTItLjA5WiIvPgogIDxwYXRoIGQ9Ik0yNTMuNTksNTIuNzRjLTIuODEtLjUxLTUuNjQtLjQ2LTgsLjctMS45MS45NC0zLjQxLDQuMzMtMy40Miw2LjkzbC0uMDgsMTkuNjYtMTAuOTItLjAydi0zNy40czEwLjc1LS4wNCwxMC43NS0uMDRsLjQyLDYuMTljMi41Ny00Ljk5LDcuMzYtNy4wMSwxMi40OC01Ljg0bC0uMTIsNy4yOGMzLjQ1LTUuNjIsOC45NC04LjM5LDE1LjU3LTguNDEsNy4xMy0uMDMsMTMuMzQsMy42NSwxNS43NywxMC40OSwxLjM0LDMuNzcsMS42Miw3Ljc4LDEuNDEsMTIuMDJsLTI0Ljc0LjAyYy0uMjQsMy42MywyLjEyLDYuNTUsNS4xMSw3LjM0LDMuNDguOTIsNi43Mi0uMTcsOC41NS0zLjcyaDEwLjcxYy0yLjAyLDguMDYtOC43NywxMi43NS0xNi44MywxMi43My02LjItLjAxLTEyLjA2LTIuNS0xNS4xOC03Ljk1LTMuNTYtNi4yMi0zLjgyLTEzLjE3LTEuNDgtMTkuOThaTTI3Ni44Myw1Ny4yN2MuMzMtNC40LTIuNTYtNy42LTYuOTEtNy41Ni0zLjg2LjAzLTcuMTgsMy4wMi02Ljg0LDcuNTNsMTMuNzUuMDNaIi8+CiAgPHBhdGggZD0iTTk0LjIsNDQuNDFjMi45LDguNDgtMTEuNTEsMjYuOTktMjAuMDUsMzUuODgtLjctMTAuNDEtLjI3LTMzLjM1LTQuNTItMzQuNjNsLTQuMzgtMS4zMywxMS4wNy0yLjVjMyw5LjMxLDIuNzgsMTguMzcsMy40NywyOS4yMSw0LjY5LTQuOTUsOC4zOC0xMS4xMiwxMC43Mi0xNy43NCwxLjA2LTMuMDEtLjE0LTQuNjctMi41OC02LjMzLTEuNC0uOTUtLjYzLTQuMDEuOTMtNC42OSwxLjQ3LS42NSw0LjQ4LS40Myw1LjM2LDIuMTRaIi8+CiAgPHBhdGggZD0iTTEyMC4xMSw0NS40NGwtNS43My0uMjUuMzItMS41NGM4LjMzLTEuNzEsOS42OC03LjE1LDE0Ljg4LTExLjE1bC0yLjUyLDEwLjIxLDUuMjIuMDktLjMyLDJjLS4wNy40NS0xLjQyLjI4LTEuOTMuMzVsLTQuMDQuMDUiLz4KICA8Y2lyY2xlIGN4PSIzNzEuMDYiIGN5PSI3NC42MSIgcj0iNi4wNiIvPgogIDxjaXJjbGUgY3g9IjEwOS4zOSIgY3k9IjI5LjkiIHI9IjQuMDIiLz4KICA8cGF0aCBkPSJNMjg4LjIsNDIuNDhoMTEuMDN2NS40OGguNTdjLjgtMS43NSwyLjExLTMuMjQsMy45Mi00LjQ1LDEuODEtMS4yMSw0LjAyLTEuODEsNi42MS0xLjgxLDQuOSwwLDguMywxLjU1LDEwLjE4LDQuNjYsMS44OCwzLjExLDIuODMsNi41OCwyLjgzLDEwLjQzdjIzLjM0aC0xMS4wM3YtMjEuNDJjMC0yLjQ3LS41NC00LjQxLTEuNjMtNS44My0xLjA4LTEuNDItMi42OS0yLjE0LTQuODEtMi4xNC0yLjI2LDAtMy45NC43NS01LjAyLDIuMjQtMS4wOCwxLjQ5LTEuNjMsMy40MS0xLjYzLDUuNzN2MjEuNDJoLTExLjAzdi0zNy42NVoiLz4KICA8cGF0aCBkPSJNMzI3LjM4LDc0LjhjLTIuNDktMy40Ni0zLjczLTguMS0zLjczLTEzLjkyczEuMjgtMTAuNTMsMy44My0xMy45OWMyLjU1LTMuNDYsNi4wOC01LjIsMTAuNTktNS4yLDMuMTEsMCw1LjUuNjksNy4xOCwyLjA2LDEuNjcsMS4zNywyLjgzLDIuNzYsMy40OCw0LjE1aC41NnYtNS40NGgxMC45NHYzNi45MWgtMTAuOTR2LTUuOTNoLS41NmMtLjcsMS40OS0xLjg5LDIuOTYtMy41OSw0LjQtMS43LDEuNDQtNC4xLDIuMTYtNy4yMSwyLjE2LTQuNTUsMC04LjA3LTEuNzMtMTAuNTYtNS4yWk0zNDcuNTYsNjguMThjMS4yMS0yLjA3LDEuODEtNC41MiwxLjgxLTcuMzZzLS42MS01LjIyLTEuODEtNy4yOWMtMS4yMS0yLjA3LTMuMDQtMy4xMS01LjUtMy4xMXMtNC40MywxLjAxLTUuNjEsMy4wM2MtMS4xOSwyLjAyLTEuNzgsNC40NS0xLjc4LDcuMjlzLjU5LDUuMzYsMS43OCw3LjQzYzEuMTgsMi4wNywzLjA1LDMuMTEsNS42MSwzLjExczQuMy0xLjAzLDUuNS0zLjExWiIvPgogIDxwYXRoIGQ9Ik0xMDkuNSw0Mi41OWMtNS43MSwwLTkuNTItLjE0LTEzLjk0LjQ0bDMuMDEsMS4xMWMuMzEuMTIsMS41OS43NywxLjg0LDEuMDIuODcuODgsMS4wOSwyLjIyLjc1LDMuNCIvPgogIDxwYXRoIGQ9Ik01OC4xMSw3NS4zNmMtMy42NCwxLjkxLTEuODItMy43My0xLjgyLTMuNzNsOC40Ny0yOS4wNGgtNi40NnMtLjMzLDEtLjg1LDIuNjZjLS42NC0uNzctMS40Ny0xLjM1LTIuNDgtMS43NS0xLjA4LS40Mi0yLjE4LS42My0zLjMyLS42My0zLjA1LDAtNi4zMSwxLjM5LTkuNzgsNC4xNy0zLjQ3LDIuNzgtNi40OSw2LjMyLTkuMDYsMTAuNjMtMi41Nyw0LjMxLTQuMTYsOC41OC00Ljc1LDEyLjgzLS4xMiwxLjMyLS4xOCwyLjIxLS4xOCwyLjY5LDAsNC40MywxLjg1LDYuNjQsNS41Niw2LjY0LDMuMTcsMCw2LjQ3LTEuNjksOS45MS01LjA3LDMuNDQtMy4zOCw2LjUzLTcuODUsOS4yOC0xMy40MWwtLjY4LDMuOTJjLTEuNTgsNy4yMi0yLjMsMTMuNTQtLjIxLDE0LjI5LDYuMDMsMi4xNSwxMS44NC04LjI5LDExLjg0LTguMjlsLjg0LTEuNXMtMi42NiwzLjY5LTYuMyw1LjZaTTUwLjAzLDYzLjcyYy0xLjkyLDMuMzgtNC4wOCw2LjE4LTYuNSw4LjM5LTIuNDIsMi4yMS00LjcxLDMuMzItNi44NiwzLjMyLTIuNTEsMC0zLjc3LTEuNzktMy43Ny01LjM4LDAtMS4wOC4wOS0yLjI3LjI3LTMuNTkuNTQtMy43NywxLjYyLTcuMTksMy4yMy0xMC4yNywxLjYxLTMuMDgsMy41MS01LjUzLDUuNy03LjM2LDIuMTgtMS44Miw0LjMyLTIuNzcsNi40MS0yLjgzLDEuODUsMCwzLjI0LjUxLDQuMTcsMS41My45MywxLjAyLDEuMzksMi40MiwxLjM5LDQuMjIuMDYuNiwwLDEuMjktLjE4LDIuMDYtLjY2LDMuMjMtMS45NCw2LjUzLTMuODYsOS45MVoiLz4KICA8cGF0aCBkPSJNMTU5Ljc2LDc1LjM2Yy0zLjM5LDIuMzMtMS44Mi0zLjczLTEuODItMy43M2w4LjQ3LTI5LjA0aC02LjQ2cy0uMzMsMS0uODUsMi42NmMtLjY0LS43Ny0xLjQ3LTEuMzUtMi40OC0xLjc1LTEuMDgtLjQyLTIuMTgtLjYzLTMuMzItLjYzLTMuMDUsMC02LjMxLDEuMzktOS43OCw0LjE3LTMuNDcsMi43OC02LjQ5LDYuMzItOS4wNiwxMC42My0yLjU3LDQuMzEtNC4xNiw4LjU4LTQuNzUsMTIuODMtLjEyLDEuMzItLjE4LDIuMjEtLjE4LDIuNjksMCw0LjQzLDEuODUsNi42NCw1LjU2LDYuNjQsMy4xNywwLDYuNDctMS42OSw5LjkxLTUuMDcsMy40NC0zLjM4LDYuNTMtNy44NSw5LjI4LTEzLjQxbC0uNjgsMy45MmMtMS41OCw3LjIyLTIuMywxMy41NC0uMjEsMTQuMjksNi4wMywyLjE1LDExLjg0LTguMjksMTEuODQtOC4yOWwuOTMtMi4xOHMtMy43NCw0LjQ1LTYuMzksNi4yOFpNMTUxLjY4LDYzLjcyYy0xLjkyLDMuMzgtNC4wOCw2LjE4LTYuNSw4LjM5LTIuNDIsMi4yMS00LjcxLDMuMzItNi44NiwzLjMyLTIuNTEsMC0zLjc3LTEuNzktMy43Ny01LjM4LDAtMS4wOC4wOS0yLjI3LjI3LTMuNTkuNTQtMy43NywxLjYyLTcuMTksMy4yMy0xMC4yNywxLjYxLTMuMDgsMy41MS01LjUzLDUuNy03LjM2LDIuMTgtMS44Miw0LjMyLTIuNzcsNi40MS0yLjgzLDEuODUsMCwzLjI0LjUxLDQuMTcsMS41My45MywxLjAyLDEuMzksMi40MiwxLjM5LDQuMjIuMDYuNiwwLDEuMjktLjE4LDIuMDYtLjY2LDMuMjMtMS45NCw2LjUzLTMuODYsOS45MVoiLz4KICA8cGF0aCBkPSJNMTAzLjA0LDQyLjU5aDYuNDZsLTguNDcsMjkuMDRzLTEuODIsNS42NCwxLjgyLDMuNzNjMy42NC0xLjkxLDYuMy01LjYsNi4zLTUuNmwtLjg0LDEuNXMtNS44LDEwLjQ0LTExLjg0LDguMjljLTUuMS0xLjgyLDYuNTYtMzYuOTcsNi41Ni0zNi45N1oiLz4KICA8cGF0aCBkPSJNMTIwLjU0LDQyLjU5aDYuNDZsLTguNDcsMjkuMDRzLTEuODIsNS42NCwxLjgyLDMuNzMsNi4zLTUuNiw2LjMtNS42bC0uODQsMS41cy01LjgsMTAuNDQtMTEuODQsOC4yOWMtNS4xLTEuODIsNi41Ni0zNi45Nyw2LjU2LTM2Ljk3WiIvPgo8L3N2Zz4=" alt="A Vita Serena" style="height:20px;display:block"></div>
+    <div class="ph-page">${pageNum}</div>
+  </div>
+  <div style="height:2px;background:linear-gradient(to right,var(--taupe),var(--sable),var(--ocre),var(--sable),var(--taupe))"></div>
+
+  <div class="page-body">
+    <div class="section-block">
+      <div class="section-eyebrow" style="color:var(--ocre)">
+        \u2726 &nbsp;Et maintenant ?
+      </div>
+      <div class="section-title">Un protocole, c'est un départ.<br>Un accompagnement, c'est une transformation.</div>
+
+      <p style="font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:16px;color:var(--gris);line-height:1.7;margin:14px 0 22px">
+        Ce protocole vous donne déjà une vraie base. Mais un terrain comme le vôtre se réajuste au fil des semaines, en fonction de comment votre corps répond — c'est exactement ce que permet un accompagnement suivi, là où un document seul ne le peut pas.
+      </p>
+
+      <div style="display:flex;flex-direction:column;gap:14px">
+
+        <div style="border:1.5px solid var(--taupe);border-radius:14px;padding:20px 24px">
+          <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px">
+            <div style="font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:22px;color:var(--ardoise)">Alba <span style="font-size:12px;font-style:normal;color:var(--gris);letter-spacing:.06em;text-transform:uppercase">· 3 mois</span></div>
+            <div style="font-size:18px;font-weight:700;color:var(--ardoise)">210&nbsp;€ <span style="font-size:11px;font-weight:400;color:var(--gris)">après bilan</span></div>
+          </div>
+          <p style="font-size:12.5px;color:var(--gris);margin:0">1 bilan + 2 consultations de suivi. Idéal pour une problématique ciblée ou des premiers signes de déséquilibre.</p>
+        </div>
+
+        <div style="border:2px solid var(--ocre);border-radius:14px;padding:20px 24px;background:var(--or-cl);position:relative">
+          <div style="position:absolute;top:-11px;left:24px;background:var(--ocre);color:#fff;font-size:9.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:3px 12px;border-radius:99px">Recommandé pour votre profil</div>
+          <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px;margin-top:4px">
+            <div style="font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:22px;color:var(--ardoise)">Aria <span style="font-size:12px;font-style:normal;color:var(--gris);letter-spacing:.06em;text-transform:uppercase">· 6 mois</span></div>
+            <div style="font-size:18px;font-weight:700;color:var(--ardoise)">450&nbsp;€ <span style="font-size:11px;font-weight:400;color:var(--gris)">après bilan</span></div>
+          </div>
+          <p style="font-size:12.5px;color:var(--gris);margin:0">1 bilan + 4 consultations de suivi approfondies + Le Gardien de Longévité. Le temps d'aller au fond, sans se presser.</p>
+        </div>
+
+        <div style="border:1.5px solid var(--taupe);border-radius:14px;padding:20px 24px">
+          <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px">
+            <div style="font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:22px;color:var(--ardoise)">Ora <span style="font-size:12px;font-style:normal;color:var(--gris);letter-spacing:.06em;text-transform:uppercase">· 9 mois</span></div>
+            <div style="font-size:18px;font-weight:700;color:var(--ardoise)">670&nbsp;€ <span style="font-size:11px;font-weight:400;color:var(--gris)">après bilan</span></div>
+          </div>
+          <p style="font-size:12.5px;color:var(--gris);margin:0">1 bilan + 7 consultations de suivi approfondies. Pour les terrains complexes ou chroniques — le temps long d'une vraie transformation.</p>
+        </div>
+
+      </div>
+
+      <div style="text-align:center;margin-top:26px">
+        <a href="../reservation.html" style="display:inline-flex;align-items:center;gap:8px;background:var(--ardoise);color:#fff;text-decoration:none;border-radius:99px;padding:13px 30px;font-family:'Be Vietnam Pro',sans-serif;font-size:14px;font-weight:600">
+          Réserver mon accompagnement →
+        </a>
+        <p style="font-size:11.5px;color:var(--gris);margin-top:10px">Votre bilan de ce jour est intégralement déductible du programme choisi.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <span>Protocole d'Hygiène Vitale · ${escH(prenom)}</span>
+    <span>A Vita Serena · Sabrina Castelli, Naturopathe</span>
+    <span>${pageNum}</span>
+  </div>
+</div>`;
+}
 
 function isMemoWorthy(text) {
   const t = text.toLowerCase().trim();
@@ -1512,6 +1585,8 @@ async function chargerProtocoleCliente(clientKey) {
     if (!pd || !bl || !bl.length) throw new Error('Aucun protocole enregistré pour cette cliente.');
     data = pd;
     blocks = bl;
+    const cl = data._client;
+    clientProgramme = await fetchClientProgramme(cl?.prenom, cl?.nom);
     setTimeout(() => {
       buildDoc();
       document.getElementById('loading').style.display = 'none';
@@ -1919,6 +1994,29 @@ window.loadMemoState     = loadMemoState;
 window.moveMemoItem      = moveMemoItem;
 window.deleteMemoItem    = deleteMemoItem;
 window.updateMemoSummary = updateMemoSummary;
+
+// ── Récupère le statut programme de la cliente (alba/aria/ora/vide) ──
+async function fetchClientProgramme(prenom, nom) {
+  const SB_URL = 'https://bqhkdndwldwqacrrbbig.supabase.co/rest/v1';
+  const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxaGtkbmR3bGR3cWFjcnJiYmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MzAyNTIsImV4cCI6MjA5NjMwNjI1Mn0.nH2UktMAVKYwng4L3SvW5F0fluV_sObGV0f3Mk1dnOY';
+  if (!prenom) return '';
+  try {
+    const prenomQ = encodeURIComponent(prenom);
+    const nomQ = encodeURIComponent(nom || '');
+    const res = await fetch(
+      `${SB_URL}/clientes?prenom=ilike.${prenomQ}&nom=ilike.${nomQ}&select=programme`,
+      { headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY } }
+    );
+    if (!res.ok) return '';
+    const rows = await res.json();
+    if (!rows.length) return '';
+    return (rows[0].programme || '').toLowerCase().trim();
+  } catch(e) {
+    console.warn('[PHV] Erreur récupération programme:', e.message);
+    return '';
+  }
+}
+window.fetchClientProgramme = fetchClientProgramme;
 
 // ── Chargement et affichage des alternatives proposées par Sabrina ──
 async function loadAlternatives() {
