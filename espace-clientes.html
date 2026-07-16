@@ -437,6 +437,9 @@ body{-webkit-font-smoothing:antialiased}
       <div class="section-dashboard">
         <p class="dashboard-date" id="dashDate"></p>
 
+        <!-- ALERTE RÉPONSE DE SABRINA — visible immédiatement -->
+        <div id="reponseAlertBox" style="display:none"></div>
+
         <!-- CARTES TABLEAU DE BORD -->
         <div class="dashboard">
 
@@ -683,7 +686,8 @@ body{-webkit-font-smoothing:antialiased}
 
         <div class="cc-music-panel" id="ccMusicPanel" style="display:none">
           <div class="cc-music-label">🎧 528 Hz — Miracle Tones</div>
-          <iframe id="ccMusicFrame" title="Musique d'ambiance" src="" width="100%" height="90" frameborder="0" allowtransparency="true" allow="encrypted-media; autoplay; clipboard-write" style="border-radius:10px;display:block"></iframe>
+          <iframe id="ccMusicFrame" title="Musique d'ambiance" src="" width="100%" height="152" frameborder="0" style="border-radius:10px;display:block" allowfullscreen allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
+          <p style="font-size:11px;color:rgba(255,255,255,.72);margin-top:8px;text-align:center">Cliquez sur ▶ dans le lecteur pour lancer la musique.</p>
         </div>
       </div>
 
@@ -1105,12 +1109,12 @@ function switchTab(id, btn){
   if(btn) btn.classList.add('active');
   window.location.hash = id;
   if(id === 'rdv') initTabRdv();
-  if(id === 'serena' && !serenaHistoryLoaded) gardienLoadHistory();
+  if(id === 'serena'){ gardienLoadHistory(); marquerReponsesVues(); }
 }
 
 function openTabFromHash(){
   var hash = window.location.hash.replace('#','');
-  var valid = ['dashboard','protocole','journal','digestion','hormones','bienetre','rdv'];
+  var valid = ['dashboard','protocole','journal','digestion','hormones','bienetre','rdv','serena'];
   if(hash && valid.indexOf(hash) > -1){
     switchTab(hash);
   }
@@ -1194,22 +1198,24 @@ function ccReset(){
   ccCaptionEl.textContent='Protocole 5-5-5 · 5 min · 3 séances/jour';
 }
 
-// ── Musique d'ambiance — widget officiel Deezer ──
+// ── Musique d'ambiance — lecteur officiel Spotify ──
 // On n'héberge/ne reproduit jamais le fichier audio : on affiche le lecteur officiel
-// Deezer (celui qu'ils fournissent pour l'intégration), qui gère lui-même la diffusion.
+// Spotify (celui qu'ils fournissent pour l'intégration), qui gère lui-même la diffusion.
+// Le widget Deezer ne s'affichait pas de façon fiable une fois intégré — Spotify est le
+// plus robuste pour ce genre d'intégration tierce.
 var ccMusicOpen=false;
-var CC_DEEZER_ALBUM='115468502'; // 528 Hz Transformation and Miracles (DNA Repair) — Miracle Tones
+var CC_SPOTIFY_ALBUM='0qE8qzazAbwS62hZ992jQ4'; // 528 Hz Transformation and Miracles (DNA Repair) — Miracle Tones
 function ccToggleMusic(){
   var panel=document.getElementById('ccMusicPanel');
   var frame=document.getElementById('ccMusicFrame');
   var btn=document.getElementById('ccMusicBtn');
   ccMusicOpen=!ccMusicOpen;
   if(ccMusicOpen){
-    if(!frame.src) frame.src='https://widget.deezer.com/widget/dark/album/'+CC_DEEZER_ALBUM+'?tracklist=false&autoplay=true';
+    if(!frame.src) frame.src='https://open.spotify.com/embed/album/'+CC_SPOTIFY_ALBUM+'?utm_source=generator&theme=0';
     panel.style.display='block';
-    btn.textContent='🎵 Couper la musique';
+    btn.textContent='🎵 Fermer la musique';
   } else {
-    frame.src=''; // vide le widget pour couper le son proprement
+    frame.src=''; // vide le lecteur pour couper le son proprement
     panel.style.display='none';
     btn.textContent="🎵 Musique d'ambiance";
   }
@@ -1360,6 +1366,62 @@ window.addEventListener('appinstalled', function(){
 window.addEventListener('DOMContentLoaded', function(){
   setTimeout(pwaShowBanner, 800);
 });
+
+// ═══════════════════════════════════════
+// ALERTE "SABRINA VOUS A RÉPONDU" — visible dès l'arrivée sur le tableau de bord
+// ═══════════════════════════════════════
+async function checkNouvelleReponse(){
+  var session = JSON.parse(localStorage.getItem('avs_client') || sessionStorage.getItem('avs_client') || '{}');
+  var box = document.getElementById('reponseAlertBox');
+  if(!session.key || !box) return;
+
+  try {
+    var token = await Auth.getValidAccessToken();
+    var res = await fetch(SUPA_URL + '/rest/v1/messages_client?client_key=eq.' + encodeURIComponent(session.key) + '&reponse_vue=eq.false&reponse=not.is.null&order=reponse_at.desc&limit=1&select=id,reponse,reponse_at', {
+      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (token || SUPA_KEY) }
+    });
+    if(!res.ok){ box.style.display='none'; return; }
+    var rows = await res.json();
+    if(!rows.length){ box.style.display='none'; return; }
+
+    var m = rows[0];
+    box.innerHTML =
+      '<div style="background:linear-gradient(135deg,var(--ocre),var(--or));border-radius:16px;padding:20px 24px;margin-bottom:20px;display:flex;align-items:center;gap:16px;cursor:pointer" onclick="switchTab(\'serena\',document.getElementById(\'tabBtnSerena\'))">' +
+        '<div style="font-size:26px;flex-shrink:0">💬</div>' +
+        '<div style="flex:1">' +
+          '<div style="font-size:15px;font-weight:700;color:#fff;margin-bottom:2px">Sabrina vous a répondu</div>' +
+          '<div style="font-size:13px;color:rgba(255,255,255,.9);line-height:1.5">' + escHtml(m.reponse.slice(0,110)) + (m.reponse.length>110?'…':'') + '</div>' +
+        '</div>' +
+        '<div style="font-size:20px;color:#fff;flex-shrink:0">→</div>' +
+      '</div>';
+    box.style.display = 'block';
+  } catch(e){
+    console.warn('Vérification nouvelle réponse impossible :', e);
+  }
+}
+
+// Marque toutes les réponses de la cliente comme vues (appelé à l'ouverture du Gardien)
+async function marquerReponsesVues(){
+  var session = JSON.parse(localStorage.getItem('avs_client') || sessionStorage.getItem('avs_client') || '{}');
+  if(!session.key) return;
+  try {
+    var token = await Auth.getValidAccessToken();
+    await fetch(SUPA_URL + '/rest/v1/messages_client?client_key=eq.' + encodeURIComponent(session.key) + '&reponse_vue=eq.false&reponse=not.is.null', {
+      method: 'PATCH',
+      headers: {
+        'apikey': SUPA_KEY,
+        'Authorization': 'Bearer ' + (token || SUPA_KEY),
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify({ reponse_vue: true })
+    });
+    var box = document.getElementById('reponseAlertBox');
+    if(box){ box.style.display='none'; box.innerHTML=''; }
+  } catch(e){
+    console.warn('Marquage réponses vues impossible :', e);
+  }
+}
 
 // ═══════════════════════════════════════
 // LE GARDIEN DE LONGÉVITÉ — message direct à Sabrina (pas d'IA)
@@ -1523,7 +1585,7 @@ async function serenaSend(){
       img.classList.add('gardien-msg');
       document.getElementById('serenaMessages').appendChild(img);
     }
-    serenaAddBubble('Votre message a bien été transmis à Sabrina. Elle vous répondra personnellement sous 24 à 48h.', 'serena').classList.add('gardien-msg');
+    serenaAddBubble('Sabrina a été informée de votre message et va y répondre au plus vite.', 'serena').classList.add('gardien-msg');
 
   } catch(err){
     serenaAddBubble("Une erreur est survenue à l'envoi. Vérifiez votre connexion, ou contactez Sabrina directement si le problème persiste.", 'serena');
@@ -1685,6 +1747,7 @@ async function initDashboard(){
   initDashboardRdv();
   initDashboardJournal();
   initProgressChart();
+  checkNouvelleReponse();
 }
 
 // Prochain RDV
