@@ -1358,6 +1358,7 @@ function saveL(d){localStorage.setItem(LKEY,JSON.stringify(d))}
 let db={clients:[],factures:[],settings:null,nextF:1};
 let taches=[],rdvs=[],emailCtx=null,curTab='urg',curSearch='',curFilter='all';
 let memoAlerts=[];
+let clientMessages=[];
 
 // COLORS palette - vibrant Monday-style
 const COLORS=['#0DA678','#7B6EE6','#E4604C','#3D7EF0','#E28B2B','#0E9384','#D4537E','#5F6BE0'];
@@ -1408,7 +1409,8 @@ async function init(){
     loadFactures(),
     loadTaches(),
     loadRdvs(),
-    loadMemoAlerts()
+    loadMemoAlerts(),
+    loadClientMessages()
   ]);
 
   if(titleEl) titleEl.textContent='Tableau de bord';
@@ -1802,6 +1804,103 @@ async function loadMemoAlerts(){
   }
 }
 
+async function loadClientMessages(){
+  try{
+    const r = await sb('messages_client?order=created_at.desc&limit=200');
+    clientMessages = r;
+    console.log('[CRM] ✓ Messages clientes:', clientMessages.length);
+  }catch(e){
+    console.error('[CRM] ✗ Messages clientes:', e.message);
+    clientMessages = [];
+  }
+}
+
+function unreadMessagesCount(){
+  return clientMessages.filter(m => !m.lu).length;
+}
+
+async function markMessageLu(id){
+  try{
+    await sb('messages_client?id=eq.'+id, { method:'PATCH', body: JSON.stringify({ lu:true }) });
+    const m = clientMessages.find(x=>x.id===id);
+    if(m) m.lu = true;
+    renderMessagesFeed();
+    renderDashboard();
+  }catch(e){ toast('Erreur : '+e.message,'err'); }
+}
+
+async function sendMessageReply(id){
+  const ta = document.getElementById('msg-reply-'+id);
+  if(!ta) return;
+  const texte = ta.value.trim();
+  if(!texte) return;
+  try{
+    await sb('messages_client?id=eq.'+id, {
+      method:'PATCH',
+      body: JSON.stringify({ reponse: texte, repondu:true, lu:true, reponse_at: new Date().toISOString() })
+    });
+    const m = clientMessages.find(x=>x.id===id);
+    if(m){ m.reponse = texte; m.repondu = true; m.lu = true; m.reponse_at = new Date().toISOString(); }
+    toast('Réponse enregistrée — visible par la cliente dans son espace.');
+    renderMessagesFeed();
+    renderDashboard();
+  }catch(e){ toast('Erreur : '+e.message,'err'); }
+}
+
+function messagesBox(list, emptyLabel){
+  if(!list.length) return `<div class="empty"><div class="eicon">💬</div><div class="etitle">${emptyLabel}</div></div>`;
+  return list.map(m=>{
+    const dateStr = new Date(m.created_at).toLocaleString('fr-FR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+    const sourceLbl = m.source==='journal' ? 'Question du journal' : 'Le Gardien de Longévité';
+    return `<div class="card" style="margin-bottom:10px;${!m.lu?'border-left:3px solid #E2445C':''}">
+      <div class="card-body" style="padding:16px 18px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px">
+          <div>
+            <div style="font-size:14px;font-weight:700;color:var(--ink)">${escH(m.prenom||'')} ${escH(m.nom||'')}</div>
+            <div style="font-size:11px;color:var(--muted)">${sourceLbl} · ${dateStr}</div>
+          </div>
+          ${!m.lu?'<span class="tab-pill tp-red">Non lu</span>':(m.repondu?'<span class="tab-pill" style="background:#DCFFF0;color:#007A45">Répondu</span>':'<span class="tab-pill tp-orange">À traiter</span>')}
+        </div>
+        <div style="font-size:14px;color:var(--ink);line-height:1.6;background:var(--bg2,#F7F7FA);padding:12px 14px;border-radius:10px;margin-bottom:${m.image_url?'8px':'12px'}">${escH(m.message)}</div>
+        ${m.image_url?`<a href="${m.image_url}" target="_blank"><img src="${m.image_url}" style="max-width:160px;border-radius:8px;margin-bottom:12px;display:block"></a>`:''}
+        ${m.reponse?`<div style="font-size:13px;color:#6C47FF;background:#F5F3FF;padding:10px 14px;border-radius:10px;margin-bottom:10px"><strong>Votre réponse :</strong> ${escH(m.reponse)}</div>`:''}
+        <div style="display:flex;gap:8px;align-items:flex-end">
+          <textarea id="msg-reply-${m.id}" placeholder="Répondre à ${escH(m.prenom||'')}…" style="flex:1;min-height:38px;resize:vertical;border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit">${escH(m.reponse||'')}</textarea>
+          <button class="btn btn-primary btn-sm" onclick="sendMessageReply('${m.id}')">Envoyer</button>
+          ${!m.lu?`<button class="btn btn-ghost btn-sm" onclick="markMessageLu('${m.id}')">Marquer lu</button>`:''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderMessagesFeed(){
+  const box = document.getElementById('messages-feed-box');
+  if(box) box.innerHTML = messagesBox(clientMessages.slice(0,8), 'Aucun message pour le moment.');
+  const full = document.getElementById('messages-full-box');
+  if(full) full.innerHTML = messagesBox(clientMessages, 'Aucun message pour le moment.');
+  const cnt = document.getElementById('msg-unread-count');
+  if(cnt) cnt.textContent = unreadMessagesCount();
+  const navBdg = document.getElementById('badge-msg');
+  if(navBdg){ navBdg.textContent = unreadMessagesCount(); navBdg.classList.toggle('show', unreadMessagesCount()>0); }
+
+  // Bandeau très visible en tête du tableau de bord — uniquement s'il y a du non-lu
+  const top = document.getElementById('messages-top-section');
+  if(top){
+    const unread = clientMessages.filter(m=>!m.lu);
+    if(!unread.length){ top.innerHTML=''; }
+    else {
+      top.innerHTML = `<div class="card" style="border:1.5px solid #E2445C">
+        <div class="card-head" style="background:#FFF5F6">
+          <div class="card-title"><div class="card-dot" style="background:#E2445C"></div>💬 ${unread.length} message${unread.length>1?'s':''} non lu${unread.length>1?'s':''} — cliente${unread.length>1?'s':''} en attente</div>
+          <button class="btn btn-ghost btn-xs" onclick="nav('messages',document.querySelector('.sb-item[onclick*=messages]'))">Voir tous les messages →</button>
+        </div>
+        <div class="card-body">${messagesBox(unread.slice(0,3), '')}</div>
+      </div>`;
+    }
+  }
+}
+
 function mapC(r){return{id:r.id,prenom:r.prenom,nom:r.nom,email:r.email,tel:r.tel,age:r.age,ddn:r.ddn,motifs:r.motifs,axes:r.axes,notes:r.notes,programme:r.programme,dureeTtt:r.duree_ttt,date1:r.date1,dateProtocole:r.date_protocole,phv_url:r.phv_url||'',timeline:r.timeline||[],workflowDone:r.workflow_done||{},createdAt:r.created_at};}
 
 function today(){return new Date().toISOString().split('T')[0];}
@@ -1819,13 +1918,14 @@ function nav(name,el){
   document.querySelectorAll('.sb-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('page-'+name)?.classList.add('active');
   if(el)el.classList.add('active');
-  const titles={dashboard:'Tableau de bord',clients:'Clientes',fiche:'Fiche cliente',factures:'Factures',stats:'Statistiques',settings:'Mon cabinet'};
+  const titles={dashboard:'Tableau de bord',clients:'Clientes',fiche:'Fiche cliente',factures:'Factures',stats:'Statistiques',settings:'Mon cabinet',messages:'Messages clientes'};
   document.getElementById('page-title').textContent=titles[name]||name;
   if(name==='dashboard')renderDashboard();
   if(name==='clients'){renderClients();updateTopbarActions('clients');}else{updateTopbarActions(name);}
   if(name==='factures')renderFactures();
   if(name==='settings')loadSettings();
   if(name==='stats')renderStats();
+  if(name==='messages')renderMessagesFeed();
 }
 
 function pDur(p){return p==='alba'?90:p==='aria'?180:p==='ora'?270:0;}
@@ -1915,7 +2015,7 @@ function renderDashboard(){
       return { client: client||{prenom:m.prenom,nom:m.nom,id:null}, memo:m, isMemo:true };
     });
 
-  const totalAlerts = allAl.length + memoUrgAl.length;
+  const totalAlerts = allAl.length + memoUrgAl.length + unreadMessagesCount();
   animateNum('kv-actives',actives.length);
   animateNum('kv-rdv',rdvM.length);
   animateNum('kv-alertes',totalAlerts);
@@ -1923,6 +2023,7 @@ function renderDashboard(){
   animateNum('kv-total',db.clients.length);
   const bdg=document.getElementById('badge-al');
   bdg.textContent=totalAlerts;bdg.classList.toggle('show',totalAlerts>0);
+  renderMessagesFeed();
 
   const urg=allAl.filter(a=>a.alert.isOvd);
   const sem=allAl.filter(a=>!a.alert.isOvd&&a.alert.isSoon);
@@ -3544,6 +3645,11 @@ function ouvrirBilanEntree(clientId, mode){
       <span class="sb-lbl">Tableau de bord</span>
       <span class="sb-bdg" id="badge-al">0</span>
     </div>
+    <div class="sb-item" onclick="nav('messages',this)">
+      <div class="sb-ic" style="background:#FFE5EA;color:#E2445C"><svg width="13" height="13" fill="none" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="currentColor" stroke-width="2.5"/></svg></div>
+      <span class="sb-lbl">Messages clientes</span>
+      <span class="sb-bdg" id="badge-msg">0</span>
+    </div>
     <div class="sb-sec">Clientes</div>
     <div class="sb-item" onclick="nav('clients',this)">
       <div class="sb-ic" style="background:#E0F2FF;color:#0096FF"><svg width="13" height="13" fill="none" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="2.5"/><circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="2.5"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" stroke-width="2.5"/></svg></div>
@@ -3594,6 +3700,8 @@ function ouvrirBilanEntree(clientId, mode){
 
   <!-- DASHBOARD -->
   <div class="page active" id="page-dashboard">
+    <!-- MESSAGES CLIENTES — visible immédiatement, avant tout le reste -->
+    <div id="messages-top-section" style="margin-bottom:20px"></div>
     <!-- ACTIONS DU JOUR -->
     <div class="ajd-section">
       <div class="ajd-card">
@@ -3650,6 +3758,14 @@ function ouvrirBilanEntree(clientId, mode){
         </div>
       </div>
     </div>
+  </div>
+
+  <!-- MESSAGES CLIENTES -->
+  <div class="page" id="page-messages">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+      <span style="font-size:13px;font-weight:600;color:var(--muted)"><span id="msg-unread-count">0</span> non lu(s)</span>
+    </div>
+    <div id="messages-full-box"></div>
   </div>
 
   <!-- CLIENTS -->
