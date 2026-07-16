@@ -1901,6 +1901,124 @@ function renderMessagesFeed(){
   }
 }
 
+// ═══ RECETTES (gestion) ═══
+let recettesAdmin=[];
+const RECETTE_TAG_LABELS={sibo_fermentation_ok:'Fermentation OK',sibo_putrefaction_ok:'Putréfaction OK',longevite_mediterraneenne:'Longévité méditerranéenne',petit_dej:'Petit-déj',dejeuner:'Déjeuner',diner:'Dîner',apaisant:'Apaisant',hormones_equilibre:'Équilibre hormonal',boisson:'Boisson'};
+
+async function loadRecettesAdmin(){
+  try{
+    recettesAdmin = await sb('recettes?order=created_at.desc');
+    renderRecettesAdmin();
+  }catch(e){
+    console.error('[CRM] Erreur recettes:',e.message);
+    recettesAdmin=[];
+    renderRecettesAdmin();
+  }
+}
+
+function renderRecettesAdmin(){
+  const box=document.getElementById('recettes-admin-list');
+  const count=document.getElementById('r-count');
+  if(count) count.textContent=recettesAdmin.length;
+  if(!box) return;
+  if(!recettesAdmin.length){ box.innerHTML=`<div class="empty"><div class="eicon">🍽️</div><div class="etitle">Aucune recette pour le moment</div></div>`; return; }
+  box.innerHTML=recettesAdmin.map(r=>{
+    const tags=(r.tags||[]).map(t=>`<span class="tab-pill" style="background:#E8F5E9;color:#2E7D32">${escH(RECETTE_TAG_LABELS[t]||t)}</span>`).join(' ');
+    return `<div class="card">
+      <div class="card-body" style="padding:16px 18px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px">
+          <div style="font-size:14px;font-weight:700;color:var(--ink)">${escH(r.titre)}</div>
+          <span class="tab-pill" style="background:${r.publie?'#DCFFF0':'#F0F0F0'};color:${r.publie?'#007A45':'#888'}">${r.publie?'Publiée':'Brouillon'}</span>
+        </div>
+        <div style="font-size:12.5px;color:var(--muted);margin-bottom:8px">${escH(r.description||'')}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">${tags}</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost btn-xs" onclick="openRecetteModal('${r.id}')">Modifier</button>
+          <button class="btn btn-ghost btn-xs" onclick="toggleRecettePublie('${r.id}')">${r.publie?'Dépublier':'Publier'}</button>
+          <button class="btn btn-ghost btn-xs" onclick="deleteRecette('${r.id}')" style="color:#E2445C">Supprimer</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openRecetteModal(id){
+  document.querySelectorAll('#r-tags input[type=checkbox]').forEach(c=>c.checked=false);
+  if(id){
+    const r=recettesAdmin.find(x=>x.id===id);
+    if(!r) return;
+    document.getElementById('r-modal-title').textContent='Modifier la recette';
+    document.getElementById('r-id').value=r.id;
+    document.getElementById('r-titre').value=r.titre||'';
+    document.getElementById('r-description').value=r.description||'';
+    document.getElementById('r-temps').value=r.temps_prepa||'';
+    document.getElementById('r-portions').value=r.portions||'';
+    document.getElementById('r-ingredients').value=(r.ingredients||[]).join('\n');
+    document.getElementById('r-etapes').value=(r.etapes||[]).join('\n');
+    document.getElementById('r-publie').checked=!!r.publie;
+    (r.tags||[]).forEach(t=>{ const cb=document.querySelector(`#r-tags input[value="${t}"]`); if(cb) cb.checked=true; });
+  } else {
+    document.getElementById('r-modal-title').textContent='Nouvelle recette';
+    document.getElementById('r-id').value='';
+    document.getElementById('r-titre').value='';
+    document.getElementById('r-description').value='';
+    document.getElementById('r-temps').value='';
+    document.getElementById('r-portions').value='';
+    document.getElementById('r-ingredients').value='';
+    document.getElementById('r-etapes').value='';
+    document.getElementById('r-publie').checked=true;
+  }
+  openM('m-recette');
+}
+
+async function saveRecette(){
+  const id=document.getElementById('r-id').value;
+  const titre=document.getElementById('r-titre').value.trim();
+  if(!titre){ toast('Le titre est obligatoire','err'); return; }
+  const tags=[...document.querySelectorAll('#r-tags input[type=checkbox]:checked')].map(c=>c.value);
+  const payload={
+    titre,
+    description:document.getElementById('r-description').value.trim(),
+    tags,
+    temps_prepa:document.getElementById('r-temps').value.trim(),
+    portions:document.getElementById('r-portions').value.trim(),
+    ingredients:document.getElementById('r-ingredients').value.split('\n').map(s=>s.trim()).filter(Boolean),
+    etapes:document.getElementById('r-etapes').value.split('\n').map(s=>s.trim()).filter(Boolean),
+    publie:document.getElementById('r-publie').checked,
+    updated_at:new Date().toISOString()
+  };
+  try{
+    if(id){
+      await sb('recettes?id=eq.'+id,{method:'PATCH',body:JSON.stringify(payload)});
+    } else {
+      await sb('recettes',{method:'POST',body:JSON.stringify(payload)});
+    }
+    closeM('m-recette');
+    toast('Recette enregistrée.');
+    loadRecettesAdmin();
+  }catch(e){ toast('Erreur : '+e.message,'err'); }
+}
+
+async function toggleRecettePublie(id){
+  const r=recettesAdmin.find(x=>x.id===id);
+  if(!r) return;
+  try{
+    await sb('recettes?id=eq.'+id,{method:'PATCH',body:JSON.stringify({publie:!r.publie})});
+    r.publie=!r.publie;
+    renderRecettesAdmin();
+  }catch(e){ toast('Erreur : '+e.message,'err'); }
+}
+
+async function deleteRecette(id){
+  if(!confirm('Supprimer définitivement cette recette ?')) return;
+  try{
+    await sb('recettes?id=eq.'+id,{method:'DELETE'});
+    recettesAdmin=recettesAdmin.filter(x=>x.id!==id);
+    renderRecettesAdmin();
+    toast('Recette supprimée.');
+  }catch(e){ toast('Erreur : '+e.message,'err'); }
+}
+
 function mapC(r){return{id:r.id,prenom:r.prenom,nom:r.nom,email:r.email,tel:r.tel,age:r.age,ddn:r.ddn,motifs:r.motifs,axes:r.axes,notes:r.notes,programme:r.programme,dureeTtt:r.duree_ttt,date1:r.date1,dateProtocole:r.date_protocole,phv_url:r.phv_url||'',timeline:r.timeline||[],workflowDone:r.workflow_done||{},createdAt:r.created_at};}
 
 function today(){return new Date().toISOString().split('T')[0];}
@@ -1918,7 +2036,7 @@ function nav(name,el){
   document.querySelectorAll('.sb-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('page-'+name)?.classList.add('active');
   if(el)el.classList.add('active');
-  const titles={dashboard:'Tableau de bord',clients:'Clientes',fiche:'Fiche cliente',factures:'Factures',stats:'Statistiques',settings:'Mon cabinet',messages:'Messages clientes'};
+  const titles={dashboard:'Tableau de bord',clients:'Clientes',fiche:'Fiche cliente',factures:'Factures',stats:'Statistiques',settings:'Mon cabinet',messages:'Messages clientes',recettes:'Recettes'};
   document.getElementById('page-title').textContent=titles[name]||name;
   if(name==='dashboard')renderDashboard();
   if(name==='clients'){renderClients();updateTopbarActions('clients');}else{updateTopbarActions(name);}
@@ -1926,6 +2044,7 @@ function nav(name,el){
   if(name==='settings')loadSettings();
   if(name==='stats')renderStats();
   if(name==='messages')renderMessagesFeed();
+  if(name==='recettes')loadRecettesAdmin();
 }
 
 function pDur(p){return p==='alba'?90:p==='aria'?180:p==='ora'?270:0;}
@@ -3668,6 +3787,10 @@ function ouvrirBilanEntree(clientId, mode){
       <div class="sb-ic" style="background:#FFF9DC;color:#8A6800"><svg width="13" height="13" fill="none" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="2.5"/><polyline points="14 2 14 8 20 8" stroke="currentColor" stroke-width="2.5"/><line x1="16" y1="13" x2="8" y2="13" stroke="currentColor" stroke-width="2.5"/></svg></div>
       <span class="sb-lbl">Factures</span>
     </div>
+    <div class="sb-item" onclick="nav('recettes',this)">
+      <div class="sb-ic" style="background:#E8F5E9;color:#2E7D32"><svg width="13" height="13" fill="none" viewBox="0 0 24 24"><path d="M3 2v7c0 1.1.9 2 2 2h1v11M11 2v20M15 2c-1.5 3-1.5 6 0 9s1.5 6 0 9" stroke="currentColor" stroke-width="2"/></svg></div>
+      <span class="sb-lbl">Recettes</span>
+    </div>
     <div class="sb-item" onclick="window.open('generateur.html','_blank')">
       <div class="sb-ic" style="background:#DCFBFF;color:#00A0C4"><svg width="13" height="13" fill="none" viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" stroke="currentColor" stroke-width="2.5"/></svg></div>
       <span class="sb-lbl">Générateur PHV ↗</span>
@@ -3798,6 +3921,15 @@ function ouvrirBilanEntree(clientId, mode){
     <div class="card"><div id="f-list"></div></div>
   </div>
 
+  <!-- RECETTES -->
+  <div class="page" id="page-recettes">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+      <span style="font-size:13px;font-weight:600;color:var(--muted)"><span id="r-count">0</span> recettes</span>
+      <button class="btn btn-primary" onclick="openRecetteModal(null)">+ Nouvelle recette</button>
+    </div>
+    <div id="recettes-admin-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px"></div>
+  </div>
+
   <!-- SETTINGS -->
   <div class="page" id="page-stats">
         <div id="stats-box"></div>
@@ -3890,6 +4022,44 @@ function ouvrirBilanEntree(clientId, mode){
     <div class="mfoot">
       <button class="btn btn-ghost" onclick="closeM('m-tache')">Annuler</button>
       <button class="btn btn-primary" onclick="saveTache()">Créer</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="m-recette">
+  <div class="modal modal-lg">
+    <div class="mhead"><div class="mtitle" id="r-modal-title">Nouvelle recette</div><button class="mx" onclick="closeM('m-recette')">×</button></div>
+    <div class="mbody">
+      <input type="hidden" id="r-id">
+      <div class="fg"><label class="fl">Titre *</label><input class="fi" id="r-titre" placeholder="Ex: Velouté de courgette au curcuma"></div>
+      <div class="fg"><label class="fl">Description</label><textarea class="fi ft" id="r-description" placeholder="Une phrase sur l'intérêt de la recette"></textarea></div>
+      <div class="fg2">
+        <div class="fg"><label class="fl">Temps de préparation</label><input class="fi" id="r-temps" placeholder="Ex: 20 min"></div>
+        <div class="fg"><label class="fl">Portions</label><input class="fi" id="r-portions" placeholder="Ex: 2 personnes"></div>
+      </div>
+      <div class="fg">
+        <label class="fl">Tags (catégories affichées côté cliente)</label>
+        <div id="r-tags" style="display:flex;flex-wrap:wrap;gap:10px;margin-top:4px">
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px"><input type="checkbox" value="sibo_fermentation_ok" style="width:auto"> Fermentation OK</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px"><input type="checkbox" value="sibo_putrefaction_ok" style="width:auto"> Putréfaction OK</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px"><input type="checkbox" value="longevite_mediterraneenne" style="width:auto"> Longévité méditerranéenne</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px"><input type="checkbox" value="petit_dej" style="width:auto"> Petit-déj</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px"><input type="checkbox" value="dejeuner" style="width:auto"> Déjeuner</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px"><input type="checkbox" value="diner" style="width:auto"> Dîner</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px"><input type="checkbox" value="apaisant" style="width:auto"> Apaisant</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px"><input type="checkbox" value="hormones_equilibre" style="width:auto"> Équilibre hormonal</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px"><input type="checkbox" value="boisson" style="width:auto"> Boisson</label>
+        </div>
+      </div>
+      <div class="fg"><label class="fl">Ingrédients (un par ligne)</label><textarea class="fi ft" id="r-ingredients" rows="5" placeholder="Pavé de saumon&#10;Quinoa cuit&#10;Citron"></textarea></div>
+      <div class="fg"><label class="fl">Étapes (une par ligne)</label><textarea class="fi ft" id="r-etapes" rows="5" placeholder="Faire cuire le saumon 8-10 min&#10;Dresser le quinoa au fond du bol"></textarea></div>
+      <div class="fg" style="display:flex;align-items:center;gap:8px">
+        <input type="checkbox" id="r-publie" checked style="width:auto"><label class="fl" style="margin:0" for="r-publie">Publiée (visible côté cliente)</label>
+      </div>
+    </div>
+    <div class="mfoot">
+      <button class="btn btn-ghost" onclick="closeM('m-recette')">Annuler</button>
+      <button class="btn btn-primary" onclick="saveRecette()">Enregistrer</button>
     </div>
   </div>
 </div>
