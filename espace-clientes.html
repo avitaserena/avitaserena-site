@@ -696,7 +696,7 @@ body{-webkit-font-smoothing:antialiased}
       <h2 class="section-h2">Votre protocole d'hygiène<br>vitale — vivant et interactif.</h2>
       <p class="section-sub">Retrouvez votre protocole complet, validez ou refusez les recommandations, et signalez vos ressentis directement à Sabrina.</p>
 
-      <a href="phv-print.html" target="_blank" class="protocole-link">
+      <a href="outils/phv-print.html" target="_blank" class="protocole-link" id="protocoleLink">
         <div class="protocole-link-icon">
           <svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>
         </div>
@@ -708,7 +708,7 @@ body{-webkit-font-smoothing:antialiased}
       </a>
 
       <div class="dl-list">
-        <a href="phv-print.html" class="dl-item" target="_blank">
+        <a href="outils/phv-print.html" class="dl-item" target="_blank" id="protocolePrintLink">
           <div class="dl-icon"><svg viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></div>
           <div class="dl-info">
             <div class="dl-title">Imprimer mon protocole</div>
@@ -1027,6 +1027,16 @@ function openSpace(prenom, programme){
     }
   }
   appliquerAccesSerena(programme);
+  // Lien vers le protocole interactif réel (outils/phv-print.html), avec la clé de la cliente
+  // — indispensable pour que la page charge SON protocole via chargerProtocoleCliente()
+  var session = JSON.parse(localStorage.getItem('avs_client') || sessionStorage.getItem('avs_client') || '{}');
+  if (session.key) {
+    var protoUrl = 'outils/phv-print.html?client=' + encodeURIComponent(session.key);
+    var protoLink = document.getElementById('protocoleLink');
+    var printLink = document.getElementById('protocolePrintLink');
+    if (protoLink) protoLink.href = protoUrl;
+    if (printLink) printLink.href = protoUrl;
+  }
   // Initialiser le dashboard
   setTimeout(function(){
     initDashboard();
