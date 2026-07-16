@@ -275,6 +275,34 @@ body{-webkit-font-smoothing:antialiased}
 .history-note{font-size:14px;color:var(--gris);line-height:1.6;margin-top:8px;font-style:italic}
 
 /* ─── COURBE DE PROGRESSION ─── */
+/* ─── CHECK-IN RAPIDE (accueil) ─── */
+.checkin-card{background:linear-gradient(135deg,var(--grege),var(--off));border:1px solid var(--taupe);border-radius:20px;padding:28px 26px;margin-bottom:24px}
+.checkin-head{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+.checkin-ic{width:38px;height:38px;border-radius:50%;background:var(--blanc);border:1px solid var(--taupe);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.checkin-ic svg{width:18px;height:18px;stroke:var(--ocre);fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.checkin-title{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:400;color:var(--ardoise)}
+.checkin-sub{font-size:12.5px;color:var(--gris);margin-top:1px}
+.checkin-label{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--gris);margin:16px 0 8px}
+.checkin-label:first-of-type{margin-top:0}
+.checkin-pills{display:flex;gap:8px;flex-wrap:wrap}
+.checkin-pill{background:var(--blanc);border:1.5px solid var(--taupe);border-radius:99px;padding:9px 18px;font-size:13px;font-weight:500;color:var(--ardoise);cursor:pointer;transition:all .18s;font-family:'Be Vietnam Pro',sans-serif}
+.checkin-pill:hover{border-color:var(--ocre)}
+.checkin-pill.on{background:var(--ocre);border-color:var(--ocre);color:#fff}
+.checkin-save{background:var(--ardoise);color:#fff;border:none;border-radius:99px;padding:12px 26px;font-size:13px;font-weight:600;cursor:pointer;margin-top:18px;transition:opacity .2s;font-family:'Be Vietnam Pro',sans-serif}
+.checkin-save:hover{opacity:.88}
+.checkin-save:disabled{opacity:.4;cursor:not-allowed}
+.checkin-done{display:flex;align-items:center;gap:14px}
+.checkin-done-ic{width:44px;height:44px;border-radius:50%;background:var(--ocre);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.checkin-done-ic svg{width:22px;height:22px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* ─── JALONS (cartes monochromes, alignées sur .db-card) ─── */
+.jalon-card{background:var(--blanc);border:1px solid var(--taupe);border-radius:18px;padding:20px;display:flex;align-items:center;gap:14px;transition:all .3s}
+.jalon-card:hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(0,0,0,.08)}
+.jalon-ic{width:44px;height:44px;border-radius:12px;background:var(--grege);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.jalon-ic svg{width:20px;height:20px;stroke:var(--ocre);fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.jalon-value{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:400;color:var(--ardoise);line-height:1.15}
+.jalon-label{font-size:11.5px;color:var(--gris);margin-top:1px}
+
 .progress-section{background:var(--ardoise);border-radius:18px;padding:28px;margin-bottom:24px;overflow:hidden}
 .progress-title{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:300;color:#fff;margin-bottom:4px}
 .progress-sub{font-size:13.5px;color:rgba(255,255,255,.74);margin-bottom:24px}
@@ -465,6 +493,9 @@ body{-webkit-font-smoothing:antialiased}
 
         <!-- ALERTE RÉPONSE DE SABRINA — visible immédiatement -->
         <div id="reponseAlertBox" style="display:none"></div>
+
+        <!-- CHECK-IN RAPIDE — un geste par jour -->
+        <div id="checkinRapide"></div>
 
         <!-- VOS JALONS -->
         <div id="jalonsBox" style="display:none"></div>
@@ -1491,7 +1522,7 @@ async function checkNouvelleReponse(){
     var m = rows[0];
     box.innerHTML =
       '<div style="background:linear-gradient(135deg,var(--ocre),var(--or));border-radius:16px;padding:20px 24px;margin-bottom:20px;display:flex;align-items:center;gap:16px;cursor:pointer" onclick="switchTab(\'serena\',document.getElementById(\'tabBtnSerena\'))">' +
-        '<div style="font-size:26px;flex-shrink:0">💬</div>' +
+        '<div style="flex-shrink:0;width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>' +
         '<div style="flex:1">' +
           '<div style="font-size:15px;font-weight:700;color:#fff;margin-bottom:2px">Sabrina vous a répondu</div>' +
           '<div style="font-size:13px;color:rgba(255,255,255,.9);line-height:1.5">' + escHtml(m.reponse.slice(0,110)) + (m.reponse.length>110?'…':'') + '</div>' +
@@ -1852,6 +1883,7 @@ async function initDashboard(){
   initDashboardJournal();
   initProgressChart();
   checkNouvelleReponse();
+  renderCheckinRapide();
   loadJalons();
   loadRappelComplements();
 }
@@ -1965,7 +1997,7 @@ function initProgressChart(){
 
 // ═══════════════════════════════════════
 /* ─── RAPPEL COMPLÉMENTS DU JOUR ─── */
-var MOMENT_LABELS = { matin:'☀️ Le matin', midi:'🌤️ Le midi', soir:'🌙 Le soir', coucher:'🛏️ Au coucher' };
+var MOMENT_LABELS = { matin:'Le matin', midi:'Le midi', soir:'Le soir', coucher:'Au coucher' };
 var MOMENT_ORDER = ['matin','midi','soir','coucher'];
 
 async function loadRappelComplements(){
@@ -1992,8 +2024,11 @@ async function loadRappelComplements(){
       parMoment[m].push({ idx:i, nom:r.nom });
     });
 
-    var html = '<div style="background:var(--blanc);border:1px solid var(--taupe);border-radius:16px;padding:20px 22px;margin-bottom:20px">' +
-      '<div style="font-size:14px;font-weight:700;color:var(--ardoise);margin-bottom:12px">💊 Vos compléments aujourd\'hui</div>' +
+    var html = '<div class="checkin-card" style="background:var(--blanc);margin-bottom:20px">' +
+      '<div class="checkin-head" style="margin-bottom:14px">' +
+        '<div class="checkin-ic"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="6" rx="3"/><path d="M8 11v6M16 5a3 3 0 0 1 3 3v3H8V8a3 3 0 0 1 3-3z"/><line x1="7" y1="8" x2="17" y2="8"/></svg></div>' +
+        '<div><div class="checkin-title" style="font-size:17px">Vos compléments aujourd\'hui</div></div>' +
+      '</div>' +
       MOMENT_ORDER.filter(function(m){ return parMoment[m]; }).map(function(m){
         return '<div style="margin-bottom:10px">' +
           '<div style="font-size:11px;font-weight:600;color:var(--ocre);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">'+MOMENT_LABELS[m]+'</div>' +
@@ -2025,6 +2060,99 @@ function toggleRappelComplement(idx, checked, todayKey){
 }
 
 /* ─── VOS JALONS (dashboard) ─── */
+/* ─── CHECK-IN RAPIDE (accueil) — un seul geste, tous les jours ─── */
+var checkinEnergieVal = null;
+var checkinHumeurVal = null;
+var CHECKIN_ENERGIE_OPTS = [ {v:'2 — Épuisée', l:'Épuisée'}, {v:'4', l:'Faible'}, {v:'6', l:'Correcte'}, {v:'8', l:'Bonne'}, {v:'10 — Excellente', l:'Excellente'} ];
+var CHECKIN_HUMEUR_OPTS = ['Très bien','Bien','Neutre','Irritable','Anxieuse','Fatiguée mentalement'];
+
+async function renderCheckinRapide(){
+  var session = JSON.parse(localStorage.getItem('avs_client') || sessionStorage.getItem('avs_client') || '{}');
+  var box = document.getElementById('checkinRapide');
+  if(!session.key || !box) return;
+
+  try {
+    var token = await Auth.getValidAccessToken();
+    var today = new Date().toISOString().slice(0,10);
+    var res = await fetch(SUPA_URL + '/rest/v1/journal_entries?client_key=eq.' + encodeURIComponent(session.key) + '&date=eq.' + today + '&select=energie,humeur&order=created_at.desc&limit=1', {
+      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (token || SUPA_KEY) }
+    });
+    var rows = res.ok ? await res.json() : [];
+
+    if(rows.length){
+      box.innerHTML = '<div class="checkin-card"><div class="checkin-done">' +
+        '<div class="checkin-done-ic"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>' +
+        '<div><div class="checkin-title" style="font-size:16px">Merci, c\'est noté pour aujourd\'hui</div>' +
+        '<div class="checkin-sub">'+escHtml(rows[0].humeur||'')+(rows[0].energie?' · Énergie : '+escHtml(rows[0].energie):'')+' — à demain !</div></div>' +
+      '</div></div>';
+      return;
+    }
+
+    box.innerHTML =
+      '<div class="checkin-card">' +
+        '<div class="checkin-head">' +
+          '<div class="checkin-ic"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div>' +
+          '<div><div class="checkin-title">Comment vous sentez-vous aujourd\'hui ?</div><div class="checkin-sub">Un geste de 10 secondes, tous les jours.</div></div>' +
+        '</div>' +
+        '<div class="checkin-label">Énergie</div>' +
+        '<div class="checkin-pills" id="checkinEnergiePills">' +
+          CHECKIN_ENERGIE_OPTS.map(function(o){ return '<div class="checkin-pill" onclick="selectCheckin(\'energie\',\''+o.v.replace(/'/g,"\\'")+'\',this)">'+o.l+'</div>'; }).join('') +
+        '</div>' +
+        '<div class="checkin-label">Humeur</div>' +
+        '<div class="checkin-pills" id="checkinHumeurPills">' +
+          CHECKIN_HUMEUR_OPTS.map(function(h){ return '<div class="checkin-pill" onclick="selectCheckin(\'humeur\',\''+h+'\',this)">'+h+'</div>'; }).join('') +
+        '</div>' +
+        '<button class="checkin-save" id="checkinSaveBtn" onclick="saveCheckinRapide()" disabled>Enregistrer →</button>' +
+      '</div>';
+  } catch(e){
+    console.warn('Check-in rapide non chargé :', e);
+    box.innerHTML='';
+  }
+}
+
+function selectCheckin(type, val, btn){
+  var container = btn.parentElement;
+  container.querySelectorAll('.checkin-pill').forEach(function(p){ p.classList.remove('on'); });
+  btn.classList.add('on');
+  if(type==='energie') checkinEnergieVal = val;
+  if(type==='humeur') checkinHumeurVal = val;
+  var saveBtn = document.getElementById('checkinSaveBtn');
+  if(saveBtn) saveBtn.disabled = !(checkinEnergieVal && checkinHumeurVal);
+}
+
+async function saveCheckinRapide(){
+  var session = JSON.parse(localStorage.getItem('avs_client') || sessionStorage.getItem('avs_client') || '{}');
+  if(!session.key || !checkinEnergieVal || !checkinHumeurVal) return;
+  var btn = document.getElementById('checkinSaveBtn');
+  if(btn){ btn.disabled=true; btn.textContent='…'; }
+  try {
+    var token = await Auth.getValidAccessToken();
+    await fetch(SUPA_URL + '/rest/v1/journal_entries', {
+      method: 'POST',
+      headers: {
+        'apikey': SUPA_KEY,
+        'Authorization': 'Bearer ' + (token || SUPA_KEY),
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify({
+        client_key: session.key,
+        date: new Date().toISOString().slice(0,10),
+        energie: checkinEnergieVal,
+        humeur: checkinHumeurVal
+      })
+    });
+    checkinEnergieVal = null; checkinHumeurVal = null;
+    renderCheckinRapide();
+    loadJalons();
+    initProgressChart();
+    if(typeof loadJournalHistory === 'function') loadJournalHistory();
+  } catch(e){
+    console.warn('Check-in rapide non enregistré :', e);
+    if(btn){ btn.disabled=false; btn.textContent='Enregistrer →'; }
+  }
+}
+
 async function loadJalons(){
   var session = JSON.parse(localStorage.getItem('avs_client') || sessionStorage.getItem('avs_client') || '{}');
   var box = document.getElementById('jalonsBox');
@@ -2043,6 +2171,10 @@ async function loadJalons(){
     var journalCount = journalRes.ok ? (await journalRes.json()).length : 0;
     var ccCount = ccRes.ok ? (await ccRes.json()).length : 0;
 
+    var ICON_PARCOURS = '<svg viewBox="0 0 24 24"><path d="M12 2C8 6 6 10 6 14a6 6 0 0 0 12 0c0-4-2-8-6-12z"/></svg>';
+    var ICON_JOURNAL = '<svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
+    var ICON_COHERENCE = '<svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>';
+
     var items = [];
 
     if(client && client.date_protocole && client.programme){
@@ -2051,20 +2183,20 @@ async function loadJalons(){
       var jour = Math.max(1, Math.floor((Date.now() - new Date(client.date_protocole)) / 86400000) + 1);
       if(duree){
         var pct = Math.min(100, Math.round(jour/duree*100));
-        items.push({ icon:'🌿', label:'Jour ' + Math.min(jour,duree) + ' / ' + duree, sub:'Parcours ' + client.programme.charAt(0).toUpperCase()+client.programme.slice(1) + ' · ' + pct + '%' });
+        items.push({ icon:ICON_PARCOURS, label:'Jour ' + Math.min(jour,duree) + ' / ' + duree, sub:'Parcours ' + client.programme.charAt(0).toUpperCase()+client.programme.slice(1) + ' · ' + pct + '%' });
       }
     }
-    items.push({ icon:'📝', label: journalCount + ' entrée' + (journalCount>1?'s':''), sub:'dans votre journal de suivi' });
-    items.push({ icon:'🫁', label: ccCount + ' séance' + (ccCount>1?'s':''), sub:'de cohérence cardiaque complétées' });
+    items.push({ icon:ICON_JOURNAL, label: journalCount + ' entrée' + (journalCount>1?'s':''), sub:'dans votre journal de suivi' });
+    items.push({ icon:ICON_COHERENCE, label: ccCount + ' séance' + (ccCount>1?'s':''), sub:'de cohérence cardiaque complétées' });
 
     if(!items.length){ box.style.display='none'; return; }
 
-    box.innerHTML = '<div style="background:var(--blanc);border:1px solid var(--taupe);border-radius:16px;padding:20px 22px;margin-bottom:20px;display:flex;gap:24px;flex-wrap:wrap">' +
+    box.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:20px">' +
       items.map(function(it){
-        return '<div style="display:flex;align-items:center;gap:10px;flex:1;min-width:160px">' +
-          '<div style="font-size:22px">'+it.icon+'</div>' +
-          '<div><div style="font-size:14px;font-weight:700;color:var(--ardoise)">'+it.label+'</div>' +
-          '<div style="font-size:11.5px;color:var(--gris)">'+it.sub+'</div></div>' +
+        return '<div class="jalon-card">' +
+          '<div class="jalon-ic">'+it.icon+'</div>' +
+          '<div><div class="jalon-value">'+it.label+'</div>' +
+          '<div class="jalon-label">'+it.sub+'</div></div>' +
         '</div>';
       }).join('') +
       '</div>';
