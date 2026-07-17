@@ -174,6 +174,7 @@ textarea.mf:focus,input.mf:focus,select.mf:focus{border-color:var(--ocre);backgr
 </style>
 <script src="supabase-db.js"></script>
 <script src="auth-guard.js"></script>
+<script src="ai-client.js"></script>
 </head>
 <body>
 
@@ -621,7 +622,6 @@ textarea.mf:focus,input.mf:focus,select.mf:focus{border-color:var(--ocre);backgr
 
 
 <script>
-let apiKey = '';
 let sessionData = null;
 let generatedData = null;
 let blocks = [];
@@ -679,15 +679,21 @@ function refreshAxesBadges() {
   document.getElementById('axes-selectionnes').value = axesStr;
 }
 
-// ── Clé API ──
+// ── Clé API (partagée via AIClient / localStorage entre tous les outils) ──
 function saveKey() {
   const k = document.getElementById('api-key').value.trim();
-  if (!k.startsWith('sk-ant')) {
+  if (!AIClient.saveKey(k)) {
     document.getElementById('key-status').innerHTML = '<span style="color:#8B3A3A">Clé invalide</span>';
     return;
   }
-  apiKey = k;
-  document.getElementById('key-status').innerHTML = '<span style="color:#3D6B2C">✓ Enregistrée</span>';
+  document.getElementById('key-status').innerHTML = '<span style="color:#3D6B2C">✓ Enregistrée — mémorisée pour tous les outils</span>';
+}
+
+// Préremplit l'indicateur si une clé est déjà mémorisée (générateur, questionnaires…)
+function prefillKeyStatus() {
+  if (AIClient.hasKey()) {
+    document.getElementById('key-status').innerHTML = '<span style="color:#3D6B2C">✓ Clé déjà mémorisée dans ce navigateur</span>';
+  }
 }
 
 // ── Session depuis localStorage ──
@@ -1052,7 +1058,7 @@ RÈGLES IMPÉRATIVES :
 
 // ── Génération ──
 async function generate() {
-  if (!apiKey) { alert('Veuillez d\'abord entrer votre clé API Anthropic.'); return; }
+  if (!AIClient.hasKey()) { alert('Veuillez d\'abord entrer votre clé API Anthropic.'); return; }
   const d = buildClientData();
   if (!d.prenom || d.prenom === 'Cliente') {
     if (!confirm('Aucun prénom détecté. Continuer quand même ?')) return;
@@ -1069,30 +1075,8 @@ async function generate() {
   }, 4000);
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-5',
-        max_tokens: 8000,
-        messages: [{ role: 'user', content: buildPrompt(d) }]
-      })
-    });
-
+    const raw = (await AIClient.generate(buildPrompt(d), { maxTokens: 8000 })).replace(/```json|```/g, '').trim();
     clearInterval(interval);
-
-    if (!res.ok) {
-      const e = await res.json();
-      throw new Error(e.error?.message || 'Erreur API ' + res.status);
-    }
-
-    const result = await res.json();
-    const raw = result.content[0].text.replace(/```json|```/g, '').trim();
     generatedData = JSON.parse(raw);
     generatedData._client = d;
 
@@ -1245,7 +1229,7 @@ function resetAll() {
 }
 
 // ── Init ──
-showAuthGate('praticienne', () => { removeAuthGate(); loadSession(); });
+showAuthGate('praticienne', () => { removeAuthGate(); loadSession(); prefillKeyStatus(); });
 </script>
 </body>
 </html>

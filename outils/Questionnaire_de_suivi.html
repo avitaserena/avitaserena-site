@@ -303,6 +303,8 @@ select.fi{height:44px;cursor:pointer}
 
 </style>
 <script src="auth-guard.js"></script>
+<script src="ai-client.js"></script>
+<script src="ai-explain-panel.js"></script>
 </head>
 <body>
 
@@ -1793,6 +1795,7 @@ function captureSnapshot() {
   snap._evols=JSON.stringify(evols);
   snap._ts=Date.now();
   snap._section=currentSection;
+  try { snap._ai_panel = JSON.stringify(window.AIPanel ? window.AIPanel.getEntries() : []); } catch (e) {}
   return snap;
 }
 
@@ -1811,6 +1814,12 @@ function restaurerDraft() {
     if(snap._chips) try{ const chips=JSON.parse(snap._chips); document.querySelectorAll('.chip').forEach(c=>{ if(chips.includes(c.textContent.replace('✓','').trim())) c.classList.add('on'); }); }catch(e){}
     if(snap._checks) try{ const checks=JSON.parse(snap._checks); document.querySelectorAll('.check-item').forEach((c,i)=>{ if(checks.includes(i)) c.classList.add('checked'); }); }catch(e){}
     if(snap._section) goSection(parseInt(snap._section)||0);
+    try {
+      if (snap._ai_panel && window.AIPanel) {
+        window.AIPanel.setEntries(JSON.parse(snap._ai_panel));
+        window.AIPanel.attachButtons();
+      }
+    } catch (e) {}
     updateCounter(); updateBadge(); updateScoreSummary();
     toast('Brouillon restauré');
   } catch(e){}

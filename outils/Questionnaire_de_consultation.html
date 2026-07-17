@@ -402,6 +402,8 @@ var SUPA_URL = 'https://bqhkdndwldwqacrrbbig.supabase.co';
 var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxaGtkbmR3bGR3cWFjcnJiYmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MzAyNTIsImV4cCI6MjA5NjMwNjI1Mn0.nH2UktMAVKYwng4L3SvW5F0fluV_sObGV0f3Mk1dnOY';
 </script>
 <script src="auth-guard.js"></script>
+<script src="ai-client.js"></script>
+<script src="ai-explain-panel.js"></script>
 </head>
 <body>
 
@@ -4180,6 +4182,8 @@ function captureSnapshot() {
   const bilans = [];
   document.querySelectorAll('.bilan-card').forEach((c, i) => { if (c.classList.contains('checked')) bilans.push(i); });
   snap['bilans'] = JSON.stringify(bilans);
+  // Explications IA générées en direct (panneau AIPanel)
+  try { snap['ai_panel'] = JSON.stringify(window.AIPanel ? window.AIPanel.getEntries() : []); } catch (e) {}
   return snap;
 }
 
@@ -4205,6 +4209,13 @@ function restoreSnapshot(snap) {
     const bilans = JSON.parse(snap['bilans'] || '[]');
     document.querySelectorAll('.bilan-card').forEach((c, i) => { if (bilans.includes(i)) c.classList.add('checked'); });
   } catch(e) {}
+  // Explications IA générées en direct (panneau AIPanel)
+  try {
+    if (snap['ai_panel'] && window.AIPanel) {
+      window.AIPanel.setEntries(JSON.parse(snap['ai_panel']));
+      window.AIPanel.attachButtons();
+    }
+  } catch (e) {}
   updateCounter();
 }
 
