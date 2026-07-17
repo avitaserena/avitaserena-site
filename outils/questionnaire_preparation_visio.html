@@ -233,16 +233,60 @@ select.inp{height:52px;cursor:pointer;appearance:none;background-image:url("data
 .rcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-top:12px}
 .rc{border:1.5px solid var(--taupe);border-radius:var(--r);padding:18px 14px;cursor:pointer;text-align:center;transition:all var(--t);background:var(--blanc);user-select:none}
 .rc:hover{border-color:var(--sable);transform:translateY(-2px);box-shadow:var(--shadow-sm)}
-.rc.on{border-color:var(--ocre);background:var(--or-clair)}
+@keyframes selectPop{0%{transform:scale(1)}45%{transform:scale(1.055)}100%{transform:scale(1)}}
+.rc.on{border-color:var(--ocre);background:var(--or-clair);animation:selectPop .4s cubic-bezier(.34,1.56,.64,1)}
 .rc-ic{font-size:26px;margin-bottom:8px}
 .rc-t{font-size:14px;font-weight:500;color:var(--ardoise);line-height:1.3}
 .rc.on .rc-t{color:var(--or);font-weight:700}
 
 /* ─── Check list ─── */
 .cklist{display:flex;flex-direction:column;gap:10px}
+
+/* ─── Zones d'empathie (messages calibrés, pré-écrits) ─── */
+.empathy-zone{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+.empathy-msg{
+  display:flex;align-items:flex-start;gap:10px;
+  background:var(--or-pale);border-left:3px solid var(--sable);
+  border-radius:0 var(--r) var(--r) 0;padding:13px 18px;
+  font-family:'Cormorant Garamond',serif;font-style:italic;
+  font-size:16px;line-height:1.6;color:var(--ardoise);
+  opacity:0;transform:translateY(6px) scale(.98);
+  animation:empathyIn .55s cubic-bezier(.16,1,.3,1) forwards;
+}
+.empathy-msg .ic{font-style:normal;flex-shrink:0;font-size:15px;margin-top:1px}
+@keyframes empathyIn{to{opacity:1;transform:none}}
+
+/* ─── Élément botanique de progression (éclot avec l'avancée du bilan) ─── */
+#bloom-companion{
+  position:fixed;top:64px;left:18px;width:58px;height:58px;
+  z-index:900;pointer-events:none;opacity:0;transition:opacity .5s ease;
+}
+#bloom-companion.show{opacity:1}
+#bloom-companion svg{width:100%;height:100%;overflow:visible}
+#bloom-companion .petal{
+  opacity:.12;transform:scale(.55);transform-box:fill-box;transform-origin:center;
+  transition:opacity .8s cubic-bezier(.16,1,.3,1),transform .8s cubic-bezier(.16,1,.3,1);
+}
+#bloom-companion.stage-1 .petal.p1,
+#bloom-companion.stage-2 .petal.p1,#bloom-companion.stage-2 .petal.p2,
+#bloom-companion.stage-3 .petal.p1,#bloom-companion.stage-3 .petal.p2,#bloom-companion.stage-3 .petal.p3,
+#bloom-companion.stage-4 .petal.p1,#bloom-companion.stage-4 .petal.p2,#bloom-companion.stage-4 .petal.p3,#bloom-companion.stage-4 .petal.p4,
+#bloom-companion.stage-5 .petal.p1,#bloom-companion.stage-5 .petal.p2,#bloom-companion.stage-5 .petal.p3,#bloom-companion.stage-5 .petal.p4,#bloom-companion.stage-5 .petal.p5,
+#bloom-companion.stage-6 .petal{
+  opacity:.85;transform:scale(1) rotate(0deg);
+}
+#bloom-companion .center{opacity:.3;transition:opacity .8s ease .3s}
+#bloom-companion.stage-1 .center,#bloom-companion.stage-2 .center,#bloom-companion.stage-3 .center,
+#bloom-companion.stage-4 .center,#bloom-companion.stage-5 .center,#bloom-companion.stage-6 .center{opacity:.95}
+#bloom-companion .bloom-label{
+  position:absolute;top:100%;left:50%;transform:translateX(-50%);
+  margin-top:4px;font-size:10px;letter-spacing:.08em;color:var(--gris-clair);
+  white-space:nowrap;text-transform:uppercase;font-family:'Be Vietnam Pro',sans-serif;
+}
+@media (max-width:760px){#bloom-companion{top:58px;left:12px;width:44px;height:44px}#bloom-companion .bloom-label{display:none}}
 .ci{display:flex;align-items:flex-start;gap:14px;padding:14px 18px;border:1.5px solid var(--taupe);border-radius:var(--r);cursor:pointer;background:var(--blanc);transition:all var(--t);font-size:16px;color:var(--ardoise);user-select:none;line-height:1.5}
 .ci:hover{border-color:var(--sable);transform:translateX(3px)}
-.ci.on{border-color:var(--ocre);background:var(--or-clair)}
+.ci.on{border-color:var(--ocre);background:var(--or-clair);animation:selectPop .4s cubic-bezier(.34,1.56,.64,1)}
 .cb{width:24px;height:24px;min-width:24px;border-radius:6px;border:1.5px solid var(--taupe);background:var(--blanc);display:flex;align-items:center;justify-content:center;font-size:12px;color:transparent;transition:all var(--t);margin-top:2px}
 .ci.on .cb{background:var(--ocre);border-color:var(--ocre);color:var(--blanc)}
 
@@ -250,7 +294,7 @@ select.inp{height:52px;cursor:pointer;appearance:none;background-image:url("data
 .chips{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}
 .chip{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border-radius:99px;font-size:14px;cursor:pointer;border:1.5px solid var(--taupe);background:var(--blanc);color:var(--gris);font-family:'Be Vietnam Pro',sans-serif;transition:all var(--t);user-select:none;font-weight:500}
 .chip:hover{border-color:var(--sable);color:var(--ardoise);transform:translateY(-1px)}
-.chip.on{background:var(--or-clair);border-color:var(--ocre);color:var(--ardoise);font-weight:600}
+.chip.on{background:var(--or-clair);border-color:var(--ocre);color:var(--ardoise);font-weight:600;animation:selectPop .4s cubic-bezier(.34,1.56,.64,1)}
 .chip .ck{font-size:10px;color:var(--ocre);opacity:0;transition:opacity .12s}
 .chip.on .ck{opacity:1}
 
@@ -327,6 +371,20 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <!-- End Google Tag Manager (noscript) -->
 
 <div class="prog"><div class="prog-fill" id="prog-fill"></div></div>
+
+<!-- ═══ COMPAGNON BOTANIQUE — éclot au fil des 6 sections du bilan ═══ -->
+<div id="bloom-companion">
+  <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <g class="petal p1"><ellipse cx="50" cy="22" rx="10" ry="20" fill="#C4A882"/></g>
+    <g class="petal p2"><ellipse cx="76" cy="38" rx="10" ry="20" transform="rotate(60 76 38)" fill="#C4A882"/></g>
+    <g class="petal p3"><ellipse cx="76" cy="70" rx="10" ry="20" transform="rotate(120 76 70)" fill="#C4A882"/></g>
+    <g class="petal p4"><ellipse cx="50" cy="86" rx="10" ry="20" transform="rotate(180 50 86)" fill="#C4A882"/></g>
+    <g class="petal p5"><ellipse cx="24" cy="70" rx="10" ry="20" transform="rotate(240 24 70)" fill="#C4A882"/></g>
+    <g class="petal p6"><ellipse cx="24" cy="38" rx="10" ry="20" transform="rotate(300 24 38)" fill="#C4A882"/></g>
+    <circle class="center" cx="50" cy="54" r="9" fill="#9B7230"/>
+  </svg>
+  <div class="bloom-label" id="bloom-label">01 · 06</div>
+</div>
 
 <!-- ══════════════════════════════════
      HERO — fond crème, décors animés
@@ -488,12 +546,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <div class="qt">Depuis combien de temps ces symptômes sont-ils présents dans votre vie ?</div>
       <div class="qv">Un trouble récent et un terrain chronique ne se traitent pas de la même façon — la durée change l'intensité et la durée du protocole.</div>
       <div class="rcards">
-        <div class="rc" onclick="rsel(this,'d')"><div class="rc-ic">🌱</div><div class="rc-t">Quelques semaines</div></div>
-        <div class="rc" onclick="rsel(this,'d')"><div class="rc-ic">🌿</div><div class="rc-t">2 à 6 mois</div></div>
-        <div class="rc" onclick="rsel(this,'d')"><div class="rc-ic">🌳</div><div class="rc-t">6 mois à 2 ans</div></div>
-        <div class="rc" onclick="rsel(this,'d')"><div class="rc-ic">🏔️</div><div class="rc-t">Plus de 2 ans</div></div>
-        <div class="rc" onclick="rsel(this,'d')"><div class="rc-ic">♾️</div><div class="rc-t">Depuis l'enfance</div></div>
+        <div class="rc" onclick="rsel(this,'d')" data-empathy="Un trouble récent, c'est souvent le plus rapide à rééquilibrer — on a l'avantage d'agir tôt, avant que le terrain ne s'installe."><div class="rc-ic">🌱</div><div class="rc-t">Quelques semaines</div></div>
+        <div class="rc" onclick="rsel(this,'d')" data-empathy="Assez pour que ça pèse au quotidien, pas encore assez pour que tout soit ancré — c'est une bonne fenêtre pour intervenir."><div class="rc-ic">🌿</div><div class="rc-t">2 à 6 mois</div></div>
+        <div class="rc" onclick="rsel(this,'d')" data-empathy="Un terrain qui s'installe dans la durée demande un accompagnement structuré dans le temps — c'est exactement ce que je construis avec vous."><div class="rc-ic">🌳</div><div class="rc-t">6 mois à 2 ans</div></div>
+        <div class="rc" onclick="rsel(this,'d')" data-empathy="Porter quelque chose aussi longtemps, c'est épuisant — et ça ne veut pas dire que c'est figé. On remonte simplement plus loin dans la cascade des causes."><div class="rc-ic">🏔️</div><div class="rc-t">Plus de 2 ans</div></div>
+        <div class="rc" onclick="rsel(this,'d')" data-empathy="Un terrain façonné depuis l'enfance touche souvent des équilibres profonds (immunité, flore, tempérament) — on prend le temps qu'il faut, sans brusquer."><div class="rc-ic">♾️</div><div class="rc-t">Depuis l'enfance</div></div>
       </div>
+      <div class="empathy-zone" id="empathy-duree"></div>
     </div>
 
     <div class="qc rev r2">
@@ -527,6 +586,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         <div class="vr"><div class="vr-top"><div class="vlbl">Qualité du sommeil<small>Endormissement, continuité, réveil reposé</small></div><div class="vbadge" id="vb3">5</div></div><div class="vtrack"><div class="vfill" id="vf3" style="width:44%"></div><input type="range" min="1" max="10" value="5" oninput="vs(this,'vb3','vf3')"></div></div>
         <div class="vr"><div class="vr-top"><div class="vlbl">Niveau de stress<small>Tension intérieure, capacité à décompresser</small></div><div class="vbadge" id="vb4">5</div></div><div class="vtrack"><div class="vfill" id="vf4" style="width:44%"></div><input type="range" min="1" max="10" value="5" oninput="vs(this,'vb4','vf4')"></div></div>
       </div>
+      <div class="empathy-zone" id="empathy-vitalite1"></div>
     </div>
 
     <div class="qc rev r1">
@@ -631,6 +691,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         <div class="vr"><div class="vr-top"><div class="vlbl">Équilibre émotionnel<small>Stabilité, anxiété, irritabilité</small></div><div class="vbadge" id="vb6">5</div></div><div class="vtrack"><div class="vfill" id="vf6" style="width:44%"></div><input type="range" min="1" max="10" value="5" oninput="vs(this,'vb6','vf6')"></div></div>
         <div class="vr"><div class="vr-top"><div class="vlbl">Satisfaction de vie globale<small>Sentiment de sens, d'élan, d'envie</small></div><div class="vbadge" id="vb7">5</div></div><div class="vtrack"><div class="vfill" id="vf7" style="width:44%"></div><input type="range" min="1" max="10" value="5" oninput="vs(this,'vb7','vf7')"></div></div>
       </div>
+      <div class="empathy-zone" id="empathy-vitalite2"></div>
       <label class="lbl" style="margin-top:20px">Y a-t-il des événements de vie récents qui ont pu impacter votre santé ? (optionnel)</label>
       <textarea class="inp" placeholder="Ex. : Divorce il y a 2 ans, suivi d'un déménagement et d'une reprise professionnelle. Ou : burn-out en 2021 avec arrêt de travail 6 mois. Ou : grossesse difficile + allaitement long + retour au travail immédiat. Ou : deuil maternel récent. Ou : enfance avec alimentation très restrictive. Partagez ce qui vous semble avoir un lien — même lointain — avec ce que vous vivez aujourd'hui."></textarea>
     </div>
@@ -648,18 +709,19 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <span class="qtag a">Antécédents</span>
       <div class="qt">Avez-vous des maladies chroniques diagnostiquées ou des antécédents médicaux importants ?</div>
       <div class="chips" style="margin-bottom:16px">
-        <span class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span>Hypothyroïdie</span>
-        <span class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span>Hashimoto</span>
-        <span class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span>SOPK</span>
-        <span class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span>Endométriose</span>
-        <span class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span>SII / Côlon irritable</span>
-        <span class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span>SIBO confirmé</span>
-        <span class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span>Diabète / Insulinorésistance</span>
-        <span class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span>Maladie auto-immune</span>
-        <span class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span>Anxiété / Dépression</span>
-        <span class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span>Burn-out</span>
-        <span class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span>Aucun connu</span>
+        <span class="chip" onclick="this.classList.toggle('on');updateEmpathyZone(this.closest('.qc'))" data-empathy="La thyroïde influence énergie, poids, digestion, moral — presque tout. On en tient compte à chaque étape du protocole."><span class="ck">✓</span>Hypothyroïdie</span>
+        <span class="chip" onclick="this.classList.toggle('on');updateEmpathyZone(this.closest('.qc'))" data-empathy="Un terrain auto-immun demande une approche prudente et progressive — jamais de choc, toujours du soutien."><span class="ck">✓</span>Hashimoto</span>
+        <span class="chip" onclick="this.classList.toggle('on');updateEmpathyZone(this.closest('.qc'))" data-empathy="Le SOPK n'est pas qu'une question de cycle — c'est un terrain métabolique et hormonal entier à rééquilibrer."><span class="ck">✓</span>SOPK</span>
+        <span class="chip" onclick="this.classList.toggle('on');updateEmpathyZone(this.closest('.qc'))" data-empathy="L'endométriose touche l'inflammation autant que les hormones — la naturopathie vient en soutien réel, en complément du suivi médical."><span class="ck">✓</span>Endométriose</span>
+        <span class="chip" onclick="this.classList.toggle('on');updateEmpathyZone(this.closest('.qc'))" data-empathy="Un côlon irritable installé mérite qu'on remonte à ses causes (fermentation, stress, muqueuse) plutôt que de gérer juste les crises."><span class="ck">✓</span>SII / Côlon irritable</span>
+        <span class="chip" onclick="this.classList.toggle('on');updateEmpathyZone(this.closest('.qc'))" data-empathy="Le SIBO explique énormément de choses d'un coup — ballonnements, fatigue, carences. C'est justement l'une de mes spécialités."><span class="ck">✓</span>SIBO confirmé</span>
+        <span class="chip" onclick="this.classList.toggle('on');updateEmpathyZone(this.closest('.qc'))" data-empathy="La glycémie influence l'énergie, l'humeur et le poids bien plus qu'on ne le pense — un axe qu'on travaille avec précision."><span class="ck">✓</span>Diabète / Insulinorésistance</span>
+        <span class="chip" onclick="this.classList.toggle('on');updateEmpathyZone(this.closest('.qc'))" data-empathy="Un terrain auto-immun demande douceur et progressivité — jamais de protocole choc, toujours un rythme adapté."><span class="ck">✓</span>Maladie auto-immune</span>
+        <span class="chip" onclick="this.classList.toggle('on');updateEmpathyZone(this.closest('.qc'))" data-empathy="L'anxiété a souvent une composante biologique réelle (inflammation, microbiote, glycémie) — on ne l'aborde jamais comme «juste dans la tête»."><span class="ck">✓</span>Anxiété / Dépression</span>
+        <span class="chip" onclick="this.classList.toggle('on');updateEmpathyZone(this.closest('.qc'))" data-empathy="Un épuisement profond touche les surrénales bien au-delà de la fatigue simple — la récupération demande du temps, et c'est normal."><span class="ck">✓</span>Burn-out</span>
+        <span class="chip" onclick="this.classList.toggle('on');updateEmpathyZone(this.closest('.qc'))"><span class="ck">✓</span>Aucun connu</span>
       </div>
+      <div class="empathy-zone" id="empathy-antecedents"></div>
       <textarea class="inp" placeholder="Ex. : SIBO H₂ confirmé par test respiratoire en 2022 (traité par rifaximine). Colopathie fonctionnelle (SII-C diagnostiqué en 2019). Hypothyroïdie de Hashimoto depuis 2018. Endométriose stade II (laparoscopie 2021). Candidose récurrente. Ou : aucun diagnostic posé à ce jour malgré plusieurs consultations. Mentionnez les dates si vous vous en souvenez, et les traitements déjà essayés."></textarea>
     </div>
 
@@ -718,11 +780,30 @@ window.addEventListener('scroll',()=>{
   document.getElementById('prog-fill').style.width=h>0?Math.min(100,s/h*100)+'%':'0%';
 },{passive:true});
 
-/* ─── Scroll reveal ─── */
+/* ─── Scroll reveal + progression du compagnon botanique ─── */
 const obs=new IntersectionObserver(entries=>{
-  entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('vis');obs.unobserve(e.target)}});
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      e.target.classList.add('vis');
+      if(e.target.classList.contains('ssep')) updateBloomFromSsep(e.target);
+      obs.unobserve(e.target);
+    }
+  });
 },{threshold:.1});
 document.querySelectorAll('.rev,.qc,.dyk,.sh,.ssep,.step,.rea').forEach(el=>obs.observe(el));
+
+/* ─── Compagnon botanique : éclot au fil des 6 sections ─── */
+function updateBloomFromSsep(ssepEl){
+  const badge=ssepEl.querySelector('.ssep-badge .n');
+  const stage=badge?parseInt(badge.textContent.trim(),10):0;
+  if(!stage) return;
+  const el=document.getElementById('bloom-companion');
+  el.classList.add('show');
+  for(let i=1;i<=6;i++) el.classList.remove('stage-'+i);
+  el.classList.add('stage-'+stage);
+  const lbl=document.getElementById('bloom-label');
+  if(lbl) lbl.textContent=String(stage).padStart(2,'0')+' · 06';
+}
 
 /* ─── Sliders ─── */
 const gc=['#9B3A3A','#A8522A','#A06A22','#9B7230','#7A8A22','#4A8A2A','#3A8A48','#2A7A62','#206080','#1E5A8A'];
@@ -731,6 +812,8 @@ function vs(inp,bid,fid){
   const b=document.getElementById(bid);
   b.textContent=v;b.style.background=gc[v-1];
   document.getElementById(fid).style.width=((v-1)/9*100)+'%';
+  if(['vb1','vb2','vb3','vb4'].includes(bid)) updateVitalityEmpathy('empathy-vitalite1',['vb1','vb2','vb3','vb4']);
+  if(['vb5','vb6','vb7'].includes(bid)) updateVitalityEmpathy('empathy-vitalite2',['vb5','vb6','vb7']);
 }
 
 /* ─── Toggles ─── */
@@ -740,6 +823,42 @@ function tog(el){el.classList.toggle('on')}
 function rsel(el,g){
   document.querySelectorAll(`[onclick="rsel(this,'${g}')"]`).forEach(e=>e.classList.remove('on'));
   el.classList.add('on');
+  updateEmpathyZone(el.closest('.qc'));
+}
+
+/* ─── Zones d'empathie génériques (data-empathy sur .rc.on / .chip.on) ─── */
+function updateEmpathyZone(qcEl){
+  if(!qcEl) return;
+  const zone=qcEl.querySelector('.empathy-zone');
+  if(!zone) return;
+  const seen=new Set();
+  const msgs=[];
+  qcEl.querySelectorAll('.rc.on[data-empathy], .chip.on[data-empathy]').forEach(el=>{
+    const m=el.dataset.empathy;
+    if(m && !seen.has(m)){ seen.add(m); msgs.push(m); }
+  });
+  zone.innerHTML = msgs.map(m=>`<div class="empathy-msg"><span class="ic">🌿</span><span>${m}</span></div>`).join('');
+}
+
+/* ─── Messages d'empathie sur les scores de vitalité bas (≤ 4) ─── */
+const VITALITY_EMPATHY = {
+  vb1:"Se réveiller sans énergie n'a rien d'une fatalité — c'est souvent le signe d'un rythme de cortisol à réajuster, et ça se travaille.",
+  vb2:"Un réservoir vide en permanence, ce n'est pas « dans la tête » — c'est un signal que je prends très au sérieux.",
+  vb3:"Un sommeil qui ne répare pas change toute la journée qui suit — c'est souvent l'un des tout premiers leviers qu'on remet en place ensemble.",
+  vb4:"Une tension intérieure élevée en continu épuise des ressources précises (magnésium, surrénales) — il y a des leviers concrets, pas juste « se détendre ».",
+  vb5:"Le brouillard mental a presque toujours une origine physiologique — inflammation, glycémie, thyroïde. On ne laisse jamais ça de côté.",
+  vb6:"Les variations d'humeur intenses ont souvent une racine biochimique autant qu'émotionnelle — on les aborde par les deux portes.",
+  vb7:"Ne plus se reconnaître, c'est lourd à porter — retrouver un terrain équilibré change souvent bien plus que les symptômes physiques."
+};
+function updateVitalityEmpathy(zoneId, groupIds){
+  const zone=document.getElementById(zoneId);
+  if(!zone) return;
+  const msgs=[];
+  groupIds.forEach(id=>{
+    const badge=document.getElementById(id);
+    if(badge && parseInt(badge.textContent,10)<=4 && VITALITY_EMPATHY[id]) msgs.push(VITALITY_EMPATHY[id]);
+  });
+  zone.innerHTML = msgs.map(m=>`<div class="empathy-msg"><span class="ic">🌿</span><span>${m}</span></div>`).join('');
 }
 
 /* ─── Accordéon saviez-vous ─── */
