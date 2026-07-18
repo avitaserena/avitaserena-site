@@ -443,7 +443,7 @@ body{
         <div class="pb-stat"><div class="pb-stat-n" id="pb-urg" style="color:var(--rouge)">0</div><div class="pb-stat-l" style="color:var(--rouge)">Urgentes</div></div>
         <div class="pb-stat"><div class="pb-stat-n" id="pb-total">0</div><div class="pb-stat-l">Total</div></div>
       </div>
-      <a href="crm.html#pilotage" onclick="localStorage.setItem('avs_open_pilotage','1')" class="pb-link">Voir →</a>
+      <a href="crm.html?open=pilotage" class="pb-link">Voir →</a>
     </div>
 
     <!-- OUTILS PRINCIPAUX -->
@@ -738,21 +738,25 @@ async function loadKPIs() {
 
   } catch(e) { console.error('[Accueil] ✗ loadKPIs:', e.message); }
 
-  // Pilotage (reste en localStorage — table dédiée non migrée)
+  // Pilotage — depuis Supabase (table pilotage), même source que l'onglet Pilotage de crm.html
   try {
-    const tasks = JSON.parse(localStorage.getItem('avs_pilotage_v1') || '[]');
+    let tasks = [];
+    try {
+      tasks = await sb('pilotage?select=status,urg&limit=500');
+    } catch(e) {
+      console.error('[Accueil] ✗ Pilotage Supabase:', e.message);
+      tasks = [];
+    }
     const total = tasks.length;
     const done = tasks.filter(t => t.status === 'Terminé').length;
     const urg = tasks.filter(t => t.urg === 'urgent' && t.status !== 'Terminé').length;
-    if (total > 0) {
-      const pct = Math.round(done / total * 100);
-      document.getElementById('pb-fill').style.width = pct + '%';
-      document.getElementById('pb-pct').textContent = pct + '% accompli';
-      document.getElementById('pb-done').textContent = done;
-      document.getElementById('pb-urg').textContent = urg;
-      document.getElementById('pb-total').textContent = total;
-    }
-  } catch(e) {}
+    const pct = total > 0 ? Math.round(done / total * 100) : 0;
+    document.getElementById('pb-fill').style.width = pct + '%';
+    document.getElementById('pb-pct').textContent = pct + '% accompli';
+    document.getElementById('pb-done').textContent = done;
+    document.getElementById('pb-urg').textContent = urg;
+    document.getElementById('pb-total').textContent = total;
+  } catch(e) { console.error('[Accueil] ✗ Pilotage:', e.message); }
 }
 
 /* ── REVEAL CARDS ── */
