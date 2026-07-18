@@ -1120,6 +1120,7 @@ body {
 .ajd-row.done { opacity: .5 }
 .ajd-row.done .ajd-label { text-decoration: line-through }
 .ajd-row.rdv { background: linear-gradient(90deg, rgba(13,166,120,.045), transparent 40%) }
+.ajd-row.tache { background: linear-gradient(90deg, rgba(139,92,246,.045), transparent 40%) }
 .ajd-ic { font-size: 20px; line-height: 1 }
 .ajd-time {
   font-size: 14px;
@@ -1582,10 +1583,13 @@ function renderActionsJour(){
   if(dateEl) dateEl.textContent = new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
 
   const actions = getActionsJour();
-  const pending = actions.length;
+  const tdy = today();
+
+  // Tâches clientes échéance aujourd'hui — remontées ici, au même niveau que les RDV
+  const tachesJour = (typeof taches !== 'undefined' ? taches : []).filter(t => t.echeance === tdy && t.statut !== 'done' && t.statut !== 'archive');
+  const pending = actions.length + tachesJour.length;
 
   // Visios du jour en tête de panneau
-  const tdy = today();
   const rdvJour = rdvs.filter(r => r.date === tdy).sort((a,b) => (a.time||'').localeCompare(b.time||''));
   const rdvHtml = rdvJour.map(r => {
     const cl = matchClientForRdv(r);
@@ -1599,17 +1603,28 @@ function renderActionsJour(){
       "</div></div>";
   }).join('');
 
+  const tachesJourHtml = tachesJour.map(t => {
+    return "<div class='ajd-row tache' id='ajd-tache-" + t.id + "'>" +
+      "<div class='wf2-check' onclick=\"checkTaskFromAjd('" + t.id + "')\"></div>" +
+      "<div><div class='ajd-label'>" + escH(t.titre||'Tâche') + "</div>" +
+      "<div class='ajd-meta'>" + (t.client_nom ? escH(t.client_nom) + ' · ' : '') + "Tâche cliente" + (t.priorite==='haute' ? ' · Urgente' : '') + "</div></div>" +
+      "<div class='ajd-actions'>" +
+      (t.client_id ? "<button class='ajd-btn ajd-btn-fiche' onclick=\"openFiche('" + t.client_id + "')\">Voir fiche →</button>" : "") +
+      "<button class='ajd-btn ajd-btn-fiche' onclick=\"delTask('" + t.id + "')\">Suppr.</button>" +
+      "</div></div>";
+  }).join('');
+
   if(badgeEl){
     badgeEl.textContent = pending > 0 ? pending+' action'+(pending>1?'s':'') : '✓ À jour';
     badgeEl.className = 'ajd-badge' + (pending===0?' ok':'');
   }
 
   if(!pending){
-    listEl.innerHTML = rdvHtml + '<div class="ajd-empty">✓ Tous les mails sont envoyés — rien à faire aujourd\'hui !</div>';
+    listEl.innerHTML = rdvHtml + tachesJourHtml + '<div class="ajd-empty">✓ Tous les mails sont envoyés — rien à faire aujourd\'hui !</div>';
     return;
   }
 
-  listEl.innerHTML = rdvHtml + actions.map(a => {
+  listEl.innerHTML = rdvHtml + tachesJourHtml + actions.map(a => {
     const nomCliente = a.rdv.name || '—';
     const heure = a.rdv.time || '';
     const dateStr = new Date((a.rdv.date||today())+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'});
@@ -3023,8 +3038,8 @@ async function saveNewClient(){
 
 async function addQuick(){
   const inp=document.getElementById('task-quick');const titre=(inp?.value||'').trim();if(!titre)return;
-  const t={id:'t_'+Date.now(),titre,statut:'todo',priorite:'normale',created_at:new Date().toISOString()};
-  try{await sb('taches',{method:'POST',body:JSON.stringify(t)});taches.push(t);inp.value='';renderTaches();toast('Tâche ajoutée ✓','ok');}
+  const t={id:'t_'+Date.now(),titre,statut:'todo',priorite:'normale',echeance:today(),created_at:new Date().toISOString()};
+  try{await sb('taches',{method:'POST',body:JSON.stringify(t)});taches.push(t);inp.value='';renderTaches();renderActionsJour();toast('Tâche ajoutée ✓','ok');}
   catch(e){toast('Erreur','err');}
 }
 async function saveTache(){
@@ -3032,11 +3047,12 @@ async function saveTache(){
   const cid=document.getElementById('t-client')?.value||'';
   const cl=db.clients.find(c=>c.id===cid);
   const t={id:'t_'+Date.now(),titre,description:document.getElementById('t-desc')?.value||'',client_id:cid,client_nom:cl?cl.prenom+' '+(cl.nom||''):'',echeance:document.getElementById('t-ech')?.value||null,priorite:document.getElementById('t-prio')?.value||'normale',statut:'todo',created_at:new Date().toISOString()};
-  try{await sb('taches',{method:'POST',body:JSON.stringify(t)});taches.push(t);closeM('m-tache');document.getElementById('t-titre').value='';renderTaches();toast('Tâche créée ✓','ok');}
+  try{await sb('taches',{method:'POST',body:JSON.stringify(t)});taches.push(t);closeM('m-tache');document.getElementById('t-titre').value='';renderTaches();renderActionsJour();toast('Tâche créée ✓','ok');}
   catch(e){toast('Erreur','err');}
 }
-async function checkTask(id){try{await sb('taches?id=eq.'+id,{method:'PATCH',body:JSON.stringify({statut:'done'})});const t=taches.find(x=>x.id===id);if(t)t.statut='done';renderTaches();toast('✓ Done','ok');}catch(e){toast('Erreur','err');}}
-async function delTask(id){try{await sb('taches?id=eq.'+id,{method:'DELETE',prefer:'return=minimal'});taches=taches.filter(t=>t.id!==id);renderTaches();}catch(e){toast('Erreur','err');}}
+async function checkTask(id){try{await sb('taches?id=eq.'+id,{method:'PATCH',body:JSON.stringify({statut:'done'})});const t=taches.find(x=>x.id===id);if(t)t.statut='done';renderTaches();renderActionsJour();toast('✓ Done','ok');}catch(e){toast('Erreur','err');}}
+async function checkTaskFromAjd(id){ await checkTask(id); }
+async function delTask(id){try{await sb('taches?id=eq.'+id,{method:'DELETE',prefer:'return=minimal'});taches=taches.filter(t=>t.id!==id);renderTaches();renderActionsJour();}catch(e){toast('Erreur','err');}}
 
 function showNewFactureModal(){
   const sel=document.getElementById('nf-client');
