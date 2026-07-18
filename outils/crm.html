@@ -769,6 +769,8 @@ body {
   box-shadow: 0 3px 10px rgba(13,166,120,.25);
 }
 .fv2-btn.accent:hover { background: var(--gold-dk); border-color: var(--gold-dk) }
+.fv2-btn.danger { color: var(--red); border-color: rgba(228,96,76,.3) }
+.fv2-btn.danger:hover { background: var(--red-lt); border-color: var(--red); color: var(--red) }
 
 .fv2-kpis {
   display: grid;
@@ -1057,6 +1059,14 @@ body {
 .rdv2-status { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: var(--r99) }
 .rdv2-status.confirmed { background: var(--green-lt); color: var(--green) }
 .rdv2-status.pending { background: var(--orange-lt); color: var(--orange) }
+.rdv2-status.annule { background: var(--red-lt); color: var(--red); text-decoration: line-through }
+.rdv2-cancel {
+  margin-left: 8px; flex-shrink: 0;
+  background: none; border: 1px solid var(--border); color: var(--red);
+  font-size: 11px; font-weight: 600; padding: 4px 11px; border-radius: var(--r99);
+  cursor: pointer; transition: var(--t); font-family: 'Inter', sans-serif;
+}
+.rdv2-cancel:hover { background: var(--red-lt); border-color: var(--red) }
 
 /* Timeline */
 .tl2-item { display: flex; gap: 13px; padding: 12px 0; border-bottom: 1px solid var(--border); position: relative }
@@ -1360,6 +1370,7 @@ let db={clients:[],factures:[],settings:null,nextF:1};
 let taches=[],rdvs=[],emailCtx=null,curTab='urg',curSearch='',curFilter='all';
 let memoAlerts=[];
 let clientMessages=[];
+let docsMedicaux={}; // { clientId: [ {id, nom_fichier, type, date_bilan, storage_path, uploaded_at}, ... ] }
 
 // COLORS palette - vibrant Monday-style
 const COLORS=['#0DA678','#7B6EE6','#E4604C','#3D7EF0','#E28B2B','#0E9384','#D4537E','#5F6BE0'];
@@ -2247,6 +2258,174 @@ function rdvMatchesClient(rdv, c){
 function matchClientForRdv(rdv){ return db.clients.find(c => rdvMatchesClient(rdv, c)) || null; }
 function cRdvs(c){ return rdvs.filter(r => rdvMatchesClient(r, c)); }
 
+// ── Annulation d'un rendez-vous (ex: cliente qui appelle pour annuler) ──────
+async function annulerRdv(rdvId, cid){
+  if(!confirm("Confirmer l'annulation de ce rendez-vous ? Il disparaîtra de l'agenda.")) return;
+  try{
+    await sb('rendez_vous?id=eq.'+rdvId, {
+      method:'PATCH',
+      prefer:'return=minimal',
+      body: JSON.stringify({ status: 'annule' })
+    });
+    const r=rdvs.find(x=>x.id===rdvId);
+    if(r) r.status='annule';
+    toast('✓ Rendez-vous annulé','ok');
+    if(cid){
+      const c=db.clients.find(x=>x.id===cid);
+      if(c) renderFiche(c);
+    }
+    renderActionsJour();
+  }catch(e){
+    toast('Erreur annulation : '+e.message,'err');
+  }
+}
+
+// ── Suppression complète d'une fiche cliente (ex: nettoyage de comptes de test) ──
+function ouvrirSuppressionCliente(cid){
+  const c=db.clients.find(x=>x.id===cid);
+  if(!c) return;
+  const facturesClient=db.factures.filter(f=>f.clientId===cid);
+  if(facturesClient.length>0){
+    toast('⚠ Suppression bloquée — '+facturesClient.length+' facture(s) existent pour cette cliente. Supprimez-les d\'abord si besoin.','err');
+    return;
+  }
+  document.getElementById('dc-client-id').value=cid;
+  document.getElementById('dc-client-name').textContent=(c.prenom||'')+' '+(c.nom||'');
+  document.getElementById('dc-confirm-target').textContent=c.prenom||'';
+  document.getElementById('dc-confirm').value='';
+  document.getElementById('dc-confirm-btn').disabled=true;
+  openM('m-delete-client');
+}
+
+function dcCheckConfirm(){
+  const cid=document.getElementById('dc-client-id').value;
+  const c=db.clients.find(x=>x.id===cid);
+  const val=(document.getElementById('dc-confirm').value||'').trim().toLowerCase();
+  document.getElementById('dc-confirm-btn').disabled = !(c && val.length>0 && val===(c.prenom||'').trim().toLowerCase());
+}
+
+async function confirmerSuppressionCliente(){
+  const cid=document.getElementById('dc-client-id').value;
+  const c=db.clients.find(x=>x.id===cid);
+  if(!c) return;
+  const btnEl=document.getElementById('dc-confirm-btn');
+  btnEl.disabled=true; btnEl.textContent='Suppression…';
+  try{
+    // Sécurité : re-vérifier qu'aucune facture n'a été créée entre-temps
+    const facturesClient=db.factures.filter(f=>f.clientId===cid);
+    if(facturesClient.length>0) throw new Error('Des factures existent pour cette cliente — suppression annulée.');
+
+    // Nettoyage des données liées (pas de suppression en cascade côté base pour ces tables)
+    await Promise.allSettled([
+      sb('bilans_biologiques?client_id=eq.'+encodeURIComponent(cid), {method:'DELETE', prefer:'return=minimal'}),
+      sb('protocoles_client?client_id=eq.'+encodeURIComponent(cid), {method:'DELETE', prefer:'return=minimal'}),
+      sb('journal_entries?client_key=eq.'+encodeURIComponent(cid), {method:'DELETE', prefer:'return=minimal'}),
+      sb('messages_client?client_key=eq.'+encodeURIComponent(cid), {method:'DELETE', prefer:'return=minimal'}),
+      sb('cycle_entries?client_key=eq.'+encodeURIComponent(cid), {method:'DELETE', prefer:'return=minimal'}),
+      sb('coherence_sessions?client_key=eq.'+encodeURIComponent(cid), {method:'DELETE', prefer:'return=minimal'}),
+      sb('questionnaires?client_id=eq.'+encodeURIComponent(cid), {method:'DELETE', prefer:'return=minimal'}),
+      sb('bilan_entree?client_key=eq.'+encodeURIComponent(cid), {method:'DELETE', prefer:'return=minimal'}),
+      sb('checkins_semaine?client_key=eq.'+encodeURIComponent(cid), {method:'DELETE', prefer:'return=minimal'}),
+      sb('lettres_cliniques?client_key=eq.'+encodeURIComponent(cid), {method:'DELETE', prefer:'return=minimal'})
+    ]);
+
+    // Suppression des RDV associés
+    const rdvsClient=cRdvs(c);
+    for(const r of rdvsClient){
+      try{ await sb('rendez_vous?id=eq.'+r.id, {method:'DELETE', prefer:'return=minimal'}); }catch(e){}
+    }
+
+    // Suppression de la fiche cliente
+    await sb('clientes?id=eq.'+encodeURIComponent(cid), {method:'DELETE', prefer:'return=minimal'});
+
+    // Nettoyage local
+    db.clients=db.clients.filter(x=>x.id!==cid);
+    rdvs=rdvs.filter(r=>!rdvMatchesClient(r,c));
+    delete docsMedicaux[cid];
+
+    closeM('m-delete-client');
+    toast('✓ Fiche définitivement supprimée','ok');
+    nav('clients',null);
+  }catch(e){
+    toast('Erreur suppression : '+e.message,'err');
+    btnEl.disabled=false; btnEl.textContent='🗑 Supprimer définitivement';
+  }
+}
+
+// ── Documents médicaux (résultats d'examens, radios, comptes-rendus...) ─────
+function ouvrirAjoutDocMedical(cid){
+  document.getElementById('dm-client-id').value=cid;
+  document.getElementById('dm-file').value='';
+  document.getElementById('dm-nom').value='';
+  document.getElementById('dm-type').value='bilan_sanguin';
+  document.getElementById('dm-date').value=today();
+  document.getElementById('dm-save-btn').disabled=false;
+  document.getElementById('dm-save-btn').textContent='Ajouter';
+  openM('m-doc-medical');
+}
+
+function dmAutoNom(inp){
+  const nomEl=document.getElementById('dm-nom');
+  if(inp.files && inp.files[0] && !nomEl.value){
+    nomEl.value=inp.files[0].name.replace(/\.[^.]+$/, '');
+  }
+}
+
+async function saveDocMedical(){
+  const cid=document.getElementById('dm-client-id').value;
+  const fileInp=document.getElementById('dm-file');
+  const file=fileInp.files && fileInp.files[0];
+  const dateExamen=document.getElementById('dm-date').value;
+  if(!file){ toast('Sélectionnez un fichier','err'); return; }
+  if(!dateExamen){ toast("Indiquez la date de l'examen",'err'); return; }
+  const nom=(document.getElementById('dm-nom').value||file.name).trim();
+  const type=document.getElementById('dm-type').value;
+  const btnEl=document.getElementById('dm-save-btn');
+  btnEl.disabled=true; btnEl.textContent='Envoi…';
+  try{
+    const safeName=file.name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9._-]/g,'_');
+    const path=cid+'/'+Date.now()+'_'+safeName;
+    let authToken=KEY;
+    if (typeof Auth !== 'undefined') {
+      const token = await Auth.getValidAccessToken();
+      if (token) authToken = token;
+    }
+    const up=await fetch(SB+'/storage/v1/object/avs-bilans/'+path, {
+      method:'POST',
+      headers:{ 'apikey':KEY, 'Authorization':'Bearer '+authToken, 'Content-Type': file.type||'application/octet-stream' },
+      body: file
+    });
+    if(!up.ok){ const t=await up.text(); throw new Error(t||('Erreur upload ('+up.status+')')); }
+    const publicUrl=SB+'/storage/v1/object/public/avs-bilans/'+path;
+    await sb('bilans_biologiques', {
+      method:'POST',
+      body: JSON.stringify([{ client_id:cid, client_key:cid, nom_fichier:nom, date_bilan:dateExamen, storage_path:publicUrl, type:type }])
+    });
+    toast('✓ Document ajouté','ok');
+    closeM('m-doc-medical');
+    await loadDocsMedicaux(cid);
+    const c=db.clients.find(x=>x.id===cid);
+    if(c) renderFiche(c);
+  }catch(e){
+    toast('Erreur : '+e.message,'err');
+  }finally{
+    btnEl.disabled=false; btnEl.textContent='Ajouter';
+  }
+}
+
+async function supprimerDocMedical(cid, docId){
+  if(!confirm('Supprimer ce document ?')) return;
+  try{
+    await sb('bilans_biologiques?id=eq.'+encodeURIComponent(docId), { method:'DELETE', prefer:'return=minimal' });
+    toast('✓ Document supprimé','ok');
+    await loadDocsMedicaux(cid);
+    const c=db.clients.find(x=>x.id===cid);
+    if(c) renderFiche(c);
+  }catch(e){
+    toast('Erreur suppression : '+e.message,'err');
+  }
+}
+
 function renderDashboard(){
   const now=new Date();
   const curMk=mk(now.toISOString());
@@ -2524,12 +2703,22 @@ function updateTopbarActions(page){
 }
 function setFilter(s,el){curFilter=s;document.querySelectorAll('.fchip').forEach(c=>c.classList.remove('on'));if(el)el.classList.add('on');renderClients();}
 
+async function loadDocsMedicaux(cid){
+  try{
+    const r=await sb('bilans_biologiques?client_id=eq.'+encodeURIComponent(cid)+'&order=date_bilan.desc,uploaded_at.desc');
+    docsMedicaux[cid]=r;
+  }catch(e){
+    console.error('[CRM] ✗ Documents médicaux:', e.message);
+    docsMedicaux[cid]=docsMedicaux[cid]||[];
+  }
+}
+
 async function openFiche(id){
   const c=db.clients.find(x=>x.id===id);
   if(!c)return;
   nav('fiche',null);
   renderFiche(c); // affichage immédiat
-  await loadMemoAlerts(); // rechargement frais depuis Supabase
+  await Promise.allSettled([loadMemoAlerts(), loadDocsMedicaux(id)]); // rechargement frais depuis Supabase
   renderFiche(c); // re-render avec données à jour
 }
 
@@ -2553,7 +2742,8 @@ function renderFiche(c){
   const totalWF=wf.length;
   const daysLeft=started&&dur>0?Math.max(0,dur-Math.round(diffD(started))):null;
   const hasPHV=!!(c.phv_url);
-  const docsCount=[hasPHV,c.timeline?.some(t=>t.title?.includes('Lettre')),c.timeline?.some(t=>t.title?.includes('Bilan'))].filter(Boolean).length;
+  const dm=docsMedicaux[cid]||[];
+  const docsCount=[hasPHV,c.timeline?.some(t=>t.title?.includes('Lettre')),c.timeline?.some(t=>t.title?.includes('Bilan'))].filter(Boolean).length + dm.length;
 
   // Helper — bouton sans problème de quotes
   function btn(cls,fn,label){return `<button class="${cls}" onclick="${fn}">${label}</button>`;}
@@ -2590,7 +2780,13 @@ function renderFiche(c){
   ].filter(Boolean).map(([k,v])=>`<div class="ic-row"><div class="ic-key">${k}</div><div class="ic-val">${v}</div></div>`).join('');
 
   const rdvHtml=cr.length>0
-    ?cr.slice(0,5).map(r=>`<div class="rdv2-item"><div class="rdv2-date">${fmtDate(r.date)}</div><div class="rdv2-type">${escH(r.type||'Consultation')}</div><span class="rdv2-status ${r.status==='confirmed'?'confirmed':'pending'}">${r.status==='confirmed'?'Confirmé':'En attente'}</span></div>`).join('')
+    ?cr.slice(0,5).map(r=>{
+        const isAnnule=r.status==='annule';
+        const statusCls=isAnnule?'annule':(r.status==='confirmed'?'confirmed':'pending');
+        const statusLbl=isAnnule?'Annulé':(r.status==='confirmed'?'Confirmé':'En attente');
+        const cancelBtn=isAnnule?'':`<button class="rdv2-cancel" onclick="annulerRdv(${r.id},'${cid}')" title="Annuler ce rendez-vous">✕ Annuler</button>`;
+        return `<div class="rdv2-item"><div class="rdv2-date">${fmtDate(r.date)}</div><div class="rdv2-type">${escH(r.type||'Consultation')}</div><span class="rdv2-status ${statusCls}">${statusLbl}</span>${cancelBtn}</div>`;
+      }).join('')
     :"<div style='padding:16px;font-size:13px;color:var(--muted);font-style:italic'>Aucun RDV enregistré.</div>";
 
   const progCardHtml=c.programme&&dur>0&&started?`
@@ -2647,6 +2843,18 @@ function renderFiche(c){
       ${btn(`doc-action ${d.ac}`,d.fn,escH(d.al))}
     </div>`).join('');
 
+  // Documents médicaux (résultats, radios, comptes-rendus... ajoutés manuellement par la praticienne)
+  const dmTypeLabels={bilan_sanguin:'Bilan sanguin',imagerie:'Radio / Imagerie',compte_rendu:'Compte-rendu médical',ordonnance:'Ordonnance',autre:'Document'};
+  const dmIcons={bilan_sanguin:'🩸',imagerie:'🩻',compte_rendu:'📄',ordonnance:'💊',autre:'📎'};
+  const dmHtml=dm.length>0?dm.map(d=>`
+    <div class="doc-item">
+      <div class="doc-icon" style="background:var(--blue-lt)">${dmIcons[d.type]||'📎'}</div>
+      <div class="doc-body"><div class="doc-name">${escH(d.nom_fichier||'Document')}</div><div class="doc-meta">${escH(dmTypeLabels[d.type]||'Document')} · Examen du ${fmtDate(d.date_bilan)}</div></div>
+      <span class="doc-status ok">Disponible</span>
+      ${btn('doc-action',`window.open('${escH(d.storage_path)}','_blank')`,'Voir')}
+      ${btn('doc-action',`supprimerDocMedical('${cid}','${d.id}')`,'🗑')}
+    </div>`).join(''):"<div style='padding:16px;font-size:13px;color:var(--muted);font-style:italic'>Aucun document médical ajouté pour le moment.</div>";
+
   // Timeline
   const tlColors={facture:'var(--orange)',suivi:'var(--green)',creation:'var(--violet)',default:'var(--muted)'};
   const tlBg={facture:'var(--orange-lt)',suivi:'var(--green-lt)',creation:'var(--violet-lt)',default:'var(--surface)'};
@@ -2692,6 +2900,7 @@ function renderFiche(c){
           ${btn('fv2-btn',`ouvrirPHVCliente('${cid}')`,'✦ PHV')}
           ${btn('fv2-btn',`ouvrirLettreClinique('${cid}')`,'✉ Adressage')}
           ${btn('fv2-btn accent',`ouvrirEditionCliente('${cid}')`, '✎ Modifier')}
+          ${btn('fv2-btn danger',`ouvrirSuppressionCliente('${cid}')`, '🗑 Supprimer')}
         </div>
       </div>
       <div class="fv2-kpis">
@@ -2729,7 +2938,14 @@ function renderFiche(c){
       <div class="info-card"><div class="ic-head"><div class="ic-title">⚡ Étapes de suivi</div><span style="font-size:11px;color:var(--muted)">${doneCount}/${totalWF} complétées</span></div><div class="ic-body"><div class="wf2-list">${wfHtml}</div></div></div>
     </div>
     <div class="fv2-panel" id="panel-documents">
-      <div class="doc-list">${docsHtml}</div>
+      <div class="info-card">
+        <div class="ic-head"><div class="ic-title">📄 Outils & protocole</div></div>
+        <div class="ic-body"><div class="doc-list">${docsHtml}</div></div>
+      </div>
+      <div class="info-card" style="margin-top:14px">
+        <div class="ic-head"><div class="ic-title">🩺 Documents médicaux</div>${btn('ic-edit',`ouvrirAjoutDocMedical('${cid}')`,'+ Ajouter')}</div>
+        <div class="ic-body"><div class="doc-list">${dmHtml}</div></div>
+      </div>
     </div>
     <div class="fv2-panel" id="panel-timeline">
       <div style="display:flex;justify-content:flex-end;margin-bottom:12px">${btn('btn btn-ghost btn-sm',`addTLEvent('${cid}')`,'+  Événement')}</div>
@@ -4292,6 +4508,54 @@ function ouvrirBilanEntree(clientId, mode){
           </div>
         </div>
       </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="m-delete-client">
+  <div class="modal">
+    <div class="mhead"><div class="mtitle" style="color:var(--red)">🗑 Supprimer définitivement cette fiche</div><button class="mx" onclick="closeM('m-delete-client')">×</button></div>
+    <div class="mbody">
+      <input type="hidden" id="dc-client-id">
+      <p style="font-size:13px;color:var(--ink3);line-height:1.65">
+        Vous êtes sur le point de supprimer définitivement la fiche de <strong id="dc-client-name"></strong> ainsi que toutes les données associées (rendez-vous, documents médicaux, journal, messages, questionnaires, bilans...).
+        <strong style="color:var(--red)">Cette action est irréversible.</strong>
+      </p>
+      <div class="fg" style="margin-top:14px">
+        <label class="fl">Tapez « <span id="dc-confirm-target"></span> » pour confirmer</label>
+        <input class="fi" id="dc-confirm" oninput="dcCheckConfirm()" autocomplete="off">
+      </div>
+    </div>
+    <div class="mfoot">
+      <button class="btn btn-ghost" onclick="closeM('m-delete-client')">Annuler</button>
+      <button class="btn btn-primary" id="dc-confirm-btn" disabled style="background:var(--red);border-color:var(--red)" onclick="confirmerSuppressionCliente()">🗑 Supprimer définitivement</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="m-doc-medical">
+  <div class="modal">
+    <div class="mhead"><div class="mtitle">🩺 Ajouter un document médical</div><button class="mx" onclick="closeM('m-doc-medical')">×</button></div>
+    <div class="mbody">
+      <input type="hidden" id="dm-client-id">
+      <div class="fg"><label class="fl">Fichier * <span style="font-weight:400;color:var(--muted)">(PDF, photo...)</span></label><input class="fi" id="dm-file" type="file" accept=".pdf,.jpg,.jpeg,.png,.heic,.heif,.webp" onchange="dmAutoNom(this)"></div>
+      <div class="fg"><label class="fl">Nom du document</label><input class="fi" id="dm-nom" placeholder="Ex: Bilan sanguin janvier 2026"></div>
+      <div class="fg2">
+        <div class="fg"><label class="fl">Type</label>
+          <select class="fi fs" id="dm-type">
+            <option value="bilan_sanguin">Bilan sanguin</option>
+            <option value="imagerie">Radio / Imagerie</option>
+            <option value="compte_rendu">Compte-rendu médical</option>
+            <option value="ordonnance">Ordonnance</option>
+            <option value="autre">Autre</option>
+          </select>
+        </div>
+        <div class="fg"><label class="fl">Date de l'examen *</label><input class="fi" id="dm-date" type="date"></div>
+      </div>
+    </div>
+    <div class="mfoot">
+      <button class="btn btn-ghost" onclick="closeM('m-doc-medical')">Annuler</button>
+      <button class="btn btn-primary" id="dm-save-btn" onclick="saveDocMedical()">Ajouter</button>
     </div>
   </div>
 </div>
