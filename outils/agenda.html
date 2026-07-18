@@ -345,6 +345,7 @@ body{
           <button class="view-tab active" onclick="switchMainView('agenda',this)">Agenda</button>
           <button class="view-tab" onclick="switchMainView('waitlist',this)">Liste d'attente</button>
           <button class="view-tab" onclick="switchMainView('semaine',this)">Semaine</button>
+          <button class="view-tab" onclick="switchMainView('mois',this)">Mois</button>
         </div>
       </div>
     </div>
@@ -366,6 +367,11 @@ body{
     <!-- VUE SEMAINE -->
     <div id="semaineView" style="display:none">
       <div id="semaineBody"></div>
+    </div>
+
+    <!-- VUE MOIS -->
+    <div id="moisView" style="display:none">
+      <div id="moisBody"></div>
     </div>
   </div>
 </div>
@@ -497,6 +503,8 @@ let state = {
   selectedDate: new Date().toISOString().slice(0,10),
   currentMiniMonth: new Date().getMonth(),
   currentMiniYear: new Date().getFullYear(),
+  currentMoisMonth: new Date().getMonth(),
+  currentMoisYear: new Date().getFullYear(),
   currentView: 'agenda',
   typeFilter: 'all',
   editingId: null,
@@ -674,7 +682,7 @@ async function syncRdvsDepuisSupabase() {
   if (rdvsDistants === null) return; // échec réseau : on garde le cache local affiché
   state.rdvs = rdvsDistants;
   save();
-  updateStats(); renderAgenda(); renderWaitlist(); renderSemaine(); renderMiniCal();
+  updateStats(); renderAgenda(); renderWaitlist(); renderSemaine(); renderMiniCal(); renderMois();
 }
 
 /* ── Charge les tâches clientes qui ont une heure renseignée (donc destinées
@@ -711,7 +719,7 @@ async function chargerTachesDepuisSupabase() {
   const tachesDistantes = await supaLoadTachesAgenda();
   if (tachesDistantes === null) return;
   state.taches = tachesDistantes;
-  renderAgenda(); renderSemaine();
+  renderAgenda(); renderSemaine(); renderMois();
 }
 
 /* ── Marque une tâche comme terminée directement depuis l'agenda ── */
@@ -734,7 +742,7 @@ async function marquerTacheFaiteDepuisAgenda(id, ev) {
       body: JSON.stringify({ statut: 'done' })
     });
     state.taches = state.taches.filter(t => t.id !== id);
-    renderAgenda(); renderSemaine();
+    renderAgenda(); renderSemaine(); renderMois();
   } catch(e) { console.warn('Erreur mise à jour tâche:', e); }
 }
 
@@ -1169,7 +1177,119 @@ function renderSemaine() {
 }
 
 // ════════════════════════════════
-// MODALS RDV
+// VUE MOIS
+// ════════════════════════════════
+function moisNav(dir) {
+  state.currentMoisMonth += dir;
+  if (state.currentMoisMonth > 11) { state.currentMoisMonth = 0; state.currentMoisYear++; }
+  if (state.currentMoisMonth < 0) { state.currentMoisMonth = 11; state.currentMoisYear--; }
+  renderMois();
+}
+
+function moisAujourdhui() {
+  state.currentMoisMonth = new Date().getMonth();
+  state.currentMoisYear = new Date().getFullYear();
+  renderMois();
+}
+
+function moisJourClick(dateStr) {
+  selectDate(dateStr);
+  const btn = document.querySelector('.view-tab[data-view="agenda"]') || Array.from(document.querySelectorAll('.view-tab')).find(b=>b.textContent.trim()==='Agenda');
+  switchMainView('agenda', btn);
+}
+
+function renderMois() {
+  const body = document.getElementById('moisBody');
+  if (!body) return;
+  const m = state.currentMoisMonth, y = state.currentMoisYear;
+  const today = new Date().toISOString().slice(0,10);
+
+  const firstDay = new Date(y, m, 1).getDay();
+  const nbJours = new Date(y, m+1, 0).getDate();
+  const offset = firstDay === 0 ? 6 : firstDay - 1;
+  const prevDays = new Date(y, m, 0).getDate();
+
+  body.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+    <div style="display:flex;align-items:center;gap:10px">
+      <button onclick="moisNav(-1)" style="background:var(--blanc);border:1px solid var(--taupe);border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:15px;color:var(--ardoise)">‹</button>
+      <div style="font-size:16px;font-weight:700;color:var(--ardoise);min-width:160px;text-align:center;font-family:'Inter',sans-serif">${MOIS[m]} ${y}</div>
+      <button onclick="moisNav(1)" style="background:var(--blanc);border:1px solid var(--taupe);border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:15px;color:var(--ardoise)">›</button>
+    </div>
+    <button onclick="moisAujourdhui()" style="background:var(--off);border:1px solid var(--taupe);border-radius:99px;padding:7px 16px;font-size:12px;font-weight:600;color:var(--ardoise);cursor:pointer;font-family:inherit">Aujourd'hui</button>
+  </div>`;
+
+  const grid = document.createElement('div');
+  grid.style.cssText = 'display:grid;grid-template-columns:repeat(7,1fr);gap:6px';
+
+  JOURS.forEach(j => {
+    const hdr = document.createElement('div');
+    hdr.style.cssText = 'font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--gris);text-align:center;padding:4px 0';
+    hdr.textContent = j;
+    grid.appendChild(hdr);
+  });
+
+  const cellBase = 'background:var(--blanc);border-radius:10px;border:1px solid var(--taupe);min-height:96px;padding:6px;cursor:pointer;transition:border-color .15s;display:flex;flex-direction:column;gap:3px;overflow:hidden';
+
+  // Jours du mois précédent
+  for (let i = offset-1; i >= 0; i--) {
+    const cell = document.createElement('div');
+    cell.style.cssText = cellBase + ';opacity:.35';
+    cell.innerHTML = `<div style="font-size:11px;color:var(--taupe);font-weight:600">${prevDays - i}</div>`;
+    grid.appendChild(cell);
+  }
+
+  for (let d = 1; d <= nbJours; d++) {
+    const dateStr = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const rdvsJour = state.rdvs.filter(r => r.date === dateStr && r.status !== 'annule').sort((a,b)=>a.time.localeCompare(b.time));
+    const tachesJour = (state.taches||[]).filter(t => t.date === dateStr).sort((a,b)=>a.time.localeCompare(b.time));
+    const isBlocked = isDateBlocked(dateStr);
+    const isToday = dateStr === today;
+
+    const items = [
+      ...rdvsJour.map(r => ({ kind:'rdv', time:r.time, label:r.name.split(' ')[0] })),
+      ...tachesJour.map(t => ({ kind:'tache', time:t.time, label:t.titre }))
+    ].sort((a,b) => a.time.localeCompare(b.time));
+
+    const maxShow = 3;
+    const shown = items.slice(0, maxShow);
+    const rest = items.length - shown.length;
+
+    const cell = document.createElement('div');
+    cell.style.cssText = cellBase + (isToday ? ';border-color:var(--ocre);border-width:2px' : '') + (isBlocked ? ';background:rgba(184,50,50,.04)' : '');
+    cell.onmouseenter = () => cell.style.borderColor = 'var(--ocre)';
+    cell.onmouseleave = () => cell.style.borderColor = isToday ? 'var(--ocre)' : 'var(--taupe)';
+    cell.onclick = () => moisJourClick(dateStr);
+
+    let html = `<div style="display:flex;align-items:center;justify-content:space-between">
+      <span style="font-size:12px;font-weight:700;color:${isToday?'var(--ocre)':'var(--ardoise)'}">${d}</span>
+      ${isBlocked ? '<span style="font-size:9px">🔒</span>' : ''}
+    </div>`;
+
+    html += shown.map(it => it.kind === 'rdv'
+      ? `<div style="background:rgba(13,166,120,.12);border-radius:3px;padding:1px 5px;font-size:9.5px;font-weight:600;color:var(--ardoise);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${it.time} ${it.label}</div>`
+      : `<div style="background:rgba(139,92,246,.12);border-radius:3px;padding:1px 5px;font-size:9.5px;font-weight:600;color:#6D3FD6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">📌 ${it.time} ${it.label}</div>`
+    ).join('');
+
+    if (rest > 0) html += `<div style="font-size:9.5px;color:var(--gris);font-weight:600;padding-left:2px">+${rest} autre${rest>1?'s':''}</div>`;
+
+    cell.innerHTML = html;
+    grid.appendChild(cell);
+  }
+
+  // Jours du mois suivant
+  const total = offset + nbJours;
+  const rem = total % 7 === 0 ? 0 : 7 - (total % 7);
+  for (let i = 1; i <= rem; i++) {
+    const cell = document.createElement('div');
+    cell.style.cssText = cellBase + ';opacity:.35';
+    cell.innerHTML = `<div style="font-size:11px;color:var(--taupe);font-weight:600">${i}</div>`;
+    grid.appendChild(cell);
+  }
+
+  body.appendChild(grid);
+}
+
+
 // ════════════════════════════════
 function openAddModal() {
   state.editingId = null;
@@ -1560,12 +1680,14 @@ function syncToCRM(rdv) {
 function switchMainView(view, btn) {
   state.currentView = view;
   document.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
-  btn.classList.add('active');
+  if(btn) btn.classList.add('active');
   document.getElementById('agendaView').style.display = view==='agenda'?'block':'none';
   document.getElementById('waitlistView').style.display = view==='waitlist'?'block':'none';
   document.getElementById('semaineView').style.display = view==='semaine'?'block':'none';
+  document.getElementById('moisView').style.display = view==='mois'?'block':'none';
   if (view==='waitlist') renderWaitlist();
   if (view==='semaine') renderSemaine();
+  if (view==='mois') renderMois();
 }
 
 function filterType(type, btn) {
