@@ -1603,12 +1603,13 @@ function renderActionsJour(){
       "</div></div>";
   }).join('');
 
-  const tachesJourHtml = tachesJour.map(t => {
+  const tachesJourHtml = [...tachesJour].sort((a,b)=>(a.heure||'99:99').localeCompare(b.heure||'99:99')).map(t => {
     return "<div class='ajd-row tache' id='ajd-tache-" + t.id + "'>" +
-      "<div class='wf2-check' onclick=\"checkTaskFromAjd('" + t.id + "')\"></div>" +
+      (t.heure ? "<div class='ajd-time' style='background:rgba(139,92,246,.12);color:#6D3FD6'>" + escH(t.heure) + "</div>" : "<div class='wf2-check' onclick=\"checkTaskFromAjd('" + t.id + "')\"></div>") +
       "<div><div class='ajd-label'>" + escH(t.titre||'Tâche') + "</div>" +
       "<div class='ajd-meta'>" + (t.client_nom ? escH(t.client_nom) + ' · ' : '') + "Tâche cliente" + (t.priorite==='haute' ? ' · Urgente' : '') + "</div></div>" +
       "<div class='ajd-actions'>" +
+      (t.heure ? "<button class='ajd-btn ajd-btn-fiche' onclick=\"checkTaskFromAjd('" + t.id + "')\">✓ Fait</button>" : "") +
       (t.client_id ? "<button class='ajd-btn ajd-btn-fiche' onclick=\"openFiche('" + t.client_id + "')\">Voir fiche →</button>" : "") +
       "<button class='ajd-btn ajd-btn-fiche' onclick=\"delTask('" + t.id + "')\">Suppr.</button>" +
       "</div></div>";
@@ -2446,7 +2447,7 @@ function renderTaches(){
   if(!active.length){el.innerHTML='<div style="font-size:13px;color:var(--muted);font-style:italic;padding:4px 0">Aucune tâche en attente ✓</div>';return;}
   el.innerHTML=active.map(t=>{
     const prio=t.priorite==='haute'?'🔴':t.priorite==='basse'?'⚪':'🟡';
-    const eco=t.echeance?fmtShort(t.echeance):'';
+    const eco=t.echeance?fmtShort(t.echeance)+(t.heure?' · '+t.heure:''):'';
     const ov=t.echeance&&diffD(t.echeance)>0;
     return "<div class='task-item' id='ti-"+t.id+"'>" +
       "<div class='t-check' onclick=\"checkTask('"+t.id+"')\">✓</div>" +
@@ -3046,8 +3047,8 @@ async function saveTache(){
   const titre=(document.getElementById('t-titre')?.value||'').trim();if(!titre)return;
   const cid=document.getElementById('t-client')?.value||'';
   const cl=db.clients.find(c=>c.id===cid);
-  const t={id:'t_'+Date.now(),titre,description:document.getElementById('t-desc')?.value||'',client_id:cid,client_nom:cl?cl.prenom+' '+(cl.nom||''):'',echeance:document.getElementById('t-ech')?.value||null,priorite:document.getElementById('t-prio')?.value||'normale',statut:'todo',created_at:new Date().toISOString()};
-  try{await sb('taches',{method:'POST',body:JSON.stringify(t)});taches.push(t);closeM('m-tache');document.getElementById('t-titre').value='';renderTaches();renderActionsJour();toast('Tâche créée ✓','ok');}
+  const t={id:'t_'+Date.now(),titre,description:document.getElementById('t-desc')?.value||'',client_id:cid,client_nom:cl?cl.prenom+' '+(cl.nom||''):'',echeance:document.getElementById('t-ech')?.value||null,heure:document.getElementById('t-heure')?.value||null,priorite:document.getElementById('t-prio')?.value||'normale',statut:'todo',created_at:new Date().toISOString()};
+  try{await sb('taches',{method:'POST',body:JSON.stringify(t)});taches.push(t);closeM('m-tache');document.getElementById('t-titre').value='';document.getElementById('t-heure').value='';renderTaches();renderActionsJour();toast('Tâche créée ✓','ok');}
   catch(e){toast('Erreur','err');}
 }
 async function checkTask(id){try{await sb('taches?id=eq.'+id,{method:'PATCH',body:JSON.stringify({statut:'done'})});const t=taches.find(x=>x.id===id);if(t)t.statut='done';renderTaches();renderActionsJour();toast('✓ Done','ok');}catch(e){toast('Erreur','err');}}
@@ -4171,7 +4172,10 @@ function ouvrirBilanEntree(clientId, mode){
           <select class="fi fs" id="t-prio"><option value="normale">Normale</option><option value="haute">Haute</option><option value="basse">Basse</option></select>
         </div>
       </div>
-      <div class="fg"><label class="fl">Échéance</label><input class="fi" id="t-ech" type="date"></div>
+      <div class="fg2">
+        <div class="fg"><label class="fl">Échéance</label><input class="fi" id="t-ech" type="date"></div>
+        <div class="fg"><label class="fl">Heure <span style="font-weight:400;color:var(--muted)">(optionnel — remonte dans l'agenda)</span></label><input class="fi" id="t-heure" type="time"></div>
+      </div>
       <div class="fg"><label class="fl">Description</label><textarea class="fi ft" id="t-desc"></textarea></div>
     </div>
     <div class="mfoot">
