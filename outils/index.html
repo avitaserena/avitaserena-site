@@ -118,7 +118,7 @@ body{
 }
 .kpi-inner{
   max-width:1280px;margin:0 auto;
-  display:grid;grid-template-columns:repeat(5,1fr);gap:14px;
+  display:grid;grid-template-columns:repeat(6,1fr);gap:14px;
 }
 .kpi-card{
   background:var(--blanc);border:1px solid var(--gris-mid);border-radius:var(--radius);
@@ -136,6 +136,7 @@ body{
 .kpi-card.kpi-jour::after{background:var(--vert);}
 .kpi-card.kpi-semaine::after{background:var(--ocre);}
 .kpi-card.kpi-mois::after{background:var(--violet);}
+.kpi-card.kpi-taches::after{background:#8B5CF6;}
 .kpi-card.kpi-countdown::after{background:var(--rouge);}
 .kpi-card:hover::after{opacity:1;}
 .kpi-label{font-size:11px;font-weight:500;letter-spacing:0;text-transform:none;color:var(--gris-doux);margin-bottom:10px;}
@@ -408,6 +409,13 @@ body{
         <div class="kpi-value" id="kpi-ca-mois">0<span class="unit">€</span></div>
         <div class="kpi-sub"><span class="kpi-dot gris"></span><span id="kpi-mois-label">Juin 2026</span></div>
       </div>
+
+      <!-- TÂCHES CLIENTES -->
+      <a href="crm.html" class="kpi-card kpi-taches" style="animation-delay:.22s;text-decoration:none;color:inherit;display:block;">
+        <div class="kpi-label">Tâches clientes</div>
+        <div class="kpi-value" id="kpi-taches-count">0</div>
+        <div class="kpi-sub" id="kpi-taches-sub"><span class="kpi-dot gris"></span>Aucune tâche en attente</div>
+      </a>
 
       <!-- COUNTDOWN -->
       <div class="kpi-card kpi-countdown" style="animation-delay:.25s">
@@ -737,6 +745,32 @@ async function loadKPIs() {
     if (caJour > 0) jourSub.innerHTML = '<span class="kpi-dot vert"></span>' + rdvToday.filter(r=>r.statut_paiement==='paye').length + ' encaissement(s)';
 
   } catch(e) { console.error('[Accueil] ✗ loadKPIs:', e.message); }
+
+  // Tâches clientes — depuis Supabase (table taches), même source que le Tableau de bord du CRM
+  try {
+    const todayStr = now.toISOString().slice(0,10);
+    let taches = [];
+    try {
+      taches = await sb('taches?statut=not.in.(done,archive)&order=echeance.asc.nullslast&limit=200');
+    } catch(e) {
+      console.error('[Accueil] ✗ Tâches Supabase:', e.message);
+      taches = [];
+    }
+    const nT = taches.length;
+    const overdue = taches.filter(t => t.echeance && t.echeance < todayStr).length;
+    const urgentes = taches.filter(t => t.priorite === 'haute').length;
+    animateKpiNum('kpi-taches-count', nT);
+    const tSub = document.getElementById('kpi-taches-sub');
+    if (nT === 0) {
+      tSub.innerHTML = '<span class="kpi-dot gris"></span>Aucune tâche en attente';
+    } else if (overdue > 0) {
+      tSub.innerHTML = '<span class="kpi-dot rouge"></span>' + overdue + ' en retard';
+    } else if (urgentes > 0) {
+      tSub.innerHTML = '<span class="kpi-dot rouge"></span>' + urgentes + ' urgente' + (urgentes>1?'s':'');
+    } else {
+      tSub.innerHTML = '<span class="kpi-dot vert"></span>' + nT + ' en attente';
+    }
+  } catch(e) { console.error('[Accueil] ✗ Tâches:', e.message); }
 
   // Pilotage — depuis Supabase (table pilotage), même source que l'onglet Pilotage de crm.html
   try {
