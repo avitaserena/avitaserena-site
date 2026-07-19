@@ -1,0 +1,1693 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agenda & Réservations — A VITA SERENA</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+:root{
+  --ardoise:#101828;--ocre:#0DA678;--sable:#7B6EE6;--grege:#F7F8FA;
+  --off:#F7F8FA;--blanc:#FFFFFF;--gris:#98A2B3;--taupe:#EAECF0;--or:#08805C;
+  --vert:#12A150;--rouge:#E4604C;
+  --gold-lt:#E6F7F1;--r99:999px;--sh1:0 1px 2px rgba(16,24,40,.04),0 6px 20px rgba(16,24,40,.04);
+  --sh2:0 10px 34px rgba(16,24,40,.09);--t:all .18s cubic-bezier(.4,0,.2,1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{font-size:15px}
+body{
+  font-family:'Inter',-apple-system,sans-serif;
+  background:
+    radial-gradient(1100px 500px at 85% -10%, rgba(13,166,120,.055), transparent 60%),
+    radial-gradient(900px 460px at -10% 0%, rgba(123,110,230,.05), transparent 55%),
+    var(--off);
+  background-attachment:fixed;
+  color:var(--ardoise);
+  font-feature-settings:'tnum' 1;
+}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes popIn{from{opacity:0;transform:scale(.96) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}
+@keyframes slideIn{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+@media (prefers-reduced-motion: reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+
+.header{background:rgba(255,255,255,.86);backdrop-filter:blur(16px) saturate(1.4);-webkit-backdrop-filter:blur(16px) saturate(1.4);padding:14px 28px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--taupe);position:sticky;top:0;z-index:300}
+.header-logo{font-family:'Inter',sans-serif;font-size:16px;font-weight:600;color:var(--ardoise);letter-spacing:-.01em}
+.header-logo span{font-weight:700;color:var(--ocre)}
+.header-back{font-size:12px;color:var(--gris);text-decoration:none;letter-spacing:0;text-transform:none;font-weight:500;padding:7px 14px;border-radius:var(--r99);transition:var(--t)}
+.header-back:hover{color:var(--or);background:var(--gold-lt)}
+
+.app{display:grid;grid-template-columns:320px 1fr;min-height:calc(100vh - 56px)}
+
+/* ── SIDEBAR ── */
+.sidebar{background:var(--blanc);border-right:1px solid var(--taupe);padding:24px;display:flex;flex-direction:column;gap:24px;overflow-y:auto}
+.sidebar-section-title{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--gris);margin-bottom:12px}
+
+/* Stats */
+.stats-mini{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.stat-mini{background:var(--off);border-radius:14px;padding:14px 12px;text-align:center;border:1px solid var(--taupe);transition:var(--t);animation:fadeUp .5s cubic-bezier(.16,1,.3,1) backwards}
+.stat-mini:nth-child(1){animation-delay:.02s}
+.stat-mini:nth-child(2){animation-delay:.06s}
+.stat-mini:nth-child(3){animation-delay:.1s}
+.stat-mini:nth-child(4){animation-delay:.14s}
+.stat-mini:hover{transform:translateY(-2px);box-shadow:var(--sh1)}
+.stat-mini-num{font-family:'Inter',sans-serif;font-size:26px;font-weight:700;color:var(--ardoise);line-height:1;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.stat-mini-label{font-size:11px;color:var(--gris);margin-top:4px;font-weight:500}
+.stat-mini.alert{background:var(--gold-lt);border:1px solid rgba(13,166,120,.25)}
+.stat-mini.alert .stat-mini-num{color:var(--or)}
+
+/* Mini calendrier */
+.mini-cal{}
+.mini-cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.mini-cal-nav button{background:var(--off);border:1px solid var(--taupe);width:28px;height:28px;border-radius:var(--r99);cursor:pointer;font-size:12px;transition:var(--t);color:var(--ardoise)}
+.mini-cal-nav button:hover{background:var(--ocre);color:#fff;border-color:var(--ocre)}
+.mini-cal-month{font-size:13px;font-weight:600}
+.mini-cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.mini-day-hdr{font-size:9px;font-weight:600;letter-spacing:.06em;text-align:center;color:var(--gris);padding:4px 0;text-transform:uppercase}
+.mini-day{font-size:12px;text-align:center;padding:6px 2px;border-radius:var(--r99);cursor:pointer;transition:var(--t);border:none;background:none;font-family:inherit;color:var(--ardoise)}
+.mini-day:hover{background:var(--gold-lt);color:var(--or)}
+.mini-day.today{background:var(--ardoise);color:#fff;font-weight:600}
+.mini-day.selected{background:var(--ocre);color:#fff;font-weight:600}
+.mini-day.has-rdv{position:relative}
+.mini-day.has-rdv::after{content:'';position:absolute;bottom:2px;left:50%;transform:translateX(-50%);width:4px;height:4px;border-radius:50%;background:var(--ocre)}
+.mini-day.today.has-rdv::after,.mini-day.selected.has-rdv::after{background:#fff}
+.mini-day.other{color:var(--taupe)}
+.mini-day.blocked{background:rgba(228,96,76,.08);color:var(--rouge);text-decoration:line-through}
+
+/* Type de consultation */
+.type-filter{display:flex;flex-direction:column;gap:6px}
+.type-btn{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:14px;border:1px solid var(--taupe);background:var(--blanc);cursor:pointer;font-family:inherit;transition:var(--t);text-align:left}
+.type-btn:hover{border-color:rgba(13,166,120,.35)}
+.type-btn.active{border-color:var(--ocre);background:var(--gold-lt)}
+.type-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.type-btn-name{font-size:13px;font-weight:500;color:var(--ardoise)}
+.type-btn-duration{font-size:11px;color:var(--gris)}
+
+/* Plages récurrentes */
+.slots-config{display:flex;flex-direction:column;gap:6px}
+.slot-row{display:flex;align-items:center;gap:8px;padding:9px 12px;background:var(--off);border-radius:10px;font-size:12px;border:1px solid var(--taupe)}
+.slot-day{font-weight:600;min-width:28px;color:var(--ardoise)}
+.slot-time{color:var(--gris);flex:1}
+.slot-toggle{margin-left:auto;position:relative;width:36px;height:20px;background:var(--taupe);border-radius:var(--r99);cursor:pointer;transition:background .25s;border:none;flex-shrink:0}
+.slot-toggle.on{background:var(--ocre)}
+.slot-toggle::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:transform .25s}
+.slot-toggle.on::after{transform:translateX(16px)}
+.btn-add-slot{width:100%;padding:9px;border:1.5px dashed var(--taupe);background:none;border-radius:10px;font-size:12px;color:var(--gris);cursor:pointer;font-family:inherit;transition:var(--t)}
+.btn-add-slot:hover{border-color:var(--ocre);color:var(--or);background:var(--gold-lt)}
+
+/* ── MAIN ── */
+.main{padding:24px 32px 40px;overflow-y:auto;animation:fadeUp .3s cubic-bezier(.16,1,.3,1)}
+.main-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px}
+.main-title{font-family:'Inter',sans-serif;font-size:24px;font-weight:700;letter-spacing:-.03em}
+.main-title span{color:var(--ocre);font-style:normal;font-weight:700}
+.view-tabs{display:flex;gap:3px;background:var(--off);border:1px solid var(--taupe);border-radius:var(--r99);padding:3px}
+.view-tab{padding:7px 16px;border-radius:var(--r99);font-size:12px;font-weight:500;letter-spacing:0;cursor:pointer;border:none;background:none;color:var(--gris);font-family:inherit;transition:var(--t)}
+.view-tab.active{background:var(--blanc);color:var(--ardoise);font-weight:600;box-shadow:0 1px 4px rgba(16,24,40,.08)}
+
+/* VUE AGENDA */
+.agenda-view{}
+.agenda-day{margin-bottom:22px;animation:fadeUp .4s cubic-bezier(.16,1,.3,1) backwards}
+.agenda-day-header{display:flex;align-items:center;gap:12px;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--taupe)}
+.agenda-day-date{font-size:13px;font-weight:600;color:var(--ardoise)}
+.agenda-day-count{font-size:11px;color:var(--or);background:var(--gold-lt);padding:2px 10px;border-radius:var(--r99);font-weight:600}
+.agenda-empty{font-size:13px;color:var(--gris);font-style:normal;padding:8px 0}
+.rdv-card{background:var(--blanc);border-radius:16px;border:1px solid var(--taupe);padding:15px 17px;display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:center;margin-bottom:8px;cursor:pointer;transition:var(--t);box-shadow:var(--sh1)}
+.rdv-card:hover{border-color:rgba(13,166,120,.35);box-shadow:var(--sh2);transform:translateY(-2px)}
+.rdv-card.attente{border-left:3px solid var(--sable);border-radius:0 16px 16px 0}
+.rdv-card.confirme{border-left:3px solid var(--vert);border-radius:0 16px 16px 0}
+.rdv-card.annule{border-left:3px solid var(--rouge);border-radius:0 16px 16px 0;opacity:.55}
+.rdv-time{font-size:14px;font-weight:600;color:var(--ardoise);white-space:nowrap;font-variant-numeric:tabular-nums}
+.rdv-duration{font-size:10px;color:var(--gris);margin-top:2px}
+.rdv-name{font-size:14px;font-weight:600;color:var(--ardoise)}
+.rdv-type{font-size:11px;color:var(--gris);margin-top:2px}
+.rdv-status{font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;padding:4px 11px;border-radius:var(--r99);white-space:nowrap}
+.status-attente{background:var(--violet-lt,#F1EFFD);color:#5D4FCC}
+.status-confirme{background:#EAF9F0;color:var(--vert)}
+.status-annule{background:#FDEFEC;color:var(--rouge)}
+
+/* VUE LISTE D'ATTENTE */
+.waitlist-grid{display:flex;flex-direction:column;gap:10px}
+.wl-card{background:var(--blanc);border-radius:16px;border:1px solid var(--taupe);padding:17px 20px;display:grid;grid-template-columns:1fr auto;gap:16px;align-items:center;box-shadow:var(--sh1);transition:var(--t);animation:fadeUp .4s cubic-bezier(.16,1,.3,1) backwards}
+.wl-card:hover{box-shadow:var(--sh2)}
+.wl-name{font-size:14px;font-weight:600;color:var(--ardoise);margin-bottom:3px}
+.wl-meta{font-size:12px;color:var(--gris);display:flex;gap:12px;flex-wrap:wrap}
+.wl-tag{font-size:10px;font-weight:600;letter-spacing:0;padding:3px 9px;border-radius:var(--r99);background:var(--off);color:var(--gris);border:1px solid var(--taupe)}
+.wl-date{font-size:11px;color:var(--gris);margin-top:6px}
+.wl-actions{display:flex;gap:8px}
+.btn-sm{padding:8px 15px;border-radius:var(--r99);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;border:none;transition:var(--t)}
+.btn-confirm{background:var(--vert);color:#fff;box-shadow:0 2px 8px rgba(18,161,80,.25)}
+.btn-confirm:hover{background:#0D7E3E;transform:translateY(-1px)}
+.btn-reject{background:var(--blanc);color:var(--gris);border:1px solid var(--taupe)}
+.btn-reject:hover{border-color:var(--rouge);color:var(--rouge);background:#FDEFEC}
+
+/* MODAL RDV */
+.modal-overlay{position:fixed;inset:0;background:rgba(16,24,40,.32);z-index:1000;display:none;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(10px)}
+.modal-overlay.open{display:flex}
+.modal{background:var(--blanc);border-radius:24px;max-width:560px;width:100%;padding:32px;box-shadow:0 24px 64px rgba(16,24,40,.16);animation:popIn .25s cubic-bezier(.34,1.3,.64,1);max-height:92vh;overflow-y:auto}
+.modal-title{font-family:'Inter',sans-serif;font-size:20px;font-weight:700;margin-bottom:20px;letter-spacing:-.02em}
+.modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px}
+.modal-field label{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--gris);display:block;margin-bottom:6px}
+.modal-field input,.modal-field select,.modal-field textarea{width:100%;padding:10px 14px;border:1px solid var(--taupe);border-radius:10px;font-family:inherit;font-size:13px;background:var(--off);color:var(--ardoise);outline:none;transition:var(--t)}
+.modal-field input:focus,.modal-field select:focus,.modal-field textarea:focus{border-color:var(--ocre);background:var(--blanc);box-shadow:0 0 0 4px rgba(13,166,120,.1)}
+.modal-field.full{grid-column:span 2}
+.modal-actions{display:flex;gap:10px;margin-top:24px;padding-top:20px;border-top:1px solid var(--taupe)}
+.btn-primary{background:var(--ocre);color:#fff;padding:10px 22px;border-radius:var(--r99);font-size:13px;font-weight:600;cursor:pointer;border:none;font-family:inherit;transition:var(--t);box-shadow:0 4px 14px rgba(13,166,120,.28)}
+.btn-primary:hover{background:var(--or);transform:translateY(-1px);box-shadow:0 6px 18px rgba(13,166,120,.36)}
+.btn-secondary{background:var(--blanc);border:1px solid var(--taupe);color:var(--ardoise);padding:10px 22px;border-radius:var(--r99);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:var(--t)}
+.btn-secondary:hover{border-color:rgba(13,166,120,.35);background:var(--gold-lt);color:var(--or)}
+.btn-danger{background:none;border:1px solid var(--rouge);color:var(--rouge);padding:10px 18px;border-radius:var(--r99);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;margin-left:auto;transition:var(--t)}
+.btn-danger:hover{background:var(--rouge);color:#fff}
+
+/* CRÉNEAU BLOQUÉ */
+.blocked-list{display:flex;flex-direction:column;gap:6px}
+.blocked-item{display:flex;align-items:center;gap:10px;padding:10px 14px;background:#FDEFEC;border:1px solid rgba(228,96,76,.2);border-radius:10px;font-size:12px;color:var(--rouge)}
+.blocked-item span{flex:1}
+.blocked-remove{background:none;border:none;color:var(--rouge);cursor:pointer;font-size:16px;opacity:.6;transition:var(--t)}
+.blocked-remove:hover{opacity:1}
+
+/* EMAIL PREVIEW */
+.email-preview{background:var(--off);border-radius:12px;padding:16px;font-size:12px;line-height:1.8;color:var(--ardoise);border:1px solid var(--taupe);white-space:pre-line;margin-top:8px}
+
+/* ═══ ANNEAUX (semaine / mini stats) ═══ */
+.ring{flex-shrink:0;display:block}
+.ringf{transition:stroke-dashoffset 1.1s cubic-bezier(.16,1,.3,1)}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(70px);background:var(--blanc);color:var(--ardoise);padding:12px 22px;border-radius:var(--r99);font-size:14px;font-weight:500;box-shadow:0 24px 64px rgba(16,24,40,.16);border:1px solid var(--taupe);z-index:9999;transition:transform .3s cubic-bezier(.34,1.3,.64,1);white-space:nowrap}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.toast.success{border-color:rgba(18,161,80,.4);color:var(--vert)}
+.toast.warning{border-color:rgba(226,139,43,.5);color:#B96E1A}
+.toast.error{border-color:rgba(228,96,76,.5);color:var(--rouge)}
+
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--taupe);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--gris)}
+
+@media(max-width:900px){
+  .app{grid-template-columns:1fr}
+  .sidebar{display:none}
+  .modal-grid{grid-template-columns:1fr}
+  .modal-field.full{grid-column:span 1}
+}
+
+</style>
+<script src="auth-guard.js"></script>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-logo" style="display:flex;align-items:center;gap:10px">
+    <svg viewBox="0 0 402.52 116.56" xmlns="http://www.w3.org/2000/svg" style="width:100px;height:auto">
+      <path d="M162.95,72.57l3.25-4.84,9.58.03c.78,3.69,3.67,5.27,7.1,4.22.97-.3,2.42-1.88,2.53-2.84s-1.28-2.97-2.28-3.23l-8.34-2.11c-4.91-1.24-8.06-4.75-8.47-9.24-.44-4.81,1.6-9.22,6.5-11.26,5-2.08,11.05-2.11,15.88.45,3.68,1.95,6.1,4.92,6.23,9.84l-10.51.07c-.76-2.47-1.97-3.74-3.8-4.03-1.71-.27-4.44.97-4.65,2.56-.86,6.57,11.83,2.59,18.58,11.21.11-7.57,1.63-13.97,7.28-18.15,6.72-4.98,17.13-4.76,23.14,1.18,4.79,4.73,5.31,11.39,4.95,17.87h-24.66c-.01,3.74,2.16,6.58,4.86,7.3,3.86,1.04,7.16-.25,9.01-3.73l10.55.08c-1.97,8.22-8.98,12.8-17.18,12.72-7.82-.07-14.07-4.26-16.92-12.24-.16,4.57-2.35,8.46-6.78,10.44-9.31,4.18-20.95.92-23.22-8.57l-2.64,2.24ZM219.57,57.17c-.25-5.88-3.7-7.48-7.43-7.39s-6.62,2.7-6.49,7.48l13.92-.09Z"/>
+      <path d="M253.59,52.74c-2.81-.51-5.64-.46-8,.7-1.91.94-3.41,4.33-3.42,6.93l-.08,19.66-10.92-.02v-37.4s10.75-.04,10.75-.04l.42,6.19c2.57-4.99,7.36-7.01,12.48-5.84l-.12,7.28c3.45-5.62,8.94-8.39,15.57-8.41,7.13-.03,13.34,3.65,15.77,10.49,1.34,3.77,1.62,7.78,1.41,12.02l-24.74.02c-.24,3.63,2.12,6.55,5.11,7.34,3.48.92,6.72-.17,8.55-3.72h10.71c-2.02,8.06-8.77,12.75-16.83,12.73-6.2-.01-12.06-2.5-15.18-7.95-3.56-6.22-3.82-13.17-1.48-19.98ZM276.83,57.27c.33-4.4-2.56-7.6-6.91-7.56-3.86.03-7.18,3.02-6.84,7.53l13.75.03Z"/>
+      <path d="M94.2,44.41c2.9,8.48-11.51,26.99-20.05,35.88-.7-10.41-.27-33.35-4.52-34.63l-4.38-1.33,11.07-2.5c3,9.31,2.78,18.37,3.47,29.21,4.69-4.95,8.38-11.12,10.72-17.74,1.06-3.01-.14-4.67-2.58-6.33-1.4-.95-.63-4.01.93-4.69,1.47-.65,4.48-.43,5.36,2.14Z"/>
+      <path d="M120.11,45.44l-5.73-.25.32-1.54c8.33-1.71,9.68-7.15,14.88-11.15l-2.52,10.21,5.22.09-.32,2c-.07.45-1.42.28-1.93.35l-4.04.05"/>
+      <circle cx="371.06" cy="74.61" r="6.06"/>
+      <circle cx="109.39" cy="29.9" r="4.02"/>
+      <path d="M288.2,42.48h11.03v5.48h.57c.8-1.75,2.11-3.24,3.92-4.45,1.81-1.21,4.02-1.81,6.61-1.81,4.9,0,8.3,1.55,10.18,4.66,1.88,3.11,2.83,6.58,2.83,10.43v23.34h-11.03v-21.42c0-2.47-.54-4.41-1.63-5.83-1.08-1.42-2.69-2.14-4.81-2.14-2.26,0-3.94.75-5.02,2.24-1.08,1.49-1.63,3.41-1.63,5.73v21.42h-11.03v-37.65Z"/>
+      <path d="M327.38,74.8c-2.49-3.46-3.73-8.1-3.73-13.92s1.28-10.53,3.83-13.99c2.55-3.46,6.08-5.2,10.59-5.2,3.11,0,5.5.69,7.18,2.06,1.67,1.37,2.83,2.76,3.48,4.15h.56v-5.44h10.94v36.91h-10.94v-5.93h-.56c-.7,1.49-1.89,2.96-3.59,4.4-1.7,1.44-4.1,2.16-7.21,2.16-4.55,0-8.07-1.73-10.56-5.2ZM347.56,68.18c1.21-2.07,1.81-4.52,1.81-7.36s-.61-5.22-1.81-7.29c-1.21-2.07-3.04-3.11-5.5-3.11s-4.43,1.01-5.61,3.03c-1.19,2.02-1.78,4.45-1.78,7.29s.59,5.36,1.78,7.43c1.18,2.07,3.05,3.11,5.61,3.11s4.3-1.03,5.5-3.11Z"/>
+      <path d="M109.5,42.59c-5.71,0-9.52-.14-13.94.44l3.01,1.11c.31.12,1.59.77,1.84,1.02.87.88,1.09,2.22.75,3.4"/>
+      <path d="M58.11,75.36c-3.64,1.91-1.82-3.73-1.82-3.73l8.47-29.04h-6.46s-.33,1-.85,2.66c-.64-.77-1.47-1.35-2.48-1.75-1.08-.42-2.18-.63-3.32-.63-3.05,0-6.31,1.39-9.78,4.17-3.47,2.78-6.49,6.32-9.06,10.63-2.57,4.31-4.16,8.58-4.75,12.83-.12,1.32-.18,2.21-.18,2.69,0,4.43,1.85,6.64,5.56,6.64,3.17,0,6.47-1.69,9.91-5.07,3.44-3.38,6.53-7.85,9.28-13.41l-.68,3.92c-1.58,7.22-2.3,13.54-.21,14.29,6.03,2.15,11.84-8.29,11.84-8.29l.84-1.5s-2.66,3.69-6.3,5.6ZM50.03,63.72c-1.92,3.38-4.08,6.18-6.5,8.39-2.42,2.21-4.71,3.32-6.86,3.32-2.51,0-3.77-1.79-3.77-5.38,0-1.08.09-2.27.27-3.59.54-3.77,1.62-7.19,3.23-10.27,1.61-3.08,3.51-5.53,5.7-7.36,2.18-1.82,4.32-2.77,6.41-2.83,1.85,0,3.24.51,4.17,1.53.93,1.02,1.39,2.42,1.39,4.22.06.6,0,1.29-.18,2.06-.66,3.23-1.94,6.53-3.86,9.91Z"/>
+      <path d="M159.76,75.36c-3.39,2.33-1.82-3.73-1.82-3.73l8.47-29.04h-6.46s-.33,1-.85,2.66c-.64-.77-1.47-1.35-2.48-1.75-1.08-.42-2.18-.63-3.32-.63-3.05,0-6.31,1.39-9.78,4.17-3.47,2.78-6.49,6.32-9.06,10.63-2.57,4.31-4.16,8.58-4.75,12.83-.12,1.32-.18,2.21-.18,2.69,0,4.43,1.85,6.64,5.56,6.64,3.17,0,6.47-1.69,9.91-5.07,3.44-3.38,6.53-7.85,9.28-13.41l-.68,3.92c-1.58,7.22-2.3,13.54-.21,14.29,6.03,2.15,11.84-8.29,11.84-8.29l.93-2.18s-3.74,4.45-6.39,6.28ZM151.68,63.72c-1.92,3.38-4.08,6.18-6.5,8.39-2.42,2.21-4.71,3.32-6.86,3.32-2.51,0-3.77-1.79-3.77-5.38,0-1.08.09-2.27.27-3.59.54-3.77,1.62-7.19,3.23-10.27,1.61-3.08,3.51-5.53,5.7-7.36,2.18-1.82,4.32-2.77,6.41-2.83,1.85,0,3.24.51,4.17,1.53.93,1.02,1.39,2.42,1.39,4.22.06.6,0,1.29-.18,2.06-.66,3.23-1.94,6.53-3.86,9.91Z"/>
+      <path d="M103.04,42.59h6.46l-8.47,29.04s-1.82,5.64,1.82,3.73c3.64-1.91,6.3-5.6,6.3-5.6l-.84,1.5s-5.8,10.44-11.84,8.29c-5.1-1.82,6.56-36.97,6.56-36.97Z"/>
+      <path d="M120.54,42.59h6.46l-8.47,29.04s-1.82,5.64,1.82,3.73,6.3-5.6,6.3-5.6l-.84,1.5s-5.8,10.44-11.84,8.29c-5.1-1.82,6.56-36.97,6.56-36.97Z"/>
+    </svg>
+    <span style="font-size:13px;color:var(--taupe);font-weight:500">· Agenda</span>
+  </div>
+  <a href="crm.html" class="header-back">← Retour au CRM</a>
+</div>
+
+<div class="app">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <!-- Stats -->
+    <div>
+      <div class="sidebar-section-title">Vue d'ensemble</div>
+      <div class="stats-mini">
+        <div class="stat-mini alert"><div class="stat-mini-num" id="statAttente">0</div><div class="stat-mini-label">En attente</div></div>
+        <div class="stat-mini"><div class="stat-mini-num" id="statConfirme">0</div><div class="stat-mini-label">Confirmés</div></div>
+        <div class="stat-mini"><div class="stat-mini-num" id="statSemaine">0</div><div class="stat-mini-label">Cette semaine</div></div>
+        <div class="stat-mini"><div class="stat-mini-num" id="statMois">0</div><div class="stat-mini-label">Ce mois</div></div>
+      </div>
+    </div>
+
+    <!-- Config EmailJS -->
+    <div id="emailjsConfig">
+      <div class="sidebar-section-title" style="display:flex;align-items:center;justify-content:space-between">
+        Notifications Brevo
+        <span id="emailjsStatus" style="font-size:9px;font-weight:700;padding:2px 8px;border-radius:99px;background:rgba(184,50,50,.1);color:var(--rouge)">Non configuré</span>
+      </div>
+      <div id="emailjsSetupGuide" style="background:rgba(13,166,120,.08);border:1px solid rgba(13,166,120,.2);border-radius:10px;padding:12px;font-size:12px;line-height:1.7;color:var(--gris)">
+        <div style="font-weight:700;color:var(--ardoise);margin-bottom:6px">⚙️ Configuration Brevo</div>
+        <div style="margin-bottom:8px">
+          <b>1.</b> Va sur <a href="https://app.brevo.com" target="_blank" style="color:var(--ocre)">app.brevo.com</a> → ton compte<br>
+          <b>2.</b> <i>SMTP & API → API Keys → Créer une clé API</i><br>
+          <b>3.</b> Copie ta clé API (commence par "xkeysib-...")<br>
+          <b>4.</b> Note l'ID de ton template de notification RDV
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div>
+            <label style="font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gris);display:block;margin-bottom:3px">Clé API Brevo</label>
+            <input id="ejs_public_key" type="text" placeholder="ex: xkeysib-..." 
+              style="width:100%;padding:6px 10px;border:1.5px solid var(--taupe);border-radius:6px;font-family:inherit;font-size:11px"
+              onchange="saveEmailJSConfig()">
+          </div>
+          <div>
+            <label style="font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gris);display:block;margin-bottom:3px">ID Template Brevo</label>
+            <input id="ejs_service_id" type="text" placeholder="ex: 12345 (numérique)"
+              style="width:100%;padding:6px 10px;border:1.5px solid var(--taupe);border-radius:6px;font-family:inherit;font-size:11px"
+              onchange="saveEmailJSConfig()">
+          </div>
+          <div>
+            <label style="font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gris);display:block;margin-bottom:3px">Email expéditeur (Brevo)</label>
+            <input id="ejs_template_id" type="text" placeholder="ex: sabrina@avitaserena.com"
+              style="width:100%;padding:6px 10px;border:1.5px solid var(--taupe);border-radius:6px;font-family:inherit;font-size:11px"
+              onchange="saveEmailJSConfig()">
+          </div>
+        </div>
+        <button onclick="testEmailJS()" style="margin-top:10px;width:100%;padding:7px;background:var(--ardoise);color:#fff;border:none;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">
+          Tester la connexion Brevo
+        </button>
+      </div>
+    </div>
+
+    <!-- Mini calendrier -->
+    <div>
+      <div class="sidebar-section-title">Naviguer</div>
+      <div class="mini-cal">
+        <div class="mini-cal-nav">
+          <button onclick="miniCalNav(-1)">‹</button>
+          <div class="mini-cal-month" id="miniCalLabel"></div>
+          <button onclick="miniCalNav(1)">›</button>
+        </div>
+        <div class="mini-cal-grid" id="miniCalGrid"></div>
+      </div>
+    </div>
+
+    <!-- Types de consultation -->
+    <div>
+      <div class="sidebar-section-title">Types de consultation</div>
+      <div class="type-filter">
+        <button class="type-btn active" onclick="filterType('all',this)">
+          <div class="type-dot" style="background:var(--ardoise)"></div>
+          <div><div class="type-btn-name">Toutes</div></div>
+        </button>
+        <button class="type-btn" onclick="filterType('initial',this)">
+          <div class="type-dot" style="background:var(--ocre)"></div>
+          <div><div class="type-btn-name">Consultation initiale</div><div class="type-btn-duration">90 min · 110€</div></div>
+        </button>
+        <button class="type-btn" onclick="filterType('suivi',this)">
+          <div class="type-dot" style="background:var(--sable)"></div>
+          <div><div class="type-btn-name">Consultation de suivi</div><div class="type-btn-duration">45 min · incluse parcours</div></div>
+        </button>
+      </div>
+    </div>
+
+    <!-- Plages récurrentes -->
+    <div>
+      <div class="sidebar-section-title" style="display:flex;align-items:center;justify-content:space-between">
+        Plages récurrentes
+        <button onclick="openSlotsModal()" style="background:none;border:none;color:var(--ocre);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">Modifier</button>
+      </div>
+      <div class="slots-config" id="slotsDisplay"></div>
+    </div>
+
+    <!-- Temps de préparation -->
+    <div>
+      <div class="sidebar-section-title">Temps entre les RDV</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <input type="number" id="prepTime" min="0" max="60" step="5" value="10"
+          style="width:70px;padding:8px 10px;border:1.5px solid var(--taupe);border-radius:8px;font-family:inherit;font-size:14px;font-weight:600;text-align:center"
+          onchange="savePrepTime(this.value)">
+        <span style="font-size:12px;color:var(--gris)">minutes de préparation</span>
+      </div>
+      <div style="font-size:11px;color:var(--gris);margin-top:6px;font-style:italic">Bloqué automatiquement après chaque consultation</div>
+    </div>
+
+    <!-- Créneaux bloqués -->
+    <div>
+      <div class="sidebar-section-title" style="display:flex;align-items:center;justify-content:space-between">
+        Créneaux bloqués
+        <button onclick="openBlockModal()" style="background:none;border:none;color:var(--ocre);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">+ Bloquer</button>
+      </div>
+      <div class="blocked-list" id="blockedList"></div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="main-header">
+      <h1 class="main-title" id="mainTitle">Agenda — <span id="mainDateLabel">Aujourd'hui</span></h1>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <button onclick="openAddModal()" style="background:var(--ocre);color:#fff;border:none;padding:9px 20px;border-radius:99px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .3s">+ Ajouter un RDV</button>
+        <div class="view-tabs">
+          <button class="view-tab active" onclick="switchMainView('agenda',this)">Agenda</button>
+          <button class="view-tab" onclick="switchMainView('waitlist',this)">Liste d'attente</button>
+          <button class="view-tab" onclick="switchMainView('semaine',this)">Semaine</button>
+          <button class="view-tab" onclick="switchMainView('mois',this)">Mois</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- VUE AGENDA -->
+    <div id="agendaView">
+      <div id="agendaBody"></div>
+    </div>
+
+    <!-- VUE LISTE D'ATTENTE -->
+    <div id="waitlistView" style="display:none">
+      <div style="margin-bottom:16px;display:flex;align-items:center;justify-content:space-between">
+        <h2 style="font-size:16px;font-weight:600">Demandes en attente de confirmation</h2>
+        <span id="waitlistCount" style="font-size:12px;color:var(--gris)"></span>
+      </div>
+      <div class="waitlist-grid" id="waitlistBody"></div>
+    </div>
+
+    <!-- VUE SEMAINE -->
+    <div id="semaineView" style="display:none">
+      <div id="semaineBody"></div>
+    </div>
+
+    <!-- VUE MOIS -->
+    <div id="moisView" style="display:none">
+      <div id="moisBody"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL AJOUTER / VOIR RDV -->
+<div class="modal-overlay" id="rdvModal" onclick="closeModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-title" id="rdvModalTitle">Nouveau rendez-vous</div>
+    <div class="modal-grid">
+      <div class="modal-field">
+        <label>Prénom Nom</label>
+        <input type="text" id="rdvName" placeholder="Marie Dupont">
+      </div>
+      <div class="modal-field">
+        <label>Email</label>
+        <input type="email" id="rdvEmail" placeholder="marie@email.com">
+      </div>
+      <div class="modal-field">
+        <label>Date</label>
+        <input type="date" id="rdvDate">
+      </div>
+      <div class="modal-field">
+        <label>Heure</label>
+        <input type="time" id="rdvTime" step="900">
+      </div>
+      <div class="modal-field">
+        <label>Type</label>
+        <select id="rdvType">
+          <option value="initial">Consultation initiale — 90 min</option>
+          <option value="suivi">Consultation de suivi — 45 min</option>
+        </select>
+      </div>
+      <div class="modal-field">
+        <label>Statut</label>
+        <select id="rdvStatus">
+          <option value="attente">En attente</option>
+          <option value="confirme">Confirmé</option>
+          <option value="annule">Annulé</option>
+        </select>
+      </div>
+      <div class="modal-field full">
+        <label>Motif / Notes</label>
+        <textarea id="rdvNotes" rows="3" placeholder="SIBO suspecté, première consultation..."></textarea>
+      </div>
+      <div class="modal-field full">
+        <label>Parcours</label>
+        <select id="rdvParcours">
+          <option value="">— Aucun —</option>
+          <option value="alba">Parcours Alba (3 mois)</option>
+          <option value="aria">Parcours Aria (6 mois)</option>
+          <option value="ora">Parcours Ora (9 mois)</option>
+          <option value="bilan">Consultation bilan seule</option>
+        </select>
+      </div>
+    </div>
+    <div id="emailPreviewSection" style="display:none">
+      <div style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gris);margin-bottom:6px">Aperçu email de confirmation</div>
+      <div class="email-preview" id="emailPreview"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-primary" onclick="saveRdv()">Enregistrer</button>
+      <button class="btn-secondary" onclick="closeModalDirect('rdvModal')">Annuler</button>
+      <button class="btn-danger" id="deleteRdvBtn" onclick="deleteRdv()" style="display:none">Supprimer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL BLOQUER CRÉNEAU -->
+<div class="modal-overlay" id="blockModal" onclick="closeModal(event)">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:440px">
+    <div class="modal-title">Bloquer un créneau</div>
+    <div class="modal-grid">
+      <div class="modal-field">
+        <label>Date début</label>
+        <input type="date" id="blockStart">
+      </div>
+      <div class="modal-field">
+        <label>Date fin</label>
+        <input type="date" id="blockEnd">
+      </div>
+      <div class="modal-field full">
+        <label>Raison (optionnel)</label>
+        <input type="text" id="blockReason" placeholder="Vacances, formation...">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-primary" onclick="saveBlock()">Bloquer</button>
+      <button class="btn-secondary" onclick="closeModalDirect('blockModal')">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PLAGES -->
+<div class="modal-overlay" id="slotsModal" onclick="closeModal(event)">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:440px">
+    <div class="modal-title">Plages de disponibilité</div>
+    <p style="font-size:13px;color:var(--gris);margin-bottom:20px">Les créneaux proposés aux clientes sur la page de réservation.</p>
+    <div id="slotsEditor"></div>
+    <button class="btn-add-slot" style="margin-top:8px" onclick="addSlotRow()">+ Ajouter une plage</button>
+    <div class="modal-actions">
+      <button class="btn-primary" onclick="saveSlots()">Enregistrer</button>
+      <button class="btn-secondary" onclick="closeModalDirect('slotsModal')">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════
+// ÉTAT
+// ════════════════════════════════
+const MOIS = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+const JOURS = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+const JOURS_LONG = ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+
+let state = {
+  rdvs: [],
+  taches: [],
+  blocked: [],
+  slots: [
+    {day:1, label:'Lun', from:'09:00', to:'18:00', on:true},
+    {day:2, label:'Mar', from:'09:00', to:'18:00', on:false},
+    {day:3, label:'Mer', from:'09:00', to:'18:00', on:true},
+    {day:4, label:'Jeu', from:'09:00', to:'18:00', on:false},
+    {day:5, label:'Ven', from:'09:00', to:'17:00', on:true},
+    {day:6, label:'Sam', from:'09:00', to:'13:00', on:false},
+    {day:0, label:'Dim', from:'10:00', to:'12:00', on:false},
+  ],
+  prepTime: 10,
+  selectedDate: new Date().toISOString().slice(0,10),
+  currentMiniMonth: new Date().getMonth(),
+  currentMiniYear: new Date().getFullYear(),
+  currentMoisMonth: new Date().getMonth(),
+  currentMoisYear: new Date().getFullYear(),
+  currentView: 'agenda',
+  typeFilter: 'all',
+  editingId: null,
+};
+
+function savePrepTime(val) {
+  state.prepTime = parseInt(val) || 0;
+  save();
+}
+
+function getEndTime(time, type, prepTime) {
+  var duration = type === 'initial' ? 90 : 45;
+  var total = duration + (prepTime || 0);
+  var parts = time.split(':');
+  var mins = parseInt(parts[0]) * 60 + parseInt(parts[1]) + total;
+  return String(Math.floor(mins/60)).padStart(2,'0') + ':' + String(mins%60).padStart(2,'0');
+}
+
+function isSlotAvailable(date, time, type) {
+  var prep = state.prepTime || 0;
+  var duration = type === 'initial' ? 90 : 45;
+  var newStart = timeToMins(time);
+  var newEnd = newStart + duration + prep;
+  return !state.rdvs.some(function(r) {
+    if (r.date !== date || r.status === 'annule') return false;
+    var rStart = timeToMins(r.time);
+    var rEnd = rStart + (r.type === 'initial' ? 90 : 45) + prep;
+    return newStart < rEnd && newEnd > rStart;
+  });
+}
+
+function timeToMins(t) {
+  var p = t.split(':'); return parseInt(p[0])*60 + parseInt(p[1]);
+}
+
+function load() {
+  try {
+    const s = localStorage.getItem('avs_agenda');
+    if (s) {
+      const saved = JSON.parse(s);
+      state.rdvs = saved.rdvs || [];
+      state.blocked = saved.blocked || [];
+      state.slots = saved.slots || state.slots;
+      state.prepTime = saved.prepTime !== undefined ? saved.prepTime : 10;
+      document.getElementById('prepTime').value = state.prepTime;
+    }
+    // Note : plus de données de démonstration ici — l'affichage local sert uniquement
+    // de cache instantané en attendant la synchronisation Supabase (voir supaLoadRdvs).
+  } catch(e) {}
+}
+
+function save() {
+  try { localStorage.setItem('avs_agenda', JSON.stringify({rdvs:state.rdvs, blocked:state.blocked, slots:state.slots, prepTime:state.prepTime})); } catch(e) {}
+  syncConfigVersSupabase();
+}
+
+/* ── Synchronise le modèle de disponibilités (pas les RDV) vers Supabase,
+   pour que le calendrier public de reservation.html puisse le lire. ── */
+var _syncConfigTimer = null;
+function syncConfigVersSupabase() {
+  clearTimeout(_syncConfigTimer);
+  _syncConfigTimer = setTimeout(async function() {
+    try {
+      let authToken = SUPA_KEY;
+      if (typeof Auth !== 'undefined') {
+        const token = await Auth.getValidAccessToken();
+        if (token) authToken = token;
+      }
+      await fetch(SUPA_URL + '/rest/v1/agenda_config?id=eq.main', {
+        method: 'PATCH',
+        headers: {
+          'apikey': SUPA_KEY,
+          'Authorization': 'Bearer ' + authToken,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify({
+          slots: state.slots,
+          blocked: state.blocked,
+          prep_time: state.prepTime,
+          updated_at: new Date().toISOString()
+        })
+      });
+    } catch(e) { console.warn('Sync disponibilités Supabase:', e); }
+  }, 800); // léger anti-rebond pour éviter une écriture à chaque frappe
+}
+
+// ════════════════════════════════
+// SUPABASE SYNC
+// ════════════════════════════════
+const SUPA_URL = 'https://bqhkdndwldwqacrrbbig.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxaGtkbmR3bGR3cWFjcnJiYmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MzAyNTIsImV4cCI6MjA5NjMwNjI1Mn0.nH2UktMAVKYwng4L3SvW5F0fluV_sObGV0f3Mk1dnOY';
+
+async function supaUpsertRdv(rdv) {
+  try {
+    let authToken = SUPA_KEY;
+    if (typeof Auth !== 'undefined') {
+      const token = await Auth.getValidAccessToken();
+      if (token) authToken = token;
+    }
+    await fetch(SUPA_URL + '/rest/v1/rendez_vous', {
+      method: 'POST',
+      headers: {
+        'apikey': SUPA_KEY,
+        'Authorization': 'Bearer ' + authToken,
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates,return=minimal'
+      },
+      body: JSON.stringify({
+        id:         rdv.id,
+        name:       rdv.name,
+        email:      rdv.email || null,
+        date:       rdv.date,
+        time:       rdv.time,
+        type:       rdv.type,
+        status:     rdv.status || 'attente',
+        notes:      rdv.notes || null,
+        parcours:   rdv.parcours || null,
+        mails_done: rdv.mails_done || {},
+        updated_at: new Date().toISOString()
+      })
+    });
+  } catch(e) { console.warn('Supabase sync RDV:', e); }
+}
+
+async function supaDeleteRdv(id) {
+  try {
+    let authToken = SUPA_KEY;
+    if (typeof Auth !== 'undefined') {
+      const token = await Auth.getValidAccessToken();
+      if (token) authToken = token;
+    }
+    await fetch(SUPA_URL + '/rest/v1/rendez_vous?id=eq.' + id, {
+      method: 'DELETE',
+      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + authToken }
+    });
+  } catch(e) { console.warn('Supabase delete RDV:', e); }
+}
+
+/* ── Charge tous les RDV réels depuis Supabase (réservations du site public
+   ET créations manuelles) — remplace le cache local par la source de vérité. ── */
+async function supaLoadRdvs() {
+  try {
+    let authToken = SUPA_KEY;
+    if (typeof Auth !== 'undefined') {
+      const token = await Auth.getValidAccessToken();
+      if (token) authToken = token;
+    }
+    const res = await fetch(SUPA_URL + '/rest/v1/rendez_vous?order=date.asc,time.asc', {
+      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + authToken }
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const rows = await res.json();
+    return rows.map(r => ({
+      id: r.id,
+      name: r.name,
+      email: r.email,
+      date: r.date,
+      time: r.time,
+      type: r.type,
+      status: r.status || 'attente',
+      notes: r.notes,
+      parcours: r.parcours,
+      mails_done: r.mails_done || {}
+    }));
+  } catch(e) {
+    console.warn('Erreur chargement RDV depuis Supabase (affichage du cache local en attendant) :', e);
+    return null;
+  }
+}
+
+/* ── Rafraîchit l'agenda avec les données Supabase, dès que la connexion est prête ── */
+async function syncRdvsDepuisSupabase() {
+  const rdvsDistants = await supaLoadRdvs();
+  if (rdvsDistants === null) return; // échec réseau : on garde le cache local affiché
+  state.rdvs = rdvsDistants;
+  save();
+  updateStats(); renderAgenda(); renderWaitlist(); renderSemaine(); renderMiniCal(); renderMois();
+}
+
+/* ── Charge les tâches clientes qui ont une heure renseignée (donc destinées
+   à apparaître dans l'agenda, au même titre qu'un RDV) ── */
+async function supaLoadTachesAgenda() {
+  try {
+    let authToken = SUPA_KEY;
+    if (typeof Auth !== 'undefined') {
+      const token = await Auth.getValidAccessToken();
+      if (token) authToken = token;
+    }
+    const res = await fetch(SUPA_URL + '/rest/v1/taches?heure=not.is.null&statut=not.in.(done,archive)&order=echeance.asc,heure.asc', {
+      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + authToken }
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const rows = await res.json();
+    return rows.map(t => ({
+      id: t.id,
+      titre: t.titre,
+      date: t.echeance,
+      time: t.heure,
+      priorite: t.priorite,
+      client_id: t.client_id,
+      client_nom: t.client_nom,
+      statut: t.statut
+    }));
+  } catch(e) {
+    console.warn('Erreur chargement tâches depuis Supabase :', e);
+    return null;
+  }
+}
+
+async function chargerTachesDepuisSupabase() {
+  const tachesDistantes = await supaLoadTachesAgenda();
+  if (tachesDistantes === null) return;
+  state.taches = tachesDistantes;
+  renderAgenda(); renderSemaine(); renderMois();
+}
+
+/* ── Marque une tâche comme terminée directement depuis l'agenda ── */
+async function marquerTacheFaiteDepuisAgenda(id, ev) {
+  if (ev) ev.stopPropagation();
+  try {
+    let authToken = SUPA_KEY;
+    if (typeof Auth !== 'undefined') {
+      const token = await Auth.getValidAccessToken();
+      if (token) authToken = token;
+    }
+    await fetch(SUPA_URL + '/rest/v1/taches?id=eq.' + id, {
+      method: 'PATCH',
+      headers: {
+        'apikey': SUPA_KEY,
+        'Authorization': 'Bearer ' + authToken,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify({ statut: 'done' })
+    });
+    state.taches = state.taches.filter(t => t.id !== id);
+    renderAgenda(); renderSemaine(); renderMois();
+  } catch(e) { console.warn('Erreur mise à jour tâche:', e); }
+}
+
+async function declencherEmailsAutomatiques() {
+  try {
+    await fetch(SUPA_URL + '/functions/v1/super-api', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + SUPA_KEY
+      },
+      body: JSON.stringify({})
+    });
+  } catch(e) { console.warn('Edge function:', e); }
+}
+
+// ════════════════════════════════
+// STATS
+// ════════════════════════════════
+function animateNum(id,val){
+  const el=document.getElementById(id);if(!el)return;
+  const dur=650;const t0=performance.now();
+  function step(t){const p=Math.min(1,(t-t0)/dur);const e=1-Math.pow(1-p,3);
+    el.textContent=Math.round(val*e);if(p<1)requestAnimationFrame(step);}
+  requestAnimationFrame(step);
+}
+
+function updateStats() {
+  const today = new Date();
+  const weekStart = new Date(today); weekStart.setDate(today.getDate() - today.getDay() + 1);
+  const weekEnd = new Date(weekStart); weekEnd.setDate(weekStart.getDate() + 6);
+  const moisStart = new Date(today.getFullYear(), today.getMonth(), 1);
+  const moisEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
+  const attente = state.rdvs.filter(r => r.status === 'attente').length;
+  const confirme = state.rdvs.filter(r => r.status === 'confirme').length;
+  const semaine = state.rdvs.filter(r => { const d=new Date(r.date); return d>=weekStart&&d<=weekEnd&&r.status!=='annule'; }).length;
+  const mois = state.rdvs.filter(r => { const d=new Date(r.date); return d>=moisStart&&d<=moisEnd&&r.status!=='annule'; }).length;
+
+  animateNum('statAttente', attente);
+  animateNum('statConfirme', confirme);
+  animateNum('statSemaine', semaine);
+  animateNum('statMois', mois);
+
+  const wlCount = document.getElementById('waitlistCount');
+  if (wlCount) wlCount.textContent = attente + ' demande' + (attente>1?'s':'') + ' en attente';
+}
+
+// ════════════════════════════════
+// MINI CALENDRIER
+// ════════════════════════════════
+function renderMiniCal() {
+  const m = state.currentMiniMonth, y = state.currentMiniYear;
+  document.getElementById('miniCalLabel').textContent = MOIS[m].slice(0,4) + ' ' + y;
+  const grid = document.getElementById('miniCalGrid');
+  grid.innerHTML = JOURS.map(d=>`<div class="mini-day-hdr">${d[0]}</div>`).join('');
+
+  const firstDay = new Date(y, m, 1).getDay();
+  const days = new Date(y, m+1, 0).getDate();
+  const today = new Date().toISOString().slice(0,10);
+  const offset = firstDay === 0 ? 6 : firstDay - 1;
+  const prevDays = new Date(y, m, 0).getDate();
+
+  // Jours précédents
+  for (let i = offset-1; i >= 0; i--) {
+    const btn = document.createElement('button');
+    btn.className = 'mini-day other';
+    btn.textContent = prevDays - i;
+    grid.appendChild(btn);
+  }
+
+  for (let d = 1; d <= days; d++) {
+    const dateStr = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const hasRdv = state.rdvs.some(r => r.date === dateStr && r.status !== 'annule');
+    const isBlocked = isDateBlocked(dateStr);
+    const btn = document.createElement('button');
+    btn.className = 'mini-day' +
+      (dateStr === today ? ' today' : '') +
+      (dateStr === state.selectedDate ? ' selected' : '') +
+      (hasRdv ? ' has-rdv' : '') +
+      (isBlocked ? ' blocked' : '');
+    btn.textContent = d;
+    btn.onclick = () => selectDate(dateStr);
+    grid.appendChild(btn);
+  }
+
+  // Jours suivants
+  const total = offset + days;
+  const rem = total % 7 === 0 ? 0 : 7 - (total % 7);
+  for (let i = 1; i <= rem; i++) {
+    const btn = document.createElement('button');
+    btn.className = 'mini-day other';
+    btn.textContent = i;
+    grid.appendChild(btn);
+  }
+}
+
+function miniCalNav(dir) {
+  state.currentMiniMonth += dir;
+  if (state.currentMiniMonth > 11) { state.currentMiniMonth = 0; state.currentMiniYear++; }
+  if (state.currentMiniMonth < 0) { state.currentMiniMonth = 11; state.currentMiniYear--; }
+  renderMiniCal();
+}
+
+function selectDate(dateStr) {
+  state.selectedDate = dateStr;
+  const d = new Date(dateStr + 'T12:00:00');
+  document.getElementById('mainDateLabel').textContent =
+    JOURS_LONG[d.getDay()] + ' ' + d.getDate() + ' ' + MOIS[d.getMonth()];
+  renderMiniCal();
+  renderAgenda();
+}
+
+// ════════════════════════════════
+// PLAGES
+// ════════════════════════════════
+function renderSlotsDisplay() {
+  const el = document.getElementById('slotsDisplay');
+  el.innerHTML = '';
+  state.slots.forEach((slot, i) => {
+    const row = document.createElement('div');
+    row.className = 'slot-row';
+    row.innerHTML = `
+      <span class="slot-day">${slot.label}</span>
+      <span class="slot-time">${slot.from} – ${slot.to}</span>
+      <button class="slot-toggle ${slot.on?'on':''}" onclick="toggleSlot(${i})"></button>
+    `;
+    el.appendChild(row);
+  });
+}
+
+function toggleSlot(i) {
+  state.slots[i].on = !state.slots[i].on;
+  save(); renderSlotsDisplay();
+}
+
+function openSlotsModal() {
+  renderSlotsEditor();
+  document.getElementById('slotsModal').classList.add('open');
+}
+
+function renderSlotsEditor() {
+  const ed = document.getElementById('slotsEditor');
+  ed.innerHTML = '';
+  state.slots.forEach((slot, i) => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:grid;grid-template-columns:60px 1fr 1fr 32px;gap:8px;align-items:center;margin-bottom:8px';
+    row.innerHTML = `
+      <select onchange="state.slots[${i}].day=parseInt(this.value);state.slots[${i}].label=this.options[this.selectedIndex].text" style="padding:7px;border:1.5px solid var(--taupe);border-radius:7px;font-family:inherit;font-size:11px">
+        ${[1,2,3,4,5,6,0].map(d=>`<option value="${d}" ${slot.day===d?'selected':''}>${JOURS[d]}</option>`).join('')}
+      </select>
+      <input type="time" value="${slot.from}" onchange="state.slots[${i}].from=this.value" style="padding:7px;border:1.5px solid var(--taupe);border-radius:7px;font-family:inherit;font-size:12px">
+      <input type="time" value="${slot.to}" onchange="state.slots[${i}].to=this.value" style="padding:7px;border:1.5px solid var(--taupe);border-radius:7px;font-family:inherit;font-size:12px">
+      <button onclick="state.slots.splice(${i},1);renderSlotsEditor()" style="background:none;border:none;color:var(--rouge);cursor:pointer;font-size:18px">×</button>
+    `;
+    ed.appendChild(row);
+  });
+}
+
+function addSlotRow() {
+  state.slots.push({day:1,label:'Lun',from:'09:00',to:'18:00',on:true});
+  renderSlotsEditor();
+}
+
+function saveSlots() {
+  save(); renderSlotsDisplay(); closeModalDirect('slotsModal');
+}
+
+// ════════════════════════════════
+// BLOCAGES
+// ════════════════════════════════
+function isDateBlocked(dateStr) {
+  return state.blocked.some(b => dateStr >= b.start && dateStr <= b.end);
+}
+
+function renderBlockedList() {
+  const el = document.getElementById('blockedList');
+  el.innerHTML = '';
+  if (state.blocked.length === 0) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--gris);font-style:italic">Aucun créneau bloqué</div>';
+    return;
+  }
+  state.blocked.forEach((b, i) => {
+    const item = document.createElement('div');
+    item.className = 'blocked-item';
+    item.innerHTML = `
+      <span>${b.start === b.end ? b.start : b.start + ' → ' + b.end}${b.reason ? ' · ' + b.reason : ''}</span>
+      <button class="blocked-remove" onclick="removeBlock(${i})">×</button>
+    `;
+    el.appendChild(item);
+  });
+}
+
+function openBlockModal() {
+  const today = new Date().toISOString().slice(0,10);
+  document.getElementById('blockStart').value = today;
+  document.getElementById('blockEnd').value = today;
+  document.getElementById('blockReason').value = '';
+  document.getElementById('blockModal').classList.add('open');
+}
+
+function saveBlock() {
+  const start = document.getElementById('blockStart').value;
+  const end = document.getElementById('blockEnd').value;
+  const reason = document.getElementById('blockReason').value;
+  if (!start || !end) return;
+  state.blocked.push({start, end: end >= start ? end : start, reason});
+  save(); renderBlockedList(); renderMiniCal(); closeModalDirect('blockModal');
+}
+
+function removeBlock(i) {
+  state.blocked.splice(i, 1);
+  save(); renderBlockedList(); renderMiniCal();
+}
+
+// ════════════════════════════════
+// AGENDA
+// ════════════════════════════════
+function getTypeLabel(t) { return t==='initial' ? 'Consultation initiale — 90 min' : 'Consultation de suivi — 45 min'; }
+function getStatusLabel(s) { return {attente:'En attente',confirme:'Confirmé',annule:'Annulé'}[s]||s; }
+function getParcoursLabel(p) { return {alba:'Parcours Alba',aria:'Parcours Aria',ora:'Parcours Ora',bilan:'Bilan seul','':''}[p]||p; }
+
+function renderAgenda() {
+  const body = document.getElementById('agendaBody');
+  body.innerHTML = '';
+
+  // Afficher les 7 prochains jours depuis la date sélectionnée
+  const startDate = new Date(state.selectedDate + 'T12:00:00');
+  const days = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(startDate);
+    d.setDate(startDate.getDate() + i);
+    days.push(d.toISOString().slice(0,10));
+  }
+
+  days.forEach(dateStr => {
+    let rdvs = state.rdvs
+      .filter(r => r.date === dateStr && (state.typeFilter === 'all' || r.type === state.typeFilter))
+      .sort((a,b) => a.time.localeCompare(b.time));
+    let tachesJour = (state.taches||[]).filter(t => t.date === dateStr);
+
+    if (rdvs.length === 0 && tachesJour.length === 0 && dateStr !== state.selectedDate) return;
+
+    const d = new Date(dateStr + 'T12:00:00');
+    const isBlocked = isDateBlocked(dateStr);
+    const today = new Date().toISOString().slice(0,10);
+
+    const section = document.createElement('div');
+    section.className = 'agenda-day';
+    section.style.animationDelay = (days.indexOf(dateStr)*0.05)+'s';
+
+    let headerHtml = `<div class="agenda-day-header">
+      <div class="agenda-day-date">${JOURS_LONG[d.getDay()]} ${d.getDate()} ${MOIS[d.getMonth()]}${dateStr===today?' — Aujourd\'hui':''}</div>
+      ${rdvs.length ? `<span class="agenda-day-count">${rdvs.length} RDV</span>` : ''}
+      ${tachesJour.length ? `<span class="agenda-day-count" style="background:rgba(139,92,246,.12);color:#6D3FD6">${tachesJour.length} tâche${tachesJour.length>1?'s':''}</span>` : ''}
+      ${isBlocked ? '<span style="font-size:10px;color:var(--rouge);font-weight:700;padding:2px 8px;background:rgba(184,50,50,.1);border-radius:99px">🔒 Bloqué</span>' : ''}
+    </div>`;
+
+    if (rdvs.length === 0 && tachesJour.length === 0) {
+      headerHtml += `<div class="agenda-empty">${isBlocked ? 'Journée bloquée' : 'Aucun rendez-vous'}</div>`;
+    }
+
+    section.innerHTML = headerHtml;
+
+    // Fusion RDV + tâches, triés par heure
+    const items = [
+      ...rdvs.map(r => ({ kind:'rdv', time:r.time, data:r })),
+      ...tachesJour.map(t => ({ kind:'tache', time:t.time, data:t }))
+    ].sort((a,b) => a.time.localeCompare(b.time));
+
+    items.forEach((item, idx) => {
+      const card = document.createElement('div');
+      if (item.kind === 'rdv') {
+        const rdv = item.data;
+        card.className = `rdv-card ${rdv.status}`;
+        card.style.animation = 'fadeUp .4s cubic-bezier(.16,1,.3,1) backwards';
+        card.style.animationDelay = (idx*0.04)+'s';
+        card.innerHTML = `
+          <div>
+            <div class="rdv-time">${rdv.time}</div>
+            <div class="rdv-duration">${rdv.type==='initial'?'90':'45'} min → ${getEndTime(rdv.time, rdv.type, 0)}<span style="color:var(--taupe)"> +${state.prepTime}min</span></div>
+          </div>
+          <div>
+            <div class="rdv-name">${rdv.name}</div>
+            <div class="rdv-type">${getTypeLabel(rdv.type)}${rdv.parcours?' · '+getParcoursLabel(rdv.parcours):''}</div>
+            ${rdv.notes?`<div style="font-size:11px;color:var(--gris);margin-top:4px;font-style:italic">${rdv.notes.slice(0,60)}${rdv.notes.length>60?'…':''}</div>`:''}
+          </div>
+          <span class="rdv-status status-${rdv.status}">${getStatusLabel(rdv.status)}</span>
+        `;
+        // Indicateur conflit
+        if (!isSlotAvailable(rdv.date, rdv.time, rdv.type) && state.rdvs.filter(r=>r.date===rdv.date&&r.time===rdv.time&&r.status!=='annule').length > 1) {
+          const warn = document.createElement('div');
+          warn.style.cssText = 'font-size:10px;color:var(--rouge);padding:3px 8px;background:rgba(184,50,50,.08);border-radius:4px;margin-top:4px';
+          warn.textContent = '⚠ Conflit de créneau';
+          card.appendChild(warn);
+        }
+        card.onclick = () => openEditModal(rdv.id);
+      } else {
+        const t = item.data;
+        card.className = 'rdv-card';
+        card.style.cssText = 'background:rgba(139,92,246,.06);border-left:3px solid #8B5CF6;cursor:default;';
+        card.style.animation = 'fadeUp .4s cubic-bezier(.16,1,.3,1) backwards';
+        card.style.animationDelay = (idx*0.04)+'s';
+        card.innerHTML = `
+          <div>
+            <div class="rdv-time" style="color:#6D3FD6">${t.time}</div>
+            <div class="rdv-duration">📌 Tâche</div>
+          </div>
+          <div>
+            <div class="rdv-name">${t.titre}</div>
+            <div class="rdv-type">${t.client_nom ? t.client_nom : ''}${t.priorite==='haute'?' · Urgente':''}</div>
+          </div>
+          <span class="rdv-status" style="background:rgba(139,92,246,.14);color:#6D3FD6;cursor:pointer" onclick="marquerTacheFaiteDepuisAgenda('${t.id}', event)">✓ Fait</span>
+        `;
+      }
+      section.appendChild(card);
+    });
+
+    body.appendChild(section);
+  });
+}
+
+// ════════════════════════════════
+// LISTE D'ATTENTE
+// ════════════════════════════════
+function renderWaitlist() {
+  const body = document.getElementById('waitlistBody');
+  const wl = state.rdvs.filter(r => r.status === 'attente').sort((a,b) => a.date.localeCompare(b.date));
+
+  if (wl.length === 0) {
+    body.innerHTML = '<div style="text-align:center;padding:48px;color:var(--gris);font-style:italic">Aucune demande en attente 🌿</div>';
+    return;
+  }
+
+  body.innerHTML = '';
+  wl.forEach((rdv, idx) => {
+    const d = new Date(rdv.date + 'T12:00:00');
+    const card = document.createElement('div');
+    card.className = 'wl-card';
+    card.style.animationDelay = (idx*0.05)+'s';
+    card.innerHTML = `
+      <div>
+        <div class="wl-name">${rdv.name}</div>
+        <div class="wl-meta">
+          <span>${rdv.email}</span>
+          <span class="wl-tag">${getTypeLabel(rdv.type)}</span>
+          ${rdv.parcours?`<span class="wl-tag">${getParcoursLabel(rdv.parcours)}</span>`:''}
+        </div>
+        ${rdv.notes?`<div style="font-size:12px;color:var(--gris);margin-top:6px;font-style:italic">${rdv.notes}</div>`:''}
+        <div class="wl-date">📅 Souhaite : ${JOURS_LONG[d.getDay()]} ${d.getDate()} ${MOIS[d.getMonth()]} à ${rdv.time}</div>
+      </div>
+      <div class="wl-actions">
+        <button class="btn-sm btn-confirm" onclick="confirmRdv(${rdv.id})">✓ Confirmer</button>
+        <button class="btn-sm btn-reject" onclick="rejectRdv(${rdv.id})">Annuler</button>
+      </div>
+    `;
+    body.appendChild(card);
+  });
+}
+
+function confirmRdv(id) {
+  var rdv = state.rdvs.find(function(r) { return r.id === id; });
+  if (rdv) {
+    rdv.status = 'confirme';
+    save(); updateStats(); renderWaitlist(); renderAgenda(); renderMiniCal();
+    sendEmailNotif(rdv, 'confirmed');
+    supaUpsertRdv(rdv).then(() => declencherEmailsAutomatiques());
+    showToast('✅ RDV confirmé — email envoyé à ' + rdv.email, 'success');
+  }
+}
+
+function rejectRdv(id) {
+  var rdv = state.rdvs.find(function(r) { return r.id === id; });
+  if (rdv) {
+    rdv.status = 'annule';
+    save(); updateStats(); renderWaitlist(); renderAgenda(); renderMiniCal();
+    sendEmailNotif(rdv, 'cancelled');
+    showToast('RDV annulé — cliente notifiée', 'warning');
+  }
+}
+
+// ════════════════════════════════
+// VUE SEMAINE
+// ════════════════════════════════
+function renderSemaine() {
+  const body = document.getElementById('semaineBody');
+  const startDate = new Date(state.selectedDate + 'T12:00:00');
+  const dayOfWeek = startDate.getDay();
+  const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+  const monday = new Date(startDate);
+  monday.setDate(startDate.getDate() + mondayOffset);
+
+  const days = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday); d.setDate(monday.getDate() + i);
+    days.push(d.toISOString().slice(0,10));
+  }
+
+  const startD = days[0], endD = days[6];
+  const s = new Date(startD+' '), e = new Date(endD+' ');
+  body.innerHTML = `<div style="font-size:14px;font-weight:600;color:var(--gris);margin-bottom:16px">
+    Semaine du ${s.getDate()} ${MOIS[s.getMonth()]} au ${e.getDate()} ${MOIS[e.getMonth()]} ${e.getFullYear()}
+  </div>`;
+
+  const grid = document.createElement('div');
+  grid.style.cssText = 'display:grid;grid-template-columns:repeat(7,1fr);gap:8px';
+
+  days.forEach(dateStr => {
+    const d = new Date(dateStr+'T12:00:00');
+    const rdvs = state.rdvs.filter(r => r.date===dateStr && r.status!=='annule').sort((a,b)=>a.time.localeCompare(b.time));
+    const tachesJour = (state.taches||[]).filter(t => t.date===dateStr).sort((a,b)=>a.time.localeCompare(b.time));
+    const isBlocked = isDateBlocked(dateStr);
+    const today = new Date().toISOString().slice(0,10);
+
+    const col = document.createElement('div');
+    col.style.cssText = 'background:var(--blanc);border-radius:12px;border:1px solid var(--taupe);overflow:hidden';
+    if(dateStr===today) col.style.borderColor='var(--ocre)';
+
+    col.innerHTML = `<div style="padding:10px 12px;border-bottom:1px solid var(--taupe);background:${dateStr===today?'var(--ocre)':'var(--off)'};color:${dateStr===today?'#fff':'var(--ardoise)'}">
+      <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;opacity:.7">${JOURS[d.getDay()]}</div>
+      <div style="font-size:18px;font-weight:700;font-family:'Inter',sans-serif">${d.getDate()}</div>
+    </div>
+    <div style="padding:8px">
+      ${isBlocked?'<div style="font-size:10px;color:var(--rouge);text-align:center;padding:8px">🔒 Bloqué</div>':''}
+      ${rdvs.map(r=>`<div onclick="openEditModal(${r.id})" style="background:rgba(13,166,120,.1);border-left:2px solid var(--ocre);border-radius:4px;padding:4px 6px;margin-bottom:4px;cursor:pointer;font-size:10px;font-weight:600;color:var(--ardoise)">${r.time} · ${r.name.split(' ')[0]}</div>`).join('')}
+      ${tachesJour.map(t=>`<div style="background:rgba(139,92,246,.1);border-left:2px solid #8B5CF6;border-radius:4px;padding:4px 6px;margin-bottom:4px;font-size:10px;font-weight:600;color:#6D3FD6">📌 ${t.time} · ${t.titre.slice(0,20)}${t.titre.length>20?'…':''}</div>`).join('')}
+      ${rdvs.length===0&&tachesJour.length===0&&!isBlocked?'<div style="font-size:10px;color:var(--taupe);text-align:center;padding:12px">—</div>':''}
+    </div>`;
+    grid.appendChild(col);
+  });
+  body.appendChild(grid);
+}
+
+// ════════════════════════════════
+// VUE MOIS
+// ════════════════════════════════
+function moisNav(dir) {
+  state.currentMoisMonth += dir;
+  if (state.currentMoisMonth > 11) { state.currentMoisMonth = 0; state.currentMoisYear++; }
+  if (state.currentMoisMonth < 0) { state.currentMoisMonth = 11; state.currentMoisYear--; }
+  renderMois();
+}
+
+function moisAujourdhui() {
+  state.currentMoisMonth = new Date().getMonth();
+  state.currentMoisYear = new Date().getFullYear();
+  renderMois();
+}
+
+function moisJourClick(dateStr) {
+  selectDate(dateStr);
+  const btn = document.querySelector('.view-tab[data-view="agenda"]') || Array.from(document.querySelectorAll('.view-tab')).find(b=>b.textContent.trim()==='Agenda');
+  switchMainView('agenda', btn);
+}
+
+function renderMois() {
+  const body = document.getElementById('moisBody');
+  if (!body) return;
+  const m = state.currentMoisMonth, y = state.currentMoisYear;
+  const today = new Date().toISOString().slice(0,10);
+
+  const firstDay = new Date(y, m, 1).getDay();
+  const nbJours = new Date(y, m+1, 0).getDate();
+  const offset = firstDay === 0 ? 6 : firstDay - 1;
+  const prevDays = new Date(y, m, 0).getDate();
+
+  body.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+    <div style="display:flex;align-items:center;gap:10px">
+      <button onclick="moisNav(-1)" style="background:var(--blanc);border:1px solid var(--taupe);border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:15px;color:var(--ardoise)">‹</button>
+      <div style="font-size:16px;font-weight:700;color:var(--ardoise);min-width:160px;text-align:center;font-family:'Inter',sans-serif">${MOIS[m]} ${y}</div>
+      <button onclick="moisNav(1)" style="background:var(--blanc);border:1px solid var(--taupe);border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:15px;color:var(--ardoise)">›</button>
+    </div>
+    <button onclick="moisAujourdhui()" style="background:var(--off);border:1px solid var(--taupe);border-radius:99px;padding:7px 16px;font-size:12px;font-weight:600;color:var(--ardoise);cursor:pointer;font-family:inherit">Aujourd'hui</button>
+  </div>`;
+
+  const grid = document.createElement('div');
+  grid.style.cssText = 'display:grid;grid-template-columns:repeat(7,1fr);gap:6px';
+
+  JOURS.forEach(j => {
+    const hdr = document.createElement('div');
+    hdr.style.cssText = 'font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--gris);text-align:center;padding:4px 0';
+    hdr.textContent = j;
+    grid.appendChild(hdr);
+  });
+
+  const cellBase = 'background:var(--blanc);border-radius:10px;border:1px solid var(--taupe);min-height:96px;padding:6px;cursor:pointer;transition:border-color .15s;display:flex;flex-direction:column;gap:3px;overflow:hidden';
+
+  // Jours du mois précédent
+  for (let i = offset-1; i >= 0; i--) {
+    const cell = document.createElement('div');
+    cell.style.cssText = cellBase + ';opacity:.35';
+    cell.innerHTML = `<div style="font-size:11px;color:var(--taupe);font-weight:600">${prevDays - i}</div>`;
+    grid.appendChild(cell);
+  }
+
+  for (let d = 1; d <= nbJours; d++) {
+    const dateStr = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const rdvsJour = state.rdvs.filter(r => r.date === dateStr && r.status !== 'annule').sort((a,b)=>a.time.localeCompare(b.time));
+    const tachesJour = (state.taches||[]).filter(t => t.date === dateStr).sort((a,b)=>a.time.localeCompare(b.time));
+    const isBlocked = isDateBlocked(dateStr);
+    const isToday = dateStr === today;
+
+    const items = [
+      ...rdvsJour.map(r => ({ kind:'rdv', time:r.time, label:r.name.split(' ')[0] })),
+      ...tachesJour.map(t => ({ kind:'tache', time:t.time, label:t.titre }))
+    ].sort((a,b) => a.time.localeCompare(b.time));
+
+    const maxShow = 3;
+    const shown = items.slice(0, maxShow);
+    const rest = items.length - shown.length;
+
+    const cell = document.createElement('div');
+    cell.style.cssText = cellBase + (isToday ? ';border-color:var(--ocre);border-width:2px' : '') + (isBlocked ? ';background:rgba(184,50,50,.04)' : '');
+    cell.onmouseenter = () => cell.style.borderColor = 'var(--ocre)';
+    cell.onmouseleave = () => cell.style.borderColor = isToday ? 'var(--ocre)' : 'var(--taupe)';
+    cell.onclick = () => moisJourClick(dateStr);
+
+    let html = `<div style="display:flex;align-items:center;justify-content:space-between">
+      <span style="font-size:12px;font-weight:700;color:${isToday?'var(--ocre)':'var(--ardoise)'}">${d}</span>
+      ${isBlocked ? '<span style="font-size:9px">🔒</span>' : ''}
+    </div>`;
+
+    html += shown.map(it => it.kind === 'rdv'
+      ? `<div style="background:rgba(13,166,120,.12);border-radius:3px;padding:1px 5px;font-size:9.5px;font-weight:600;color:var(--ardoise);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${it.time} ${it.label}</div>`
+      : `<div style="background:rgba(139,92,246,.12);border-radius:3px;padding:1px 5px;font-size:9.5px;font-weight:600;color:#6D3FD6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">📌 ${it.time} ${it.label}</div>`
+    ).join('');
+
+    if (rest > 0) html += `<div style="font-size:9.5px;color:var(--gris);font-weight:600;padding-left:2px">+${rest} autre${rest>1?'s':''}</div>`;
+
+    cell.innerHTML = html;
+    grid.appendChild(cell);
+  }
+
+  // Jours du mois suivant
+  const total = offset + nbJours;
+  const rem = total % 7 === 0 ? 0 : 7 - (total % 7);
+  for (let i = 1; i <= rem; i++) {
+    const cell = document.createElement('div');
+    cell.style.cssText = cellBase + ';opacity:.35';
+    cell.innerHTML = `<div style="font-size:11px;color:var(--taupe);font-weight:600">${i}</div>`;
+    grid.appendChild(cell);
+  }
+
+  body.appendChild(grid);
+}
+
+
+// ════════════════════════════════
+function openAddModal() {
+  state.editingId = null;
+  document.getElementById('rdvModalTitle').textContent = 'Nouveau rendez-vous';
+  document.getElementById('rdvName').value = '';
+  document.getElementById('rdvEmail').value = '';
+  document.getElementById('rdvDate').value = state.selectedDate;
+  document.getElementById('rdvTime').value = '10:00';
+  document.getElementById('rdvType').value = 'initial';
+  document.getElementById('rdvStatus').value = 'attente';
+  document.getElementById('rdvNotes').value = '';
+  document.getElementById('rdvParcours').value = '';
+  document.getElementById('deleteRdvBtn').style.display = 'none';
+  document.getElementById('emailPreviewSection').style.display = 'none';
+  document.getElementById('rdvModal').classList.add('open');
+}
+
+function openEditModal(id) {
+  const rdv = state.rdvs.find(r => r.id === id);
+  if (!rdv) return;
+  state.editingId = id;
+  document.getElementById('rdvModalTitle').textContent = rdv.name;
+  document.getElementById('rdvName').value = rdv.name;
+  document.getElementById('rdvEmail').value = rdv.email;
+  document.getElementById('rdvDate').value = rdv.date;
+  document.getElementById('rdvTime').value = rdv.time;
+  document.getElementById('rdvType').value = rdv.type;
+  document.getElementById('rdvStatus').value = rdv.status;
+  document.getElementById('rdvNotes').value = rdv.notes || '';
+  document.getElementById('rdvParcours').value = rdv.parcours || '';
+  document.getElementById('deleteRdvBtn').style.display = 'block';
+  // Aperçu email
+  const d = new Date(rdv.date+'T12:00:00');
+  document.getElementById('emailPreview').textContent =
+`Objet : Confirmation de votre consultation — A VITA SERENA
+
+Bonjour ${rdv.name.split(' ')[0]},
+
+Votre consultation est ${rdv.status==='confirme'?'confirmée':'en attente de confirmation'} :
+
+📅 ${JOURS_LONG[d.getDay()]} ${d.getDate()} ${MOIS[d.getMonth()]} à ${rdv.time}
+⏱ ${rdv.type==='initial'?'90 minutes — Consultation initiale':'45 minutes — Consultation de suivi'}
+💻 En visio (lien envoyé 24h avant)
+${rdv.parcours?'📋 '+getParcoursLabel(rdv.parcours):''}
+
+En cas d'empêchement, merci de me prévenir au moins 48h à l'avance.
+
+À très bientôt,
+Sabrina Castelli — A VITA SERENA
+avitaserena.com`;
+  document.getElementById('emailPreviewSection').style.display = 'block';
+  document.getElementById('rdvModal').classList.add('open');
+}
+
+function saveRdv() {
+  const rdv = {
+    name: document.getElementById('rdvName').value,
+    email: document.getElementById('rdvEmail').value,
+    date: document.getElementById('rdvDate').value,
+    time: document.getElementById('rdvTime').value,
+    type: document.getElementById('rdvType').value,
+    status: document.getElementById('rdvStatus').value,
+    notes: document.getElementById('rdvNotes').value,
+    parcours: document.getElementById('rdvParcours').value,
+  };
+  if (!rdv.name || !rdv.date || !rdv.time) return;
+
+  if (state.editingId) {
+    const i = state.rdvs.findIndex(r => r.id === state.editingId);
+    if (i > -1) state.rdvs[i] = {...state.rdvs[i], ...rdv};
+  } else {
+    rdv.id = Date.now();
+    state.rdvs.push(rdv);
+  }
+  save(); updateStats(); renderAgenda(); renderWaitlist(); renderSemaine(); renderMiniCal();
+  supaUpsertRdv({...rdv, id: state.editingId || rdv.id});
+
+  // Notification email (simulée — à connecter à EmailJS ou Netlify Forms)
+  if (!state.editingId) {
+    showEmailNotif(rdv);
+    syncToCRM(rdv);
+  }
+
+  // Rappel automatique : si ce RDV fait partie d'un parcours, créer une tâche
+  // pour ne pas oublier de programmer la séance suivante.
+  if (rdv.parcours) {
+    creerTacheRappelProchaineSeance(rdv);
+  }
+
+  closeModalDirect('rdvModal');
+}
+
+/* ── Crée une tâche CRM rappelant de programmer la prochaine séance
+   d'un parcours, ~3 semaines après la séance qu'on vient d'enregistrer. ── */
+async function creerTacheRappelProchaineSeance(rdv) {
+  try {
+    let authToken = SUPA_KEY;
+    if (typeof Auth !== 'undefined') {
+      const token = await Auth.getValidAccessToken();
+      if (token) authToken = token;
+    }
+    const dateSeance = new Date(rdv.date + 'T00:00:00');
+    const echeance = new Date(dateSeance);
+    echeance.setDate(echeance.getDate() + 21); // cadence par défaut : 3 semaines, à ajuster si besoin
+
+    const parcoursLabels = {alba:'Alba', aria:'Aria', ora:'Ora'};
+    const libelleParcours = parcoursLabels[rdv.parcours] || rdv.parcours;
+
+    await fetch(SUPA_URL + '/rest/v1/taches', {
+      method: 'POST',
+      headers: {
+        'apikey': SUPA_KEY,
+        'Authorization': 'Bearer ' + authToken,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify({
+        id: 'tache_' + Date.now(),
+        titre: 'Programmer la prochaine séance — ' + rdv.name + ' (Parcours ' + libelleParcours + ')',
+        description: 'Séance du ' + rdv.date + ' à ' + rdv.time + ' enregistrée. Penser à fixer la suivante avec la cliente.',
+        client_id: null,
+        client_nom: rdv.name,
+        echeance: echeance.toISOString().slice(0,10),
+        priorite: 'normale',
+        statut: 'a_faire'
+      })
+    });
+  } catch(e) { console.warn('Création tâche de rappel:', e); }
+}
+
+// ════════════════════════════════
+// EMAILJS
+// ════════════════════════════════
+var ejsConfig = {publicKey:'', serviceId:'', templateId:''};
+
+function loadEmailJSConfig() {
+  try {
+    var saved = localStorage.getItem('avs_emailjs');
+    if (saved) {
+      ejsConfig = JSON.parse(saved);
+      document.getElementById('ejs_public_key').value = ejsConfig.publicKey || '';
+      document.getElementById('ejs_service_id').value = ejsConfig.serviceId || '';
+      document.getElementById('ejs_template_id').value = ejsConfig.templateId || '';
+      updateEmailJSStatus();
+    }
+  } catch(e) {}
+}
+
+function saveEmailJSConfig() {
+  ejsConfig.publicKey = document.getElementById('ejs_public_key').value.trim();
+  ejsConfig.serviceId = document.getElementById('ejs_service_id').value.trim();
+  ejsConfig.templateId = document.getElementById('ejs_template_id').value.trim();
+  localStorage.setItem('avs_emailjs', JSON.stringify(ejsConfig));
+  updateEmailJSStatus();
+  if (ejsConfig.publicKey) {
+    emailjs.init({publicKey: ejsConfig.publicKey});
+  }
+}
+
+function updateEmailJSStatus() {
+  var status = document.getElementById('emailjsStatus');
+  var isConfigured = ejsConfig.publicKey && ejsConfig.serviceId && ejsConfig.templateId;
+  status.textContent = isConfigured ? '✓ Actif' : 'Non configuré';
+  status.style.background = isConfigured ? 'rgba(61,107,44,.1)' : 'rgba(184,50,50,.1)';
+  status.style.color = isConfigured ? 'var(--vert)' : 'var(--rouge)';
+}
+
+function testEmailJS() {
+  if (!ejsConfig.publicKey || !ejsConfig.serviceId) {
+    showToast("⚠️ Remplis d'abord la clé API et l'ID du template", 'error');
+    return;
+  }
+  sendBrevoEmail({
+    subject: '✓ Test Brevo — A VITA SERENA',
+    client_name: 'Test de connexion',
+    client_email: 'sabrina@avitaserena.com',
+    rdv_date: new Date().toLocaleDateString('fr-FR'),
+    rdv_time: '—',
+    rdv_type: 'Test de configuration',
+    rdv_parcours: '—',
+    rdv_notes: 'Ceci est un email de test pour vérifier la configuration Brevo.',
+    rdv_status: 'Test',
+    praticien_url: 'https://avitaserena.com/praticien'
+  }, function(ok) {
+    if (ok) {
+      showToast('✅ Email de test envoyé à sabrina@avitaserena.com !', 'success');
+      updateEmailJSStatus();
+    } else {
+      showToast("❌ Erreur d'envoi — vérifie ta clé API Brevo", 'error');
+    }
+  });
+}
+
+function sendBrevoEmail(params, callback) {
+  // Brevo transactional API — template
+  var templateId = parseInt(ejsConfig.serviceId);
+  var senderEmail = ejsConfig.templateId || 'sabrina@avitaserena.com';
+  var payload = {
+    templateId: templateId,
+    sender: { name: 'A VITA SERENA', email: senderEmail },
+    to: [{ email: 'sabrina@avitaserena.com', name: 'Sabrina — A VITA SERENA' }],
+    params: params,
+    replyTo: { email: params.client_email || 'noreply@avitaserena.com' }
+  };
+
+  fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'api-key': ejsConfig.publicKey
+    },
+    body: JSON.stringify(payload)
+  }).then(function(res) {
+    if (res.ok) {
+      callback && callback(true);
+    } else {
+      res.json().then(function(err) {
+        console.error('Brevo error:', err);
+        callback && callback(false);
+      });
+    }
+  }).catch(function(err) {
+    console.error('Fetch error:', err);
+    callback && callback(false);
+  });
+}
+
+function sendEmailNotif(rdv, action) {
+  if (!ejsConfig.publicKey || !ejsConfig.serviceId) {
+    showToast('📬 Brevo non configuré — notif non envoyée', 'warning');
+    return;
+  }
+  var d = new Date(rdv.date + 'T12:00:00');
+  var dateLabel = JOURS_LONG[d.getDay()] + ' ' + d.getDate() + ' ' + MOIS[d.getMonth()] + ' à ' + rdv.time;
+  var subject = action === 'new'
+    ? '🌿 Nouvelle demande de RDV — ' + rdv.name
+    : (action === 'confirmed' ? '✅ RDV confirmé — ' + rdv.name : '❌ RDV annulé — ' + rdv.name);
+
+  sendBrevoEmail({
+    subject: subject,
+    client_name: rdv.name,
+    client_email: rdv.email,
+    rdv_date: dateLabel,
+    rdv_time: rdv.time,
+    rdv_type: getTypeLabel(rdv.type),
+    rdv_parcours: rdv.parcours ? getParcoursLabel(rdv.parcours) : '—',
+    rdv_notes: rdv.notes || '—',
+    rdv_status: action === 'new' ? 'En attente de confirmation' : (action === 'confirmed' ? 'Confirmé' : 'Annulé'),
+    praticien_url: 'https://avitaserena.com/praticien'
+  }, function(ok) {
+    if (ok) showToast('📬 Notification envoyée à sabrina@avitaserena.com', 'success');
+    else showToast('⚠️ Erreur Brevo — vérifie ta configuration', 'error');
+  });
+}
+
+function showEmailNotif(rdv) {
+  sendEmailNotif(rdv, 'new');
+}
+
+function showToast(msg, type) {
+  var colors = {success:'#0DA678', error:'#E4604C', warning:'#E28B2B'};
+  var notif = document.createElement('div');
+  notif.style.cssText = 'position:fixed;bottom:24px;right:24px;background:' + (colors[type]||colors.success) + ';color:#fff;padding:14px 18px;border-radius:12px;max-width:360px;z-index:9999;box-shadow:0 8px 32px rgba(0,0,0,.25);animation:slideIn .3s ease;font-size:13px;line-height:1.5';
+  notif.textContent = msg;
+  document.body.appendChild(notif);
+  setTimeout(function() {
+    notif.style.opacity = '0';
+    notif.style.transition = 'opacity .5s';
+    setTimeout(function() { notif.remove(); }, 500);
+  }, 4000);
+}
+
+/* ── Crée (ou met à jour) la fiche cliente Supabase correspondant à un RDV créé
+   depuis l'agenda — quel que soit le mode de règlement (Stripe, espèces, chèque,
+   suivi offert...). Dédoublonnage par email : si la cliente existe déjà, on se
+   contente d'ajouter ce RDV à son historique plutôt que de créer un doublon.
+   La date de naissance (ddn) n'étant pas saisie ici, elle pourra être complétée
+   plus tard via le questionnaire de consultation sans casser l'identifiant. ── */
+async function syncToCRM(rdv) {
+  try {
+    if (!rdv.name) return;
+    let authToken = SUPA_KEY;
+    if (typeof Auth !== 'undefined') {
+      const token = await Auth.getValidAccessToken();
+      if (token) authToken = token;
+    }
+    const headers = {
+      'apikey': SUPA_KEY,
+      'Authorization': 'Bearer ' + authToken,
+      'Content-Type': 'application/json'
+    };
+    const evt = { type: 'rdv', title: 'RDV ' + getTypeLabel(rdv.type) + ' — ' + rdv.date, icon: '📅', date: new Date().toISOString().slice(0,10) };
+
+    // Cliente déjà connue (recherche par email) : on ajoute le RDV à son historique
+    let existing = null;
+    if (rdv.email) {
+      const res = await fetch(SUPA_URL + '/rest/v1/clientes?email=eq.' + encodeURIComponent(rdv.email) + '&select=id,timeline', { headers });
+      if (res.ok) {
+        const rows = await res.json();
+        if (rows.length) existing = rows[0];
+      }
+    }
+    if (existing) {
+      const timeline = Array.isArray(existing.timeline) ? existing.timeline : [];
+      timeline.push(evt);
+      await fetch(SUPA_URL + '/rest/v1/clientes?id=eq.' + encodeURIComponent(existing.id), {
+        method: 'PATCH', headers,
+        body: JSON.stringify({ timeline: timeline, updated_at: new Date().toISOString() })
+      });
+      return;
+    }
+
+    // Nouvelle fiche cliente
+    var parts = rdv.name.split(' ');
+    var prenom = parts[0] || rdv.name;
+    var nom = parts.slice(1).join(' ') || '';
+    var slug = function(s) { return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'') || 'x'; };
+    var id = slug(prenom) + (nom ? '-' + slug(nom) : '') + '-' + Date.now();
+
+    await fetch(SUPA_URL + '/rest/v1/clientes', {
+      method: 'POST',
+      headers: Object.assign({}, headers, {'Prefer': 'return=minimal,resolution=merge-duplicates'}),
+      body: JSON.stringify({
+        id: id,
+        prenom: prenom,
+        nom: nom,
+        email: rdv.email || null,
+        notes: rdv.notes || '',
+        programme: rdv.parcours || null,
+        date1: rdv.date,
+        timeline: [evt],
+        workflow_done: {},
+        created_at: new Date().toISOString()
+      })
+    });
+  } catch(e) { console.warn('Sync fiche cliente (syncToCRM):', e); }
+}
+
+function deleteRdv() {
+  if (!state.editingId) return;
+  if (!confirm('Supprimer ce rendez-vous ?')) return;
+  state.rdvs = state.rdvs.filter(r => r.id !== state.editingId);
+  save(); updateStats(); renderAgenda(); renderWaitlist(); renderSemaine(); renderMiniCal();
+
+  // Notification email (simulée — à connecter à EmailJS ou Netlify Forms)
+  if (!state.editingId) {
+    showEmailNotif(rdv);
+    syncToCRM(rdv);
+  }
+
+  closeModalDirect('rdvModal');
+}
+
+// ════════════════════════════════
+// NAVIGATION
+// ════════════════════════════════
+function switchMainView(view, btn) {
+  state.currentView = view;
+  document.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  document.getElementById('agendaView').style.display = view==='agenda'?'block':'none';
+  document.getElementById('waitlistView').style.display = view==='waitlist'?'block':'none';
+  document.getElementById('semaineView').style.display = view==='semaine'?'block':'none';
+  document.getElementById('moisView').style.display = view==='mois'?'block':'none';
+  if (view==='waitlist') renderWaitlist();
+  if (view==='semaine') renderSemaine();
+  if (view==='mois') renderMois();
+}
+
+function filterType(type, btn) {
+  state.typeFilter = type;
+  document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderAgenda();
+}
+
+function closeModal(e) { if (e.target.classList.contains('modal-overlay')) closeModalDirect(e.target.id); }
+function closeModalDirect(id) { document.getElementById(id).classList.remove('open'); }
+
+// ════════════════════════════════
+
+
+// ════════════════════════════════
+// INIT
+// ════════════════════════════════
+function initAgenda() {
+  load();
+  loadEmailJSConfig();
+  selectDate(new Date().toISOString().slice(0,10));
+  updateStats();
+  renderSlotsDisplay();
+  renderBlockedList();
+  renderMiniCal();
+  syncRdvsDepuisSupabase(); // charge les vraies réservations (site public inclus) en arrière-plan
+  chargerTachesDepuisSupabase(); // charge les tâches clientes avec heure (affichées dans l'agenda)
+}
+showAuthGate('praticienne', () => { removeAuthGate(); initAgenda(); });
+
+</script>
+</body>
+</html>
