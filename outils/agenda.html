@@ -523,17 +523,22 @@ function getEndTime(time, type, prepTime) {
   return String(Math.floor(mins/60)).padStart(2,'0') + ':' + String(mins%60).padStart(2,'0');
 }
 
-function isSlotAvailable(date, time, type) {
+function findConflictingRdv(date, time, type, excludeId) {
   var prep = state.prepTime || 0;
   var duration = type === 'initial' ? 90 : 45;
   var newStart = timeToMins(time);
   var newEnd = newStart + duration + prep;
-  return !state.rdvs.some(function(r) {
+  return state.rdvs.find(function(r) {
     if (r.date !== date || r.status === 'annule') return false;
+    if (excludeId !== undefined && excludeId !== null && r.id === excludeId) return false;
     var rStart = timeToMins(r.time);
     var rEnd = rStart + (r.type === 'initial' ? 90 : 45) + prep;
     return newStart < rEnd && newEnd > rStart;
-  });
+  }) || null;
+}
+
+function isSlotAvailable(date, time, type, excludeId) {
+  return !findConflictingRdv(date, time, type, excludeId);
 }
 
 function timeToMins(t) {
@@ -1357,6 +1362,15 @@ function saveRdv() {
   };
   if (!rdv.name || !rdv.date || !rdv.time) return;
 
+  // Empêche de superposer deux RDV sur le même créneau (durée + temps de préparation)
+  if (rdv.status !== 'annule') {
+    const conflit = findConflictingRdv(rdv.date, rdv.time, rdv.type, state.editingId);
+    if (conflit) {
+      alert('⛔ Ce créneau chevauche déjà un rendez-vous à ' + conflit.time + ' (' + conflit.name + '). Choisissez un autre horaire, ou annulez d\'abord ce rendez-vous.');
+      return;
+    }
+  }
+
   if (state.editingId) {
     const i = state.rdvs.findIndex(r => r.id === state.editingId);
     if (i > -1) state.rdvs[i] = {...state.rdvs[i], ...rdv};
@@ -1581,7 +1595,7 @@ async function syncToCRM(rdv) {
       'Authorization': 'Bearer ' + authToken,
       'Content-Type': 'application/json'
     };
-    const evt = { type: 'rdv', title: 'RDV ' + getTypeLabel(rdv.type) + ' — ' + rdv.date, icon: '📅', date: new Date().toISOString().slice(0,10) };
+    const evt = { type: 'rdv', rdv_id: rdv.id, title: 'RDV ' + getTypeLabel(rdv.type) + ' — ' + rdv.date, icon: '📅', date: new Date().toISOString().slice(0,10) };
 
     // Cliente déjà connue (recherche par email) : on ajoute le RDV à son historique
     let existing = null;
@@ -1628,18 +1642,51 @@ async function syncToCRM(rdv) {
   } catch(e) { console.warn('Sync fiche cliente (syncToCRM):', e); }
 }
 
+/* ── Quand un RDV est supprimé depuis l'agenda, retire l'entrée correspondante
+   de l'historique de la cliente concernée (recherche par email). Si la fiche
+   n'a été créée que pour ce RDV et ne porte aucun autre historique clinique,
+   elle est supprimée entièrement plutôt que laissée vide dans le CRM. ── */
+async function removeRdvFromCRM(rdv) {
+  try {
+    if (!rdv.email) return;
+    let authToken = SUPA_KEY;
+    if (typeof Auth !== 'undefined') {
+      const token = await Auth.getValidAccessToken();
+      if (token) authToken = token;
+    }
+    const headers = {
+      'apikey': SUPA_KEY,
+      'Authorization': 'Bearer ' + authToken,
+      'Content-Type': 'application/json'
+    };
+    const res = await fetch(SUPA_URL + '/rest/v1/clientes?email=eq.' + encodeURIComponent(rdv.email) + '&select=*', { headers });
+    if (!res.ok) return;
+    const rows = await res.json();
+    if (!rows.length) return;
+    const client = rows[0];
+    const timeline = (Array.isArray(client.timeline) ? client.timeline : []).filter(function(ev) { return ev.rdv_id !== rdv.id; });
+
+    const ficheVide = timeline.length === 0 && !client.ddn && !client.programme && !client.motifs && !client.notes && !client.phv_url;
+    if (ficheVide) {
+      await fetch(SUPA_URL + '/rest/v1/clientes?id=eq.' + encodeURIComponent(client.id), { method: 'DELETE', headers });
+    } else {
+      await fetch(SUPA_URL + '/rest/v1/clientes?id=eq.' + encodeURIComponent(client.id), {
+        method: 'PATCH', headers,
+        body: JSON.stringify({ timeline: timeline, updated_at: new Date().toISOString() })
+      });
+    }
+  } catch(e) { console.warn('Retrait du RDV dans le CRM :', e); }
+}
+
 function deleteRdv() {
   if (!state.editingId) return;
   if (!confirm('Supprimer ce rendez-vous ?')) return;
-  state.rdvs = state.rdvs.filter(r => r.id !== state.editingId);
+  const id = state.editingId;
+  const rdv = state.rdvs.find(r => r.id === id);
+  state.rdvs = state.rdvs.filter(r => r.id !== id);
   save(); updateStats(); renderAgenda(); renderWaitlist(); renderSemaine(); renderMiniCal();
-
-  // Notification email (simulée — à connecter à EmailJS ou Netlify Forms)
-  if (!state.editingId) {
-    showEmailNotif(rdv);
-    syncToCRM(rdv);
-  }
-
+  supaDeleteRdv(id);
+  if (rdv) removeRdvFromCRM(rdv);
   closeModalDirect('rdvModal');
 }
 
