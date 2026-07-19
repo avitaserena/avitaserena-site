@@ -1562,30 +1562,70 @@ function showToast(msg, type) {
   }, 4000);
 }
 
-function syncToCRM(rdv) {
+/* ── Crée (ou met à jour) la fiche cliente Supabase correspondant à un RDV créé
+   depuis l'agenda — quel que soit le mode de règlement (Stripe, espèces, chèque,
+   suivi offert...). Dédoublonnage par email : si la cliente existe déjà, on se
+   contente d'ajouter ce RDV à son historique plutôt que de créer un doublon.
+   La date de naissance (ddn) n'étant pas saisie ici, elle pourra être complétée
+   plus tard via le questionnaire de consultation sans casser l'identifiant. ── */
+async function syncToCRM(rdv) {
   try {
-    var crmData = localStorage.getItem('avs_crm_clients') ? JSON.parse(localStorage.getItem('avs_crm_clients')) : [];
-    var existing = crmData.find(function(c) { return c.email === rdv.email; });
-    if (!existing) {
-      var parts = rdv.name.split(' ');
-      var newClient = {
-        id: 'cli_' + Date.now(),
-        prenom: parts[0] || rdv.name,
-        nom: parts.slice(1).join(' ') || '',
-        email: rdv.email,
-        parcours: rdv.parcours || 'bilan',
-        statut: 'prospect',
-        notes: rdv.notes || '',
-        rdv_date: rdv.date,
-        rdv_time: rdv.time,
-        rdv_type: rdv.type,
-        created: new Date().toISOString().slice(0,10),
-        source: 'agenda'
-      };
-      crmData.push(newClient);
-      localStorage.setItem('avs_crm_clients', JSON.stringify(crmData));
+    if (!rdv.name) return;
+    let authToken = SUPA_KEY;
+    if (typeof Auth !== 'undefined') {
+      const token = await Auth.getValidAccessToken();
+      if (token) authToken = token;
     }
-  } catch(e) {}
+    const headers = {
+      'apikey': SUPA_KEY,
+      'Authorization': 'Bearer ' + authToken,
+      'Content-Type': 'application/json'
+    };
+    const evt = { type: 'rdv', title: 'RDV ' + getTypeLabel(rdv.type) + ' — ' + rdv.date, icon: '📅', date: new Date().toISOString().slice(0,10) };
+
+    // Cliente déjà connue (recherche par email) : on ajoute le RDV à son historique
+    let existing = null;
+    if (rdv.email) {
+      const res = await fetch(SUPA_URL + '/rest/v1/clientes?email=eq.' + encodeURIComponent(rdv.email) + '&select=id,timeline', { headers });
+      if (res.ok) {
+        const rows = await res.json();
+        if (rows.length) existing = rows[0];
+      }
+    }
+    if (existing) {
+      const timeline = Array.isArray(existing.timeline) ? existing.timeline : [];
+      timeline.push(evt);
+      await fetch(SUPA_URL + '/rest/v1/clientes?id=eq.' + encodeURIComponent(existing.id), {
+        method: 'PATCH', headers,
+        body: JSON.stringify({ timeline: timeline, updated_at: new Date().toISOString() })
+      });
+      return;
+    }
+
+    // Nouvelle fiche cliente
+    var parts = rdv.name.split(' ');
+    var prenom = parts[0] || rdv.name;
+    var nom = parts.slice(1).join(' ') || '';
+    var slug = function(s) { return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'') || 'x'; };
+    var id = slug(prenom) + (nom ? '-' + slug(nom) : '') + '-' + Date.now();
+
+    await fetch(SUPA_URL + '/rest/v1/clientes', {
+      method: 'POST',
+      headers: Object.assign({}, headers, {'Prefer': 'return=minimal,resolution=merge-duplicates'}),
+      body: JSON.stringify({
+        id: id,
+        prenom: prenom,
+        nom: nom,
+        email: rdv.email || null,
+        notes: rdv.notes || '',
+        programme: rdv.parcours || null,
+        date1: rdv.date,
+        timeline: [evt],
+        workflow_done: {},
+        created_at: new Date().toISOString()
+      })
+    });
+  } catch(e) { console.warn('Sync fiche cliente (syncToCRM):', e); }
 }
 
 function deleteRdv() {
@@ -1601,77 +1641,6 @@ function deleteRdv() {
   }
 
   closeModalDirect('rdvModal');
-}
-
-function sendEmailNotif(rdv, action) {
-  if (!ejsConfig.publicKey || !ejsConfig.serviceId) {
-    showToast('📬 Brevo non configuré — notif non envoyée', 'warning');
-    return;
-  }
-  var d = new Date(rdv.date + 'T12:00:00');
-  var dateLabel = JOURS_LONG[d.getDay()] + ' ' + d.getDate() + ' ' + MOIS[d.getMonth()] + ' à ' + rdv.time;
-  var subject = action === 'new'
-    ? '🌿 Nouvelle demande de RDV — ' + rdv.name
-    : (action === 'confirmed' ? '✅ RDV confirmé — ' + rdv.name : '❌ RDV annulé — ' + rdv.name);
-
-  sendBrevoEmail({
-    subject: subject,
-    client_name: rdv.name,
-    client_email: rdv.email,
-    rdv_date: dateLabel,
-    rdv_time: rdv.time,
-    rdv_type: getTypeLabel(rdv.type),
-    rdv_parcours: rdv.parcours ? getParcoursLabel(rdv.parcours) : '—',
-    rdv_notes: rdv.notes || '—',
-    rdv_status: action === 'new' ? 'En attente de confirmation' : (action === 'confirmed' ? 'Confirmé' : 'Annulé'),
-    praticien_url: 'https://avitaserena.com/praticien'
-  }, function(ok) {
-    if (ok) showToast('📬 Notification envoyée à sabrina@avitaserena.com', 'success');
-    else showToast('⚠️ Erreur Brevo — vérifie ta configuration', 'error');
-  });
-}
-
-function showEmailNotif(rdv) {
-  sendEmailNotif(rdv, 'new');
-}
-
-function showToast(msg, type) {
-  var colors = {success:'#0DA678', error:'#E4604C', warning:'#E28B2B'};
-  var notif = document.createElement('div');
-  notif.style.cssText = 'position:fixed;bottom:24px;right:24px;background:' + (colors[type]||colors.success) + ';color:#fff;padding:14px 18px;border-radius:12px;max-width:360px;z-index:9999;box-shadow:0 8px 32px rgba(0,0,0,.25);animation:slideIn .3s ease;font-size:13px;line-height:1.5';
-  notif.textContent = msg;
-  document.body.appendChild(notif);
-  setTimeout(function() {
-    notif.style.opacity = '0';
-    notif.style.transition = 'opacity .5s';
-    setTimeout(function() { notif.remove(); }, 500);
-  }, 4000);
-}
-
-function syncToCRM(rdv) {
-  try {
-    var crmData = localStorage.getItem('avs_crm_clients') ? JSON.parse(localStorage.getItem('avs_crm_clients')) : [];
-    var existing = crmData.find(function(c) { return c.email === rdv.email; });
-    if (!existing) {
-      var parts = rdv.name.split(' ');
-      var newClient = {
-        id: 'cli_' + Date.now(),
-        prenom: parts[0] || rdv.name,
-        nom: parts.slice(1).join(' ') || '',
-        email: rdv.email,
-        parcours: rdv.parcours || 'bilan',
-        statut: 'prospect',
-        notes: rdv.notes || '',
-        rdv_date: rdv.date,
-        rdv_time: rdv.time,
-        rdv_type: rdv.type,
-        created: new Date().toISOString().slice(0,10),
-        source: 'agenda'
-      };
-      crmData.push(newClient);
-      localStorage.setItem('avs_crm_clients', JSON.stringify(crmData));
-    }
-  } catch(e) {}
 }
 
 // ════════════════════════════════
