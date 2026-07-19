@@ -4373,70 +4373,164 @@ function copierSynthese() {
 }
 
 /* ══════════════════════════════════════
-   BRIDGE CRM — enregistrement dossier
+   SUPABASE — helper générique
 ══════════════════════════════════════ */
-function bridgeCRM_questionnaire(d) {
+async function sbFetch(path, opts={}) {
+  let authToken = SUPA_KEY;
+  if (typeof Auth !== 'undefined') {
+    const token = await Auth.getValidAccessToken();
+    if (token) authToken = token;
+  }
+  const headers = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json', ...(opts.headers||{}) };
+  if (opts.method && opts.method !== 'GET' && opts.method !== 'DELETE') {
+    headers['Prefer'] = opts.prefer || 'return=representation';
+  }
+  const r = await fetch(SUPA_URL + '/rest/v1/' + path, { ...opts, headers });
+  if (!r.ok) { const txt = await r.text(); throw new Error(txt); }
+  const t = await r.text();
+  return t ? JSON.parse(t) : [];
+}
+
+/* Tables portant une référence à clientes.id — utilisées lors d'une migration
+   d'identifiant (voir migrerIdCliente ci-dessous). Liste identique à celle du CRM. */
+const CLIENT_REF_TABLES=[
+  {table:'factures',col:'client_id'},
+  {table:'questionnaires',col:'client_id'},
+  {table:'journal_entries',col:'client_key'},
+  {table:'messages_client',col:'client_key'},
+  {table:'cycle_entries',col:'client_key'},
+  {table:'coherence_sessions',col:'client_key'},
+  {table:'protocoles_client',col:'client_id'},
+  {table:'avs_recettes',col:'client_id'},
+  {table:'feedback_protocole',col:'client_id'},
+  {table:'alternatives',col:'client_id'},
+  {table:'consultation_summaries',col:'client_key'},
+  {table:'bilan_entree',col:'client_key'},
+  {table:'checkins_semaine',col:'client_key'},
+  {table:'lettres_cliniques',col:'client_key'},
+  {table:'bilans_biologiques',col:'client_id'},
+  {table:'bilans_biologiques',col:'client_key'},
+  {table:'phv_memos',col:'client_key'}
+];
+
+/* Identifiant standard prenom-nom-AAAAMMJJ, cohérent avec le CRM (crm.html). */
+function idCanoniqueCliente(prenom,nom,ddn){
+  const p=(prenom||'').trim().toLowerCase().replace(/[\s']/g,'_');
+  const n=(nom||'').trim().toLowerCase().replace(/[\s']/g,'_');
+  const d=(ddn||'').replace(/-/g,'');
+  if(!p||!d) return null;
+  return p+(n?'-'+n:'')+'-'+d;
+}
+
+/* ── Migre une fiche cliente d'un identifiant provisoire (créée depuis l'agenda
+   sans DDN) vers l'identifiant standard prenom-nom-AAAAMMJJ, en répercutant le
+   changement sur toutes les tables liées. Identique à la logique du CRM. ── */
+async function migrerIdCliente(oldId,newId){
+  if(!oldId||!newId||oldId===newId) return oldId;
+  try{
+    const cible=await sbFetch('clientes?id=eq.'+encodeURIComponent(newId)+'&select=id');
+    if(cible.length){
+      console.warn('[Bridge CRM] Une fiche existe déjà sous l\'identifiant cible — migration annulée.');
+      return oldId;
+    }
+    const rows=await sbFetch('clientes?id=eq.'+encodeURIComponent(oldId));
+    if(!rows.length) return oldId;
+    const ancienne=rows[0];
+    const nouvelle={...ancienne,id:newId,updated_at:new Date().toISOString()};
+    await sbFetch('clientes',{method:'POST',body:JSON.stringify(nouvelle),prefer:'return=minimal'});
+
+    for(const ref of CLIENT_REF_TABLES){
+      try{
+        await sbFetch(ref.table+'?'+ref.col+'=eq.'+encodeURIComponent(oldId),{method:'PATCH',body:JSON.stringify({[ref.col]:newId}),prefer:'return=minimal'});
+      }catch(e){ console.warn('Migration '+ref.table+'.'+ref.col+' :',e); }
+    }
+    await sbFetch('clientes?id=eq.'+encodeURIComponent(oldId),{method:'DELETE'});
+    console.log('[Bridge CRM] Identifiant cliente migré :',oldId,'→',newId);
+    return newId;
+  }catch(e){
+    console.warn('[Bridge CRM] Migration ID échouée :',e);
+    return oldId;
+  }
+}
+
+/* ══════════════════════════════════════
+   BRIDGE CRM — enregistrement dossier
+   Retrouve (ou crée) la fiche cliente dans Supabase, migre son identifiant
+   vers le format standard si la DDN vient d'être renseignée pour la première
+   fois, puis enregistre le questionnaire dans la table `questionnaires`.
+══════════════════════════════════════ */
+async function bridgeCRM_questionnaire(d) {
   try {
-    const raw = localStorage.getItem('avs_crm_v2');
-    if (!raw) return; // CRM vide, rien à faire
-    const db = JSON.parse(raw);
-    if (!db.clients || !db.clients.length) return;
+    const prenomQ = (d.prenom || '').trim();
+    const nomQ    = (d.nom    || '').trim();
+    const ddnQ    = (d.ddn    || '').trim();
+    if (!prenomQ) { console.warn('[Bridge CRM] Prénom manquant, rien à faire.'); return; }
 
-    const prenomQ = (d.prenom || '').trim().toLowerCase();
-    const nomQ    = (d.nom    || '').trim().toLowerCase();
-    const ddnQ    = (d.ddn   || '').trim();
-    if (!prenomQ || !ddnQ) return; // identifiant insuffisant
+    const filtreNom = nomQ ? '&nom=ilike.'+encodeURIComponent(nomQ) : '';
+    let client = null;
 
-    // Matching sur prénom + nom + date de naissance (même triplet que le CRM pour les doublons)
-    const client = db.clients.find(c => {
-      const prenomC = (c.prenom || '').trim().toLowerCase();
-      const nomC    = (c.nom    || '').trim().toLowerCase();
-      const ddnC    = (c.ddn   || '').trim();
-      return prenomC === prenomQ && nomC === nomQ && ddnC === ddnQ;
-    });
-
+    // 1) Match exact prénom + nom + DDN (fiche déjà complète)
+    if (ddnQ) {
+      const rows = await sbFetch('clientes?prenom=ilike.'+encodeURIComponent(prenomQ)+filtreNom+'&ddn=eq.'+encodeURIComponent(ddnQ));
+      if (rows.length) client = rows[0];
+    }
+    // 2) Sinon, fiche existante sans DDN (créée depuis l'agenda) → on la complètera
     if (!client) {
-      console.warn('[Bridge CRM] Cliente introuvable dans le CRM :', d.prenom, d.nom);
-      return;
+      const rows = await sbFetch('clientes?prenom=ilike.'+encodeURIComponent(prenomQ)+filtreNom+'&ddn=is.null');
+      if (rows.length) client = rows[0];
     }
 
-    // Stocker un snapshot synthétique du questionnaire
-    client.dernier_questionnaire = {
-      date: new Date().toISOString().split('T')[0],
-      motifs: d.motifs || '',
-      mots_cles: d.mots_cles || '',
-      objectif_6mois: d.objectif_6mois || '',
-      duree_symptomes: d.duree_symptomes || '',
-      scores: d.scores || '',
-      symptomes_coches: d.symptomes_coches || '',
-      bilans_recommandes: d.bilans_recommandes || '',
-      synthese_praticien: d.synthese_praticien || '',
-      imc: d.imc || '',
-      grossesse: d.grossesse || '',
-      allaitement: d.allaitement || ''
-    };
+    let finalId;
+    if (client) {
+      // Fiche trouvée : on migre l'ID si la DDN vient d'être renseignée pour la 1ère fois
+      finalId = client.id;
+      if (ddnQ && !client.ddn) {
+        const idCible = idCanoniqueCliente(prenomQ, nomQ || client.nom, ddnQ);
+        if (idCible && idCible !== client.id) {
+          finalId = await migrerIdCliente(client.id, idCible);
+        }
+      }
+      const patch = { updated_at: new Date().toISOString() };
+      if (ddnQ) patch.ddn = ddnQ;
+      if (nomQ && !client.nom) patch.nom = nomQ;
+      if (d.age) patch.age = String(d.age);
+      if (!client.motifs && d.motifs) patch.motifs = d.motifs;
+      const timeline = Array.isArray(client.timeline) ? client.timeline : [];
+      timeline.push({ type:'questionnaire', title:'📋 Questionnaire de consultation complété', icon:'📋', date:new Date().toISOString().slice(0,10), desc:`Motifs : ${d.motifs||'—'} · Durée : ${d.duree_symptomes||'—'}` });
+      patch.timeline = timeline;
+      await sbFetch('clientes?id=eq.'+encodeURIComponent(finalId), { method:'PATCH', body:JSON.stringify(patch), prefer:'return=minimal' });
+    } else {
+      // Aucune fiche existante (consultation sans passage préalable par l'agenda) : on la crée
+      finalId = idCanoniqueCliente(prenomQ, nomQ, ddnQ) || (prenomQ.toLowerCase().replace(/[\s']/g,'_') + '-' + Date.now());
+      await sbFetch('clientes', {
+        method: 'POST', prefer: 'return=minimal',
+        body: JSON.stringify({
+          id: finalId, prenom: prenomQ, nom: nomQ || null, ddn: ddnQ || null,
+          age: d.age ? String(d.age) : null, motifs: d.motifs || null,
+          timeline: [{ type:'questionnaire', title:'📋 Questionnaire de consultation complété', icon:'📋', date:new Date().toISOString().slice(0,10), desc:`Motifs : ${d.motifs||'—'} · Durée : ${d.duree_symptomes||'—'}` }],
+          workflow_done: {}, created_at: new Date().toISOString()
+        })
+      });
+      console.log('[Bridge CRM] Nouvelle fiche cliente créée :', finalId);
+    }
 
-    // Ajouter un événement dans la timeline
-    if (!client.timeline) client.timeline = [];
-    client.timeline.push({
-      type: 'questionnaire',
-      title: '📋 Questionnaire de consultation complété',
-      icon: '📋',
-      date: new Date().toISOString().split('T')[0],
-      desc: `Motifs : ${d.motifs || '—'} · Durée : ${d.duree_symptomes || '—'}`
+    // Enregistrement du questionnaire lui-même (historique consultable dans le CRM)
+    await sbFetch('questionnaires', {
+      method: 'POST', prefer: 'return=minimal',
+      body: JSON.stringify({ id: 'q_'+Date.now(), client_id: finalId, type: 'consultation', prenom: prenomQ, snapshot: d })
     });
 
-    localStorage.setItem('avs_crm_v2', JSON.stringify(db));
-    console.log('[Bridge CRM] Questionnaire enregistré pour', client.prenom, client.nom);
+    console.log('[Bridge CRM] Questionnaire enregistré pour', prenomQ, nomQ, '→', finalId);
   } catch(e) {
     console.warn('[Bridge CRM] Erreur :', e);
+    showToast("⚠️ Synchronisation CRM échouée — vérifiez la fiche cliente manuellement");
   }
 }
 
 /* ══════════════════════════════════════
    FINALISER → GÉNÉRATEUR
 ══════════════════════════════════════ */
-function finalise() {
+async function finalise() {
   const d = collectAllData();
   try {
     localStorage.setItem('avita_session', JSON.stringify(d));
@@ -4444,8 +4538,8 @@ function finalise() {
     localStorage.removeItem(SAVE_KEY);
     formTouched = false; // évite l'alerte de fermeture
 
-    // ── BRIDGE CRM : enregistrer dans le dossier cliente ──
-    bridgeCRM_questionnaire(d);
+    // ── BRIDGE CRM : enregistrer dans le dossier cliente (Supabase) ──
+    await bridgeCRM_questionnaire(d);
 
     showToast('✓ Données exportées — ouverture du générateur…');
     setTimeout(() => { window.open('generateur.html', '_blank'); }, 800);
