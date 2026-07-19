@@ -1,5 +1,5 @@
 /* ══════════════════════════════════════════════════
-   AI-EXPLAIN-PANEL.JS — Avita Serena
+   AI-EXPLAIN-PANEL.JS — A VITA SERENA
    Panneau latéral d'explications cliente générées en direct pendant la
    consultation. Ajoute automatiquement un bouton "💬 Expliquer à la
    cliente" après chaque bloc .check-list de la page, et un panneau
@@ -172,7 +172,7 @@ const AIPanel = (function () {
 
   function buildPrompt(sectionTitle, items) {
     const itemsTxt = items.map(it => '• ' + it.label + (it.hint ? ' (indice clinique : ' + it.hint + ')' : '')).join('\n');
-    return `Tu es l'assistante clinique de Sabrina Castelli, naturopathe (Avita Serena, Porto-Vecchio). Sabrina est EN DIRECT en visio avec sa cliente et vient de cocher, dans la section "${sectionTitle}", les éléments suivants :
+    return `Tu es l'assistante clinique de Sabrina Castelli, naturopathe (A VITA SERENA, Porto-Vecchio). Sabrina est EN DIRECT en visio avec sa cliente et vient de cocher, dans la section "${sectionTitle}", les éléments suivants :
 
 ${itemsTxt}
 
