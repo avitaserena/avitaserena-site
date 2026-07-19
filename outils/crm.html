@@ -3495,6 +3495,76 @@ function renderStats(){
 }
 
 // ══════════════════════════════════════
+// MIGRATION ID CLIENTE (fiches créées sans DDN → format standard)
+// ══════════════════════════════════════
+/* Tables portant une référence à clientes.id, avec le nom de la colonne
+   concernée (client_id ou client_key selon les tables). bilans_biologiques
+   porte les deux colonnes, d'où la double entrée. */
+const CLIENT_REF_TABLES=[
+  {table:'factures',col:'client_id'},
+  {table:'questionnaires',col:'client_id'},
+  {table:'journal_entries',col:'client_key'},
+  {table:'messages_client',col:'client_key'},
+  {table:'cycle_entries',col:'client_key'},
+  {table:'coherence_sessions',col:'client_key'},
+  {table:'protocoles_client',col:'client_id'},
+  {table:'avs_recettes',col:'client_id'},
+  {table:'feedback_protocole',col:'client_id'},
+  {table:'alternatives',col:'client_id'},
+  {table:'consultation_summaries',col:'client_key'},
+  {table:'bilan_entree',col:'client_key'},
+  {table:'checkins_semaine',col:'client_key'},
+  {table:'lettres_cliniques',col:'client_key'},
+  {table:'bilans_biologiques',col:'client_id'},
+  {table:'bilans_biologiques',col:'client_key'},
+  {table:'phv_memos',col:'client_key'}
+];
+
+/* Identifiant standard prenom-nom-AAAAMMJJ, cohérent avec saveNewClient(). */
+function idCanoniqueCliente(prenom,nom,ddn){
+  const p=(prenom||'').trim().toLowerCase().replace(/[\s']/g,'_');
+  const n=(nom||'').trim().toLowerCase().replace(/[\s']/g,'_');
+  const d=(ddn||'').replace(/-/g,'');
+  if(!p||!d) return null;
+  return p+(n?'-'+n:'')+'-'+d;
+}
+
+/* ── Migre une fiche cliente d'un identifiant provisoire (ex : créée depuis
+   l'agenda sans DDN, format prenom-nom-timestamp) vers l'identifiant standard
+   prenom-nom-AAAAMMJJ, en répercutant le changement sur toutes les tables
+   liées pour ne perdre aucun historique (factures, questionnaires, PHV,
+   journal, messages, cycle, alternatives, bilans...). ── */
+async function migrerIdCliente(oldId,newId){
+  if(!oldId||!newId||oldId===newId) return oldId;
+  try{
+    const cible=await sb('clientes?id=eq.'+encodeURIComponent(newId)+'&select=id');
+    if(cible.length){
+      toast('⚠ Une fiche existe déjà avec cet identifiant (prénom+nom+DDN) — fusion manuelle nécessaire','warn');
+      return oldId;
+    }
+    const rows=await sb('clientes?id=eq.'+encodeURIComponent(oldId));
+    if(!rows.length) return oldId;
+    const ancienne=rows[0];
+    const nouvelle={...ancienne,id:newId,updated_at:new Date().toISOString()};
+    await sb('clientes',{method:'POST',body:JSON.stringify(nouvelle),prefer:'return=minimal'});
+
+    for(const ref of CLIENT_REF_TABLES){
+      try{
+        await sb(ref.table+'?'+ref.col+'=eq.'+encodeURIComponent(oldId),{method:'PATCH',body:JSON.stringify({[ref.col]:newId}),prefer:'return=minimal'});
+      }catch(e){ console.warn('Migration '+ref.table+'.'+ref.col+' :',e); }
+    }
+
+    await sb('clientes?id=eq.'+encodeURIComponent(oldId),{method:'DELETE'});
+    toast('🔄 Identifiant cliente migré vers le format standard','ok');
+    return newId;
+  }catch(e){
+    console.warn('Migration ID cliente échouée :',e);
+    toast("⚠ Migration identifiant échouée — fiche conservée sous l'ancien ID",'warn');
+    return oldId;
+  }
+}
+
+// ══════════════════════════════════════
 // MODIFIER LA FICHE CLIENTE
 // ══════════════════════════════════════
 function ouvrirEditionCliente(clientId){
@@ -3546,10 +3616,11 @@ function ouvrirEditionCliente(clientId){
 async function sauvegarderEditionCliente(clientId){
   const c=db.clients.find(x=>x.id===clientId);if(!c){toast('Cliente introuvable','err');return;}
   const prenom=document.getElementById('ec-prenom')?.value?.trim();
+  const nom=document.getElementById('ec-nom')?.value?.trim()||'';
   const ddn=document.getElementById('ec-ddn')?.value;
   if(!prenom){toast('Prénom requis','err');return;}
   if(!ddn){toast('DDN requise','err');return;}
-  c.prenom=prenom;c.nom=document.getElementById('ec-nom')?.value?.trim()||'';
+  c.prenom=prenom;c.nom=nom;
   c.ddn=ddn;c.email=document.getElementById('ec-email')?.value?.trim()||'';
   c.tel=document.getElementById('ec-tel')?.value?.trim()||'';
   c.programme=document.getElementById('ec-prog')?.value||'';
@@ -3561,6 +3632,12 @@ async function sauvegarderEditionCliente(clientId){
   c.notes=document.getElementById('ec-notes')?.value?.trim()||'';
   c.age=String(ageFrom(ddn)||'');
   try{
+    // Fiche créée sans DDN (ex: depuis l'agenda) qui vient d'en recevoir une :
+    // on bascule vers l'identifiant standard prenom-nom-AAAAMMJJ.
+    const idCible=idCanoniqueCliente(prenom,nom,ddn);
+    if(idCible && idCible!==c.id){
+      c.id=await migrerIdCliente(c.id,idCible);
+    }
     await saveClient(c);
     document.getElementById('modal-edit-cliente')?.remove();
     renderFiche(c);renderClients();
