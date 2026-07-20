@@ -10,7 +10,7 @@
 :root {
   --blanc:#FFFFFF; --off:#F7F8FA; --grege:#F7F8FA;
   --taupe:#EAECF0; --sable:#7B6EE6; --ocre:#0DA678;
-  --ardoise:#101828; --encre:#101828; --gris:#98A2B3; --gris-l:#98A2B3;
+  --ardoise:#101828; --encre:#101828; --gris:#475467; --gris-l:#475467;
   --or-clair:#E6F7F1; --or:#08805C;
   --vert:#12A150; --vert-l:#EAF9F0; --vert-m:#5DCAA5;
   --rouge:#E4604C; --rouge-l:#FDEFEC;
@@ -142,7 +142,12 @@ select.fi{height:44px;cursor:pointer}
 .check-sub{font-size:11px;color:var(--gris-l);margin-top:2px;display:block;font-weight:400}
 
 /* ── EVOLUTION TRISTATE ── */
-.evol-item{display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid var(--taupe);border-radius:14px;background:var(--blanc);margin-bottom:7px;transition:var(--tr,.15s)}
+.evol-item{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px 14px;border:1px solid var(--taupe);border-radius:14px;background:var(--blanc);margin-bottom:7px;transition:var(--tr,.15s)}
+.evol-explain{display:none;flex-basis:100%;font-size:13px;color:var(--ardoise);line-height:1.55;margin-top:2px;padding-top:9px;border-top:1px dashed var(--taupe)}
+.evol-item.touched .evol-explain{display:block}
+.spec-block{display:none}
+.spec-block.on{display:block}
+.spec-hdr{font-size:13px;font-weight:700;color:var(--ardoise);margin:20px 0 10px;padding-bottom:8px;border-bottom:2px solid var(--ocre);display:flex;align-items:center;gap:8px}
 .evol-label{flex:1;color:var(--ardoise);font-size:13px;line-height:1.45}
 .evol-label small{display:block;font-size:11px;color:var(--gris-l);margin-top:1px}
 .evol-btns{display:flex;gap:5px;flex-shrink:0}
@@ -346,7 +351,8 @@ select.fi{height:44px;cursor:pointer}
   <button class="nav-btn" onclick="goSection(6)">07 · Bilans</button>
   <button class="nav-btn" onclick="goSection(7)">08 · Notes libres</button>
   <button class="nav-btn" onclick="goSection(8)">09 · Ajustement protocole</button>
-  <button class="nav-btn" onclick="goSection(9)">10 · Synthèse & PHV</button>
+  <button class="nav-btn" onclick="goSection(9)">10 · Suivi spécialisé</button>
+  <button class="nav-btn" onclick="goSection(10)">11 · Synthèse & PHV</button>
 </nav>
 
 <div class="prog-wrap">
@@ -1309,7 +1315,145 @@ Séparation en cours. Charge mentale très élevée. Explorer ashwagandha pour l
 
   <div class="nav-footer">
     <button class="btn" onclick="goSection(7)">← Retour</button>
-    <button class="btn primary" onclick="goSection(9)">Synthèse & PHV →</button>
+    <button class="btn primary" onclick="goSection(9)">Suivi spécialisé →</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     S8B — SUIVI SPÉCIALISÉ (conditionnel selon spécialité)
+═══════════════════════════════════════════════════ -->
+<div class="section" id="sec-8b">
+  <div class="sec-wrap">
+    <div class="sec-eyebrow">Section 10 · 11</div>
+    <div class="sec-h">Suivi spécialisé — sa/ses pathologie(s) en profondeur</div>
+    <div class="sec-sub">S'affiche automatiquement selon la ou les spécialités cochées en section 1. Chaque marqueur se compare à la dernière séance, avec son explication à donner à voix haute.</div>
+  </div>
+
+  <div id="spec-none" style="display:none;background:var(--off);border:1px dashed var(--taupe);border-radius:14px;padding:20px;text-align:center;color:var(--gris);font-size:13px;margin-bottom:16px">
+    Aucune spécialité cochée en section 1 — retournez à « Spécialité(s) concernée(s) » si cette cliente est concernée par une des 6 pathologies suivies ici.
+  </div>
+
+  <!-- ══════ SIBO ══════ -->
+  <div class="spec-block" data-spec="sibo">
+    <div class="spec-hdr">🦠 Suivi SIBO — évolution des marqueurs spécifiques</div>
+    <div class="edu-box insight" style="margin-bottom:14px">
+      <div class="edu-lbl">💡 Rappel clinique</div>
+      <p>Le SIBO se juge sur la convergence de plusieurs signes, pas sur un seul symptôme isolé. Une amélioration partielle (ex. ballonnements en baisse mais transit encore perturbé) est normale en cours de traitement — notez precisément lequel évolue et lequel résiste, ça oriente l'ajustement du protocole antimicrobien.</p>
+    </div>
+    <div class="g2" style="margin-bottom:14px">
+      <div><label class="fl">Test respiratoire de contrôle réalisé ?</label>
+        <select class="fi"><option value="">— Sélectionner —</option><option>Oui — résultat négatif (guérison confirmée)</option><option>Oui — résultat positif mais amélioré</option><option>Oui — résultat inchangé</option><option>Non — pas encore programmé</option><option>Non prévu à ce stade</option></select>
+      </div>
+      <div><label class="fl">Traitement antimicrobien en cours ou terminé</label>
+        <input class="fi" type="text" placeholder="Ex : Allicine 500mg 3x/j, cycle 2 terminé la semaine dernière">
+      </div>
+    </div>
+    <div class="evol-item"><div class="evol-label">Ballonnements 60 à 90 minutes après le repas<small>Signature horaire du grêle — délai typique de la fermentation dans l'intestin grêle</small></div><div class="evol-btns"><button class="evol-btn" onclick="setEvol(this,'up')">↑ Mieux</button><button class="evol-btn" onclick="setEvol(this,'same')">= Stable</button><button class="evol-btn" onclick="setEvol(this,'down')">↓ Pire</button></div><div class="evol-explain">Ce délai précis, entre 60 et 90 minutes après manger, est la signature la plus fiable d'un SIBO actif — c'est le temps que met la nourriture pour atteindre la zone du grêle où les bactéries en excès fermentent. Une amélioration ici est souvent le tout premier signe que le traitement fonctionne.</div></div><div class="evol-item"><div class="evol-label">Ventre plat le matin, gonflé le soir<small>Accumulation progressive typique du SIBO, contrairement à un ballonnement présent dès le réveil</small></div><div class="evol-btns"><button class="evol-btn" onclick="setEvol(this,'up')">↑ Mieux</button><button class="evol-btn" onclick="setEvol(this,'same')">= Stable</button><button class="evol-btn" onclick="setEvol(this,'down')">↓ Pire</button></div><div class="evol-explain">Ce contraste entre un ventre plat au réveil et gonflé en fin de journée est très caractéristique du SIBO — les bactéries en excès fermentent au fil des repas de la journée, et la nuit de jeûne permet au grand nettoyage intestinal de faire redescendre les gaz.</div></div><div class="evol-item"><div class="evol-label">Constipation (si profil SIBO méthane)<small>Le méthane ralentit directement le transit en anesthésiant le péristaltisme</small></div><div class="evol-btns"><button class="evol-btn" onclick="setEvol(this,'up')">↑ Mieux</button><button class="evol-btn" onclick="setEvol(this,'same')">= Stable</button><button class="evol-btn" onclick="setEvol(this,'down')">↓ Pire</button></div><div class="evol-explain">Le méthane produit par certaines bactéries ralentit directement les mouvements de l'intestin — une constipation qui s'assouplit est un signe clinique fort que la charge en méthane diminue.</div></div><div class="evol-item"><div class="evol-label">Diarrhées ou selles molles (si profil SIBO hydrogène)<small>L'hydrogène accélère le transit par effet osmotique</small></div><div class="evol-btns"><button class="evol-btn" onclick="setEvol(this,'up')">↑ Mieux</button><button class="evol-btn" onclick="setEvol(this,'same')">= Stable</button><button class="evol-btn" onclick="setEvol(this,'down')">↓ Pire</button></div><div class="evol-explain">L'hydrogène produit par la fermentation attire l'eau dans l'intestin et accélère le transit — des selles qui se solidifient progressivement montrent que la fermentation hydrogène diminue.</div></div><div class="evol-item"><div class="evol-label">Odeur des gaz<small>Gaz inodores = fermentation glucidique ; gaz très odorants = piste putréfaction protéique à ne pas confondre avec le SIBO</small></div><div class="evol-btns"><button class="evol-btn" onclick="setEvol(this,'up')">↑ Mieux</button><button class="evol-btn" onclick="setEvol(this,'same')">= Stable</button><button class="evol-btn" onclick="setEvol(this,'down')">↓ Pire</button></div><div class="evol-explain">Des gaz sans odeur, même abondants, restent cohérents avec un SIBO en cours de traitement. Si les gaz deviennent au contraire très odorants, ça oriente vers une autre piste — la digestion des protéines — à ne pas confondre avec le SIBO lui-même.</div></div><div class="evol-item"><div class="evol-label">Brouillard mental ou fatigue dans l'heure suivant le repas<small>Les LPS bactériens produits par la fermentation passent dans le sang et provoquent une neuroinflammation post-prandiale</small></div><div class="evol-btns"><button class="evol-btn" onclick="setEvol(this,'up')">↑ Mieux</button><button class="evol-btn" onclick="setEvol(this,'same')">= Stable</button><button class="evol-btn" onclick="setEvol(this,'down')">↓ Pire</button></div><div class="evol-explain">Ce brouillard mental juste après manger vient de fragments de bactéries qui passent dans le sang pendant la fermentation active — une amélioration ici accompagne presque toujours une baisse réelle de la charge bactérienne.</div></div><div class="evol-item"><div class="evol-label">Reflux ou remontées acides<small>Conséquence mécanique de la pression des gaz du grêle qui remonte et force le cardia — pas un excès d'acidité</small></div><div class="evol-btns"><button class="evol-btn" onclick="setEvol(this,'up')">↑ Mieux</button><button class="evol-btn" onclick="setEvol(this,'same')">= Stable</button><button class="evol-btn" onclick="setEvol(this,'down')">↓ Pire</button></div><div class="evol-explain">Ce reflux n'est presque jamais un excès d'acide — c'est la pression des gaz produits dans le grêle qui repousse vers le haut et force l'ouverture de l'estomac. Il s'améliore mécaniquement à mesure que le SIBO se résorbe, sans qu'il soit nécessaire de traiter le reflux séparément.</div></div><div class="evol-item"><div class="evol-label">Tolérance aux fibres et légumineuses réintroduites<small>Test clinique directement informatif : la réaction à la réintroduction confirme l'état de la fermentation grêle</small></div><div class="evol-btns"><button class="evol-btn" onclick="setEvol(this,'up')">↑ Mieux</button><button class="evol-btn" onclick="setEvol(this,'same')">= Stable</button><button class="evol-btn" onclick="setEvol(this,'down')">↓ Pire</button></div><div class="evol-explain">La façon dont le corps réagit quand on réintroduit progressivement fibres et légumineuses est un excellent indicateur clinique — une bonne tolérance croissante signale que l'intestin grêle a retrouvé un équilibre plus stable.</div></div>
+    <div style="margin-top:14px"><label class="fl">Notes libres — SIBO</label>
+      <textarea class="fi" style="min-height:70px" placeholder="Réaction de Herxheimer possible en début de traitement (3-5 jours, s'estompe) à distinguer d'une vraie intolérance (persiste ou empire)…"></textarea>
+    </div>
+  </div>
+
+  <!-- ══════ SII ══════ -->
+  <div class="spec-block" data-spec="sii">
+    <div class="spec-hdr">🌀 Suivi SII / dysbiose — évolution des critères de Rome IV</div>
+    <div class="edu-box insight" style="margin-bottom:14px">
+      <div class="edu-lbl">💡 Rappel clinique</div>
+      <p>Le SII est un diagnostic d'exclusion — si un SIBO ou une candidose sous-jacente n'a jamais été testé, gardez cette piste ouverte même en cours de suivi. Une régression après amélioration initiale évoque souvent un facteur de stress aigu ou un écart alimentaire répété plutôt qu'un échec du protocole.</p>
+    </div>
+    <div class="evol-item"><div class="evol-label">Douleur soulagée par la défécation<small>Critère diagnostique central du SII (Rome IV)</small></div><div class="evol-btns"><button class="evol-btn" onclick="setEvol(this,'up')">↑ Mieux</button><button class="evol-btn" onclick="setEvol(this,'same')">= Stable</button><button class="evol-btn" onclick="setEvol(this,'down')">↓ Pire</button></div><div class="evol-explain">C'est l'un des critères principaux qui définissent le syndrome de l'intestin irritable — la douleur liée aux gaz ou aux spasmes se soulage une fois l'intestin vidé. Si ce lien devient moins systématique, c'est un vrai signe d'amélioration.</div></div><div class="evol-item"><div class="evol-label">Fréquence des selles<small>Normalisation vers un rythme quotidien régulier, sans épisodes extrêmes</small></div><div class="evol-btns"><button class="evol-btn" onclick="setEvol(this,'up')">↑ Mieux</button><button class="evol-btn" onclick="setEvol(this,'same')">= Stable</button><button class="evol-btn" onclick="setEvol(this,'down')">↓ Pire</button></div><div class="evol-explain">Un rythme qui se régularise, sans alternance entre plusieurs jours sans selle et urgences soudaines, montre que le système nerveux de l'intestin retrouve un fonctionnement plus stable.</div></div><div class="evol-item"><div class="evol-label">Consistance des selles (échelle de Bristol)<small>Se rapprocher du type 3-4 (ni trop dur, ni trop liquide)</small></div><div class="evol-btns"><button class="evol-btn" onclick="setEvol(this,'up')">↑ Mieux</button><button class="evol-btn" onclick="setEvol(this,'same')">= Stable</button><button class="evol-btn" onclick="setEvol(this,'down')">↓ Pire</button></div><div class="evol-explain">L'échelle de Bristol permet de suivre objectivement la consistance — se rapprocher du type 3 ou 4, ni trop dur ni trop mou, est le signe d'un transit qui se normalise.</div></div><div class="evol-item"><div class="evol-label">Urgences défécatoires soudaines<small>Hypersensibilité du côlon sigmoïde qui déclenche des contractions trop rapidement</small></div><div class="evol-btns"><button class="evol-btn" onclick="setEvol(this,'up')">↑ Mieux</button><button class="evol-btn" onclick="setEvol(this,'same')">= Stable</button><button class="evol-btn" onclick="setEvol(this,'down')">↓ Pire</button></div><div class="evol-explain">Ces urgences soudaines viennent d'une partie du côlon devenue hypersensible, qui déclenche des contractions même pour de petits volumes. Moins d'urgences signale que cette hypersensibilité s'apaise.</div></div><div class="evol-item"><div class="evol-label">Sensation d'évacuation incomplète<small>Hypersensibilité viscérale — le rectum perçoit les volumes comme plus importants qu'ils ne le sont</small></div><div class="evol-btns"><button class="evol-btn" onclick="setEvol(this,'up')">↑ Mieux</button><button class="evol-btn" onclick="setEvol(this,'same')">= Stable</button><button class="evol-btn" onclick="setEvol(this,'down')">↓ Pire</button></div><div class="evol-explain">Cette sensation de ne jamais avoir fini vient souvent d'une hypersensibilité du rectum, qui perçoit les volumes comme plus importants qu'ils ne le sont réellement — elle s'améliore en même temps que la sensibilité digestive globale.</div></div><div class="evol-item"><div class="evol-label">Mucus visible dans les selles<small>Réaction de protection face à une irritation chronique de la muqueuse colique</small></div><div class="evol-btns"><button class="evol-btn" onclick="setEvol(this,'up')">↑ Mieux</button><button class="evol-btn" onclick="setEvol(this,'same')">= Stable</button><button class="evol-btn" onclick="setEvol(this,'down')">↓ Pire</button></div><div class="evol-explain">La présence de mucus est une réaction de protection de l'intestin face à une irritation. Elle diminue quand la muqueuse colique s'apaise durablement.</div></div><div class="evol-item"><div class="evol-label">Sensibilité au stress (impact sur les symptômes)<small>Le lien intestin-cerveau reste central dans le SII — objectif : atténuer, pas éliminer</small></div><div class="evol-btns"><button class="evol-btn" onclick="setEvol(this,'up')">↑ Mieux</button><button class="evol-btn" onclick="setEvol(this,'same')">= Stable</button><button class="evol-btn" onclick="setEvol(this,'down')">↓ Pire</button></div><div class="evol-explain">Le lien entre stress et symptômes ne disparaît jamais complètement dans le SII, c'est normal — l'objectif réaliste est que les symptômes deviennent moins intenses et moins systématiques face au stress, pas qu'ils disparaissent.</div></div><div class="evol-item"><div class="evol-label">Sensibilité associée (vessie, douleurs diffuses)<small>Sensibilisation centrale partagée — intestin, vessie et muscles peuvent s'apaiser ensemble</small></div><div class="evol-btns"><button class="evol-btn" onclick="setEvol(this,'up')">↑ Mieux</button><button class="evol-btn" onclick="setEvol(this,'same')">= Stable</button><button class="evol-btn" onclick="setEvol(this,'down')">↓ Pire</button></div><div class="evol-explain">L'intestin, la vessie et les muscles partagent souvent les mêmes circuits de sensibilité à la douleur — une amélioration du SII s'accompagne fréquemment d'une amélioration de ces autres sensibilités associées.</div></div>
+    <div style="margin-top:14px"><label class="fl">Notes libres — SII / dysbiose</label>
+      <textarea class="fi" style="min-height:70px" placeholder="Aliments déclencheurs identifiés, lien avec le cycle menstruel, tests complémentaires à envisager (SIBO, calprotectine)…"></textarea>
+    </div>
+  </div>
+
+  <!-- ══════ ENDOMÉTRIOSE ══════ -->
+  <div class="spec-block" data-spec="endo">
+    <div class="spec-hdr">🩸 Suivi endométriose — évolution des marqueurs clés</div>
+    <div class="edu-box insight" style="margin-bottom:14px">
+      <div class="edu-lbl">💡 Rappel clinique</div>
+      <p>L'endométriose ne se traite pas naturopathiquement — l'accompagnement est anti-inflammatoire et complémentaire au suivi gynécologique, jamais un substitut. Vérifiez systématiquement où en est le suivi médical à chaque séance.</p>
+    </div>
+    <div class="g2" style="margin-bottom:14px">
+      <div><label class="fl">Suivi gynécologique depuis la dernière séance</label>
+        <input class="fi" type="text" placeholder="Ex : RDV gynécologue prévu le [date], échographie endopelvineale à programmer">
+      </div>
+      <div><label class="fl">Piste chirurgicale évoquée ou en cours</label>
+        <input class="fi" type="text" placeholder="Ex : aucune / évoquée mais pas encore décidée / intervention programmée">
+      </div>
+    </div>
+    <div class="evol-item"><div class="evol-label">Dysménorrhée (intensité des douleurs de règles)<small>Indicateur central — une baisse même partielle de l'intensité est cliniquement significative</small></div><div class="evol-btns"><button class="evol-btn" onclick="setEvol(this,'up')">↑ Mieux</button><button class="evol-btn" onclick="setEvol(this,'same')">= Stable</button><button class="evol-btn" onclick="setEvol(this,'down')">↓ Pire</button></div><div class="evol-explain">Même une baisse partielle de l'intensité des douleurs de règles est une vraie victoire clinique dans l'endométriose — la douleur ne disparaît que rarement du jour au lendemain, mais sa réduction progressive montre que l'inflammation de fond diminue.</div></div><div class="evol-item"><div class="evol-label">Dyspareunie (douleur pendant les rapports)<small>Marqueur d'atteinte profonde — son évolution reflète directement l'inflammation pelvienne</small></div><div class="evol-btns"><button class="evol-btn" onclick="setEvol(this,'up')">↑ Mieux</button><button class="evol-btn" onclick="setEvol(this,'same')">= Stable</button><button class="evol-btn" onclick="setEvol(this,'down')">↓ Pire</button></div><div class="evol-explain">Cette douleur profonde pendant les rapports reflète directement l'état inflammatoire des zones atteintes par l'endométriose — sa diminution est un signe fiable que l'inflammation pelvienne recule.</div></div><div class="evol-item"><div class="evol-label">Douleurs pelviennes chroniques hors règles<small>Signe d'activité inflammatoire continue des lésions, pas seulement pendant les règles</small></div><div class="evol-btns"><button class="evol-btn" onclick="setEvol(this,'up')">↑ Mieux</button><button class="evol-btn" onclick="setEvol(this,'same')">= Stable</button><button class="evol-btn" onclick="setEvol(this,'down')">↓ Pire</button></div><div class="evol-explain">Contrairement à une idée reçue, les lésions d'endométriose restent actives toute l'année, pas seulement pendant les règles — une baisse des douleurs en dehors des règles est donc un signal tout aussi important que la baisse des douleurs de règles elles-mêmes.</div></div><div class="evol-item"><div class="evol-label">Fatigue péri-menstruelle intense<small>Liée à l'inflammation systémique déclenchée par les prostaglandines en excès</small></div><div class="evol-btns"><button class="evol-btn" onclick="setEvol(this,'up')">↑ Mieux</button><button class="evol-btn" onclick="setEvol(this,'same')">= Stable</button><button class="evol-btn" onclick="setEvol(this,'down')">↓ Pire</button></div><div class="evol-explain">Cette fatigue écrasante autour des règles vient de substances inflammatoires libérées en excès par les lésions d'endométriose — elle s'atténue à mesure que l'inflammation de fond diminue.</div></div><div class="evol-item"><div class="evol-label">Troubles digestifs pendant les règles (nausées, diarrhées)<small>Les prostaglandines de l'endomètre ectopique agissent aussi sur l'intestin</small></div><div class="evol-btns"><button class="evol-btn" onclick="setEvol(this,'up')">↑ Mieux</button><button class="evol-btn" onclick="setEvol(this,'same')">= Stable</button><button class="evol-btn" onclick="setEvol(this,'down')">↓ Pire</button></div><div class="evol-explain">Les mêmes substances responsables des douleurs utérines agissent aussi sur l'intestin — une amélioration ici accompagne généralement une baisse de l'activité inflammatoire globale.</div></div><div class="evol-item"><div class="evol-label">Ballonnements et distension abdominale péri-menstruels (« endo belly »)<small>Inflammation pelvienne diffuse combinée à une possible composante SIBO associée</small></div><div class="evol-btns"><button class="evol-btn" onclick="setEvol(this,'up')">↑ Mieux</button><button class="evol-btn" onclick="setEvol(this,'same')">= Stable</button><button class="evol-btn" onclick="setEvol(this,'down')">↓ Pire</button></div><div class="evol-explain">Ce gonflement marqué autour des règles, parfois appelé « endo belly », vient de l'inflammation pelvienne qui se diffuse — et chez certaines femmes, un SIBO associé aggrave encore ce tableau, à garder en tête si ça ne s'améliore pas.</div></div>
+    <div style="margin-top:14px"><label class="fl">Notes libres — endométriose</label>
+      <textarea class="fi" style="min-height:70px" placeholder="Observance du régime anti-inflammatoire (gluten, laitages, oméga-3), impact sur un éventuel projet de grossesse…"></textarea>
+    </div>
+  </div>
+
+  <!-- ══════ MÉNOPAUSE ══════ -->
+  <div class="spec-block" data-spec="meno">
+    <div class="spec-hdr">🌙 Suivi périménopause / ménopause — évolution des marqueurs clés</div>
+    <div class="edu-box insight" style="margin-bottom:14px">
+      <div class="edu-lbl">💡 Rappel clinique</div>
+      <p>La périménopause peut durer plusieurs années avec des cycles encore présents mais irréguliers — ne pas attendre l'arrêt complet des règles pour prendre les symptômes au sérieux. Si un THM (traitement hormonal) est envisagé ou en cours, notez-le systématiquement : il modifie l'interprétation de chaque marqueur.</p>
+    </div>
+    <div class="g2" style="margin-bottom:14px">
+      <div><label class="fl">Statut du cycle actuel</label>
+        <select class="fi"><option value="">— Sélectionner —</option><option>Cycles encore réguliers</option><option>Cycles irréguliers (périménopause)</option><option>Aménorrhée depuis moins de 12 mois</option><option>Ménopause confirmée (&gt;12 mois sans règles)</option></select>
+      </div>
+      <div><label class="fl">Traitement hormonal de la ménopause (THM)</label>
+        <input class="fi" type="text" placeholder="Ex : non envisagé / en discussion / introduit le [date] / ajusté">
+      </div>
+    </div>
+    <div class="evol-item"><div class="evol-label">Bouffées de chaleur (fréquence jour et nuit)<small>Signal vasomoteur direct de la baisse des œstrogènes</small></div><div class="evol-btns"><button class="evol-btn" onclick="setEvol(this,'up')">↑ Mieux</button><button class="evol-btn" onclick="setEvol(this,'same')">= Stable</button><button class="evol-btn" onclick="setEvol(this,'down')">↓ Pire</button></div><div class="evol-explain">Les bouffées de chaleur viennent d'un dérèglement du thermostat interne provoqué par la baisse des œstrogènes — moins fréquentes ou moins intenses, elles montrent que le corps s'adapte progressivement à ce nouvel équilibre hormonal.</div></div><div class="evol-item"><div class="evol-label">Qualité du sommeil (réveils liés aux sueurs nocturnes)<small>Les bouffées nocturnes fragmentent le sommeil profond en activant le système d'alerte</small></div><div class="evol-btns"><button class="evol-btn" onclick="setEvol(this,'up')">↑ Mieux</button><button class="evol-btn" onclick="setEvol(this,'same')">= Stable</button><button class="evol-btn" onclick="setEvol(this,'down')">↓ Pire</button></div><div class="evol-explain">Les sueurs nocturnes réveillent en activant brièvement le système d'alerte du corps — un sommeil moins fragmenté est souvent l'un des premiers bénéfices ressentis quand le protocole commence à agir.</div></div><div class="evol-item"><div class="evol-label">Sécheresse vaginale<small>Atrophie de la muqueuse par manque d'œstrogènes — répond bien aux solutions locales</small></div><div class="evol-btns"><button class="evol-btn" onclick="setEvol(this,'up')">↑ Mieux</button><button class="evol-btn" onclick="setEvol(this,'same')">= Stable</button><button class="evol-btn" onclick="setEvol(this,'down')">↓ Pire</button></div><div class="evol-explain">Le manque d'œstrogènes fragilise la muqueuse vaginale — c'est l'un des symptômes qui répond le mieux et le plus vite à un accompagnement ciblé, local ou nutritionnel.</div></div><div class="evol-item"><div class="evol-label">Prise de poids abdominale<small>Redistribution des graisses liée à la chute des œstrogènes, pas un manque de volonté</small></div><div class="evol-btns"><button class="evol-btn" onclick="setEvol(this,'up')">↑ Mieux</button><button class="evol-btn" onclick="setEvol(this,'same')">= Stable</button><button class="evol-btn" onclick="setEvol(this,'down')">↓ Pire</button></div><div class="evol-explain">La baisse des œstrogènes redirige naturellement le stockage des graisses vers le ventre et ralentit le métabolisme de base — ce n'est pas un manque de volonté, c'est un vrai changement physiologique qui se travaille différemment qu'avant.</div></div><div class="evol-item"><div class="evol-label">Douleurs articulaires<small>Les œstrogènes ont un effet anti-inflammatoire articulaire — leur chute démasque une inflammation latente</small></div><div class="evol-btns"><button class="evol-btn" onclick="setEvol(this,'up')">↑ Mieux</button><button class="evol-btn" onclick="setEvol(this,'same')">= Stable</button><button class="evol-btn" onclick="setEvol(this,'down')">↓ Pire</button></div><div class="evol-explain">Les œstrogènes protègent normalement les articulations de l'inflammation — leur baisse démasque une inflammation qui était jusque-là contenue. Une amélioration ici accompagne souvent un meilleur équilibre hormonal global.</div></div><div class="evol-item"><div class="evol-label">Humeur et anxiété<small>Les œstrogènes régulent aussi la sérotonine et la dopamine</small></div><div class="evol-btns"><button class="evol-btn" onclick="setEvol(this,'up')">↑ Mieux</button><button class="evol-btn" onclick="setEvol(this,'same')">= Stable</button><button class="evol-btn" onclick="setEvol(this,'down')">↓ Pire</button></div><div class="evol-explain">Les œstrogènes jouent un rôle direct sur des messagers essentiels à l'humeur — leur fluctuation explique une partie de l'instabilité émotionnelle ressentie, qui se stabilise progressivement avec le rééquilibrage.</div></div><div class="evol-item"><div class="evol-label">Brouillard mental, mémoire<small>Les œstrogènes protègent les neurones — leur chute crée une neuroinflammation transitoire</small></div><div class="evol-btns"><button class="evol-btn" onclick="setEvol(this,'up')">↑ Mieux</button><button class="evol-btn" onclick="setEvol(this,'same')">= Stable</button><button class="evol-btn" onclick="setEvol(this,'down')">↓ Pire</button></div><div class="evol-explain">Ce brouillard mental qui inquiète souvent beaucoup à cet âge vient de la perte de l'effet protecteur des œstrogènes sur les neurones — il s'améliore généralement avec le temps et un bon accompagnement du terrain.</div></div><div class="evol-item"><div class="evol-label">Libido<small>Multifactorielle : hormones, sommeil, image de soi, fatigue</small></div><div class="evol-btns"><button class="evol-btn" onclick="setEvol(this,'up')">↑ Mieux</button><button class="evol-btn" onclick="setEvol(this,'same')">= Stable</button><button class="evol-btn" onclick="setEvol(this,'down')">↓ Pire</button></div><div class="evol-explain">La libido à cette période dépend de plusieurs facteurs qui se croisent — hormonal, mais aussi sommeil, fatigue et image de soi. Une amélioration globale du bien-être s'accompagne souvent d'un retour progressif du désir.</div></div>
+    <div style="margin-top:14px"><label class="fl">Notes libres — périménopause / ménopause</label>
+      <textarea class="fi" style="min-height:70px" placeholder="Densité osseuse (dernier bilan), phytoestrogènes ou plantes utilisées, ressenti global sur cette transition…"></textarea>
+    </div>
+  </div>
+
+  <!-- ══════ SOPK ══════ -->
+  <div class="spec-block" data-spec="sopk">
+    <div class="spec-hdr">🌸 Suivi SOPK — évolution des marqueurs clés</div>
+    <div class="edu-box insight" style="margin-bottom:14px">
+      <div class="edu-lbl">💡 Rappel clinique</div>
+      <p>Le SOPK est avant tout une insulinorésistance de fond — les marqueurs n'évoluent pas tous à la même vitesse (la peau réagit vite, le cycle réagit lentement). Rassurer sur ce décalage évite un découragement précoce.</p>
+    </div>
+    <div class="g2" style="margin-bottom:14px">
+      <div><label class="fl">Projet de grossesse / parcours en cours</label>
+        <input class="fi" type="text" placeholder="Ex : pas de projet actuel / essai naturel depuis X mois / parcours FIV en cours">
+      </div>
+      <div><label class="fl">Bilan hormonal de contrôle</label>
+        <input class="fi" type="text" placeholder="Ex : LH/FSH, testostérone, insuline à jeun — date et résultat si reçu">
+      </div>
+    </div>
+    <div class="evol-item"><div class="evol-label">Régularité des cycles / retour d'une ovulation<small>Marqueur central — reflète directement l'amélioration de la sensibilité à l'insuline</small></div><div class="evol-btns"><button class="evol-btn" onclick="setEvol(this,'up')">↑ Mieux</button><button class="evol-btn" onclick="setEvol(this,'same')">= Stable</button><button class="evol-btn" onclick="setEvol(this,'down')">↓ Pire</button></div><div class="evol-explain">Le retour de cycles plus réguliers est le signe le plus direct que la résistance à l'insuline s'améliore — c'est souvent le marqueur qui bouge en dernier, après les signes cutanés, alors ne pas se décourager si la peau s'améliore avant les cycles.</div></div><div class="evol-item"><div class="evol-label">Acné hormonale (menton, mâchoire)<small>Reflet direct du niveau d'androgènes en circulation</small></div><div class="evol-btns"><button class="evol-btn" onclick="setEvol(this,'up')">↑ Mieux</button><button class="evol-btn" onclick="setEvol(this,'same')">= Stable</button><button class="evol-btn" onclick="setEvol(this,'down')">↓ Pire</button></div><div class="evol-explain">Cette acné du bas du visage suit de près le niveau d'hormones masculines en circulation — sa diminution est un bon indicateur visible que l'équilibre hormonal progresse, avant même que les cycles ne se régularisent.</div></div><div class="evol-item"><div class="evol-label">Pilosité excessive (hirsutisme)<small>Évolue plus lentement que l'acné — le cycle du poil est plus long</small></div><div class="evol-btns"><button class="evol-btn" onclick="setEvol(this,'up')">↑ Mieux</button><button class="evol-btn" onclick="setEvol(this,'same')">= Stable</button><button class="evol-btn" onclick="setEvol(this,'down')">↓ Pire</button></div><div class="evol-explain">La pilosité met plus de temps à évoluer que l'acné, car chaque poil suit son propre cycle de croissance sur plusieurs mois — ne pas s'inquiéter si ce marqueur bouge plus lentement que les autres.</div></div><div class="evol-item"><div class="evol-label">Chute de cheveux de type androgénique<small>Même mécanisme hormonal que l'acné et l'hirsutisme, mais avec un effet inversé sur le follicule</small></div><div class="evol-btns"><button class="evol-btn" onclick="setEvol(this,'up')">↑ Mieux</button><button class="evol-btn" onclick="setEvol(this,'same')">= Stable</button><button class="evol-btn" onclick="setEvol(this,'down')">↓ Pire</button></div><div class="evol-explain">C'est le même excès d'hormones masculines que pour l'acné, mais il agit à l'inverse sur le cuir chevelu en fragilisant le cheveu — son ralentissement est un bon signe, la repousse visible prend plus de temps.</div></div><div class="evol-item"><div class="evol-label">Fringales / hypoglycémies réactionnelles<small>Signe direct de la résistance à l'insuline sous-jacente</small></div><div class="evol-btns"><button class="evol-btn" onclick="setEvol(this,'up')">↑ Mieux</button><button class="evol-btn" onclick="setEvol(this,'same')">= Stable</button><button class="evol-btn" onclick="setEvol(this,'down')">↓ Pire</button></div><div class="evol-explain">Ces fringales et ces malaises après les repas sont un signe assez fiable de résistance à l'insuline — leur diminution montre que la glycémie se stabilise, ce qui est le vrai moteur de fond du SOPK.</div></div><div class="evol-item"><div class="evol-label">Tour de taille / prise de poids abdominale<small>L'insulinorésistance oriente le stockage des graisses vers le ventre</small></div><div class="evol-btns"><button class="evol-btn" onclick="setEvol(this,'up')">↑ Mieux</button><button class="evol-btn" onclick="setEvol(this,'same')">= Stable</button><button class="evol-btn" onclick="setEvol(this,'down')">↓ Pire</button></div><div class="evol-explain">L'excès d'insuline pousse le corps à stocker préférentiellement au niveau du ventre — une évolution favorable ici, même sans grosse perte de poids sur la balance, est un signe très positif.</div></div><div class="evol-item"><div class="evol-label">Acanthosis nigricans (peau foncée et épaissie aux plis)<small>Marqueur cutané très spécifique d'une insulinorésistance significative</small></div><div class="evol-btns"><button class="evol-btn" onclick="setEvol(this,'up')">↑ Mieux</button><button class="evol-btn" onclick="setEvol(this,'same')">= Stable</button><button class="evol-btn" onclick="setEvol(this,'down')">↓ Pire</button></div><div class="evol-explain">Cette peau plus foncée et épaissie aux plis (cou, aisselles) est un marqueur très spécifique d'une résistance à l'insuline déjà bien installée — son atténuation est un signe fort d'amélioration métabolique de fond.</div></div>
+    <div style="margin-top:14px"><label class="fl">Notes libres — SOPK</label>
+      <textarea class="fi" style="min-height:70px" placeholder="Observance de l'alimentation à index glycémique bas, activité physique, myo-inositol ou autres compléments…"></textarea>
+    </div>
+  </div>
+
+  <!-- ══════ THYROÏDE / HASHIMOTO ══════ -->
+  <div class="spec-block" data-spec="thyroide">
+    <div class="spec-hdr">🦋 Suivi thyroïdien / Hashimoto — évolution des marqueurs clés</div>
+    <div class="edu-box insight" style="margin-bottom:14px">
+      <div class="edu-lbl">💡 Rappel clinique</div>
+      <p>La naturopathie ne remplace jamais le traitement thyroïdien — elle soutient la conversion T4→T3 et le terrain auto-immun (intestin, gluten) en complément. Toute évolution ici doit rester en lien avec le suivi endocrinologique.</p>
+    </div>
+    <div class="g2" style="margin-bottom:14px">
+      <div><label class="fl">Dose de Lévothyrox actuelle</label>
+        <input class="fi" type="text" placeholder="Ex : 75 µg/j depuis le [date], ajustée par l'endocrinologue">
+      </div>
+      <div><label class="fl">Dernier bilan (TSH, T3L, T4L, anti-TPO)</label>
+        <input class="fi" type="text" placeholder="Valeurs et date, ou date du prochain contrôle prévu">
+      </div>
+    </div>
+    <div class="evol-item"><div class="evol-label">Fatigue malgré le traitement (Lévothyrox)<small>Le Lévothyrox n'apporte que la T4 — sans bonne conversion en T3 active, la fatigue peut persister</small></div><div class="evol-btns"><button class="evol-btn" onclick="setEvol(this,'up')">↑ Mieux</button><button class="evol-btn" onclick="setEvol(this,'same')">= Stable</button><button class="evol-btn" onclick="setEvol(this,'down')">↓ Pire</button></div><div class="evol-explain">Le Lévothyrox n'apporte qu'une forme peu active de l'hormone thyroïdienne — sans une bonne conversion vers sa forme active (qui dépend notamment du sélénium et de l'intestin), la fatigue peut persister malgré des résultats de prise de sang normalisés.</div></div><div class="evol-item"><div class="evol-label">Frilosité / mains et pieds froids<small>La T3 active régule directement la production de chaleur du corps</small></div><div class="evol-btns"><button class="evol-btn" onclick="setEvol(this,'up')">↑ Mieux</button><button class="evol-btn" onclick="setEvol(this,'same')">= Stable</button><button class="evol-btn" onclick="setEvol(this,'down')">↓ Pire</button></div><div class="evol-explain">L'hormone thyroïdienne active régule la production de chaleur du corps — une frilosité qui diminue est un bon signe que la conversion vers cette forme active s'améliore.</div></div><div class="evol-item"><div class="evol-label">Chute de cheveux et queue de sourcil clairsemée<small>Tableau très spécifique d'une thyroïde encore ralentie, même sous traitement</small></div><div class="evol-btns"><button class="evol-btn" onclick="setEvol(this,'up')">↑ Mieux</button><button class="evol-btn" onclick="setEvol(this,'same')">= Stable</button><button class="evol-btn" onclick="setEvol(this,'down')">↓ Pire</button></div><div class="evol-explain">La perte de cheveux combinée à une queue de sourcil clairsemée forme l'un des tableaux les plus caractéristiques d'une thyroïde encore ralentie — leur amélioration accompagne généralement un meilleur équilibre thyroïdien de fond.</div></div><div class="evol-item"><div class="evol-label">Transit (constipation)<small>La thyroïde régule directement le mouvement de l'intestin</small></div><div class="evol-btns"><button class="evol-btn" onclick="setEvol(this,'up')">↑ Mieux</button><button class="evol-btn" onclick="setEvol(this,'same')">= Stable</button><button class="evol-btn" onclick="setEvol(this,'down')">↓ Pire</button></div><div class="evol-explain">La thyroïde régule directement le mouvement de l'intestin — un transit qui se régularise est un signe indirect mais fiable que l'hormone thyroïdienne active est mieux disponible dans le corps.</div></div><div class="evol-item"><div class="evol-label">Brouillard mental, lenteur cognitive<small>Le cerveau est particulièrement riche en récepteurs à la T3 active</small></div><div class="evol-btns"><button class="evol-btn" onclick="setEvol(this,'up')">↑ Mieux</button><button class="evol-btn" onclick="setEvol(this,'same')">= Stable</button><button class="evol-btn" onclick="setEvol(this,'down')">↓ Pire</button></div><div class="evol-explain">Le cerveau est particulièrement sensible à l'hormone thyroïdienne active — une clarté mentale qui revient est souvent l'un des signes les plus appréciés par les clientes, et l'un des plus fiables cliniquement.</div></div><div class="evol-item"><div class="evol-label">Prise de poids / difficulté à en perdre<small>La thyroïde régule le métabolisme de base — son ralentissement freine toute perte de poids</small></div><div class="evol-btns"><button class="evol-btn" onclick="setEvol(this,'up')">↑ Mieux</button><button class="evol-btn" onclick="setEvol(this,'same')">= Stable</button><button class="evol-btn" onclick="setEvol(this,'down')">↓ Pire</button></div><div class="evol-explain">La thyroïde régule directement la vitesse à laquelle le corps brûle de l'énergie au repos — tant qu'elle reste ralentie, perdre du poids reste difficile même avec des efforts alimentaires importants.</div></div><div class="evol-item"><div class="evol-label">Palpitations ou rythme cardiaque irrégulier<small>À surveiller en cas d'ajustement de dose — signe possible de surdosage si présent</small></div><div class="evol-btns"><button class="evol-btn" onclick="setEvol(this,'up')">↑ Mieux</button><button class="evol-btn" onclick="setEvol(this,'same')">= Stable</button><button class="evol-btn" onclick="setEvol(this,'down')">↓ Pire</button></div><div class="evol-explain">Des palpitations qui apparaissent après une augmentation de dose peuvent signaler un léger surdosage — une information importante à transmettre à l'endocrinologue si ça persiste.</div></div>
+    <div style="margin-top:14px"><label class="fl">Notes libres — thyroïde / Hashimoto</label>
+      <textarea class="fi" style="min-height:70px" placeholder="Éviction du gluten testée ou envisagée, sélénium/zinc en cours, lien avec le microbiote intestinal…"></textarea>
+    </div>
+  </div>
+
+  <div class="nav-footer">
+    <button class="btn" onclick="goSection(8)">← Retour</button>
+    <button class="btn primary" onclick="goSection(10)">Synthèse & PHV →</button>
   </div>
 </div>
 
@@ -1318,7 +1462,7 @@ Séparation en cours. Charge mentale très élevée. Explorer ashwagandha pour l
 ═══════════════════════════════════════════════════ -->
 <div class="section" id="sec-9">
   <div class="sec-wrap">
-    <div class="sec-eyebrow">Section 10 · 10</div>
+    <div class="sec-eyebrow">Section 11 · 11</div>
     <div class="sec-h">Synthèse finale & protocole ajusté</div>
     <div class="sec-sub">Revue complète de la séance. Exportez vers le Générateur PHV pour produire le Protocole d'Hygiène Vitale de suivi personnalisé.</div>
   </div>
@@ -1352,7 +1496,7 @@ Séparation en cours. Charge mentale très élevée. Explorer ashwagandha pour l
   </div>
 
   <div class="nav-footer">
-    <button class="btn" onclick="goSection(8)">← Retour</button>
+    <button class="btn" onclick="goSection(9)">← Retour</button>
     <div class="nav-footer-right">
       <button class="btn ghost" onclick="genererSynthese()">📋 Synthèse complète</button>
       <button class="btn primary" onclick="genererSyntheseAuto()">✦ Actualiser résumé</button>
@@ -1415,7 +1559,7 @@ Séparation en cours. Charge mentale très élevée. Explorer ashwagandha pour l
 /* ══════════════════════════════════════════════════════
    CONSTANTES & CONFIG
 ══════════════════════════════════════════════════════ */
-const TOTAL = 10;
+const TOTAL = 11;
 const SAVE_KEY = 'avita_suivi_draft';
 const SUPA_URL = 'https://bqhkdndwldwqacrrbbig.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxaGtkbmR3bGR3cWFjcnJiYmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MzAyNTIsImV4cCI6MjA5NjMwNjI1Mn0.nH2UktMAVKYwng4L3SvW5F0fluV_sObGV0f3Mk1dnOY';
@@ -1476,7 +1620,7 @@ function goSection(n) {
   document.getElementById('prog-lbl').textContent = 'Section '+(n+1)+' sur '+TOTAL+' — '+pct+'% complété';
   window.scrollTo({top:0, behavior:'smooth'});
   updateCounter();
-  if (n===9) genererSyntheseAuto();
+  if (n===10) genererSyntheseAuto();
 }
 
 /* ══════════════════════════════════════════════════════
@@ -1485,6 +1629,7 @@ function goSection(n) {
 function toggleChip(el) {
   el.classList.toggle('on');
   updateCounter(); formTouched=true;
+  updateSpecialtyBlocks();
 }
 function toggleSingle(el, group) {
   const wrap = el.closest('.chip-wrap');
@@ -1610,7 +1755,33 @@ function setEvol(btn, dir) {
   const btns = btn.closest('.evol-btns').querySelectorAll('.evol-btn');
   btns.forEach(b => b.classList.remove('sel-up','sel-same','sel-down'));
   btn.classList.add('sel-'+dir);
+  const item = btn.closest('.evol-item');
+  if (item) item.classList.add('touched');
   updateCounter(); formTouched=true;
+}
+
+/* ══════════════════════════════════════════════════════
+   SUIVI SPÉCIALISÉ — affichage conditionnel selon spécialité(s)
+══════════════════════════════════════════════════════ */
+const SPEC_MAP = {
+  'SIBO H₂': 'sibo', 'SIBO Méthane': 'sibo', 'SIBO H₂S': 'sibo',
+  'SII / Dysbiose': 'sii',
+  'Endométriose': 'endo',
+  'Périménopause': 'meno',
+  'SOPK': 'sopk',
+  'Thyroïde': 'thyroide'
+};
+function updateSpecialtyBlocks() {
+  const actives = new Set();
+  document.querySelectorAll('#sec-2b-chipref .chip.on, .chip-wrap .chip.on').forEach(c => {
+    const txt = c.textContent.replace('✓','').trim();
+    if (SPEC_MAP[txt]) actives.add(SPEC_MAP[txt]);
+  });
+  document.querySelectorAll('.spec-block').forEach(b => {
+    b.classList.toggle('on', actives.has(b.dataset.spec));
+  });
+  const none = document.getElementById('spec-none');
+  if (none) none.style.display = actives.size ? 'none' : 'block';
 }
 
 /* ══════════════════════════════════════════════════════
@@ -1724,6 +1895,15 @@ function afficherBandeauDossier(row) {
   if (mi && !mi.value && snap.motifs) mi.value = snap.motifs;
   const oi = document.getElementById('objectif-initial');
   if (oi && !oi.value && snap.objectif) oi.value = snap.objectif;
+  // Pré-cocher les chips de spécialité à partir du dossier initial, pour faire apparaître automatiquement les blocs de suivi spécialisé
+  const specText = (snap.specialites||snap['specialite-chips']||'');
+  if (specText) {
+    document.querySelectorAll('.chip-wrap .chip').forEach(c => {
+      const txt = c.textContent.replace('✓','').trim();
+      if (specText.includes(txt)) c.classList.add('on');
+    });
+    updateSpecialtyBlocks();
+  }
   toast('Dossier chargé : '+prenom);
   formTouched=true;
 }
@@ -1813,6 +1993,7 @@ function restaurerDraft() {
     });
     if(snap._chips) try{ const chips=JSON.parse(snap._chips); document.querySelectorAll('.chip').forEach(c=>{ if(chips.includes(c.textContent.replace('✓','').trim())) c.classList.add('on'); }); }catch(e){}
     if(snap._checks) try{ const checks=JSON.parse(snap._checks); document.querySelectorAll('.check-item').forEach((c,i)=>{ if(checks.includes(i)) c.classList.add('checked'); }); }catch(e){}
+    updateSpecialtyBlocks();
     if(snap._section) goSection(parseInt(snap._section)||0);
     try {
       if (snap._ai_panel && window.AIPanel) {
