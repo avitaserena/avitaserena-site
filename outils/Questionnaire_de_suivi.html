@@ -820,11 +820,11 @@ select.fi{height:44px;cursor:pointer}
     <div class="qinput">
       <div class="g2">
         <div><label class="fl">Ce qui a été intégré durablement</label>
-          <textarea class="fi" placeholder="Saisissez vos notes…"></textarea>
+          <textarea class="fi" data-q11="tient" placeholder="Saisissez vos notes…"></textarea>
 <div class="ex-block"><div class="ex-toggle" onclick="toggleEx(this)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg> 💡 Voir des exemples de réponses</div><div class="ex-body">Ex. : Suppression du café à jeun (intégré dès J3, plus de crampes matinales). Petit-déjeuner salé maintenu. Espacement des repas ≥ 4h tenu 80% du temps. Cohérence cardiaque le soir avant dormir. Marche après le dîner 4j/7. A arrêté les biscuits du goûter sans effort. A supprimé le gluten à la maison (mange encore avec gluten chez des amis — accord tacite).</div></div>
         </div>
         <div><label class="fl">Ce qui n'a pas tenu — pourquoi</label>
-          <textarea class="fi" placeholder="Saisissez vos notes…"></textarea>
+          <textarea class="fi" data-q11="tient-pas" placeholder="Saisissez vos notes…"></textarea>
 <div class="ex-block"><div class="ex-toggle" onclick="toggleEx(this)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg> 💡 Voir des exemples de réponses</div><div class="ex-body">Ex. : FODMAPs abandonnés à J10 (trop restrictif en famille, enfants qui mangent différemment). Compléments oubliés le week-end (pas de routine visible). Cohérence cardiaque jamais démarrée (« pas le temps »). Pas réussi à arrêter le grignotage le soir (faim réelle ou stress ?). Sport prévu mais charge de travail → explorer si la recommandation était réaliste, ou si le contexte a changé.</div></div>
         </div>
       </div>
@@ -859,7 +859,7 @@ select.fi{height:44px;cursor:pointer}
       </div>
     </div>
     <div class="qinput">
-      <div class="check-list">
+      <div class="check-list" id="q12-checklist">
         <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div><div>Cohérence cardiaque pratiquée régulièrement (≥ 5x/semaine)<span class="check-sub">5 min · 5 respirations/min · 3x/jour idéalement pour un effet thérapeutique</span></div></div>
         <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div><div>Routine de coucher respectée (même heure ±30 min)<span class="check-sub">Le cortisol de phase tardive est directement lié à l'heure d'endormissement — variabilité > 1h = terrain perturbé</span></div></div>
         <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div><div>Exposition lumineuse matinale<span class="check-sub">Régulation du cortisol du réveil (CAR) et de l'axe mélatonine/sérotonine</span></div></div>
@@ -1704,6 +1704,138 @@ function updateScoreSummary() {
 }
 
 /* ══════════════════════════════════════════════════════
+   PROTOCOLE VIVANT — chargement + remplissage automatique
+   depuis phv_memos, et sauvegarde du ressenti au retour
+══════════════════════════════════════════════════════ */
+let phvActuel = null;
+
+async function chargerProtocoleVivant(key) {
+  if (!key) return;
+  let authToken = SUPA_KEY;
+  if (typeof Auth !== 'undefined') {
+    const token = await Auth.getValidAccessToken();
+    if (token) authToken = token;
+  }
+  try {
+    const r = await fetch(SUPA_URL+'/rest/v1/phv_memos?client_key=eq.'+encodeURIComponent(key)+'&select=*&order=updated_at.desc&limit=1', {
+      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+authToken}
+    });
+    const rows = await r.json();
+    if (!rows || !rows.length) { toast('Aucun protocole vivant trouvé pour cette cliente'); return; }
+    phvActuel = rows[0];
+    remplirProtocoleVivant();
+    toast('Protocole vivant chargé — recommandations remontées par catégorie');
+  } catch(e) { console.warn('Chargement phv_memos échoué', e); }
+}
+
+function remplirProtocoleVivant() {
+  if (!phvActuel || !phvActuel.details) return;
+  const d = phvActuel.details;
+
+  // Q4 — rappel alimentation prescrite (uniquement si le champ est encore vide)
+  const alimEl = document.getElementById('alim-prescrite');
+  if (alimEl && !alimEl.value && Array.isArray(d.alimentation) && d.alimentation.length) {
+    alimEl.value = d.alimentation.map(it => '• ' + it.texte).join('\n');
+  }
+
+  // Q5 — rappel hygiène de vie prescrite
+  const hvEl = document.getElementById('hv-prescrite');
+  if (hvEl && !hvEl.value && Array.isArray(d.activite) && d.activite.length) {
+    hvEl.value = d.activite.map(it => '• ' + it.texte).join('\n');
+  }
+
+  // Q6 — tableau des compléments prescrits (référence en lecture)
+  if (Array.isArray(d.complements) && d.complements.length) {
+    const tbody = document.getElementById('proto-init-tbody');
+    if (tbody) {
+      tbody.innerHTML = '';
+      d.complements.forEach(it => {
+        ajouterLigneProtoInitial(false);
+        const tr = tbody.lastElementChild;
+        tr.querySelectorAll('input')[0].value = it.texte || '';
+      });
+    }
+  }
+
+  // Q10 — tableau d'observance : pré-rempli depuis les compléments, avec le statut ET la raison déjà connus,
+  // modifiables en direct pendant l'appel. Chaque ligne garde un lien vers son item d'origine (data-phv-idx)
+  // pour pouvoir réécrire le protocole vivant à la sauvegarde.
+  if (Array.isArray(d.complements) && d.complements.length) {
+    const obsBody = document.getElementById('observance-tbody');
+    if (obsBody) {
+      obsBody.innerHTML = '';
+      const etatToObs = {ok:'oui', non:'stop', neutral:''};
+      d.complements.forEach((it, idx) => {
+        ajouterLigneObservance(false);
+        const tr = obsBody.lastElementChild;
+        tr.dataset.phvIdx = idx;
+        tr.dataset.phvCat = 'complements';
+        const inputs = tr.querySelectorAll('input');
+        const select = tr.querySelector('select');
+        inputs[0].value = it.texte || '';
+        if (select && etatToObs[it.etat] !== undefined) select.value = etatToObs[it.etat];
+        inputs[2].value = it.raison || '';
+      });
+    }
+  }
+
+  // Q11 — pré-remplir ce qui a tenu / ce qui n'a pas tenu, à partir de l'alimentation
+  if (Array.isArray(d.alimentation) && d.alimentation.length) {
+    const tient = d.alimentation.filter(it => it.etat === 'ok').map(it => '• ' + it.texte);
+    const tientPas = d.alimentation.filter(it => it.etat === 'non').map(it => '• ' + it.texte + (it.raison ? ' — ' + it.raison : ''));
+    const tientEl = document.querySelector('[data-q11="tient"]');
+    const tientPasEl = document.querySelector('[data-q11="tient-pas"]');
+    if (tientEl && !tientEl.value && tient.length) tientEl.value = tient.join('\n');
+    if (tientPasEl && !tientPasEl.value && tientPas.length) tientPasEl.value = tientPas.join('\n');
+  }
+
+  // Q12 — checklist hygiène de vie : ajouter dynamiquement les items issus d'activité + psychologie,
+  // pré-cochés selon leur statut, chacun avec son explication
+  const checklistQ12 = document.getElementById('q12-checklist');
+  if (checklistQ12) {
+    const combinedItems = [].concat(d.activite||[], d.psychologie||[]);
+    combinedItems.forEach(it => {
+      if (!it.texte) return;
+      const div = document.createElement('div');
+      div.className = 'check-item' + (it.etat === 'ok' ? ' checked' : '');
+      div.onclick = function(){ this.classList.toggle('checked'); formTouched=true; };
+      div.innerHTML = `<div class="cb">✓</div><div>${it.texte}${it.raison ? '<span class="check-sub">Ressenti la dernière fois : '+it.raison+'</span>' : ''}</div>`;
+      checklistQ12.appendChild(div);
+    });
+  }
+}
+
+// Réécrit le protocole vivant (phv_memos.details) avec le ressenti mis à jour pendant ce suivi
+async function sauvegarderRessentiProtocole() {
+  if (!phvActuel || !phvActuel.id) return;
+  const obsBody = document.getElementById('observance-tbody');
+  if (obsBody) {
+    const obsToEtat = {oui:'ok', stop:'non', partiel:'neutral', non:'neutral', '':'neutral'};
+    obsBody.querySelectorAll('tr[data-phv-idx]').forEach(tr => {
+      const idx = parseInt(tr.dataset.phvIdx);
+      const cat = tr.dataset.phvCat;
+      if (!phvActuel.details[cat] || !phvActuel.details[cat][idx]) return;
+      const select = tr.querySelector('select');
+      const raisonInput = tr.querySelectorAll('input')[2];
+      phvActuel.details[cat][idx].etat = obsToEtat[select.value] || 'neutral';
+      phvActuel.details[cat][idx].raison = raisonInput.value || '';
+    });
+  }
+  let authToken = SUPA_KEY;
+  if (typeof Auth !== 'undefined') {
+    const token = await Auth.getValidAccessToken();
+    if (token) authToken = token;
+  }
+  try {
+    await fetch(SUPA_URL+'/rest/v1/phv_memos?id=eq.'+encodeURIComponent(phvActuel.id), {
+      method:'PATCH',
+      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+authToken,'Content-Type':'application/json','Prefer':'return=minimal'},
+      body: JSON.stringify({details: phvActuel.details, updated_at: new Date().toISOString()})
+    });
+  } catch(e) { console.warn('Sauvegarde protocole vivant échouée', e); }
+}
+
+/* ══════════════════════════════════════════════════════
    PROTO INITIAL TABLE
 ══════════════════════════════════════════════════════ */
 function buildProtoInitTable() {
@@ -1906,6 +2038,7 @@ function afficherBandeauDossier(row) {
   }
   toast('Dossier chargé : '+prenom);
   formTouched=true;
+  chargerProtocoleVivant(document.getElementById('client-key')?.value?.trim());
 }
 
 function importerDepuisLocalstorage() {
@@ -2022,6 +2155,7 @@ function sauvegarderMaintenant() {
   const snap=captureSnapshot();
   localStorage.setItem(SAVE_KEY, JSON.stringify(snap));
   sauvegarderSupabase(snap);
+  sauvegarderRessentiProtocole();
   document.getElementById('pause-info').textContent='✓ Sauvegardé à '+new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
   formTouched=false;
   toast('Sauvegardé');
