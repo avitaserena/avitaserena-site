@@ -3154,15 +3154,21 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
   </div>
 
   <div class="qcard" style="margin:0 20px 16px">
-    <div class="card-title" style="font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ocre);margin-bottom:16px">➕ Ajouter un événement</div>
-    <div style="display:grid;grid-template-columns:100px 1fr 140px auto;gap:10px;align-items:end">
+    <div class="card-title" style="font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ocre);margin-bottom:14px">➕ Ajouter un événement à la main</div>
+
+    <div style="margin-bottom:14px">
+      <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gris);margin-bottom:8px">Suggestions — cliquez pour pré-remplir, puis complétez l'année</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px" id="tl-quick-chips"></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:100px 1fr 160px auto;gap:10px;align-items:end">
       <div>
         <label style="display:block;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gris);margin-bottom:5px">Année</label>
         <input class="fi" type="number" id="tl-annee" placeholder="2019" min="1960" max="2030" style="width:100%">
       </div>
       <div>
         <label style="display:block;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gris);margin-bottom:5px">Événement</label>
-        <input class="fi" type="text" id="tl-event" placeholder="Ex. : Antibiotiques, pilule, burn-out, accouchement, divorce…" style="width:100%">
+        <input class="fi" type="text" id="tl-event" placeholder="Ex. : accident, aidance d'un proche malade, hospitalisation…" style="width:100%">
       </div>
       <div>
         <label style="display:block;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gris);margin-bottom:5px">Type</label>
@@ -3177,12 +3183,6 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
         <button onclick="ajouterTLEvent()" style="height:44px;padding:0 18px;background:var(--ocre);color:white;border:none;border-radius:8px;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">+ Ajouter</button>
       </div>
     </div>
-  </div>
-
-  <!-- ÉVÉNEMENTS PRÉDÉFINIS RAPIDES -->
-  <div style="padding:0 20px 16px">
-    <div style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gris);margin-bottom:10px">Événements fréquents — clic rapide</div>
-    <div style="display:flex;flex-wrap:wrap;gap:8px" id="tl-quick-chips"></div>
   </div>
 
   <!-- TIMELINE VISUELLE -->
@@ -5026,36 +5026,46 @@ const TL_COLORS = {
 };
 
 const TL_QUICK = [
-  { label: '💊 Pilule débutée', type: 'medical' },
-  { label: '💊 Pilule arrêtée', type: 'medical' },
-  { label: '🦠 Antibiotiques', type: 'medical' },
-  { label: '🔥 Burn-out', type: 'vie' },
-  { label: '👶 Accouchement', type: 'vie' },
-  { label: '💔 Séparation', type: 'vie' },
-  { label: '🏥 Chirurgie', type: 'medical' },
-  { label: '😔 Deuil', type: 'vie' },
-  { label: '🤰 Grossesse', type: 'vie' },
-  { label: '📋 Hashimoto', type: 'medical' },
-  { label: '🧪 SIBO diagnostiqué', type: 'medical' },
-  { label: '😴 Fatigue début', type: 'symptome' },
-  { label: '🎯 Début protocole', type: 'tournant' },
+  { icon: '💊', text: 'Pilule débutée', type: 'medical' },
+  { icon: '💊', text: 'Pilule arrêtée', type: 'medical' },
+  { icon: '🦠', text: 'Antibiotiques', type: 'medical' },
+  { icon: '🚑', text: 'Accident', type: 'vie' },
+  { icon: '💉', text: 'Traitement lourd (chimio, etc.)', type: 'medical' },
+  { icon: '🩺', text: 'Maladie grave diagnostiquée', type: 'medical' },
+  { icon: '🤝', text: 'Aidance d\'un proche gravement malade', type: 'vie' },
+  { icon: '🏨', text: 'Hospitalisation', type: 'medical' },
+  { icon: '🦠', text: 'Covid long ou Covid hospitalisé', type: 'medical' },
+  { icon: '🔥', text: 'Burn-out', type: 'vie' },
+  { icon: '👶', text: 'Accouchement', type: 'vie' },
+  { icon: '💔', text: 'Séparation', type: 'vie' },
+  { icon: '🏥', text: 'Chirurgie', type: 'medical' },
+  { icon: '😔', text: 'Deuil', type: 'vie' },
+  { icon: '🤰', text: 'Grossesse', type: 'vie' },
+  { icon: '📋', text: 'Hashimoto', type: 'medical' },
+  { icon: '🧪', text: 'SIBO diagnostiqué', type: 'medical' },
+  { icon: '😴', text: 'Fatigue — début', type: 'symptome' },
+  { icon: '🎯', text: 'Début du protocole', type: 'tournant' },
 ];
 
 function initTLQuickChips() {
   const wrap = document.getElementById('tl-quick-chips');
   if (!wrap) return;
-  wrap.innerHTML = TL_QUICK.map(q =>
-    `<button onclick="addQuickTL('${q.label}','${q.type}')"
+  wrap.innerHTML = TL_QUICK.map((q, i) =>
+    `<button type="button" onclick="preRemplirTL(${i})"
       style="padding:6px 12px;border-radius:99px;font-size:11px;font-weight:600;border:1.5px solid;cursor:pointer;transition:.15s;background:${TL_COLORS[q.type].bg};border-color:${TL_COLORS[q.type].bd};color:${TL_COLORS[q.type].dot}"
-    >${q.label}</button>`
+    >${q.icon} ${q.text}</button>`
   ).join('');
 }
 
-function addQuickTL(label, type) {
-  const annee = prompt('Année pour "' + label + '" ?', new Date().getFullYear());
-  if (!annee) return;
-  TL_EVENTS.push({ annee: parseInt(annee), event: label, type });
-  renderTimeline();
+// Un clic sur une suggestion pré-remplit le formulaire du dessus (un seul point d'ajout, pas de popup) —
+// il ne reste plus qu'à indiquer l'année et cliquer "+ Ajouter".
+function preRemplirTL(i) {
+  const q = TL_QUICK[i];
+  document.getElementById('tl-event').value = q.text;
+  document.getElementById('tl-type').value = q.type;
+  const anneeInput = document.getElementById('tl-annee');
+  anneeInput.focus();
+  anneeInput.select();
 }
 
 function ajouterTLEvent() {
