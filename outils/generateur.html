@@ -920,11 +920,11 @@ Pour CHAQUE axe prioritaire retenu (voir "Axes de travail prioritaires" plus bas
 2. LE MÉCANISME — expliquer en 2-3 phrases l'enchaînement logique de cause à effet dans son corps (jamais une liste plate de faits) ; nommer explicitement le lien entre ce qu'elle vit/fait (repas, stress, cycle...) et ce qu'elle ressent
 3. L'ACTION — 1 geste concret immédiat ou 1 repère clair, différent du protocole détaillé de la section 3
 
-Ton : rassurant et normalisant ("c'est un enchaînement logique, même désagréable") plutôt qu'alarmant.
+Ton : rassurant et normalisant (« c'est un enchaînement logique, même désagréable ») plutôt qu'alarmant.
 Exemples d'images simples à réutiliser quand elles collent au terrain de la cliente (jamais de jargon) :
-- Candidose / envies de sucre : "c'est un cercle vicieux — plus on mange sucré, plus on nourrit ce déséquilibre, plus on a envie de sucre. Ce n'est pas un manque de volonté, c'est un mécanisme qui s'entretient tout seul."
-- Foie / surcharge : le foie "stocke, transforme, fabrique et élimine en permanence" — utile pour expliquer une fatigue ou une surcharge sans jamais parler de "détox" au sens médical.
-- Digestion comme point de départ : "avant de parler d'assiette ou de compléments, on regarde d'abord comment votre corps digère — c'est la première étape, celle qui conditionne tout le reste."
+- Candidose / envies de sucre : « c'est un cercle vicieux — plus on mange sucré, plus on nourrit ce déséquilibre, plus on a envie de sucre. Ce n'est pas un manque de volonté, c'est un mécanisme qui s'entretient tout seul. »
+- Foie / surcharge : le foie « stocke, transforme, fabrique et élimine en permanence » — utile pour expliquer une fatigue ou une surcharge sans jamais parler de « détox » au sens médical.
+- Digestion comme point de départ : « avant de parler d'assiette ou de compléments, on regarde d'abord comment votre corps digère — c'est la première étape, celle qui conditionne tout le reste. »
 ⚠️ GARDE-FOU DE LONGUEUR : maximum 3-4 cascades au total dans le document, jamais plus. Chaque cascade = 1 paragraphe compact, pas 3 paragraphes séparés. Le but est la clarté et la précision, pas l'exhaustivité — mieux vaut 3 mécanismes bien expliqués que 8 mécanismes survolés.
 
 ━━ RÈGLE N°2 — PHILOSOPHIE NATUROPATHE : LA CASCADE ━━
@@ -1035,7 +1035,14 @@ ${d.notes_praticien || '— Non renseigné'}
 🧬 BILANS BIOLOGIQUES À RECOMMANDER DANS LE PROTOCOLE
 ${d.bilans_a_recommander ? '• ' + d.bilans_a_recommander.split(' | ').join('\n• ') : '— Aucun bilan sélectionné'}
 Justification clinique à citer : ${d.bilans_justif || '— Non précisé'}
-⚠️ Pour chaque bilan recommandé, expliquer à la cliente POURQUOI on le recommande en citant SES symptômes spécifiques (ex: "Je vous recommande un bilan thyroïdien complet car vous m'avez décrit une frilosité permanente, une chute de cheveux et une fatigue qui résiste au sommeil — ce sont des signaux que votre thyroïde mérite d'être explorée plus finement."). Si aucun bilan n'est sélectionné, ne pas en recommander dans le protocole.
+⚠️ Pour chaque bilan recommandé, expliquer à la cliente POURQUOI on le recommande en citant SES symptômes spécifiques (ex: « Je vous recommande un bilan thyroïdien complet car vous m'avez décrit une frilosité permanente, une chute de cheveux et une fatigue qui résiste au sommeil — ce sont des signaux que votre thyroïde mérite d'être explorée plus finement. »). Si aucun bilan n'est sélectionné, ne pas en recommander dans le protocole.
+
+━━ RÈGLE N°6 — SÉCURITÉ JSON (IMPÉRATIF, NE JAMAIS ENFREINDRE) ━━
+Le texte que tu rédiges est intégré tel quel dans des valeurs de chaîne JSON. Pour que le document ne casse JAMAIS techniquement :
+1. N'utilise JAMAIS le guillemet droit " à l'intérieur du texte que tu rédiges (citations, discours rapporté, emphase). Utilise TOUJOURS les guillemets français « » à la place.
+2. N'utilise JAMAIS d'apostrophe courbe ' — utilise uniquement l'apostrophe droite ' (standard clavier français).
+3. Pour un retour à la ligne à l'intérieur d'une valeur, utilise TOUJOURS la séquence \\n (backslash-n), jamais un vrai saut de ligne.
+4. Relis mentalement chaque valeur avant de la produire : si elle contient un guillemet droit " non échappé, corrige-la avant de répondre.
 
 ━━ STRUCTURE DU BILAN — JSON STRICT ━━
 Réponds UNIQUEMENT avec le JSON pur, sans markdown, sans backticks.
@@ -1097,7 +1104,7 @@ async function generate() {
   try {
     const raw = (await AIClient.generate(buildPrompt(d), { maxTokens: 8000 })).replace(/```json|```/g, '').trim();
     clearInterval(interval);
-    generatedData = JSON.parse(raw);
+    generatedData = parseJSONRobuste(raw);
     generatedData._client = d;
 
     // Convertir les 6 sections en blocs éditables
@@ -1115,8 +1122,55 @@ async function generate() {
     clearInterval(interval);
     document.getElementById('loading-wrap').style.display = 'none';
     document.getElementById('gen-btn').disabled = false;
-    alert('Erreur : ' + err.message);
+    afficherErreurGeneration(err, d);
   }
+}
+
+// Tente de réparer les erreurs JSON les plus courantes produites par l'IA
+// (guillemets droits non échappés dans le texte, retours à la ligne bruts dans une valeur)
+// avant d'abandonner. Ne modifie jamais les vraies erreurs de structure.
+function parseJSONRobuste(raw) {
+  try {
+    return JSON.parse(raw);
+  } catch (e1) {
+    let repaired = raw
+      // Retours à la ligne bruts à l'intérieur du texte -> \n littéral
+      .replace(/[\r\n]+/g, '\\n')
+      // Tabulations brutes -> espace
+      .replace(/\t/g, ' ');
+    try {
+      return JSON.parse(repaired);
+    } catch (e2) {
+      // Dernier recours : ré-échapper les guillemets droits isolés à l'intérieur des valeurs de texte
+      // (heuristique : un " précédé d'une lettre/espace et suivi d'une lettre/espace, pas d'un , ou } de structure)
+      repaired = repaired.replace(/([a-zàâäéèêëïîôöùûüç,;:\s])"([a-zàâäéèêëïîôöùûüç\s])/gi, '$1«$2').replace(/([a-zàâäéèêëïîôöùûüç\s])"([,;:.\s}])/gi, '$1»$2');
+      try {
+        return JSON.parse(repaired);
+      } catch (e3) {
+        const err = new Error(e1.message);
+        err.rawResponse = raw;
+        throw err;
+      }
+    }
+  }
+}
+
+// Affiche une erreur de génération lisible, avec réponse brute consultable et bouton pour réessayer —
+// plus jamais un simple alert() qui bloque sans recours.
+function afficherErreurGeneration(err, d) {
+  const wrap = document.getElementById('preview-wrap');
+  wrap.style.display = 'block';
+  wrap.innerHTML = `
+    <div style="background:#FBEAEA;border:1.5px solid #C0392B;border-radius:14px;padding:24px 28px;margin-top:20px">
+      <div style="font-size:15px;font-weight:700;color:#8B3A3A;margin-bottom:8px">⚠ La génération a échoué</div>
+      <div style="font-size:13px;color:#6B5555;line-height:1.6;margin-bottom:14px">Le protocole n'a pas pu être lu correctement (${err.message}). Rien n'a été perdu de vos réponses — vous pouvez réessayer directement, l'appel repart des mêmes données.</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn primary" onclick="generate()">↻ Réessayer la génération</button>
+        ${err.rawResponse ? `<button class="btn" onclick="document.getElementById('raw-err-detail').style.display='block';this.style.display='none'">Voir la réponse brute (pour signaler le bug)</button>` : ''}
+      </div>
+      ${err.rawResponse ? `<pre id="raw-err-detail" style="display:none;margin-top:14px;max-height:240px;overflow:auto;background:#fff;border:1px solid #ddd;border-radius:8px;padding:12px;font-size:11px;white-space:pre-wrap">${err.rawResponse.replace(/</g,'&lt;')}</pre>` : ''}
+    </div>`;
+  wrap.scrollIntoView({ behavior: 'smooth' });
 }
 
 function renderPreview(data, d) {
