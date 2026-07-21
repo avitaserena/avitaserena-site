@@ -69,6 +69,7 @@ body{
 .section.active{display:block}
 @keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 @keyframes popIn{from{opacity:0;transform:translateY(12px) scale(.98)}to{opacity:1;transform:none}}
+@keyframes pulseAlert{0%,100%{box-shadow:0 0 0 0 rgba(212,134,10,.5)}50%{box-shadow:0 0 0 6px rgba(212,134,10,0)}}
 .section.active .qcard{animation:popIn .35s cubic-bezier(.16,1,.3,1) both}
 .section.active .qcard:nth-child(1){animation-delay:.02s}
 .section.active .qcard:nth-child(2){animation-delay:.07s}
@@ -268,14 +269,15 @@ select.fi{height:44px;cursor:pointer}
 .bilan-card p{font-size:12px;color:var(--gris);line-height:1.5}
 
 /* ── ONGLETS THÉMATIQUES ── */
-.theme-section{margin-top:40px;border-top:1px solid var(--taupe);padding-top:36px}
-.theme-intro{background:var(--blanc);border:1px solid var(--taupe);border-radius:18px;padding:22px 28px;margin-bottom:20px;display:flex;align-items:flex-start;gap:16px}
+.theme-section{margin-top:40px;border-top:3px solid var(--ocre);padding-top:36px}
+.theme-intro{background:linear-gradient(135deg,var(--or-clair),var(--grege));border:2px solid var(--ocre);border-radius:18px;padding:24px 30px;margin-bottom:20px;display:flex;align-items:flex-start;gap:16px}
+.theme-intro h3{font-size:20px !important}
 .theme-intro-icon{font-size:26px;flex-shrink:0}
 .theme-intro h3{font-size:15px;font-weight:700;color:var(--ardoise);margin-bottom:5px}
 .theme-intro p{font-size:13px;color:var(--gris);line-height:1.7}
 
 .theme-tabs{display:flex;flex-wrap:wrap;gap:9px;margin-bottom:24px}
-.theme-tab{padding:9px 20px;border-radius:var(--r99);font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid;transition:all .15s;letter-spacing:0;font-family:'Inter',sans-serif;user-select:none}
+.theme-tab{padding:13px 26px;border-radius:var(--r99);font-size:14px;font-weight:700;cursor:pointer;border:2px solid;transition:all .15s;letter-spacing:0;font-family:'Inter',sans-serif;user-select:none}
 .theme-tab.sibo{border-color:var(--sibo-bd);color:var(--sibo-tx);background:var(--sibo-lt)}
 .theme-tab.endo{border-color:var(--endo-bd);color:var(--endo-tx);background:var(--endo-lt)}
 .theme-tab.meno{border-color:var(--meno-bd);color:var(--meno-tx);background:var(--meno-lt)}
@@ -292,6 +294,8 @@ select.fi{height:44px;cursor:pointer}
 .tblock.sopk{background:var(--sopk-bg);border-color:var(--sopk-bd)}
 .tblock.sii{background:var(--sii-bg);border-color:var(--sii-bd)}
 .tblock.hashi{background:var(--hashi-bg);border-color:var(--hashi-bd)}
+.theme-tab.suggere{position:relative;box-shadow:0 0 0 3px var(--ocre)}
+.theme-tab.suggere::after{content:'★ suggéré';position:absolute;top:-11px;right:-6px;background:var(--ocre);color:var(--blanc);font-size:9px;font-weight:700;padding:2px 8px;border-radius:99px;letter-spacing:.03em}
 
 .tblock-hdr{display:flex;align-items:center;gap:14px;margin-bottom:24px;padding-bottom:18px;border-bottom:1.5px solid rgba(0,0,0,.08)}
 .tblock-icon{font-size:28px}
@@ -454,6 +458,7 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
     <button class="btn-pause" onclick="nouvelleCliente()" title="Effacer et démarrer un nouveau questionnaire" style="background:var(--rouge-clair);border-color:var(--rouge);color:var(--rouge);font-weight:700">✦ Nouvelle cliente</button>
     <button class="btn-pause" onclick="ouvrirPause()" title="Mettre en pause et reprendre plus tard">⏸ Pause</button>
     <div class="hdr-counter" id="hdr-counter" title="Champs remplis">0 notes</div>
+    <div id="spec-alert" onclick="allerAuxSpecialites()" title="Cliquez pour aller directement aux questionnaires spécialisés suggérés" style="display:none;cursor:pointer;font-size:11px;font-weight:700;background:var(--ocre);color:var(--blanc);padding:5px 13px;border-radius:99px;animation:pulseAlert 2s infinite"></div>
   </div>
 </div>
 <div class="hdr-stripe"></div>
@@ -4450,6 +4455,7 @@ function updateCounter() {
   el.textContent = count + ' note' + (count > 1 ? 's' : '');
   if (count > prev) { el.style.transform = 'scale(1.15)'; setTimeout(() => el.style.transform = '', 250); }
   el.dataset.prev = count;
+  detecterSpecialites();
 }
 
 document.addEventListener('input', updateCounter);
@@ -4963,6 +4969,67 @@ function toggleTheme(theme, btn) {
   if (!isOpen) { block.classList.add('open'); btn.classList.add('active'); setTimeout(() => block.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80); }
 }
 
+/* ══════════════════════════════════════════════════════
+   SUGGESTIONS DE SPÉCIALITÉS — détection précoce, visible dès le début
+   (âge, motifs déjà cochés en Q1, réponses évocatrices ailleurs dans le questionnaire)
+══════════════════════════════════════════════════════ */
+const SPEC_CHIP_MAP = {
+  'SIBO': 'sibo', 'SII / Côlon irritable': 'sii', 'Endométriose': 'endo',
+  'SOPK': 'sopk', 'Ménopause / périménopause': 'meno', 'Hashimoto / Thyroïde': 'hashi'
+};
+const SPEC_KEYWORDS = {
+  sopk: [/hirsutisme/i, /acné hormonale/i, /acanthosis nigricans/i, /cycles? (courts|irrégulier)/i, /chute de cheveux.*androgénique/i, /tour de taille/i],
+  sibo: [/gastro-entérite sévère/i, /antibiotiques à large spectre/i, /ballonnements.*(60|90)/i],
+  endo: [/dysménorrhée sévère/i, /dyspareunie/i, /endo belly/i, /douleurs pelviennes chroniques/i],
+  sii: [/douleur.*soulagée.*défécation/i, /urgences défécatoires/i],
+  meno: [/bouffées de chaleur/i, /sécheresse vaginale/i],
+  hashi: [/frilosité/i, /queue.*sourcil/i, /perdu la queue de vos sourcils/i]
+};
+
+function detecterSpecialites() {
+  const suggestions = new Set();
+
+  const ddn = document.getElementById('ddn')?.value;
+  if (ddn) {
+    const age = new Date().getFullYear() - parseInt(ddn.split('-')[0]);
+    if (age >= 45) suggestions.add('meno');
+  }
+
+  document.querySelectorAll('#motifs-chips .chip.on').forEach(c => {
+    const txt = c.textContent.replace('✓', '').trim();
+    if (SPEC_CHIP_MAP[txt]) suggestions.add(SPEC_CHIP_MAP[txt]);
+  });
+
+  document.querySelectorAll('.trig-check.checked .trig-q, .check-item.checked span:first-of-type').forEach(el => {
+    const txt = el.textContent;
+    for (const [spec, patterns] of Object.entries(SPEC_KEYWORDS)) {
+      if (patterns.some(re => re.test(txt))) suggestions.add(spec);
+    }
+  });
+
+  const badge = document.getElementById('spec-alert');
+  if (badge) {
+    if (suggestions.size > 0) {
+      badge.style.display = 'inline-block';
+      badge.textContent = '🔔 ' + suggestions.size + ' spécialité' + (suggestions.size > 1 ? 's' : '') + ' suggérée' + (suggestions.size > 1 ? 's' : '');
+    } else {
+      badge.style.display = 'none';
+    }
+  }
+  document.querySelectorAll('.theme-tab').forEach(tab => {
+    const spec = [...tab.classList].find(c => ['sibo', 'sii', 'endo', 'meno', 'sopk', 'hashi'].includes(c));
+    tab.classList.toggle('suggere', suggestions.has(spec));
+  });
+}
+
+function allerAuxSpecialites() {
+  goSection(TOTAL - 1);
+  setTimeout(() => {
+    const themeSection = document.querySelector('.theme-section');
+    if (themeSection) themeSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 150);
+}
+
 /* ══════════════════════════════════════
    INIT — restauration autosave au chargement
 ══════════════════════════════════════ */
@@ -5058,6 +5125,7 @@ const TL_QUICK = [
   { icon: '🤝', text: 'Aidance d\'un proche gravement malade', type: 'vie' },
   { icon: '🏨', text: 'Hospitalisation', type: 'medical' },
   { icon: '🦠', text: 'Covid long ou Covid hospitalisé', type: 'medical' },
+  { icon: '🩺', text: 'IST (infection sexuellement transmissible)', type: 'medical' },
   { icon: '🔥', text: 'Burn-out', type: 'vie' },
   { icon: '👶', text: 'Accouchement', type: 'vie' },
   { icon: '💔', text: 'Séparation', type: 'vie' },
