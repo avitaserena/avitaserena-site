@@ -138,6 +138,24 @@ body{min-height:100vh}
 .cc-dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.15);transition:background .3s}
 .cc-dot.done{background:var(--ocre)}
 
+/* ── Respiration abdominale profonde — forme et couleurs volontairement différentes de la cohérence cardiaque ── */
+.ra-block{background:linear-gradient(160deg,#1B4B4A,#0E2F2E);border-radius:16px;padding:36px;margin-bottom:24px;position:relative;overflow:hidden}
+.ra-block::before{content:'';position:absolute;left:-50px;top:-50px;width:180px;height:180px;border-radius:50%;background:radial-gradient(circle,rgba(94,201,195,.15) 0%,transparent 70%)}
+.ra-block h3{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:300;color:#fff;margin-bottom:8px}
+.ra-block p{font-size:15px;color:rgba(255,255,255,.8);line-height:1.75;max-width:480px;margin-bottom:20px}
+.ra-badge{display:inline-block;background:rgba(94,201,195,.18);border:1px solid rgba(94,201,195,.4);color:#8FE0DA;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:5px 14px;border-radius:99px;margin-bottom:14px}
+.ra-wave-wrap{position:relative;width:190px;height:190px;margin:0 auto;border-radius:24px;background:rgba(255,255,255,.06);overflow:hidden;display:flex;align-items:flex-end;justify-content:center}
+.ra-wave-fill{width:100%;height:28%;background:linear-gradient(180deg,#6FDAD3,#2E9E97);border-radius:24px 24px 0 0;transition:height 5s cubic-bezier(.45,0,.55,1);opacity:.9}
+.ra-wave-fill.inhale{height:88%}
+.ra-wave-fill.exhale{height:22%}
+.ra-wave-text{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:3;pointer-events:none}
+.ra-btn-primary{background:#2E9E97 !important;border-color:#2E9E97 !important}
+.ra-btn-primary:hover{background:#3BB5AD !important}
+@media(max-width:520px){
+  .ra-wave-wrap{width:160px;height:160px}
+  .ra-block{padding:24px 20px}
+}
+
 /* ── BLOC RESSOURCES TÉLÉCHARGEABLES ── */
 .dl-list{display:flex;flex-direction:column;gap:10px;margin-bottom:40px}
 .dl-item{background:var(--blanc);border:1px solid var(--taupe);border-radius:12px;padding:16px 20px;display:flex;align-items:center;gap:16px;transition:all .2s;text-decoration:none}
@@ -808,7 +826,39 @@ body{-webkit-font-smoothing:antialiased}
         </div>
       </div>
 
-      <div class="fiches-grid">
+      <!-- RESPIRATION ABDOMINALE PROFONDE — 3 MINUTES — forme et couleurs volontairement différentes
+           de la cohérence cardiaque (barre qui monte/descend, teintes bleu-vert) pour ne jamais les confondre -->
+      <div class="ra-block">
+        <div class="ra-badge">🫁 Outil express — à utiliser à tout moment de la journée</div>
+        <h3>Respiration abdominale profonde</h3>
+        <p>3 minutes · Une main sur le ventre, sentez-le se gonfler à l'inspiration et se dégonfler à l'expiration. Contrairement à la cohérence cardiaque (pratique régulière, 3x/jour), cet outil est fait pour une tension ponctuelle — au travail, avant de dormir, en cas de stress digestif.</p>
+
+        <div class="cc-timer">
+          <div class="ra-wave-wrap">
+            <div class="ra-wave-fill" id="raOrb"></div>
+            <div class="ra-wave-text">
+              <div class="cc-num" id="raNum">5</div>
+              <div class="cc-phase" id="raPhase">Prête ?</div>
+            </div>
+          </div>
+
+          <div>
+            <div class="cc-controls">
+              <button class="cc-btn primary ra-btn-primary" id="raStartBtn" onclick="raToggle()">▶ Démarrer</button>
+              <button class="cc-btn" onclick="raReset()">Réinitialiser</button>
+            </div>
+            <div class="cc-caption" id="raCaption">3 minutes · Respiration ventrale lente</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- VIDÉOS BIEN-ÊTRE — vignette cliquable, chargement du lecteur uniquement au clic -->
+      <div class="section-eyebrow" style="margin-top:32px">Vidéos bien-être</div>
+      <h2 class="section-h2" style="font-size:26px">Une sélection pour votre corps<br>et votre sommeil.</h2>
+      <p class="section-sub">Des vidéos que Sabrina aime et recommande — un clic pour les lancer directement ici, sans quitter la page.</p>
+      <div class="fiches-grid" style="grid-template-columns:repeat(auto-fit,minmax(320px,1fr))" id="videosGrid"></div>
+
+      <div class="fiches-grid" style="margin-top:32px">
 
         <a href="fiche-sommeil-circadien.html" class="fiche-card">
           <div class="fiche-icon"><svg viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></div>
@@ -1399,6 +1449,125 @@ function ccReset(){
   ccNumEl.textContent='5'; ccPhaseEl.textContent='Prête ?';
   document.getElementById('ccStartBtn').textContent='▶ Démarrer';
   ccCaptionEl.textContent='Protocole 5-5-5 · 5 min · 3 séances/jour';
+}
+
+/* ── RESPIRATION ABDOMINALE PROFONDE — 3 minutes, même mécanique que la cohérence cardiaque ── */
+var raRunning=false, raTimer=null, raSec=5, raInhale=true, raCycles=0, raTotalCycles=18;
+var raOrb=null, raNumEl=null, raPhaseEl=null, raCaptionEl=null, raRings=[];
+
+/* ── VIDÉOS BIEN-ÊTRE — vignette YouTube (toujours disponible) + lecteur chargé au clic seulement ── */
+const VIDEOS_BIENETRE = [
+  { id:'0d7Sp4ifXv0', titre:'Réveil du corps en douceur', desc:"18 minutes de yoga du matin avec Lili Barbery — pour réveiller le corps tout en douceur avant de démarrer la journée." },
+  { id:'OnBcgZsYhhU', titre:'Méditation pour trouver le sommeil', desc:"Une méditation guidée de Julie Akasha pour s'endormir plus rapidement, à écouter au coucher." },
+  { id:'FZZPXR_5s_c', titre:'Vidéo bien-être', desc:"Une vidéo choisie par Sabrina pour vous accompagner." },
+  { id:'lDJF_TrBeX4', titre:'Activation du nerf vague', desc:"Un exercice guidé pour stimuler le nerf vague — apaise le système nerveux et soutient la digestion." },
+];
+
+function initVideosBienEtre(){
+  const grid = document.getElementById('videosGrid');
+  if (!grid) return;
+  grid.innerHTML = VIDEOS_BIENETRE.map((v, i) => `
+    <div class="fiche-card" style="cursor:default;padding:0;overflow:hidden">
+      <div class="video-thumb" data-video-id="${v.id}" onclick="lancerVideo(this)" style="position:relative;padding-top:56.25%;background:#000 url('https://img.youtube.com/vi/${v.id}/hqdefault.jpg') center/cover;cursor:pointer">
+        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.25)">
+          <div style="width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,.92);display:flex;align-items:center;justify-content:center">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="var(--ardoise)"><path d="M8 5v14l11-7z"/></svg>
+          </div>
+        </div>
+      </div>
+      <div style="padding:18px 20px">
+        <div class="fiche-title">${v.titre}</div>
+        <div class="fiche-desc">${v.desc}</div>
+      </div>
+    </div>`).join('');
+}
+
+function lancerVideo(el){
+  const id = el.dataset.videoId;
+  const iframe = document.createElement('iframe');
+  iframe.src = `https://www.youtube.com/embed/${id}?autoplay=1`;
+  iframe.title = 'Vidéo bien-être';
+  iframe.frameBorder = '0';
+  iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+  iframe.allowFullscreen = true;
+  iframe.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%';
+  el.innerHTML = '';
+  el.style.cursor = 'default';
+  el.removeAttribute('onclick');
+  el.appendChild(iframe);
+}
+
+document.addEventListener('DOMContentLoaded', initVideosBienEtre);
+if (document.readyState === 'complete' || document.readyState === 'interactive') initVideosBienEtre();
+
+function raInit(){
+  raOrb=document.getElementById('raOrb');
+  raRings=[document.getElementById('raRing1'),document.getElementById('raRing2'),document.getElementById('raRing3')];
+  raNumEl=document.getElementById('raNum');
+  raPhaseEl=document.getElementById('raPhase');
+  raCaptionEl=document.getElementById('raCaption');
+}
+
+function raSetPhaseVisual(inhale){
+  raOrb.classList.remove('inhale','exhale');
+  raOrb.classList.add(inhale ? 'inhale' : 'exhale');
+  raRings.forEach(function(r){
+    if(!r) return;
+    r.classList.remove('inhale','exhale');
+    r.classList.add(inhale ? 'inhale' : 'exhale');
+  });
+}
+
+function raToggle(){
+  if(!raOrb) raInit();
+  if(raRunning){ raPause(); } else { raStart(); }
+}
+
+function raStart(){
+  raRunning=true;
+  document.getElementById('raStartBtn').textContent='⏸ Pause';
+  raSetPhaseVisual(raInhale);
+  raTick();
+}
+
+function raPause(){
+  raRunning=false;
+  clearTimeout(raTimer);
+  document.getElementById('raStartBtn').textContent='▶ Reprendre';
+}
+
+function raTick(){
+  if(!raRunning) return;
+  raNumEl.textContent=raSec;
+  raPhaseEl.textContent=raInhale ? '↑ Gonflez le ventre' : '↓ Rentrez le ventre';
+  if(raSec>1){ raSec--; raTimer=setTimeout(raTick,1000); }
+  else {
+    raSec=5;
+    if(!raInhale){ raCycles++; if(raCycles>=raTotalCycles){ raComplete(); return; } }
+    raInhale=!raInhale;
+    raSetPhaseVisual(raInhale);
+    raTimer=setTimeout(raTick,1000);
+  }
+}
+
+function raComplete(){
+  raRunning=false; raCycles=0; raInhale=true; raSec=5;
+  raPhaseEl.textContent='✓ Terminé !';
+  raNumEl.textContent='♡';
+  raOrb.classList.remove('inhale','exhale');
+  raRings.forEach(function(r){ if(r) r.classList.remove('inhale','exhale'); });
+  document.getElementById('raStartBtn').textContent='▶ Recommencer';
+  raCaptionEl.textContent='✓ 3 minutes complètes — bravo !';
+}
+
+function raReset(){
+  raRunning=false; clearTimeout(raTimer); raCycles=0; raInhale=true; raSec=5;
+  if(!raOrb) raInit();
+  raOrb.classList.remove('inhale','exhale');
+  raRings.forEach(function(r){ if(r) r.classList.remove('inhale','exhale'); });
+  raNumEl.textContent='5'; raPhaseEl.textContent='Prête ?';
+  document.getElementById('raStartBtn').textContent='▶ Démarrer';
+  raCaptionEl.textContent='3 minutes · Respiration ventrale lente';
 }
 
 // ── JOURNAL ──

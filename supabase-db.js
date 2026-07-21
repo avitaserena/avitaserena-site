@@ -181,12 +181,14 @@ const DB = {
 
   /* ── PHV Memos (observance fiche mémo cliente) ───────── */
 
-  // Clé unique cliente : prenom+nom+ddn normalisés
+  // Clé unique cliente : format canonique partagé par tout le système (CRM, questionnaires,
+  // générateur, espace cliente) : prenom-nom-AAAAMMJJ, identique à clientes.id dans le CRM.
   clientKey(prenom, nom, ddn) {
     const normalize = s => (s||'').toLowerCase()
       .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-      .replace(/[^a-z0-9]/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'');
-    return [normalize(prenom), normalize(nom), normalize(ddn)].filter(Boolean).join('_');
+      .replace(/[^a-z0-9]/g,'');
+    const dateDigits = (ddn||'').replace(/[^0-9]/g,''); // AAAAMMJJ, sans séparateurs
+    return [normalize(prenom), normalize(nom), dateDigits].filter(Boolean).join('-');
   },
 
   async savePHVMemo(prenom, nom, ddn, payload) {
