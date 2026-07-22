@@ -183,12 +183,16 @@ const DB = {
 
   // Clé unique cliente : format canonique partagé par tout le système (CRM, questionnaires,
   // générateur, espace cliente) : prenom-nom-AAAAMMJJ, identique à clientes.id dans le CRM.
+  // Formule strictement alignée sur idCanoniqueCliente() (Questionnaire_de_consultation.html)
+  // et clientId() (espace-clientes.html) : espaces et apostrophes → underscore, tirets
+  // CONSERVÉS (prénoms composés type "Anne-Sophie"), accents conservés tels quels.
   clientKey(prenom, nom, ddn) {
-    const normalize = s => (s||'').toLowerCase()
-      .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-      .replace(/[^a-z0-9]/g,'');
-    const dateDigits = (ddn||'').replace(/[^0-9]/g,''); // AAAAMMJJ, sans séparateurs
-    return [normalize(prenom), normalize(nom), dateDigits].filter(Boolean).join('-');
+    const normalize = s => (s||'').trim().toLowerCase().replace(/[\s']/g,'_');
+    const p = normalize(prenom);
+    const n = normalize(nom);
+    const dateDigits = (ddn||'').replace(/-/g,'');
+    if (!p || !dateDigits) return null;
+    return p + (n ? '-' + n : '') + '-' + dateDigits;
   },
 
   async savePHVMemo(prenom, nom, ddn, payload) {
