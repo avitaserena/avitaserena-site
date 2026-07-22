@@ -269,6 +269,7 @@ input.fi[readonly]{background:var(--taupe);cursor:default;opacity:.75}
     <div class="mf-grid">
       <div><label class="fl">Prénom</label><input class="fi" type="text" id="m-prenom" placeholder="Marie"></div>
       <div><label class="fl">Nom</label><input class="fi" type="text" id="m-nom" placeholder="Dupont"></div>
+      <div><label class="fl">Date de naissance <span style="font-weight:400;color:var(--gris);text-transform:none;font-size:10px">(pour le lien CRM)</span></label><input class="fi" type="date" id="m-ddn"></div>
       <div><label class="fl">Âge</label><input class="fi" type="number" id="m-age" placeholder="38"></div>
       <div><label class="fl">Durée des symptômes</label>
         <select class="fi" id="m-duree">
@@ -989,7 +990,7 @@ function buildClientData() {
     prenom: mf('m-prenom'), nom: mf('m-nom'), age: mf('m-age'), duree: mf('m-duree'),
     contra: mf('m-contra'), motifs: mf('m-motifs'), scores: mf('m-scores'),
     checks: mf('m-checks'), medics: mf('m-medics'), gyneco: mf('m-gyneco'),
-    alim: mf('m-alim'), notes: mf('m-notes'), lifeline: mf('m-lifeline'),
+    alim: mf('m-alim'), notes: mf('m-notes'), lifeline: mf('m-lifeline'), ddn: mf('m-ddn'),
   };
   const hasManual = Object.values(manual).some(v => v.length > 1);
   const s = sessionData || {};
@@ -1021,7 +1022,8 @@ function buildClientData() {
   return {
     prenom: manual.prenom || s.prenom || 'Cliente',
     nom: manual.nom || s.nom || '',
-    ddn: s.ddn || '',
+    ddn: manual.ddn || s.ddn || '',
+    client_id: s.client_id || '',
     age: manual.age || s.age || '',
     duree_symptomes: manual.duree || s.duree_symptomes || '',
     contraception: manual.contra || s.selects?.match(/(?:Contraception|Pilule|DIU|Implant|contraceptif)[^\n]*/gi)?.join(', ') || '',
@@ -1532,16 +1534,18 @@ function ouvrirProtocole() {
 
   // ── Sauvegarde Supabase : rend le protocole accessible depuis n'importe quel appareil
   // (espace clientes, lien email) et alimente le contexte de Serena.
-  // NB : le prénom/nom/date de naissance sont dans generatedData._client (données du questionnaire),
-  // pas directement sur generatedData (qui ne contient que le texte généré par l'IA).
+  // NB : le prénom/nom/date de naissance/client_id sont dans generatedData._client (données du
+  // questionnaire ou du CRM), pas directement sur generatedData (qui ne contient que le texte généré par l'IA).
   const clientInfo = generatedData._client || {};
-  if (clientInfo.prenom && clientInfo.ddn) {
-    const clientKey = DB.clientKey(clientInfo.prenom, clientInfo.nom || '', clientInfo.ddn);
+  // Priorité au client_id transmis tel quel (CRM ou questionnaire) — fiable à 100%, pas de recalcul.
+  // Repli sur prénom+nom+ddn uniquement si ce client_id n'a pas pu être transmis.
+  const clientKey = clientInfo.client_id || (clientInfo.prenom && clientInfo.ddn ? DB.clientKey(clientInfo.prenom, clientInfo.nom || '', clientInfo.ddn) : null);
+  if (clientKey) {
     DB.saveProtocoleClient(clientKey, generatedData, blocks)
       .then(() => console.log('✓ Protocole synchronisé sur Supabase :', clientKey))
       .catch(e => console.warn('⚠ Échec de synchronisation Supabase (le protocole reste disponible en local) :', e));
   } else {
-    console.warn('⚠ Prénom/date de naissance manquants — protocole non synchronisé sur Supabase.');
+    console.warn('⚠ Identifiant cliente manquant (client_id ou date de naissance) — protocole non synchronisé sur Supabase. Renseignez la date de naissance dans le formulaire manuel, ou passez par le CRM/questionnaire pour transmettre automatiquement l\'identifiant.');
   }
 
   window.open('phv-print.html', '_blank');

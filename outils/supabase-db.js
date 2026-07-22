@@ -9,10 +9,19 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
 
 /* ── Requête générique ──────────────────────────────────── */
 async function supaFetch(path, opts = {}) {
+  // Utilise le token de la session connectée (praticienne ou cliente) si disponible,
+  // sinon retombe sur la clé anon (qui, avec RLS activé, ne donne accès qu'aux
+  // lectures publiques explicitement autorisées).
+  let authToken = SUPA_KEY;
+  if (typeof Auth !== 'undefined') {
+    const token = await Auth.getValidAccessToken();
+    if (token) authToken = token;
+  }
+
   const res = await fetch(SUPA_URL + '/rest/v1/' + path, {
     headers: {
       'apikey': SUPA_KEY,
-      'Authorization': 'Bearer ' + SUPA_KEY,
+      'Authorization': 'Bearer ' + authToken,
       'Content-Type': 'application/json',
       'Prefer': opts.prefer || 'return=representation',
       ...(opts.headers || {})
@@ -172,12 +181,14 @@ const DB = {
 
   /* ── PHV Memos (observance fiche mémo cliente) ───────── */
 
-  // Clé unique cliente : prenom+nom+ddn normalisés
+  // Clé unique cliente : format canonique partagé par tout le système (CRM, questionnaires,
+  // générateur, espace cliente) : prenom-nom-AAAAMMJJ, identique à clientes.id dans le CRM.
   clientKey(prenom, nom, ddn) {
     const normalize = s => (s||'').toLowerCase()
       .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-      .replace(/[^a-z0-9]/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'');
-    return [normalize(prenom), normalize(nom), normalize(ddn)].filter(Boolean).join('_');
+      .replace(/[^a-z0-9]/g,'');
+    const dateDigits = (ddn||'').replace(/[^0-9]/g,''); // AAAAMMJJ, sans séparateurs
+    return [normalize(prenom), normalize(nom), dateDigits].filter(Boolean).join('-');
   },
 
   async savePHVMemo(prenom, nom, ddn, payload) {
@@ -277,11 +288,27 @@ const DB = {
 
     const merged = { ...existing, protocolData, blocks, savedAt: new Date().toISOString() };
 
-    return await supaFetch('protocoles_client?on_conflict=client_id', {
+    const result = await supaFetch('protocoles_client?on_conflict=client_id', {
       method: 'POST',
       headers: { 'Prefer': 'return=representation,resolution=merge-duplicates' },
       body: { client_id: client_key, data: merged, updated_at: new Date().toISOString() }
     });
+
+    // Ferme la boucle CRM : met à jour clientes.phv_url avec le lien direct et partageable
+    // vers ce protocole, pour que la fiche cliente affiche "Disponible" sans copier-coller
+    // manuel. Ce lien est le même que celui envoyé par email (phv-print.html?client=...).
+    try {
+      const phvUrl = 'https://avitaserena.com/outils/phv-print.html?client=' + encodeURIComponent(client_key);
+      await supaFetch('clientes?id=eq.' + encodeURIComponent(client_key), {
+        method: 'PATCH',
+        prefer: '',
+        body: { phv_url: phvUrl, updated_at: new Date().toISOString() }
+      });
+    } catch(e) {
+      console.warn('⚠ Protocole enregistré, mais impossible de mettre à jour phv_url sur la fiche cliente (peut-être une fiche introuvable pour cet id) :', e);
+    }
+
+    return result;
   },
 
   async getProtocoleClient(client_key) {

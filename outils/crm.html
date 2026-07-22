@@ -1371,6 +1371,7 @@ let taches=[],rdvs=[],emailCtx=null,curTab='urg',curSearch='',curFilter='all';
 let memoAlerts=[];
 let clientMessages=[];
 let docsMedicaux={}; // { clientId: [ {id, nom_fichier, type, date_bilan, storage_path, uploaded_at}, ... ] }
+let questionnairesClient={}; // { clientId: [ {id, type, prenom, snapshot, created_at}, ... ] }
 
 // COLORS palette - vibrant Monday-style
 const COLORS=['#0DA678','#7B6EE6','#E4604C','#3D7EF0','#E28B2B','#0E9384','#D4537E','#5F6BE0'];
@@ -2713,12 +2714,22 @@ async function loadDocsMedicaux(cid){
   }
 }
 
+async function loadQuestionnaires(cid){
+  try{
+    const r=await sb('questionnaires?client_id=eq.'+encodeURIComponent(cid)+'&order=created_at.desc&select=id,type,prenom,snapshot,created_at');
+    questionnairesClient[cid]=r;
+  }catch(e){
+    console.error('[CRM] ✗ Questionnaires:', e.message);
+    questionnairesClient[cid]=questionnairesClient[cid]||[];
+  }
+}
+
 async function openFiche(id){
   const c=db.clients.find(x=>x.id===id);
   if(!c)return;
   nav('fiche',null);
   renderFiche(c); // affichage immédiat
-  await Promise.allSettled([loadMemoAlerts(), loadDocsMedicaux(id)]); // rechargement frais depuis Supabase
+  await Promise.allSettled([loadMemoAlerts(), loadDocsMedicaux(id), loadQuestionnaires(id)]); // rechargement frais depuis Supabase
   renderFiche(c); // re-render avec données à jour
 }
 
@@ -2829,7 +2840,12 @@ function renderFiche(c){
   }).join('');
 
   // Docs
+  const qList = questionnairesClient[cid]||[];
+  const qConsult = qList.filter(q=>q.type==='consultation');
+  const qSuivi = qList.filter(q=>q.type==='suivi');
   const docs=[
+    {icon:'📋',bg:'var(--orange-lt)',name:'Questionnaire de consultation',meta:qConsult.length?'Complété le '+fmtDate(qConsult[0].created_at):'Non rempli',st:qConsult.length?'ok':'missing',stl:qConsult.length?'Complété':'À faire',al:'Ouvrir',ac:qConsult.length?'':'primary',fn:`ouvrirQuestionnaireCliente('${cid}','consultation')`},
+    {icon:'🔁',bg:'var(--green-lt)',name:'Questionnaire de suivi',meta:qSuivi.length?qSuivi.length+' suivi(s) enregistré(s) · dernier le '+fmtDate(qSuivi[0].created_at):'Aucun suivi enregistré',st:qSuivi.length?'ok':'missing',stl:qSuivi.length?qSuivi.length+' au total':'Aucun',al:'Nouveau suivi',ac:'',fn:`ouvrirQuestionnaireCliente('${cid}','suivi')`},
     {icon:'✦',bg:'var(--violet-lt)',name:'Protocole PHV',meta:c.phv_url?'Disponible':'Non généré',st:c.phv_url?'ok':'pending',stl:c.phv_url?'Disponible':'À générer',al:c.phv_url?'Voir':'Générer',ac:c.phv_url?'':'primary',fn:c.phv_url?`window.open('${escH(c.phv_url)}','_blank')`:`ouvrirPHVCliente('${cid}')`},
     {icon:'✉',bg:'var(--blue-lt)',name:'Lettre clinique',meta:c.timeline?.find(t=>t.title?.includes('Lettre'))?'Envoyée':'Non rédigée',st:c.timeline?.find(t=>t.title?.includes('Lettre'))?'ok':'missing',stl:c.timeline?.find(t=>t.title?.includes('Lettre'))?'Envoyée':'Non rédigée',al:'Rédiger',ac:'primary',fn:`ouvrirLettreSeance('${cid}')`},
     {icon:'📋',bg:'var(--orange-lt)',name:"Bilan d'entrée",meta:c.timeline?.find(t=>t.title?.includes('Bilan'))?'Complété':'Non rempli',st:c.timeline?.find(t=>t.title?.includes('Bilan'))?'ok':c.programme?'pending':'missing',stl:c.timeline?.find(t=>t.title?.includes('Bilan'))?'Complété':c.programme?'À compléter':'N/A',al:'Ouvrir',ac:c.programme?'primary':'',fn:`ouvrirBilanEntree('${cid}','depart')`},
@@ -2842,6 +2858,16 @@ function renderFiche(c){
       <span class="doc-status ${d.st}">${escH(d.stl)}</span>
       ${btn(`doc-action ${d.ac}`,d.fn,escH(d.al))}
     </div>`).join('');
+
+  // Historique des questionnaires archivés sur Supabase (consultable à tout moment)
+  const qTypeLbl={consultation:'📋 Consultation',suivi:'🔁 Suivi'};
+  const qHistHtml = qList.length ? qList.map(q=>`
+    <div class="doc-item">
+      <div class="doc-icon" style="background:var(--surface)">${q.type==='suivi'?'🔁':'📋'}</div>
+      <div class="doc-body"><div class="doc-name">${escH(qTypeLbl[q.type]||q.type||'Questionnaire')}</div><div class="doc-meta">${fmtDate(q.created_at)}</div></div>
+      ${btn('doc-action',`voirQuestionnaireArchive('${cid}','${escH(q.id)}')`,'Voir')}
+    </div>`).join('') : "<div style='padding:16px;font-size:13px;color:var(--muted);font-style:italic'>Aucun questionnaire archivé pour le moment.</div>";
+
 
   // Documents médicaux (résultats, radios, comptes-rendus... ajoutés manuellement par la praticienne)
   const dmTypeLabels={bilan_sanguin:'Bilan sanguin',imagerie:'Radio / Imagerie',compte_rendu:'Compte-rendu médical',ordonnance:'Ordonnance',autre:'Document'};
@@ -2941,6 +2967,10 @@ function renderFiche(c){
       <div class="info-card">
         <div class="ic-head"><div class="ic-title">📄 Outils & protocole</div></div>
         <div class="ic-body"><div class="doc-list">${docsHtml}</div></div>
+      </div>
+      <div class="info-card" style="margin-top:14px">
+        <div class="ic-head"><div class="ic-title">🗂 Historique des questionnaires</div></div>
+        <div class="ic-body"><div class="doc-list">${qHistHtml}</div></div>
       </div>
       <div class="info-card" style="margin-top:14px">
         <div class="ic-head"><div class="ic-title">🩺 Documents médicaux</div>${btn('ic-edit',`ouvrirAjoutDocMedical('${cid}')`,'+ Ajouter')}</div>
@@ -3740,16 +3770,56 @@ document.addEventListener('DOMContentLoaded', () => {
   showAuthGate('praticienne', () => { removeAuthGate(); init(); });
 });
 
-// ── Ouvrir le PHV d'une cliente spécifique ──
+// ── Voir le contenu d'un questionnaire archivé (consultation ou suivi) ──
+function voirQuestionnaireArchive(clientId, qid){
+  const list = questionnairesClient[clientId] || [];
+  const q = list.find(x => String(x.id) === String(qid));
+  if(!q){ toast('Questionnaire introuvable','err'); return; }
+  const snap = q.snapshot || {};
+  const rows = Object.entries(snap)
+    .filter(([k,v]) => v !== null && v !== undefined && String(v).trim() !== '' && !k.startsWith('_'))
+    .map(([k,v]) => {
+      const label = k.replace(/_/g,' ').replace(/([a-z])([A-Z])/g,'$1 $2').replace(/^./, s=>s.toUpperCase());
+      const val = typeof v === 'object' ? JSON.stringify(v) : String(v);
+      return `<div style="padding:10px 0;border-bottom:1px solid var(--border)"><div style="font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:4px">${escH(label)}</div><div style="font-size:13px;color:var(--ink);white-space:pre-wrap;line-height:1.6">${escH(val)}</div></div>`;
+    }).join('');
+  const modal=document.createElement('div');
+  modal.className='modal-bg open';
+  modal.id='modal-voir-questionnaire';
+  modal.innerHTML=`<div class="modal modal-lg">
+    <div style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+      <div style="font-size:16px;font-weight:700;color:var(--ink)">${q.type==='suivi'?'🔁 Questionnaire de suivi':'📋 Questionnaire de consultation'} — ${escH(q.prenom||'')} · ${fmtDate(q.created_at)}</div>
+      <button onclick="document.getElementById('modal-voir-questionnaire').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted)">✕</button>
+    </div>
+    <div style="padding:8px 24px 20px;max-height:70vh;overflow:auto">${rows||'<p style="color:var(--muted);font-style:italic">Aucune donnée.</p>'}</div>
+  </div>`;
+  modal.addEventListener('click', e=>{ if(e.target===modal) modal.remove(); });
+  document.body.appendChild(modal);
+}
+
+// ── Ouvrir le générateur PHV pour une cliente spécifique ──
+// (auparavant ouvrait phv-print.html directement — qui sert uniquement à *afficher* un protocole
+// déjà généré, pas à en produire un. Le point d'entrée correct est le générateur lui-même.)
 function ouvrirPHVCliente(clientId){
   const c = db.clients.find(x=>x.id===clientId);
   if(!c){ toast('Cliente introuvable','err'); return; }
   const session = {
-    prenom: c.prenom||'', nom: c.nom||'', ddn: c.ddn||'',
+    client_id: c.id, prenom: c.prenom||'', nom: c.nom||'', ddn: c.ddn||'',
     motifs: c.motifs||'', axes: c.axes||''
   };
   localStorage.setItem('avita_session', JSON.stringify(session));
-  window.open('phv-print.html', '_blank');
+  window.open('generateur.html', '_blank');
+}
+
+// ── Ouvrir un questionnaire (consultation ou suivi) pré-rempli pour une cliente spécifique ──
+function ouvrirQuestionnaireCliente(clientId, type){
+  const c = db.clients.find(x=>x.id===clientId);
+  if(!c){ toast('Cliente introuvable','err'); return; }
+  const fichier = type === 'suivi' ? 'Questionnaire_de_suivi.html' : 'Questionnaire_de_consultation.html';
+  const params = new URLSearchParams({
+    client_id: c.id, prenom: c.prenom||'', nom: c.nom||'', ddn: c.ddn||''
+  });
+  window.open(fichier + '?' + params.toString(), '_blank');
 }
 
 // ── Lettre d'adressage clinique ──

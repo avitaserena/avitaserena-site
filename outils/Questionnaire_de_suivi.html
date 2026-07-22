@@ -1625,6 +1625,29 @@ const AXES = [
 /* ══════════════════════════════════════════════════════
    INIT
 ══════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════
+   PRÉ-REMPLISSAGE DEPUIS LE CRM (ouverture depuis la fiche cliente)
+   URL du type : Questionnaire_de_suivi.html?client_id=marie-dupont-19900101&prenom=Marie
+══════════════════════════════════════════════════════ */
+function prefillFromCRM() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const clientId = params.get('client_id') || '';
+    const prenom = params.get('prenom') || '';
+    if (!clientId && !prenom) return false;
+    const elP = document.getElementById('prenom'); if (elP && !elP.value) elP.value = prenom;
+    const elK = document.getElementById('client-key'); if (elK && clientId) elK.value = clientId;
+    updateCounter();
+    if (clientId) {
+      toast('Fiche pré-remplie depuis le CRM — chargement du dossier…');
+      chargerDossierSupabase();
+    } else {
+      toast('Fiche pré-remplie depuis le CRM');
+    }
+    return true;
+  } catch (e) { console.warn('[CRM] Pré-remplissage échoué :', e); return false; }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   showAuthGate('praticienne', () => {
     removeAuthGate();
@@ -1633,7 +1656,10 @@ document.addEventListener('DOMContentLoaded', () => {
     buildObservanceTable();
     setDefaultDate();
     renderDiagnosticsList();
-    restaurerDraft();
+    // Arrivée depuis le CRM : on charge le dossier de la cliente plutôt qu'un brouillon
+    // sans rapport qui traînerait dans ce navigateur.
+    const arriveeDepuisCRM = prefillFromCRM();
+    if (!arriveeDepuisCRM) restaurerDraft();
     startAutosave();
     initNotesCounter();
     document.addEventListener('input', () => { formTouched = true; updateCounter(); });
@@ -2027,21 +2053,14 @@ async function chargerDossierSupabase() {
     if (token) authToken = token;
   }
   try {
-    const r = await fetch(SUPA_URL+'/rest/v1/questionnaires?id=eq.'+encodeURIComponent(key)+'&select=*', {
+    // Dossier le plus récent rattaché à cette cliente (consultation initiale ou suivi précédent),
+    // identifié par client_id — la colonne réelle, plus fiable qu'un matching sur le format de l'id.
+    const r = await fetch(SUPA_URL+'/rest/v1/questionnaires?client_id=eq.'+encodeURIComponent(key)+'&select=*&order=created_at.desc&limit=1', {
       headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+authToken}
     });
     const rows = await r.json();
-    if (!rows||!rows.length) {
-      // Essayer avec préfixe consultation_
-      const r2 = await fetch(SUPA_URL+'/rest/v1/questionnaires?id=like.*'+encodeURIComponent(key.split('-').slice(0,2).join('-'))+'*&select=*&order=created_at.desc&limit=1', {
-        headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+authToken}
-      });
-      const rows2 = await r2.json();
-      if(!rows2||!rows2.length){ toast('Aucun dossier trouvé pour cette clé'); return; }
-      afficherBandeauDossier(rows2[0]);
-    } else {
-      afficherBandeauDossier(rows[0]);
-    }
+    if (!rows||!rows.length) { toast('Aucun dossier trouvé pour cette clé'); return; }
+    afficherBandeauDossier(rows[0]);
   } catch(e) { toast('Erreur Supabase — vérifiez la connexion'); }
 }
 
@@ -2080,6 +2099,25 @@ function afficherBandeauDossier(row) {
   toast('Dossier chargé : '+prenom);
   formTouched=true;
   chargerProtocoleVivant(document.getElementById('client-key')?.value?.trim());
+  // Reconstituer la liste diagnostics/antécédents à partir du dossier précédent (consultation ou suivi antérieur) —
+  // permet de revoir et de mettre à jour un statut (ex : HPV actif → résolu) sans repartir de zéro.
+  importerDiagnosticsDepuisSnapshot(snap);
+}
+
+function importerDiagnosticsDepuisSnapshot(snap) {
+  const actifs = (snap.diagnostics_actifs || '').split(',').map(s => s.trim()).filter(Boolean);
+  const resolus = (snap.antecedents_resolus || '').split(',').map(s => s.trim()).filter(Boolean);
+  let ajoutes = 0;
+  actifs.forEach(nom => {
+    if (!diagnosticsList.some(d => d.nom.toLowerCase() === nom.toLowerCase())) { diagnosticsList.push({ nom, statut: 'actif' }); ajoutes++; }
+  });
+  resolus.forEach(nom => {
+    if (!diagnosticsList.some(d => d.nom.toLowerCase() === nom.toLowerCase())) { diagnosticsList.push({ nom, statut: 'resolu' }); ajoutes++; }
+  });
+  if (ajoutes) {
+    renderDiagnosticsList();
+    toast(ajoutes + ' diagnostic(s)/antécédent(s) importé(s) — vérifiez et mettez à jour les statuts si besoin');
+  }
 }
 
 function importerDepuisLocalstorage() {
@@ -2106,7 +2144,8 @@ function voirProtocoleComplet() {
 async function sauvegarderSupabase(snapshot) {
   const prenom = document.getElementById('prenom')?.value?.trim()||'Inconnue';
   const numSuivi = document.getElementById('num-suivi')?.value||'1';
-  const id = 'suivi_'+numSuivi+'_'+(document.getElementById('client-key')?.value?.trim()||Date.now());
+  const clientKey = document.getElementById('client-key')?.value?.trim()||'';
+  const id = 'suivi_'+numSuivi+'_'+(clientKey||Date.now());
   let authToken = SUPA_KEY;
   if (typeof Auth !== 'undefined') {
     const token = await Auth.getValidAccessToken();
@@ -2116,7 +2155,7 @@ async function sauvegarderSupabase(snapshot) {
     await fetch(SUPA_URL+'/rest/v1/questionnaires', {
       method:'POST',
       headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+authToken,'Content-Type':'application/json','Prefer':'return=minimal'},
-      body:JSON.stringify({id, type:'suivi', prenom, snapshot, created_at:new Date().toISOString(), updated_at:new Date().toISOString()})
+      body:JSON.stringify({id, client_id: clientKey || null, type:'suivi', prenom, snapshot, created_at:new Date().toISOString(), updated_at:new Date().toISOString()})
     });
   } catch(e){ console.warn('Supabase save failed', e); }
 }
@@ -2560,6 +2599,7 @@ function finalise() {
     // Identification
     _type_consultation: 'suivi',
     _num_suivi: d.numSuivi,
+    client_id: document.getElementById('client-key')?.value?.trim() || '',
     prenom: d.prenom,
     age: d.age,
     programme: d.programme,

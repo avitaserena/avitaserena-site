@@ -4955,13 +4955,21 @@ async function bridgeCRM_questionnaire(d) {
     const prenomQ = (d.prenom || '').trim();
     const nomQ    = (d.nom    || '').trim();
     const ddnQ    = (d.ddn    || '').trim();
-    if (!prenomQ) { console.warn('[Bridge CRM] Prénom manquant, rien à faire.'); return; }
+    if (!prenomQ) { console.warn('[Bridge CRM] Prénom manquant, rien à faire.'); return null; }
 
     const filtreNom = nomQ ? '&nom=ilike.'+encodeURIComponent(nomQ) : '';
     let client = null;
 
+    // 0) Priorité absolue : client_id exact transmis par le CRM (arrivée via bouton "Questionnaire" de la fiche).
+    //    Fiable à 100% — évite tout risque de doublon ou de mauvais rattachement par homonymie.
+    if (crmClientId) {
+      const rows = await sbFetch('clientes?id=eq.'+encodeURIComponent(crmClientId));
+      if (rows.length) client = rows[0];
+      else console.warn('[Bridge CRM] client_id transmis par le CRM introuvable, retour au matching par nom :', crmClientId);
+    }
+
     // 1) Match exact prénom + nom + DDN (fiche déjà complète)
-    if (ddnQ) {
+    if (!client && ddnQ) {
       const rows = await sbFetch('clientes?prenom=ilike.'+encodeURIComponent(prenomQ)+filtreNom+'&ddn=eq.'+encodeURIComponent(ddnQ));
       if (rows.length) client = rows[0];
     }
@@ -5012,9 +5020,11 @@ async function bridgeCRM_questionnaire(d) {
     });
 
     console.log('[Bridge CRM] Questionnaire enregistré pour', prenomQ, nomQ, '→', finalId);
+    return finalId;
   } catch(e) {
     console.warn('[Bridge CRM] Erreur :', e);
     showToast("⚠️ Synchronisation CRM échouée — vérifiez la fiche cliente manuellement");
+    return null;
   }
 }
 
@@ -5030,7 +5040,14 @@ async function finalise() {
     formTouched = false; // évite l'alerte de fermeture
 
     // ── BRIDGE CRM : enregistrer dans le dossier cliente (Supabase) ──
-    await bridgeCRM_questionnaire(d);
+    // bridgeCRM_questionnaire résout (ou crée) l'identifiant cliente canonique — on le
+    // réinjecte dans la session AVANT d'ouvrir le générateur, pour que le protocole se
+    // rattache exactement à la même fiche, sans recalcul ni risque de divergence.
+    const finalId = await bridgeCRM_questionnaire(d);
+    if (finalId) {
+      d.client_id = finalId;
+      localStorage.setItem('avita_session', JSON.stringify(d));
+    }
 
     showToast('✓ Données exportées — ouverture du générateur…');
     setTimeout(() => { window.open('generateur.html', '_blank'); }, 800);
@@ -5144,9 +5161,33 @@ function allerAuxSpecialites() {
 /* ══════════════════════════════════════
    INIT — restauration autosave au chargement
 ══════════════════════════════════════ */
+/* ══════════════════════════════════════
+   PRÉ-REMPLISSAGE DEPUIS LE CRM (ouverture depuis la fiche cliente)
+   URL du type : Questionnaire_de_consultation.html?client_id=marie-dupont-19900101&prenom=Marie&nom=Dupont&ddn=1990-01-01
+══════════════════════════════════════ */
+let crmClientId = '';
+function prefillFromCRM() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const clientId = params.get('client_id') || '';
+    const prenom = params.get('prenom') || '';
+    const nom = params.get('nom') || '';
+    const ddn = params.get('ddn') || '';
+    if (!clientId && !prenom) return; // pas d'arrivée depuis le CRM
+
+    crmClientId = clientId;
+    const elP = document.getElementById('prenom'); if (elP && !elP.value) elP.value = prenom;
+    const elN = document.getElementById('nom'); if (elN && !elN.value) elN.value = nom;
+    const elD = document.getElementById('ddn'); if (elD && !elD.value && ddn) { elD.value = ddn; if (typeof calcAge === 'function') calcAge(); }
+    updateCounter();
+    showToast('✓ Fiche pré-remplie depuis le CRM' + (prenom ? ' — ' + prenom + (nom ? ' ' + nom : '') : ''));
+  } catch (e) { console.warn('[CRM] Pré-remplissage échoué :', e); }
+}
+
 (function init() {
   updateCounter();
   renderDiagnosticsList();
+  prefillFromCRM();
   // Vérifier s'il y a une session sauvegardée
   try {
     const saved = localStorage.getItem(SAVE_KEY);
