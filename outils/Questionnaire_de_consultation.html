@@ -788,6 +788,50 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
     <div class="sec-sub">L'histoire de la santé passée éclaire toujours le présent. Chaque maladie chronique, chirurgie ou traitement long a laissé une empreinte biochimique sur le terrain.</div>
   </div>
 
+  <!-- Q3bis — DIAGNOSTICS & ANTÉCÉDENTS : statut actif / résolu (alimente directement le générateur PHV) -->
+  <div class="qcard" id="diagnostics-antecedents-card">
+    <div class="qcard-top">
+      <div class="qnum">🩺</div>
+      <div class="qcontent">
+        <div class="qtext">Diagnostics & antécédents — actif ou résolu ?</div>
+        <div class="qtags"><span class="qtag cle">Transmis directement au générateur PHV</span></div>
+        <div class="info-boxes">
+          <div class="info-box pourquoi">
+            <div class="box-lbl">⚙ Pourquoi ce champ existe</div>
+            <div class="pourquoi-txt">Le générateur du protocole ne doit traiter activement qu'une pathologie encore en cours. Un antécédent réglé (HPV traité, mycose ancienne, IST soignée…) doit rester dans le dossier sans jamais déclencher de recommandation ciblée. Ce que vous cochez ici part directement dans la session transmise au générateur — inutile de vous en souvenir plus tard.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="qinput">
+      <label class="fl">Ajout rapide</label>
+      <div class="chip-wrap" id="diag-quickadd">
+        <button class="chip" type="button" onclick="quickAddDiagnostic('SIBO')">SIBO</button>
+        <button class="chip" type="button" onclick="quickAddDiagnostic('SII / côlon irritable')">SII / côlon irritable</button>
+        <button class="chip" type="button" onclick="quickAddDiagnostic('Endométriose')">Endométriose</button>
+        <button class="chip" type="button" onclick="quickAddDiagnostic('SOPK')">SOPK</button>
+        <button class="chip" type="button" onclick="quickAddDiagnostic('Hashimoto / hypothyroïdie')">Hashimoto / hypothyroïdie</button>
+        <button class="chip" type="button" onclick="quickAddDiagnostic('Papillomavirus (HPV)')">Papillomavirus (HPV)</button>
+        <button class="chip" type="button" onclick="quickAddDiagnostic('IST (herpès, chlamydia, gonorrhée…)')">IST</button>
+        <button class="chip" type="button" onclick="quickAddDiagnostic('Mycoses vaginales récidivantes')">Mycoses vaginales récidivantes</button>
+        <button class="chip" type="button" onclick="quickAddDiagnostic('Cystites récidivantes')">Cystites récidivantes</button>
+        <button class="chip" type="button" onclick="quickAddDiagnostic('Périménopause')">Périménopause</button>
+        <button class="chip" type="button" onclick="quickAddDiagnostic('Ménopause')">Ménopause</button>
+      </div>
+      <div class="g2" style="margin-top:12px">
+        <div>
+          <label class="fl">Autre pathologie / antécédent</label>
+          <input class="fi" type="text" id="diag-manual-input" placeholder="Ex : Fibrome utérin" onkeydown="if(event.key==='Enter'){event.preventDefault();addManualDiagnostic();}">
+        </div>
+        <div style="display:flex;align-items:flex-end">
+          <button class="btn" type="button" style="width:100%" onclick="addManualDiagnostic()">+ Ajouter à la liste</button>
+        </div>
+      </div>
+      <div id="diagnostics-list" style="margin-top:16px;display:flex;flex-direction:column;gap:8px"></div>
+      <p class="field-hint" style="margin-top:8px;font-size:11.5px;color:var(--gris)">Pour chaque élément ajouté, choisissez son statut. Un élément sans statut choisi n'est transmis nulle part — rien n'est présélectionné par défaut.</p>
+    </div>
+  </div>
+
   <!-- Q4 -->
   <div class="qcard">
     <div class="qcard-top">
@@ -4074,6 +4118,61 @@ let formTouched = false;
 const SAVE_KEY = 'avita_consultation_autosave';
 
 /* ══════════════════════════════════════
+   DIAGNOSTICS & ANTÉCÉDENTS — statut actif / résolu
+   Transmis directement dans la session au générateur PHV, pour qu'il ne
+   traite jamais activement une pathologie déjà réglée (ex : HPV traité).
+══════════════════════════════════════ */
+let diagnosticsList = []; // [{ nom, statut: 'actif' | 'resolu' | null }]
+
+function quickAddDiagnostic(nom) {
+  if (diagnosticsList.some(d => d.nom.toLowerCase() === nom.toLowerCase())) { showToast('Déjà ajouté : ' + nom); return; }
+  diagnosticsList.push({ nom, statut: null });
+  renderDiagnosticsList();
+  formTouched = true;
+}
+
+function addManualDiagnostic() {
+  const el = document.getElementById('diag-manual-input');
+  const nom = (el?.value || '').trim();
+  if (!nom) return;
+  if (diagnosticsList.some(d => d.nom.toLowerCase() === nom.toLowerCase())) { showToast('Déjà ajouté : ' + nom); return; }
+  diagnosticsList.push({ nom, statut: null });
+  el.value = '';
+  renderDiagnosticsList();
+  formTouched = true;
+}
+
+function setDiagnosticStatut(idx, statut) {
+  if (!diagnosticsList[idx]) return;
+  diagnosticsList[idx].statut = diagnosticsList[idx].statut === statut ? null : statut;
+  renderDiagnosticsList();
+  formTouched = true;
+}
+
+function removeDiagnostic(idx) {
+  diagnosticsList.splice(idx, 1);
+  renderDiagnosticsList();
+  formTouched = true;
+}
+
+function renderDiagnosticsList() {
+  const wrap = document.getElementById('diagnostics-list');
+  if (!wrap) return;
+  if (!diagnosticsList.length) {
+    wrap.innerHTML = '<p style="font-size:13px;color:var(--gris);font-style:italic">Aucun diagnostic ajouté pour l\'instant.</p>';
+    return;
+  }
+  wrap.innerHTML = diagnosticsList.map((d, i) => `
+    <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border:1px solid var(--taupe);border-radius:14px;background:var(--blanc);flex-wrap:wrap">
+      <span style="flex:1;min-width:140px;font-size:14px;color:var(--ardoise);font-weight:500">${d.nom}</span>
+      <button type="button" onclick="setDiagnosticStatut(${i},'actif')" style="padding:7px 14px;border-radius:999px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;border:1.5px solid ${d.statut==='actif'?'var(--rouge)':'var(--taupe)'};background:${d.statut==='actif'?'var(--rouge-clair)':'var(--blanc)'};color:${d.statut==='actif'?'var(--rouge)':'var(--gris)'}">🔴 Actif actuellement</button>
+      <button type="button" onclick="setDiagnosticStatut(${i},'resolu')" style="padding:7px 14px;border-radius:999px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;border:1.5px solid ${d.statut==='resolu'?'var(--ocre)':'var(--taupe)'};background:${d.statut==='resolu'?'var(--or-clair)':'var(--blanc)'};color:${d.statut==='resolu'?'var(--or)':'var(--gris)'}">⚪ Antécédent résolu</button>
+      <button type="button" onclick="removeDiagnostic(${i})" style="background:transparent;border:none;cursor:pointer;color:var(--gris);font-size:15px;padding:4px 6px" title="Supprimer">✕</button>
+    </div>
+  `).join('');
+}
+
+/* ══════════════════════════════════════
    TEMPÉRAMENT — SÉLECTION ILLUSTRÉE
 ══════════════════════════════════════ */
 function selectTemp(t) {
@@ -4551,6 +4650,8 @@ function captureSnapshot() {
   snap['bilans'] = JSON.stringify(bilans);
   // Explications IA générées en direct (panneau AIPanel)
   try { snap['ai_panel'] = JSON.stringify(window.AIPanel ? window.AIPanel.getEntries() : []); } catch (e) {}
+  // Diagnostics & antécédents (statut actif/résolu)
+  snap['diagnostics_list'] = JSON.stringify(diagnosticsList);
   return snap;
 }
 
@@ -4596,6 +4697,9 @@ function restoreSnapshot(snap) {
       window.AIPanel.attachButtons();
     }
   } catch (e) {}
+  // Diagnostics & antécédents (statut actif/résolu)
+  try { diagnosticsList = JSON.parse(snap['diagnostics_list'] || '[]'); } catch(e) { diagnosticsList = []; }
+  renderDiagnosticsList();
   updateCounter();
 }
 
@@ -4690,6 +4794,9 @@ function collectAllData() {
   const gynecoPuces = [...document.querySelectorAll('#gyneco-chips .chip.on')].map(c=>c.textContent.replace('✓','').trim());
   d.gyneco_pathologies = gynecoPuces.join(', ');
   d.gyneco_notes = document.getElementById('gyneco-notes')?.value?.trim() || '';
+  // Diagnostics & antécédents (statut actif/résolu) — pour le générateur PHV
+  d.diagnostics_actifs = diagnosticsList.filter(x => x.statut === 'actif').map(x => x.nom).join(', ');
+  d.antecedents_resolus = diagnosticsList.filter(x => x.statut === 'resolu').map(x => x.nom).join(', ');
   return d;
 }
 
@@ -4715,6 +4822,10 @@ function genererSynthese() {
     { titre: '🎯 Prédisposition au changement', contenu: d.motivation || '— Non renseigné —' },
     { titre: '✅ Symptômes cochés', contenu: d.symptomes_coches || '— Aucun coché —' },
     { titre: '💊 Sélections & puces', contenu: d.chips_coches || '— Aucune —' },
+    { titre: '🩺 Diagnostics actifs / antécédents résolus', contenu: [
+      d.diagnostics_actifs ? `Actifs actuellement : ${d.diagnostics_actifs}` : '',
+      d.antecedents_resolus ? `Antécédents résolus (non actifs) : ${d.antecedents_resolus}` : '',
+    ].filter(Boolean).join('\n') || '— Aucun renseigné —' },
     { titre: '🩸 Bilans recommandés', contenu: d.bilans_recommandes || '— Aucun sélectionné —' },
     { titre: '📝 Notes libres & anamnèse', contenu: d.textes_libres || '— Aucune note —' },
     { titre: '🌿 Synthèse praticien', contenu: d.synthese_praticien || '— Non renseignée —' },
@@ -5035,6 +5146,7 @@ function allerAuxSpecialites() {
 ══════════════════════════════════════ */
 (function init() {
   updateCounter();
+  renderDiagnosticsList();
   // Vérifier s'il y a une session sauvegardée
   try {
     const saved = localStorage.getItem(SAVE_KEY);

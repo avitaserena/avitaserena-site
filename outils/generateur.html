@@ -374,6 +374,10 @@ input.fi[readonly]{background:var(--taupe);cursor:default;opacity:.75}
     <button class="p-toggle" data-val="Endométriose" onclick="toggleDiagnostic(this)">Endométriose</button>
     <button class="p-toggle" data-val="SOPK" onclick="toggleDiagnostic(this)">SOPK</button>
     <button class="p-toggle" data-val="Hashimoto / hypothyroïdie" onclick="toggleDiagnostic(this)">Hashimoto / hypothyroïdie</button>
+    <button class="p-toggle" data-val="Papillomavirus (HPV)" onclick="toggleDiagnostic(this)">Papillomavirus (HPV)</button>
+    <button class="p-toggle" data-val="IST (herpès, chlamydia, gonorrhée…)" onclick="toggleDiagnostic(this)">IST</button>
+    <button class="p-toggle" data-val="Mycoses vaginales récidivantes" onclick="toggleDiagnostic(this)">Mycoses vaginales récidivantes</button>
+    <button class="p-toggle" data-val="Cystites récidivantes" onclick="toggleDiagnostic(this)">Cystites récidivantes</button>
     <button class="p-toggle" data-val="Périménopause" onclick="toggleDiagnostic(this)">Périménopause</button>
     <button class="p-toggle" data-val="Ménopause" onclick="toggleDiagnostic(this)">Ménopause</button>
     <button class="p-toggle" data-val="Aucun diagnostic confirmé — symptômes seuls" onclick="toggleDiagnostic(this)">Aucun diagnostic confirmé</button>
@@ -959,6 +963,19 @@ function prefillParams() {
     }
   });
   refreshAxesBadges();
+
+  // ── Diagnostics confirmés & antécédents résolus, importés depuis le questionnaire ──
+  // (module "Diagnostics & antécédents" du questionnaire de consultation/suivi)
+  if (sessionData.diagnostics_actifs) {
+    const actifs = sessionData.diagnostics_actifs.split(',').map(s => s.trim()).filter(Boolean);
+    document.querySelectorAll('#diagnostics-group .p-toggle').forEach(btn => {
+      if (actifs.includes(btn.dataset.val)) toggleDiagnostic(btn);
+    });
+  }
+  if (sessionData.antecedents_resolus) {
+    const champ = document.getElementById('antecedents-resolus');
+    if (champ && !champ.value) champ.value = sessionData.antecedents_resolus;
+  }
 }
 
 function toggleManual() {
