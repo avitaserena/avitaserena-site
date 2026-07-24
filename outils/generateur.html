@@ -225,6 +225,7 @@ input.fi[readonly]{background:var(--taupe);cursor:default;opacity:.75}
 <script src="supabase-db.js"></script>
 <script src="auth-guard.js"></script>
 <script src="ai-client.js"></script>
+<script src="aromatherapie-db.js"></script>
 </head>
 <body>
 
@@ -335,6 +336,53 @@ input.fi[readonly]{background:var(--taupe);cursor:default;opacity:.75}
         <option>Oui — en cours de traitement / suivi</option>
       </select>
     </div>
+  </div>
+
+  <div class="g2" style="margin-top:14px">
+    <div>
+      <label class="fl">Épilepsie / ATCD de troubles convulsifs</label>
+      <select class="fi" id="secu-epilepsie">
+        <option value="">— À préciser —</option>
+        <option>Non</option>
+        <option>Oui</option>
+      </select>
+    </div>
+    <div>
+      <label class="fl">Asthme</label>
+      <select class="fi" id="secu-asthme">
+        <option value="">— À préciser —</option>
+        <option>Non</option>
+        <option>Oui — sans avis allergologue</option>
+        <option>Oui — avis allergologue obtenu</option>
+      </select>
+    </div>
+  </div>
+  <div class="g2">
+    <div>
+      <label class="fl">Insuffisance rénale</label>
+      <select class="fi" id="secu-renal">
+        <option value="">— À préciser —</option>
+        <option>Non</option>
+        <option>Oui</option>
+      </select>
+    </div>
+    <div>
+      <label class="fl">Insuffisance hépatique / hépatite</label>
+      <select class="fi" id="secu-hepatique">
+        <option value="">— À préciser —</option>
+        <option>Non</option>
+        <option>Oui</option>
+      </select>
+    </div>
+  </div>
+  <div style="margin-top:14px">
+    <label class="fl">Allergie connue aux huiles essentielles</label>
+    <select class="fi" id="secu-allergie-he" style="max-width:340px">
+      <option value="">— À préciser —</option>
+      <option>Non</option>
+      <option>Oui</option>
+    </select>
+    <p class="field-hint">Ces 5 champs alimentent exclusivement le filtre de sécurité de la Règle N°7 — Aromathérapie (voir plus bas). Un champ laissé vide est traité comme "à vérifier", jamais comme "sans risque".</p>
   </div>
 
   <div style="margin-top:16px">
@@ -795,6 +843,7 @@ const PILIER_LABELS = {
   psychologie:  '🧠 Psychologie & émotions',
   activite:     '🏃 Activité physique',
   complements:  '✦ Compléments ciblés',
+  aromatherapie:'🌸 Aromathérapie',
   bilan:        '📊 Bilan & suivi',
   autre:        '— Autre',
 };
@@ -1019,6 +1068,23 @@ function buildClientData() {
 
   const gv = id => document.getElementById(id)?.value?.trim() || '';
 
+  // Profil de sécurité pour le filtre aromathérapie (Règle N°7) — un champ vide
+  // est traité comme "à vérifier", jamais comme "sans risque".
+  const secuGrossesseVal = gv('secu-grossesse');
+  const secuCancerVal = gv('secu-cancer');
+  const profilAroma = {
+    grossesse: !!secuGrossesseVal && secuGrossesseVal !== 'Non concernée',
+    allaitement: secuGrossesseVal === 'Allaitement en cours',
+    age: parseInt(manual.age || s.age || '', 10) || null,
+    cancer_hormonodependant: secuCancerVal.startsWith('Oui'),
+    epilepsie: gv('secu-epilepsie') === 'Oui',
+    asthme: gv('secu-asthme') === 'Oui — sans avis allergologue',
+    anticoagulants: traitementsVigilance.includes('Anticoagulants'),
+    insuffisance_renale: gv('secu-renal') === 'Oui',
+    insuffisance_hepatique: gv('secu-hepatique') === 'Oui',
+    allergies_he: gv('secu-allergie-he') === 'Oui',
+  };
+
   return {
     prenom: manual.prenom || s.prenom || 'Cliente',
     nom: manual.nom || s.nom || '',
@@ -1048,6 +1114,19 @@ function buildClientData() {
     // ── Sécurité & vigilance ──
     secu_grossesse: gv('secu-grossesse'),
     secu_cancer: gv('secu-cancer'),
+    secu_epilepsie: gv('secu-epilepsie'),
+    secu_asthme: gv('secu-asthme'),
+    secu_renal: gv('secu-renal'),
+    secu_hepatique: gv('secu-hepatique'),
+    secu_allergie_he: gv('secu-allergie-he'),
+    profil_aroma: profilAroma,
+    aroma_candidats: (function(){
+      try {
+        const compat = aromatherapieFiltrer(HUILES_ESSENTIELLES, profilAroma)
+          .map(h => `${h.nom} (${h.latin}) — propriétés: ${h.proprietes.join(', ')} ; indications: ${h.indications.join(', ')} ; âge min: ${h.age_min||'—'} ; précaution: ${h.precaution||'—'}`);
+        return compat.join('\n');
+      } catch(e) { console.warn('Filtre aromathérapie indisponible:', e); return ''; }
+    })(),
     traitements_vigilance: traitementsVigilance,
     allergies_alim: allergiesAlim,
     // ── Diagnostics confirmés ──
@@ -1225,6 +1304,17 @@ ${(d.secu_grossesse && d.secu_grossesse !== 'Non concernée') ? '⛔️ Cette cl
 ${(d.secu_cancer && d.secu_cancer.startsWith('Oui')) ? '⛔️ Antécédent de cancer hormono-dépendant confirmé : JAMAIS de Feminabiane Ménopause ni de phytoestrogènes (soja, houblon, sauge), quelle que soit la pertinence apparente pour l\'axe hormonal.' : ''}
 ${d.allergies_alim && !/aucune/i.test(d.allergies_alim) ? '⛔️ Ne JAMAIS recommander un aliment, une recette ou un complément contenant : ' + d.allergies_alim + '.' : ''}
 
+━━ RÈGLE N°7 — AROMATHÉRAPIE (huiles essentielles, huiles végétales, hydrolats) ━━
+La liste ci-dessous ("HUILES COMPATIBLES") a déjà été filtrée automatiquement par le code (pas par toi) selon le profil de sécurité de la cliente (grossesse/allaitement, âge, cancer hormono-dépendant, épilepsie, asthme, anticoagulants, insuffisance rénale/hépatique, allergie aux HE). Tu ne dois JAMAIS proposer une huile qui n'apparaît pas dans cette liste, même si elle te semble pertinente.
+Si la liste est vide ou ne contient rien de pertinent pour les axes prioritaires de la cliente, ne force RIEN : n'inclus simplement pas la section s7_aromatherapie (renvoie une chaîne vide), ou limite-toi à recommander un hydrolat doux (aucune contre-indication connue) si un seul semble pertinent.
+Choisis AU MAXIMUM 1 à 2 huiles essentielles (jamais plus, cohérent avec la philosophie "peu mais bien choisi"), en t'appuyant sur les indications listées qui recoupent le mieux les axes prioritaires de la cliente. Tu peux y associer 1 huile végétale (support de dilution ou actif à part entière) et/ou 1 hydrolat si pertinent, notamment pour la peau ou l'usage quotidien doux.
+Pour CHAQUE huile essentielle proposée, tu DOIS systématiquement afficher, à la suite de la recommandation : la voie d'administration, l'âge minimum, ET la précaution/contre-indication telle que fournie dans les données (ne jamais l'omettre, même si tu penses qu'elle n'est pas pertinente pour cette cliente précise) — c'est une exigence de sécurité non négociable : la cliente doit pouvoir se relire et vérifier elle-même qu'aucune contre-indication ne la concerne, y compris une qu'elle n'aurait pas jugé bon de mentionner en consultation.
+Structure attendue pour s7_aromatherapie : 1 phrase d'intro reliant le choix à l'axe prioritaire, puis pour chaque produit : Nom (nom latin) — comment l'utiliser (dilution, dose, fréquence, durée) — Précaution : [texte exact fourni].
+Ne jamais dépasser une dilution de bon sens (jamais pure sur la peau sauf mention explicite contraire dans les données) — rappelle si besoin de diluer dans une huile végétale.
+
+HUILES COMPATIBLES (pré-filtrées, sécurisées pour cette cliente) :
+${d.aroma_candidats || 'Aucune donnée de filtre disponible — ne pas proposer de section aromathérapie.'}
+
 ━━ DONNÉES DE LA SÉANCE ━━
 Cliente : ${d.prenom}${d.nom ? ' ' + d.nom : ''}${d.age ? ', ' + d.age + ' ans' : ''} · Profil : ${d.profil}
 Diagnostics médicaux confirmés : ${d.diagnostics_confirmes || 'Aucun renseigné — travailler sur les symptômes et axes prioritaires uniquement'}${d.sibo_type ? ' · Type de SIBO : ' + d.sibo_type : ''}
@@ -1320,6 +1410,7 @@ Réponds UNIQUEMENT avec le JSON pur, sans markdown, sans backticks.
   "s5_rituels": "Propose un planning de rituels RÉALISTE pour ce profil. Format :\\n\\nMATIN (5-10 min) :\\n• [rituel 1]\\n• [rituel 2]\\n\\nSOIR (5-10 min) :\\n• [rituel 1]\\n• [rituel 2]\\n\\nEN JOURNÉE :\\n• [1-2 gestes simples]\\n\\nHEBDOMADAIRE :\\n• [1 rituel important]\\n\\nPas de salle de sport, pas de matériel. Tout faisable en 10 min max par session.",
 
   "s6_signaux": "1 phrase d'introduction personnalisée (basée sur son objectif exprimé).\\n\\nEn 2 à 4 semaines, vous devriez ressentir :\\n• [signal concret 1 lié à ses axes]\\n• [signal concret 2]\\n• [signal concret 3]\\n\\nÀ 6 semaines :\\n• [changement plus profond]\\n• [signe 2]\\n\\nSi vous ne ressentez aucun changement après 3 semaines : [conseil clair]\\n\\nMot de clôture chaleureux (2-3 phrases, signé Sabrina Castelli / A VITA SERENA — Naturopathe, Porto-Vecchio).",
+  "s7_aromatherapie": "Voir RÈGLE N°7. Chaîne vide si aucune huile compatible pertinente. Sinon : 1 phrase d'intro + pour chaque produit, Nom (latin) — usage précis — Précaution : [texte exact].",
 
 
 }
@@ -1369,6 +1460,9 @@ async function generate() {
       { id:'s5', title:'Votre semaine type & rituels',          pilier:'activite',      content: stripMd(generatedData.s5_rituels || '') },
       { id:'s6', title:'Ce que vous allez ressentir',           pilier:'bilan',         content: stripMd(generatedData.s6_signaux || '') },
     ];
+    if ((generatedData.s7_aromatherapie || '').trim()) {
+      blocks.push({ id:'s7', title:'Votre synergie aromathérapie', pilier:'aromatherapie', content: stripMd(generatedData.s7_aromatherapie) });
+    }
     renderPreview(generatedData, d);
 
   } catch (err) {
@@ -1523,7 +1617,7 @@ function ouvrirProtocole() {
   if (!generatedData || !blocks.length) return;
 
   // Synchroniser le contenu édité dans generatedData
-  const map = { s1:'s1_corps', s2:'s2_axes', s3:'s3_protocole', s4:'s4_alimentation', s5:'s5_rituels', s6:'s6_signaux' };
+  const map = { s1:'s1_corps', s2:'s2_axes', s3:'s3_protocole', s4:'s4_alimentation', s5:'s5_rituels', s6:'s6_signaux', s7:'s7_aromatherapie' };
   blocks.forEach(b => { if (map[b.id]) generatedData[map[b.id]] = b.content; });
 
   localStorage.setItem('avita_phv_print', JSON.stringify({ data: generatedData, blocks }));

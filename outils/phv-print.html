@@ -18,6 +18,7 @@
   --bleu:#2C5E8A;--bleu-cl:#E4EFF8;--bleu-bg:#F1F7FC;
   --or-acc:#8B6010;--or-cl:#FBF3E8;--or-bg:#FEFAF4;
   --rose:#7A3A52;--rose-cl:#F5E8EE;--rose-bg:#FCF5F8;
+  --lavande:#6B5296;--lavande-cl:#EDE8F5;--lavande-bg:#F8F6FC;
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased}
 html{scroll-snap-type:y mandatory;scroll-behavior:smooth;overflow-x:hidden}
@@ -99,6 +100,16 @@ body{font-family:'Be Vietnam Pro',sans-serif;color:var(--ardoise);background:var
 .signal-period{font-size:12px;font-weight:700;letter-spacing:.08em;color:var(--ocre);min-width:120px;padding-top:2px}
 .signal-content{font-size:14.5px;line-height:1.7;color:#3C3830}
 
+/* Aromathérapie — cartes huile + encart précaution toujours visible */
+.aroma-intro{margin-bottom:18px}
+.aroma-card{background:var(--blanc);border:1.5px solid var(--grege);border-radius:16px;padding:20px 22px;margin-bottom:16px}
+.aroma-name{font-family:'Cormorant Garamond',serif;font-weight:600;font-size:19px;color:var(--ardoise);margin-bottom:6px}
+.aroma-usage{font-size:14.5px;line-height:1.7;color:#3C3830;margin-bottom:12px}
+.aroma-precaution{display:flex;gap:10px;align-items:flex-start;background:var(--lavande-bg);border:1.5px solid var(--lavande-cl);border-radius:12px;padding:12px 14px}
+.aroma-precaution .ap-ico{flex-shrink:0;font-size:15px;line-height:1.4}
+.aroma-precaution .ap-txt{font-size:13.5px;line-height:1.6;color:#3C3830}
+.aroma-precaution .ap-txt strong{color:var(--lavande);font-weight:700}
+
 /* ═══ SECTION CTA PROGRAMME ═══ */
 .sec-programme{background:var(--ardoise);color:var(--blanc);text-align:center}
 .programme-inner{max-width:560px}
@@ -171,10 +182,10 @@ let data = null;
 let blocks = [];
 let clientProgramme = null;
 
-const PILIER_ICONS = { alimentation:'🌿', psychologie:'🧠', activite:'🏃', complements:'✦', bilan:'📊', autre:'—' };
-const PILIER_LABELS = { alimentation:'Alimentation', psychologie:'Psychologie & émotions', activite:'Activité physique', complements:'Compléments ciblés', bilan:'Bilan & suivi', autre:'Autre' };
-const SECTION_COLORS = { alimentation:'#3D6B2C', psychologie:'#5C4578', activite:'#2C5E8A', complements:'#8B6010', bilan:'#7A3A52', autre:'#6B6560' };
-const EYEBROW_NAMES = { s1:'Comprendre votre terrain', s2:'Vos axes de travail', s3:'Votre protocole', s4:'Alimentation au quotidien', s5:'Votre semaine type', s6:'Ce que vous allez ressentir' };
+const PILIER_ICONS = { alimentation:'🌿', psychologie:'🧠', activite:'🏃', complements:'✦', aromatherapie:'🌸', bilan:'📊', autre:'—' };
+const PILIER_LABELS = { alimentation:'Alimentation', psychologie:'Psychologie & émotions', activite:'Activité physique', complements:'Compléments ciblés', aromatherapie:'Aromathérapie', bilan:'Bilan & suivi', autre:'Autre' };
+const SECTION_COLORS = { alimentation:'#3D6B2C', psychologie:'#5C4578', activite:'#2C5E8A', complements:'#8B6010', aromatherapie:'#6B5296', bilan:'#7A3A52', autre:'#6B6560' };
+const EYEBROW_NAMES = { s1:'Comprendre votre terrain', s2:'Vos axes de travail', s3:'Votre protocole', s4:'Alimentation au quotidien', s5:'Votre semaine type', s6:'Ce que vous allez ressentir', s7:'Votre synergie aromathérapie' };
 
 function escH(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
@@ -256,6 +267,31 @@ function renderSignals(raw) {
   return html;
 }
 
+function renderAromatherapie(raw) {
+  const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
+  let intro = '', cards = '';
+  const precRe = /précaution\s*:\s*/i;
+  for (const line of lines) {
+    if (precRe.test(line)) {
+      const parts = line.split(precRe);
+      const before = parts[0].trim();
+      const precTxt = parts.slice(1).join(' ').trim();
+      // "Nom (latin) — usage" -> sépare le nom du reste sur le premier tiret long
+      const dashSplit = before.split(/\s[—–-]\s/);
+      const name = dashSplit[0].trim();
+      const usage = dashSplit.slice(1).join(' — ').trim();
+      cards += `<div class="aroma-card">
+        <div class="aroma-name">${escH(name)}</div>
+        ${usage ? `<div class="aroma-usage">${escH(usage)}</div>` : ''}
+        <div class="aroma-precaution"><span class="ap-ico">⚠️</span><span class="ap-txt"><strong>Précaution :</strong> ${escH(precTxt)}</span></div>
+      </div>`;
+    } else if (!/^[•·\-–→*]/.test(line)) {
+      intro += `<p class="aroma-intro">${escH(line)}</p>`;
+    }
+  }
+  return intro + cards;
+}
+
 /* ══════════════════════════════════════
    CONSTRUCTION DU DOCUMENT IMMERSIF
 ══════════════════════════════════════ */
@@ -290,6 +326,7 @@ function buildImmersive() {
     let bodyHtml;
     if (b.id === 's5') bodyHtml = renderRituals(b.content || '');
     else if (b.id === 's6') bodyHtml = renderSignals(b.content || '');
+    else if (b.id === 's7') bodyHtml = renderAromatherapie(b.content || '');
     else bodyHtml = parseContent(b.content || '', color);
 
     html += `
