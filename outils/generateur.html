@@ -693,34 +693,16 @@ input.fi[readonly]{background:var(--taupe);cursor:default;opacity:.75}
   </div>
 </div>
 
-<!-- ═══ BILANS BIOLOGIQUES ═══ -->
+<!-- ═══ BILANS BIOLOGIQUES — SUGGESTION IA (USAGE INTERNE) ═══ -->
 <div class="sec-title">
-  <div class="sec-num">09 · Compléter le tableau</div>
-  <div class="sec-h">🧬 Bilans biologiques à recommander</div>
-  <div class="sec-sub">Cochez les examens à recommander à son médecin — chacun sera intégré au protocole avec une justification personnalisée.</div>
+  <div class="sec-num">09 · Analyse IA</div>
+  <div class="sec-h">🧬 Bilans biologiques suggérés — usage interne</div>
+  <div class="sec-sub">L'IA analyse l'ensemble du questionnaire déjà rempli et vous suggère les bilans à faire prescrire, classés du plus important au moins important, avec une phrase de justification clinique chacun. Non remboursés par la Sécurité sociale — la priorisation vous aide à orienter le budget de votre cliente. <strong>Cette suggestion reste strictement à votre usage : elle n'apparaît jamais dans le protocole remis à la cliente.</strong></div>
 </div>
 <div class="field-card">
-  <div class="p-toggle-group" id="bilans-group">
-    <button class="p-toggle" data-val="Thyroïde complète (TSH + T3L + T4L + Anti-TPO)" onclick="this.classList.toggle('on')">🦋 Thyroïde complète</button>
-    <button class="p-toggle" data-val="Bilan martial (Ferritine + NFS)" onclick="this.classList.toggle('on')">🩸 Bilan martial</button>
-    <button class="p-toggle" data-val="Vitamine D (25-OH)" onclick="this.classList.toggle('on')">☀️ Vitamine D</button>
-    <button class="p-toggle" data-val="Cortisol salivaire 4 points" onclick="this.classList.toggle('on')">⚡ Cortisol salivaire</button>
-    <button class="p-toggle" data-val="Bilan hormonal J3 (FSH, LH, Estradiol, Progestérone J21)" onclick="this.classList.toggle('on')">🌸 Hormonal J3</button>
-    <button class="p-toggle" data-val="Glycémie + Insuline à jeun + HbA1c" onclick="this.classList.toggle('on')">🩺 Glycémie & insuline</button>
-    <button class="p-toggle" data-val="Magnésium érythrocytaire" onclick="this.classList.toggle('on')">💊 Magnésium globulaire</button>
-    <button class="p-toggle" data-val="B12 active (holotranscobalamine)" onclick="this.classList.toggle('on')">💉 B12 active</button>
-    <button class="p-toggle" data-val="CRP ultrasensible (inflammation)" onclick="this.classList.toggle('on')">🔥 CRP us</button>
-    <button class="p-toggle" data-val="Zinc & Sélénium" onclick="this.classList.toggle('on')">⚗️ Zinc & Sélénium</button>
-    <button class="p-toggle" data-val="Test SIBO respiratoire (gastro-entérologue)" onclick="this.classList.toggle('on')">🔬 Test SIBO</button>
-    <button class="p-toggle" data-val="Bilan SOPK (AMH, Testostérone libre, SHBG, DHEA-S)" onclick="this.classList.toggle('on')">⚖️ Bilan SOPK</button>
-    <button class="p-toggle" data-val="Homocystéine" onclick="this.classList.toggle('on')">🧪 Homocystéine</button>
-    <button class="p-toggle" data-val="Bilan hépatique (ASAT, ALAT, GGT)" onclick="this.classList.toggle('on')">🍃 Bilan hépatique</button>
-  </div>
-  <div style="margin-top:14px">
-    <label class="fl">Justification clinique à citer dans le protocole</label>
-    <textarea class="fi" id="bilans-justif" placeholder="Ex : Ferritine à recommander car règles abondantes + fatigue persistante + chute de cheveux. Thyroïde car frilosité + queue du sourcil + TSH jamais vérifiée. Insuline car acné + prise de poids malgré alimentation correcte…"></textarea>
-    <p class="field-hint">Ces éléments seront insérés dans le protocole pour expliquer à la cliente POURQUOI on lui recommande ces bilans.</p>
-  </div>
+  <button class="btn primary" id="bilans-suggest-btn" onclick="suggererBilans()" type="button">🔬 Analyser le questionnaire et suggérer les bilans</button>
+  <div id="bilans-loading" style="display:none;margin-top:14px;font-size:13px;color:var(--gris);font-style:italic">Analyse du questionnaire en cours…</div>
+  <div id="bilans-result" style="display:none;margin-top:16px"></div>
 </div>
 
 <!-- ═══ APPROCHES DÉJÀ TESTÉES ═══ -->
@@ -1048,12 +1030,8 @@ function buildClientData() {
   const axesBtns = document.querySelectorAll('#axes-group .p-toggle.on');
   const axesSelectionnes = [...axesBtns].map(b => b.dataset.val).join(', ') || 'Non précisé';
 
-  // Collecter les bilans sélectionnés
-  const bilansBtns = document.querySelectorAll('#bilans-group .p-toggle.on');
-  const bilansSelectionnes = [...bilansBtns].map(b => b.dataset.val).join(' | ') || '';
-
   // Collecter les gestes alimentaires cochés
-  const gestesBtns = document.querySelectorAll('.p-toggle-group:not(#axes-group):not(#bilans-group) .p-toggle:not(.obj-toggle).on');
+  const gestesBtns = document.querySelectorAll('.p-toggle-group:not(#axes-group) .p-toggle:not(.obj-toggle).on');
   const gestesAlim = [...gestesBtns].map(b => b.dataset.val).filter(Boolean).join(', ') || '';
 
   // Collecter les diagnostics confirmés
@@ -1156,10 +1134,155 @@ function buildClientData() {
     // Bien-être
     motiv_stress: gv('motiv-stress') || s.motivation?.match(/Gestion stress: ([^|]+)/)?.[1]?.trim() || '',
     motiv_entourage: gv('motiv-entourage') || s.motivation?.match(/Entourage: ([^|]+)/)?.[1]?.trim() || '',
-    // Bilans
-    bilans_a_recommander: bilansSelectionnes || s.bilans_recommandes || '',
-    bilans_justif: gv('bilans-justif'),
   };
+}
+
+// ══════════════════════════════════════════════════════════
+// SUGGESTION IA DES BILANS BIOLOGIQUES — USAGE PRATICIEN UNIQUEMENT
+// Ce résultat n'est JAMAIS inclus dans le PHV remis à la cliente :
+// stocké dans une variable séparée (dernierResultatBilans), jamais
+// injecté dans `blocks` ni dans generatedData qui alimentent l'export/impression.
+// ══════════════════════════════════════════════════════════
+let dernierResultatBilans = null;
+
+// Liste de référence des bilans que Sabrina utilise couramment (issue de sa pratique
+// et de ses formations DFM Duo Pratik modules 1 & 2). Sert de base à l'IA — elle peut
+// s'en écarter si un examen plus pertinent et standard n'y figure pas, mais ne doit
+// jamais inventer un nom de dosage fantaisiste.
+const BILANS_REFERENCE = [
+  'Thyroïde complète (TSH + T3L + T4L + Anti-TPO + Anti-TG)',
+  'Bilan martial (Ferritine + NFS + Transferrine)',
+  'Vitamine D (25-OH)',
+  'Cortisol salivaire 4 points (ou cortisol/DHEA urinaire)',
+  'Bilan hormonal J3 (FSH, LH, Estradiol) + Progestérone J21',
+  'Glycémie à jeun + Insuline à jeun + HbA1c',
+  'Magnésium érythrocytaire',
+  'Homocystéine',
+  'B12 active (holotranscobalamine)',
+  'B9 (folates) érythrocytaires — jamais sériques, reflet des 4 derniers mois',
+  'CRP ultrasensible (inflammation de fond)',
+  'Zinc & Sélénium (sanguins)',
+  'Test SIBO respiratoire (H2/CH4, gastro-entérologue)',
+  'Bilan SOPK (AMH, Testostérone libre, SHBG, DHEA-S)',
+  'Bilan hépatique (ASAT, ALAT, GGT)',
+  'Dosage urinaire des métaux lourds (laboratoire spécialisé)',
+  'Dosage urinaire du glyphosate',
+  'Bilan des acides biliaires (AGC, AGCDC, ATC)',
+  'Zonuline / LBP (perméabilité intestinale)',
+  'Calprotectine fécale',
+  'Indican / DMI (dysbiose de putréfaction)',
+].join('\n- ');
+
+function buildPromptBilans(d) {
+  return `Tu es l'assistante clinique interne de Sabrina Castelli, naturopathe diplômée (A VITA SERENA, Porto-Vecchio), spécialisée en SIBO/SII, endométriose, ménopause/périménopause, SOPK et thyroïde/Hashimoto, formée en micronutrition (DFM Duo Pratik). Ce que tu produis ici n'est JAMAIS lu par la cliente — c'est une aide de travail strictement interne, pour que Sabrina n'ait plus à cocher elle-même une liste de bilans après chaque séance.
+
+━━ TA MISSION ━━
+Analyse l'intégralité des données de séance ci-dessous et propose les bilans biologiques à faire prescrire par le médecin de la cliente, CLASSÉS DU PLUS IMPORTANT AU MOINS IMPORTANT cliniquement. Pour chaque bilan, UNE SEULE phrase de justification, ancrée précisément dans ce que la cliente a exprimé ou coché dans le questionnaire (pas de généralité).
+
+━━ RÈGLES ━━
+1. Classement strict par priorité clinique décroissante (le bilan n°1 doit être celui qui, s'il est positif, changerait le plus la suite du protocole).
+2. Ces bilans ne sont pour la plupart PAS remboursés par la Sécurité sociale — c'est justement pourquoi la priorisation compte : la cliente doit pouvoir choisir où mettre son budget en premier si elle ne peut pas tout faire d'un coup. Tu peux le rappeler brièvement une fois en introduction, pas à chaque ligne.
+3. Ne propose que des bilans réellement justifiés par les données — 3 bilans bien argumentés valent mieux que 10 par réflexe. N'en propose pas plus de 8.
+4. Base-toi en priorité sur cette liste de référence (celle que Sabrina utilise couramment), sans t'y limiter strictement si un examen standard clairement pertinent n'y figure pas :
+- ${BILANS_REFERENCE}
+5. Justification = 1 phrase, précise, qui cite le mécanisme physiologique ET l'élément du questionnaire qui la motive (ex : "Ferritine + NFS — fatigue chronique, règles abondantes et chute de cheveux diffuse évoquent une carence martiale probable").
+6. Si les données sont trop pauvres pour identifier un axe clair, dis-le honnêtement plutôt que d'inventer des priorités.
+7. Réponds UNIQUEMENT en JSON valide, sans texte avant ni après, sans balises markdown, selon ce format exact :
+{"intro": "1 phrase de synthèse du profil clinique dominant qui motive ces choix", "bilans": [{"nom": "Nom exact du bilan", "priorite": 1, "justification": "1 phrase précise"}]}
+
+━━ DONNÉES DE LA SÉANCE ━━
+Cliente : ${d.prenom}${d.age ? ', ' + d.age + ' ans' : ''} · Profil : ${d.profil}
+Diagnostics médicaux confirmés : ${d.diagnostics_confirmes || 'Aucun renseigné'}${d.sibo_type ? ' · Type de SIBO : ' + d.sibo_type : ''}
+Antécédents résolus (non actifs) : ${d.antecedents_resolus || '—'}
+Durée des déséquilibres : ${d.duree_symptomes}
+Ressentis & motifs : ${d.motifs}
+Scores de vitalité : ${d.scores}
+Signaux cochés en séance : ${d.symptomes_coches}
+Puces & chips cochées : ${d.chips}
+Alimentation & mode de vie : ${d.alimentation}
+Cycle, gynécologie, thyroïde : ${d.gyneco}
+⚠️ Médicaments & allergies : ${d.medics_allergies || 'Non renseigné'}
+
+📋 TOUTES LES SÉLECTIONS DU QUESTIONNAIRE :
+${d.selects_complets || '— Non renseigné'}
+
+📝 NOTES & TEXTES LIBRES DU QUESTIONNAIRE :
+${d.textes_libres || '— Non renseigné'}
+
+🔬 ANALYSE CAUSALE PRATICIEN :
+${d.notes_praticien || '— Non renseigné'}
+
+🕰️ LIGNE DE VIE & DÉCLENCHEURS :
+${d.lifeline || '— Non renseigné'}`;
+}
+
+async function suggererBilans() {
+  if (!AIClient.hasKey()) { alert('Veuillez d\'abord entrer votre clé API Anthropic.'); return; }
+  const d = buildClientData();
+
+  document.getElementById('bilans-suggest-btn').disabled = true;
+  document.getElementById('bilans-loading').style.display = 'block';
+  document.getElementById('bilans-result').style.display = 'none';
+
+  try {
+    const raw = (await AIClient.generate(buildPromptBilans(d), { maxTokens: 3000 })).replace(/```json|```/g, '').trim();
+    const parsed = parseJSONRobuste(raw);
+    dernierResultatBilans = parsed;
+    renderBilansSuggestion(parsed);
+  } catch (err) {
+    document.getElementById('bilans-result').style.display = 'block';
+    document.getElementById('bilans-result').innerHTML = `
+      <div style="background:#FBEAEA;border:1.5px solid #C0392B;border-radius:12px;padding:16px 18px;font-size:13px;color:#8B3A3A">
+        ⚠ L'analyse a échoué (${err.message}). <button class="btn" style="margin-left:8px" onclick="suggererBilans()">↻ Réessayer</button>
+      </div>`;
+  } finally {
+    document.getElementById('bilans-loading').style.display = 'none';
+    document.getElementById('bilans-suggest-btn').disabled = false;
+  }
+}
+
+function renderBilansSuggestion(data) {
+  const wrap = document.getElementById('bilans-result');
+  const bilans = (data.bilans || []).slice().sort((a, b) => (a.priorite || 99) - (b.priorite || 99));
+  // Par défaut, tous les bilans suggérés sont retenus — le praticien décoche ceux avec lesquels il n'est pas d'accord.
+  bilans.forEach(b => { if (b.retenu === undefined) b.retenu = true; });
+  data.bilans = bilans; // conserve l'ordre trié + l'état retenu dans dernierResultatBilans
+
+  wrap.innerHTML = `
+    <div style="background:#FFF7EC;border:1px solid #D4860A;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:11px;color:#5A3A00;font-weight:600;letter-spacing:.04em;text-transform:uppercase">🔒 Usage interne — jamais inclus dans le protocole remis à la cliente</div>
+    ${data.intro ? `<div style="font-size:13px;color:var(--ardoise);font-style:italic;margin-bottom:16px;line-height:1.6">${data.intro}</div>` : ''}
+    <div style="font-size:11px;color:var(--gris);margin-bottom:8px;font-style:italic">Cliquez sur un bilan pour le décocher si vous n'êtes pas d'accord — seuls les bilans cochés seront inclus dans la copie ci-dessous.</div>
+    <div id="bilans-list" style="display:flex;flex-direction:column;gap:10px">
+      ${bilans.map((b, i) => `
+        <div class="bilan-card" data-idx="${i}" onclick="toggleBilanRetenu(${i})" style="cursor:pointer;display:flex;gap:12px;align-items:flex-start;background:var(--blanc);border:1px solid var(--taupe);border-radius:10px;padding:12px 16px;transition:opacity .15s,border-color .15s;${b.retenu ? '' : 'opacity:.45'}">
+          <div style="flex-shrink:0;width:22px;height:22px;border-radius:6px;border:1.5px solid var(--ocre);background:${b.retenu ? 'var(--ocre)' : 'var(--blanc)'};color:var(--blanc);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:2px">${b.retenu ? '✓' : ''}</div>
+          <div style="flex-shrink:0;width:26px;height:26px;border-radius:50%;background:var(--or-clair);border:1px solid var(--ocre);color:var(--ardoise);font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center">${b.priorite || '—'}</div>
+          <div>
+            <div style="font-weight:700;font-size:13px;color:var(--ardoise);margin-bottom:3px">${b.nom || ''}</div>
+            <div style="font-size:12.5px;color:var(--gris);line-height:1.5">${b.justification || ''}</div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+    <button class="btn" style="margin-top:14px" type="button" onclick="copierBilansRetenus(event)">📋 Copier la liste retenue</button>`;
+  wrap.style.display = 'block';
+  wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function toggleBilanRetenu(idx) {
+  if (!dernierResultatBilans?.bilans?.[idx]) return;
+  dernierResultatBilans.bilans[idx].retenu = !dernierResultatBilans.bilans[idx].retenu;
+  renderBilansSuggestion(dernierResultatBilans);
+}
+
+function copierBilansRetenus(evt) {
+  const retenus = (dernierResultatBilans?.bilans || []).filter(b => b.retenu);
+  if (!retenus.length) { alert('Aucun bilan retenu à copier.'); return; }
+  const texte = retenus.map(b => `${b.priorite}. ${b.nom} — ${b.justification}`).join('\n');
+  navigator.clipboard.writeText(texte).then(() => {
+    const btn = evt?.target;
+    if (btn) { const old = btn.textContent; btn.textContent = '✓ Copié'; setTimeout(() => btn.textContent = old, 1800); }
+  }).catch(() => alert('Impossible de copier — voici la liste :\n\n' + texte));
 }
 
 // ── Détection SIBO méthane (IMO) avéré ──
@@ -1389,10 +1512,8 @@ ${d.notes_praticien || '— Non renseigné'}
 - Prête à intégrer des pratiques de gestion du stress : ${d.motiv_stress || '— voir prédispositions ci-dessus'}
 - Soutien de l'entourage : ${d.motiv_entourage || '— voir prédispositions ci-dessus'}
 
-🧬 BILANS BIOLOGIQUES À RECOMMANDER DANS LE PROTOCOLE
-${d.bilans_a_recommander ? '• ' + d.bilans_a_recommander.split(' | ').join('\n• ') : '— Aucun bilan sélectionné'}
-Justification clinique à citer : ${d.bilans_justif || '— Non précisé'}
-⚠️ Pour chaque bilan recommandé, expliquer à la cliente POURQUOI on le recommande en citant SES symptômes spécifiques (ex: « Je vous recommande un bilan thyroïdien complet car vous m'avez décrit une frilosité permanente, une chute de cheveux et une fatigue qui résiste au sommeil — ce sont des signaux que votre thyroïde mérite d'être explorée plus finement. »). Si aucun bilan n'est sélectionné, ne pas en recommander dans le protocole.
+⚠️ BILANS BIOLOGIQUES — NE JAMAIS EN PARLER DANS CE DOCUMENT
+Les bilans à recommander sont gérés séparément par la praticienne, en dehors de ce protocole (analyse IA dédiée, usage interne uniquement). Tu ne dois JAMAIS nommer un examen biologique précis (nom de dosage, marqueur, analyse de laboratoire) ni suggérer à la cliente de demander un bilan à son médecin dans les sections s1 à s7. Si un manque nutritionnel est évoqué dans la cascade explicative (s1/s2), reste au niveau du mécanisme et du geste concret (alimentation, complément) — jamais "faites doser votre X".
 
 ━━ RÈGLE N°6 — SÉCURITÉ JSON (IMPÉRATIF, NE JAMAIS ENFREINDRE) ━━
 Le texte que tu rédiges est intégré tel quel dans des valeurs de chaîne JSON. Pour que le document ne casse JAMAIS techniquement :
