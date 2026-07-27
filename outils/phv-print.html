@@ -58,23 +58,29 @@ body{font-family:'Be Vietnam Pro',sans-serif;color:var(--ardoise);background:var
 
 /* ═══ COVER ═══ */
 .sec-cover{background:var(--ardoise);color:var(--blanc);text-align:center}
-.sec-cover::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 60% 50% at 50% 40%,rgba(196,168,130,.1),transparent 70%);pointer-events:none}
+.sec-cover::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 65% 55% at 50% 38%,rgba(196,168,130,.16),transparent 70%),radial-gradient(ellipse 50% 40% at 50% 100%,rgba(155,114,48,.1),transparent 70%);pointer-events:none}
 .cover-inner{position:relative;z-index:1;max-width:600px}
-.cover-logo{color:var(--sable);margin-bottom:32px;opacity:0;animation:fi .7s .2s ease forwards}
-.cover-logo svg{height:22px;width:auto;display:block;margin:0 auto}
+.cover-logo{color:var(--blanc);margin-bottom:36px;opacity:0;animation:fi .7s .2s ease forwards;position:relative}
+.cover-logo svg{position:relative;z-index:1;height:54px;width:auto;display:block;margin:0 auto}
 .cover-rule{width:48px;height:2px;background:linear-gradient(90deg,var(--sable),var(--or));margin:0 auto 28px;opacity:0;animation:fi .7s .3s ease forwards}
 .cover-eyebrow{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--sable);font-weight:600;margin-bottom:14px;opacity:0;animation:fi .7s .35s ease forwards}
 .cover-prenom{font-family:'Cormorant Garamond',serif;font-weight:500;font-size:clamp(36px,7vw,64px);line-height:1.1;margin-bottom:10px;opacity:0;animation:fi .7s .45s ease forwards}
 .cover-titre{font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:400;font-size:clamp(18px,3vw,24px);color:rgba(255,255,255,.55);margin-bottom:32px;opacity:0;animation:fi .7s .55s ease forwards}
 .cover-date{font-size:12px;color:rgba(255,255,255,.35);letter-spacing:.1em;opacity:0;animation:fi .7s .65s ease forwards}
-.cover-scroll{position:absolute;bottom:40px;left:50%;transform:translateX(-50%);font-size:12px;color:rgba(255,255,255,.3);letter-spacing:.1em;animation:fi .7s .8s ease forwards,bounce 2.5s 1.5s ease-in-out infinite;opacity:0}
+.cover-scroll-btn{position:absolute;bottom:36px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:10px;opacity:0;animation:fi .7s .9s ease forwards;cursor:pointer;background:none;border:none;padding:6px;font-family:'Be Vietnam Pro',sans-serif}
+.cover-scroll-btn .csb-label{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.6);font-weight:600}
+.cover-scroll-btn .csb-ring{width:46px;height:46px;border-radius:50%;border:1.5px solid rgba(196,168,130,.45);display:flex;align-items:center;justify-content:center;animation:scrollBounce 2s ease-in-out infinite;transition:border-color .2s,background .2s}
+.cover-scroll-btn:hover .csb-ring{border-color:var(--sable);background:rgba(196,168,130,.1)}
+.cover-scroll-btn .csb-ring svg{width:17px;height:17px;color:var(--sable)}
+@keyframes scrollBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(7px)}}
 @keyframes fi{to{opacity:1}}
-@keyframes bounce{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(8px)}}
 
 /* ═══ BLOC CONTENU ═══ */
 .sec-content{flex-direction:column;text-align:left}
 .sec-inner{max-width:680px;width:100%}
-.sec-eyebrow{font-size:11px;letter-spacing:.22em;text-transform:uppercase;font-weight:700;margin-bottom:14px}
+.sec-eyebrow{font-size:14px;letter-spacing:.16em;text-transform:uppercase;font-weight:800;margin-bottom:16px;display:flex;align-items:center;gap:9px}
+.eyebrow-ico{color:var(--ocre);display:inline-flex;flex-shrink:0}
+.eyebrow-ico svg{width:17px;height:17px;display:block}
 .sec-title{font-family:'Cormorant Garamond',serif;font-weight:500;font-size:clamp(26px,4.5vw,38px);line-height:1.2;color:var(--ardoise);margin-bottom:24px}
 .sec-body{font-size:15.5px;line-height:1.8;color:#3C3830}
 .sec-body p{margin-bottom:14px}
@@ -203,7 +209,7 @@ body{font-family:'Be Vietnam Pro',sans-serif;color:var(--ardoise);background:var
 /* ═══ IMPRESSION ═══ */
 @media print{
   html{scroll-snap-type:none}
-  .prog,.topnav,.dots,.cover-scroll,.sec-programme,.sec-disclaimer,.topnav-actions,.reco-bar,.reco-controls,.reco-raison{display:none!important}
+  .prog,.topnav,.dots,.cover-scroll-btn,.sec-programme,.sec-disclaimer,.topnav-actions,.reco-bar,.reco-controls,.reco-raison{display:none!important}
   .sec{min-height:auto;page-break-after:always;padding:40px 32px}
   .sec-cover{page-break-after:always;min-height:100vh}
   .sec-content{page-break-inside:avoid}
@@ -277,7 +283,15 @@ let clientIdentity = {prenom:'', nom:'', ddn:''};
 let currentClientKey = null;
 const PILIERS_SANS_RECO = ['bilan']; // sections d'analyse/observation — pas des recommandations à valider/refuser
 
-const PILIER_ICONS = { alimentation:'🌿', psychologie:'🧠', activite:'🏃', complements:'✦', aromatherapie:'🌸', bilan:'📊', autre:'—' };
+const PILIER_ICONS = {
+  alimentation: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16c0-7 4-11 11-11 1 6-2 11-9 11-1 0-2 0-2 0z"/><path d="M6 15c2-3 4-5 8-8"/></svg>',
+  psychologie: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5c1.5-2 3-2 4.5 0s3 2 4.5 0 3-2 4.5 0"/><path d="M3 12.5c1.5-2 3-2 4.5 0s3 2 4.5 0 3-2 4.5 0"/></svg>',
+  activite: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="4" r="1.5" fill="currentColor" stroke="none"/><path d="M9 8l2 2-1 4 3 3M11.5 10l3-1 2 3M6.5 12.5l2.5-2.5"/></svg>',
+  complements: '<svg viewBox="0 0 20 20" fill="currentColor" stroke="none"><path d="M10 2c.5 3 1.5 5.5 4 6.5-2.5 1-3.5 3.5-4 6.5-.5-3-1.5-5.5-4-6.5 2.5-1 3.5-3.5 4-6.5z"/></svg>',
+  aromatherapie: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3c3 4 5 7 5 9.5a5 5 0 0 1-10 0C5 10 7 7 10 3z"/></svg>',
+  bilan: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16V11M10 16V6M16 16V9"/></svg>',
+  autre: '<svg viewBox="0 0 20 20" fill="currentColor" stroke="none"><circle cx="10" cy="10" r="1.6"/></svg>'
+};
 const PILIER_LABELS = { alimentation:'Alimentation', psychologie:'Psychologie & émotions', activite:'Activité physique', complements:'Compléments ciblés', aromatherapie:'Aromathérapie', bilan:'Bilan & suivi', autre:'Autre' };
 const SECTION_COLORS = { alimentation:'#3D6B2C', psychologie:'#5C4578', activite:'#2C5E8A', complements:'#8B6010', aromatherapie:'#6B5296', bilan:'#7A3A52', autre:'#6B6560' };
 const EYEBROW_NAMES = { s1:'Comprendre votre terrain', s2:'Vos axes de travail', s3:'Votre protocole', s4:'Alimentation au quotidien', s5:'Votre semaine type', s6:'Ce que vous allez ressentir', s7:'Votre synergie aromathérapie' };
@@ -346,8 +360,8 @@ function parseContentPlain(raw, accentColor) {
   for (const line of lines) {
     const l = line.trim();
     if (!l) { if (inBullets) { html += '</ul>'; inBullets = false; } continue; }
-    if (/^[•·\-–→*]/.test(l)) {
-      const texte = l.replace(/^[•·\-–→*]\s*/,'').trim();
+    if (/^[•·◦\-–→*]/.test(l)) {
+      const texte = l.replace(/^[•·◦\-–→*]\s*/,'').trim();
       if (!texte || /^[-–—]+$/.test(texte)) continue;
       if (!inBullets) { html += '<ul>'; inBullets = true; }
       html += renderSubBullet(texte, bulletCol);
@@ -393,6 +407,13 @@ function parseContent(raw, accentColor, pilier) {
   function flushCard(){
     if (!card) return;
     closeList(card);
+    // Une étape numérotée seule (aucune étape 2, 3…) n'a pas de sens à afficher comme "1" isolé — puce simple à la place
+    if (card.stepNum === 1) {
+      card.itemsHtml = card.itemsHtml.replace(
+        /<li class="reco-step"><span class="step-num">1<\/span>/,
+        `<li><span class="bd" style="background:${bulletCol}"></span>`
+      );
+    }
     const introBlock = card.introHtml ? `<div class="reco-card-intro">${card.introHtml}</div>` : '';
     const itemsBlock = card.itemsHtml ? `<div class="reco-card-items">${card.itemsHtml}</div>` : '';
     let head;
@@ -410,6 +431,31 @@ function parseContent(raw, accentColor, pilier) {
   for (const rawLine of lines) {
     const l = rawLine.trim();
     if (!l) continue; // simple séparateur entre lignes — ne referme pas un groupe en cours
+
+    // Puce "◦" — sous-information explicite (RÈGLE N°1ter du générateur) : TOUJOURS non-cochable, rattachée à la carte en cours.
+    // Signal fiable à 100% pour les protocoles générés après cette mise à jour — pas de devinette nécessaire.
+    if (/^◦/.test(l)) {
+      const texte = l.replace(/^◦\s*/,'').trim();
+      if (texte && card) {
+        card.hasBulletDetail = true;
+        const c = classifyBullet(texte); // ne sert plus qu'à choisir l'HABILLAGE visuel (étape numérotée / libellé gras / puce simple)
+        if (c.kind === 'step') {
+          openList(card);
+          card.stepNum++;
+          card.itemsHtml += `<li class="reco-step"><span class="step-num">${card.stepNum}</span><span>${escH(texte)}</span></li>`;
+        } else if (c.kind === 'label') {
+          openList(card);
+          card.itemsHtml += renderSubBullet(texte, bulletCol);
+        } else {
+          openList(card);
+          card.itemsHtml += `<li><span class="bd" style="background:${bulletCol}"></span><span>${escH(texte)}</span></li>`;
+        }
+      } else if (texte) {
+        // "◦" isolée sans carte ouverte (cas limite) : simple ligne d'information, jamais cochable
+        html += `<p>${escH(texte)}</p>`;
+      }
+      continue;
+    }
 
     if (/^[•·\-–→*]/.test(l)) {
       const texte = l.replace(/^[•·\-–→*]\s*/,'').trim();
@@ -692,7 +738,7 @@ function buildImmersive() {
   const prenom = cl.prenom || 'Cliente';
   setClientIdentity(currentClientKey, cl);
   const dateStr = new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'});
-  const sousTitre = data.sous_titre || "Protocole d'Hygiène Vitale";
+  const sousTitre = (data.sous_titre || "Protocole d'Hygiène Vitale").replace(/\s*[·•-]\s*A\s?VITA\s?SERENA\s*$/i, '').trim();
 
   let html = '';
 
@@ -714,18 +760,21 @@ function buildImmersive() {
   <path d="M103.04,42.59h6.46l-8.47,29.04s-1.82,5.64,1.82,3.73c3.64-1.91,6.3-5.6,6.3-5.6l-.84,1.5s-5.8,10.44-11.84,8.29c-5.1-1.82,6.56-36.97,6.56-36.97Z"/>
   <path d="M120.54,42.59h6.46l-8.47,29.04s-1.82,5.64,1.82,3.73,6.3-5.6,6.3-5.6l-.84,1.5s-5.8,10.44-11.84,8.29c-5.1-1.82,6.56-36.97,6.56-36.97Z"/></svg></div>
       <div class="cover-rule"></div>
-      <div class="cover-eyebrow">Protocole d'Hygiène Vitale</div>
+      <div class="cover-eyebrow">✦ &nbsp;Protocole d'Hygiène Vitale</div>
       <div class="cover-prenom">${escH(prenom)}</div>
       <div class="cover-titre">${escH(sousTitre)}</div>
       <div class="cover-date">${dateStr} · Sabrina Castelli, Naturopathe</div>
     </div>
-    <div class="cover-scroll">↓ Faites défiler</div>
+    <button type="button" class="cover-scroll-btn" onclick="document.getElementById('sec-1').scrollIntoView({behavior:'smooth'})">
+      <span class="csb-ring"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+      <span class="csb-label">Découvrir votre protocole</span>
+    </button>
   </section>`;
 
   // ── SECTIONS CONTENU ──
   blocks.forEach((b, i) => {
     const color = SECTION_COLORS[b.pilier] || '#6B6560';
-    const icon = PILIER_ICONS[b.pilier] || '—';
+    const icon = PILIER_ICONS[b.pilier] || PILIER_ICONS.autre;
     const eyebrow = EYEBROW_NAMES[b.id] || PILIER_LABELS[b.pilier] || '';
     let bodyHtml;
     if (b.id === 's5') bodyHtml = renderRituals(b.content || '');
@@ -735,7 +784,7 @@ function buildImmersive() {
     html += `
   <section class="sec sec-content" id="sec-${i+1}">
     <div class="sec-inner">
-      <div class="sec-eyebrow" style="color:${color}">${icon} &nbsp;${escH(eyebrow)}</div>
+      <div class="sec-eyebrow" style="color:${color}"><span class="eyebrow-ico">${icon}</span>${escH(eyebrow)}</div>
       <div class="sec-title">${escH(b.title || '')}</div>
       <div class="sec-body">${bodyHtml}</div>
     </div>
