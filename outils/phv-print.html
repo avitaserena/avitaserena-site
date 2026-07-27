@@ -116,17 +116,28 @@ body{font-family:'Be Vietnam Pro',sans-serif;color:var(--ardoise);background:var
 .sec-body .reco-card.is-oui{border-color:var(--vert-cl);background:var(--vert-bg)}
 .sec-body .reco-card.is-non{border-color:var(--rose-cl);background:var(--rose-bg)}
 .reco-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.reco-card-head-plain{padding-bottom:2px}
 .reco-card-title{font-family:'Cormorant Garamond',serif;font-weight:600;font-size:19.5px;line-height:1.35;flex:1}
-.reco-card-body{margin-top:12px}
-.reco-card-body p{font-size:14.5px;line-height:1.75;color:#4A453E;margin-bottom:10px}
-.reco-card-body p:last-child{margin-bottom:0}
-.reco-card-body ul{list-style:none;padding:0;margin:10px 0 0}
-.reco-card-body li{display:flex;align-items:flex-start;gap:9px;font-size:14px;line-height:1.7;color:#4A453E;padding:4px 0}
-.reco-card-body li .bd{width:5px;height:5px;border-radius:50%;background:var(--taupe);flex-shrink:0;margin-top:9px}
-.reco-card-body li strong{color:var(--ardoise);font-weight:700}
-.reco-card-body li.reco-warning{background:var(--lavande-bg);border:1px solid var(--lavande-cl);border-radius:10px;padding:10px 12px;margin-top:8px}
-.reco-card-body li.reco-warning .wi{flex-shrink:0;font-size:14px;line-height:1.5}
-.reco-card-body li.reco-warning strong{color:var(--lavande)}
+.reco-card-intro{margin-top:12px}
+.reco-card-intro p{font-size:14.5px;line-height:1.75;color:#4A453E;margin-bottom:10px}
+.reco-card-intro p:last-child{margin-bottom:0}
+.reco-card-items{margin-top:14px}
+.reco-card-items ul{list-style:none;padding:0;margin:0 0 4px}
+.reco-card-items > ul + .reco-subcheck,.reco-card-items > .reco-subcheck + ul{margin-top:10px}
+.reco-card-items li{display:flex;align-items:flex-start;gap:9px;font-size:14px;line-height:1.7;color:#4A453E;padding:4px 0}
+.reco-card-items li .bd{width:5px;height:5px;border-radius:50%;background:var(--taupe);flex-shrink:0;margin-top:9px}
+.reco-card-items li strong{color:var(--ardoise);font-weight:700}
+.reco-card-items li.reco-warning{background:var(--lavande-bg);border:1px solid var(--lavande-cl);border-radius:10px;padding:10px 12px;margin-top:8px}
+.reco-card-items li.reco-warning .wi{flex-shrink:0;font-size:14px;line-height:1.5}
+.reco-card-items li.reco-warning strong{color:var(--lavande)}
+.reco-card-items li.reco-step .step-num{flex-shrink:0;width:19px;height:19px;border-radius:50%;background:var(--grege);color:var(--ardoise);font-size:10.5px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:1px}
+/* Recommandation cochable imbriquée dans une carte (ex. options de petit-déjeuner, aliments à éviter) */
+.reco-card-items .reco-subcheck{display:flex;align-items:center;gap:12px;padding:10px 12px;margin-bottom:8px;border-radius:11px;background:var(--off);border:1px solid var(--grege);transition:background .2s,border-color .2s}
+.reco-card-items .reco-subcheck:last-child{margin-bottom:0}
+.reco-card-items .reco-subcheck.is-oui{background:var(--vert-bg);border-color:var(--vert-cl)}
+.reco-card-items .reco-subcheck.is-non{background:var(--rose-bg);border-color:var(--rose-cl)}
+.reco-card-items .reco-subcheck .txt{flex:1;font-size:14px;line-height:1.6;color:#3C3830}
+.reco-card-items .reco-subcheck .reco-btn{width:26px;height:26px;font-size:12px}
 
 .sec-body .reco-chip{display:flex;align-items:center;gap:14px;padding:14px 20px;margin-bottom:10px}
 .sec-body .reco-chip.is-oui{border-color:var(--vert-cl);background:var(--vert-bg)}
@@ -276,17 +287,24 @@ function escH(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').repl
    PARSING DU CONTENU (repris de l'ancien phv-print)
 ══════════════════════════════════════ */
 function isHeaderLine(l){
-  if(l.length > 110) return false;
-  if(/:$/.test(l)) return true; // ex. "En cas de ballonnements majeurs :"
-  if(/^\d+[.)]\s+\S/.test(l)) return true; // ex. "1. LACTIBIANE IKI …"
-  const m = l.match(/^(.{3,55}?)\s[—–]\s(.+)$/); // ex. "Marche quotidienne — 20 minutes après le déjeuner"
-  if(m && !/[.!?]/.test(m[1])) return true;
-  return false;
+  if(l.length > 110 || l.length < 6) return false;
+  if(/[.!?]$/.test(l)) return false; // une phrase complète (explication) se termine toujours par une ponctuation — un titre non
+  return true;
 }
 
 function extractLabel(texte){
   const m = texte.match(/^([A-ZÀÂÉÈÊÎÏÔÖÙÛÜŸÇ][A-Za-zà-üÀ-Ü'’ ]{1,24})\s*:\s*(.+)$/);
   return m ? { label: m[1].trim(), rest: m[2].trim() } : null;
+}
+
+// Verbes d'application/procédure séquentielle (ex. protocole aromathérapie) : une étape du "comment faire", pas une recommandation en soi
+const STEP_VERB_RE = /^(mélang|dilu|étal|appliqu|mass|vers|ajout|laiss|rinc|fricti|répét|renouvel|retir|essuy|inhal|respir|humidifi|chauff|press|filtr|couvr|dépos|frott|tremp|infus|agit|tamponn|imprégn)/i;
+
+function classifyBullet(texte){
+  const lbl = extractLabel(texte);
+  if (lbl) return { kind:'label', lbl };
+  if (STEP_VERB_RE.test(texte.trim())) return { kind:'step' };
+  return { kind:'check' };
 }
 
 function renderSubBullet(texte, bulletCol){
@@ -328,7 +346,13 @@ function parseContentPlain(raw, accentColor) {
   return html;
 }
 
-/* Rendu interactif : chaque recommandation devient une carte — titre en gras/grand + une seule case, son explication en vrai paragraphe, ses détails (posologie, étapes…) en dessous, sans case individuelle */
+/* Rendu interactif : chaque recommandation devient une carte.
+   - Le titre + TOUTE l'explication (même celle qui suit les puces dans le texte source) sont regroupés en intro, en haut de la carte.
+   - Les puces sont ensuite classées : détail labellisé (Posologie/Pourquoi/Précaution) → info non cochable ;
+     étape séquentielle (Mélanger, Étaler, Laisser poser…) → étape numérotée non cochable ;
+     sinon → recommandation à part entière, cochable individuellement.
+   - Le titre de la carte n'obtient sa propre case QUE si la carte ne contient aucun item cochable en dessous
+     (ex. un complément alimentaire) — sinon ce sont les items qui portent les cases (ex. options de petit-déjeuner). */
 function parseContent(raw, accentColor, pilier) {
   const interactif = !!pilier && !PILIERS_SANS_RECO.includes(pilier);
   if (!interactif) return parseContentPlain(raw, accentColor);
@@ -336,13 +360,30 @@ function parseContent(raw, accentColor, pilier) {
   const lines = raw.split('\n');
   const bulletCol = accentColor || 'var(--ocre)';
   let html = '';
-  let card = null;       // { itemId, title, bodyHtml, bodyBullets }
-  let leadUsed = false;  // le tout premier paragraphe hors-carte devient un "chapeau" éditorial
+  let card = null; // { title, introHtml, itemsHtml, listOpen, hasCheckable, stepNum }
+  let leadUsed = false;
+
+  function newCard(title){
+    return { title: title, introHtml: '', itemsHtml: '', listOpen: false, hasCheckable: false, stepNum: 0 };
+  }
+  function isEmpty(c){ return !c.introHtml && !c.itemsHtml; }
+  function closeList(c){ if (c.listOpen) { c.itemsHtml += '</ul>'; c.listOpen = false; } }
+  function openList(c){ if (!c.listOpen) { c.itemsHtml += '<ul>'; c.listOpen = true; } }
 
   function flushCard(){
     if (!card) return;
-    const bodyBlock = card.bodyHtml ? `<div class="reco-card-body">${card.bodyHtml}</div>` : '';
-    html += `<div class="reco-card" id="li-${card.itemId}"><div class="reco-card-head"><div class="reco-card-title" style="color:${bulletCol}">${escH(card.title)}</div><span class="reco-controls"><button type="button" class="reco-btn" id="${card.itemId}-ok" onclick="recoDecider('${card.itemId}','oui')" title="Je suis ce conseil">✓</button><button type="button" class="reco-btn" id="${card.itemId}-non" onclick="recoDecider('${card.itemId}','non')" title="Je ne suis pas ce conseil">✗</button></span></div>${bodyBlock}</div>`;
+    closeList(card);
+    const introBlock = card.introHtml ? `<div class="reco-card-intro">${card.introHtml}</div>` : '';
+    const itemsBlock = card.itemsHtml ? `<div class="reco-card-items">${card.itemsHtml}</div>` : '';
+    let head;
+    if (card.hasCheckable) {
+      head = `<div class="reco-card-head reco-card-head-plain"><div class="reco-card-title">${escH(card.title)}</div></div>`;
+    } else {
+      const itemId = 'reco' + (recoCounter++);
+      recoState[itemId] = { pilier: pilier, texte: card.title, etat: null, raison: '' };
+      head = `<div class="reco-card-head" id="li-${itemId}"><div class="reco-card-title" style="color:${bulletCol}">${escH(card.title)}</div><span class="reco-controls"><button type="button" class="reco-btn" id="${itemId}-ok" onclick="recoDecider('${itemId}','oui')" title="Je suis ce conseil">✓</button><button type="button" class="reco-btn" id="${itemId}-non" onclick="recoDecider('${itemId}','non')" title="Je ne suis pas ce conseil">✗</button></span></div>`;
+    }
+    html += `<div class="reco-card">${head}${introBlock}${itemsBlock}</div>`;
     card = null;
   }
 
@@ -355,8 +396,21 @@ function parseContent(raw, accentColor, pilier) {
       if (!texte || /^[-–—]+$/.test(texte)) continue; // artefact "--" — ignoré
 
       if (card) {
-        if (!card.bodyBullets) { card.bodyHtml += '<ul>'; card.bodyBullets = true; }
-        card.bodyHtml += renderSubBullet(texte, bulletCol);
+        const c = classifyBullet(texte);
+        if (c.kind === 'check') {
+          closeList(card);
+          card.hasCheckable = true;
+          const itemId = 'reco' + (recoCounter++);
+          recoState[itemId] = { pilier: pilier, texte: texte, etat: null, raison: '' };
+          card.itemsHtml += `<div class="reco-subcheck" id="li-${itemId}"><span class="txt">${escH(texte)}</span><span class="reco-controls"><button type="button" class="reco-btn" id="${itemId}-ok" onclick="recoDecider('${itemId}','oui')" title="Je suis ce conseil">✓</button><button type="button" class="reco-btn" id="${itemId}-non" onclick="recoDecider('${itemId}','non')" title="Je ne suis pas ce conseil">✗</button></span></div>`;
+        } else if (c.kind === 'step') {
+          openList(card);
+          card.stepNum++;
+          card.itemsHtml += `<li class="reco-step"><span class="step-num">${card.stepNum}</span><span>${escH(texte)}</span></li>`;
+        } else {
+          openList(card);
+          card.itemsHtml += renderSubBullet(texte, bulletCol);
+        }
       } else {
         // puce isolée, sans titre au-dessus : elle est elle-même une recommandation à part entière
         const itemId = 'reco' + (recoCounter++);
@@ -366,7 +420,7 @@ function parseContent(raw, accentColor, pilier) {
       continue;
     }
 
-    if (card && card.bodyBullets) { card.bodyHtml += '</ul>'; card.bodyBullets = false; }
+    if (card) closeList(card);
 
     if (/^\[.+\]$/.test(l) || (/^[A-ZÀÉÈÊÎÏÔÙÜ\s&–—\[\]:]+$/.test(l) && l.length < 60)) {
       flushCard();
@@ -375,20 +429,20 @@ function parseContent(raw, accentColor, pilier) {
     }
 
     if (isHeaderLine(l)) {
-      if (card && !card.bodyHtml) {
-        // la carte vient d'être ouverte et n'a encore aucun contenu : cette 2e ligne-titre est une reformulation/consigne d'intro, pas une nouvelle recommandation
-        card.bodyHtml += `<p>${escH(l)}</p>`;
+      if (card && isEmpty(card)) {
+        // la carte vient d'être ouverte et n'a encore aucun contenu : cette 2e ligne-titre est une reformulation/consigne d'intro
+        card.introHtml += `<p>${escH(l)}</p>`;
         continue;
       }
       flushCard();
-      const itemId = 'reco' + (recoCounter++);
-      recoState[itemId] = { pilier: pilier, texte: l, etat: null, raison: '' };
-      card = { itemId: itemId, title: l, bodyHtml: '', bodyBullets: false };
+      card = newCard(l);
       continue;
     }
 
+    // Paragraphe normal → toujours versé dans l'intro de la carte en cours (même s'il arrive après des puces dans le texte source),
+    // pour que l'explication complète reste groupée AVANT les éléments à cocher.
     if (card) {
-      card.bodyHtml += `<p>${escH(l)}</p>`;
+      card.introHtml += `<p>${escH(l)}</p>`;
     } else if (!leadUsed) {
       html += `<p class="lead-p">${escH(l)}</p>`;
       leadUsed = true;
@@ -396,7 +450,6 @@ function parseContent(raw, accentColor, pilier) {
       html += `<p>${escH(l)}</p>`;
     }
   }
-  if (card && card.bodyBullets) card.bodyHtml += '</ul>';
   flushCard();
   return html;
 }
