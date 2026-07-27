@@ -107,6 +107,35 @@ body{font-family:'Be Vietnam Pro',sans-serif;color:var(--ardoise);background:var
 .aroma-precaution .ap-txt{font-size:13.5px;line-height:1.6;color:#3C3830}
 .aroma-precaution .ap-txt strong{color:var(--lavande);font-weight:700}
 
+/* ═══ RECO — VALIDER / REFUSER UNE RECOMMANDATION ═══ */
+.sec-body li.reco-li{display:block;margin-bottom:6px}
+.reco-row{display:flex;align-items:flex-start;gap:10px;border-radius:10px;padding:6px 8px;margin:0 -8px;transition:background .2s}
+li.reco-li.is-oui .reco-row{background:var(--vert-bg)}
+li.reco-li.is-non .reco-row{background:var(--rose-bg)}
+.reco-row .reco-txt{flex:1}
+.reco-controls{display:flex;gap:6px;flex-shrink:0;margin-left:4px}
+.reco-btn{width:26px;height:26px;border-radius:50%;border:1.5px solid var(--taupe);background:var(--blanc);color:var(--gris);font-size:13px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;padding:0;flex-shrink:0}
+.reco-btn:hover{border-color:var(--ocre)}
+.reco-btn.active-ok{background:var(--vert);border-color:var(--vert);color:#fff}
+.reco-btn.active-non{background:#B8323A;border-color:#B8323A;color:#fff}
+.reco-raison{margin:8px 0 4px;padding:10px 12px;background:var(--off);border:1px solid var(--taupe);border-radius:10px}
+.reco-raison textarea{width:100%;min-height:56px;border:1px solid var(--taupe);border-radius:8px;padding:8px 10px;font-family:'Be Vietnam Pro',sans-serif;font-size:13.5px;color:var(--ardoise);resize:vertical;outline:none;box-sizing:border-box}
+.reco-raison textarea:focus{border-color:var(--ocre)}
+.reco-raison-actions{display:flex;justify-content:flex-end;margin-top:8px}
+.reco-raison-btn{padding:6px 16px;border-radius:99px;border:none;background:var(--ardoise);color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:'Be Vietnam Pro',sans-serif}
+
+/* Barre flottante — envoi des réponses à Sabrina */
+.reco-bar{position:fixed;left:50%;bottom:24px;transform:translate(-50%,120px);background:var(--ardoise);color:#fff;border-radius:99px;padding:10px 10px 10px 22px;display:flex;align-items:center;gap:16px;box-shadow:0 20px 50px rgba(0,0,0,.28);z-index:120;transition:transform .35s ease,opacity .35s ease;opacity:0;max-width:90vw}
+.reco-bar.show{transform:translate(-50%,0);opacity:1}
+.reco-bar-txt{font-size:12.5px;color:rgba(255,255,255,.75);white-space:nowrap}
+.reco-bar-btn{background:var(--sable);color:var(--ardoise);border:none;border-radius:99px;padding:9px 20px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:'Be Vietnam Pro',sans-serif;white-space:nowrap}
+.reco-bar-btn:disabled{opacity:.55;cursor:default}
+@media(max-width:640px){
+  .reco-bar{left:16px;right:16px;transform:translate(0,120px);bottom:16px}
+  .reco-bar.show{transform:translate(0,0)}
+  .reco-bar-txt{white-space:normal}
+}
+
 /* ═══ SECTION CTA PROGRAMME ═══ */
 .sec-programme{background:var(--ardoise);color:var(--blanc);text-align:center}
 .programme-inner{max-width:560px}
@@ -136,7 +165,7 @@ body{font-family:'Be Vietnam Pro',sans-serif;color:var(--ardoise);background:var
 /* ═══ IMPRESSION ═══ */
 @media print{
   html{scroll-snap-type:none}
-  .prog,.topnav,.dots,.cover-scroll,.sec-programme,.sec-disclaimer,.topnav-actions{display:none!important}
+  .prog,.topnav,.dots,.cover-scroll,.sec-programme,.sec-disclaimer,.topnav-actions,.reco-bar,.reco-controls,.reco-raison{display:none!important}
   .sec{min-height:auto;page-break-after:always;padding:40px 32px}
   .sec-cover{page-break-after:always;min-height:100vh}
   .sec-content{page-break-inside:avoid}
@@ -203,6 +232,13 @@ let data = null;
 let blocks = [];
 let clientProgramme = null;
 
+// ── VALIDER / REFUSER UNE RECOMMANDATION ──
+let recoState = {};            // itemId -> {pilier, texte, etat, raison}
+let recoCounter = 0;
+let clientIdentity = {prenom:'', nom:'', ddn:''};
+let currentClientKey = null;
+const PILIERS_SANS_RECO = ['bilan']; // sections d'analyse/observation — pas des recommandations à valider/refuser
+
 const PILIER_ICONS = { alimentation:'🌿', psychologie:'🧠', activite:'🏃', complements:'✦', aromatherapie:'🌸', bilan:'📊', autre:'—' };
 const PILIER_LABELS = { alimentation:'Alimentation', psychologie:'Psychologie & émotions', activite:'Activité physique', complements:'Compléments ciblés', aromatherapie:'Aromathérapie', bilan:'Bilan & suivi', autre:'Autre' };
 const SECTION_COLORS = { alimentation:'#3D6B2C', psychologie:'#5C4578', activite:'#2C5E8A', complements:'#8B6010', aromatherapie:'#6B5296', bilan:'#7A3A52', autre:'#6B6560' };
@@ -213,16 +249,24 @@ function escH(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').repl
 /* ══════════════════════════════════════
    PARSING DU CONTENU (repris de l'ancien phv-print)
 ══════════════════════════════════════ */
-function parseContent(raw, accentColor) {
+function parseContent(raw, accentColor, pilier) {
   const lines = raw.split('\n');
   let html = '', inBullets = false;
   const bulletCol = accentColor || 'var(--ocre)';
+  const interactif = !!pilier && !PILIERS_SANS_RECO.includes(pilier);
   for (const line of lines) {
     const l = line.trim();
     if (!l) { if (inBullets) { html += '</ul>'; inBullets = false; } continue; }
     if (/^[•·\-–→*]/.test(l)) {
       if (!inBullets) { html += '<ul>'; inBullets = true; }
-      html += `<li><span class="bd" style="background:${bulletCol}"></span><span>${escH(l.replace(/^[•·\-–→*]\s*/,''))}</span></li>`;
+      const texte = l.replace(/^[•·\-–→*]\s*/,'');
+      if (interactif) {
+        const itemId = 'reco' + (recoCounter++);
+        recoState[itemId] = { pilier: pilier, texte: texte, etat: null, raison: '' };
+        html += `<li class="reco-li" id="li-${itemId}"><div class="reco-row"><span class="bd" style="background:${bulletCol}"></span><span class="reco-txt">${escH(texte)}</span><span class="reco-controls"><button type="button" class="reco-btn" id="${itemId}-ok" onclick="recoDecider('${itemId}','oui')" title="Je suis ce conseil">✓</button><button type="button" class="reco-btn" id="${itemId}-non" onclick="recoDecider('${itemId}','non')" title="Je ne suis pas ce conseil">✗</button></span></div></li>`;
+      } else {
+        html += `<li><span class="bd" style="background:${bulletCol}"></span><span>${escH(texte)}</span></li>`;
+      }
     } else {
       if (inBullets) { html += '</ul>'; inBullets = false; }
       if (/^\[.+\]$/.test(l) || (/^[A-ZÀÉÈÊÎÏÔÙÜ\s&–—\[\]:]+$/.test(l) && l.length < 60)) {
@@ -234,6 +278,141 @@ function parseContent(raw, accentColor) {
   }
   if (inBullets) html += '</ul>';
   return html;
+}
+
+/* ══════════════════════════════════════
+   VALIDER / REFUSER UNE RECOMMANDATION
+   → écrit dans phv_memos, lu par le CRM (carte Observance PHV)
+══════════════════════════════════════ */
+function recoDecider(itemId, etat){
+  const state = recoState[itemId];
+  if(!state) return;
+  const li = document.getElementById('li-'+itemId);
+  const btnOk = document.getElementById(itemId+'-ok');
+  const btnNon = document.getElementById(itemId+'-non');
+
+  if(etat === 'oui'){
+    state.etat = 'oui'; state.raison = '';
+    if(li){ li.classList.remove('is-non'); li.classList.add('is-oui'); }
+    if(btnOk) btnOk.classList.add('active-ok');
+    if(btnNon) btnNon.classList.remove('active-non');
+    fermerRaisonBox(itemId);
+    majBarreReco();
+    return;
+  }
+
+  if(li){ li.classList.remove('is-oui'); }
+  if(btnOk) btnOk.classList.remove('active-ok');
+  if(btnNon) btnNon.classList.add('active-non');
+  ouvrirRaisonBox(itemId, li, state.raison || '');
+}
+
+function ouvrirRaisonBox(itemId, li, raisonActuelle){
+  if(!li) return;
+  let box = document.getElementById('raison-'+itemId);
+  if(box){ const ta=box.querySelector('textarea'); if(ta) ta.focus(); return; }
+  li.insertAdjacentHTML('beforeend', `<div class="reco-raison" id="raison-${itemId}"><textarea placeholder="Pourquoi ? (facultatif — ça aide Sabrina à ajuster)">${escH(raisonActuelle)}</textarea><div class="reco-raison-actions"><button type="button" class="reco-raison-btn" onclick="confirmerRefus('${itemId}')">Confirmer</button></div></div>`);
+  const ta = document.getElementById('raison-'+itemId).querySelector('textarea');
+  if(ta) ta.focus();
+}
+
+function fermerRaisonBox(itemId){
+  const box = document.getElementById('raison-'+itemId);
+  if(box) box.remove();
+}
+
+function confirmerRefus(itemId){
+  const box = document.getElementById('raison-'+itemId);
+  const ta = box ? box.querySelector('textarea') : null;
+  const raison = ta ? ta.value.trim() : '';
+  const state = recoState[itemId];
+  if(!state) return;
+  state.etat = 'non'; state.raison = raison;
+  const li = document.getElementById('li-'+itemId);
+  if(li) li.classList.add('is-non');
+  fermerRaisonBox(itemId);
+  majBarreReco();
+}
+
+function majBarreReco(){
+  const decisions = Object.values(recoState).filter(s => s.etat);
+  let bar = document.getElementById('recoBar');
+  if(!decisions.length){ if(bar) bar.classList.remove('show'); return; }
+  if(!bar){
+    document.body.insertAdjacentHTML('beforeend', `<div class="reco-bar" id="recoBar"><span class="reco-bar-txt" id="recoBarTxt"></span><button type="button" class="reco-bar-btn" id="recoBarBtn" onclick="envoyerReponsesReco()">Envoyer à Sabrina →</button></div>`);
+    bar = document.getElementById('recoBar');
+  }
+  const nbOui = decisions.filter(d=>d.etat==='oui').length;
+  const nbNon = decisions.filter(d=>d.etat==='non').length;
+  const txtEl = document.getElementById('recoBarTxt');
+  if(txtEl) txtEl.textContent = decisions.length+' réponse'+(decisions.length>1?'s':'')+' · '+nbOui+' suivie(s) · '+nbNon+' à ajuster';
+  const btn = document.getElementById('recoBarBtn');
+  if(btn){
+    if(currentClientKey){ btn.disabled=false; btn.textContent='Envoyer à Sabrina →'; }
+    else { btn.disabled=true; btn.textContent='Aperçu praticienne — non envoyé'; }
+  }
+  bar.classList.add('show');
+}
+
+function setClientIdentity(clientKey, cl){
+  let prenom = cl.prenom || '';
+  let nom = cl.nom || '';
+  let ddn = cl.ddn || '';
+  if((!prenom || !nom) && clientKey){
+    const m = clientKey.match(/^(.+)-(\d{8})$/);
+    if(m){
+      if(!ddn) ddn = m[2].slice(0,4)+'-'+m[2].slice(4,6)+'-'+m[2].slice(6,8);
+      const parts = m[1].split('-');
+      if(!prenom) prenom = parts[0] || '';
+      if(!nom) nom = parts.slice(1).join(' ') || '';
+    }
+  }
+  clientIdentity = { prenom: prenom, nom: nom, ddn: ddn };
+}
+
+async function envoyerReponsesReco(){
+  if(!currentClientKey) return; // aperçu praticienne — rien à envoyer
+  const btn = document.getElementById('recoBarBtn');
+  if(btn){ btn.disabled=true; btn.textContent='Envoi…'; }
+  try{
+    const token = await Auth.getValidAccessToken();
+    const decided = Object.values(recoState).filter(s => s.etat);
+    const details = {};
+    decided.forEach(s => {
+      if(!details[s.pilier]) details[s.pilier] = [];
+      details[s.pilier].push({ texte: s.texte, etat: s.etat, raison: s.raison || '' });
+    });
+    const stats = {
+      ok: decided.filter(s=>s.etat==='oui').length,
+      non: decided.filter(s=>s.etat==='non').length,
+      total: decided.length
+    };
+    const genId = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : ('memo-'+Date.now()+'-'+Math.random().toString(36).slice(2));
+    await fetch(SUPA_URL + '/rest/v1/phv_memos', {
+      method: 'POST',
+      headers: {
+        'apikey': SUPA_KEY,
+        'Authorization': 'Bearer ' + (token || SUPA_KEY),
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify({
+        id: genId,
+        client_key: currentClientKey,
+        prenom: clientIdentity.prenom,
+        nom: clientIdentity.nom,
+        ddn: clientIdentity.ddn,
+        stats: stats,
+        details: details,
+        created_at: new Date().toISOString()
+      })
+    });
+    if(btn) btn.textContent = '✓ Envoyé à Sabrina';
+    setTimeout(function(){ const bar=document.getElementById('recoBar'); if(bar) bar.classList.remove('show'); }, 2200);
+  }catch(e){
+    console.warn('Réponses non envoyées à Sabrina :', e);
+    if(btn){ btn.disabled=false; btn.textContent='Réessayer →'; }
+  }
 }
 
 function renderRituals(raw) {
@@ -318,8 +497,10 @@ function renderAromatherapie(raw) {
 ══════════════════════════════════════ */
 function buildImmersive() {
   const container = document.getElementById('container');
+  recoState = {}; recoCounter = 0; // réinitialisation à chaque (re)construction du document
   const cl = data._client || {};
   const prenom = cl.prenom || 'Cliente';
+  setClientIdentity(currentClientKey, cl);
   const dateStr = new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'});
   const sousTitre = data.sous_titre || "Protocole d'Hygiène Vitale";
 
@@ -360,7 +541,7 @@ function buildImmersive() {
     if (b.id === 's5') bodyHtml = renderRituals(b.content || '');
     else if (b.id === 's6') bodyHtml = renderSignals(b.content || '');
     else if (b.id === 's7') bodyHtml = renderAromatherapie(b.content || '');
-    else bodyHtml = parseContent(b.content || '', color);
+    else bodyHtml = parseContent(b.content || '', color, b.pilier);
 
     html += `
   <section class="sec sec-content" id="sec-${i+1}">
@@ -434,6 +615,7 @@ function buildImmersive() {
 ══════════════════════════════════════ */
 async function chargerProtocoleCliente(clientKey) {
   try {
+    currentClientKey = clientKey;
     const row = await DB.getProtocoleClient(clientKey);
     const pd = row?.data?.protocolData;
     const bl = row?.data?.blocks;
