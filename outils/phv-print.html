@@ -81,7 +81,8 @@ body{font-family:'Be Vietnam Pro',sans-serif;color:var(--ardoise);background:var
 .sec-body ul{list-style:none;padding:0;margin:0 0 14px}
 .sec-body li{display:flex;align-items:flex-start;gap:10px;margin-bottom:8px;line-height:1.7}
 .sec-body li .bd{width:6px;height:6px;border-radius:50%;flex-shrink:0;margin-top:9px}
-.sec-body .sub-heading{font-size:10px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--ocre);margin:20px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--grege)}
+.sec-body .sub-heading{display:inline-block;font-size:13px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--blanc);padding:11px 20px;border-radius:10px;margin:36px 0 18px}
+.sec-body .sub-heading:first-child{margin-top:0}
 
 /* Ritual grid */
 .ritual-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;margin:10px 0}
@@ -307,16 +308,22 @@ function extractLabel(texte){
   return null;
 }
 
-// Paramètre de fréquence/dosage/durée d'un protocole (ex. "3 fois par jour", "6 respirations par minute", "Pendant 5 minutes") — un détail, pas une recommandation séparée
-const PARAM_RE = /\b(fois par (jour|semaine|mois|heure)|respirations?(\s*par\s*minute)?|pendant\s+\d|\d+\s*(minutes?|secondes?)\b)/i;
+// Paramètre de fréquence/dosage/minutage d'UNE recommandation (ex. "3 fois par jour", "Pendant 5 minutes", "À faire le soir, 2h après le dîner")
+// — mais seulement s'il s'agit d'une ligne courte (un vrai paramètre, pas une recommandation complète qui mentionnerait juste une durée en passant)
+const PARAM_FREQ_RE = /\b(\d+\s*fois\s*par\s*(jour|semaine|mois|heure)|\d+\s*respirations?\s*par\s*minute|^pendant\s+\d)/i;
+const PARAM_INTRO_RE = /^(à\s+(faire|prendre|consommer|utiliser|appliquer)\b|chaque\s+(matin|soir|jour)\b|avant\s+(de|le|la)\b|après\s+(le|la|les)\b)/i;
+function isParamBullet(texte){
+  if (texte.length >= 70) return false; // trop long/riche pour n'être qu'un simple paramètre — c'est une recommandation à part entière
+  return PARAM_FREQ_RE.test(texte) || PARAM_INTRO_RE.test(texte.trim());
+}
 
-const STEP_VERB_RE = /^(mélang|dilu|étal|appliqu|mass|vers|ajout|laiss|rinc|fricti|répét|renouvel|retir|essuy|inhal|respir|humidifi|chauff|press|filtr|couvr|dépos|frott|tremp|infus|agit|tamponn|imprégn)/i;
+const STEP_VERB_RE = /^(mélang|dilu|étal|appliqu|mass|vers|ajout|laiss|rinc|fricti|répét|renouvel|retir|essuy|inhal|respir|humidifi|chauff|press|filtr|couvr|dépos|frott|tremp|infus|agit|tamponn|imprégn|boi|mang|consomm|prend)/i;
 
 function classifyBullet(texte){
   const lbl = extractLabel(texte);
   if (lbl) return { kind:'label', lbl };
   if (STEP_VERB_RE.test(texte.trim())) return { kind:'step' };
-  if (PARAM_RE.test(texte)) return { kind:'param' };
+  if (isParamBullet(texte)) return { kind:'param' };
   return { kind:'check' };
 }
 
@@ -347,7 +354,7 @@ function parseContentPlain(raw, accentColor) {
     } else {
       if (inBullets) { html += '</ul>'; inBullets = false; }
       if (/^\[.+\]$/.test(l) || isAllCapsHeading(l)) {
-        html += `<div class="sub-heading">${escH(l.replace(/^\[|\]$/g,''))}</div>`;
+        html += `<div class="sub-heading" style="background:${bulletCol}">${escH(l.replace(/^\[|\]$/g,''))}</div>`;
       } else if (isHeaderLine(l)) {
         html += `<p class="reco-header-plain" style="color:${bulletCol}">${escH(l)}</p>`;
       } else {
@@ -377,7 +384,7 @@ function parseContent(raw, accentColor, pilier) {
   let leadUsed = false;
 
   function newCard(title){
-    return { title: title, introHtml: '', itemsHtml: '', listOpen: false, hasCheckable: false, stepNum: 0 };
+    return { title: title, introHtml: '', itemsHtml: '', listOpen: false, hasCheckable: false, hasBulletDetail: false, stepNum: 0 };
   }
   function isEmpty(c){ return !c.introHtml && !c.itemsHtml; }
   function closeList(c){ if (c.listOpen) { c.itemsHtml += '</ul>'; c.listOpen = false; } }
@@ -413,6 +420,7 @@ function parseContent(raw, accentColor, pilier) {
         if (c.kind === 'check') {
           closeList(card);
           card.hasCheckable = true;
+          card.hasBulletDetail = true;
           const itemId = 'reco' + (recoCounter++);
           recoState[itemId] = { pilier: pilier, texte: texte, etat: null, raison: '' };
           card.itemsHtml += `<div class="reco-subcheck" id="li-${itemId}"><span class="txt">${escH(texte)}</span><span class="reco-controls"><button type="button" class="reco-btn" id="${itemId}-ok" onclick="recoDecider('${itemId}','oui')" title="Je suis ce conseil">✓</button><button type="button" class="reco-btn" id="${itemId}-non" onclick="recoDecider('${itemId}','non')" title="Je ne suis pas ce conseil">✗</button></span></div>`;
@@ -422,9 +430,11 @@ function parseContent(raw, accentColor, pilier) {
           card.itemsHtml += `<li class="reco-step"><span class="step-num">${card.stepNum}</span><span>${escH(texte)}</span></li>`;
         } else if (c.kind === 'param') {
           openList(card);
+          card.hasBulletDetail = true;
           card.itemsHtml += `<li><span class="bd" style="background:${bulletCol}"></span><span>${escH(texte)}</span></li>`;
         } else {
           openList(card);
+          card.hasBulletDetail = true;
           card.itemsHtml += renderSubBullet(texte, bulletCol);
         }
       } else {
@@ -436,9 +446,10 @@ function parseContent(raw, accentColor, pilier) {
       continue;
     }
 
-    // Étape numérotée ("1. Commencer par…") d'une carte déjà ouverte : elle lui appartient toujours, sans jamais fermer/rouvrir la liste inutilement
+    // Ligne numérotée : étape d'une séquence en cours SI la carte n'a encore que des étapes (pas de vraie puce de détail),
+    // sinon c'est un nouvel élément indépendant (ex. complément n°2) qui mérite sa propre carte.
     const numMatch = l.match(/^(\d+)[.)]\s+(.+)$/);
-    if (numMatch && card) {
+    if (numMatch && card && !card.hasBulletDetail) {
       openList(card);
       card.itemsHtml += `<li class="reco-step"><span class="step-num">${escH(numMatch[1])}</span><span>${escH(numMatch[2])}</span></li>`;
       continue;
@@ -454,7 +465,7 @@ function parseContent(raw, accentColor, pilier) {
         continue;
       }
       flushCard();
-      html += `<div class="sub-heading">${escH(l.replace(/^\[|\]$/g,''))}</div>`;
+      html += `<div class="sub-heading" style="background:${bulletCol}">${escH(l.replace(/^\[|\]$/g,''))}</div>`;
       continue;
     }
 
