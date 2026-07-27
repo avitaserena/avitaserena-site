@@ -286,24 +286,37 @@ function escH(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').repl
 /* ══════════════════════════════════════
    PARSING DU CONTENU (repris de l'ancien phv-print)
 ══════════════════════════════════════ */
+function isAllCapsHeading(l){
+  if (l.length >= 70) return false;
+  const stripped = l.replace(/\([^)]*\)/g, '').trim();
+  if (!stripped) return false;
+  return /^[A-ZÀÉÈÊÎÏÔÙÜ0-9\s&–—:,'’-]+$/.test(stripped);
+}
+
 function isHeaderLine(l){
   if(l.length > 110 || l.length < 6) return false;
   if(/[.!?]$/.test(l)) return false; // une phrase complète (explication) se termine toujours par une ponctuation — un titre non
   return true;
 }
 
+const LABEL_WHITELIST = /^(posologie|pourquoi|précaution|prudence|attention|contre[- ]indication|dosage|effet|usage|indication|composition|conseil|astuce|note|rappel|important|objectif|durée|fréquence)$/i;
+
 function extractLabel(texte){
-  const m = texte.match(/^([A-ZÀÂÉÈÊÎÏÔÖÙÛÜŸÇ][A-Za-zà-üÀ-Ü'’ ]{1,24})\s*:\s*(.+)$/);
-  return m ? { label: m[1].trim(), rest: m[2].trim() } : null;
+  const m = texte.match(/^([A-ZÀÂÉÈÊÎÏÔÖÙÛÜŸÇ][A-Za-zà-üÀ-Ü'’ -]{1,24})\s*:\s*(.+)$/);
+  if (m && LABEL_WHITELIST.test(m[1].trim())) return { label: m[1].trim(), rest: m[2].trim() };
+  return null;
 }
 
-// Verbes d'application/procédure séquentielle (ex. protocole aromathérapie) : une étape du "comment faire", pas une recommandation en soi
+// Paramètre de fréquence/dosage/durée d'un protocole (ex. "3 fois par jour", "6 respirations par minute", "Pendant 5 minutes") — un détail, pas une recommandation séparée
+const PARAM_RE = /\b(fois par (jour|semaine|mois|heure)|respirations?(\s*par\s*minute)?|pendant\s+\d|\d+\s*(minutes?|secondes?)\b)/i;
+
 const STEP_VERB_RE = /^(mélang|dilu|étal|appliqu|mass|vers|ajout|laiss|rinc|fricti|répét|renouvel|retir|essuy|inhal|respir|humidifi|chauff|press|filtr|couvr|dépos|frott|tremp|infus|agit|tamponn|imprégn)/i;
 
 function classifyBullet(texte){
   const lbl = extractLabel(texte);
   if (lbl) return { kind:'label', lbl };
   if (STEP_VERB_RE.test(texte.trim())) return { kind:'step' };
+  if (PARAM_RE.test(texte)) return { kind:'param' };
   return { kind:'check' };
 }
 
@@ -333,7 +346,7 @@ function parseContentPlain(raw, accentColor) {
       html += renderSubBullet(texte, bulletCol);
     } else {
       if (inBullets) { html += '</ul>'; inBullets = false; }
-      if (/^\[.+\]$/.test(l) || (/^[A-ZÀÉÈÊÎÏÔÙÜ\s&–—\[\]:]+$/.test(l) && l.length < 60)) {
+      if (/^\[.+\]$/.test(l) || isAllCapsHeading(l)) {
         html += `<div class="sub-heading">${escH(l.replace(/^\[|\]$/g,''))}</div>`;
       } else if (isHeaderLine(l)) {
         html += `<p class="reco-header-plain" style="color:${bulletCol}">${escH(l)}</p>`;
@@ -407,6 +420,9 @@ function parseContent(raw, accentColor, pilier) {
           openList(card);
           card.stepNum++;
           card.itemsHtml += `<li class="reco-step"><span class="step-num">${card.stepNum}</span><span>${escH(texte)}</span></li>`;
+        } else if (c.kind === 'param') {
+          openList(card);
+          card.itemsHtml += `<li><span class="bd" style="background:${bulletCol}"></span><span>${escH(texte)}</span></li>`;
         } else {
           openList(card);
           card.itemsHtml += renderSubBullet(texte, bulletCol);
@@ -420,9 +436,23 @@ function parseContent(raw, accentColor, pilier) {
       continue;
     }
 
+    // Étape numérotée ("1. Commencer par…") d'une carte déjà ouverte : elle lui appartient toujours, sans jamais fermer/rouvrir la liste inutilement
+    const numMatch = l.match(/^(\d+)[.)]\s+(.+)$/);
+    if (numMatch && card) {
+      openList(card);
+      card.itemsHtml += `<li class="reco-step"><span class="step-num">${escH(numMatch[1])}</span><span>${escH(numMatch[2])}</span></li>`;
+      continue;
+    }
+
     if (card) closeList(card);
 
-    if (/^\[.+\]$/.test(l) || (/^[A-ZÀÉÈÊÎÏÔÙÜ\s&–—\[\]:]+$/.test(l) && l.length < 60)) {
+    const looksLikeDivider = /^\[.+\]$/.test(l) || isAllCapsHeading(l);
+    if (looksLikeDivider) {
+      if (card && isEmpty(card)) {
+        // la carte vient d'être ouverte, encore vide : ce sous-titre est une précision d'intro ("MIDI (votre repas principal) :"), pas un nouveau bloc
+        card.introHtml += `<p>${escH(l)}</p>`;
+        continue;
+      }
       flushCard();
       html += `<div class="sub-heading">${escH(l.replace(/^\[|\]$/g,''))}</div>`;
       continue;
