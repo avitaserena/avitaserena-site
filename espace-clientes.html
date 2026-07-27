@@ -1058,8 +1058,8 @@ body{-webkit-font-smoothing:antialiased}
     <!-- ─── JOURNAL COMPLET ─── -->
     <div class="tab-content" id="tab-journal">
       <div class="section-eyebrow">Mon journal de suivi</div>
-      <h2 class="section-h2">Notez vos ressentis<br>entre les séances.</h2>
-      <p class="section-sub">Chaque note que vous prenez aide Sabrina à affiner votre protocole. Votre journal est votre fil conducteur.</p>
+      <h2 class="section-h2">Une question, un doute<br>à partager avec Sabrina.</h2>
+      <p class="section-sub">Votre énergie, votre transit, votre humeur du jour se notent en 10 secondes depuis votre tableau de bord. Ici, retrouvez l'historique complet et posez vos questions entre les séances.</p>
 
       <!-- Sous-onglets Nouvelle entrée / Historique -->
       <div class="journal-tabs">
@@ -1070,50 +1070,16 @@ body{-webkit-font-smoothing:antialiased}
       <!-- NOUVELLE ENTRÉE -->
       <div class="journal-new" id="journalNewPane">
         <div class="journal-block">
-          <h3>Entrée du <span id="journalDate"></span></h3>
-          <p>Prenez 5 minutes pour noter comment vous vous sentez aujourd'hui. Il n'y a pas de bonne ou mauvaise réponse.</p>
+          <h3>Une question pour Sabrina</h3>
+          <p>Votre check-in quotidien (énergie, transit, ballonnements, humeur) se fait directement sur votre tableau de bord dès votre connexion. Ici, partagez une question, un doute ou une observation sur votre protocole.</p>
           <div class="journal-grid">
-            <div class="journal-field">
-              <label>Niveau d'énergie (1-10)</label>
-              <select id="jEnergie">
-                <option value="">— Choisir —</option>
-                <option>1 — Épuisée</option><option>2</option><option>3</option><option>4</option>
-                <option>5 — Moyen</option><option>6</option><option>7</option><option>8</option>
-                <option>9</option><option>10 — Excellente</option>
-              </select>
-            </div>
-            <div class="journal-field">
-              <label>Transit aujourd'hui</label>
-              <select id="jTransit">
-                <option value="">— Choisir —</option>
-                <option>Constipée</option><option>Normal</option><option>Diarrhée</option><option>Alterné</option><option>Pas de selle</option>
-              </select>
-            </div>
-            <div class="journal-field">
-              <label>Ballonnements</label>
-              <select id="jBallonnements">
-                <option value="">— Choisir —</option>
-                <option>Absents</option><option>Légers</option><option>Modérés</option><option>Importants</option><option>Très importants</option>
-              </select>
-            </div>
-            <div class="journal-field">
-              <label>Humeur générale</label>
-              <select id="jHumeur">
-                <option value="">— Choisir —</option>
-                <option>Très bien</option><option>Bien</option><option>Neutre</option><option>Irritable</option><option>Anxieuse</option><option>Fatiguée mentalement</option>
-              </select>
-            </div>
-            <div class="journal-field full">
-              <label>Ce que j'ai remarqué aujourd'hui</label>
-              <textarea id="jNote" placeholder="Un aliment qui a posé problème, un symptôme inhabituel, quelque chose qui s'est amélioré…"></textarea>
-            </div>
             <div class="journal-field full">
               <label>Questions pour Sabrina</label>
               <textarea id="jQuestion" placeholder="Une question sur mon protocole, un doute, une observation à lui partager…"></textarea>
             </div>
           </div>
-          <button class="journal-save" onclick="saveJournal()">Enregistrer cette entrée →</button>
-          <div class="journal-success" id="journalSuccess">✓ Entrée enregistrée. Sabrina pourra la consulter avant votre prochaine séance.</div>
+          <button class="journal-save" onclick="saveJournal()">Envoyer à Sabrina →</button>
+          <div class="journal-success" id="journalSuccess">✓ Question envoyée. Sabrina pourra la consulter avant votre prochaine séance.</div>
         </div>
       </div>
 
@@ -1275,9 +1241,10 @@ function openSpace(prenom, programme){
   document.getElementById('heroPrenom').textContent = prenom;
   document.getElementById('headerAvatar').textContent = prenom.charAt(0).toUpperCase();
   document.getElementById('headerName').textContent = prenom;
-  // Date du journal
+  // Date du journal (span retiré du formulaire simplifié — appel gardé défensif)
   var now = new Date();
-  document.getElementById('journalDate').textContent = now.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  var journalDateEl = document.getElementById('journalDate');
+  if(journalDateEl) journalDateEl.textContent = now.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   // Date dashboard
   var el = document.getElementById('dashDate');
   if(el) el.textContent = now.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
@@ -1573,25 +1540,14 @@ function raReset(){
 // ── JOURNAL ──
 async function saveJournal(){
   var session = JSON.parse(localStorage.getItem('avs_client') || sessionStorage.getItem('avs_client') || '{}');
-  var question = document.getElementById('jQuestion').value.trim();
-  var data={
-    date:new Date().toISOString(),
-    energie:document.getElementById('jEnergie').value,
-    transit:document.getElementById('jTransit').value,
-    ballonnements:document.getElementById('jBallonnements').value,
-    humeur:document.getElementById('jHumeur').value,
-    note:document.getElementById('jNote').value,
-    question:question
-  };
-
-  // Cache local — alimente l'historique et la courbe de progression même hors-ligne
-  var key='avs_journal_'+new Date().toISOString().slice(0,10);
-  localStorage.setItem(key, JSON.stringify(data));
+  var questionEl = document.getElementById('jQuestion');
+  var question = questionEl ? questionEl.value.trim() : '';
+  if(!question) return;
 
   document.getElementById('journalSuccess').style.display='block';
   setTimeout(function(){ document.getElementById('journalSuccess').style.display='none'; },5000);
 
-  // Envoi réel à Supabase — c'est ce qui permet à Sabrina de le voir dans son CRM
+  // Envoi réel à Supabase — c'est ce qui permet à Sabrina de le voir dans son CRM (messagerie)
   if (session.key) {
     try {
       var token = await Auth.getValidAccessToken();
@@ -1602,36 +1558,21 @@ async function saveJournal(){
         'Prefer': 'return=minimal'
       };
 
-      await fetch(SUPA_URL + '/rest/v1/journal_entries', {
+      await fetch(SUPA_URL + '/rest/v1/messages_client', {
         method: 'POST',
         headers: authHeaders,
         body: JSON.stringify({
           client_key: session.key,
-          date: new Date().toISOString().slice(0,10),
-          energie: data.energie,
-          transit: data.transit,
-          ballonnements: data.ballonnements,
-          humeur: data.humeur,
-          note: data.note
+          prenom: session.prenom || '',
+          nom: session.nom || '',
+          source: 'journal',
+          message: question
         })
       });
 
-      // Si une question est posée, elle part aussi comme message direct à Sabrina
-      if (question) {
-        await fetch(SUPA_URL + '/rest/v1/messages_client', {
-          method: 'POST',
-          headers: authHeaders,
-          body: JSON.stringify({
-            client_key: session.key,
-            prenom: session.prenom || '',
-            nom: session.nom || '',
-            source: 'journal',
-            message: question
-          })
-        });
-      }
+      if(questionEl) questionEl.value = '';
     } catch(e) {
-      console.warn('Journal non synchronisé avec Supabase :', e);
+      console.warn('Question non synchronisée avec Supabase :', e);
     }
   }
 }
@@ -2276,8 +2217,12 @@ function toggleRappelComplement(idx, checked, todayKey){
 /* ─── VOS JALONS (dashboard) ─── */
 /* ─── CHECK-IN RAPIDE (accueil) — un seul geste, tous les jours ─── */
 var checkinEnergieVal = null;
+var checkinTransitVal = null;
+var checkinBallonnementsVal = null;
 var checkinHumeurVal = null;
 var CHECKIN_ENERGIE_OPTS = [ {v:'2 — Épuisée', l:'Épuisée'}, {v:'4', l:'Faible'}, {v:'6', l:'Correcte'}, {v:'8', l:'Bonne'}, {v:'10 — Excellente', l:'Excellente'} ];
+var CHECKIN_TRANSIT_OPTS = ['Constipée','Normal','Diarrhée','Alterné','Pas de selle'];
+var CHECKIN_BALLONNEMENTS_OPTS = ['Absents','Légers','Modérés','Importants','Très importants'];
 var CHECKIN_HUMEUR_OPTS = ['Très bien','Bien','Neutre','Irritable','Anxieuse','Fatiguée mentalement'];
 
 async function renderCheckinRapide(){
@@ -2288,16 +2233,17 @@ async function renderCheckinRapide(){
   try {
     var token = await Auth.getValidAccessToken();
     var today = new Date().toISOString().slice(0,10);
-    var res = await fetch(SUPA_URL + '/rest/v1/journal_entries?client_key=eq.' + encodeURIComponent(session.key) + '&date=eq.' + today + '&select=energie,humeur&order=created_at.desc&limit=1', {
+    var res = await fetch(SUPA_URL + '/rest/v1/journal_entries?client_key=eq.' + encodeURIComponent(session.key) + '&date=eq.' + today + '&select=energie,humeur,transit,ballonnements,note&order=created_at.desc&limit=1', {
       headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (token || SUPA_KEY) }
     });
     var rows = res.ok ? await res.json() : [];
 
     if(rows.length){
+      var doneSub = [rows[0].humeur, rows[0].energie ? 'Énergie : '+rows[0].energie : '', rows[0].transit, rows[0].ballonnements].filter(Boolean).map(escHtml).join(' · ');
       box.innerHTML = '<div class="checkin-card"><div class="checkin-done">' +
         '<div class="checkin-done-ic"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>' +
         '<div><div class="checkin-title" style="font-size:16px">Merci, c\'est noté pour aujourd\'hui</div>' +
-        '<div class="checkin-sub">'+escHtml(rows[0].humeur||'')+(rows[0].energie?' · Énergie : '+escHtml(rows[0].energie):'')+' — à demain !</div></div>' +
+        '<div class="checkin-sub">'+doneSub+' — à demain !</div></div>' +
       '</div></div>';
       return;
     }
@@ -2312,9 +2258,21 @@ async function renderCheckinRapide(){
         '<div class="checkin-pills" id="checkinEnergiePills">' +
           CHECKIN_ENERGIE_OPTS.map(function(o){ return '<div class="checkin-pill" onclick="selectCheckin(\'energie\',\''+o.v.replace(/'/g,"\\'")+'\',this)">'+o.l+'</div>'; }).join('') +
         '</div>' +
+        '<div class="checkin-label">Transit</div>' +
+        '<div class="checkin-pills" id="checkinTransitPills">' +
+          CHECKIN_TRANSIT_OPTS.map(function(t){ return '<div class="checkin-pill" onclick="selectCheckin(\'transit\',\''+t+'\',this)">'+t+'</div>'; }).join('') +
+        '</div>' +
+        '<div class="checkin-label">Ballonnements</div>' +
+        '<div class="checkin-pills" id="checkinBallonnementsPills">' +
+          CHECKIN_BALLONNEMENTS_OPTS.map(function(b){ return '<div class="checkin-pill" onclick="selectCheckin(\'ballonnements\',\''+b+'\',this)">'+b+'</div>'; }).join('') +
+        '</div>' +
         '<div class="checkin-label">Humeur</div>' +
         '<div class="checkin-pills" id="checkinHumeurPills">' +
           CHECKIN_HUMEUR_OPTS.map(function(h){ return '<div class="checkin-pill" onclick="selectCheckin(\'humeur\',\''+h+'\',this)">'+h+'</div>'; }).join('') +
+        '</div>' +
+        '<div class="journal-field full" style="margin-top:14px">' +
+          '<label>Ce que j\'ai remarqué (facultatif)</label>' +
+          '<textarea id="checkinNote" placeholder="Un aliment qui a posé problème, un symptôme inhabituel, quelque chose qui s\'est amélioré…"></textarea>' +
         '</div>' +
         '<button class="checkin-save" id="checkinSaveBtn" onclick="saveCheckinRapide()" disabled>Enregistrer →</button>' +
       '</div>';
@@ -2329,16 +2287,33 @@ function selectCheckin(type, val, btn){
   container.querySelectorAll('.checkin-pill').forEach(function(p){ p.classList.remove('on'); });
   btn.classList.add('on');
   if(type==='energie') checkinEnergieVal = val;
+  if(type==='transit') checkinTransitVal = val;
+  if(type==='ballonnements') checkinBallonnementsVal = val;
   if(type==='humeur') checkinHumeurVal = val;
   var saveBtn = document.getElementById('checkinSaveBtn');
-  if(saveBtn) saveBtn.disabled = !(checkinEnergieVal && checkinHumeurVal);
+  if(saveBtn) saveBtn.disabled = !(checkinEnergieVal && checkinTransitVal && checkinBallonnementsVal && checkinHumeurVal);
 }
 
 async function saveCheckinRapide(){
   var session = JSON.parse(localStorage.getItem('avs_client') || sessionStorage.getItem('avs_client') || '{}');
-  if(!session.key || !checkinEnergieVal || !checkinHumeurVal) return;
+  if(!session.key || !checkinEnergieVal || !checkinTransitVal || !checkinBallonnementsVal || !checkinHumeurVal) return;
   var btn = document.getElementById('checkinSaveBtn');
   if(btn){ btn.disabled=true; btn.textContent='…'; }
+  var noteVal = (document.getElementById('checkinNote') || {}).value || '';
+  noteVal = noteVal.trim();
+  var todayISO = new Date().toISOString().slice(0,10);
+
+  // Cache local — alimente l'historique et la courbe de progression même hors-ligne
+  var cacheKey = 'avs_journal_' + todayISO;
+  localStorage.setItem(cacheKey, JSON.stringify({
+    date: new Date().toISOString(),
+    energie: checkinEnergieVal,
+    transit: checkinTransitVal,
+    ballonnements: checkinBallonnementsVal,
+    humeur: checkinHumeurVal,
+    note: noteVal
+  }));
+
   try {
     var token = await Auth.getValidAccessToken();
     await fetch(SUPA_URL + '/rest/v1/journal_entries', {
@@ -2351,12 +2326,15 @@ async function saveCheckinRapide(){
       },
       body: JSON.stringify({
         client_key: session.key,
-        date: new Date().toISOString().slice(0,10),
+        date: todayISO,
         energie: checkinEnergieVal,
-        humeur: checkinHumeurVal
+        transit: checkinTransitVal,
+        ballonnements: checkinBallonnementsVal,
+        humeur: checkinHumeurVal,
+        note: noteVal
       })
     });
-    checkinEnergieVal = null; checkinHumeurVal = null;
+    checkinEnergieVal = null; checkinTransitVal = null; checkinBallonnementsVal = null; checkinHumeurVal = null;
     renderCheckinRapide();
     loadJalons();
     initProgressChart();

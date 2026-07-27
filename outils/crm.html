@@ -1372,6 +1372,7 @@ let memoAlerts=[];
 let clientMessages=[];
 let docsMedicaux={}; // { clientId: [ {id, nom_fichier, type, date_bilan, storage_path, uploaded_at}, ... ] }
 let questionnairesClient={}; // { clientId: [ {id, type, prenom, snapshot, created_at}, ... ] }
+let journalEntriesClient={}; // { clientId: [ {date, energie, transit, ballonnements, humeur, note}, ... ] }
 
 // COLORS palette - vibrant Monday-style
 const COLORS=['#0DA678','#7B6EE6','#E4604C','#3D7EF0','#E28B2B','#0E9384','#D4537E','#5F6BE0'];
@@ -2724,12 +2725,22 @@ async function loadQuestionnaires(cid){
   }
 }
 
+async function loadJournalEntries(cid){
+  try{
+    const r=await sb('journal_entries?client_key=eq.'+encodeURIComponent(cid)+'&select=date,energie,transit,ballonnements,humeur,note,created_at&order=date.desc&limit=30');
+    journalEntriesClient[cid]=r;
+  }catch(e){
+    console.error('[CRM] ✗ Journal & humeur:', e.message);
+    journalEntriesClient[cid]=journalEntriesClient[cid]||[];
+  }
+}
+
 async function openFiche(id){
   const c=db.clients.find(x=>x.id===id);
   if(!c)return;
   nav('fiche',null);
   renderFiche(c); // affichage immédiat
-  await Promise.allSettled([loadMemoAlerts(), loadDocsMedicaux(id), loadQuestionnaires(id)]); // rechargement frais depuis Supabase
+  await Promise.allSettled([loadMemoAlerts(), loadDocsMedicaux(id), loadQuestionnaires(id), loadJournalEntries(id)]); // rechargement frais depuis Supabase
   renderFiche(c); // re-render avec données à jour
 }
 
@@ -2983,6 +2994,7 @@ function renderFiche(c){
     </div>
     <div class="fv2-panel" id="panel-notes">
       ${buildMemoBlock(c)}
+      ${buildJournalCard(c)}
     </div>`;
 }
 
@@ -3075,6 +3087,35 @@ function buildMemoBlock(c){
   return `<div class='card'><div class='card-head'><div class='card-title'><div class='card-dot' style='background:#6C47FF'></div>Observance PHV</div>
     <span style='font-size:11px;color:var(--muted)'>${clientMemos.length} protocole(s)</span></div>
     <div class='card-body'><div class="obs-accordion">${protos}</div></div></div>`;
+}
+
+const HUMEUR_ALERTE=['Irritable','Anxieuse','Fatiguée mentalement'];
+
+function buildJournalCard(c){
+  const cid=c.id;
+  const entries=journalEntriesClient[cid]||[];
+  if(!entries.length){
+    return `<div class='card' style="margin-top:14px"><div class='card-head'><div class='card-title'><div class='card-dot' style='background:#2C9C8A'></div>Journal & humeur</div></div>
+      <div class='card-body'><div style="padding:16px 0;font-size:13px;color:var(--muted);font-style:italic">Aucune entrée de journal enregistrée pour le moment.</div></div></div>`;
+  }
+  const rows=entries.map(e=>{
+    const alerte=HUMEUR_ALERTE.includes(e.humeur||'');
+    const pills=[
+      e.energie?`⚡ ${escH(e.energie)}`:'',
+      e.transit?escH(e.transit):'',
+      e.ballonnements?escH(e.ballonnements):'',
+      e.humeur?escH(e.humeur):''
+    ].filter(Boolean).map(p=>`<span style="display:inline-block;padding:3px 10px;background:${alerte?'rgba(226,68,92,.08)':'var(--surface)'};border-radius:99px;font-size:11px;color:${alerte?'#B8323A':'var(--ink)'};margin:2px 4px 2px 0">${p}</span>`).join('');
+    const note=e.note?`<div style="font-size:12.5px;color:var(--ink);line-height:1.6;margin-top:6px;padding:8px 10px;background:var(--surface);border-radius:8px">${escH(e.note)}</div>`:'';
+    return `<div style="padding:10px 0;border-bottom:1px solid var(--border)">
+      <div style="font-size:11px;color:var(--muted);font-weight:700;margin-bottom:4px">${fmtDate(e.date)}${alerte?' · <span style="color:#B8323A">⚠ à surveiller</span>':''}</div>
+      <div>${pills}</div>
+      ${note}
+    </div>`;
+  }).join('');
+  return `<div class='card' style="margin-top:14px"><div class='card-head'><div class='card-title'><div class='card-dot' style='background:#2C9C8A'></div>Journal & humeur</div>
+    <span style='font-size:11px;color:var(--muted)'>${entries.length} entrée(s) · 30 derniers jours</span></div>
+    <div class='card-body'>${rows}</div></div>`;
 }
 
 function toggleObsProto(id){
