@@ -118,6 +118,18 @@ li.reco-li.is-non .reco-row{background:var(--rose-bg)}
 .reco-btn:hover{border-color:var(--ocre)}
 .reco-btn.active-ok{background:var(--vert);border-color:var(--vert);color:#fff}
 .reco-btn.active-non{background:#B8323A;border-color:#B8323A;color:#fff}
+
+/* En-tête d'un groupe de recommandation (ex: "1. LACTIBIANE IKI —…", "En cas de ballonnements majeurs :") — UNE seule case pour tout le groupe */
+.sec-body .reco-header-line{display:flex;align-items:center;justify-content:space-between;gap:14px;font-weight:700;font-size:16.5px;line-height:1.4;margin:24px -8px 8px;padding:5px 8px;border-radius:10px;transition:background .2s}
+.sec-body .reco-header-line:first-child{margin-top:0}
+.reco-header-line.is-oui{background:var(--vert-bg)}
+.reco-header-line.is-non{background:var(--rose-bg)}
+.reco-header-txt{flex:1}
+.sec-body p.reco-header-plain{font-weight:700;font-size:16px;margin:22px 0 8px}
+.sec-body p.reco-header-plain:first-child{margin-top:0}
+/* Sous-puces d'un groupe (détails d'exécution) — pas de case, juste l'information */
+.sec-body li.sub-li{margin-left:8px}
+.sec-body li.sub-li .bd{opacity:.55}
 .reco-raison{margin:8px 0 4px;padding:10px 12px;background:var(--off);border:1px solid var(--taupe);border-radius:10px}
 .reco-raison textarea{width:100%;min-height:56px;border:1px solid var(--taupe);border-radius:8px;padding:8px 10px;font-family:'Be Vietnam Pro',sans-serif;font-size:13.5px;color:var(--ardoise);resize:vertical;outline:none;box-sizing:border-box}
 .reco-raison textarea:focus{border-color:var(--ocre)}
@@ -249,34 +261,69 @@ function escH(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').repl
 /* ══════════════════════════════════════
    PARSING DU CONTENU (repris de l'ancien phv-print)
 ══════════════════════════════════════ */
+function isHeaderLine(l){
+  if(l.length > 110) return false;
+  if(/:$/.test(l)) return true; // ex. "En cas de ballonnements majeurs :"
+  if(/^\d+[.)]\s+\S/.test(l)) return true; // ex. "1. LACTIBIANE IKI …"
+  const m = l.match(/^(.{3,55}?)\s[—–]\s(.+)$/); // ex. "Marche quotidienne — 20 minutes après le déjeuner"
+  if(m && !/[.!?]/.test(m[1])) return true;
+  return false;
+}
+
 function parseContent(raw, accentColor, pilier) {
   const lines = raw.split('\n');
-  let html = '', inBullets = false;
+  let html = '', inBullets = false, groupOpen = false, justOpenedHeader = false;
   const bulletCol = accentColor || 'var(--ocre)';
   const interactif = !!pilier && !PILIERS_SANS_RECO.includes(pilier);
+
+  function closeBullets(){ if(inBullets){ html += '</ul>'; inBullets = false; } }
+
   for (const line of lines) {
     const l = line.trim();
-    if (!l) { if (inBullets) { html += '</ul>'; inBullets = false; } continue; }
+    if (!l) { closeBullets(); continue; }
+
     if (/^[•·\-–→*]/.test(l)) {
+      const texte = l.replace(/^[•·\-–→*]\s*/,'').trim();
+      justOpenedHeader = false;
+      if (!texte || /^[-–—]+$/.test(texte)) continue; // artefact de séparation type "--" — on l'ignore
       if (!inBullets) { html += '<ul>'; inBullets = true; }
-      const texte = l.replace(/^[•·\-–→*]\s*/,'');
-      if (interactif) {
+      if (interactif && !groupOpen) {
+        // Puce isolée, sans en-tête au-dessus : c'est elle-même la recommandation
         const itemId = 'reco' + (recoCounter++);
         recoState[itemId] = { pilier: pilier, texte: texte, etat: null, raison: '' };
         html += `<li class="reco-li" id="li-${itemId}"><div class="reco-row"><span class="bd" style="background:${bulletCol}"></span><span class="reco-txt">${escH(texte)}</span><span class="reco-controls"><button type="button" class="reco-btn" id="${itemId}-ok" onclick="recoDecider('${itemId}','oui')" title="Je suis ce conseil">✓</button><button type="button" class="reco-btn" id="${itemId}-non" onclick="recoDecider('${itemId}','non')" title="Je ne suis pas ce conseil">✗</button></span></div></li>`;
       } else {
-        html += `<li><span class="bd" style="background:${bulletCol}"></span><span>${escH(texte)}</span></li>`;
+        // Puce de détail sous un en-tête déjà coché plus haut (posologie, étapes d'application…) — pas de case
+        html += `<li class="sub-li"><span class="bd" style="background:${bulletCol}"></span><span>${escH(texte)}</span></li>`;
       }
-    } else {
-      if (inBullets) { html += '</ul>'; inBullets = false; }
-      if (/^\[.+\]$/.test(l) || (/^[A-ZÀÉÈÊÎÏÔÙÜ\s&–—\[\]:]+$/.test(l) && l.length < 60)) {
-        html += `<div class="sub-heading">${escH(l.replace(/^\[|\]$/g,''))}</div>`;
-      } else {
-        html += `<p>${escH(l)}</p>`;
-      }
+      continue;
     }
+
+    closeBullets();
+
+    if (/^\[.+\]$/.test(l) || (/^[A-ZÀÉÈÊÎÏÔÙÜ\s&–—\[\]:]+$/.test(l) && l.length < 60)) {
+      html += `<div class="sub-heading">${escH(l.replace(/^\[|\]$/g,''))}</div>`;
+      groupOpen = false; justOpenedHeader = false;
+      continue;
+    }
+
+    if (isHeaderLine(l) && !justOpenedHeader) {
+      // Titre d'un groupe de recommandation (nom du complément, "En cas de…", "Marche quotidienne — …") : UNE case pour tout le groupe
+      if (interactif) {
+        const itemId = 'reco' + (recoCounter++);
+        recoState[itemId] = { pilier: pilier, texte: l, etat: null, raison: '' };
+        html += `<div class="reco-header-line" id="li-${itemId}"><span class="reco-header-txt" style="color:${bulletCol}">${escH(l)}</span><span class="reco-controls"><button type="button" class="reco-btn" id="${itemId}-ok" onclick="recoDecider('${itemId}','oui')" title="Je suis ce conseil">✓</button><button type="button" class="reco-btn" id="${itemId}-non" onclick="recoDecider('${itemId}','non')" title="Je ne suis pas ce conseil">✗</button></span></div>`;
+      } else {
+        html += `<p class="reco-header-plain" style="color:${bulletCol}">${escH(l)}</p>`;
+      }
+      groupOpen = true; justOpenedHeader = true;
+      continue;
+    }
+
+    html += `<p>${escH(l)}</p>`;
+    justOpenedHeader = false;
   }
-  if (inBullets) html += '</ul>';
+  closeBullets();
   return html;
 }
 
