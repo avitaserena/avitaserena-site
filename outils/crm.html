@@ -1261,6 +1261,10 @@ body {
 .obs-kpis { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin-bottom: 12px; padding-top: 12px }
 .obs-kpi { text-align: center; padding: 10px 8px; border-radius: var(--r8); background: var(--surface) }
 .obs-kpi-val { font-size: 22px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums }
+.fv2-observance { margin-bottom: 16px }
+.fv2-observance > .card { border: 1.5px solid var(--violet); box-shadow: 0 4px 16px rgba(123,110,230,.1) }
+.fv2-observance .card-head { background: var(--violet-lt) }
+
 .obs-kpi-lbl { font-size: 9px; color: var(--muted); margin-top: 3px; text-transform: uppercase; letter-spacing: .06em }
 .obs-row { display:flex; align-items:center; gap:10px; padding:8px 4px; border-bottom:1px solid var(--border) }
 .obs-row:last-child { border-bottom:none }
@@ -3035,6 +3039,8 @@ function renderFiche(c){
   const totalWF=wf.length;
   const daysLeft=started&&dur>0?Math.max(0,dur-Math.round(diffD(started))):null;
   const hasPHV=!!(c.phv_url);
+  const clientMemosAll=memoAlerts.filter(m=>(m.prenom||'').toLowerCase()===(c.prenom||'').toLowerCase()&&(m.nom||'').toLowerCase()===(c.nom||'').toLowerCase()).sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||''));
+  const hasMemoHistory=clientMemosAll.length>0;
   const dm=docsMedicaux[cid]||[];
   const docsCount=[hasPHV,c.timeline?.some(t=>t.title?.includes('Lettre')),c.timeline?.some(t=>t.title?.includes('Bilan'))].filter(Boolean).length + dm.length;
   const caTotal=db.factures.filter(f=>f.clientId===cid&&f.statut==='payee').reduce((s,f)=>s+(f.montant||0),0);
@@ -3128,7 +3134,7 @@ function renderFiche(c){
   const docs=[
     {icon:ic('file'),bg:'var(--orange-lt)',name:'Questionnaire de consultation',meta:qConsult.length?'Complété le '+fmtDate(qConsult[0].created_at):'Non rempli',st:qConsult.length?'ok':'missing',stl:qConsult.length?'Complété':'À faire',al:'Ouvrir',ac:qConsult.length?'':'primary',fn:`ouvrirQuestionnaireCliente('${cid}','consultation')`},
     {icon:ic('refresh'),bg:'var(--green-lt)',name:'Questionnaire de suivi',meta:qSuivi.length?qSuivi.length+' suivi(s) enregistré(s) · dernier le '+fmtDate(qSuivi[0].created_at):'Aucun suivi enregistré',st:qSuivi.length?'ok':'missing',stl:qSuivi.length?qSuivi.length+' au total':'Aucun',al:'Nouveau suivi',ac:'',fn:`ouvrirQuestionnaireCliente('${cid}','suivi')`},
-    {icon:ic('spark'),bg:'var(--violet-lt)',name:'Protocole PHV',meta:c.phv_url?'Disponible':'Non généré',st:c.phv_url?'ok':'pending',stl:c.phv_url?'Disponible':'À générer',al:c.phv_url?'Voir':'Générer',ac:c.phv_url?'':'primary',fn:c.phv_url?`window.open('${escH(c.phv_url)}','_blank')`:`ouvrirPHVCliente('${cid}')`},
+    {icon:ic('spark'),bg:'var(--violet-lt)',name:'Protocole PHV',meta:hasPHV?'Disponible':(hasMemoHistory?'Envoyé le '+new Date(clientMemosAll[0].created_at).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'})+' — fichier non enregistré ici':'Non généré'),st:hasPHV?'ok':(hasMemoHistory?'pending':'missing'),stl:hasPHV?'Disponible':(hasMemoHistory?'Envoyé (lien manquant)':'À générer'),al:hasPHV?'Voir':'Régénérer',ac:hasPHV?'':'primary',fn:hasPHV?`window.open('${escH(c.phv_url)}','_blank')`:`ouvrirPHVCliente('${cid}')`},
     {icon:ic('mail'),bg:'var(--blue-lt)',name:'Lettre clinique',meta:c.timeline?.find(t=>t.title?.includes('Lettre'))?'Envoyée':'Non rédigée',st:c.timeline?.find(t=>t.title?.includes('Lettre'))?'ok':'missing',stl:c.timeline?.find(t=>t.title?.includes('Lettre'))?'Envoyée':'Non rédigée',al:'Rédiger',ac:'primary',fn:`ouvrirLettreSeance('${cid}')`},
     {icon:ic('file'),bg:'var(--orange-lt)',name:"Bilan d'entrée",meta:c.timeline?.find(t=>t.title?.includes('Bilan'))?'Complété':'Non rempli',st:c.timeline?.find(t=>t.title?.includes('Bilan'))?'ok':c.programme?'pending':'missing',stl:c.timeline?.find(t=>t.title?.includes('Bilan'))?'Complété':c.programme?'À compléter':'N/A',al:'Ouvrir',ac:c.programme?'primary':'',fn:`ouvrirBilanEntree('${cid}','depart')`},
     {icon:ic('chart'),bg:'var(--green-lt)',name:'Check-in hebdo',meta:c.timeline?.find(t=>t.title?.includes('check-in'))?'Lien envoyé':'Non activé',st:c.timeline?.find(t=>t.title?.includes('check-in'))?'ok':'missing',stl:c.timeline?.find(t=>t.title?.includes('check-in'))?'Actif':'Non activé',al:'Envoyer le lien',ac:c.programme?'primary':'',fn:`envoyerCheckinBrevoTpl('${cid}')`},
@@ -3202,13 +3208,15 @@ function renderFiche(c){
       </div>
     </div>
     ${naHtml}
+    <div class="fv2-observance">
+      ${buildMemoBlock(c)||`<div class="info-card"><div class="ic-head"><div class="ic-title">${ic('refresh')} Observance PHV</div></div><div class="ic-body" style="padding:14px 16px"><div style="font-size:13px;color:var(--muted);font-style:italic">Aucun protocole PHV envoyé pour le moment — les recommandations acceptées et refusées apparaîtront ici après l'envoi.</div></div></div>`}
+    </div>
     <div class="fv2-overview">
       <div class="fv2-col">
         <div class="info-card">
           <div class="ic-head"><div class="ic-title">${ic('user')} Informations</div>${btn('ic-edit',`ouvrirEditionCliente('${cid}')`, ic('edit')+' Modifier')}</div>
           <div class="ic-body">${infoRows}</div>
         </div>
-        ${buildMemoBlock(c)||`<div class="info-card"><div class="ic-head"><div class="ic-title">${ic('refresh')} Recommandations du protocole</div></div><div class="ic-body" style="padding:14px 16px"><div style="font-size:13px;color:var(--muted);font-style:italic">Aucun protocole PHV envoyé pour le moment — les recommandations acceptées et refusées apparaîtront ici après l'envoi.</div></div></div>`}
         ${cr.length>0?`<div class="info-card"><div class="ic-head"><div class="ic-title">${ic('calendar')} Rendez-vous</div><span style="font-size:11px;color:var(--muted)">${cr.length} au total</span></div><div class="ic-body">${rdvHtml}</div></div>`:''}
       </div>
       <div class="fv2-col">
