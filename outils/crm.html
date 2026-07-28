@@ -1079,6 +1079,10 @@ body {
 .tl2-date { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; margin-top: 2px }
 .tl2-desc { font-size: 12px; color: var(--muted); margin-top: 3px }
 
+.ico { width:15px; height:15px; display:inline-block; vertical-align:-3px; color:var(--ink3) }
+.feed-ic .ico, .htl-block-time .ico { width:17px; height:17px; color:inherit; vertical-align:-4px }
+.home-card-title .ico { width:16px; height:16px; vertical-align:-3px; color:var(--gold-dk) }
+
 /* ═══ ACCUEIL « AUJOURD'HUI » — v5 refonte ═══ */
 .home-hero { display:flex; align-items:flex-end; justify-content:space-between; gap:24px; flex-wrap:wrap; margin-bottom:22px }
 .home-greet-title { font-family:'Inter',sans-serif; font-size:30px; font-weight:800; letter-spacing:-.02em; color:var(--ink) }
@@ -1258,6 +1262,16 @@ body {
 .obs-kpi { text-align: center; padding: 10px 8px; border-radius: var(--r8); background: var(--surface) }
 .obs-kpi-val { font-size: 22px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums }
 .obs-kpi-lbl { font-size: 9px; color: var(--muted); margin-top: 3px; text-transform: uppercase; letter-spacing: .06em }
+.obs-row { display:flex; align-items:center; gap:10px; padding:8px 4px; border-bottom:1px solid var(--border) }
+.obs-row:last-child { border-bottom:none }
+.obs-row-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0 }
+.obs-row-body { flex:1; min-width:0; display:flex; align-items:baseline; gap:8px; overflow:hidden }
+.obs-row-pilier { font-size:11.5px; font-weight:700; color:var(--ink); flex-shrink:0 }
+.obs-row-txt { font-size:12px; color:var(--ink3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.obs-row-status { font-size:10.5px; font-weight:600; color:var(--muted); flex-shrink:0 }
+.obs-row-btn { display:inline-flex; align-items:center; gap:4px; padding:4px 10px; background:var(--surface); border:1px solid var(--border); color:var(--ink3); border-radius:var(--r99); font-size:10.5px; font-weight:600; cursor:pointer; flex-shrink:0 }
+.obs-row-btn:hover { background:var(--gold-lt); color:var(--gold-dk); border-color:var(--gold) }
+.obs-row-btn .ico { width:12px; height:12px; vertical-align:-2px }
 
 /* ═══ MÉTRIQUES FICHE HERO ═══ */
 .m3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 20px }
@@ -1584,7 +1598,7 @@ function getActionsJour(){
       actions.push({
         rdv, client,
         key: 'm1',
-        ic: '✉',
+        ic: 'mail',
         label: 'Confirmation RDV',
         chip: d===0 ? "Aujourd'hui !" : d===1 ? 'Demain' : 'Dans '+d+'j',
         chipClass: d<=1 ? 'chip-red' : d<=3 ? 'chip-orange' : 'chip-green',
@@ -1599,7 +1613,7 @@ function getActionsJour(){
       actions.push({
         rdv, client,
         key: 'm2',
-        ic: '🔔',
+        ic: 'bell',
         label: d===0 ? 'Rappel — séance AUJOURD\'HUI' : 'Rappel J-1 — séance demain',
         chip: d===0 ? '≤ 18h ce soir' : 'À envoyer ce soir',
         chipClass: 'chip-red',
@@ -1614,7 +1628,7 @@ function getActionsJour(){
       actions.push({
         rdv, client,
         key: 'mh1',
-        ic: '⏱',
+        ic: 'timer',
         label: 'H-1 — séance dans 1 heure',
         chip: '1h avant la séance',
         chipClass: 'chip-red',
@@ -1629,7 +1643,7 @@ function getActionsJour(){
       actions.push({
         rdv, client,
         key: 'm3',
-        ic: '🌿',
+        ic: 'leaf',
         label: d===0 ? 'Clôture — après la séance' : 'Clôture — en retard !',
         chip: d===0 ? 'Après la séance' : 'En retard',
         chipClass: 'chip-red',
@@ -1645,7 +1659,7 @@ function getActionsJour(){
       actions.push({
         rdv, client,
         key: 'm4',
-        ic: '💫',
+        ic: 'spark',
         label: 'Suivi J+'+joursApres+' post-séance',
         chip: joursApres >= 9 ? 'Avant demain' : 'Cette semaine',
         chipClass: joursApres >= 9 ? 'chip-orange' : 'chip-green',
@@ -1681,7 +1695,7 @@ function buildDayTimeline(){
   if(badgeEl) badgeEl.textContent = rdvJour.length ? rdvJour.length+' visio'+(rdvJour.length>1?'s':'') : 'Journée libre';
 
   if(!rdvJour.length){
-    body.innerHTML = '<div class="htl-empty">Aucune visio programmée aujourd\'hui.<br>Une belle journée pour avancer sur vos outils. 🌿</div>';
+    body.innerHTML = '<div class="htl-empty">Aucune visio programmée aujourd\'hui.<br>Une belle journée pour avancer sur vos outils.</div>';
     return;
   }
 
@@ -1739,7 +1753,7 @@ function renderActionsJour(){
     const prenomEnc=encodeURIComponent(m.prenom||''), nomEnc=encodeURIComponent(m.nom||''), ddnEnc=encodeURIComponent(m.ddn||'');
     items.push({u:4, html:
       '<div class="feed-item feed-refus">'+
-        '<div class="feed-ic">🔄</div>'+
+        '<div class="feed-ic">'+ic('refresh')+'</div>'+
         '<div class="feed-body">'+
           '<div class="feed-title">'+escH(m.prenom)+' '+escH(m.nom||'')+' <span class="feed-tag tag-refus">Recommandation refusée</span></div>'+
           '<div class="feed-text">'+m.refusSansReponse.length+' refus sans alternative proposée</div>'+
@@ -1756,7 +1770,7 @@ function renderActionsJour(){
     const txt = (m.message||'').slice(0,120);
     items.push({u:3, html:
       '<div class="feed-item feed-message">'+
-        '<div class="feed-ic">💬</div>'+
+        '<div class="feed-ic">'+ic('message')+'</div>'+
         '<div class="feed-body">'+
           '<div class="feed-title">'+escH(m.prenom||'')+' '+escH(m.nom||'')+' <span class="feed-tag tag-message">Message</span></div>'+
           '<div class="feed-text">'+escH(txt)+((m.message||'').length>120?'…':'')+'</div>'+
@@ -1770,7 +1784,7 @@ function renderActionsJour(){
     const dateStr = r.date ? new Date(r.date+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'}) : '';
     items.push({u:3, html:
       '<div class="feed-item feed-reservation">'+
-        '<div class="feed-ic">📅</div>'+
+        '<div class="feed-ic">'+ic('calendar')+'</div>'+
         '<div class="feed-body">'+
           '<div class="feed-title">'+escH(r.name||'—')+' <span class="feed-tag tag-reservation">Demande de réservation</span></div>'+
           '<div class="feed-text">'+dateStr+(r.time?' · '+escH(r.time):'')+' · '+escH(r.type||r.motif||'Consultation')+'</div>'+
@@ -1787,7 +1801,7 @@ function renderActionsJour(){
   urgAl.forEach(({client:c,alert:a})=>{
     items.push({u:2, html:
       '<div class="feed-item feed-workflow">'+
-        '<div class="feed-ic">⏰</div>'+
+        '<div class="feed-ic">'+ic('alarm')+'</div>'+
         '<div class="feed-body">'+
           '<div class="feed-title">'+escH(c.prenom)+' '+escH(c.nom||'')+' <span class="feed-tag tag-workflow">Suivi de programme</span></div>'+
           '<div class="feed-text">'+escH(a.label)+'</div>'+
@@ -1807,7 +1821,7 @@ function renderActionsJour(){
     const rowId='ajd-'+a.rdv.id+'-'+a.key, sendId='ajd-send-'+a.rdv.id+'-'+a.key;
     items.push({u:a.urgence, html:
       '<div class="feed-item feed-mail" id="'+rowId+'">'+
-        '<div class="feed-ic">'+a.ic+'</div>'+
+        '<div class="feed-ic">'+ic(a.ic)+'</div>'+
         '<div class="feed-body">'+
           '<div class="feed-title">'+escH(nomCliente)+' <span class="feed-tag tag-mail">'+escH(a.label)+'</span></div>'+
           '<div class="feed-text">'+(heure?heure+' · ':'')+'<span class="feed-chip '+a.chipClass+'">'+a.chip+'</span></div>'+
@@ -1830,7 +1844,7 @@ function renderActionsJour(){
   [...tachesJour].sort((a,b)=>(a.heure||'99:99').localeCompare(b.heure||'99:99')).forEach(t=>{
     items.push({u:t.priorite==='haute'?3:1, html:
       '<div class="feed-item feed-tache" id="ajd-tache-'+t.id+'">'+
-        '<div class="feed-ic">'+(t.heure?'⏱':'☑')+'</div>'+
+        '<div class="feed-ic">'+(t.heure?ic('timer'):ic('check'))+'</div>'+
         '<div class="feed-body">'+
           '<div class="feed-title">'+escH(t.titre||'Tâche')+' <span class="feed-tag tag-tache">Tâche</span></div>'+
           '<div class="feed-text">'+(t.client_nom?escH(t.client_nom)+' · ':'')+(t.heure?escH(t.heure):"Aujourd'hui")+(t.priorite==='haute'?' · Urgente':'')+'</div>'+
@@ -2360,6 +2374,38 @@ function fmtShort(d){if(!d)return'—';return new Date(d).toLocaleDateString('fr
 function mk(d){const dt=new Date(d);return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0');}
 function ageFrom(ddn){if(!ddn)return'';return Math.floor((new Date()-new Date(ddn))/(365.25*86400000));}
 function calcAge(v){const el=document.getElementById('nc-age');if(el)el.value=ageFrom(v);}
+const ICON_PATHS={
+  mail:'<path d="M4 6h16v12H4z"/><path d="M4 7l8 6 8-6"/>',
+  bell:'<path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6"/><path d="M10 20a2 2 0 0 0 4 0"/>',
+  timer:'<circle cx="12" cy="13" r="7"/><path d="M12 9v4l2.5 2.5"/><path d="M10 2h4"/>',
+  leaf:'<path d="M4 20c8 0 14-6 14-16 0 0-13 0-14 12"/><path d="M4 20c0-5 2-9 6-11"/>',
+  spark:'<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18"/>',
+  message:'<path d="M4 5h16v11H9l-4 4V5z"/>',
+  calendar:'<rect x="3" y="4" width="18" height="17" rx="1.5"/><path d="M3 9h18M8 2v4M16 2v4"/>',
+  alarm:'<circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2"/><path d="M5 3 2.5 5.5M19 3l2.5 2.5"/>',
+  check:'<path d="M5 12l5 5 9-10"/>',
+  square:'<rect x="4" y="4" width="16" height="16" rx="3"/>',
+  refresh:'<path d="M4 12a8 8 0 0 1 14-5.3M20 12a8 8 0 0 1-14 5.3"/><path d="M18 3v4h-4M6 21v-4h4"/>',
+  user:'<circle cx="12" cy="8" r="4"/><path d="M4 20c0-4.4 3.6-7 8-7s8 2.6 8 7"/>',
+  file:'<path d="M6 3h9l3 3v15H6z"/><path d="M15 3v3h3"/>',
+  folder:'<path d="M3 6h6l2 2h10v11H3z"/>',
+  trash:'<path d="M4 7h16"/><path d="M6 7v13h12V7"/><path d="M9 7V4h6v3"/><path d="M10 11v6M14 11v6"/>',
+  edit:'<path d="M4 20h4L18.5 9.5a2 2 0 0 0-3-3L5 17v3"/>',
+  download:'<path d="M12 3v13"/><path d="M7 12l5 5 5-5"/><path d="M5 21h14"/>',
+  sun:'<circle cx="12" cy="12" r="4.5"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>',
+  drop:'<path d="M12 3s6 7 6 11.5a6 6 0 1 1-12 0C6 10 12 3 12 3z"/>',
+  scan:'<path d="M4 8V5a1 1 0 0 1 1-1h3M20 8V5a1 1 0 0 0-1-1h-3M4 16v3a1 1 0 0 0 1 1h3M20 16v3a1 1 0 0 1-1 1h-3"/><path d="M8 12h8"/>',
+  pill:'<rect x="3" y="9" width="18" height="6" rx="3" transform="rotate(-32 12 12)"/><path d="M12 12l4-4"/>',
+  paperclip:'<path d="M8 12V6a3 3 0 0 1 6 0v9a4.5 4.5 0 0 1-9 0V8"/>',
+  warn:'<path d="M12 3 2 20h20L12 3z"/><path d="M12 10v4M12 17h.01"/>',
+  chart:'<path d="M4 20V10M11 20V4M18 20v-7"/>',
+  heart:'<path d="M12 20s-7-4.4-9.5-9A5.5 5.5 0 0 1 12 6a5.5 5.5 0 0 1 9.5 5c-2.5 4.6-9.5 9-9.5 9z"/>',
+  trophy:'<path d="M6 4h12v3a6 6 0 0 1-12 0V4z"/><path d="M6 4H3a3 3 0 0 0 3 5"/><path d="M18 4h3a3 3 0 0 1-3 5"/><path d="M12 13v4"/><path d="M8 21h8"/><path d="M9 17h6l1 4H8l1-4z"/>',
+  pin:'<path d="M12 2a6 6 0 0 0-6 6c0 4.5 6 12 6 12s6-7.5 6-12a6 6 0 0 0-6-6z"/><circle cx="12" cy="8" r="2"/>',
+  bolt:'<path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z"/>'
+};
+function ic(name,cls){ return '<svg class="ico'+(cls?' '+cls:'')+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+(ICON_PATHS[name]||'')+'</svg>'; }
+
 function escH(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
 function nav(name,el){
@@ -2401,17 +2447,17 @@ function buildWF(c){
   const dp=pDur(c.programme);
   const isProg=dp>0;
   const steps=[
-    {key:'bilan_entree',     j:-1,  label:"Bilan d'entrée de programme",       tpl:null,         action:'bilan',   icon:'📋', desc:"Capturer le before documenté au démarrage"},
-    {key:'protocole_envoye', j:0,   label:'Protocole PHV envoyé',              tpl:null,         action:'phv',     icon:'✦',  desc:'Générer et envoyer le PHV'},
-    {key:'checkin_active',   j:3,   label:'Lien check-in hebdo envoyé',        tpl:'checkin_lien',action:'checkin', icon:'📊', desc:'Envoyer le lien de suivi hebdomadaire personnalisé'},
-    {key:'check_j7',         j:7,   label:'Check-in J+7',                      tpl:'j7',         action:'email',   icon:'✉', desc:'Premier point après réception du protocole'},
-    {key:'check_j21',        j:21,  label:'Point J+21',                        tpl:'j21',        action:'email',   icon:'✉', desc:'Évaluation des premiers effets'},
-    {key:'suivi_jX',         j:dur, label:'Consultation de suivi (J+'+dur+')', tpl:'suivi',      action:'email',   icon:'📅', desc:'Planifier la séance de suivi'},
+    {key:'bilan_entree',     j:-1,  label:"Bilan d'entrée de programme",       tpl:null,         action:'bilan',   icon:'file', desc:"Capturer le before documenté au démarrage"},
+    {key:'protocole_envoye', j:0,   label:'Protocole PHV envoyé',              tpl:null,         action:'phv',     icon:'spark',  desc:'Générer et envoyer le PHV'},
+    {key:'checkin_active',   j:3,   label:'Lien check-in hebdo envoyé',        tpl:'checkin_lien',action:'checkin', icon:'chart', desc:'Envoyer le lien de suivi hebdomadaire personnalisé'},
+    {key:'check_j7',         j:7,   label:'Check-in J+7',                      tpl:'j7',         action:'email',   icon:'mail', desc:'Premier point après réception du protocole'},
+    {key:'check_j21',        j:21,  label:'Point J+21',                        tpl:'j21',        action:'email',   icon:'mail', desc:'Évaluation des premiers effets'},
+    {key:'suivi_jX',         j:dur, label:'Consultation de suivi (J+'+dur+')', tpl:'suivi',      action:'email',   icon:'calendar', desc:'Planifier la séance de suivi'},
   ];
   if(isProg) steps.push({
     key:'fin_programme', j:dp,
     label: dp===90?'Clôture Alba — bilan before/after': dp===180?'Clôture Aria — bilan before/after':'Clôture Ora — bilan before/after',
-    tpl:'fin_programme', action:'cloture', icon:'🏆', desc:"Rouvrir le bilan d'entrée et comparer les scores"
+    tpl:'fin_programme', action:'cloture', icon:'trophy', desc:"Rouvrir le bilan d'entrée et comparer les scores"
   });
   return steps
     .filter(s => isProg || !['bilan_entree','checkin_active','fin_programme'].includes(s.key))
@@ -2546,7 +2592,7 @@ async function confirmerSuppressionCliente(){
     nav('clients',null);
   }catch(e){
     toast('Erreur suppression : '+e.message,'err');
-    btnEl.disabled=false; btnEl.textContent='🗑 Supprimer définitivement';
+    btnEl.disabled=false; btnEl.textContent='Supprimer définitivement';
   }
 }
 
@@ -3004,13 +3050,13 @@ function renderFiche(c){
     let naLabel=nextWF.isOvd?'En retard — '+nextWF.label:nextWF.isSoon?'Cette semaine — '+nextWF.label:'Prochaine étape — '+nextWF.label;
     let naSub=nextWF.tgt?'Prévu le '+fmtDate(nextWF.tgt):(nextWF.desc||'');
     let naFn='',naLbl='';
-    if(nextWF.action==='bilan'){naFn=`ouvrirBilanEntree('${cid}','depart')`;naLbl='📋 Ouvrir';}
-    else if(nextWF.action==='phv'){naFn=`ouvrirPHVCliente('${cid}')`;naLbl='✦ Générer';}
-    else if(nextWF.action==='lettre'){naFn=`ouvrirLettreSeance('${cid}')`;naLbl='✉ Rédiger';}
-    else if(nextWF.action==='checkin'){naFn=`envoyerCheckinBrevoTpl('${cid}')`;naLbl='📊 Envoyer';}
-    else if(nextWF.tpl){naFn=`ouvrirMailModal('${cid}','${nextWF.tpl}')`;naLbl='✉ Email';}
+    if(nextWF.action==='bilan'){naFn=`ouvrirBilanEntree('${cid}','depart')`;naLbl=ic('file')+' Ouvrir';}
+    else if(nextWF.action==='phv'){naFn=`ouvrirPHVCliente('${cid}')`;naLbl=ic('spark')+' Générer';}
+    else if(nextWF.action==='lettre'){naFn=`ouvrirLettreSeance('${cid}')`;naLbl=ic('mail')+' Rédiger';}
+    else if(nextWF.action==='checkin'){naFn=`envoyerCheckinBrevoTpl('${cid}')`;naLbl=ic('chart')+' Envoyer';}
+    else if(nextWF.tpl){naFn=`ouvrirMailModal('${cid}','${nextWF.tpl}')`;naLbl=ic('mail')+' Email';}
     const naB=naFn?`<button class="na-btn" style="background:var(--violet);color:white" onclick="${naFn}">${naLbl}</button>`:'';
-    naHtml=`<div class="next-action ${naCls}"><div class="na-icon">${escH(nextWF.icon||'📌')}</div><div class="na-body"><div class="na-label">${escH(naLabel)}</div><div class="na-sub">${escH(naSub)}</div></div>${naB}</div>`;
+    naHtml=`<div class="next-action ${naCls}"><div class="na-icon">${ic(nextWF.icon||'pin')}</div><div class="na-body"><div class="na-label">${escH(naLabel)}</div><div class="na-sub">${escH(naSub)}</div></div>${naB}</div>`;
   } else if(totalWF>0){
     naHtml=`<div class="next-action done"><div class="na-icon">✅</div><div class="na-body"><div class="na-label">Toutes les étapes sont complètes</div></div></div>`;
   }
@@ -3039,7 +3085,7 @@ function renderFiche(c){
 
   const progCardHtml=c.programme&&dur>0&&started?`
     <div class="prog-card">
-      <div class="prog-card-head"><div class="ic-title"><span>📈</span> Progression du programme</div><span style="font-size:11px;color:var(--muted)">${pLbl(c.programme)}</span></div>
+      <div class="prog-card-head"><div class="ic-title">${ic('chart')} Progression du programme</div><span style="font-size:11px;color:var(--muted)">${pLbl(c.programme)}</span></div>
       <div class="prog-card-body">
         <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:10px">
           <div><div class="prog-pct-big">${pct}%</div><div class="prog-pct-lbl">Complété</div></div>
@@ -3060,18 +3106,18 @@ function renderFiche(c){
     else badge=`<span class="wf2-badge prog">${s.j<0?'Avant J0':'J+'+s.j}</span>`;
     let aBtn='';
     if(!s.done){
-      if(s.action==='bilan') aBtn=btnSm('tool',`ouvrirBilanEntree('${cid}','depart')`,'📋 Bilan');
-      else if(s.action==='phv') aBtn=btnSm('tool',`ouvrirPHVCliente('${cid}')`,'✦ PHV');
-      else if(s.action==='lettre') aBtn=btnSm('tool',`ouvrirLettreSeance('${cid}')`,'✉️ Lettre');
-      else if(s.action==='checkin') aBtn=btnSm('tool',`envoyerCheckinBrevoTpl('${cid}')`,'📊 Lien');
-      else if(s.action==='cloture') aBtn=btnSm('tool',`ouvrirBilanEntree('${cid}','cloture')`,'🏆 Clôture');
-      else if(s.tpl) aBtn=btnSm('email',`ouvrirMailModal('${cid}','${s.tpl}')`,'✉ Email');
+      if(s.action==='bilan') aBtn=btnSm('tool',`ouvrirBilanEntree('${cid}','depart')`,ic('file')+' Bilan');
+      else if(s.action==='phv') aBtn=btnSm('tool',`ouvrirPHVCliente('${cid}')`,ic('spark')+' PHV');
+      else if(s.action==='lettre') aBtn=btnSm('tool',`ouvrirLettreSeance('${cid}')`,ic('mail')+' Lettre');
+      else if(s.action==='checkin') aBtn=btnSm('tool',`envoyerCheckinBrevoTpl('${cid}')`,ic('chart')+' Lien');
+      else if(s.action==='cloture') aBtn=btnSm('tool',`ouvrirBilanEntree('${cid}','cloture')`,ic('trophy')+' Clôture');
+      else if(s.tpl) aBtn=btnSm('email',`ouvrirMailModal('${cid}','${s.tpl}')`,ic('mail')+' Email');
     }
     return `<div class="wf2-item ${cls}">
-      <div class="wf2-check" onclick="toggleWF('${cid}','${s.key}')">${s.done?'✓':''}</div>
-      <div class="wf2-body"><div class="wf2-top"><span class="wf2-label">${escH(s.icon||'')} ${escH(s.label)}</span>${badge}</div>
+      <div class="wf2-check" onclick="toggleWF('${cid}','${s.key}')">${s.done?ic('check'):''}</div>
+      <div class="wf2-body"><div class="wf2-top"><span class="wf2-label">${ic(s.icon||'file')} ${escH(s.label)}</span>${badge}</div>
       ${s.desc?`<div class="wf2-sub">${escH(s.desc)}</div>`:''}
-      <div class="wf2-date">${s.tgt?'📅 '+fmtDate(s.tgt):'—'}</div></div>
+      <div class="wf2-date">${s.tgt?ic('calendar')+' '+fmtDate(s.tgt):'—'}</div></div>
       <div class="wf2-actions">${aBtn}</div></div>`;
   }).join('');
 
@@ -3080,12 +3126,12 @@ function renderFiche(c){
   const qConsult = qList.filter(q=>q.type==='consultation');
   const qSuivi = qList.filter(q=>q.type==='suivi');
   const docs=[
-    {icon:'📋',bg:'var(--orange-lt)',name:'Questionnaire de consultation',meta:qConsult.length?'Complété le '+fmtDate(qConsult[0].created_at):'Non rempli',st:qConsult.length?'ok':'missing',stl:qConsult.length?'Complété':'À faire',al:'Ouvrir',ac:qConsult.length?'':'primary',fn:`ouvrirQuestionnaireCliente('${cid}','consultation')`},
-    {icon:'🔁',bg:'var(--green-lt)',name:'Questionnaire de suivi',meta:qSuivi.length?qSuivi.length+' suivi(s) enregistré(s) · dernier le '+fmtDate(qSuivi[0].created_at):'Aucun suivi enregistré',st:qSuivi.length?'ok':'missing',stl:qSuivi.length?qSuivi.length+' au total':'Aucun',al:'Nouveau suivi',ac:'',fn:`ouvrirQuestionnaireCliente('${cid}','suivi')`},
-    {icon:'✦',bg:'var(--violet-lt)',name:'Protocole PHV',meta:c.phv_url?'Disponible':'Non généré',st:c.phv_url?'ok':'pending',stl:c.phv_url?'Disponible':'À générer',al:c.phv_url?'Voir':'Générer',ac:c.phv_url?'':'primary',fn:c.phv_url?`window.open('${escH(c.phv_url)}','_blank')`:`ouvrirPHVCliente('${cid}')`},
-    {icon:'✉',bg:'var(--blue-lt)',name:'Lettre clinique',meta:c.timeline?.find(t=>t.title?.includes('Lettre'))?'Envoyée':'Non rédigée',st:c.timeline?.find(t=>t.title?.includes('Lettre'))?'ok':'missing',stl:c.timeline?.find(t=>t.title?.includes('Lettre'))?'Envoyée':'Non rédigée',al:'Rédiger',ac:'primary',fn:`ouvrirLettreSeance('${cid}')`},
-    {icon:'📋',bg:'var(--orange-lt)',name:"Bilan d'entrée",meta:c.timeline?.find(t=>t.title?.includes('Bilan'))?'Complété':'Non rempli',st:c.timeline?.find(t=>t.title?.includes('Bilan'))?'ok':c.programme?'pending':'missing',stl:c.timeline?.find(t=>t.title?.includes('Bilan'))?'Complété':c.programme?'À compléter':'N/A',al:'Ouvrir',ac:c.programme?'primary':'',fn:`ouvrirBilanEntree('${cid}','depart')`},
-    {icon:'📊',bg:'var(--green-lt)',name:'Check-in hebdo',meta:c.timeline?.find(t=>t.title?.includes('check-in'))?'Lien envoyé':'Non activé',st:c.timeline?.find(t=>t.title?.includes('check-in'))?'ok':'missing',stl:c.timeline?.find(t=>t.title?.includes('check-in'))?'Actif':'Non activé',al:'Envoyer le lien',ac:c.programme?'primary':'',fn:`envoyerCheckinBrevoTpl('${cid}')`},
+    {icon:ic('file'),bg:'var(--orange-lt)',name:'Questionnaire de consultation',meta:qConsult.length?'Complété le '+fmtDate(qConsult[0].created_at):'Non rempli',st:qConsult.length?'ok':'missing',stl:qConsult.length?'Complété':'À faire',al:'Ouvrir',ac:qConsult.length?'':'primary',fn:`ouvrirQuestionnaireCliente('${cid}','consultation')`},
+    {icon:ic('refresh'),bg:'var(--green-lt)',name:'Questionnaire de suivi',meta:qSuivi.length?qSuivi.length+' suivi(s) enregistré(s) · dernier le '+fmtDate(qSuivi[0].created_at):'Aucun suivi enregistré',st:qSuivi.length?'ok':'missing',stl:qSuivi.length?qSuivi.length+' au total':'Aucun',al:'Nouveau suivi',ac:'',fn:`ouvrirQuestionnaireCliente('${cid}','suivi')`},
+    {icon:ic('spark'),bg:'var(--violet-lt)',name:'Protocole PHV',meta:c.phv_url?'Disponible':'Non généré',st:c.phv_url?'ok':'pending',stl:c.phv_url?'Disponible':'À générer',al:c.phv_url?'Voir':'Générer',ac:c.phv_url?'':'primary',fn:c.phv_url?`window.open('${escH(c.phv_url)}','_blank')`:`ouvrirPHVCliente('${cid}')`},
+    {icon:ic('mail'),bg:'var(--blue-lt)',name:'Lettre clinique',meta:c.timeline?.find(t=>t.title?.includes('Lettre'))?'Envoyée':'Non rédigée',st:c.timeline?.find(t=>t.title?.includes('Lettre'))?'ok':'missing',stl:c.timeline?.find(t=>t.title?.includes('Lettre'))?'Envoyée':'Non rédigée',al:'Rédiger',ac:'primary',fn:`ouvrirLettreSeance('${cid}')`},
+    {icon:ic('file'),bg:'var(--orange-lt)',name:"Bilan d'entrée",meta:c.timeline?.find(t=>t.title?.includes('Bilan'))?'Complété':'Non rempli',st:c.timeline?.find(t=>t.title?.includes('Bilan'))?'ok':c.programme?'pending':'missing',stl:c.timeline?.find(t=>t.title?.includes('Bilan'))?'Complété':c.programme?'À compléter':'N/A',al:'Ouvrir',ac:c.programme?'primary':'',fn:`ouvrirBilanEntree('${cid}','depart')`},
+    {icon:ic('chart'),bg:'var(--green-lt)',name:'Check-in hebdo',meta:c.timeline?.find(t=>t.title?.includes('check-in'))?'Lien envoyé':'Non activé',st:c.timeline?.find(t=>t.title?.includes('check-in'))?'ok':'missing',stl:c.timeline?.find(t=>t.title?.includes('check-in'))?'Actif':'Non activé',al:'Envoyer le lien',ac:c.programme?'primary':'',fn:`envoyerCheckinBrevoTpl('${cid}')`},
   ];
   const docsHtml=docs.map(d=>`
     <div class="doc-item">
@@ -3096,10 +3142,10 @@ function renderFiche(c){
     </div>`).join('');
 
   // Historique des questionnaires archivés sur Supabase (consultable à tout moment)
-  const qTypeLbl={consultation:'📋 Consultation',suivi:'🔁 Suivi'};
+  const qTypeLbl={consultation:'Consultation',suivi:'Suivi'};
   const qHistHtml = qList.length ? qList.map(q=>`
     <div class="doc-item">
-      <div class="doc-icon" style="background:var(--surface)">${q.type==='suivi'?'🔁':'📋'}</div>
+      <div class="doc-icon" style="background:var(--surface)">${q.type==='suivi'?ic('refresh'):ic('file')}</div>
       <div class="doc-body"><div class="doc-name">${escH(qTypeLbl[q.type]||q.type||'Questionnaire')}</div><div class="doc-meta">${fmtDate(q.created_at)}</div></div>
       ${btn('doc-action',`voirQuestionnaireArchive('${cid}','${escH(q.id)}')`,'Voir')}
     </div>`).join('') : "<div style='padding:16px;font-size:13px;color:var(--muted);font-style:italic'>Aucun questionnaire archivé pour le moment.</div>";
@@ -3107,7 +3153,7 @@ function renderFiche(c){
 
   // Documents médicaux (résultats, radios, comptes-rendus... ajoutés manuellement par la praticienne)
   const dmTypeLabels={bilan_sanguin:'Bilan sanguin',imagerie:'Radio / Imagerie',compte_rendu:'Compte-rendu médical',ordonnance:'Ordonnance',autre:'Document'};
-  const dmIcons={bilan_sanguin:'🩸',imagerie:'🩻',compte_rendu:'📄',ordonnance:'💊',autre:'📎'};
+  const dmIcons={bilan_sanguin:ic('drop'),imagerie:ic('scan'),compte_rendu:ic('file'),ordonnance:ic('pill'),autre:ic('paperclip')};
   const dmHtml=dm.length>0?dm.map(d=>`
     <div class="doc-item">
       <div class="doc-icon" style="background:var(--blue-lt)">${dmIcons[d.type]||'📎'}</div>
@@ -3139,12 +3185,12 @@ function renderFiche(c){
           <div class="fv2-tags">${tagHtml}</div>
         </div>
         <div class="fv2-actions">
-          ${btn('fv2-btn',`emailHeroBtn(this); this.dataset.id='${cid}'`,'✉ Email')}
-          ${hasPHV?btn('fv2-btn',`window.open('${escH(c.phv_url)}','_blank')`,'⬇ Télécharger PHV'):''}
-          ${btn('fv2-btn',`ouvrirPHVCliente('${cid}')`, hasPHV?'↻ Régénérer PHV':'✦ Générer PHV')}
-          ${btn('fv2-btn',`ouvrirLettreClinique('${cid}')`,'✉ Adressage')}
-          ${btn('fv2-btn accent',`ouvrirEditionCliente('${cid}')`, '✎ Modifier')}
-          ${btn('fv2-btn danger',`ouvrirSuppressionCliente('${cid}')`, '🗑 Supprimer')}
+          ${btn('fv2-btn',`emailHeroBtn(this); this.dataset.id='${cid}'`,ic('mail')+' Email')}
+          ${hasPHV?btn('fv2-btn',`window.open('${escH(c.phv_url)}','_blank')`,ic('download')+' Télécharger PHV'):''}
+          ${btn('fv2-btn',`ouvrirPHVCliente('${cid}')`, hasPHV?ic('refresh')+' Régénérer PHV':ic('spark')+' Générer PHV')}
+          ${btn('fv2-btn',`ouvrirLettreClinique('${cid}')`,ic('mail')+' Adressage')}
+          ${btn('fv2-btn accent',`ouvrirEditionCliente('${cid}')`, ic('edit')+' Modifier')}
+          ${btn('fv2-btn danger',`ouvrirSuppressionCliente('${cid}')`, ic('trash')+' Supprimer')}
         </div>
       </div>
       <div class="fv2-kpis">
@@ -3159,28 +3205,28 @@ function renderFiche(c){
     <div class="fv2-overview">
       <div class="fv2-col">
         <div class="info-card">
-          <div class="ic-head"><div class="ic-title">👤 Informations</div>${btn('ic-edit',`ouvrirEditionCliente('${cid}')`, '✎ Modifier')}</div>
+          <div class="ic-head"><div class="ic-title">${ic('user')} Informations</div>${btn('ic-edit',`ouvrirEditionCliente('${cid}')`, ic('edit')+' Modifier')}</div>
           <div class="ic-body">${infoRows}</div>
         </div>
-        ${buildMemoBlock(c)||`<div class="info-card"><div class="ic-head"><div class="ic-title">🔄 Recommandations du protocole</div></div><div class="ic-body" style="padding:14px 16px"><div style="font-size:13px;color:var(--muted);font-style:italic">Aucun protocole PHV envoyé pour le moment — les recommandations acceptées et refusées apparaîtront ici après l'envoi.</div></div></div>`}
-        ${cr.length>0?`<div class="info-card"><div class="ic-head"><div class="ic-title">📅 Rendez-vous</div><span style="font-size:11px;color:var(--muted)">${cr.length} au total</span></div><div class="ic-body">${rdvHtml}</div></div>`:''}
+        ${buildMemoBlock(c)||`<div class="info-card"><div class="ic-head"><div class="ic-title">${ic('refresh')} Recommandations du protocole</div></div><div class="ic-body" style="padding:14px 16px"><div style="font-size:13px;color:var(--muted);font-style:italic">Aucun protocole PHV envoyé pour le moment — les recommandations acceptées et refusées apparaîtront ici après l'envoi.</div></div></div>`}
+        ${cr.length>0?`<div class="info-card"><div class="ic-head"><div class="ic-title">${ic('calendar')} Rendez-vous</div><span style="font-size:11px;color:var(--muted)">${cr.length} au total</span></div><div class="ic-body">${rdvHtml}</div></div>`:''}
       </div>
       <div class="fv2-col">
         ${progCardHtml}
         <div class="info-card">
-          <div class="ic-head"><div class="ic-title">⏰ Prochaines échéances</div><span style="font-size:11px;color:var(--muted)">${doneCount}/${totalWF} complétées</span></div>
+          <div class="ic-head"><div class="ic-title">${ic('alarm')} Prochaines échéances</div><span style="font-size:11px;color:var(--muted)">${doneCount}/${totalWF} complétées</span></div>
           <div class="ic-body"><div class="wf2-list">${wfHtml||"<div style='padding:16px;font-size:13px;color:var(--muted);font-style:italic'>Aucune échéance de suivi (pas de programme en cours).</div>"}</div></div>
         </div>
         <div class="info-card">
-          <div class="ic-head"><div class="ic-title">📄 Protocole & outils</div></div>
+          <div class="ic-head"><div class="ic-title">${ic('file')} Protocole & outils</div></div>
           <div class="ic-body"><div class="doc-list">${docsHtml}</div></div>
         </div>
         <div class="info-card">
-          <div class="ic-head"><div class="ic-title">🩺 Documents médicaux <span style="font-weight:400;color:var(--muted);font-size:11px">(prises de sang, imagerie...)</span></div>${btn('ic-edit',`ouvrirAjoutDocMedical('${cid}')`,'+ Ajouter')}</div>
+          <div class="ic-head"><div class="ic-title">${ic('drop')} Documents médicaux <span style="font-weight:400;color:var(--muted);font-size:11px">(prises de sang, imagerie...)</span></div>${btn('ic-edit',`ouvrirAjoutDocMedical('${cid}')`,'+ Ajouter')}</div>
           <div class="ic-body"><div class="doc-list">${dmHtml}</div></div>
         </div>
         <div class="info-card">
-          <div class="ic-head"><div class="ic-title">🗂 Historique des questionnaires</div></div>
+          <div class="ic-head"><div class="ic-title">${ic('folder')} Historique des questionnaires</div></div>
           <div class="ic-body"><div class="doc-list">${qHistHtml}</div></div>
         </div>
         ${buildJournalCard(c)}
@@ -3221,26 +3267,19 @@ function buildMemoBlock(c){
 
     const refusHtml = m.refuses.map((r,i) => {
       const repondu = r.aDejaReponse;
-      const borderCol = repondu ? '#00C875' : '#E2445C';
-      const bg = repondu ? 'rgba(0,200,117,.05)' : 'rgba(184,50,50,.06)';
-      const badge = repondu
-        ? `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 10px;background:#00C875;color:white;border-radius:99px;font-size:10px;font-weight:700;margin-bottom:6px">✓ Alternative envoyée</span>`
-        : `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 10px;background:#E2445C;color:white;border-radius:99px;font-size:10px;font-weight:700;margin-bottom:6px">⏳ En attente de réponse</span>`;
-      const btn = !repondu
-        ? `<button onclick="ouvrirAlternativesModal('${prenomEnc}','${nomEnc}','${ddnEnc}',${i})" style="margin-top:8px;padding:4px 12px;background:var(--ocre);color:white;border:none;border-radius:99px;font-size:11px;font-weight:600;cursor:pointer">↗ Proposer une alternative</button>`
-        : `<button onclick="ouvrirAlternativesModal('${prenomEnc}','${nomEnc}','${ddnEnc}',${i})" style="margin-top:8px;padding:4px 12px;background:var(--grege);color:var(--ardoise);border:none;border-radius:99px;font-size:11px;font-weight:600;cursor:pointer">✎ Modifier</button>`;
-      return `<div style="margin:6px 0;padding:10px 12px;background:${bg};border-left:3px solid ${borderCol};border-radius:0 8px 8px 0;font-size:12px">
-        ${badge}
-        <div style="font-weight:700;color:${borderCol};margin-bottom:2px">✗ ${escH((r.pilier||'').charAt(0).toUpperCase()+(r.pilier||'').slice(1))}</div>
-        <div style="color:var(--ink);line-height:1.5">${escH(r.texte||'')}</div>
-        ${r.raison ? `<div style="color:var(--muted);margin-top:4px;font-style:italic;font-size:11px">« ${escH(r.raison)} »</div>` : ''}
-        ${btn}
+      const dotCol = repondu ? '#00C875' : '#E2445C';
+      const pilier = (r.pilier||'').charAt(0).toUpperCase()+(r.pilier||'').slice(1);
+      const texte = (r.texte||'').length>70 ? (r.texte||'').slice(0,70)+'…' : (r.texte||'');
+      const rowBtn = !repondu
+        ? `<button class="obs-row-btn" onclick="ouvrirAlternativesModal('${prenomEnc}','${nomEnc}','${ddnEnc}',${i})">${ic('refresh')} Proposer</button>`
+        : `<button class="obs-row-btn" onclick="ouvrirAlternativesModal('${prenomEnc}','${nomEnc}','${ddnEnc}',${i})">${ic('edit')} Modifier</button>`;
+      return `<div class="obs-row" title="${escH(r.texte||'')}">
+        <div class="obs-row-dot" style="background:${dotCol}"></div>
+        <div class="obs-row-body"><span class="obs-row-pilier">${escH(pilier)}</span><span class="obs-row-txt">${escH(texte)}</span></div>
+        <div class="obs-row-status">${repondu?'Répondu':'À traiter'}</div>
+        ${rowBtn}
       </div>`;
     }).join('');
-
-    const okSummary = nbOk > 0
-      ? `<div style="margin-top:8px;padding:8px 12px;background:rgba(0,200,117,.08);border-left:3px solid #00C875;border-radius:0 8px 8px 0;font-size:12px;color:#1a6e3c"><strong>${nbOk} recommandation(s) acceptée(s) ✓</strong></div>`
-      : '';
 
     const protoId = 'obs-proto-'+idx;
     return `<div class="obs-proto">
@@ -3251,24 +3290,18 @@ function buildMemoBlock(c){
         </div>
         <div style="display:flex;align-items:center;gap:14px">
           <div class="obs-proto-stats">
-            ${nbEnAttente>0 ? `<span class="obs-proto-stat-red">⏳ ${nbEnAttente} à traiter</span>` : ''}
-            ${nbRepondus>0 ? `<span class="obs-proto-stat-green">✓ ${nbRepondus} répondus</span>` : ''}
+            ${nbEnAttente>0 ? `<span class="obs-proto-stat-red">${ic('timer')} ${nbEnAttente} à traiter</span>` : ''}
+            ${nbRepondus>0 ? `<span class="obs-proto-stat-green">${ic('check')} ${nbRepondus} répondus</span>` : ''}
+            ${nbOk>0 ? `<span class="obs-proto-stat-green">${nbOk} acceptés</span>` : ''}
             <span style="color:var(--muted)">${nbTotal} total</span>
           </div>
-          <div class="obs-proto-chevron${isCurrent?' open':''}" id="${protoId}-chev">▼</div>
+          <div class="obs-proto-chevron" id="${protoId}-chev">▼</div>
         </div>
       </div>
-      <div class="obs-proto-body${isCurrent?' open':''}" id="${protoId}">
-        <div class="obs-kpis">
-          <div class="obs-kpi"><div class="obs-kpi-val" style="color:#E2445C">${nbEnAttente}</div><div class="obs-kpi-lbl">À traiter</div></div>
-          <div class="obs-kpi"><div class="obs-kpi-val" style="color:#00C875">${nbRepondus}</div><div class="obs-kpi-lbl">Répondus</div></div>
-          <div class="obs-kpi"><div class="obs-kpi-val" style="color:#00C875">${nbOk}</div><div class="obs-kpi-lbl">Acceptés</div></div>
-          <div class="obs-kpi"><div class="obs-kpi-val">${nbTotal}</div><div class="obs-kpi-lbl">Total</div></div>
-        </div>
-        ${refusHtml}
-        ${okSummary}
+      <div class="obs-proto-body" id="${protoId}">
+        ${refusHtml || `<div style="padding:12px 4px;font-size:12px;color:var(--muted);font-style:italic">Toutes les recommandations de ce protocole ont été acceptées — aucun refus à traiter.</div>`}
         <div style="margin-top:10px;text-align:right">
-          <button onclick="ouvrirAlternativesModal('${prenomEnc}','${nomEnc}','${ddnEnc}',-1)" style="padding:4px 10px;background:var(--ocre);color:white;border:none;border-radius:99px;font-size:11px;font-weight:600;cursor:pointer">Tous les refus ↗</button>
+          <button onclick="ouvrirAlternativesModal('${prenomEnc}','${nomEnc}','${ddnEnc}',-1)" style="padding:4px 10px;background:var(--ocre);color:white;border:none;border-radius:99px;font-size:11px;font-weight:600;cursor:pointer">Tous les refus</button>
         </div>
       </div>
     </div>`;
@@ -3291,7 +3324,7 @@ function buildJournalCard(c){
   const rows=entries.map(e=>{
     const alerte=HUMEUR_ALERTE.includes(e.humeur||'');
     const pills=[
-      e.energie?`⚡ ${escH(e.energie)}`:'',
+      e.energie?`${ic('bolt')} ${escH(e.energie)}`:'',
       e.transit?escH(e.transit):'',
       e.ballonnements?escH(e.ballonnements):'',
       e.humeur?escH(e.humeur):''
@@ -3950,7 +3983,7 @@ function ouvrirEnvoiProtocole(clientId){
     const cached = localStorage.getItem(`avita_phv_url_${slug}`);
     if (cached) {
       inp.value = cached;
-      if (hint) hint.innerHTML = '<span style="color:#B4906A">⚡ URL récupérée depuis le cache local — ouvrez phv-print.html pour confirmer</span>';
+      if (hint) hint.innerHTML = '<span style="color:#B4906A">'+ic('bolt')+' URL récupérée depuis le cache local — ouvrez phv-print.html pour confirmer</span>';
     } else {
       const lastRaw = localStorage.getItem('avita_phv_url_last');
       if (lastRaw) {
@@ -3958,7 +3991,7 @@ function ouvrirEnvoiProtocole(clientId){
           const last = JSON.parse(lastRaw);
           if (last.prenom?.toLowerCase() === (c.prenom||'').toLowerCase()) {
             inp.value = last.url;
-            if (hint) hint.innerHTML = '<span style="color:#B4906A">⚡ Dernier PHV généré · Vérifiez que c\'est bien pour cette cliente</span>';
+            if (hint) hint.innerHTML = '<span style="color:#B4906A">'+ic('bolt')+' Dernier PHV généré · Vérifiez que c\'est bien pour cette cliente</span>';
           }
         } catch(e) {}
       }
@@ -4577,7 +4610,7 @@ function ouvrirBilanEntree(clientId, mode){
     <div class="home-grid">
       <div class="home-card home-timeline-card">
         <div class="home-card-head">
-          <div class="home-card-title">☀️ Votre journée</div>
+          <div class="home-card-title"><svg class="ico" style="color:var(--gold-dk)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg> Votre journée</div>
           <div class="htl-badge" id="htl-badge">—</div>
         </div>
         <div class="htl-scroll"><div class="htl-body" id="htl-body"></div></div>
@@ -4921,7 +4954,7 @@ function ouvrirBilanEntree(clientId, mode){
 
 <div class="modal-bg" id="m-delete-client">
   <div class="modal">
-    <div class="mhead"><div class="mtitle" style="color:var(--red)">🗑 Supprimer définitivement cette fiche</div><button class="mx" onclick="closeM('m-delete-client')">×</button></div>
+    <div class="mhead"><div class="mtitle" style="color:var(--red)"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M6 7v13h12V7"/><path d="M9 7V4h6v3"/><path d="M10 11v6M14 11v6"/></svg> Supprimer définitivement cette fiche</div><button class="mx" onclick="closeM('m-delete-client')">×</button></div>
     <div class="mbody">
       <input type="hidden" id="dc-client-id">
       <p style="font-size:13px;color:var(--ink3);line-height:1.65">
@@ -4935,7 +4968,7 @@ function ouvrirBilanEntree(clientId, mode){
     </div>
     <div class="mfoot">
       <button class="btn btn-ghost" onclick="closeM('m-delete-client')">Annuler</button>
-      <button class="btn btn-primary" id="dc-confirm-btn" disabled style="background:var(--red);border-color:var(--red)" onclick="confirmerSuppressionCliente()">🗑 Supprimer définitivement</button>
+      <button class="btn btn-primary" id="dc-confirm-btn" disabled style="background:var(--red);border-color:var(--red)" onclick="confirmerSuppressionCliente()"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M6 7v13h12V7"/><path d="M9 7V4h6v3"/><path d="M10 11v6M14 11v6"/></svg> Supprimer définitivement</button>
     </div>
   </div>
 </div>
