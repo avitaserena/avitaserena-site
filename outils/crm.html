@@ -1456,8 +1456,11 @@ function saveL(d){localStorage.setItem(LKEY,JSON.stringify(d))}
 let db={clients:[],factures:[],settings:null,nextF:1};
 let taches=[],rdvs=[],emailCtx=null,curTab='urg',curSearch='',curFilter='all';
 let memoAlerts=[];
+let memoHistoryAll=[]; // tous les mémos PHV, sans dédoublonnage — historique complet par cliente
 let clientMessages=[];
 let docsMedicaux={}; // { clientId: [ {id, nom_fichier, type, date_bilan, storage_path, uploaded_at}, ... ] }
+let protocolesClient={}; // { clientId: row de la table protocoles_client (protocole PHV actuellement actif), ou null }
+let protocolesHistory={}; // { clientId: [ {id, created_at}, ... ] } — tous les protocoles jamais générés, jamais écrasés
 let questionnairesClient={}; // { clientId: [ {id, type, prenom, snapshot, created_at}, ... ] }
 let journalEntriesClient={}; // { clientId: [ {date, energie, transit, ballonnements, humeur, note}, ... ] }
 
@@ -1982,8 +1985,8 @@ async function loadMemoAlerts(){
   try{
     // Charger en parallèle les mémos et les alternatives déjà envoyées
     const [memoRows, altRows] = await Promise.all([
-      sb('phv_memos?order=created_at.desc&limit=200'),
-      sb('alternatives?select=prenom,nom,refus_texte,alternative_text&order=sent_at.desc&limit=500')
+      sb('phv_memos?order=created_at.desc&limit=1000'),
+      sb('alternatives?select=prenom,nom,refus_texte,alternative_text&order=sent_at.desc&limit=1000')
     ]);
 
     // Construire un index des alternatives par "prenom|nom|refus40chars"
@@ -1993,17 +1996,8 @@ async function loadMemoAlerts(){
       altIndex.add(key);
     });
 
-    // Garder seulement le mémo le plus récent par cliente
-    const seen = new Set();
-    const latest = [];
-    for(const r of memoRows){
-      if(!seen.has(r.client_key)){ seen.add(r.client_key); latest.push(r); }
-    }
-
-    memoAlerts = latest.filter(r => {
-      try{ const s = typeof r.stats==='string'?JSON.parse(r.stats):r.stats; return s && s.non > 0; }
-      catch(e){ return false; }
-    }).map(r => {
+    // Transforme une ligne brute phv_memos en objet exploitable (stats + refus détaillés)
+    function parseMemoRow(r){
       const stats   = typeof r.stats==='string'?JSON.parse(r.stats):r.stats;
       const details = typeof r.details==='string'?JSON.parse(r.details):r.details;
       const refuses = [];
@@ -2031,11 +2025,29 @@ async function loadMemoAlerts(){
         refusSansReponse: refuses.filter(x => !x.aDejaReponse), // uniquement ceux sans alternative
         created_at: r.created_at
       };
-    });
+    }
+
+    // ── Historique complet, par cliente — AUCUN dédoublonnage. C'est ce qui alimente
+    // le bloc "Observance PHV" de la fiche cliente : chaque protocole envoyé reste
+    // consultable, même après qu'un protocole plus récent l'ait remplacé au quotidien.
+    memoHistoryAll = memoRows.map(parseMemoRow);
+
+    // Garder seulement le mémo le plus récent par cliente — pour le résumé d'alertes
+    // (dashboard, badge, échéances). L'historique complet reste dans memoHistoryAll.
+    const seen = new Set();
+    const latest = [];
+    for(const r of memoRows){
+      if(!seen.has(r.client_key)){ seen.add(r.client_key); latest.push(r); }
+    }
+
+    memoAlerts = latest.filter(r => {
+      try{ const s = typeof r.stats==='string'?JSON.parse(r.stats):r.stats; return s && s.non > 0; }
+      catch(e){ return false; }
+    }).map(parseMemoRow);
 
     const badge = document.getElementById('tc-feed');
     if(badge) badge.textContent = memoAlerts.filter(m => m.refusSansReponse.length > 0).length;
-    console.log('[CRM] Mémo alertes refus:', memoAlerts.length);
+    console.log('[CRM] Mémo alertes refus:', memoAlerts.length, '— historique complet:', memoHistoryAll.length);
   }catch(e){
     console.error('[CRM] Erreur loadMemoAlerts:', e.message);
     memoAlerts = [];
@@ -2439,7 +2451,7 @@ function pLbl(p){return p==='aria'?'Aria · 6 mois':p==='ora'?'Ora · 9 mois':p=
 
 function protoDateFor(c){
   if(c.dateProtocole) return c.dateProtocole;
-  const memos=(typeof memoAlerts!=='undefined'?memoAlerts:[]).filter(m=>
+  const memos=(typeof memoHistoryAll!=='undefined'?memoHistoryAll:[]).filter(m=>
     (m.prenom||'').toLowerCase()===(c.prenom||'').toLowerCase() &&
     (m.nom||'').toLowerCase()===(c.nom||'').toLowerCase()
   ).sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||''));
@@ -2983,6 +2995,26 @@ async function loadDocsMedicaux(cid){
   }
 }
 
+async function loadProtocoleClient(cid){
+  try{
+    const r=await sb('protocoles_client?client_id=eq.'+encodeURIComponent(cid)+'&select=*&limit=1');
+    protocolesClient[cid]=r[0]||null;
+  }catch(e){
+    console.error('[CRM] ✗ Protocole PHV actif:', e.message);
+    protocolesClient[cid]=protocolesClient[cid]||null;
+  }
+}
+
+async function loadProtocolesHistory(cid){
+  try{
+    const r=await sb('protocoles_history?client_id=eq.'+encodeURIComponent(cid)+'&select=id,created_at&order=created_at.desc');
+    protocolesHistory[cid]=r;
+  }catch(e){
+    console.error('[CRM] ✗ Historique des protocoles:', e.message);
+    protocolesHistory[cid]=protocolesHistory[cid]||[];
+  }
+}
+
 async function loadQuestionnaires(cid){
   try{
     const r=await sb('questionnaires?client_id=eq.'+encodeURIComponent(cid)+'&order=created_at.desc&select=id,type,prenom,snapshot,created_at');
@@ -3008,7 +3040,7 @@ async function openFiche(id){
   if(!c)return;
   nav('fiche',null);
   renderFiche(c); // affichage immédiat
-  await Promise.allSettled([loadMemoAlerts(), loadDocsMedicaux(id), loadQuestionnaires(id), loadJournalEntries(id)]); // rechargement frais depuis Supabase
+  await Promise.allSettled([loadMemoAlerts(), loadDocsMedicaux(id), loadQuestionnaires(id), loadJournalEntries(id), loadProtocoleClient(id), loadProtocolesHistory(id)]); // rechargement frais depuis Supabase
   if(!c.dateProtocole){
     const fallback=protoDateFor(c);
     if(fallback){
@@ -3038,8 +3070,8 @@ function renderFiche(c){
   const doneCount=wf.filter(s=>s.done).length;
   const totalWF=wf.length;
   const daysLeft=started&&dur>0?Math.max(0,dur-Math.round(diffD(started))):null;
-  const hasPHV=!!(c.phv_url);
-  const clientMemosAll=memoAlerts.filter(m=>(m.prenom||'').toLowerCase()===(c.prenom||'').toLowerCase()&&(m.nom||'').toLowerCase()===(c.nom||'').toLowerCase()).sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||''));
+  const hasPHV=!!(c.phv_url || protocolesClient[cid]);
+  const clientMemosAll=memoHistoryAll.filter(m=>(m.prenom||'').toLowerCase()===(c.prenom||'').toLowerCase()&&(m.nom||'').toLowerCase()===(c.nom||'').toLowerCase()).sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||''));
   const hasMemoHistory=clientMemosAll.length>0;
   const dm=docsMedicaux[cid]||[];
   const docsCount=[hasPHV,c.timeline?.some(t=>t.title?.includes('Lettre')),c.timeline?.some(t=>t.title?.includes('Bilan'))].filter(Boolean).length + dm.length;
@@ -3134,7 +3166,18 @@ function renderFiche(c){
   const docs=[
     {icon:ic('file'),bg:'var(--orange-lt)',name:'Questionnaire de consultation',meta:qConsult.length?'Complété le '+fmtDate(qConsult[0].created_at):'Non rempli',st:qConsult.length?'ok':'missing',stl:qConsult.length?'Complété':'À faire',al:'Ouvrir',ac:qConsult.length?'':'primary',fn:`ouvrirQuestionnaireCliente('${cid}','consultation')`},
     {icon:ic('refresh'),bg:'var(--green-lt)',name:'Questionnaire de suivi',meta:qSuivi.length?qSuivi.length+' suivi(s) enregistré(s) · dernier le '+fmtDate(qSuivi[0].created_at):'Aucun suivi enregistré',st:qSuivi.length?'ok':'missing',stl:qSuivi.length?qSuivi.length+' au total':'Aucun',al:'Nouveau suivi',ac:'',fn:`ouvrirQuestionnaireCliente('${cid}','suivi')`},
-    {icon:ic('spark'),bg:'var(--violet-lt)',name:'Protocole PHV',meta:hasPHV?'Disponible':(hasMemoHistory?'Envoyé le '+new Date(clientMemosAll[0].created_at).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'})+' — fichier non enregistré ici':'Non généré'),st:hasPHV?'ok':(hasMemoHistory?'pending':'missing'),stl:hasPHV?'Disponible':(hasMemoHistory?'Envoyé (lien manquant)':'À générer'),al:hasPHV?'Voir':'Régénérer',ac:hasPHV?'':'primary',fn:hasPHV?`window.open('${escH(c.phv_url)}','_blank')`:`ouvrirPHVCliente('${cid}')`},
+    (()=>{
+      const pc=protocolesClient[cid];
+      const pcDate=pc?(pc.updated_at||pc.created_at):null;
+      if(pc){
+        return {icon:ic('spark'),bg:'var(--violet-lt)',name:'Protocole PHV',
+          meta:pcDate?'Actif · généré le '+new Date(pcDate).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}):'Actif',
+          st:'ok',stl:'Actif',al:'Voir',ac:'',fn:`window.open('phv-print.html?client=${encodeURIComponent(cid)}','_blank')`};
+      }
+      if(hasPHV) return {icon:ic('spark'),bg:'var(--violet-lt)',name:'Protocole PHV',meta:'Disponible',st:'ok',stl:'Disponible',al:'Voir',ac:'',fn:`window.open('${escH(c.phv_url)}','_blank')`};
+      if(hasMemoHistory) return {icon:ic('spark'),bg:'var(--violet-lt)',name:'Protocole PHV',meta:'Envoyé le '+new Date(clientMemosAll[0].created_at).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'})+' — introuvable dans la base actuelle',st:'pending',stl:'À vérifier',al:'Régénérer',ac:'primary',fn:`ouvrirPHVCliente('${cid}')`};
+      return {icon:ic('spark'),bg:'var(--violet-lt)',name:'Protocole PHV',meta:'Non généré',st:'missing',stl:'À générer',al:'Générer',ac:'primary',fn:`ouvrirPHVCliente('${cid}')`};
+    })(),
     {icon:ic('mail'),bg:'var(--blue-lt)',name:'Lettre clinique',meta:c.timeline?.find(t=>t.title?.includes('Lettre'))?'Envoyée':'Non rédigée',st:c.timeline?.find(t=>t.title?.includes('Lettre'))?'ok':'missing',stl:c.timeline?.find(t=>t.title?.includes('Lettre'))?'Envoyée':'Non rédigée',al:'Rédiger',ac:'primary',fn:`ouvrirLettreSeance('${cid}')`},
     {icon:ic('file'),bg:'var(--orange-lt)',name:"Bilan d'entrée",meta:c.timeline?.find(t=>t.title?.includes('Bilan'))?'Complété':'Non rempli',st:c.timeline?.find(t=>t.title?.includes('Bilan'))?'ok':c.programme?'pending':'missing',stl:c.timeline?.find(t=>t.title?.includes('Bilan'))?'Complété':c.programme?'À compléter':'N/A',al:'Ouvrir',ac:c.programme?'primary':'',fn:`ouvrirBilanEntree('${cid}','depart')`},
     {icon:ic('chart'),bg:'var(--green-lt)',name:'Check-in hebdo',meta:c.timeline?.find(t=>t.title?.includes('check-in'))?'Lien envoyé':'Non activé',st:c.timeline?.find(t=>t.title?.includes('check-in'))?'ok':'missing',stl:c.timeline?.find(t=>t.title?.includes('check-in'))?'Actif':'Non activé',al:'Envoyer le lien',ac:c.programme?'primary':'',fn:`envoyerCheckinBrevoTpl('${cid}')`},
@@ -3146,6 +3189,15 @@ function renderFiche(c){
       <span class="doc-status ${d.st}">${escH(d.stl)}</span>
       ${btn(`doc-action ${d.ac}`,d.fn,escH(d.al))}
     </div>`).join('');
+
+  // Historique complet des protocoles générés — jamais écrasé, contrairement au protocole actif
+  const protoHist = protocolesHistory[cid]||[];
+  const protoHistHtml = protoHist.length ? protoHist.map((p,i)=>`
+    <div class="doc-item">
+      <div class="doc-icon" style="background:var(--violet-lt)">${ic('spark')}</div>
+      <div class="doc-body"><div class="doc-name">${i===0?'Protocole actuel':'Version antérieure'}</div><div class="doc-meta">${fmtDate(p.created_at)}</div></div>
+      ${btn('doc-action',`window.open('phv-print.html?history=${encodeURIComponent(p.id)}','_blank')`,'Voir')}
+    </div>`).join('') : "<div style='padding:16px;font-size:13px;color:var(--muted);font-style:italic'>Aucun protocole généré pour le moment.</div>";
 
   // Historique des questionnaires archivés sur Supabase (consultable à tout moment)
   const qTypeLbl={consultation:'Consultation',suivi:'Suivi'};
@@ -3192,7 +3244,7 @@ function renderFiche(c){
         </div>
         <div class="fv2-actions">
           ${btn('fv2-btn',`emailHeroBtn(this); this.dataset.id='${cid}'`,ic('mail')+' Email')}
-          ${hasPHV?btn('fv2-btn',`window.open('${escH(c.phv_url)}','_blank')`,ic('download')+' Télécharger PHV'):''}
+          ${hasPHV?btn('fv2-btn',`window.open('${c.phv_url?escH(c.phv_url):'phv-print.html?client='+encodeURIComponent(cid)}','_blank')`,ic('download')+' Voir le PHV'):''}
           ${btn('fv2-btn',`ouvrirPHVCliente('${cid}')`, hasPHV?ic('refresh')+' Régénérer PHV':ic('spark')+' Générer PHV')}
           ${btn('fv2-btn',`ouvrirLettreClinique('${cid}')`,ic('mail')+' Adressage')}
           ${btn('fv2-btn accent',`ouvrirEditionCliente('${cid}')`, ic('edit')+' Modifier')}
@@ -3230,6 +3282,10 @@ function renderFiche(c){
           <div class="ic-body"><div class="doc-list">${docsHtml}</div></div>
         </div>
         <div class="info-card">
+          <div class="ic-head"><div class="ic-title">${ic('spark')} Historique des protocoles</div><span style="font-size:11px;color:var(--muted)">${protoHist.length} version(s)</span></div>
+          <div class="ic-body"><div class="doc-list">${protoHistHtml}</div></div>
+        </div>
+        <div class="info-card">
           <div class="ic-head"><div class="ic-title">${ic('drop')} Documents médicaux <span style="font-weight:400;color:var(--muted);font-size:11px">(prises de sang, imagerie...)</span></div>${btn('ic-edit',`ouvrirAjoutDocMedical('${cid}')`,'+ Ajouter')}</div>
           <div class="ic-body"><div class="doc-list">${dmHtml}</div></div>
         </div>
@@ -3252,8 +3308,9 @@ function ficheSwitchTab(name, el){
 }
 
 function buildMemoBlock(c){
-  // Tous les mémos de cette cliente, triés du plus récent au plus ancien
-  const clientMemos = memoAlerts.filter(m =>
+  // Tous les mémos de cette cliente, triés du plus récent au plus ancien — historique complet,
+  // pas seulement celui qui sert au badge d'alertes (memoAlerts est dédupliqué à 1 par cliente).
+  const clientMemos = memoHistoryAll.filter(m =>
     (m.prenom||'').toLowerCase() === (c.prenom||'').toLowerCase() &&
     (m.nom||'').toLowerCase() === (c.nom||'').toLowerCase()
   ).sort((a,b) => (b.created_at||'').localeCompare(a.created_at||''));

@@ -893,10 +893,40 @@ function chargerProtocoleLocal() {
   }
 }
 
+async function chargerProtocoleHistorique(histId) {
+  try {
+    let authToken = SUPA_KEY;
+    if (typeof Auth !== 'undefined') {
+      const token = await Auth.getValidAccessToken();
+      if (token) authToken = token;
+    }
+    const res = await fetch(SUPA_URL + '/rest/v1/protocoles_history?id=eq.' + encodeURIComponent(histId) + '&select=data,blocks,created_at', {
+      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + authToken }
+    });
+    const rows = await res.json();
+    const row = rows && rows[0];
+    if (!row || !row.data || !row.blocks || !row.blocks.length) throw new Error('no data');
+    data = row.data;
+    blocks = row.blocks;
+    buildImmersive();
+    document.getElementById('loading').classList.add('done');
+  } catch(e) {
+    document.getElementById('loading').innerHTML = `
+      <div style="text-align:center;color:var(--sable);max-width:400px;padding:24px">
+        <div style="font-size:40px;margin-bottom:16px">📋</div>
+        <p style="font-size:16px;margin-bottom:8px">Impossible de charger cette version archivée.</p>
+      </div>`;
+    console.error('Erreur chargement protocole archivé:', e);
+  }
+}
+
 async function init() {
   const params = new URLSearchParams(window.location.search);
   const clientKey = params.get('client');
-  if (clientKey) {
+  const histId = params.get('history');
+  if (histId) {
+    showAuthGate('praticienne', () => { removeAuthGate(); chargerProtocoleHistorique(histId); });
+  } else if (clientKey) {
     showAuthGate('cliente', () => { removeAuthGate(); chargerProtocoleCliente(clientKey); });
   } else {
     showAuthGate('praticienne', () => { removeAuthGate(); chargerProtocoleLocal(); });

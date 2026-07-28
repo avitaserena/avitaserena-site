@@ -941,6 +941,17 @@ function loadSession() {
       sessionData = JSON.parse(raw);
       renderSessionCard();
       prefillParams();
+      // ── Génération automatique : dès que la cliente vient d'un questionnaire fraîchement
+      // finalisé (flag posé par Questionnaire_de_consultation.html / Questionnaire_de_suivi.html),
+      // on lance la génération sans attendre un clic. Le flag est retiré aussitôt du localStorage
+      // pour qu'une réouverture manuelle ultérieure de cet outil ne re-déclenche pas tout seul.
+      if (sessionData._autoGenerate) {
+        sessionData._autoGenerate = false;
+        localStorage.setItem('avita_session', JSON.stringify(sessionData));
+        if (AIClient.hasKey()) {
+          setTimeout(() => { generate(); }, 300);
+        }
+      }
     } else {
       document.getElementById('session-display').innerHTML = '<p class="session-empty">Aucune donnée importée. Utilisez le formulaire manuel ci-dessous ou lancez depuis le questionnaire.</p>';
       document.getElementById('manual-form').classList.add('open');
@@ -1799,7 +1810,7 @@ function addBlock() {
 }
 
 // ── Ouvrir phv-print.html ──
-function ouvrirProtocole() {
+async function ouvrirProtocole() {
   if (!generatedData || !blocks.length) return;
 
   // Synchroniser le contenu édité dans generatedData
@@ -1820,10 +1831,67 @@ function ouvrirProtocole() {
   // Priorité au client_id transmis tel quel (CRM ou questionnaire) — fiable à 100%, pas de recalcul.
   // Repli sur prénom+nom+ddn uniquement si ce client_id n'a pas pu être transmis.
   const clientKey = clientInfo.client_id || (clientInfo.prenom && clientInfo.ddn ? DB.clientKey(clientInfo.prenom, clientInfo.nom || '', clientInfo.ddn) : null);
+
   if (clientKey) {
     DB.saveProtocoleClient(clientKey, generatedData, blocks)
       .then(() => console.log('✓ Protocole synchronisé sur Supabase :', clientKey))
       .catch(e => console.warn('⚠ Échec de synchronisation Supabase (le protocole reste disponible en local) :', e));
+
+    // ── Historique complet + notification cliente — best-effort : n'empêche jamais
+    // l'ouverture du protocole même si ça échoue (Sabrina garde toujours la main).
+    (async () => {
+      const PHV_SUPA_URL = 'https://bqhkdndwldwqacrrbbig.supabase.co';
+      const PHV_SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxaGtkbmR3bGR3cWFjcnJiYmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MzAyNTIsImV4cCI6MjA5NjMwNjI1Mn0.nH2UktMAVKYwng4L3SvW5F0fluV_sObGV0f3Mk1dnOY';
+      let authToken = PHV_SUPA_KEY;
+      try {
+        if (typeof Auth !== 'undefined') {
+          const token = await Auth.getValidAccessToken();
+          if (token) authToken = token;
+        }
+        const headers = { 'apikey': PHV_SUPA_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' };
+
+        // 1) Combien de protocoles déjà archivés pour cette cliente ? (détermine "nouveau" vs "mise à jour")
+        const histRes = await fetch(PHV_SUPA_URL + '/rest/v1/protocoles_history?client_id=eq.' + encodeURIComponent(clientKey) + '&select=id', { headers });
+        const histRows = histRes.ok ? await histRes.json() : [];
+        const isUpdate = histRows.length > 0;
+
+        // 2) Archiver cette version dans l'historique (jamais écrasé, contrairement à protocoles_client)
+        await fetch(PHV_SUPA_URL + '/rest/v1/protocoles_history', {
+          method: 'POST',
+          headers: { ...headers, 'Prefer': 'return=minimal' },
+          body: JSON.stringify({
+            client_id: clientKey,
+            prenom: clientInfo.prenom || generatedData.prenom || '',
+            nom: clientInfo.nom || '',
+            data: generatedData,
+            blocks: blocks
+          })
+        });
+        console.log('✓ Protocole archivé dans l\'historique');
+
+        // 3) Récupérer l'email de la cliente pour la notification Brevo
+        const clRes = await fetch(PHV_SUPA_URL + '/rest/v1/clientes?id=eq.' + encodeURIComponent(clientKey) + '&select=email,prenom,nom', { headers });
+        const clRows = clRes.ok ? await clRes.json() : [];
+        const cl = clRows[0];
+        if (cl && cl.email) {
+          const emailRes = await fetch(PHV_SUPA_URL + '/functions/v1/send-phv-protocole', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              to_email: cl.email,
+              to_name: [cl.prenom, cl.nom].filter(Boolean).join(' ') || clientInfo.prenom || '',
+              is_update: isUpdate
+            })
+          });
+          if (emailRes.ok) console.log('✓ Email de notification envoyé à', cl.email);
+          else console.warn('⚠ Envoi email échoué :', await emailRes.text());
+        } else {
+          console.warn('⚠ Pas d\'email enregistré pour cette cliente — notification non envoyée. Complétez la fiche dans le CRM.');
+        }
+      } catch (e) {
+        console.warn('⚠ Historique/notification protocole — erreur non bloquante :', e);
+      }
+    })();
   } else {
     console.warn('⚠ Identifiant cliente manquant (client_id ou date de naissance) — protocole non synchronisé sur Supabase. Renseignez la date de naissance dans le formulaire manuel, ou passez par le CRM/questionnaire pour transmettre automatiquement l\'identifiant.');
   }
