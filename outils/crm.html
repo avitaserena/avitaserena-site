@@ -2376,8 +2376,16 @@ function pDur(p){return p==='alba'?90:p==='aria'?180:p==='ora'?270:0;}
 function pCls(p){return p==='aria'?'aria':p==='ora'?'ora':'alba';}
 function pLbl(p){return p==='aria'?'Aria · 6 mois':p==='ora'?'Ora · 9 mois':p==='alba'?'Alba · 3 mois':'Consultation';}
 
+function protoDateFor(c){
+  if(c.dateProtocole) return c.dateProtocole;
+  const memos=(typeof memoAlerts!=='undefined'?memoAlerts:[]).filter(m=>
+    (m.prenom||'').toLowerCase()===(c.prenom||'').toLowerCase() &&
+    (m.nom||'').toLowerCase()===(c.nom||'').toLowerCase()
+  ).sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||''));
+  return memos[0]?.created_at ? memos[0].created_at.slice(0,10) : null;
+}
 function buildWF(c){
-  const proto=c.dateProtocole;
+  const proto=protoDateFor(c);
   const dur=parseInt(c.dureeTtt)||60;
   const dp=pDur(c.programme);
   const isProg=dp>0;
@@ -2405,7 +2413,7 @@ function buildWF(c){
       return{...s,tgt,done,isOvd,isSoon};
     });
 }
-function getAlerts(c){if(!c.dateProtocole)return[];return buildWF(c).filter(s=>!s.done&&(s.isOvd||s.isSoon));}
+function getAlerts(c){return buildWF(c).filter(s=>!s.done&&(s.isOvd||s.isSoon));}
 function getStatus(c){
   const al=getAlerts(c);
   const last=c.timeline?.[c.timeline.length-1]?.date||c.date1;
@@ -2940,6 +2948,13 @@ async function openFiche(id){
   nav('fiche',null);
   renderFiche(c); // affichage immédiat
   await Promise.allSettled([loadMemoAlerts(), loadDocsMedicaux(id), loadQuestionnaires(id), loadJournalEntries(id)]); // rechargement frais depuis Supabase
+  if(!c.dateProtocole){
+    const fallback=protoDateFor(c);
+    if(fallback){
+      c.dateProtocole=fallback;
+      try{ await sb('clientes?id=eq.'+id, {method:'PATCH', body:JSON.stringify({date_protocole:fallback})}); }catch(e){}
+    }
+  }
   renderFiche(c); // re-render avec données à jour
 }
 
