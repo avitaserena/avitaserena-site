@@ -806,6 +806,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       </div>
 
       <div style="margin-bottom:16px">
+        <label class="lbl">Date de naissance *</label>
+        <input class="fi" type="date" id="f-ddn" required>
+      </div>
+
+      <div style="margin-bottom:16px">
         <label class="lbl">Motif principal de votre consultation</label>
         <select class="fi" id="f-motif">
           <option value="">— Choisissez —</option>
@@ -1037,7 +1042,7 @@ var state = {
   prestaLabel: null,
   prestaPrix: null,
   creneauDate: null, creneauHeure: null,
-  prenom: '', nom: '', email: '', tel: '', motif: '', message: '',
+  prenom: '', nom: '', email: '', tel: '', ddn: '', motif: '', message: '',
   stripe: null, cardElement: null, stripeInitialized: false
 };
 
@@ -1098,11 +1103,13 @@ function allerEtape4() {
   var prenom = document.getElementById('f-prenom').value.trim();
   var nom = document.getElementById('f-nom').value.trim();
   var email = document.getElementById('f-email').value.trim();
+  var ddn = document.getElementById('f-ddn').value;
   if(!prenom||!nom){showMsg('Prénom et nom obligatoires');return;}
   if(!email||email.indexOf('@')<0){showMsg('Email invalide');return;}
+  if(!ddn){showMsg('Merci d\'indiquer votre date de naissance');return;}
   var duree=document.getElementById('f-duree').value;
   if(!duree){showMsg('Merci d\'indiquer depuis combien de temps vous ressentez ces symptômes');return;}
-  state.prenom=prenom; state.nom=nom; state.email=email;
+  state.prenom=prenom; state.nom=nom; state.email=email; state.ddn=ddn;
   state.tel=document.getElementById('f-tel').value.trim();
   state.motif=document.getElementById('f-motif').value;
   state.duree=document.getElementById('f-duree').value;
@@ -1350,6 +1357,7 @@ async function lancerPaiement() {
           nom: state.nom,
           email: state.email,
           tel: state.tel,
+          ddn: state.ddn,
           motif: state.motif,
           duree_symptomes: state.duree,
           mots_cles: state.mots_cles,
