@@ -2965,6 +2965,7 @@ function renderFiche(c){
   const hasPHV=!!(c.phv_url);
   const dm=docsMedicaux[cid]||[];
   const docsCount=[hasPHV,c.timeline?.some(t=>t.title?.includes('Lettre')),c.timeline?.some(t=>t.title?.includes('Bilan'))].filter(Boolean).length + dm.length;
+  const caTotal=db.factures.filter(f=>f.clientId===cid&&f.statut==='payee').reduce((s,f)=>s+(f.montant||0),0);
 
   // Helper — bouton sans problème de quotes
   function btn(cls,fn,label){return `<button class="${cls}" onclick="${fn}">${label}</button>`;}
@@ -2990,12 +2991,12 @@ function renderFiche(c){
 
   // Infos
   const infoRows=[
+    ['Problématique principale', c.motifs?`<strong style="color:var(--ink)">${escH(c.motifs)}</strong>`:"<span style='color:var(--red)'>⚠ Non renseignée</span>"],
     ['Email', c.email?`<a href="mailto:${escH(c.email)}" style="color:var(--violet);text-decoration:none">${escH(c.email)}</a>`:"<span style='color:var(--red);font-weight:700'>⚠ Manquant</span>"],
     ['Téléphone', c.tel?`<a href="tel:${escH(c.tel)}" style="color:var(--ink);text-decoration:none">${escH(c.tel)}</a>`:'—'],
     ['Date de naissance', c.ddn?(fmtDate(c.ddn)+(age?` · <span style="color:var(--muted)">${age} ans</span>`:'')):'—'],
     ['Programme', c.programme?`<span class="prog-badge pb-${pCls(c.programme)}">${pLbl(c.programme)}</span>`:"<span style='color:var(--muted)'>Consultation ponctuelle</span>"],
-    ['Motifs', escH(c.motifs||'—')],
-    ['Axes', escH(c.axes||'—')],
+    ['Axes de travail', escH(c.axes||'—')],
     c.notes?['Notes', `<span style="font-size:12px">${escH(c.notes)}</span>`]:null,
     ['1ère consultation', fmtDate(c.date1)],
   ].filter(Boolean).map(([k,v])=>`<div class="ic-row"><div class="ic-key">${k}</div><div class="ic-val">${v}</div></div>`).join('');
@@ -3024,7 +3025,6 @@ function renderFiche(c){
     </div>`:'' ;
 
   // Workflow complet
-  const wfAlertBadge=wf.filter(s=>!s.done&&(s.isOvd||s.isSoon)).length;
   const wfHtml=wf.map(s=>{
     let cls=s.done?'wf2-done':s.isOvd?'wf2-overdue':s.isSoon?'wf2-soon':'';
     let badge='';
@@ -3091,29 +3091,10 @@ function renderFiche(c){
       ${btn('doc-action',`supprimerDocMedical('${cid}','${d.id}')`,'🗑')}
     </div>`).join(''):"<div style='padding:16px;font-size:13px;color:var(--muted);font-style:italic'>Aucun document médical ajouté pour le moment.</div>";
 
-  // Timeline
-  const tlColors={facture:'var(--orange)',suivi:'var(--green)',creation:'var(--violet)',default:'var(--muted)'};
-  const tlBg={facture:'var(--orange-lt)',suivi:'var(--green-lt)',creation:'var(--violet-lt)',default:'var(--surface)'};
-  const tlHtml=(c.timeline||[]).slice().reverse().slice(0,20).map((e,i,arr)=>`
-    <div class="tl2-item">
-      ${i<arr.length-1?"<div class='tl2-line'></div>":''}
-      <div class="tl2-dot" style="background:${tlBg[e.type]||tlBg.default};color:${tlColors[e.type]||tlColors.default}">${escH(e.icon||'·')}</div>
-      <div class="tl2-body"><div class="tl2-title">${escH(e.title||'')}</div><div class="tl2-date">${fmtDate(e.date)}</div>${e.desc?`<div class="tl2-desc">${escH(e.desc)}</div>`:''}</div>
-    </div>`).join('')||"<div style='padding:16px;font-size:13px;color:var(--muted);font-style:italic'>Aucun événement enregistré.</div>";
-
   // Tags
   let tagHtml='';
   if(c.programme) tagHtml+=`<span class="fv2-tag prog">${pLbl(c.programme)}</span>`;
   if(c.motifs) c.motifs.split(/[,·]/).slice(0,4).forEach(m=>{if(m.trim())tagHtml+=`<span class="fv2-tag">${escH(m.trim())}</span>`;});
-
-  // Aperçu résumé workflow
-  const wfPreview=wf.slice(0,4).map(s=>{
-    const cls=s.done?'wf2-done':s.isOvd?'wf2-overdue':s.isSoon?'wf2-soon':'';
-    return `<div class="wf2-item ${cls}">
-      <div class="wf2-check" onclick="toggleWF('${cid}','${s.key}')">${s.done?'✓':''}</div>
-      <div class="wf2-body"><div class="wf2-top"><span class="wf2-label">${escH(s.icon||'')} ${escH(s.label)}</span></div><div class="wf2-date">${s.tgt?fmtDate(s.tgt):'—'}</div></div>
-    </div>`;
-  }).join('');
 
   // Rendu final
   el.innerHTML=`
@@ -3133,7 +3114,8 @@ function renderFiche(c){
         </div>
         <div class="fv2-actions">
           ${btn('fv2-btn',`emailHeroBtn(this); this.dataset.id='${cid}'`,'✉ Email')}
-          ${btn('fv2-btn',`ouvrirPHVCliente('${cid}')`,'✦ PHV')}
+          ${hasPHV?btn('fv2-btn',`window.open('${escH(c.phv_url)}','_blank')`,'⬇ Télécharger PHV'):''}
+          ${btn('fv2-btn',`ouvrirPHVCliente('${cid}')`, hasPHV?'↻ Régénérer PHV':'✦ Générer PHV')}
           ${btn('fv2-btn',`ouvrirLettreClinique('${cid}')`,'✉ Adressage')}
           ${btn('fv2-btn accent',`ouvrirEditionCliente('${cid}')`, '✎ Modifier')}
           ${btn('fv2-btn danger',`ouvrirSuppressionCliente('${cid}')`, '🗑 Supprimer')}
@@ -3142,58 +3124,41 @@ function renderFiche(c){
       <div class="fv2-kpis">
         <div class="fv2-kpi"><div class="fv2-kpi-val">${cr.length}</div><div class="fv2-kpi-lbl">Consultations</div></div>
         <div class="fv2-kpi"><div class="fv2-kpi-val sm">${fmtShort(lastR?.date||c.date1)}</div><div class="fv2-kpi-lbl">Dernière séance</div></div>
-        <div class="fv2-kpi"><div class="fv2-kpi-val">${pct>0?pct+'%':'—'}</div><div class="fv2-kpi-lbl">Programme</div>${daysLeft!==null?`<div class="fv2-kpi-sub">${daysLeft}j restants</div>`:''}</div>
-        <div class="fv2-kpi"><div class="fv2-kpi-val">${doneCount}/${totalWF}</div><div class="fv2-kpi-lbl">Workflow</div></div>
+        <div class="fv2-kpi"><div class="fv2-kpi-val">${pct>0?pct+'%':'—'}</div><div class="fv2-kpi-lbl">${c.programme?'Programme':'Ponctuelle'}</div>${daysLeft!==null?`<div class="fv2-kpi-sub">${daysLeft}j restants</div>`:''}</div>
+        <div class="fv2-kpi"><div class="fv2-kpi-val sm">${caTotal>0?caTotal.toFixed(0)+' €':'—'}</div><div class="fv2-kpi-lbl">CA généré</div></div>
         <div class="fv2-kpi"><div class="fv2-kpi-val">${docsCount}</div><div class="fv2-kpi-lbl">Documents</div></div>
       </div>
     </div>
-    <div class="fv2-tabs">
-      <div class="fv2-tab active" onclick="ficheSwitchTab('apercu',this)">👁 Aperçu</div>
-      <div class="fv2-tab" onclick="ficheSwitchTab('workflow',this)">⚡ Workflow${wfAlertBadge>0?`<span class="fv2-tab-badge">${wfAlertBadge}</span>`:''}</div>
-      <div class="fv2-tab" onclick="ficheSwitchTab('documents',this)">📄 Documents</div>
-      <div class="fv2-tab" onclick="ficheSwitchTab('timeline',this)">📅 Timeline</div>
-      <div class="fv2-tab" onclick="ficheSwitchTab('notes',this)">📝 Notes & PHV</div>
-    </div>
-    <div class="fv2-panel active" id="panel-apercu">
-      ${naHtml}
-      <div class="fv2-overview">
-        <div class="fv2-col">
-          <div class="info-card">
-            <div class="ic-head"><div class="ic-title">👤 Informations</div>${btn('ic-edit',`ouvrirEditionCliente('${cid}')`, '✎ Modifier')}</div>
-            <div class="ic-body">${infoRows}</div>
-          </div>
-          ${cr.length>0?`<div class="info-card"><div class="ic-head"><div class="ic-title">📅 RDV</div><span style="font-size:11px;color:var(--muted)">${cr.length} au total</span></div><div class="ic-body">${rdvHtml}</div></div>`:''}
+    ${naHtml}
+    <div class="fv2-overview">
+      <div class="fv2-col">
+        <div class="info-card">
+          <div class="ic-head"><div class="ic-title">👤 Informations</div>${btn('ic-edit',`ouvrirEditionCliente('${cid}')`, '✎ Modifier')}</div>
+          <div class="ic-body">${infoRows}</div>
         </div>
-        <div class="fv2-col">
-          ${progCardHtml}
-          <div class="info-card"><div class="ic-head"><div class="ic-title">⚡ Prochaines étapes</div></div><div class="ic-body"><div class="wf2-list">${wfPreview}</div></div></div>
+        ${buildMemoBlock(c)||`<div class="info-card"><div class="ic-head"><div class="ic-title">🔄 Recommandations du protocole</div></div><div class="ic-body" style="padding:14px 16px"><div style="font-size:13px;color:var(--muted);font-style:italic">Aucun protocole PHV envoyé pour le moment — les recommandations acceptées et refusées apparaîtront ici après l'envoi.</div></div></div>`}
+        ${cr.length>0?`<div class="info-card"><div class="ic-head"><div class="ic-title">📅 Rendez-vous</div><span style="font-size:11px;color:var(--muted)">${cr.length} au total</span></div><div class="ic-body">${rdvHtml}</div></div>`:''}
+      </div>
+      <div class="fv2-col">
+        ${progCardHtml}
+        <div class="info-card">
+          <div class="ic-head"><div class="ic-title">⏰ Prochaines échéances</div><span style="font-size:11px;color:var(--muted)">${doneCount}/${totalWF} complétées</span></div>
+          <div class="ic-body"><div class="wf2-list">${wfHtml||"<div style='padding:16px;font-size:13px;color:var(--muted);font-style:italic'>Aucune échéance de suivi (pas de programme en cours).</div>"}</div></div>
         </div>
+        <div class="info-card">
+          <div class="ic-head"><div class="ic-title">📄 Protocole & outils</div></div>
+          <div class="ic-body"><div class="doc-list">${docsHtml}</div></div>
+        </div>
+        <div class="info-card">
+          <div class="ic-head"><div class="ic-title">🩺 Documents médicaux <span style="font-weight:400;color:var(--muted);font-size:11px">(prises de sang, imagerie...)</span></div>${btn('ic-edit',`ouvrirAjoutDocMedical('${cid}')`,'+ Ajouter')}</div>
+          <div class="ic-body"><div class="doc-list">${dmHtml}</div></div>
+        </div>
+        <div class="info-card">
+          <div class="ic-head"><div class="ic-title">🗂 Historique des questionnaires</div></div>
+          <div class="ic-body"><div class="doc-list">${qHistHtml}</div></div>
+        </div>
+        ${buildJournalCard(c)}
       </div>
-    </div>
-    <div class="fv2-panel" id="panel-workflow">
-      <div class="info-card"><div class="ic-head"><div class="ic-title">⚡ Étapes de suivi</div><span style="font-size:11px;color:var(--muted)">${doneCount}/${totalWF} complétées</span></div><div class="ic-body"><div class="wf2-list">${wfHtml}</div></div></div>
-    </div>
-    <div class="fv2-panel" id="panel-documents">
-      <div class="info-card">
-        <div class="ic-head"><div class="ic-title">📄 Outils & protocole</div></div>
-        <div class="ic-body"><div class="doc-list">${docsHtml}</div></div>
-      </div>
-      <div class="info-card" style="margin-top:14px">
-        <div class="ic-head"><div class="ic-title">🗂 Historique des questionnaires</div></div>
-        <div class="ic-body"><div class="doc-list">${qHistHtml}</div></div>
-      </div>
-      <div class="info-card" style="margin-top:14px">
-        <div class="ic-head"><div class="ic-title">🩺 Documents médicaux</div>${btn('ic-edit',`ouvrirAjoutDocMedical('${cid}')`,'+ Ajouter')}</div>
-        <div class="ic-body"><div class="doc-list">${dmHtml}</div></div>
-      </div>
-    </div>
-    <div class="fv2-panel" id="panel-timeline">
-      <div style="display:flex;justify-content:flex-end;margin-bottom:12px">${btn('btn btn-ghost btn-sm',`addTLEvent('${cid}')`,'+  Événement')}</div>
-      <div class="info-card"><div class="ic-body" style="padding:0 16px">${tlHtml}</div></div>
-    </div>
-    <div class="fv2-panel" id="panel-notes">
-      ${buildMemoBlock(c)}
-      ${buildJournalCard(c)}
     </div>`;
 }
 
