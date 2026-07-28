@@ -392,6 +392,10 @@ body.is-embed .app{min-height:100vh}
         <input type="email" id="rdvEmail" placeholder="marie@email.com">
       </div>
       <div class="modal-field">
+        <label>Date de naissance</label>
+        <input type="date" id="rdvDdn">
+      </div>
+      <div class="modal-field">
         <label>Date</label>
         <input type="date" id="rdvDate">
       </div>
@@ -624,6 +628,8 @@ async function supaUpsertRdv(rdv) {
         id:         rdv.id,
         name:       rdv.name,
         email:      rdv.email || null,
+        ddn:        rdv.ddn || null,
+        client_key: rdv.client_key || null,
         date:       rdv.date,
         time:       rdv.time,
         type:       rdv.type,
@@ -669,6 +675,8 @@ async function supaLoadRdvs() {
       id: r.id,
       name: r.name,
       email: r.email,
+      ddn: r.ddn,
+      client_key: r.client_key,
       date: r.date,
       time: r.time,
       type: r.type,
@@ -1303,6 +1311,7 @@ function openAddModal() {
   document.getElementById('rdvModalTitle').textContent = 'Nouveau rendez-vous';
   document.getElementById('rdvName').value = '';
   document.getElementById('rdvEmail').value = '';
+  document.getElementById('rdvDdn').value = '';
   document.getElementById('rdvDate').value = state.selectedDate;
   document.getElementById('rdvTime').value = '10:00';
   document.getElementById('rdvType').value = 'initial';
@@ -1321,6 +1330,7 @@ function openEditModal(id) {
   document.getElementById('rdvModalTitle').textContent = rdv.name;
   document.getElementById('rdvName').value = rdv.name;
   document.getElementById('rdvEmail').value = rdv.email;
+  document.getElementById('rdvDdn').value = rdv.ddn || '';
   document.getElementById('rdvDate').value = rdv.date;
   document.getElementById('rdvTime').value = rdv.time;
   document.getElementById('rdvType').value = rdv.type;
@@ -1351,10 +1361,29 @@ avitaserena.com`;
   document.getElementById('rdvModal').classList.add('open');
 }
 
+function splitRdvName(name) {
+  name = (name||'').trim();
+  const i = name.indexOf(' ');
+  if (i === -1) return { prenom: name, nom: '' };
+  return { prenom: name.slice(0,i), nom: name.slice(i+1) };
+}
+
+// Même formule que idCanoniqueCliente() / DB.clientKey() partout ailleurs dans le système —
+// permet de rattacher un RDV à une fiche cliente de façon fiable (pas seulement par nom/email).
+function computeClientKey(prenom, nom, ddn) {
+  const normalize = s => (s||'').trim().toLowerCase().replace(/[\s']/g,'_');
+  const p = normalize(prenom);
+  const n = normalize(nom);
+  const dateDigits = (ddn||'').replace(/-/g,'');
+  if (!p || !dateDigits) return null;
+  return p + (n ? '-' + n : '') + '-' + dateDigits;
+}
+
 function saveRdv() {
   const rdv = {
     name: document.getElementById('rdvName').value,
     email: document.getElementById('rdvEmail').value,
+    ddn: document.getElementById('rdvDdn').value || null,
     date: document.getElementById('rdvDate').value,
     time: document.getElementById('rdvTime').value,
     type: document.getElementById('rdvType').value,
@@ -1363,6 +1392,11 @@ function saveRdv() {
     parcours: document.getElementById('rdvParcours').value,
   };
   if (!rdv.name || !rdv.date || !rdv.time) return;
+
+  if (rdv.ddn) {
+    const { prenom, nom } = splitRdvName(rdv.name);
+    rdv.client_key = computeClientKey(prenom, nom, rdv.ddn);
+  }
 
   // Empêche de superposer deux RDV sur le même créneau (durée + temps de préparation)
   if (rdv.status !== 'annule') {

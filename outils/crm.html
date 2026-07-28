@@ -2509,6 +2509,9 @@ function splitRdvName(name){
 }
 function rdvMatchesClient(rdv, c){
   if(!rdv || !c) return false;
+  // Identifiant stable (prénom-nom-ddn, même formule que clientes.id) — priorité absolue,
+  // fiable même en cas d'homonymes ou de coquille dans le nom/email saisi au RDV.
+  if(rdv.client_key && rdv.client_key === c.id) return true;
   if(rdv.email && c.email && rdv.email.toLowerCase() === c.email.toLowerCase()) return true;
   const parts = splitRdvName(rdv.name);
   return !!(parts.prenom && parts.nom && c.prenom && c.nom &&
