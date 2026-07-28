@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap" rel="stylesheet">
 <script src="supabase-db.js"></script>
 <script src="auth-guard.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <style>
 :root{
   --blanc:#FFFFFF;--off:#F7F6F4;--grege:#EDE9E1;
@@ -216,6 +217,21 @@ body{font-family:'Be Vietnam Pro',sans-serif;color:var(--ardoise);background:var
   body{background:#fff}
 }
 
+/* ═══ CAPTURE PDF (mêmes règles que l'impression, déclenchées par JS) ═══ */
+body.pdf-export-mode{background:#fff}
+body.pdf-export-mode .prog,
+body.pdf-export-mode .topnav,
+body.pdf-export-mode .dots,
+body.pdf-export-mode .cover-scroll-btn,
+body.pdf-export-mode .sec-programme,
+body.pdf-export-mode .sec-disclaimer,
+body.pdf-export-mode .reco-bar,
+body.pdf-export-mode .reco-controls,
+body.pdf-export-mode .reco-raison{display:none!important}
+body.pdf-export-mode .sec{min-height:auto!important;height:auto!important;padding:40px 32px!important;page-break-after:always}
+body.pdf-export-mode .sec-cover{min-height:100vh!important}
+body.pdf-export-mode #container{height:auto!important;overflow:visible!important}
+
 @media(prefers-reduced-motion:reduce){html{scroll-snap-type:none;scroll-behavior:auto}*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 </style>
 </head>
@@ -258,6 +274,7 @@ body{font-family:'Be Vietnam Pro',sans-serif;color:var(--ardoise);background:var
   <path d="M103.04,42.59h6.46l-8.47,29.04s-1.82,5.64,1.82,3.73c3.64-1.91,6.3-5.6,6.3-5.6l-.84,1.5s-5.8,10.44-11.84,8.29c-5.1-1.82,6.56-36.97,6.56-36.97Z"/>
   <path d="M120.54,42.59h6.46l-8.47,29.04s-1.82,5.64,1.82,3.73,6.3-5.6,6.3-5.6l-.84,1.5s-5.8,10.44-11.84,8.29c-5.1-1.82,6.56-36.97,6.56-36.97Z"/></svg></a>
   <div class="topnav-actions">
+    <button class="topnav-btn" id="pdf-dl-btn" onclick="telechargerPDF()">⬇ Télécharger le PDF</button>
     <button class="topnav-btn" onclick="window.print()">🖨 Imprimer</button>
   </div>
 </nav>
@@ -917,6 +934,75 @@ async function chargerProtocoleHistorique(histId) {
         <p style="font-size:16px;margin-bottom:8px">Impossible de charger cette version archivée.</p>
       </div>`;
     console.error('Erreur chargement protocole archivé:', e);
+  }
+}
+
+async function telechargerPDF(){
+  const btn = document.getElementById('pdf-dl-btn');
+  const container = document.getElementById('container');
+  if(!container || typeof html2pdf === 'undefined'){ alert('Le module PDF n\'a pas pu se charger — vérifiez votre connexion et réessayez.'); return; }
+
+  const original = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Génération…';
+  document.body.classList.add('pdf-export-mode');
+  // Laisser le temps au navigateur de recalculer la mise en page avant la capture
+  await new Promise(r => setTimeout(r, 200));
+
+  try{
+    const cl = (data && data._client) || clientIdentity || {};
+    const prenomSlug = (cl.prenom || 'protocole').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-');
+    const filename = `PHV-${prenomSlug}-${new Date().toISOString().slice(0,10)}.pdf`;
+
+    const worker = html2pdf().set({
+      margin: 10,
+      filename,
+      image: { type: 'jpeg', quality: 0.95 },
+      html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      pagebreak: { mode: ['css', 'legacy'] }
+    }).from(container);
+
+    // Télécharge toujours localement, immédiatement
+    await worker.save();
+
+    // Si on visualise le protocole réel d'une cliente (pas un aperçu ni une ancienne version
+    // archivée), on enregistre aussi une copie permanente dans Supabase — lien stable,
+    // partageable, sans repasser par cet écran.
+    if(currentClientKey){
+      try{
+        const blob = await worker.outputPdf('blob');
+        let authToken = SUPA_KEY;
+        if (typeof Auth !== 'undefined') {
+          const token = await Auth.getValidAccessToken();
+          if (token) authToken = token;
+        }
+        const storagePath = currentClientKey + '/' + filename;
+        const upRes = await fetch(SUPA_URL + '/storage/v1/object/phv-pdfs/' + encodeURIComponent(storagePath), {
+          method: 'POST',
+          headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/pdf', 'x-upsert': 'true' },
+          body: blob
+        });
+        if(upRes.ok){
+          const publicUrl = SUPA_URL + '/storage/v1/object/public/phv-pdfs/' + storagePath;
+          await fetch(SUPA_URL + '/rest/v1/clientes?id=eq.' + encodeURIComponent(currentClientKey), {
+            method: 'PATCH',
+            headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+            body: JSON.stringify({ phv_pdf_url: publicUrl, updated_at: new Date().toISOString() })
+          });
+          console.log('✓ PDF enregistré durablement :', publicUrl);
+        } else {
+          console.warn('⚠ Upload PDF Supabase échoué (le téléchargement local a fonctionné) :', await upRes.text());
+        }
+      }catch(e){
+        console.warn('⚠ Sauvegarde permanente du PDF échouée (le téléchargement local a fonctionné) :', e);
+      }
+    }
+  }catch(e){
+    console.error('Erreur génération PDF:', e);
+    alert('La génération du PDF a échoué. Réessayez, ou utilisez « Imprimer → Enregistrer en PDF ».');
+  }finally{
+    document.body.classList.remove('pdf-export-mode');
+    btn.disabled = false; btn.textContent = original;
   }
 }
 
