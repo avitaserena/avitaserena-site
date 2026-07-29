@@ -247,6 +247,20 @@ body.is-embed .app{min-height:100vh}
       </div>
     </div>
 
+    <!-- Google Agenda -->
+    <div>
+      <div class="sidebar-section-title" style="display:flex;align-items:center;justify-content:space-between">
+        Google Agenda
+        <span id="googleCalStatus" style="font-size:9px;font-weight:700;padding:2px 8px;border-radius:99px;background:rgba(184,50,50,.1);color:var(--rouge)">Non connecté</span>
+      </div>
+      <div style="background:rgba(13,166,120,.08);border:1px solid rgba(13,166,120,.2);border-radius:10px;padding:12px;font-size:12px;line-height:1.7;color:var(--gris)">
+        <div id="googleCalDetail" style="margin-bottom:8px">Synchronise tes RDV dans les deux sens avec ton agenda Google personnel.</div>
+        <button id="googleCalConnectBtn" onclick="connectGoogleCalendar()" style="width:100%;padding:7px;background:var(--ardoise);color:#fff;border:none;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">
+          Connecter Google Agenda
+        </button>
+      </div>
+    </div>
+
     <!-- Config EmailJS -->
     <div id="emailjsConfig">
       <div class="sidebar-section-title" style="display:flex;align-items:center;justify-content:space-between">
@@ -1756,6 +1770,61 @@ function closeModalDirect(id) { document.getElementById(id).classList.remove('op
 
 
 // ════════════════════════════════
+// GOOGLE AGENDA — CONNEXION & STATUT
+// ════════════════════════════════
+function connectGoogleCalendar() {
+  window.location.href = 'https://bqhkdndwldwqacrrbbig.supabase.co/functions/v1/google-oauth-start';
+}
+
+function handleGoogleOAuthRedirect() {
+  const params = new URLSearchParams(location.search);
+  const g = params.get('google');
+  if (!g) return;
+  if (g === 'connected') showToast('✓ Google Agenda connecté', 'success');
+  else if (g === 'error') showToast('❌ Connexion Google Agenda échouée (' + (params.get('reason') || '') + ')', 'error');
+  const url = new URL(location.href);
+  url.searchParams.delete('google');
+  url.searchParams.delete('reason');
+  history.replaceState({}, '', url.toString());
+}
+
+async function refreshGoogleCalendarStatus() {
+  const el = document.getElementById('googleCalStatus');
+  const btn = document.getElementById('googleCalConnectBtn');
+  const detail = document.getElementById('googleCalDetail');
+  if (!el) return;
+  try {
+    let authToken = SUPA_KEY;
+    if (typeof Auth !== 'undefined') {
+      const token = await Auth.getValidAccessToken();
+      if (token) authToken = token;
+    }
+    const res = await fetch(SUPA_URL + '/rest/v1/google_calendar_sync?id=eq.1&select=connected_at,last_sync_at,last_sync_status', {
+      headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + authToken }
+    });
+    const rows = await res.json();
+    const row = rows[0];
+    if (row && row.connected_at) {
+      el.textContent = 'Connecté';
+      el.style.background = 'rgba(13,166,120,.12)';
+      el.style.color = 'var(--ocre)';
+      if (btn) btn.textContent = 'Reconnecter';
+      if (detail) {
+        detail.textContent = row.last_sync_at
+          ? 'Dernière synchro : ' + new Date(row.last_sync_at).toLocaleString('fr-FR')
+          : 'Connecté, en attente de première synchro';
+      }
+    } else {
+      el.textContent = 'Non connecté';
+      el.style.background = 'rgba(184,50,50,.1)';
+      el.style.color = 'var(--rouge)';
+      if (btn) btn.textContent = 'Connecter Google Agenda';
+      if (detail) detail.textContent = 'Synchronise tes RDV dans les deux sens avec ton agenda Google personnel.';
+    }
+  } catch (e) { console.warn('Statut Google Agenda:', e); }
+}
+
+// ════════════════════════════════
 // INIT
 // ════════════════════════════════
 function initAgenda() {
@@ -1769,6 +1838,8 @@ function initAgenda() {
   renderSlotsDisplay();
   renderBlockedList();
   renderMiniCal();
+  handleGoogleOAuthRedirect();
+  refreshGoogleCalendarStatus();
   syncRdvsDepuisSupabase(); // charge les vraies réservations (site public inclus) en arrière-plan
   chargerTachesDepuisSupabase(); // charge les tâches clientes avec heure (affichées dans l'agenda)
 }
