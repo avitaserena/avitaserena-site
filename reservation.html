@@ -718,10 +718,12 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       </div>
 
       <div id="bloc-deja-bilan" style="display:none;margin-bottom:16px;background:var(--off);border:1px solid var(--taupe);border-radius:12px;padding:14px 16px">
-        <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:13.5px;color:var(--ardoise);line-height:1.5">
-          <input type="checkbox" id="f-deja-bilan" onchange="appliquerTarif()" style="margin-top:3px;flex-shrink:0;width:16px;height:16px;accent-color:var(--ocre)">
-          <span>J'ai déjà réalisé mon bilan de vitalité initial (90 min) avec Sabrina — le tarif du parcours en tient compte.</span>
-        </label>
+        <div style="font-size:13.5px;color:var(--ardoise);line-height:1.5;margin-bottom:10px">Avez-vous déjà réalisé votre bilan de vitalité initial (90 min) avec Sabrina ? Le tarif du parcours en tiendra compte.</div>
+        <div style="display:flex;gap:8px">
+          <input class="fi" type="email" id="f-email-verif" placeholder="Email utilisé lors de votre bilan" style="flex:1;margin:0" onkeydown="if(event.key==='Enter'){event.preventDefault();verifierBilan();}">
+          <button type="button" onclick="verifierBilan()" id="btn-verif-bilan" style="flex-shrink:0;padding:0 18px;border-radius:8px;border:1px solid var(--ardoise);background:var(--ardoise);color:#fff;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit">Vérifier</button>
+        </div>
+        <div id="verif-bilan-msg" style="margin-top:8px;font-size:12px;line-height:1.5"></div>
       </div>
 
       <div id="presta-recap" style="display:none;background:var(--grege);border-radius:12px;padding:16px 18px">
@@ -1044,16 +1046,20 @@ var PRESTATIONS = {
   ora:    {label:'Parcours Ora (9 mois) — Bilan de démarrage',  prix:780, id:'ora'}
 };
 var PARCOURS_IDS = ['alba','aria','ora'];
-var PRIX_BILAN_DEJA_REGLE = 90; // déduit du parcours si le bilan initial a déjà été payé séparément
+var PRIX_BILAN_DEJA_REGLE = 90; // déduit du parcours si le bilan initial a déjà été réalisé/réglé
+var bilanVerifieEligible = false; // résultat de la vérification serveur, jamais une simple déclaration
 
 /* ══════════════════════════════
    SÉLECTION PRESTATION
 ══════════════════════════════ */
 function selectionnerPresta(id) {
   var dejaBilanBloc = document.getElementById('bloc-deja-bilan');
-  var dejaBilanCase = document.getElementById('f-deja-bilan');
   var recapEl = document.getElementById('presta-recap');
   var btnEl = document.getElementById('btn-step1');
+
+  bilanVerifieEligible = false;
+  document.getElementById('f-email-verif').value = '';
+  document.getElementById('verif-bilan-msg').textContent = '';
 
   if(!id){
     state.prestaId = null; state.prestaLabel = null; state.prestaPrix = null;
@@ -1064,16 +1070,55 @@ function selectionnerPresta(id) {
   }
 
   state.prestaId = id;
-
-  if(PARCOURS_IDS.indexOf(id) >= 0){
-    dejaBilanBloc.style.display = 'block';
-  } else {
-    dejaBilanBloc.style.display = 'none';
-    dejaBilanCase.checked = false;
-  }
+  dejaBilanBloc.style.display = (PARCOURS_IDS.indexOf(id) >= 0) ? 'block' : 'none';
 
   appliquerTarif();
   btnEl.disabled = false;
+}
+
+function verifierBilan() {
+  var emailInput = document.getElementById('f-email-verif');
+  var msgEl = document.getElementById('verif-bilan-msg');
+  var btn = document.getElementById('btn-verif-bilan');
+  var email = emailInput.value.trim();
+
+  if(!email || email.indexOf('@') < 0){
+    msgEl.style.color = 'var(--ocre)';
+    msgEl.textContent = 'Merci de renseigner un email valide.';
+    return;
+  }
+
+  btn.disabled = true; btn.textContent = '…';
+  msgEl.style.color = 'var(--gris)';
+  msgEl.textContent = 'Vérification en cours…';
+
+  fetch(SUPA_URL_PUBLIC + '/functions/v1/check-bilan-realise', {
+    method: 'POST',
+    headers: { 'Content-Type':'application/json', 'apikey': SUPA_KEY_PUBLIC, 'Authorization': 'Bearer '+SUPA_KEY_PUBLIC },
+    body: JSON.stringify({ email: email })
+  }).then(function(r){ return r.json(); }).then(function(data){
+    btn.disabled = false; btn.textContent = 'Vérifier';
+    bilanVerifieEligible = !!data.eligible;
+    state.emailVerifBilan = email;
+    if(bilanVerifieEligible){
+      msgEl.style.color = '#2E7D32';
+      msgEl.textContent = '✓ Bilan retrouvé — la réduction est appliquée.';
+      if(!document.getElementById('f-email') || !document.getElementById('f-email').value){
+        var fe = document.getElementById('f-email'); if(fe) fe.value = email;
+      }
+    } else {
+      msgEl.style.color = 'var(--gris)';
+      msgEl.textContent = "Aucun bilan retrouvé à cette adresse — le tarif plein s'applique. Si c'est une erreur, contactez Sabrina à sabrina@avitaserena.com avant de finaliser votre réservation.";
+    }
+    appliquerTarif();
+  }).catch(function(e){
+    console.error('Erreur vérification bilan:', e);
+    btn.disabled = false; btn.textContent = 'Vérifier';
+    bilanVerifieEligible = false;
+    msgEl.style.color = 'var(--ocre)';
+    msgEl.textContent = 'Vérification impossible pour le moment — le tarif plein sera appliqué. Contactez Sabrina si vous pensez avoir droit à la réduction.';
+    appliquerTarif();
+  });
 }
 
 function appliquerTarif() {
@@ -1081,11 +1126,11 @@ function appliquerTarif() {
   if(!id) return;
   var basePrix = PRESTATIONS[id].prix;
   var estParcours = PARCOURS_IDS.indexOf(id) >= 0;
-  var dejaBilan = estParcours && document.getElementById('f-deja-bilan').checked;
+  var dejaBilan = estParcours && bilanVerifieEligible;
   var prixFinal = dejaBilan ? Math.max(0, basePrix - PRIX_BILAN_DEJA_REGLE) : basePrix;
 
   state.prestaPrix = prixFinal;
-  state.prestaLabel = PRESTATIONS[id].label + (dejaBilan ? ' — bilan initial déjà réalisé' : '');
+  state.prestaLabel = PRESTATIONS[id].label + (dejaBilan ? ' — bilan initial déjà réalisé (vérifié)' : '');
 
   document.getElementById('presta-recap').style.display = 'block';
   document.getElementById('presta-recap-nom').textContent = PRESTATIONS[id].label.split(' (')[0].split(' —')[0];
@@ -1371,7 +1416,8 @@ async function lancerPaiement() {
           message: state.message,
           prestation: state.prestaLabel,
           parcours: ['alba','aria','ora'].indexOf(state.prestaId) >= 0 ? state.prestaId : '',
-          bilan_deja_realise: (document.getElementById('f-deja-bilan') && document.getElementById('f-deja-bilan').checked) ? 'oui' : 'non',
+          bilan_deja_realise: bilanVerifieEligible ? 'oui_verifie' : 'non',
+          email_verification_bilan: state.emailVerifBilan || '',
           date: state.creneauDate,
           time: state.creneauHeure
         }
