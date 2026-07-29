@@ -90,7 +90,7 @@ body {
 }
 
 /* ═══ LAYOUT — navigation horizontale ═══ */
-.app { display: flex; flex-direction: column; min-height: 100vh }
+.app { display: flex; flex-direction: row; min-height: 100vh }
 
 /* ═══ BARRE DE NAVIGATION (ex-sidebar, désormais claire et horizontale) ═══ */
 .sidebar {
@@ -98,18 +98,22 @@ body {
   backdrop-filter: blur(16px) saturate(1.4);
   -webkit-backdrop-filter: blur(16px) saturate(1.4);
   display: flex;
-  flex-direction: row;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
   gap: 18px;
   position: sticky;
   top: 0;
-  height: 62px;
-  padding: 0 22px;
+  height: 100vh;
+  width: 236px;
+  flex-shrink: 0;
+  padding: 20px 14px;
   z-index: 300;
-  border-bottom: 1px solid var(--border);
-  overflow: visible;
+  border-right: 1px solid var(--border);
+  border-bottom: none;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
-.sb-head { padding: 0; border: none; display: flex; align-items: center; gap: 10px; flex-shrink: 0 }
+.sb-head { padding: 0 8px; border: none; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; flex-shrink: 0 }
 .sb-logo svg { width: 108px; height: auto; display: block }
 .sb-logo svg path, .sb-logo svg circle { fill: var(--ink) }
 .sb-pill {
@@ -129,14 +133,15 @@ body {
 }
 .sb-pill::before { content: ''; width: 5px; height: 5px; background: var(--gold); border-radius: 50% }
 
-.sb-nav { flex: 1; padding: 0; overflow: visible; display: flex; align-items: center; gap: 2px; flex-wrap: nowrap }
-.sb-sec { display: none }
+.sb-nav { flex: 1; padding: 0; overflow: visible; display: flex; flex-direction: column; align-items: stretch; gap: 2px }
+.sb-sec { display: block; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 16px 12px 6px; }
+.sb-sec:first-child { padding-top: 4px }
 .sb-item {
   display: flex;
   align-items: center;
-  gap: 7px;
-  padding: 7px 12px;
-  border-radius: var(--r99);
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: var(--r12);
   cursor: pointer;
   color: var(--sb-text);
   font-size: 13px;
@@ -145,6 +150,7 @@ body {
   margin-bottom: 0;
   position: relative;
   white-space: nowrap;
+  width: 100%;
 }
 .sb-item:hover { background: rgba(16,24,40,.05); color: var(--ink) }
 .sb-item.active {
@@ -165,7 +171,7 @@ body {
   color: currentColor !important;
   transition: var(--t);
 }
-.sb-lbl { flex: none }
+.sb-lbl { flex: 1 }
 .sb-bdg {
   font-size: 10px;
   font-weight: 700;
@@ -178,30 +184,38 @@ body {
   text-align: center;
 }
 .sb-bdg.show { display: block }
-.sb-foot { padding: 0; border: none; font-size: 11px; display: flex; align-items: center; gap: 4px; flex-shrink: 0 }
+.sb-foot { padding: 10px 8px 0; border-top: 1px solid var(--border); margin-top: 8px; font-size: 11px; display: flex; flex-direction: column; align-items: stretch; gap: 2px; flex-shrink: 0 }
 .sb-foot a {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   color: var(--muted);
   font-size: 11px;
   font-weight: 500;
   text-decoration: none;
-  padding: 6px 9px;
+  padding: 7px 9px;
   border-radius: var(--r99);
   transition: var(--t);
 }
 .sb-foot a:hover { color: var(--gold-dk); background: var(--gold-lt) }
 .sb-foot a svg { width: 13px; height: 13px }
 @media (max-width: 1180px) {
-  .sb-lbl { display: none }
-  .sb-item { padding: 7px 9px }
-  .sb-ic { width: 26px; height: 26px }
+  .sidebar { width: 68px; padding: 20px 10px }
+  .sb-lbl, .sb-sec, .sb-pill, .sb-foot a span, .sb-bdg { display: none }
+  .sb-head { align-items: center }
+  .sb-item { padding: 9px; justify-content: center }
+  .sb-ic { width: 28px; height: 28px }
 }
-@media (max-width: 900px) { .sb-pill, .sb-foot { display: none } }
+@media (max-width: 700px) {
+  .app { flex-direction: column }
+  .sidebar { width: 100%; height: auto; flex-direction: row; align-items: center; overflow-x: auto; border-right: none; border-bottom: 1px solid var(--border); position: sticky; }
+  .sb-head, .sb-foot { display: none }
+  .sb-nav { flex-direction: row; flex: none }
+  .sb-sec { display: none }
+}
 
 /* ═══ MAIN ═══ */
-.main { display: flex; flex-direction: column; min-height: calc(100vh - 62px) }
+.main { display: flex; flex-direction: column; min-height: 100vh; flex: 1; min-width: 0 }
 
 .topbar {
   background: transparent;
@@ -846,7 +860,7 @@ body {
   border-bottom: 1px solid var(--border);
   padding: 0 4px;
   position: sticky;
-  top: 62px;
+  top: 0;
   z-index: 50;
 }
 .fv2-tab {
@@ -2436,6 +2450,7 @@ function addD(d,n){if(!d)return null;const dt=new Date(d);dt.setDate(dt.getDate(
 function diffD(d){if(!d)return null;return Math.round((new Date()-new Date(d))/86400000);}
 function fmtDate(d){if(!d)return'—';return new Date(d).toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'});}
 function fmtShort(d){if(!d)return'—';return new Date(d).toLocaleDateString('fr-FR',{day:'numeric',month:'short'});}
+function fmtDMY(d){if(!d)return'—';const dt=new Date(d);return String(dt.getDate()).padStart(2,'0')+'/'+String(dt.getMonth()+1).padStart(2,'0')+'/'+dt.getFullYear();}
 function mk(d){const dt=new Date(d);return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0');}
 function ageFrom(ddn){if(!ddn)return'';return Math.floor((new Date()-new Date(ddn))/(365.25*86400000));}
 function calcAge(v){const el=document.getElementById('nc-age');if(el)el.value=ageFrom(v);}
@@ -3017,14 +3032,17 @@ function renderClients(){
   const withMeta=list.map(c=>{
     const cr=cRdvs(c);
     const age=c.ddn?ageFrom(c.ddn):(c.age||null);
+    const sortedByDate=[...cr].sort((a,b)=>new Date(a.date)-new Date(b.date));
+    const firstDate=sortedByDate[0]?.date||c.date1||'';
     const lastDate=cr[0]?.date||c.date1||'';
-    return {c,cr,age,lastDate};
+    return {c,cr,age,firstDate,lastDate};
   });
   withMeta.sort((a,b)=>{
     let av,bv;
     switch(clientSort.key){
       case 'age': av=a.age||0;bv=b.age||0;break;
       case 'programme': av=(a.c.programme||'');bv=(b.c.programme||'');break;
+      case 'premier': av=a.firstDate;bv=b.firstDate;break;
       case 'dernier': av=a.lastDate;bv=b.lastDate;break;
       default: av=((a.c.prenom||'')+' '+(a.c.nom||'')).toLowerCase();bv=((b.c.prenom||'')+' '+(b.c.nom||'')).toLowerCase();
     }
@@ -3033,17 +3051,20 @@ function renderClients(){
     return 0;
   });
 
-  tbody.innerHTML=withMeta.map(({c,cr,age,lastDate})=>{
+  tbody.innerHTML=withMeta.map(({c,cr,age,firstDate,lastDate})=>{
     const status=getStatus(c);const col=avColor(c.prenom);const init=(c.prenom||'?')[0].toUpperCase();
     const alertCount=getAlerts(c).length;
     const g=gMaps[pCls(c.programme)]||gMaps.alba;
     const progH=c.programme?"<span class='ptag' style='background:"+g+"22;color:"+g+"'>"+pLbl(c.programme)+"</span>":"<span class='ptag-off'>—</span>";
     return "<tr onclick=\"openFiche('"+c.id+"')\">"+
-      "<td><div class='ctr-name'><div class='cc-av sm' style='background:"+col+"'>"+init+"</div><div><div class='ctr-nom'>"+escH(c.prenom)+" "+escH(c.nom||'')+"</div>"+(c.email?"<div class='ctr-email'>"+escH(c.email)+"</div>":'')+"</div></div></td>"+
+      "<td><div class='ctr-name'><div class='cc-av sm' style='background:"+col+"'>"+init+"</div><div class='ctr-nom'>"+escH(c.prenom)+" "+escH(c.nom||'')+"</div></div></td>"+
       "<td>"+(age?age+' ans':'—')+"</td>"+
+      "<td>"+(c.email?escH(c.email):'—')+"</td>"+
+      "<td>"+(c.tel?escH(c.tel):'—')+"</td>"+
       "<td>"+progH+"</td>"+
       "<td><span class='stag "+status.cl+"'>"+status.label+"</span>"+(alertCount?"<span class='ctr-alert' title='"+alertCount+" alerte(s)'>⚠️</span>":'')+"</td>"+
-      "<td>"+(lastDate?fmtShort(lastDate):'—')+"</td>"+
+      "<td>"+fmtDMY(firstDate)+"</td>"+
+      "<td>"+fmtDMY(lastDate)+"</td>"+
       "<td style='text-align:right;font-weight:600;color:var(--gold-dk)'>"+cr.length+"</td>"+
       "</tr>";
   }).join('');
@@ -4791,6 +4812,10 @@ function ouvrirBilanEntree(clientId, mode){
       <div class="sb-ic"><svg width="13" height="13" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2.5"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" stroke="currentColor" stroke-width="2.5"/></svg></div>
       <span class="sb-lbl">Mon cabinet</span>
     </div>
+    <div class="sb-item" onclick="nav('stats',this)">
+      <div class="sb-ic" style="background:#EDE8FF;color:#6C47FF"><svg width="13" height="13" fill="none" viewBox="0 0 24 24"><path d="M3 3v18h18" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><path d="M7 15l4-5 3 3 5-7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <span class="sb-lbl">Statistiques</span>
+    </div>
   </nav>
   <div class="sb-foot">
     <a href="https://app.brevo.com" target="_blank"><svg fill="none" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" stroke="currentColor" stroke-width="2"/><polyline points="22,6 12,13 2,6" stroke="currentColor" stroke-width="2"/></svg>Brevo</a>
@@ -4924,9 +4949,12 @@ function ouvrirBilanEntree(clientId, mode){
           <tr>
             <th class="sortable" onclick="sortClients('nom')">Cliente <span class="sort-arrow" id="sa-nom">▾</span></th>
             <th class="sortable" onclick="sortClients('age')">Âge <span class="sort-arrow" id="sa-age">▾</span></th>
+            <th>Email</th>
+            <th>Téléphone</th>
             <th class="sortable" onclick="sortClients('programme')">Programme <span class="sort-arrow" id="sa-programme">▾</span></th>
             <th>Statut</th>
-            <th class="sortable" onclick="sortClients('dernier')">Dernier contact <span class="sort-arrow" id="sa-dernier">▾</span></th>
+            <th class="sortable" onclick="sortClients('premier')">1er RDV <span class="sort-arrow" id="sa-premier">▾</span></th>
+            <th class="sortable" onclick="sortClients('dernier')">Dernier RDV <span class="sort-arrow" id="sa-dernier">▾</span></th>
             <th style="text-align:right">RDV</th>
           </tr>
         </thead>
