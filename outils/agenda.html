@@ -174,6 +174,28 @@ body.is-embed .app{min-height:100vh}
 .ring{flex-shrink:0;display:block}
 .ringf{transition:stroke-dashoffset 1.1s cubic-bezier(.16,1,.3,1)}
 
+/* ═══ GRILLE HORAIRE SEMAINE (8h–20h, façon Google Agenda) ═══ */
+.wk-grid-wrap{background:var(--blanc);border:1px solid var(--taupe);border-radius:12px;overflow:hidden}
+.wk-head,.wk-body{display:grid}
+.wk-head{border-bottom:1px solid var(--taupe);background:var(--off);position:sticky;top:0;z-index:2}
+.wk-daylbl{padding:8px 4px;text-align:center;font-size:11px;font-weight:700;color:var(--ardoise);border-left:1px solid var(--taupe);line-height:1.5}
+.wk-daylbl.today{background:var(--ocre);color:#fff}
+.wk-body{position:relative}
+.wk-hours{position:relative}
+.wk-hourlabel{position:absolute;right:6px;font-size:10px;color:var(--gris);font-family:'DM Mono',monospace;transform:translateY(-50%)}
+.wk-daycol{position:relative;border-left:1px solid var(--taupe)}
+.wk-daycol.blocked{background:repeating-linear-gradient(135deg,rgba(228,96,76,.05),rgba(228,96,76,.05) 6px,transparent 6px,transparent 12px)}
+.wk-hourline{position:absolute;left:0;right:0;height:1px;background:var(--taupe)}
+.wk-now{position:absolute;left:0;right:0;height:2px;background:var(--rouge);z-index:3}
+.wk-now::before{content:'';position:absolute;left:-3px;top:-3px;width:8px;height:8px;border-radius:50%;background:var(--rouge)}
+.wk-evt{position:absolute;left:2px;right:2px;border-radius:6px;padding:3px 6px;overflow:hidden;cursor:pointer;transition:var(--t)}
+.wk-evt:hover{filter:brightness(0.97);box-shadow:0 2px 6px rgba(16,24,40,.1)}
+.wk-evt.confirme{background:linear-gradient(90deg,rgba(13,166,120,.18),rgba(13,166,120,.07));border-left:3px solid var(--ocre)}
+.wk-evt.attente{background:linear-gradient(90deg,rgba(139,92,246,.18),rgba(139,92,246,.07));border-left:3px solid #8B5CF6}
+.wk-evt.tache{background:rgba(139,92,246,.12);border-left:3px solid #8B5CF6;font-size:10px;font-weight:600;color:#6D3FD6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wk-evt-time{font-size:10px;font-weight:700;color:var(--ardoise);font-family:'DM Mono',monospace}
+.wk-evt-name{font-size:11px;font-weight:600;color:var(--ardoise);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
 /* Toast */
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(70px);background:var(--blanc);color:var(--ardoise);padding:12px 22px;border-radius:var(--r99);font-size:14px;font-weight:500;box-shadow:0 24px 64px rgba(16,24,40,.16);border:1px solid var(--taupe);z-index:9999;transition:transform .3s cubic-bezier(.34,1.3,.64,1);white-space:nowrap}
 .toast.show{transform:translateX(-50%) translateY(0)}
@@ -1156,6 +1178,8 @@ function rejectRdv(id) {
 // ════════════════════════════════
 // VUE SEMAINE
 // ════════════════════════════════
+function escHtmlWk(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
 function renderSemaine() {
   const body = document.getElementById('semaineBody');
   const startDate = new Date(state.selectedDate + 'T12:00:00');
@@ -1172,37 +1196,73 @@ function renderSemaine() {
 
   const startD = days[0], endD = days[6];
   const s = new Date(startD+' '), e = new Date(endD+' ');
+  const todayStr = new Date().toISOString().slice(0,10);
+
+  const DAY_START=8, DAY_END=20, hourH=56;
+  const totalH=(DAY_END-DAY_START)*hourH;
+  function minutesOf(t){ if(!t) return DAY_START*60; const p=t.split(':').map(Number); return (p[0]||0)*60+(p[1]||0); }
+  function rdvDur(r){ return r.type==='initial' ? 90 : 45; }
+
+  let hourLabelsHtml='';
+  for(let h=DAY_START; h<=DAY_END; h++){
+    hourLabelsHtml += '<div class="wk-hourlabel" style="top:'+((h-DAY_START)*hourH)+'px">'+h+'h</div>';
+  }
+
+  const headHtml = days.map(dateStr=>{
+    const d=new Date(dateStr+'T12:00:00');
+    const isToday=dateStr===todayStr;
+    return '<div class="wk-daylbl'+(isToday?' today':'')+'">'+JOURS[d.getDay()]+'<br>'+d.getDate()+'</div>';
+  }).join('');
+
+  const colsHtml = days.map(dateStr=>{
+    const isToday=dateStr===todayStr;
+    const isBlocked = isDateBlocked(dateStr);
+    const rdvsJour = state.rdvs.filter(r => r.date===dateStr && r.status!=='annule').sort((a,b)=>(a.time||'').localeCompare(b.time||''));
+    const tachesJour = (state.taches||[]).filter(t => t.date===dateStr);
+
+    let hourlines='';
+    for(let h=DAY_START; h<=DAY_END; h++){
+      hourlines += '<div class="wk-hourline" style="top:'+((h-DAY_START)*hourH)+'px"></div>';
+    }
+    let nowLine='';
+    if(isToday){
+      const now=new Date();
+      if(now.getHours()>=DAY_START && now.getHours()<DAY_END){
+        const top=((now.getHours()*60+now.getMinutes())-DAY_START*60)/60*hourH;
+        nowLine='<div class="wk-now" style="top:'+top+'px"></div>';
+      }
+    }
+    const evts = rdvsJour.map(r=>{
+      const startMin=minutesOf(r.time);
+      let top=(startMin-DAY_START*60)/60*hourH;
+      const height=Math.max(rdvDur(r)/60*hourH, 26);
+      top=Math.max(0, Math.min(top, totalH-height));
+      const cls = r.status==='attente'?'attente':'confirme';
+      return '<div class="wk-evt '+cls+'" style="top:'+top+'px;height:'+height+'px" onclick="openEditModal('+r.id+')">'+
+        '<div class="wk-evt-time">'+escHtmlWk(r.time||'')+'</div>'+
+        '<div class="wk-evt-name">'+escHtmlWk((r.name||'').split(' ')[0])+'</div>'+
+        '</div>';
+    }).join('');
+    const taskEvts = tachesJour.map(t=>{
+      const startMin=minutesOf(t.time);
+      const top=Math.max(0,Math.min((startMin-DAY_START*60)/60*hourH, totalH-24));
+      return '<div class="wk-evt tache" style="top:'+top+'px;height:24px" title="'+escHtmlWk(t.titre||'')+'">📌 '+escHtmlWk((t.titre||'').slice(0,14))+'</div>';
+    }).join('');
+    return '<div class="wk-daycol'+(isBlocked?' blocked':'')+'" style="height:'+totalH+'px">'+hourlines+nowLine+evts+taskEvts+'</div>';
+  }).join('');
+
   body.innerHTML = `<div style="font-size:14px;font-weight:600;color:var(--gris);margin-bottom:16px">
     Semaine du ${s.getDate()} ${MOIS[s.getMonth()]} au ${e.getDate()} ${MOIS[e.getMonth()]} ${e.getFullYear()}
-  </div>`;
-
-  const grid = document.createElement('div');
-  grid.style.cssText = 'display:grid;grid-template-columns:repeat(7,1fr);gap:8px';
-
-  days.forEach(dateStr => {
-    const d = new Date(dateStr+'T12:00:00');
-    const rdvs = state.rdvs.filter(r => r.date===dateStr && r.status!=='annule').sort((a,b)=>a.time.localeCompare(b.time));
-    const tachesJour = (state.taches||[]).filter(t => t.date===dateStr).sort((a,b)=>a.time.localeCompare(b.time));
-    const isBlocked = isDateBlocked(dateStr);
-    const today = new Date().toISOString().slice(0,10);
-
-    const col = document.createElement('div');
-    col.style.cssText = 'background:var(--blanc);border-radius:12px;border:1px solid var(--taupe);overflow:hidden';
-    if(dateStr===today) col.style.borderColor='var(--ocre)';
-
-    col.innerHTML = `<div style="padding:10px 12px;border-bottom:1px solid var(--taupe);background:${dateStr===today?'var(--ocre)':'var(--off)'};color:${dateStr===today?'#fff':'var(--ardoise)'}">
-      <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;opacity:.7">${JOURS[d.getDay()]}</div>
-      <div style="font-size:18px;font-weight:700;font-family:'Inter',sans-serif">${d.getDate()}</div>
+  </div>
+  <div class="wk-grid-wrap">
+    <div class="wk-head" style="grid-template-columns:44px repeat(7,1fr)">
+      <div></div>${headHtml}
     </div>
-    <div style="padding:8px">
-      ${isBlocked?'<div style="font-size:10px;color:var(--rouge);text-align:center;padding:8px">🔒 Bloqué</div>':''}
-      ${rdvs.map(r=>`<div onclick="openEditModal(${r.id})" style="background:rgba(13,166,120,.1);border-left:2px solid var(--ocre);border-radius:4px;padding:4px 6px;margin-bottom:4px;cursor:pointer;font-size:10px;font-weight:600;color:var(--ardoise)">${r.time} · ${r.name.split(' ')[0]}</div>`).join('')}
-      ${tachesJour.map(t=>`<div style="background:rgba(139,92,246,.1);border-left:2px solid #8B5CF6;border-radius:4px;padding:4px 6px;margin-bottom:4px;font-size:10px;font-weight:600;color:#6D3FD6">📌 ${t.time} · ${t.titre.slice(0,20)}${t.titre.length>20?'…':''}</div>`).join('')}
-      ${rdvs.length===0&&tachesJour.length===0&&!isBlocked?'<div style="font-size:10px;color:var(--taupe);text-align:center;padding:12px">—</div>':''}
-    </div>`;
-    grid.appendChild(col);
-  });
-  body.appendChild(grid);
+    <div class="wk-body" style="grid-template-columns:44px repeat(7,1fr)">
+      <div class="wk-hours" style="height:${totalH}px">${hourLabelsHtml}</div>
+      ${colsHtml}
+    </div>
+  </div>`;
 }
 
 // ════════════════════════════════
