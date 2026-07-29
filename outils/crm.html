@@ -669,6 +669,55 @@ body {
 .cc-flbl { font-size: 12px; color: var(--muted) }
 .cc-frdv { font-size: 12px; font-weight: 600; color: var(--gold-dk) }
 
+/* ═══ TABLEAU CLIENTES — pensé pour scaler à des milliers de lignes ═══ */
+.ctable-wrap {
+  background: var(--white);
+  border-radius: var(--r16);
+  border: 1px solid var(--border);
+  box-shadow: var(--sh1);
+  overflow: auto;
+}
+.ctable { width: 100%; border-collapse: collapse; font-size: 13px }
+.ctable thead th {
+  position: sticky; top: 0; z-index: 1;
+  background: var(--surface);
+  text-align: left;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.ctable th.sortable { cursor: pointer; user-select: none }
+.ctable th.sortable:hover { color: var(--ink3) }
+.sort-arrow { margin-left: 4px; font-size: 9px; opacity: .5 }
+.sort-arrow.active { opacity: 1; color: var(--gold-dk) }
+.ctable tbody tr {
+  cursor: pointer;
+  transition: var(--t);
+  border-bottom: 1px solid var(--border);
+}
+.ctable tbody tr:last-child { border-bottom: none }
+.ctable tbody tr:hover { background: var(--gold-lt) }
+.ctable td { padding: 10px 16px; vertical-align: middle; color: var(--ink3) }
+.ctr-name { display: flex; align-items: center; gap: 10px }
+.cc-av.sm { width: 30px; height: 30px; font-size: 12px; flex-shrink: 0 }
+.ctr-nom { font-size: 13.5px; font-weight: 600; color: var(--ink) }
+.ctr-email { font-size: 11.5px; color: var(--muted); margin-top: 1px }
+.ptag {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: var(--r99);
+}
+.ptag-off { font-size: 12px; color: var(--muted) }
+.ctr-alert { margin-left: 6px; font-size: 12px }
+.ctable-empty { padding: 48px 16px; text-align: center }
+
 /* ═══ FICHE — hero blanc, accents fins ═══ */
 .fv2-header {
   border-radius: var(--r16);
@@ -2581,6 +2630,7 @@ async function confirmerSuppressionCliente(){
     // Nettoyage des données liées (pas de suppression en cascade côté base pour ces tables)
     await Promise.allSettled([
       sb('bilans_biologiques?client_id=eq.'+encodeURIComponent(cid), {method:'DELETE', prefer:'return=minimal'}),
+      sb('bilans_biologiques?client_key=eq.'+encodeURIComponent(cid), {method:'DELETE', prefer:'return=minimal'}),
       sb('protocoles_client?client_id=eq.'+encodeURIComponent(cid), {method:'DELETE', prefer:'return=minimal'}),
       sb('journal_entries?client_key=eq.'+encodeURIComponent(cid), {method:'DELETE', prefer:'return=minimal'}),
       sb('messages_client?client_key=eq.'+encodeURIComponent(cid), {method:'DELETE', prefer:'return=minimal'}),
@@ -2589,7 +2639,12 @@ async function confirmerSuppressionCliente(){
       sb('questionnaires?client_id=eq.'+encodeURIComponent(cid), {method:'DELETE', prefer:'return=minimal'}),
       sb('bilan_entree?client_key=eq.'+encodeURIComponent(cid), {method:'DELETE', prefer:'return=minimal'}),
       sb('checkins_semaine?client_key=eq.'+encodeURIComponent(cid), {method:'DELETE', prefer:'return=minimal'}),
-      sb('lettres_cliniques?client_key=eq.'+encodeURIComponent(cid), {method:'DELETE', prefer:'return=minimal'})
+      sb('lettres_cliniques?client_key=eq.'+encodeURIComponent(cid), {method:'DELETE', prefer:'return=minimal'}),
+      sb('phv_memos?client_key=eq.'+encodeURIComponent(cid), {method:'DELETE', prefer:'return=minimal'}),
+      sb('feedback_protocole?client_id=eq.'+encodeURIComponent(cid), {method:'DELETE', prefer:'return=minimal'}),
+      sb('alternatives?client_id=eq.'+encodeURIComponent(cid), {method:'DELETE', prefer:'return=minimal'}),
+      sb('consultation_summaries?client_key=eq.'+encodeURIComponent(cid), {method:'DELETE', prefer:'return=minimal'}),
+      sb('avs_recettes?client_id=eq.'+encodeURIComponent(cid), {method:'DELETE', prefer:'return=minimal'})
     ]);
 
     // Suppression des RDV associés
@@ -2938,42 +2993,60 @@ function renderSilences(sils){
   }).join('');
 }
 
+let clientSort={key:'nom',dir:1};
+function sortClients(key){
+  if(clientSort.key===key)clientSort.dir*=-1;else{clientSort.key=key;clientSort.dir=1;}
+  renderClients();
+}
 function renderClients(){
-  const grid=document.getElementById('clients-grid');const cnt=document.getElementById('c-count');if(!grid)return;
+  const tbody=document.getElementById('clients-tbody');const cnt=document.getElementById('c-count');if(!tbody)return;
   let list=db.clients;
   if(curSearch){const q=curSearch.toLowerCase();list=list.filter(c=>(c.prenom||'').toLowerCase().includes(q)||(c.nom||'').toLowerCase().includes(q)||(c.motifs||'').toLowerCase().includes(q)||(c.programme||'').toLowerCase().includes(q));}
   if(curFilter==='programme')list=list.filter(c=>c.programme);
   if(curFilter==='alerte')list=list.filter(c=>getAlerts(c).length>0);
   if(curFilter==='silence')list=list.filter(c=>{const l=c.timeline?.[c.timeline.length-1]?.date||c.date1;return l&&diffD(l)>30;});
   cnt.textContent=list.length+(list.length===1?' cliente':' clientes');
-  if(!list.length){grid.innerHTML='<div class="empty" style="grid-column:1/-1"><div class="eicon">👥</div><div class="etitle">Aucune cliente</div><div class="esub">Créez votre première fiche cliente.</div></div>';return;}
+
+  document.querySelectorAll('.sort-arrow').forEach(a=>{a.classList.remove('active');a.textContent='▾';});
+  const activeArrow=document.getElementById('sa-'+clientSort.key);
+  if(activeArrow){activeArrow.classList.add('active');activeArrow.textContent=clientSort.dir>0?'▾':'▴';}
+
+  if(!list.length){tbody.innerHTML='<tr><td colspan="6"><div class="ctable-empty"><div class="eicon">👥</div><div class="etitle">Aucune cliente</div><div class="esub">Créez votre première fiche cliente.</div></div></td></tr>';return;}
+
   const gMaps={alba:'#E28B2B',aria:'#7B6EE6',ora:'#0DA678'};
-  grid.innerHTML=list.map(c=>{
-    const status=getStatus(c);const col=avColor(c.prenom);const init=(c.prenom||'?')[0].toUpperCase();
-    const cr=cRdvs(c);const lastR=cr[0];
-    const dur=pDur(c.programme);const started=c.dateProtocole||c.date1;
-    const pct=(dur>0&&started)?Math.min(100,Math.round(diffD(started)/dur*100)):0;
-    const age=c.ddn?ageFrom(c.ddn):c.age;
-    let progH='';
-    if(c.programme&&dur>0&&started){
-      const g=gMaps[pCls(c.programme)]||gMaps.alba;
-      const sem=Math.max(1,Math.ceil(diffD(started)/7));const semTot=Math.max(1,Math.round(dur/7));
-      progH="<div class='cc-prog'>"+ringSVG(pct,g,44)+"<div><div class='cc-plbl'>"+pLbl(c.programme)+"</div>" +
-        "<div class='cc-psub'>Semaine "+Math.min(sem,semTot)+" / "+semTot+"</div></div></div>";
+  const withMeta=list.map(c=>{
+    const cr=cRdvs(c);
+    const age=c.ddn?ageFrom(c.ddn):(c.age||null);
+    const lastDate=cr[0]?.date||c.date1||'';
+    return {c,cr,age,lastDate};
+  });
+  withMeta.sort((a,b)=>{
+    let av,bv;
+    switch(clientSort.key){
+      case 'age': av=a.age||0;bv=b.age||0;break;
+      case 'programme': av=(a.c.programme||'');bv=(b.c.programme||'');break;
+      case 'dernier': av=a.lastDate;bv=b.lastDate;break;
+      default: av=((a.c.prenom||'')+' '+(a.c.nom||'')).toLowerCase();bv=((b.c.prenom||'')+' '+(b.c.nom||'')).toLowerCase();
     }
-    const chips=[];
-    if(c.motifs)c.motifs.split(/[,·]/).slice(0,3).forEach(m=>{if(m.trim())chips.push("<span class='mchip'>"+escH(m.trim())+"</span>");});
-    return "<div class='cc' onclick=\"openFiche('"+c.id+"')\">" +
-      "<div class='cc-top'><div class='cc-av' style='background:"+col+"'>"+init+"</div>" +
-      "<div class='cc-info'><div class='cc-name'>"+escH(c.prenom)+" "+escH(c.nom||'')+"</div>" +
-      "<div class='cc-sub'>"+(age?age+" ans":'')+( c.email?" · "+escH(c.email):'')+"</div></div>" +
-      "<span class='stag "+status.cl+"'>"+status.label+"</span></div>" +
-      progH +
-      (chips.length?"<div class='cc-chips'>"+chips.join('')+"</div>":'')+
-      "<div class='cc-foot'><span class='cc-flbl'>"+fmtShort(lastR?.date||c.date1)+"</span><span class='cc-frdv'>"+cr.length+" RDV</span></div>" +
-      "</div>";
+    if(av<bv)return -1*clientSort.dir;
+    if(av>bv)return 1*clientSort.dir;
+    return 0;
+  });
+
+  tbody.innerHTML=withMeta.map(({c,cr,age,lastDate})=>{
+    const status=getStatus(c);const col=avColor(c.prenom);const init=(c.prenom||'?')[0].toUpperCase();
+    const alertCount=getAlerts(c).length;
+    const g=gMaps[pCls(c.programme)]||gMaps.alba;
+    const progH=c.programme?"<span class='ptag' style='background:"+g+"22;color:"+g+"'>"+pLbl(c.programme)+"</span>":"<span class='ptag-off'>—</span>";
+    return "<tr onclick=\"openFiche('"+c.id+"')\">"+
+      "<td><div class='ctr-name'><div class='cc-av sm' style='background:"+col+"'>"+init+"</div><div><div class='ctr-nom'>"+escH(c.prenom)+" "+escH(c.nom||'')+"</div>"+(c.email?"<div class='ctr-email'>"+escH(c.email)+"</div>":'')+"</div></div></td>"+
+      "<td>"+(age?age+' ans':'—')+"</td>"+
+      "<td>"+progH+"</td>"+
+      "<td><span class='stag "+status.cl+"'>"+status.label+"</span>"+(alertCount?"<span class='ctr-alert' title='"+alertCount+" alerte(s)'>⚠️</span>":'')+"</td>"+
+      "<td>"+(lastDate?fmtShort(lastDate):'—')+"</td>"+
+      "<td style='text-align:right;font-weight:600;color:var(--gold-dk)'>"+cr.length+"</td>"+
+      "</tr>";
   }).join('');
-  animRings();
 }
 
 function filterC(v){curSearch=v;renderClients();}
@@ -3740,46 +3813,109 @@ function exportCSV(silent=false){
 // ══════════════════════════════════════
 // STATISTIQUES
 // ══════════════════════════════════════
+let statsPeriod='mois';
+function setStatsPeriod(p,el){
+  statsPeriod=p;
+  document.querySelectorAll('#page-stats .fchip').forEach(c=>c.classList.remove('on'));
+  if(el)el.classList.add('on');
+  renderStats();
+}
+
+/* Découpe la période choisie en unités (jour/semaine/mois) pour l'axe du graphique */
+function statsBuckets(period){
+  const now=new Date();const labels=[],keys=[];
+  if(period==='semaine'){
+    for(let i=6;i>=0;i--){const d=new Date(now);d.setDate(now.getDate()-i);keys.push(d.toISOString().slice(0,10));labels.push(d.toLocaleDateString('fr-FR',{weekday:'short'}).slice(0,3));}
+    return{keys,labels,granularity:'day'};
+  }
+  if(period==='mois'){
+    for(let i=29;i>=0;i--){const d=new Date(now);d.setDate(now.getDate()-i);keys.push(d.toISOString().slice(0,10));labels.push(String(d.getDate()));}
+    return{keys,labels,granularity:'day'};
+  }
+  // année & tout → 12 mois glissants
+  for(let i=11;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);keys.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'));labels.push(d.toLocaleDateString('fr-FR',{month:'short'}).slice(0,3));}
+  return{keys,labels,granularity:'month'};
+}
+function bucketKeyFor(dateStr,granularity){ if(!dateStr)return null; return granularity==='day'?dateStr.slice(0,10):dateStr.slice(0,7); }
+
+/* Petit graphique en aire SVG — pas de dépendance externe, cohérent avec le reste de l'outil */
+function svgAreaChart(values,labels,color,height=140){
+  const w=680,h=height,pad={l:38,r:12,t:12,b:22};
+  const max=Math.max(...values,1);
+  const innerW=w-pad.l-pad.r,innerH=h-pad.t-pad.b;
+  const stepX=values.length>1?innerW/(values.length-1):innerW;
+  const pts=values.map((v,i)=>[pad.l+i*stepX, pad.t+innerH-(v/max)*innerH]);
+  const line=pts.map((p,i)=>(i===0?'M':'L')+p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ');
+  const area=line+' L'+pts[pts.length-1][0].toFixed(1)+','+(pad.t+innerH)+' L'+pts[0][0].toFixed(1)+','+(pad.t+innerH)+' Z';
+  const gridY=[0,.25,.5,.75,1].map(f=>pad.t+innerH*(1-f));
+  const gridLines=gridY.map(y=>`<line x1="${pad.l}" y1="${y.toFixed(1)}" x2="${w-pad.r}" y2="${y.toFixed(1)}" stroke="var(--border)" stroke-width="1"/>`).join('');
+  const skip=Math.max(1,Math.ceil(labels.length/8));
+  const xLabels=labels.map((l,i)=>i%skip!==0?'':`<text x="${(pad.l+i*stepX).toFixed(1)}" y="${h-4}" font-size="9" fill="var(--muted)" text-anchor="middle" font-family="DM Mono, monospace">${l}</text>`).join('');
+  const yTop=`<text x="${pad.l-6}" y="${pad.t+4}" font-size="9" fill="var(--muted)" text-anchor="end" font-family="DM Mono, monospace">${Math.round(max)}</text>`;
+  const gradId='grad'+Math.random().toString(36).slice(2,9);
+  return `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:${h}px;display:block">
+    <defs><linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="${color}" stop-opacity="0.28"/>
+      <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
+    </linearGradient></defs>
+    ${gridLines}${yTop}
+    <path d="${area}" fill="url(#${gradId})"/>
+    <path d="${line}" fill="none" stroke="${color}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+    ${pts.map(p=>`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="2.6" fill="${color}"/>`).join('')}
+    ${xLabels}
+  </svg>`;
+}
+
+let _statsLastBuckets=null; // mémorisé pour l'export CSV
+
 function renderStats(){
   const el=document.getElementById('stats-box');if(!el)return;
   const now=new Date();const yr=now.getFullYear();
   const clients=db.clients;const factures=db.factures;
 
-  // CA annuel par programme
+  const {keys,labels,granularity}=statsBuckets(statsPeriod);
+  const periodRdvs=(typeof rdvs!=='undefined'?rdvs:[]).filter(r=>r.status!=='annule');
+
+  const caMap={};keys.forEach(k=>caMap[k]=0);
+  factures.filter(f=>f.statut==='payee').forEach(f=>{const k=bucketKeyFor(f.date,granularity);if(k in caMap)caMap[k]+=(f.montant||0);});
+  const caSeries=keys.map(k=>caMap[k]);
+  const caPeriodTotal=caSeries.reduce((s,v)=>s+v,0);
+
+  const rdvMap={};const durMap={};keys.forEach(k=>{rdvMap[k]=0;durMap[k]=0;});
+  periodRdvs.forEach(r=>{const k=bucketKeyFor(r.date,granularity);if(k in rdvMap){rdvMap[k]++;durMap[k]+=(r.type==='initial'?90:45);}});
+  const rdvSeries=keys.map(k=>rdvMap[k]);
+  const durSeries=keys.map(k=>durMap[k]);
+  const rdvPeriodTotal=rdvSeries.reduce((s,v)=>s+v,0);
+  const durPeriodTotal=durSeries.reduce((s,v)=>s+v,0);
+
+  // Moyens de paiement sur la période
+  const payMap={};
+  factures.filter(f=>f.statut==='payee'&&keys.includes(bucketKeyFor(f.date,granularity))).forEach(f=>{
+    const p=f.paiementLabel||f.paiement||'Autre';payMap[p]=(payMap[p]||0)+(f.montant||0);
+  });
+  const payEntries=Object.entries(payMap).sort((a,b)=>b[1]-a[1]);
+  const payTotal=payEntries.reduce((s,[,v])=>s+v,0);
+
+  // CA annuel par programme (indépendant de la période, vision structurelle)
   const caByProg={alba:0,aria:0,ora:0,autre:0};
   const prestas={'alba':'alba','aria':'aria','ora':'ora'};
-  factures.filter(f=>f.statut==='payee'&&f.date&&f.date.startsWith(yr+'')).forEach(f=>{
-    const k=prestas[f.prestation]||'autre';
-    caByProg[k]+=(f.montant||0);
-  });
+  factures.filter(f=>f.statut==='payee'&&f.date&&f.date.startsWith(yr+'')).forEach(f=>{caByProg[prestas[f.prestation]||'autre']+=(f.montant||0);});
   const caTotal=Object.values(caByProg).reduce((s,v)=>s+v,0);
 
-  // Clientes par programme
   const byProg={alba:0,aria:0,ora:0,consult:0};
   clients.forEach(c=>{if(c.programme)byProg[c.programme]=(byProg[c.programme]||0)+1;else byProg.consult++;});
 
-  // Motifs fréquents
   const motifCount={};
   clients.forEach(c=>{if(c.motifs)c.motifs.split(/[,·]/).forEach(m=>{const t=m.trim().toLowerCase();if(t&&t.length>2)motifCount[t]=(motifCount[t]||0)+1;});});
   const topMotifs=Object.entries(motifCount).sort((a,b)=>b[1]-a[1]).slice(0,6);
 
-  // Clientes par mois (6 derniers)
-  const byMonth=[];
-  for(let i=5;i>=0;i--){
-    const d=new Date(now.getFullYear(),now.getMonth()-i,1);
-    const key=mk(d.toISOString());
-    const lbl=d.toLocaleDateString('fr-FR',{month:'short'}).slice(0,3);
-    const n=clients.filter(c=>c.createdAt&&mk(c.createdAt)===key).length;
-    byMonth.push({lbl,n});
-  }
-  const maxN=Math.max(...byMonth.map(m=>m.n),1);
-
-  // Taux programme
   const txProg=clients.length>0?Math.round(clients.filter(c=>c.programme).length/clients.length*100):0;
-
-  // Durée moyenne entre 1ère consul et protocole
   const dursMoy=clients.filter(c=>c.date1&&c.dateProtocole).map(c=>diffD(c.date1)-diffD(c.dateProtocole)).filter(d=>d>=0&&d<365);
   const moyDur=dursMoy.length>0?Math.round(dursMoy.reduce((s,d)=>s+d,0)/dursMoy.length):null;
+
+  _statsLastBuckets={keys,labels,caSeries,rdvSeries,durSeries};
+
+  const periodLbl={semaine:'7 derniers jours',mois:'30 derniers jours',annee:'12 derniers mois',tout:'12 derniers mois'}[statsPeriod];
 
   const statCard=(icon,val,lbl,color='var(--violet)')=>`
     <div style="background:white;border:1px solid var(--border);border-radius:var(--r16);padding:18px 20px;box-shadow:var(--sh1)">
@@ -3805,11 +3941,30 @@ function renderStats(){
 
   el.innerHTML=`
   <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px">
-    ${statCard('👥',clients.length,'Total clientes','#6C47FF')}
-    ${statCard('📈',txProg+'%','En programme','#00C875')}
-    ${statCard('💶',caTotal>0?caTotal.toFixed(0)+' €':'—','CA '+yr,'#FF7B2C')}
-    ${statCard('⏱',moyDur!==null?moyDur+'j':'—','Délai consul→protocole','#0096FF')}
+    ${statCard('💶',caPeriodTotal>0?caPeriodTotal.toFixed(0)+' €':'—','CA · '+periodLbl,'#FF7B2C')}
+    ${statCard('📅',rdvPeriodTotal,'RDV · '+periodLbl,'#6C47FF')}
+    ${statCard('⏱',durPeriodTotal>0?Math.round(durPeriodTotal/60)+' h':'—','Durée cumulée · '+periodLbl,'#0096FF')}
+    ${statCard('📈',txProg+'%','Clientes en programme','#00C875')}
   </div>
+
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-head"><div class="card-title"><div class="card-dot" style="background:var(--violet)"></div>Chiffre d'affaires — ${periodLbl}</div></div>
+    <div class="card-body">${svgAreaChart(caSeries,labels,'#6C47FF')}</div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+    <div class="card">
+      <div class="card-head"><div class="card-title"><div class="card-dot" style="background:#FF4C8B"></div>Rendez-vous — ${periodLbl}</div></div>
+      <div class="card-body">${svgAreaChart(rdvSeries,labels,'#FF4C8B',120)}</div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="card-title"><div class="card-dot" style="background:#00C875"></div>Moyens de paiement — ${periodLbl}</div></div>
+      <div class="card-body">
+        ${payEntries.length?payEntries.map(([p,v])=>progBar(p.charAt(0).toUpperCase()+p.slice(1),Math.round(v),Math.round(payTotal),'#00C875')).join(''):'<div style="font-size:13px;color:var(--muted);font-style:italic">Aucun paiement sur cette période</div>'}
+      </div>
+    </div>
+  </div>
+
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
     <div class="card">
       <div class="card-head"><div class="card-title"><div class="card-dot" style="background:var(--green)"></div>Répartition par programme</div></div>
@@ -3830,31 +3985,25 @@ function renderStats(){
       </div>
     </div>
   </div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-    <div class="card">
-      <div class="card-head"><div class="card-title"><div class="card-dot" style="background:var(--violet)"></div>Nouvelles clientes par mois</div></div>
-      <div class="card-body">
-        <div style="display:flex;align-items:flex-end;gap:6px;height:80px">
-          ${byMonth.map((m,i)=>{
-            const h=Math.round((m.n/maxN)*100);
-            const isCur=i===byMonth.length-1;
-            return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;height:100%">
-              <div style="flex:1;display:flex;align-items:flex-end;width:100%">
-                <div style="width:100%;height:${h}%;background:${isCur?'var(--violet)':'var(--violet-lt)'};border-radius:4px 4px 0 0;min-height:4px"></div>
-              </div>
-              <div style="font-size:9px;color:var(--muted);font-family:monospace">${m.lbl}</div>
-            </div>`;
-          }).join('')}
-        </div>
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-head"><div class="card-title"><div class="card-dot" style="background:var(--pink)"></div>Motifs les plus fréquents</div></div>
-      <div class="card-body">
-        ${topMotifs.length?topMotifs.map(([m,n])=>progBar(m.charAt(0).toUpperCase()+m.slice(1),n,topMotifs[0][1],'var(--pink)')).join(''):'<div style="font-size:13px;color:var(--muted);font-style:italic">Aucun motif renseigné</div>'}
-      </div>
+
+  <div class="card">
+    <div class="card-head"><div class="card-title"><div class="card-dot" style="background:var(--pink)"></div>Motifs les plus fréquents</div></div>
+    <div class="card-body">
+      ${topMotifs.length?topMotifs.map(([m,n])=>progBar(m.charAt(0).toUpperCase()+m.slice(1),n,topMotifs[0][1],'var(--pink)')).join(''):'<div style="font-size:13px;color:var(--muted);font-style:italic">Aucun motif renseigné</div>'}
     </div>
   </div>`;
+}
+
+function exportStatsCSV(){
+  if(!_statsLastBuckets){toast('Statistiques non chargées','warn');return;}
+  const{keys,labels,caSeries,rdvSeries,durSeries}=_statsLastBuckets;
+  const headers=['Période','CA (€)','RDV','Durée cumulée (min)'];
+  const rows=keys.map((k,i)=>[labels[i],caSeries[i].toFixed(2),rdvSeries[i],durSeries[i]].map(v=>'"'+String(v).replace(/"/g,'""')+'"'));
+  const csv=[headers.map(h=>'"'+h+'"').join(','),...rows.map(r=>r.join(','))].join('\n');
+  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download='avitaserena-stats-'+statsPeriod+'-'+today()+'.csv';a.click();URL.revokeObjectURL(url);
+  toast('Export CSV téléchargé ✓','ok');
 }
 
 // ══════════════════════════════════════
@@ -4760,7 +4909,7 @@ function ouvrirBilanEntree(clientId, mode){
   <!-- CLIENTS -->
   <div class="page" id="page-clients">
     <div class="toolbar">
-      <div class="sbox"><svg width="13" height="13" fill="none" viewBox="0 0 24 24" style="flex-shrink:0;color:var(--muted)"><circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2"/><line x1="21" y1="21" x2="16.65" y2="16.65" stroke="currentColor" stroke-width="2"/></svg><input placeholder="Rechercher..." oninput="filterC(this.value)"></div>
+      <div class="sbox"><svg width="13" height="13" fill="none" viewBox="0 0 24 24" style="flex-shrink:0;color:var(--muted)"><circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2"/><line x1="21" y1="21" x2="16.65" y2="16.65" stroke="currentColor" stroke-width="2"/></svg><input placeholder="Rechercher un nom, un motif..." oninput="filterC(this.value)"></div>
       <div class="fchips">
         <div class="fchip on" id="fc-all" onclick="setFilter('all',this)">Toutes</div>
         <div class="fchip" id="fc-prog" onclick="setFilter('programme',this)">En programme</div>
@@ -4769,7 +4918,21 @@ function ouvrirBilanEntree(clientId, mode){
       </div>
       <span id="c-count" style="font-size:12px;font-weight:600;color:var(--muted);white-space:nowrap">0</span>
     </div>
-    <div class="cgrid" id="clients-grid"></div>
+    <div class="ctable-wrap">
+      <table class="ctable">
+        <thead>
+          <tr>
+            <th class="sortable" onclick="sortClients('nom')">Cliente <span class="sort-arrow" id="sa-nom">▾</span></th>
+            <th class="sortable" onclick="sortClients('age')">Âge <span class="sort-arrow" id="sa-age">▾</span></th>
+            <th class="sortable" onclick="sortClients('programme')">Programme <span class="sort-arrow" id="sa-programme">▾</span></th>
+            <th>Statut</th>
+            <th class="sortable" onclick="sortClients('dernier')">Dernier contact <span class="sort-arrow" id="sa-dernier">▾</span></th>
+            <th style="text-align:right">RDV</th>
+          </tr>
+        </thead>
+        <tbody id="clients-tbody"></tbody>
+      </table>
+    </div>
   </div>
 
   <!-- FICHE -->
@@ -4813,6 +4976,16 @@ function ouvrirBilanEntree(clientId, mode){
 
   <!-- SETTINGS -->
   <div class="page" id="page-stats">
+        <div class="toolbar" style="margin-bottom:14px">
+          <div class="fchips">
+            <div class="fchip" id="sp-semaine" onclick="setStatsPeriod('semaine',this)">Semaine</div>
+            <div class="fchip on" id="sp-mois" onclick="setStatsPeriod('mois',this)">Mois</div>
+            <div class="fchip" id="sp-annee" onclick="setStatsPeriod('annee',this)">Année</div>
+            <div class="fchip" id="sp-tout" onclick="setStatsPeriod('tout',this)">Tout</div>
+          </div>
+          <div style="flex:1"></div>
+          <button class="btn btn-ghost btn-sm" onclick="exportStatsCSV()">⬇ Exporter CSV</button>
+        </div>
         <div id="stats-box"></div>
       </div>
       <div class="page" id="page-settings">
