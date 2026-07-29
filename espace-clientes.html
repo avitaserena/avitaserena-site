@@ -27,6 +27,23 @@
 html{font-family:'Be Vietnam Pro',sans-serif;font-size:16.5px;color:var(--ardoise);background:var(--off)}
 body{min-height:100vh}
 
+/* ═══ SÉLECTEUR DE CRÉNEAUX HORIZONTAL (façon Doctolib/Maddie — identique à reservation.html) ═══ */
+.slotstrip{display:flex;align-items:stretch;gap:8px;margin:4px 0}
+.slotstrip-nav{flex-shrink:0;width:32px;border:1px solid var(--taupe);background:var(--blanc);border-radius:50%;height:32px;align-self:center;cursor:pointer;font-size:16px;color:var(--ardoise);transition:all .2s}
+.slotstrip-nav:hover{border-color:var(--ocre);color:var(--ocre)}
+.slotstrip-days{flex:1;display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.slotday{border:1px solid var(--taupe);border-radius:12px;padding:12px 8px;text-align:center;background:var(--off)}
+.slotday-head{margin-bottom:10px}
+.slotday-name{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gris)}
+.slotday-num{font-family:'Cormorant Garamond',serif;font-size:19px;color:var(--ardoise);margin-top:1px}
+.slotday-times{display:flex;flex-direction:column;gap:6px}
+.slottime{padding:7px 6px;border-radius:8px;border:1px solid var(--taupe);background:var(--blanc);color:var(--ardoise);font-size:12.5px;cursor:pointer;font-family:inherit;transition:all .15s}
+.slottime:hover{border-color:var(--ocre);color:var(--ocre)}
+.slottime.selected{background:var(--ardoise);border-color:var(--ardoise);color:#fff;font-weight:600}
+.slotday-empty{font-size:18px;color:var(--taupe);padding:10px 0}
+.slotday-more{margin-top:8px;background:none;border:none;color:var(--ocre);font-size:11px;font-weight:600;cursor:pointer;text-decoration:underline;font-family:inherit}
+@media(max-width:640px){.slotstrip-days{grid-template-columns:repeat(2,1fr)}}
+
 /* ── ÉCRAN DE CONNEXION ── */
 .login-screen{position:fixed;inset:0;background:var(--ardoise);display:flex;align-items:center;justify-content:center;z-index:1000;padding:24px}
 .login-box{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:48px 40px;max-width:400px;width:100%;text-align:center}
@@ -1031,21 +1048,14 @@ body{-webkit-font-smoothing:antialiased}
       <p class="section-sub">Choisissez un créneau qui vous convient — il apparaît instantanément dans l'agenda de Sabrina, sans paiement supplémentaire (déjà inclus dans votre parcours).</p>
 
       <div class="form-card" style="max-width:640px;background:#fff;border-radius:20px;padding:32px;border:1px solid var(--taupe,#D5CFC6)">
-        <div id="rdv-mois-label" style="text-align:center;font-family:'Cormorant Garamond',serif;font-size:20px;color:var(--ardoise);margin-bottom:16px;display:flex;align-items:center;justify-content:center;gap:16px">
-          <button onclick="rdvChangerMois(-1)" style="background:none;border:1px solid var(--taupe,#D5CFC6);border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:16px;color:var(--ardoise)">←</button>
-          <span id="rdv-mois-texte">—</span>
-          <button onclick="rdvChangerMois(1)" style="background:none;border:1px solid var(--taupe,#D5CFC6);border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:16px;color:var(--ardoise)">→</button>
-        </div>
-
-        <div id="rdv-grille" style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:24px;font-size:13.5px"></div>
-
-        <div id="rdv-creneaux-bloc" style="display:none;margin-bottom:16px">
-          <div style="font-size:12.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--gris,#6B6560);margin-bottom:10px" id="rdv-date-label">Horaires disponibles</div>
-          <div id="rdv-creneaux-liste" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+        <div class="slotstrip">
+          <button class="slotstrip-nav" onclick="rdvSlotStripNav(-1)" aria-label="Jours précédents">‹</button>
+          <div class="slotstrip-days" id="rdv-slotstrip-days"></div>
+          <button class="slotstrip-nav" onclick="rdvSlotStripNav(1)" aria-label="Jours suivants">›</button>
         </div>
 
         <div id="rdv-vide" style="display:none;text-align:center;font-size:15px;color:var(--gris,#6B6560);padding:16px 0">
-          Aucun créneau disponible à cette date — essayez un autre jour, ou contactez Sabrina directement.
+          Aucun créneau disponible sur cette période — essayez une autre semaine, ou contactez Sabrina directement.
         </div>
 
         <div id="rdv-confirmation" style="display:none;text-align:center;padding:20px;background:#F0FBF0;border-radius:12px;margin-top:16px">
@@ -1888,11 +1898,12 @@ async function serenaSend(){
 // ═══════════════════════════════════════
 // MON PROCHAIN RDV — reprogrammation (parcours uniquement)
 // ═══════════════════════════════════════
-var RDV_MOIS_NOMS = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
-var RDV_JOURS_SEMAINE = ['D','L','M','M','J','V','S'];
-var rdvMoisAffiche = null;
+var RDV_JOURS_COURTS = ['dim.','lun.','mar.','mer.','jeu.','ven.','sam.'];
+var RDV_SLOT_WINDOW = 4;
+var RDV_SLOT_INITIAL_COUNT = 4;
 var rdvCreneauxDispo = {};
-var rdvDateChoisie = null;
+var rdvSlotStripStart = null;
+var rdvSlotStripExpanded = {};
 var rdvInit = false;
 
 // Durée des consultations de suivi en parcours : 60 min (confirmée par Sabrina,
@@ -1902,19 +1913,16 @@ var DUREE_SUIVI_PARCOURS = 60;
 function initTabRdv() {
   if (rdvInit) return;
   rdvInit = true;
-  rdvMoisAffiche = new Date();
-  rdvMoisAffiche.setDate(1);
-  rdvChargerMois();
+  rdvSlotStripStart = new Date();
+  rdvSlotStripStart.setHours(0,0,0,0);
+  rdvChargerFenetre();
 }
 
-async function rdvChargerMois() {
-  var debut = new Date(rdvMoisAffiche);
-  var fin = new Date(rdvMoisAffiche);
-  fin.setMonth(fin.getMonth()+1);
-  fin.setDate(0);
+async function rdvChargerFenetre() {
+  var debut = new Date(rdvSlotStripStart);
+  var fin = new Date(rdvSlotStripStart); fin.setDate(fin.getDate() + 27);
 
-  document.getElementById('rdv-mois-texte').textContent = RDV_MOIS_NOMS[rdvMoisAffiche.getMonth()] + ' ' + rdvMoisAffiche.getFullYear();
-  document.getElementById('rdv-grille').innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:20px;color:var(--gris,#6B6560);font-size:15px">Chargement des disponibilités…</div>';
+  document.getElementById('rdv-slotstrip-days').innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:20px;color:var(--gris,#6B6560);font-size:15px">Chargement des disponibilités…</div>';
 
   try {
     var res = await fetch(SUPA_URL + '/functions/v1/get-available-slots', {
@@ -1933,63 +1941,58 @@ async function rdvChargerMois() {
     rdvCreneauxDispo = {};
   }
 
-  rdvRenderGrille(debut, fin);
+  rdvRenderSlotStrip();
 }
 
-function rdvRenderGrille(debut, fin) {
-  var grille = document.getElementById('rdv-grille');
-  var html = '';
-  RDV_JOURS_SEMAINE.forEach(function(j){ html += '<div style="text-align:center;font-weight:600;color:var(--gris,#6B6560);padding:4px 0">'+j+'</div>'; });
+function rdvSlotStripNav(delta) {
+  var nv = new Date(rdvSlotStripStart);
+  nv.setDate(nv.getDate() + delta*RDV_SLOT_WINDOW);
+  var today = new Date(); today.setHours(0,0,0,0);
+  if (nv < today) nv = today;
+  rdvSlotStripStart = nv;
+  rdvChargerFenetre();
+}
 
-  var premierJour = debut.getDay();
-  for (var i=0;i<premierJour;i++){ html += '<div></div>'; }
-
+function rdvRenderSlotStrip() {
+  var wrap = document.getElementById('rdv-slotstrip-days');
   var today = new Date().toISOString().slice(0,10);
-  for (var d=new Date(debut); d<=fin; d.setDate(d.getDate()+1)) {
+  var html = '';
+  var auMoinsUnCreneau = false;
+
+  for (var i=0; i<RDV_SLOT_WINDOW; i++) {
+    var d = new Date(rdvSlotStripStart); d.setDate(d.getDate()+i);
     var dStr = d.toISOString().slice(0,10);
-    var nb = (rdvCreneauxDispo[dStr]||[]).length;
+    var heures = rdvCreneauxDispo[dStr] || [];
     var estPasse = dStr < today;
-    var dispo = nb > 0 && !estPasse;
-    var choisi = dStr === rdvDateChoisie;
+    var expanded = !!rdvSlotStripExpanded[dStr];
+    var visibles = expanded ? heures : heures.slice(0, RDV_SLOT_INITIAL_COUNT);
+    if (heures.length) auMoinsUnCreneau = true;
 
-    var style = 'aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:8px;font-size:15px;cursor:'+(dispo?'pointer':'default')+';';
-    if (choisi) style += 'background:var(--ardoise);color:#fff;font-weight:700;';
-    else if (dispo) style += 'background:#F7F6F4;color:var(--ardoise);border:1px solid var(--taupe,#D5CFC6);font-weight:600;';
-    else style += 'color:var(--taupe,#D5CFC6);';
+    html += '<div class="slotday">';
+    html += '<div class="slotday-head"><div class="slotday-name">'+RDV_JOURS_COURTS[d.getDay()]+'</div><div class="slotday-num">'+String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'</div></div>';
 
-    html += '<div style="'+style+'" '+(dispo?'onclick="rdvSelectionnerDate(\''+dStr+'\')"':'')+'>'+d.getDate()+'</div>';
-  }
-  grille.innerHTML = html;
-}
-
-function rdvChangerMois(delta) {
-  rdvMoisAffiche.setMonth(rdvMoisAffiche.getMonth()+delta);
-  rdvChargerMois();
-}
-
-function rdvSelectionnerDate(dStr) {
-  rdvDateChoisie = dStr;
-  var d = new Date(dStr+'T12:00:00');
-  var joursLongs = ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
-  document.getElementById('rdv-date-label').textContent = joursLongs[d.getDay()]+' '+d.getDate()+' '+RDV_MOIS_NOMS[d.getMonth()];
-
-  var heures = rdvCreneauxDispo[dStr] || [];
-  var liste = document.getElementById('rdv-creneaux-liste');
-
-  if (heures.length === 0) {
-    document.getElementById('rdv-creneaux-bloc').style.display='none';
-    document.getElementById('rdv-vide').style.display='block';
-  } else {
-    document.getElementById('rdv-vide').style.display='none';
-    document.getElementById('rdv-creneaux-bloc').style.display='block';
-    liste.innerHTML = heures.map(function(h){
-      return '<button onclick="rdvConfirmer(\''+dStr+'\',\''+h+'\')" style="padding:9px 16px;border-radius:8px;border:1px solid var(--taupe,#D5CFC6);background:#fff;color:var(--ardoise);font-size:15px;cursor:pointer;font-family:inherit">'+h+'</button>';
-    }).join('');
+    if (estPasse || heures.length===0) {
+      html += '<div class="slotday-empty">—</div>';
+    } else {
+      html += '<div class="slotday-times">';
+      html += visibles.map(function(h){
+        return '<button class="slottime" id="rdv-cbtn-'+dStr+'-'+h.replace(':','')+'" onclick="rdvConfirmer(\''+dStr+'\',\''+h+'\')">'+h+'</button>';
+      }).join('');
+      html += '</div>';
+      if (heures.length > RDV_SLOT_INITIAL_COUNT && !expanded) {
+        html += '<button class="slotday-more" onclick="rdvDeplierJour(\''+dStr+'\')">voir plus d\'horaires</button>';
+      }
+    }
+    html += '</div>';
   }
 
-  var debut = new Date(rdvMoisAffiche);
-  var fin = new Date(rdvMoisAffiche); fin.setMonth(fin.getMonth()+1); fin.setDate(0);
-  rdvRenderGrille(debut, fin);
+  wrap.innerHTML = html;
+  document.getElementById('rdv-vide').style.display = auMoinsUnCreneau ? 'none' : 'block';
+}
+
+function rdvDeplierJour(dStr) {
+  rdvSlotStripExpanded[dStr] = true;
+  rdvRenderSlotStrip();
 }
 
 async function rdvConfirmer(dStr, heure) {
@@ -2020,7 +2023,7 @@ async function rdvConfirmer(dStr, heure) {
       })
     });
 
-    document.getElementById('rdv-creneaux-bloc').style.display = 'none';
+    document.getElementById('rdv-slotstrip-days').style.display = 'none';
     document.getElementById('rdv-confirmation').style.display = 'block';
   } catch(e) {
     console.error('Erreur création RDV:', e);
