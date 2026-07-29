@@ -729,7 +729,7 @@ body {
   border-radius: var(--r99);
 }
 .ptag-off { font-size: 12px; color: var(--muted) }
-.ctr-alert { margin-left: 6px; font-size: 12px }
+.ctr-alert { margin-left: 6px; color: var(--red); display: inline-flex; vertical-align: middle }
 .ctable-empty { padding: 48px 16px; text-align: center }
 
 /* ═══ FICHE — hero blanc, accents fins ═══ */
@@ -2491,7 +2491,8 @@ const ICON_PATHS={
   heart:'<path d="M12 20s-7-4.4-9.5-9A5.5 5.5 0 0 1 12 6a5.5 5.5 0 0 1 9.5 5c-2.5 4.6-9.5 9-9.5 9z"/>',
   trophy:'<path d="M6 4h12v3a6 6 0 0 1-12 0V4z"/><path d="M6 4H3a3 3 0 0 0 3 5"/><path d="M18 4h3a3 3 0 0 1-3 5"/><path d="M12 13v4"/><path d="M8 21h8"/><path d="M9 17h6l1 4H8l1-4z"/>',
   pin:'<path d="M12 2a6 6 0 0 0-6 6c0 4.5 6 12 6 12s6-7.5 6-12a6 6 0 0 0-6-6z"/><circle cx="12" cy="8" r="2"/>',
-  bolt:'<path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z"/>'
+  bolt:'<path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z"/>',
+  cash:'<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M6 9v.01M18 15v.01"/>'
 };
 function ic(name,cls){ return '<svg class="ico'+(cls?' '+cls:'')+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+(ICON_PATHS[name]||'')+'</svg>'; }
 
@@ -3071,7 +3072,7 @@ function renderClients(){
       "<td>"+(c.email?escH(c.email):'—')+"</td>"+
       "<td>"+(c.tel?escH(c.tel):'—')+"</td>"+
       "<td>"+progH+"</td>"+
-      "<td><span class='stag "+status.cl+"'>"+status.label+"</span>"+(alertCount?"<span class='ctr-alert' title='"+alertCount+" alerte(s)'>⚠️</span>":'')+"</td>"+
+      "<td><span class='stag "+status.cl+"'>"+status.label+"</span>"+(alertCount?"<span class='ctr-alert' title='"+alertCount+" alerte(s)'><svg width='12' height='12' viewBox='0 0 24 24' fill='none'><path d='M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0' stroke='currentColor' stroke-width='2.5'/></svg></span>":'')+"</td>"+
       "<td>"+fmtDMY(firstDate)+"</td>"+
       "<td>"+fmtDMY(lastDate)+"</td>"+
       "<td style='text-align:right;font-weight:600;color:var(--gold-dk)'>"+cr.length+"</td>"+
@@ -3971,10 +3972,10 @@ function renderStats(){
 
   el.innerHTML=`
   <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px">
-    ${statCard('💶',caPeriodTotal>0?caPeriodTotal.toFixed(0)+' €':'—','CA · '+periodLbl,'#FF7B2C')}
-    ${statCard('📅',rdvPeriodTotal,'RDV · '+periodLbl,'#6C47FF')}
-    ${statCard('⏱',durPeriodTotal>0?Math.round(durPeriodTotal/60)+' h':'—','Durée cumulée · '+periodLbl,'#0096FF')}
-    ${statCard('📈',txProg+'%','Clientes en programme','#00C875')}
+    ${statCard('<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="2" y="6" width="20" height="12" rx="2" stroke="currentColor" stroke-width="2.2"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2.2"/><path d="M6 9v.01M18 15v.01" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>',caPeriodTotal>0?caPeriodTotal.toFixed(0)+' €':'—','CA · '+periodLbl,'#FF7B2C')}
+    ${statCard('<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" stroke-width="2.2"/><line x1="16" y1="2" x2="16" y2="6" stroke="currentColor" stroke-width="2.2"/><line x1="8" y1="2" x2="8" y2="6" stroke="currentColor" stroke-width="2.2"/><line x1="3" y1="10" x2="21" y2="10" stroke="currentColor" stroke-width="2.2"/></svg>',rdvPeriodTotal,'RDV · '+periodLbl,'#6C47FF')}
+    ${statCard('<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2.2"/><path d="M12 7v5l3.5 2" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>',durPeriodTotal>0?Math.round(durPeriodTotal/60)+' h':'—','Durée cumulée · '+periodLbl,'#0096FF')}
+    ${statCard('<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',txProg+'%','Clientes en programme','#00C875')}
   </div>
 
   <div class="card" style="margin-bottom:14px">
@@ -4853,12 +4854,12 @@ function ouvrirBilanEntree(clientId, mode){
     </div>
 
     <div class="home-stat-grid">
-      <div class="home-stat"><div class="home-stat-ic" style="background:#6C47FF18;color:#6C47FF">👥</div><div class="home-stat-val" id="kv-total">—</div><div class="home-stat-lbl">Total clientes</div></div>
-      <div class="home-stat"><div class="home-stat-ic" style="background:#00C87518;color:#00C875">📈</div><div class="home-stat-val" id="kv-actives">—</div><div class="home-stat-lbl">En programme</div></div>
-      <div class="home-stat"><div class="home-stat-ic" style="background:#0096FF18;color:#0096FF">📅</div><div class="home-stat-val" id="kv-rdv">—</div><div class="home-stat-lbl">RDV ce mois</div></div>
-      <div class="home-stat"><div class="home-stat-ic" style="background:#E2445C18;color:#E2445C">⚠️</div><div class="home-stat-val" id="kv-alertes">—</div><div class="home-stat-lbl">Alertes</div></div>
-      <div class="home-stat"><div class="home-stat-ic" style="background:#FF7B2C18;color:#FF7B2C">💶</div><div class="home-stat-val" id="hca-jour">—</div><div class="home-stat-lbl">CA aujourd'hui</div></div>
-      <div class="home-stat"><div class="home-stat-ic" style="background:#FF7B2C18;color:#FF7B2C">💰</div><div class="home-stat-val" id="hca-mois">—</div><div class="home-stat-lbl">CA ce mois</div><div class="hca-trend" id="hca-trend"></div></div>
+      <div class="home-stat"><div class="home-stat-ic" style="background:#6C47FF18;color:#6C47FF"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="2.5"/><circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="2.5"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" stroke-width="2.5"/></svg></div><div class="home-stat-val" id="kv-total">—</div><div class="home-stat-lbl">Total clientes</div></div>
+      <div class="home-stat"><div class="home-stat-ic" style="background:#00C87518;color:#00C875"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="home-stat-val" id="kv-actives">—</div><div class="home-stat-lbl">En programme</div></div>
+      <div class="home-stat"><div class="home-stat-ic" style="background:#0096FF18;color:#0096FF"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" stroke-width="2.5"/><line x1="16" y1="2" x2="16" y2="6" stroke="currentColor" stroke-width="2.5"/><line x1="8" y1="2" x2="8" y2="6" stroke="currentColor" stroke-width="2.5"/><line x1="3" y1="10" x2="21" y2="10" stroke="currentColor" stroke-width="2.5"/></svg></div><div class="home-stat-val" id="kv-rdv">—</div><div class="home-stat-lbl">RDV ce mois</div></div>
+      <div class="home-stat"><div class="home-stat-ic" style="background:#E2445C18;color:#E2445C"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" stroke="currentColor" stroke-width="2.5"/></svg></div><div class="home-stat-val" id="kv-alertes">—</div><div class="home-stat-lbl">Alertes</div></div>
+      <div class="home-stat"><div class="home-stat-ic" style="background:#FF7B2C18;color:#FF7B2C"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="2" y="6" width="20" height="12" rx="2" stroke="currentColor" stroke-width="2.5"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2.5"/><path d="M6 9v.01M18 15v.01" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg></div><div class="home-stat-val" id="hca-jour">—</div><div class="home-stat-lbl">CA aujourd'hui</div></div>
+      <div class="home-stat"><div class="home-stat-ic" style="background:#FF7B2C18;color:#FF7B2C"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 20V10M11 20V4M18 20v-7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg></div><div class="home-stat-val" id="hca-mois">—</div><div class="home-stat-lbl">CA ce mois</div><div class="hca-trend" id="hca-trend"></div></div>
     </div>
 
     <div class="home-grid">
