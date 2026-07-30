@@ -552,12 +552,14 @@ input.fi[readonly]{background:var(--taupe);cursor:default;opacity:.75}
     <div>
       <label class="fl">Durée du programme</label>
       <select class="fi" id="duree-prog">
+        <option selected>Laisser l'IA recommander (recommandé)</option>
         <option>1 mois — bilan ponctuel & premiers ajustements</option>
         <option>2 mois — protocole court intensif</option>
         <option>3 mois — programme Alba</option>
         <option>6 mois — programme Aria</option>
         <option>9 mois — programme Ora (reconstruction complète)</option>
       </select>
+      <p class="field-hint">Par défaut, l'IA détermine elle-même la durée adaptée à partir du dossier complet (axes retenus, ancienneté, récidive, échecs précédents) — vous gardez la main pour la changer avant ou après génération. Choisissez une durée manuellement seulement si vous savez déjà ce qu'il faut (deuxième protocole, cliente déjà informée...).</p>
     </div>
   </div>
 </div>
@@ -777,6 +779,17 @@ input.fi[readonly]{background:var(--taupe);cursor:default;opacity:.75}
     <div>
       <div class="prev-hero-name" id="prev-name">—</div>
       <div class="prev-hero-sub" id="prev-sub">Protocole d'Hygiène Vitale · A VITA SERENA</div>
+      <div style="margin-top:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <label style="font-size:11px;color:var(--gris);font-weight:600;text-transform:uppercase;letter-spacing:.04em">Durée retenue</label>
+        <select class="fi" id="prev-duree-override" style="width:auto;max-width:280px;padding:4px 10px;font-size:12.5px" onchange="overrideDureeRetenue(this.value)">
+          <option value="1 mois">1 mois — bilan ponctuel</option>
+          <option value="2 mois">2 mois — protocole court</option>
+          <option value="3 mois — programme Alba">3 mois — programme Alba</option>
+          <option value="6 mois — programme Aria">6 mois — programme Aria</option>
+          <option value="9 mois — programme Ora">9 mois — programme Ora</option>
+        </select>
+        <span id="prev-duree-source" style="font-size:11px;color:var(--gris);font-style:italic"></span>
+      </div>
       <div style="margin-top:8px;font-size:11px;color:var(--gris)">💡 Glissez les blocs pour les réorganiser · Cliquez sur le titre ou le texte pour modifier · 🗑 pour supprimer</div>
     </div>
     <div class="prev-actions">
@@ -1515,13 +1528,25 @@ Si un axe immunitaire, inflammatoire, osseux ou de fatigue de fond est retenu pa
 4. Rappelle si pertinent, dans le PILIER 1 ou le PILIER 3, un geste d'exposition solaire raisonnable et adapté à la saison (quelques minutes de peau exposée sans crème, plusieurs fois par semaine entre avril et octobre) — utile en complément, jamais en remplacement de la supplémentation si un déficit est suspecté ou connu.
 5. Cette vitamine D (± K2) compte dans le total de 2-3 compléments maximum (RÈGLE N°5) — ne jamais l'ajouter en plus des autres soutiens déjà choisis.
 
-━━ RÈGLE N°10 — RECOMMANDATION DE PARCOURS (POURQUOI CETTE DURÉE, JAMAIS UNE VENTE) ━━
-La praticienne a déjà choisi la durée d'accompagnement pour cette cliente : ${d.duree_prog}. Ta mission n'est PAS de vendre ce parcours ni de le présenter comme une option parmi d'autres — c'est une conclusion clinique qui découle directement des axes prioritaires déjà expliqués en s1_corps/s2_axes.
+━━ RÈGLE N°10 — RECOMMANDATION DE PARCOURS (DÉTERMINER LA DURÉE, EXPLIQUER POURQUOI, JAMAIS UNE VENTE) ━━
+${d.duree_prog === DUREE_SENTINEL ? `La praticienne te laisse déterminer toi-même la durée d'accompagnement adaptée à cette cliente, à partir de l'ensemble du dossier ci-dessous (motifs, scores, cases cochées, notes libres, ligne de vie). Applique cette grille de lecture, dans cet ordre de poids :
+1. NOMBRE D'AXES PRIORITAIRES retenus (ceux que tu as toi-même déterminés en s2_axes) : 1 axe isolé → court ; 2 axes → moyen ; 3 axes ou plus → long.
+2. ANCIENNETÉ/CHRONICITÉ : symptômes récents et isolés (quelques semaines/mois) → plutôt court ; installés depuis plusieurs années → plutôt long.
+3. RÉCIDIVE OU ÉCHECS ANTÉRIEURS : mycoses/cystites/SIBO qui reviennent malgré des traitements déjà tentés, ou une mention explicite d'échecs de tentatives précédentes (section "qu'avez-vous déjà essayé") → pousse vers une durée plus longue, quel que soit le nombre d'axes.
+4. DIAGNOSTIC CONFIRMÉ COMPLEXE (endométriose confirmée, SOPK avec insulinorésistance, Hashimoto, périménopause symptomatique, SIBO typé et récidivant) → pousse vers une durée plus longue.
+Traduis ensuite ce faisceau d'indices en une durée précise :
+— 1 mois : demande ponctuelle, aucun axe prioritaire réellement installé, simple ajustement.
+— 2 mois : 1 axe modéré, sans complexité ni récidive.
+— 3 mois (parcours Alba) : 1 axe clair, isolé, récent, sans échec de tentative antérieure.
+— 6 mois (parcours Aria) : 2 axes, OU 1 axe avec un diagnostic confirmé installé mais sans échecs multiples.
+— 9 mois (parcours Ora) : 3 axes ou plus, OU chronicité de plusieurs années, OU récidive/échecs de tentatives répétés, OU cumul de plusieurs diagnostics complexes.
+Retiens la durée qui correspond le mieux, et renvoie-la EXACTEMENT sous l'une de ces 5 formes dans le champ "duree_suggeree" (respecte l'orthographe et la ponctuation à l'identique) : "1 mois", "2 mois", "3 mois — programme Alba", "6 mois — programme Aria", "9 mois — programme Ora".` : `La praticienne a déjà tranché la durée d'accompagnement pour cette cliente : ${d.duree_prog}. Ne la remets JAMAIS en question ni ne la recalcule — recopie-la EXACTEMENT à l'identique (même orthographe, même ponctuation) dans le champ "duree_suggeree".`}
+Ta mission sur le texte n'est PAS de vendre ce parcours ni de le présenter comme une option parmi d'autres — c'est une conclusion clinique qui découle directement des axes prioritaires déjà expliqués en s1_corps/s2_axes.
 Rédige le champ « parcours_pourquoi » en 2 courts paragraphes :
-1. Nomme la durée retenue et explique, en te basant SPÉCIFIQUEMENT sur le terrain de cette cliente (jamais un texte générique interchangeable d'une cliente à l'autre), pourquoi ce temps est nécessaire. Exemples de logique à adapter à son cas réel : un déséquilibre isolé et récent ne demande pas le même temps qu'un terrain hormonal installé depuis des années ; un SIBO récidivant ou une thyroïde auto-immune demandent un ancrage plus long qu'un épisode ponctuel. Relie TOUJOURS ce raisonnement à ce qui a été observé chez elle précisément (âge, ancienneté des symptômes, complexité des axes retenus).
+1. Nomme la durée retenue (celle de "duree_suggeree") et explique, en te basant SPÉCIFIQUEMENT sur le terrain de cette cliente (jamais un texte générique interchangeable d'une cliente à l'autre), pourquoi ce temps est nécessaire. Relie TOUJOURS ce raisonnement à ce qui a été observé chez elle précisément (âge, ancienneté des symptômes, complexité des axes retenus, récidive éventuelle).
 2. Termine TOUJOURS par une phrase de réassurance explicite : cette consultation a une valeur pleine et entière par elle-même, elle n'a absolument aucune obligation de poursuivre au-delà, et rien ne lui sera jamais imposé sans qu'elle comprenne pourquoi.
 Ton : autorité bienveillante, jamais commercial, aucun vocabulaire de vente. Ne JAMAIS mentionner de prix ni de montant (les tarifs sont affichés séparément par l'outil, pas par toi).
-Si ${d.duree_prog} correspond à 1 ou 2 mois (pas de parcours nommé Alba/Aria/Ora) : n'invente aucun nom de parcours, explique simplement pourquoi un protocole court et ciblé est adapté à sa situation actuelle.
+Si la durée retenue est 1 ou 2 mois (pas de parcours nommé Alba/Aria/Ora) : n'invente aucun nom de parcours, explique simplement pourquoi un protocole court et ciblé est adapté à sa situation actuelle.
 
 ━━ DONNÉES DE LA SÉANCE ━━
 Cliente : ${d.prenom}${d.nom ? ' ' + d.nom : ''}${d.age ? ', ' + d.age + ' ans' : ''} · Profil : ${d.profil}
@@ -1598,7 +1623,7 @@ Réponds UNIQUEMENT avec le JSON pur, sans markdown, sans backticks.
 
 {
   "prenom": "${d.prenom}",
-  "sous_titre": "Protocole d'Hygiène Vitale · ${d.duree_prog}",
+  "sous_titre": "Protocole d'Hygiène Vitale · [reprendre ici EXACTEMENT la valeur retenue pour duree_suggeree — voir RÈGLE N°10 — jamais une autre formulation]",
 
   "s1_corps": "COMMENCER par 1-2 phrases repartant de l'objectif exprimé par la cliente. Puis, pour CHAQUE axe prioritaire retenu (2-3 maximum, jamais plus — voir RÈGLE N°1bis), produire 1 paragraphe compact de cascade (constat → mécanisme → action), en utilisant la ligne de vie et l'analyse causale pour expliquer POURQUOI ce déséquilibre est apparu. Langage accessible et rigoureux, SANS vocabulaire médical. Terminer par 1 phrase d'élan vers ce qui est possible. Total de la section : ne pas dépasser 3-4 cascades et rester dans l'esprit '6-8 pages A4 max' du document entier (RÈGLE N°1).",
 
@@ -1618,6 +1643,8 @@ Réponds UNIQUEMENT avec le JSON pur, sans markdown, sans backticks.
   "s6_signaux": "1 phrase d'introduction personnalisée (basée sur son objectif exprimé).\\n\\nEn 2 à 4 semaines, vous devriez ressentir :\\n• [signal concret 1 lié à ses axes]\\n• [signal concret 2]\\n• [signal concret 3]\\n\\nÀ 6 semaines :\\n• [changement plus profond]\\n• [signe 2]\\n\\nSi vous ne ressentez aucun changement après 3 semaines : [conseil clair]\\n\\nMot de clôture chaleureux (2-3 phrases, signé Sabrina Castelli / A VITA SERENA — Naturopathe, Porto-Vecchio).",
   "s7_aromatherapie": "Voir RÈGLE N°7 (convention de puces \"•\"/\"◦\" de la RÈGLE N°1ter incluse). Chaîne vide si aucune huile compatible pertinente.",
 
+  "duree_suggeree": "Voir RÈGLE N°10. Une seule des 5 valeurs exactes autorisées, jamais autre chose.",
+
   "parcours_pourquoi": "Voir RÈGLE N°10. 2 courts paragraphes, ton chaleureux et direct, jamais commercial, jamais de prix ni de montant.",
 
 }
@@ -1635,10 +1662,15 @@ RÈGLES IMPÉRATIVES :
 }
 
 // ── Génération ──
-// Déduit le parcours nommé (alba/aria/ora) de la durée choisie par la praticienne dans le formulaire.
+// Valeur du <select id="duree-prog"> quand la praticienne laisse l'IA déterminer la durée elle-même
+// (option par défaut — voir RÈGLE N°10). Doit rester identique au texte de l'<option> correspondante.
+const DUREE_SENTINEL = "Laisser l'IA recommander (recommandé)";
+
+// Déduit le parcours nommé (alba/aria/ora) de la durée retenue — celle que l'IA a déterminée elle-même
+// (duree_suggeree) si la praticienne a laissé faire, ou celle qu'elle a choisie manuellement sinon.
 // Volontairement calculé ici en JS (jamais par l'IA) pour ne jamais dépendre d'un texte halluciné —
 // garantit que le nom, la durée et le prix affichés dans le PHV restent toujours exacts et cohérents
-// avec reservation.html/parcours.html, quelle que soit la formulation exacte du texte du <select>.
+// avec reservation.html/parcours.html, quelle que soit la formulation exacte du texte retenu.
 function programmeCleFromDuree(dureeProg) {
   const s = (dureeProg || '').toLowerCase();
   if (s.includes('alba')) return 'alba';
@@ -1669,7 +1701,7 @@ async function generate() {
     clearInterval(interval);
     generatedData = parseJSONRobuste(raw);
     generatedData._client = d;
-    generatedData.programme_cle = programmeCleFromDuree(d.duree_prog);
+    generatedData.programme_cle = programmeCleFromDuree(generatedData.duree_suggeree || d.duree_prog);
 
     // Convertir les 6 sections en blocs éditables
     blocks = [
@@ -1746,8 +1778,30 @@ function renderPreview(data, d) {
   document.getElementById('preview-wrap').style.display = 'block';
   document.getElementById('prev-name').textContent = [d.prenom, d.nom].filter(Boolean).join(' ');
   document.getElementById('prev-sub').textContent = data.sous_titre || 'Protocole d\'Hygiène Vitale · A VITA SERENA';
+
+  const dureeSel = document.getElementById('prev-duree-override');
+  const dureeVal = data.duree_suggeree || d.duree_prog || '';
+  // Sélectionne l'option correspondante si la valeur renvoyée matche exactement l'une des 5 formes attendues ;
+  // sinon on laisse le select tel quel plutôt que de forcer une valeur incohérente.
+  if ([...dureeSel.options].some(o => o.value === dureeVal)) dureeSel.value = dureeVal;
+  document.getElementById('prev-duree-source').textContent =
+    (d.duree_prog === DUREE_SENTINEL) ? '✦ suggérée par l\'IA à partir du dossier' : 'choisie manuellement par vous';
+
   renderBlocks();
   document.getElementById('preview-wrap').scrollIntoView({ behavior: 'smooth' });
+}
+
+// Permet de corriger la durée retenue après génération (ex. : la cliente a déjà dit que c'était cher,
+// ou vous jugez la suggestion de l'IA inadaptée). Recalcule programme_cle et sous_titre en conséquence —
+// mais le texte "pourquoi" (bloc sP) reste celui déjà rédigé : pensez à le relire/l'ajuster s'il ne
+// correspond plus à la nouvelle durée.
+function overrideDureeRetenue(value) {
+  if (!generatedData) return;
+  generatedData.duree_suggeree = value;
+  generatedData.programme_cle = programmeCleFromDuree(value);
+  generatedData.sous_titre = "Protocole d'Hygiène Vitale · " + value;
+  document.getElementById('prev-sub').textContent = generatedData.sous_titre;
+  document.getElementById('prev-duree-source').textContent = '✎ modifiée manuellement par vous — pensez à relire le texte du bloc "Parcours recommandé" ci-dessous';
 }
 
 // ── Rendu des blocs éditables ──
