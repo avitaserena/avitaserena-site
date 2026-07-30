@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ma facture — A Vita Serena</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&family=Be+Vietnam+Pro:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --blanc:#FFFFFF;--off:#F7F6F4;--grege:#EDE9E1;
+  --taupe:#D5CFC6;--sable:#C4A882;--ocre:#B4906A;--or:#9B7230;
+  --ardoise:#1E1E1C;--encre:#2C2C2A;--gris:#6B6560;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{font-family:'Be Vietnam Pro',sans-serif;font-size:16px;color:var(--ardoise);background:var(--off)}
+body{min-height:100vh}
+
+.site-header{background:var(--ardoise);padding:0 6vw;height:64px;display:flex;align-items:center;justify-content:space-between}
+.logo-svg{height:26px;width:auto;color:#fff}
+.header-link{color:rgba(255,255,255,.65);font-size:13px;text-decoration:none}
+.header-link:hover{color:#fff}
+
+.wrap{max-width:640px;margin:0 auto;padding:48px 20px 80px}
+
+.login-box{background:var(--blanc);border:1px solid var(--taupe);border-radius:16px;padding:40px 36px;text-align:center}
+.login-title{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:400;color:var(--ardoise);margin-bottom:10px}
+.login-sub{font-size:14px;color:var(--gris);line-height:1.7;margin-bottom:26px}
+.login-field{text-align:left;margin-bottom:14px}
+.login-label{font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--gris);margin-bottom:6px;display:block}
+.login-input{width:100%;border:1px solid var(--taupe);border-radius:10px;padding:12px 14px;font-size:16px;font-family:inherit;color:var(--ardoise);outline:none}
+.login-input:focus{border-color:var(--ocre)}
+.login-btn{width:100%;background:var(--ardoise);color:#fff;border:none;border-radius:99px;padding:13px;font-size:14px;font-weight:600;letter-spacing:.03em;cursor:pointer;font-family:inherit;margin-top:6px}
+.login-btn:hover{background:var(--encre)}
+.login-error{font-size:13px;color:#B8323A;margin-top:12px;display:none}
+.login-hint{font-size:12.5px;color:var(--gris);margin-top:16px;line-height:1.6}
+#codeBlock{display:none;margin-top:16px;border-top:1px solid var(--taupe);padding-top:16px}
+
+.invoice-card{background:var(--blanc);border:1px solid var(--taupe);border-radius:16px;overflow:hidden;box-shadow:0 20px 50px rgba(30,30,28,.06)}
+.invoice-head{padding:32px 40px 26px;border-bottom:1px solid var(--taupe);display:flex;justify-content:space-between;align-items:flex-start;gap:20px}
+.invoice-logo{height:32px;width:auto;color:var(--ardoise)}
+.invoice-num{text-align:right}
+.invoice-num-lbl{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--gris);margin-bottom:4px}
+.invoice-num-val{font-family:'Cormorant Garamond',serif;font-size:24px;color:var(--ardoise)}
+.invoice-body{padding:32px 40px}
+.parties{display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-bottom:32px}
+.plbl{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--ocre);margin-bottom:8px}
+.pval{font-size:14px;line-height:1.8;color:var(--encre)}
+table{width:100%;border-collapse:collapse;margin-bottom:24px}
+th{text-align:left;padding:10px 0;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--gris);border-bottom:1.5px solid var(--taupe)}
+td{padding:14px 0;border-bottom:1px solid var(--grege);font-size:14px;color:var(--encre)}
+.tdr{text-align:right;font-family:'Cormorant Garamond',serif;font-weight:600}
+.total{text-align:right;margin-bottom:28px}
+.tl{font-size:12px;color:var(--gris);margin-bottom:2px}
+.tv{font-size:34px;font-weight:500;color:var(--ardoise);font-family:'Cormorant Garamond',serif}
+.mentions{font-size:11.5px;color:var(--gris);line-height:1.8;border-top:1px solid var(--taupe);padding-top:18px}
+
+.mutuelle-note{background:var(--grege);border-radius:12px;padding:18px 22px;margin-top:20px;font-size:13.5px;color:var(--encre);line-height:1.7}
+.mutuelle-note strong{color:var(--ocre)}
+
+.print-btn{display:inline-block;margin-top:24px;background:var(--ardoise);color:#fff;border:none;border-radius:99px;padding:12px 28px;font-size:13.5px;font-weight:600;letter-spacing:.03em;cursor:pointer;font-family:inherit}
+.print-btn:hover{background:var(--encre)}
+
+.empty-state{text-align:center;padding:48px 20px;color:var(--gris);font-size:14px}
+
+@media print{
+  .site-header,.print-btn,.mutuelle-note-noprint{display:none}
+  body{background:#fff}
+  .wrap{padding:0;max-width:none}
+  .invoice-card{border:none;box-shadow:none;border-radius:0}
+}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <svg class="logo-svg" viewBox="0 0 402.52 116.56" xmlns="http://www.w3.org/2000/svg"><path d="M162.95,72.57l3.25-4.84,9.58.03c.78,3.69,3.67,5.27,7.1,4.22.97-.3,2.42-1.88,2.53-2.84s-1.28-2.97-2.28-3.23l-8.34-2.11c-4.91-1.24-8.06-4.75-8.47-9.24-.44-4.81,1.6-9.22,6.5-11.26,5-2.08,11.05-2.11,15.88.45,3.68,1.95,6.1,4.92,6.23,9.84l-10.51.07c-.76-2.47-1.97-3.74-3.8-4.03-1.71-.27-4.44.97-4.65,2.56-.86,6.57,11.83,2.59,18.58,11.21.11-7.57,1.63-13.97,7.28-18.15,6.72-4.98,17.13-4.76,23.14,1.18,4.79,4.73,5.31,11.39,4.95,17.87h-24.66c-.01,3.74,2.16,6.58,4.86,7.3,3.86,1.04,7.16-.25,9.01-3.73l10.55.08c-1.97,8.22-8.98,12.8-17.18,12.72-7.82-.07-14.07-4.26-16.92-12.24-.16,4.57-2.35,8.46-6.78,10.44-9.31,4.18-20.95.92-23.22-8.57l-2.64,2.24ZM219.57,57.17c-.25-5.88-3.7-7.48-7.43-7.39s-6.62,2.7-6.49,7.48l13.92-.09Z" fill="currentColor"/><path d="M253.59,52.74c-2.81-.51-5.64-.46-8,.7-1.91.94-3.41,4.33-3.42,6.93l-.08,19.66-10.92-.02v-37.4s10.75-.04,10.75-.04l.42,6.19c2.57-4.99,7.36-7.01,12.48-5.84l-.12,7.28c3.45-5.62,8.94-8.39,15.57-8.41,7.13-.03,13.34,3.65,15.77,10.49,1.34,3.77,1.62,7.78,1.41,12.02l-24.74.02c-.24,3.63,2.12,6.55,5.11,7.34,3.48.92,6.72-.17,8.55-3.72h10.71c-2.02,8.06-8.77,12.75-16.83,12.73-6.2-.01-12.06-2.5-15.18-7.95-3.56-6.22-3.82-13.17-1.48-19.98Z" fill="currentColor"/><circle cx="371.06" cy="74.61" r="6.06" fill="currentColor"/><path d="M288.2,42.48h11.03v37.65h-11.03v-37.65ZM327.38,74.8c-2.49-3.46-3.73-8.1-3.73-13.92s1.28-10.53,3.83-13.99c2.55-3.46,6.08-5.2,10.59-5.2,3.11,0,5.5.69,7.18,2.06,1.67,1.37,2.83,2.76,3.48,4.15h.56v-5.44h10.94v36.91h-10.94v-5.93h-.56c-.7,1.49-1.89,2.96-3.59,4.4-1.7,1.44-4.1,2.16-7.21,2.16-4.55,0-8.07-1.73-10.56-5.2Z" fill="currentColor"/><path d="M58.11,75.36c-3.64,1.91-1.82-3.73-1.82-3.73l8.47-29.04h-6.46s-.33,1-.85,2.66c-.64-.77-1.47-1.35-2.48-1.75-1.08-.42-2.18-.63-3.32-.63-3.05,0-6.31,1.39-9.78,4.17-3.47,2.78-6.49,6.32-9.06,10.63-2.57,4.31-4.16,8.58-4.75,12.83-.12,1.32-.18,2.21-.18,2.69,0,4.43,1.85,6.64,5.56,6.64,3.17,0,6.47-1.69,9.91-5.07,3.44-3.38,6.53-7.85,9.28-13.41l-.68,3.92c-1.58,7.22-2.3,13.54-.21,14.29,6.03,2.15,11.84-8.29,11.84-8.29l.84-1.5s-2.66,3.69-6.3,5.6ZM50.03,63.72c-1.92,3.38-4.08,6.18-6.5,8.39-2.42,2.21-4.71,3.32-6.86,3.32-2.51,0-3.77-1.79-3.77-5.38,0-1.08.09-2.27.27-3.59.54-3.77,1.62-7.19,3.23-10.27,1.61-3.08,3.51-5.53,5.7-7.36,2.18-1.82,4.32-2.77,6.41-2.83,1.85,0,3.24.51,4.17,1.53.93,1.02,1.39,2.42,1.39,4.22.06.6,0,1.29-.18,2.06-.66,3.23-1.94,6.53-3.86,9.91Z" fill="currentColor"/><path d="M159.76,75.36c-3.39,2.33-1.82-3.73-1.82-3.73l8.47-29.04h-6.46s-.33,1-.85,2.66c-.64-.77-1.47-1.35-2.48-1.75-1.08-.42-2.18-.63-3.32-.63-3.05,0-6.31,1.39-9.78,4.17-3.47,2.78-6.49,6.32-9.06,10.63-2.57,4.31-4.16,8.58-4.75,12.83-.12,1.32-.18,2.21-.18,2.69,0,4.43,1.85,6.64,5.56,6.64,3.17,0,6.47-1.69,9.91-5.07,3.44-3.38,6.53-7.85,9.28-13.41l-.68,3.92c-1.58,7.22-2.3,13.54-.21,14.29,6.03,2.15,11.84-8.29,11.84-8.29l.93-2.18s-3.74,4.45-6.39,6.28ZM151.68,63.72c-1.92,3.38-4.08,6.18-6.5,8.39-2.42,2.21-4.71,3.32-6.86,3.32-2.51,0-3.77-1.79-3.77-5.38,0-1.08.09-2.27.27-3.59.54-3.77,1.62-7.19,3.23-10.27,1.61-3.08,3.51-5.53,5.7-7.36,2.18-1.82,4.32-2.77,6.41-2.83,1.85,0,3.24.51,4.17,1.53.93,1.02,1.39,2.42,1.39,4.22.06.6,0,1.29-.18,2.06-.66,3.23-1.94,6.53-3.86,9.91Z" fill="currentColor"/><path d="M103.04,42.59h6.46l-8.47,29.04s-1.82,5.64,1.82,3.73c3.64-1.91,6.3-5.6,6.3-5.6l-.84,1.5s-5.8,10.44-11.84,8.29c-5.1-1.82,6.56-36.97,6.56-36.97Z" fill="currentColor"/><path d="M120.54,42.59h6.46l-8.47,29.04s-1.82,5.64,1.82,3.73,6.3-5.6,6.3-5.6l-.84,1.5s-5.8,10.44-11.84,8.29c-5.1-1.82,6.56-36.97,6.56-36.97Z" fill="currentColor"/></svg>
+  <a class="header-link" href="espace-clientes.html">← Mon espace client</a>
+</header>
+
+<div class="wrap">
+
+  <div id="loginScreen" class="login-box">
+    <div class="login-title">Votre facture</div>
+    <p class="login-sub">Pour des raisons de confidentialité, connectez-vous pour consulter votre facture.</p>
+    <div class="login-field">
+      <label class="login-label">Email</label>
+      <input type="email" id="loginEmail" class="login-input" placeholder="vous@email.com">
+    </div>
+    <button class="login-btn" id="loginSubmitBtn" onclick="doLogin()">Recevoir un code de connexion →</button>
+    <div class="login-error" id="loginError"></div>
+    <p class="login-hint" id="loginHint"></p>
+    <div id="codeBlock">
+      <label class="login-label">Code reçu par email</label>
+      <input type="text" id="loginCode" class="login-input" placeholder="123456" style="margin-bottom:12px">
+      <button class="login-btn" onclick="verifyCode()">Valider le code →</button>
+    </div>
+  </div>
+
+  <div id="invoiceScreen" style="display:none"></div>
+
+</div>
+
+<script src="auth-guard.js"></script>
+<script>
+var SUPA_URL = 'https://bqhkdndwldwqacrrbbig.supabase.co';
+var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxaGtkbmR3bGR3cWFjcnJiYmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MzAyNTIsImV4cCI6MjA5NjMwNjI1Mn0.nH2UktMAVKYwng4L3SvW5F0fluV_sObGV0f3Mk1dnOY';
+
+// Coordonnées de l'émettrice — à mettre à jour ici une fois le SIRET obtenu
+// (ces informations ne sont pas encore synchronisées depuis le CRM).
+var EMETTRICE = { nom:'Sabrina Castelli', titre:'Naturopathe', adresse:'Porto-Vecchio, Corse', email:'sabrina@avitaserena.com', siret:'', adeli:'' };
+
+function escHtml(s){ return (s||'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmtDate(d){ if(!d) return '—'; return new Date(d+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}); }
+
+async function doLogin() {
+  var email = document.getElementById('loginEmail').value.trim();
+  var errEl = document.getElementById('loginError');
+  var btn = document.getElementById('loginSubmitBtn');
+  if (!email) { errEl.textContent = 'Merci de renseigner votre email.'; errEl.style.display = 'block'; return; }
+  btn.textContent = 'Envoi…'; btn.disabled = true; errEl.style.display = 'none';
+  try {
+    await Auth.requestMagicLink(email, window.location.origin + '/facture.html' + window.location.search);
+    document.getElementById('loginHint').textContent = 'Email envoyé (' + email + ') ! Cliquez sur le lien, ou entrez le code ci-dessous.';
+    document.getElementById('codeBlock').style.display = 'block';
+    btn.textContent = 'Renvoyer un code'; btn.disabled = false;
+  } catch(e) {
+    errEl.textContent = "Erreur : impossible d'envoyer le code. Réessayez.";
+    errEl.style.display = 'block'; btn.textContent = 'Recevoir un code de connexion →'; btn.disabled = false;
+    console.error(e);
+  }
+}
+
+async function verifyCode() {
+  var email = document.getElementById('loginEmail').value.trim();
+  var code = document.getElementById('loginCode').value.trim();
+  var errEl = document.getElementById('loginError');
+  if (!code || code.length < 4) { errEl.textContent = 'Entrez le code complet.'; errEl.style.display = 'block'; return; }
+  errEl.style.display = 'none';
+  try {
+    await Auth.verifyOtp(email, code);
+    await chargerFacture();
+  } catch(e) {
+    errEl.textContent = 'Code invalide ou expiré — redemandez un code.';
+    errEl.style.display = 'block';
+    console.error(e);
+  }
+}
+
+async function chargerFacture(){
+  Auth.handleRedirect();
+  if (!Auth.isLoggedIn()) return false;
+
+  var factureId = new URLSearchParams(location.search).get('id');
+  var invEl = document.getElementById('invoiceScreen');
+
+  if (!factureId) {
+    document.getElementById('loginScreen').style.display = 'none';
+    invEl.style.display = 'block';
+    invEl.innerHTML = '<div class="empty-state">Aucune facture à afficher — vérifiez le lien reçu par email.</div>';
+    return true;
+  }
+
+  try {
+    var token = await Auth.getValidAccessToken();
+    var res = await fetch(SUPA_URL + '/rest/v1/factures?id=eq.' + encodeURIComponent(factureId) + '&select=*', {
+      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + token }
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    var rows = await res.json();
+
+    document.getElementById('loginScreen').style.display = 'none';
+    invEl.style.display = 'block';
+
+    if (!rows.length) {
+      invEl.innerHTML = '<div class="empty-state">Cette facture est introuvable, ou ne correspond pas à votre compte.</div>';
+      return true;
+    }
+
+    var f = rows[0];
+    var session = JSON.parse(localStorage.getItem('avs_client') || sessionStorage.getItem('avs_client') || '{}');
+
+    invEl.innerHTML =
+      '<div class="invoice-card">' +
+        '<div class="invoice-head">' +
+          '<svg class="invoice-logo" viewBox="0 0 402.52 116.56" xmlns="http://www.w3.org/2000/svg">' + document.querySelector('.logo-svg').innerHTML + '</svg>' +
+          '<div class="invoice-num"><div class="invoice-num-lbl">Facture</div><div class="invoice-num-val">N° AVS-' + escHtml(f.num) + '</div></div>' +
+        '</div>' +
+        '<div class="invoice-body">' +
+          '<div class="parties">' +
+            '<div><div class="plbl">Émettrice</div><div class="pval"><strong>' + escHtml(EMETTRICE.nom) + '</strong><br>' + escHtml(EMETTRICE.titre) + '<br>' + escHtml(EMETTRICE.adresse) + '<br>' + escHtml(EMETTRICE.email) + (EMETTRICE.siret ? '<br>SIRET : ' + escHtml(EMETTRICE.siret) : '') + (EMETTRICE.adeli ? '<br>ADELI : ' + escHtml(EMETTRICE.adeli) : '') + '</div></div>' +
+            '<div><div class="plbl">Destinataire</div><div class="pval"><strong>' + escHtml(session.prenom) + ' ' + escHtml(session.nom||'') + '</strong>' + (session.email ? '<br>' + escHtml(session.email) : '') + '</div></div>' +
+          '</div>' +
+          '<table><thead><tr><th>Prestation</th><th>Date</th><th>Paiement</th><th class="tdr">Montant</th></tr></thead><tbody>' +
+            '<tr><td>' + escHtml(f.prestation_label) + '</td><td>' + fmtDate(f.date) + '</td><td>' + escHtml(f.paiement_label || f.paiement) + '</td><td class="tdr">' + Number(f.montant||0).toFixed(2) + ' €</td></tr>' +
+          '</tbody></table>' +
+          '<div class="total"><div class="tl">Total TTC</div><div class="tv">' + Number(f.montant||0).toFixed(2) + ' €</div></div>' +
+          '<div class="mentions">TVA non applicable — Art. 293B du CGI · Naturopathe non conventionné·e<br>A VITA SERENA · ' + escHtml(EMETTRICE.nom) + ' · ' + escHtml(EMETTRICE.adresse) + ' · ' + escHtml(EMETTRICE.email) + '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="mutuelle-note mutuelle-note-noprint"><strong>Le saviez-vous ?</strong> Certaines mutuelles remboursent une partie des séances de naturopathie. N\'hésitez pas à leur transmettre cette facture — nombre d\'entre elles l\'acceptent comme justificatif.</div>' +
+      '<button class="print-btn" onclick="window.print()">Imprimer / Enregistrer en PDF</button>';
+
+  } catch(e) {
+    console.error('Erreur chargement facture:', e);
+    document.getElementById('loginScreen').style.display = 'none';
+    invEl.style.display = 'block';
+    invEl.innerHTML = '<div class="empty-state">Une erreur est survenue — réessayez, ou contactez Sabrina si le problème persiste.</div>';
+  }
+}
+
+chargerFacture();
+</script>
+
+</body>
+</html>

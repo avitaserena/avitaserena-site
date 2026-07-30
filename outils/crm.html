@@ -3295,6 +3295,7 @@ function renderFiche(c){
   const dm=docsMedicaux[cid]||[];
   const docsCount=[hasPHV,c.timeline?.some(t=>t.title?.includes('Lettre')),c.timeline?.some(t=>t.title?.includes('Bilan'))].filter(Boolean).length + dm.length;
   const caTotal=db.factures.filter(f=>f.clientId===cid&&f.statut==='payee').reduce((s,f)=>s+(f.montant||0),0);
+  const facturesDeCetteCliente=db.factures.filter(f=>f.clientId===cid).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
 
   // Helper — bouton sans problème de quotes
   function btn(cls,fn,label){return `<button class="${cls}" onclick="${fn}">${label}</button>`;}
@@ -3522,6 +3523,19 @@ function renderFiche(c){
         <div class="info-card">
           <div class="ic-head"><div class="ic-title">${ic('drop')} Documents médicaux <span style="font-weight:400;color:var(--muted);font-size:11px">(prises de sang, imagerie...)</span></div>${btn('ic-edit',`ouvrirAjoutDocMedical('${cid}')`,'+ Ajouter')}</div>
           <div class="ic-body"><div class="doc-list">${dmHtml}</div></div>
+        </div>
+        <div class="info-card">
+          <div class="ic-head"><div class="ic-title">${ic('cash')} Factures</div><span style="font-size:11px;color:var(--muted)">${facturesDeCetteCliente.length} facture(s) · ${caTotal.toFixed(0)} € encaissés</span></div>
+          <div class="ic-body"><div class="doc-list">${
+            facturesDeCetteCliente.length
+              ? facturesDeCetteCliente.map(f=>`
+                <div class="doc-item">
+                  <div class="doc-icon" style="background:var(--surface)">${ic('cash')}</div>
+                  <div class="doc-body"><div class="doc-name">Facture N° ${escH(f.num)} — ${escH(f.prestationLabel||f.prestation||'')}</div><div class="doc-meta">${fmtDate(f.date)} · ${f.montant.toFixed(2)} € · ${f.statut==='payee'?'Payée':'En attente'}${(f.id||'').includes('_pi_')?' · auto-générée':''}</div></div>
+                  ${btn('doc-action',`printF('${f.id}')`,ic('printer'))}
+                </div>`).join('')
+              : "<div style='padding:16px;font-size:13px;color:var(--muted);font-style:italic'>Aucune facture pour le moment.</div>"
+          }</div></div>
         </div>
         <div class="info-card">
           <div class="ic-head"><div class="ic-title">${ic('folder')} Historique des questionnaires</div></div>
