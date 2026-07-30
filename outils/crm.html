@@ -1143,6 +1143,11 @@ body {
 .tl2-desc { font-size: 12px; color: var(--muted); margin-top: 3px }
 
 .ico { width:15px; height:15px; display:inline-block; vertical-align:-3px; color:var(--ink3) }
+.ico-xs { width:11px; height:11px; vertical-align:-1px }
+.prio-dot { display:inline-block; width:9px; height:9px; border-radius:50%; vertical-align:1px }
+.prio-dot.prio-haute { background:var(--red,#E2445C) }
+.prio-dot.prio-normale { background:var(--orange,#FFA412) }
+.prio-dot.prio-basse { background:var(--border,#D3D1C7) }
 .feed-ic .ico, .htl-block-time .ico { width:17px; height:17px; color:inherit; vertical-align:-4px }
 .home-card-title .ico { width:16px; height:16px; vertical-align:-3px; color:var(--gold-dk) }
 
@@ -1197,6 +1202,8 @@ body {
 /* File d'action unique */
 .hfeed-scroll { max-height:560px; overflow-y:auto; padding:8px 10px }
 .feed-item { display:flex; align-items:flex-start; gap:12px; padding:13px 12px; border-radius:var(--r12); transition:background .12s; animation:fadeUp .35s ease backwards }
+.feed-message-urgent { background:var(--red-lt,#FEE2E2); border-left:3px solid var(--red,#E2445C) }
+.feed-message-urgent .feed-ic { color:var(--red,#E2445C) }
 .feed-item:hover { background:var(--surface) }
 .feed-ic { font-size:18px; line-height:1; margin-top:1px }
 .feed-body { flex:1; min-width:0 }
@@ -1624,7 +1631,7 @@ async function loadClients(){
     console.error('[CRM] ✗ Clientes:', e.message);
     db.clients=[];
     // Afficher l'erreur complète dans le toast pour diagnostic
-    setTimeout(()=>toast('⚠ Clientes non chargées — '+e.message.substring(0,120),'err'),500);
+    setTimeout(()=>toast('Clientes non chargées — '+e.message.substring(0,120),'err'),500);
   }
 }
 
@@ -1844,15 +1851,19 @@ function renderActionsJour(){
       '</div>'});
   });
 
-  // 2) Messages clientes non lus
+  // 2) Messages clientes non lus — priorité ajustée selon l'urgence estimée par le triage IA
+  // (haute passe devant tout, y compris les refus sans alternative ; les messages
+  // antérieurs à la migration, sans urgence renseignée, gardent le niveau par défaut).
   clientMessages.filter(m=>!m.lu).forEach(m=>{
     const txt = (m.message||'').slice(0,120);
-    items.push({u:3, html:
-      '<div class="feed-item feed-message">'+
-        '<div class="feed-ic">'+ic('message')+'</div>'+
+    const u = m.urgence==='haute' ? 5 : m.urgence==='moyenne' ? 3 : m.urgence==='faible' ? 2 : 3;
+    const isHaute = m.urgence==='haute';
+    items.push({u, html:
+      '<div class="feed-item feed-message'+(isHaute?' feed-message-urgent':'')+'">'+
+        '<div class="feed-ic">'+ic(isHaute?'warn':'message')+'</div>'+
         '<div class="feed-body">'+
-          '<div class="feed-title">'+escH(m.prenom||'')+' '+escH(m.nom||'')+' <span class="feed-tag tag-message">Message</span></div>'+
-          '<div class="feed-text">'+escH(txt)+((m.message||'').length>120?'…':'')+'</div>'+
+          '<div class="feed-title">'+escH(m.prenom||'')+' '+escH(m.nom||'')+' <span class="feed-tag tag-message">Message</span>'+(isHaute?' <span class="tab-pill" style="background:var(--red-lt,#FEE2E2);color:var(--red,#E2445C)">Urgence signalée</span>':'')+'</div>'+
+          (m.synthese_ia?'<div class="feed-text" style="color:#6C47FF">'+escH(m.synthese_ia)+'</div>':'<div class="feed-text">'+escH(txt)+((m.message||'').length>120?'…':'')+'</div>')+
         '</div>'+
         '<div class="feed-actions"><button class="feed-btn" onclick="nav(\'messages\',document.querySelector(\'.sb-item[onclick*=messages]\'))">Répondre</button></div>'+
       '</div>'});
@@ -1929,7 +1940,7 @@ function renderActionsJour(){
           '<div class="feed-text">'+(t.client_nom?escH(t.client_nom)+' · ':'')+(t.heure?escH(t.heure):"Aujourd'hui")+(t.priorite==='haute'?' · Urgente':'')+'</div>'+
         '</div>'+
         '<div class="feed-actions">'+
-          '<button class="feed-btn feed-btn-ghost" onclick="checkTaskFromAjd(\''+t.id+'\')">✓ Fait</button>'+
+          '<button class="feed-btn feed-btn-ghost" onclick="checkTaskFromAjd(\''+t.id+'\')">'+ic('check')+' Fait</button>'+
           (t.client_id?'<button class="feed-btn feed-btn-ghost" onclick="openFiche(\''+t.client_id+'\')">Fiche</button>':'')+
         '</div>'+
       '</div>'});
@@ -1939,7 +1950,7 @@ function renderActionsJour(){
   if(hfeedBadge) hfeedBadge.textContent = items.length;
 
   if(!items.length){
-    listEl.innerHTML = '<div class="feed-empty">✨ Rien à traiter pour le moment — tout est à jour.</div>';
+    listEl.innerHTML = '<div class="feed-empty">'+ic('check')+' Rien à traiter pour le moment — tout est à jour.</div>';
     return;
   }
   items.sort((a,b)=>b.u-a.u);
@@ -2005,20 +2016,20 @@ async function sendMailRdv(rdvId, key, tplId, subject, email, name, heure='', da
 
     // Sauvegarder l'état "envoyé" dans Supabase
     await markAjdDone(rdvId, key, name);
-    toast('✓ Mail envoyé à '+email,'ok');
+    toast('Mail envoyé à '+email,'ok');
 
     // Mettre à jour le row visuellement
     const row = document.getElementById('ajd-'+rdvId+'-'+key);
     if(row){
       row.classList.add('done');
       const actDiv = row.querySelector('.ajd-actions');
-      if(actDiv) actDiv.innerHTML = '<span class="ajd-done-badge">✓ Envoyé</span>';
+      if(actDiv) actDiv.innerHTML = '<span class="ajd-done-badge">'+ic('check')+' Envoyé</span>';
     }
     renderActionsJour();
 
   }catch(e){
     toast('Erreur Brevo : '+e.message,'err');
-    if(btn){ btn.disabled=false; btn.textContent='✉ Envoyer via Brevo'; }
+    if(btn){ btn.disabled=false; btn.textContent='Envoyer via Brevo'; }
   }
 }
 
@@ -2192,12 +2203,12 @@ function renderPilotage(){
     const isUrg = t.urg==='urgent';
     const echLbl = t.echeance ? new Date(t.echeance+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'}) : '';
     return "<div class='wf2-item"+(isDone?' wf2-done':'')+(overdue?' wf2-overdue':'')+"' style='display:flex;gap:12px;align-items:flex-start;padding:14px 16px;border-bottom:1px solid var(--border)'>"+
-      "<div class='wf2-check' onclick=\"togglePilotage('"+t.id+"')\">"+(isDone?'✓':'')+"</div>"+
+      "<div class='wf2-check' onclick=\"togglePilotage('"+t.id+"')\">"+(isDone?ic('check'):'')+"</div>"+
       "<div class='wf2-body'>"+
         "<div class='wf2-top'>"+
           "<span class='wf2-label'>"+escH(t.label)+"</span>"+
           (isUrg&&!isDone?"<span style='background:var(--red-lt);color:var(--red);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:2px 8px;border-radius:99px'>Urgent</span>":'')+
-          (echLbl?"<span style='font-size:11.5px;color:"+(overdue?'var(--red)':'var(--muted)')+"'>"+(overdue?'⚠ ':'')+echLbl+"</span>":'')+
+          (echLbl?"<span style='font-size:11.5px;color:"+(overdue?'var(--red)':'var(--muted)')+"'>"+(overdue?ic('warn','ico-xs')+' ':'')+echLbl+"</span>":'')+
         "</div>"+
       "</div>"+
       "<button class='btn btn-ghost btn-xs' onclick=\"deletePilotage('"+t.id+"')\">Suppr.</button>"+
@@ -2218,7 +2229,7 @@ async function addPilotageTask(label, urg, echeance){
   const id = 'pl_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
   try{
     await sb('pilotage', { method:'POST', body: JSON.stringify({ id, label, urg, echeance, status:'A faire' }) });
-    toast('Tâche ajoutée ✓','ok');
+    toast('Tâche ajoutée','ok');
     await loadPilotage();
   }catch(e){ toast('Erreur : '+e.message,'err'); }
 }
@@ -2279,20 +2290,43 @@ async function sendMessageReply(id){
   }catch(e){ toast('Erreur : '+e.message,'err'); }
 }
 
+// Priorise la file : urgence haute d'abord (triage IA), puis non lus, puis récence.
+// L'urgence est un repère de priorisation posé par le triage IA — jamais un diagnostic.
+function sortMessagesByPriorite(list){
+  const rang = { haute: 0, moyenne: 1, faible: 2 };
+  return [...list].sort((a,b)=>{
+    const ra = rang[a.urgence] ?? 3, rb = rang[b.urgence] ?? 3;
+    if(ra !== rb) return ra - rb;
+    if(!!a.lu !== !!b.lu) return a.lu ? 1 : -1;
+    return new Date(b.created_at) - new Date(a.created_at);
+  });
+}
+
+function urgenceBadge(urgence){
+  if(urgence === 'haute') return `<span class="tab-pill" style="background:var(--red-lt,#FEE2E2);color:var(--red,#E2445C);display:inline-flex;align-items:center;gap:4px">${ic('warn','ico-xs')}Urgence signalée</span>`;
+  if(urgence === 'moyenne') return `<span class="tab-pill tp-orange" style="display:inline-flex;align-items:center;gap:4px">${ic('warn','ico-xs')}À prioriser</span>`;
+  return '';
+}
+
 function messagesBox(list, emptyLabel){
-  if(!list.length) return `<div class="empty"><div class="eicon">💬</div><div class="etitle">${emptyLabel}</div></div>`;
-  return list.map(m=>{
+  if(!list.length) return `<div class="empty"><div class="eicon">${ic('message')}</div><div class="etitle">${emptyLabel}</div></div>`;
+  return sortMessagesByPriorite(list).map(m=>{
     const dateStr = new Date(m.created_at).toLocaleString('fr-FR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
     const sourceLbl = m.source==='journal' ? 'Question du journal' : 'Le Gardien de Longévité';
-    return `<div class="card" style="margin-bottom:10px;${!m.lu?'border-left:3px solid #E2445C':''}">
+    const bordureUrgence = m.urgence==='haute' ? '3px solid var(--red,#E2445C)' : (!m.lu ? '3px solid #E2445C' : 'none');
+    return `<div class="card" style="margin-bottom:10px;border-left:${bordureUrgence}">
       <div class="card-body" style="padding:16px 18px">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px">
           <div>
             <div style="font-size:14px;font-weight:700;color:var(--ink)">${escH(m.prenom||'')} ${escH(m.nom||'')}</div>
             <div style="font-size:11px;color:var(--muted)">${sourceLbl} · ${dateStr}</div>
           </div>
-          ${!m.lu?'<span class="tab-pill tp-red">Non lu</span>':(m.repondu?'<span class="tab-pill" style="background:#DCFFF0;color:#007A45">Répondu</span>':'<span class="tab-pill tp-orange">À traiter</span>')}
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
+            ${urgenceBadge(m.urgence)}
+            ${!m.lu?'<span class="tab-pill tp-red">Non lu</span>':(m.repondu?'<span class="tab-pill" style="background:#DCFFF0;color:#007A45">Répondu</span>':'<span class="tab-pill tp-orange">À traiter</span>')}
+          </div>
         </div>
+        ${m.synthese_ia?`<div style="font-size:12.5px;color:#6C47FF;background:#F5F3FF;padding:8px 12px;border-radius:8px;margin-bottom:8px"><strong>Résumé préparé pour vous :</strong> ${escH(m.synthese_ia)}</div>`:''}
         <div style="font-size:14px;color:var(--ink);line-height:1.6;background:var(--bg2,#F7F7FA);padding:12px 14px;border-radius:10px;margin-bottom:${m.image_url?'8px':'12px'}">${escH(m.message)}</div>
         ${m.image_url?`<a href="${m.image_url}" target="_blank"><img src="${m.image_url}" style="max-width:160px;border-radius:8px;margin-bottom:12px;display:block"></a>`:''}
         ${m.reponse?`<div style="font-size:13px;color:#6C47FF;background:#F5F3FF;padding:10px 14px;border-radius:10px;margin-bottom:10px"><strong>Votre réponse :</strong> ${escH(m.reponse)}</div>`:''}
@@ -2308,7 +2342,7 @@ function messagesBox(list, emptyLabel){
 
 function renderMessagesFeed(){
   const box = document.getElementById('messages-feed-box');
-  if(box) box.innerHTML = messagesBox(clientMessages.slice(0,8), 'Aucun message pour le moment.');
+  if(box) box.innerHTML = messagesBox(sortMessagesByPriorite(clientMessages).slice(0,8), 'Aucun message pour le moment.');
   const full = document.getElementById('messages-full-box');
   if(full) full.innerHTML = messagesBox(clientMessages, 'Aucun message pour le moment.');
   const cnt = document.getElementById('msg-unread-count');
@@ -2328,7 +2362,7 @@ async function confirmerReservation(id){
     await sb('rendez_vous?id=eq.'+id, { method:'PATCH', body: JSON.stringify({ status:'confirme' }) });
     const r = rdvs.find(x=>x.id===id);
     if(r) r.status='confirme';
-    toast('Rendez-vous confirmé ✓','ok');
+    toast('Rendez-vous confirmé','ok');
     renderReservationRequests();
     renderActionsJour();
   }catch(e){ toast('Erreur : '+e.message,'err'); }
@@ -2354,7 +2388,7 @@ function renderRecettesAdmin(){
   const count=document.getElementById('r-count');
   if(count) count.textContent=recettesAdmin.length;
   if(!box) return;
-  if(!recettesAdmin.length){ box.innerHTML=`<div class="empty"><div class="eicon">🍽️</div><div class="etitle">Aucune recette pour le moment</div></div>`; return; }
+  if(!recettesAdmin.length){ box.innerHTML=`<div class="empty"><div class="eicon">${ic('leaf')}</div><div class="etitle">Aucune recette pour le moment</div></div>`; return; }
   box.innerHTML=recettesAdmin.map(r=>{
     const tags=(r.tags||[]).map(t=>`<span class="tab-pill" style="background:#E8F5E9;color:#2E7D32">${escH(RECETTE_TAG_LABELS[t]||t)}</span>`).join(' ');
     return `<div class="card">
@@ -2492,7 +2526,9 @@ const ICON_PATHS={
   trophy:'<path d="M6 4h12v3a6 6 0 0 1-12 0V4z"/><path d="M6 4H3a3 3 0 0 0 3 5"/><path d="M18 4h3a3 3 0 0 1-3 5"/><path d="M12 13v4"/><path d="M8 21h8"/><path d="M9 17h6l1 4H8l1-4z"/>',
   pin:'<path d="M12 2a6 6 0 0 0-6 6c0 4.5 6 12 6 12s6-7.5 6-12a6 6 0 0 0-6-6z"/><circle cx="12" cy="8" r="2"/>',
   bolt:'<path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z"/>',
-  cash:'<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M6 9v.01M18 15v.01"/>'
+  cash:'<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M6 9v.01M18 15v.01"/>',
+  printer:'<path d="M6 9V4h12v5"/><rect x="4" y="9" width="16" height="8" rx="1.5"/><path d="M6 17v3h12v-3"/>',
+  link:'<path d="M9 15l6-6"/><path d="M7 12a4 4 0 0 1 0-6l2-2a4 4 0 0 1 6 6"/><path d="M17 12a4 4 0 0 1 0 6l-2 2a4 4 0 0 1-6-6"/>'
 };
 function ic(name,cls){ return '<svg class="ico'+(cls?' '+cls:'')+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+(ICON_PATHS[name]||'')+'</svg>'; }
 
@@ -2606,7 +2642,7 @@ async function annulerRdv(rdvId, cid){
     });
     const r=rdvs.find(x=>x.id===rdvId);
     if(r) r.status='annule';
-    toast('✓ Rendez-vous annulé','ok');
+    toast('Rendez-vous annulé','ok');
     if(cid){
       const c=db.clients.find(x=>x.id===cid);
       if(c) renderFiche(c);
@@ -2623,7 +2659,7 @@ function ouvrirSuppressionCliente(cid){
   if(!c) return;
   const facturesClient=db.factures.filter(f=>f.clientId===cid);
   if(facturesClient.length>0){
-    toast('⚠ Suppression bloquée — '+facturesClient.length+' facture(s) existent pour cette cliente. Supprimez-les d\'abord si besoin.','err');
+    toast('Suppression bloquée — '+facturesClient.length+' facture(s) existent pour cette cliente. Supprimez-les d\'abord si besoin.','err');
     return;
   }
   document.getElementById('dc-client-id').value=cid;
@@ -2687,7 +2723,7 @@ async function confirmerSuppressionCliente(){
     delete docsMedicaux[cid];
 
     closeM('m-delete-client');
-    toast('✓ Fiche définitivement supprimée','ok');
+    toast('Fiche définitivement supprimée','ok');
     nav('clients',null);
   }catch(e){
     toast('Erreur suppression : '+e.message,'err');
@@ -2744,7 +2780,7 @@ async function saveDocMedical(){
       method:'POST',
       body: JSON.stringify([{ client_id:cid, client_key:cid, nom_fichier:nom, date_bilan:dateExamen, storage_path:publicUrl, type:type }])
     });
-    toast('✓ Document ajouté','ok');
+    toast('Document ajouté','ok');
     closeM('m-doc-medical');
     await loadDocsMedicaux(cid);
     const c=db.clients.find(x=>x.id===cid);
@@ -2760,7 +2796,7 @@ async function supprimerDocMedical(cid, docId){
   if(!confirm('Supprimer ce document ?')) return;
   try{
     await sb('bilans_biologiques?id=eq.'+encodeURIComponent(docId), { method:'DELETE', prefer:'return=minimal' });
-    toast('✓ Document supprimé','ok');
+    toast('Document supprimé','ok');
     await loadDocsMedicaux(cid);
     const c=db.clients.find(x=>x.id===cid);
     if(c) renderFiche(c);
@@ -2854,7 +2890,7 @@ function renderAlerts(tab,urg,sem,memoUrgAl=[]){
   const el=document.getElementById('alerts-box');if(!el)return;
   if(tab==='feed'){
     if(!memoAlerts.length){
-      el.innerHTML='<div class="empty"><div class="eicon">✅</div><div class="etitle">Aucun refus signalé</div><div class="esub">Vos clientes n\'ont pas encore signalé de difficultés.</div></div>';
+      el.innerHTML='<div class="empty"><div class="eicon">'+ic('check')+'</div><div class="etitle">Aucun refus signalé</div><div class="esub">Vos clientes n\'ont pas encore signalé de difficultés.</div></div>';
     } else {
       el.innerHTML = memoAlerts.map(m => {
         const col = avColor(m.prenom);
@@ -2864,7 +2900,7 @@ function renderAlerts(tab,urg,sem,memoUrgAl=[]){
         const nbOk = m.stats?.ok || 0;
         const refusHtml = m.refuses.slice(0,3).map(r =>
           `<div style="margin:4px 0 0;padding:6px 10px;background:rgba(184,50,50,.06);border-left:3px solid var(--rouge);border-radius:0 6px 6px 0;font-size:11px;color:var(--ardoise)">
-            <span style="font-weight:600;color:var(--rouge)">✗</span> ${escH(r.texte.substring(0,80))}${r.texte.length>80?'…':''}
+            <span style="font-weight:600;color:var(--rouge);display:inline-flex;align-items:center;vertical-align:-2px">${ic('warn','ico-xs')}</span> ${escH(r.texte.substring(0,80))}${r.texte.length>80?'…':''}
             ${r.raison?`<div style="color:var(--muted);margin-top:2px;font-style:italic">« ${escH(r.raison)} »</div>`:''}
           </div>`
         ).join('');
@@ -2882,7 +2918,7 @@ function renderAlerts(tab,urg,sem,memoUrgAl=[]){
               <div class="al-name">${escH(m.prenom)} ${escH(m.nom||'')}</div>
               <div class="al-meta">${date} · <span style="color:var(--rouge);font-weight:600">${nbRefus} refus</span>${nbOk>0?` · <span style="color:var(--vert)">${nbOk} acceptés</span>`:''}</div>
             </div>
-            <span style="font-size:18px">🔄</span>
+            <span style="font-size:18px;color:var(--muted)">${ic('refresh')}</span>
           </div>
           <div style="width:100%;margin-top:8px">${refusHtml}${plusHtml}${ficheBtn}</div>
         </div>`;
@@ -2891,7 +2927,7 @@ function renderAlerts(tab,urg,sem,memoUrgAl=[]){
     return;
   }
   const items=tab==='urg'?urg:sem;
-  if(!items.length && (tab!=='urg' || !memoUrgAl.length)){el.innerHTML='<div class="empty"><div class="eicon">\u2705</div><div class="etitle">Tout est \u00e0 jour</div></div>';return;}
+  if(!items.length && (tab!=='urg' || !memoUrgAl.length)){el.innerHTML='<div class="empty"><div class="eicon">'+ic('check')+'</div><div class="etitle">Tout est \u00e0 jour</div></div>';return;}
 
   let html=items.map(({client:c,alert:a})=>{
     const col=avColor(c.prenom);
@@ -2941,7 +2977,7 @@ function renderAlerts(tab,urg,sem,memoUrgAl=[]){
     }).join('');
   }
 
-  el.innerHTML=html||'<div class="empty"><div class="eicon">\u2705</div><div class="etitle">Tout est \u00e0 jour</div></div>';
+  el.innerHTML=html||'<div class="empty"><div class="eicon">'+ic('check')+'</div><div class="etitle">Tout est \u00e0 jour</div></div>';
 }
 
 function renderPipeline(actives){
@@ -2988,13 +3024,14 @@ function renderCA(){
 function renderTaches(){
   const el=document.getElementById('tasks-box');if(!el)return;
   const active=taches.filter(t=>t.statut!=='done'&&t.statut!=='archive');
-  if(!active.length){el.innerHTML='<div style="font-size:13px;color:var(--muted);font-style:italic;padding:4px 0">Aucune tâche en attente ✓</div>';return;}
+  if(!active.length){el.innerHTML='<div style="font-size:13px;color:var(--muted);font-style:italic;padding:4px 0">Aucune tâche en attente</div>';return;}
   el.innerHTML=active.map(t=>{
-    const prio=t.priorite==='haute'?'🔴':t.priorite==='basse'?'⚪':'🟡';
+    const prioCls=t.priorite==='haute'?'prio-haute':t.priorite==='basse'?'prio-basse':'prio-normale';
+    const prio="<span class='prio-dot "+prioCls+"' title='Priorité "+(t.priorite||'normale')+"'></span>";
     const eco=t.echeance?fmtShort(t.echeance)+(t.heure?' · '+t.heure:''):'';
     const ov=t.echeance&&diffD(t.echeance)>0;
     return "<div class='task-item' id='ti-"+t.id+"'>" +
-      "<div class='t-check' onclick=\"checkTask('"+t.id+"')\">✓</div>" +
+      "<div class='t-check' onclick=\"checkTask('"+t.id+"')\">"+ic('check')+"</div>" +
       "<div class='t-txt'>"+escH(t.titre)+"</div>" +
       (t.client_nom?"<span class='t-chip'>"+escH(t.client_nom)+"</span>":'')+
       "<span style='font-size:12px'>"+prio+"</span>"+
@@ -3036,7 +3073,7 @@ function renderClients(){
   const activeArrow=document.getElementById('sa-'+clientSort.key);
   if(activeArrow){activeArrow.classList.add('active');activeArrow.textContent=clientSort.dir>0?'▾':'▴';}
 
-  if(!list.length){tbody.innerHTML='<tr><td colspan="6"><div class="ctable-empty"><div class="eicon">👥</div><div class="etitle">Aucune cliente</div><div class="esub">Créez votre première fiche cliente.</div></div></td></tr>';return;}
+  if(!list.length){tbody.innerHTML='<tr><td colspan="6"><div class="ctable-empty"><div class="eicon">'+ic('user')+'</div><div class="etitle">Aucune cliente</div><div class="esub">Créez votre première fiche cliente.</div></div></td></tr>';return;}
 
   const gMaps={alba:'#E28B2B',aria:'#7B6EE6',ora:'#0DA678'};
   const withMeta=list.map(c=>{
@@ -3203,13 +3240,13 @@ function renderFiche(c){
     const naB=naFn?`<button class="na-btn" style="background:var(--violet);color:white" onclick="${naFn}">${naLbl}</button>`:'';
     naHtml=`<div class="next-action ${naCls}"><div class="na-icon">${ic(nextWF.icon||'pin')}</div><div class="na-body"><div class="na-label">${escH(naLabel)}</div><div class="na-sub">${escH(naSub)}</div></div>${naB}</div>`;
   } else if(totalWF>0){
-    naHtml=`<div class="next-action done"><div class="na-icon">✅</div><div class="na-body"><div class="na-label">Toutes les étapes sont complètes</div></div></div>`;
+    naHtml=`<div class="next-action done"><div class="na-icon">${ic('check')}</div><div class="na-body"><div class="na-label">Toutes les étapes sont complètes</div></div></div>`;
   }
 
   // Infos
   const infoRows=[
-    ['Problématique principale', c.motifs?`<strong style="color:var(--ink)">${escH(c.motifs)}</strong>`:"<span style='color:var(--red)'>⚠ Non renseignée</span>"],
-    ['Email', c.email?`<a href="mailto:${escH(c.email)}" style="color:var(--violet);text-decoration:none">${escH(c.email)}</a>`:"<span style='color:var(--red);font-weight:700'>⚠ Manquant</span>"],
+    ['Problématique principale', c.motifs?`<strong style="color:var(--ink)">${escH(c.motifs)}</strong>`:`<span style='color:var(--red);display:inline-flex;align-items:center;gap:4px'>${ic('warn','ico-xs')} Non renseignée</span>`],
+    ['Email', c.email?`<a href="mailto:${escH(c.email)}" style="color:var(--violet);text-decoration:none">${escH(c.email)}</a>`:`<span style='color:var(--red);font-weight:700;display:inline-flex;align-items:center;gap:4px'>${ic('warn','ico-xs')} Manquant</span>`],
     ['Téléphone', c.tel?`<a href="tel:${escH(c.tel)}" style="color:var(--ink);text-decoration:none">${escH(c.tel)}</a>`:'—'],
     ['Date de naissance', c.ddn?(fmtDate(c.ddn)+(age?` · <span style="color:var(--muted)">${age} ans</span>`:'')):'—'],
     ['Programme', c.programme?`<span class="prog-badge pb-${pCls(c.programme)}">${pLbl(c.programme)}</span>`:"<span style='color:var(--muted)'>Consultation ponctuelle</span>"],
@@ -3223,7 +3260,7 @@ function renderFiche(c){
         const isAnnule=r.status==='annule';
         const statusCls=isAnnule?'annule':(r.status==='confirmed'?'confirmed':'pending');
         const statusLbl=isAnnule?'Annulé':(r.status==='confirmed'?'Confirmé':'En attente');
-        const cancelBtn=isAnnule?'':`<button class="rdv2-cancel" onclick="annulerRdv(${r.id},'${cid}')" title="Annuler ce rendez-vous">✕ Annuler</button>`;
+        const cancelBtn=isAnnule?'':`<button class="rdv2-cancel" onclick="annulerRdv(${r.id},'${cid}')" title="Annuler ce rendez-vous">× Annuler</button>`;
         return `<div class="rdv2-item"><div class="rdv2-date">${fmtDate(r.date)}</div><div class="rdv2-type">${escH(r.type||'Consultation')}</div><span class="rdv2-status ${statusCls}">${statusLbl}</span>${cancelBtn}</div>`;
       }).join('')
     :"<div style='padding:16px;font-size:13px;color:var(--muted);font-style:italic'>Aucun RDV enregistré.</div>";
@@ -3245,7 +3282,7 @@ function renderFiche(c){
   const wfHtml=wf.map(s=>{
     let cls=s.done?'wf2-done':s.isOvd?'wf2-overdue':s.isSoon?'wf2-soon':'';
     let badge='';
-    if(s.done) badge="<span class='wf2-badge done'>✓ Fait</span>";
+    if(s.done) badge="<span class='wf2-badge done'>"+ic('check')+" Fait</span>";
     else if(s.isOvd) badge="<span class='wf2-badge overdue'>Retard</span>";
     else if(s.isSoon) badge="<span class='wf2-badge soon'>Cette semaine</span>";
     else badge=`<span class="wf2-badge prog">${s.j<0?'Avant J0':'J+'+s.j}</span>`;
@@ -3322,11 +3359,11 @@ function renderFiche(c){
   const dmIcons={bilan_sanguin:ic('drop'),imagerie:ic('scan'),compte_rendu:ic('file'),ordonnance:ic('pill'),autre:ic('paperclip')};
   const dmHtml=dm.length>0?dm.map(d=>`
     <div class="doc-item">
-      <div class="doc-icon" style="background:var(--blue-lt)">${dmIcons[d.type]||'📎'}</div>
+      <div class="doc-icon" style="background:var(--blue-lt)">${dmIcons[d.type]||ic('paperclip')}</div>
       <div class="doc-body"><div class="doc-name">${escH(d.nom_fichier||'Document')}</div><div class="doc-meta">${escH(dmTypeLabels[d.type]||'Document')} · Examen du ${fmtDate(d.date_bilan)}</div></div>
       <span class="doc-status ok">Disponible</span>
       ${btn('doc-action',`window.open('${escH(d.storage_path)}','_blank')`,'Voir')}
-      ${btn('doc-action',`supprimerDocMedical('${cid}','${d.id}')`,'🗑')}
+      ${btn('doc-action',`supprimerDocMedical('${cid}','${d.id}')`,ic('trash'))}
     </div>`).join(''):"<div style='padding:16px;font-size:13px;color:var(--muted);font-style:italic'>Aucun document médical ajouté pour le moment.</div>";
 
   // Tags
@@ -3504,7 +3541,7 @@ function buildJournalCard(c){
     ].filter(Boolean).map(p=>`<span style="display:inline-block;padding:3px 10px;background:${alerte?'rgba(226,68,92,.08)':'var(--surface)'};border-radius:99px;font-size:11px;color:${alerte?'#B8323A':'var(--ink)'};margin:2px 4px 2px 0">${p}</span>`).join('');
     const note=e.note?`<div style="font-size:12.5px;color:var(--ink);line-height:1.6;margin-top:6px;padding:8px 10px;background:var(--surface);border-radius:8px">${escH(e.note)}</div>`:'';
     return `<div style="padding:10px 0;border-bottom:1px solid var(--border)">
-      <div style="font-size:11px;color:var(--muted);font-weight:700;margin-bottom:4px">${fmtDate(e.date)}${alerte?' · <span style="color:#B8323A">⚠ à surveiller</span>':''}</div>
+      <div style="font-size:11px;color:var(--muted);font-weight:700;margin-bottom:4px">${fmtDate(e.date)}${alerte?' · <span style="color:#B8323A;display:inline-flex;align-items:center;gap:3px">'+ic('warn','ico-xs')+' à surveiller</span>':''}</div>
       <div>${pills}</div>
       ${note}
     </div>`;
@@ -3534,7 +3571,7 @@ async function toggleWF(id,key){
     const lbs={bilan_entree:"Bilan d'entrée créé",protocole_envoye:'Protocole PHV envoyé',checkin_active:'Lien check-in envoyé',check_j7:'Check-in J+7 fait',check_j21:'Point J+21 fait',suivi_jX:'Consultation de suivi',fin_programme:'Programme clôturé'};
     c.timeline.push({type:'suivi',title:lbs[key]||key,icon:'✓',date:today()});
   }
-  await saveClient(c);renderFiche(c);toast(done?'Étape validée ✓':'Étape réouverte',done?'ok':'warn');
+  await saveClient(c);renderFiche(c);toast(done?'Étape validée':'Étape réouverte',done?'ok':'warn');
 }
 
 function tpls(c){
@@ -3564,7 +3601,7 @@ function openEmail(id,key){
 }
 function loadTpl(key){if(!emailCtx)return;const t=tpls(emailCtx);if(t[key]){document.getElementById('em-sub').value=t[key].sub;document.getElementById('em-body').value=t[key].body;}}
 function loadFicheTpl(key,id){const c=db.clients.find(x=>x.id===id);if(!c)return;const t=tpls(c);if(t[key]){document.getElementById('fe-sub').value=t[key].sub;document.getElementById('fe-body').value=t[key].body;}}
-async function logEmail(id){const c=db.clients.find(x=>x.id===id);if(!c)return;const sub=document.getElementById('fe-sub')?.value||'Email';if(!c.timeline)c.timeline=[];c.timeline.push({type:'suivi',title:'✉ '+sub,icon:'✉',date:today()});await saveClient(c);renderFiche(c);toast('Loggé ✓','ok');}
+async function logEmail(id){const c=db.clients.find(x=>x.id===id);if(!c)return;const sub=document.getElementById('fe-sub')?.value||'Email';if(!c.timeline)c.timeline=[];c.timeline.push({type:'suivi',title:sub,icon:'✉',date:today()});await saveClient(c);renderFiche(c);toast('Loggé','ok');}
 async function sendBrevoFiche(id){
   // Conservée pour compatibilité — utilise ouvrirMailModal maintenant
   const c = db.clients.find(x=>x.id===id);
@@ -3678,7 +3715,7 @@ function ouvrirMailModal(clientId, tplKey){
   modal.addEventListener('click', e => { if(e.target===modal) modal.remove(); });
 }
 function openBrevo(){if(emailCtx)logEmail(emailCtx.id);window.open('https://app.brevo.com','_blank');closeM('m-email');}
-async function addTLEvent(id){const t=prompt("Titre de l\'événement :");if(!t)return;const c=db.clients.find(x=>x.id===id);if(!c)return;if(!c.timeline)c.timeline=[];c.timeline.push({type:'suivi',title:t,icon:'·',date:today()});await saveClient(c);renderFiche(c);toast('Événement ajouté ✓','ok');}
+async function addTLEvent(id){const t=prompt("Titre de l\'événement :");if(!t)return;const c=db.clients.find(x=>x.id===id);if(!c)return;if(!c.timeline)c.timeline=[];c.timeline.push({type:'suivi',title:t,icon:'·',date:today()});await saveClient(c);renderFiche(c);toast('Événement ajouté','ok');}
 
 async function saveClient(c){
   const p={prenom:c.prenom,nom:c.nom,email:c.email,tel:c.tel,age:c.age,ddn:c.ddn,motifs:c.motifs,axes:c.axes,notes:c.notes,programme:c.programme,duree_ttt:c.dureeTtt,date1:c.date1,date_protocole:c.dateProtocole,phv_url:c.phv_url||null,timeline:c.timeline,workflow_done:c.workflowDone,updated_at:new Date().toISOString()};
@@ -3715,7 +3752,7 @@ async function saveNewClient(){
     const existIdx = db.clients.findIndex(c => c.id === payload.id);
     if(existIdx > -1) db.clients[existIdx] = mapC(payload);
     else db.clients.unshift(mapC(payload));
-    closeM('m-client');toast('Fiche créée ✓','ok');nav('clients',null);renderClients();
+    closeM('m-client');toast('Fiche créée','ok');nav('clients',null);renderClients();
   }
   catch(e){toast('Erreur: '+e.message,'err');}
 }
@@ -3723,7 +3760,7 @@ async function saveNewClient(){
 async function addQuick(){
   const inp=document.getElementById('task-quick');const titre=(inp?.value||'').trim();if(!titre)return;
   const t={id:'t_'+Date.now(),titre,statut:'todo',priorite:'normale',echeance:today(),created_at:new Date().toISOString()};
-  try{await sb('taches',{method:'POST',body:JSON.stringify(t)});taches.push(t);inp.value='';renderTaches();renderActionsJour();toast('Tâche ajoutée ✓','ok');}
+  try{await sb('taches',{method:'POST',body:JSON.stringify(t)});taches.push(t);inp.value='';renderTaches();renderActionsJour();toast('Tâche ajoutée','ok');}
   catch(e){toast('Erreur','err');}
 }
 async function saveTache(){
@@ -3731,10 +3768,10 @@ async function saveTache(){
   const cid=document.getElementById('t-client')?.value||'';
   const cl=db.clients.find(c=>c.id===cid);
   const t={id:'t_'+Date.now(),titre,description:document.getElementById('t-desc')?.value||'',client_id:cid,client_nom:cl?cl.prenom+' '+(cl.nom||''):'',echeance:document.getElementById('t-ech')?.value||null,heure:document.getElementById('t-heure')?.value||null,priorite:document.getElementById('t-prio')?.value||'normale',statut:'todo',created_at:new Date().toISOString()};
-  try{await sb('taches',{method:'POST',body:JSON.stringify(t)});taches.push(t);closeM('m-tache');document.getElementById('t-titre').value='';document.getElementById('t-heure').value='';renderTaches();renderActionsJour();toast('Tâche créée ✓','ok');}
+  try{await sb('taches',{method:'POST',body:JSON.stringify(t)});taches.push(t);closeM('m-tache');document.getElementById('t-titre').value='';document.getElementById('t-heure').value='';renderTaches();renderActionsJour();toast('Tâche créée','ok');}
   catch(e){toast('Erreur','err');}
 }
-async function checkTask(id){try{await sb('taches?id=eq.'+id,{method:'PATCH',body:JSON.stringify({statut:'done'})});const t=taches.find(x=>x.id===id);if(t)t.statut='done';renderTaches();renderActionsJour();toast('✓ Done','ok');}catch(e){toast('Erreur','err');}}
+async function checkTask(id){try{await sb('taches?id=eq.'+id,{method:'PATCH',body:JSON.stringify({statut:'done'})});const t=taches.find(x=>x.id===id);if(t)t.statut='done';renderTaches();renderActionsJour();toast('Done','ok');}catch(e){toast('Erreur','err');}}
 async function checkTaskFromAjd(id){ await checkTask(id); }
 async function delTask(id){try{await sb('taches?id=eq.'+id,{method:'DELETE',prefer:'return=minimal'});taches=taches.filter(t=>t.id!==id);renderTaches();renderActionsJour();}catch(e){toast('Erreur','err');}}
 
@@ -3766,7 +3803,7 @@ async function saveFacture(){
     db.factures.unshift({id,num,clientId:cid,date,prestation:presta,prestationLabel:prestaLbl,montant,paiement:paie,paiementLabel:paieLbl,statut,deuxFois:frac});
     db.nextF=(db.nextF||1)+1;const loc=loadL();loc.nextF=db.nextF;saveL(loc);
     if(cid){const c=db.clients.find(x=>x.id===cid);if(c){if(!c.timeline)c.timeline=[];c.timeline.push({type:'facture',title:'Facture N°'+num+' — '+montant+' €',icon:'€',date,desc:prestaLbl});await saveClient(c);}}
-    closeM('m-facture');renderFactures();toast('Facture enregistrée ✓','ok');
+    closeM('m-facture');renderFactures();toast('Facture enregistrée','ok');
   }catch(e){toast('Erreur: '+e.message,'err');}
 }
 
@@ -3774,10 +3811,10 @@ function renderFactures(){
   const list=document.getElementById('f-list');const cnt=document.getElementById('f-count');if(!list)return;
   const facs=[...db.factures].sort((a,b)=>new Date(b.date)-new Date(a.date));
   cnt.textContent=facs.length;
-  if(!facs.length){list.innerHTML='<div class="empty"><div class="eicon">📄</div><div class="etitle">Aucune facture</div><div class="esub">Créez votre première facture.</div></div>';return;}
+  if(!facs.length){list.innerHTML='<div class="empty"><div class="eicon">'+ic('file')+'</div><div class="etitle">Aucune facture</div><div class="esub">Créez votre première facture.</div></div>';return;}
   list.innerHTML=facs.map(f=>{
     const c=db.clients.find(x=>x.id===f.clientId);
-    return "<div class='fr'><span class='fnum'>N° "+escH(f.num||'')+"</span><div style='flex:1'><div class='fcl'>"+(c?escH(c.prenom+' '+(c.nom||'')):"<span style='color:var(--muted)'>—</span>")+"</div><div class='fpre'>"+escH(f.prestationLabel||f.prestation||'')+"</div></div><span class='fdat'>"+fmtShort(f.date)+"</span><span class='famt'>"+(f.montant||0).toFixed(0)+" €</span><span class='fst "+(f.statut==='payee'?'ok':'pend')+"'>"+(f.statut==='payee'?'Payée':'En attente')+"</span><button class='btn btn-ghost btn-xs' onclick=\"printF('"+f.id+"')\">🖨</button></div>";
+    return "<div class='fr'><span class='fnum'>N° "+escH(f.num||'')+"</span><div style='flex:1'><div class='fcl'>"+(c?escH(c.prenom+' '+(c.nom||'')):"<span style='color:var(--muted)'>—</span>")+"</div><div class='fpre'>"+escH(f.prestationLabel||f.prestation||'')+"</div></div><span class='fdat'>"+fmtShort(f.date)+"</span><span class='famt'>"+(f.montant||0).toFixed(0)+" €</span><span class='fst "+(f.statut==='payee'?'ok':'pend')+"'>"+(f.statut==='payee'?'Payée':'En attente')+"</span><button class='btn btn-ghost btn-xs' onclick=\"printF('"+f.id+"')\">"+ic('printer')+"</button></div>";
   }).join('');
 }
 
@@ -3790,7 +3827,7 @@ function printF(fid){
 
 function defSettings(){return{nom:'Sabrina Castelli',titre:'Naturopathe',adresse:'Porto-Vecchio, Corse',email:'sabrina@avitaserena.com',tel:'',siret:'',adeli:''};}
 function loadSettings(){const s=db.settings||defSettings();['nom','titre','adresse','email','tel','siret','adeli'].forEach(k=>{const el=document.getElementById('s-'+k);if(el)el.value=s[k]||'';});}
-function saveSettings(){db.settings={nom:document.getElementById('s-nom')?.value||'',titre:document.getElementById('s-titre')?.value||'',adresse:document.getElementById('s-adresse')?.value||'',email:document.getElementById('s-email')?.value||'',tel:document.getElementById('s-tel')?.value||'',siret:document.getElementById('s-siret')?.value||'',adeli:document.getElementById('s-adeli')?.value||''};const l=loadL();l.settings=db.settings;saveL(l);toast('Enregistré ✓','ok');}
+function saveSettings(){db.settings={nom:document.getElementById('s-nom')?.value||'',titre:document.getElementById('s-titre')?.value||'',adresse:document.getElementById('s-adresse')?.value||'',email:document.getElementById('s-email')?.value||'',tel:document.getElementById('s-tel')?.value||'',siret:document.getElementById('s-siret')?.value||'',adeli:document.getElementById('s-adeli')?.value||''};const l=loadL();l.settings=db.settings;saveL(l);toast('Enregistré','ok');}
 
 async function migrate(){
   const loc=loadL();if(!loc.clients?.length){toast('Aucune donnée à migrer','warn');return;}
@@ -3837,7 +3874,7 @@ function exportCSV(silent=false){
   const a=document.createElement('a');a.href=url;
   a.download='avitaserena-clientes-'+today()+'.csv';
   a.click();URL.revokeObjectURL(url);
-  if(!silent) toast('Export CSV téléchargé ✓ ('+db.clients.length+' clientes)','ok');
+  if(!silent) toast('Export CSV téléchargé ('+db.clients.length+' clientes)','ok');
   else console.log('[CRM] ✓ Auto-export CSV hebdomadaire —',db.clients.length,'clientes');
 }
 
@@ -4034,7 +4071,7 @@ function exportStatsCSV(){
   const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');a.href=url;a.download='avitaserena-stats-'+statsPeriod+'-'+today()+'.csv';a.click();URL.revokeObjectURL(url);
-  toast('Export CSV téléchargé ✓','ok');
+  toast('Export CSV téléchargé','ok');
 }
 
 // ══════════════════════════════════════
@@ -4082,7 +4119,7 @@ async function migrerIdCliente(oldId,newId){
   try{
     const cible=await sb('clientes?id=eq.'+encodeURIComponent(newId)+'&select=id');
     if(cible.length){
-      toast('⚠ Une fiche existe déjà avec cet identifiant (prénom+nom+DDN) — fusion manuelle nécessaire','warn');
+      toast('Une fiche existe déjà avec cet identifiant (prénom+nom+DDN) — fusion manuelle nécessaire','warn');
       return oldId;
     }
     const rows=await sb('clientes?id=eq.'+encodeURIComponent(oldId));
@@ -4098,11 +4135,11 @@ async function migrerIdCliente(oldId,newId){
     }
 
     await sb('clientes?id=eq.'+encodeURIComponent(oldId),{method:'DELETE'});
-    toast('🔄 Identifiant cliente migré vers le format standard','ok');
+    toast('Identifiant cliente migré vers le format standard','ok');
     return newId;
   }catch(e){
     console.warn('Migration ID cliente échouée :',e);
-    toast("⚠ Migration identifiant échouée — fiche conservée sous l'ancien ID",'warn');
+    toast("Migration identifiant échouée — fiche conservée sous l'ancien ID",'warn');
     return oldId;
   }
 }
@@ -4150,7 +4187,7 @@ function ouvrirEditionCliente(clientId){
     </div>
     <div style="padding:14px 22px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;background:var(--surface)">
       <button onclick="document.getElementById('modal-edit-cliente').remove()" class="btn btn-ghost">Annuler</button>
-      <button onclick="sauvegarderEditionCliente('${clientId}')" class="btn btn-primary">✓ Enregistrer</button>
+      <button onclick="sauvegarderEditionCliente('${clientId}')" class="btn btn-primary">${ic('check')} Enregistrer</button>
     </div>
   </div>`;
   modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});document.body.appendChild(modal);
@@ -4184,7 +4221,7 @@ async function sauvegarderEditionCliente(clientId){
     await saveClient(c);
     document.getElementById('modal-edit-cliente')?.remove();
     renderFiche(c);renderClients();
-    toast('Fiche mise à jour ✓','ok');
+    toast('Fiche mise à jour','ok');
   }catch(e){toast('Erreur : '+e.message,'err');}
 }
 
@@ -4201,19 +4238,22 @@ function ouvrirEnvoiProtocole(clientId){
     <div style="background:var(--gold-lt);padding:20px 24px 16px;border-bottom:1px solid var(--border)">
       <div style="font-size:9px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-dk);margin-bottom:5px">Envoyer le protocole</div>
       <div style="font-size:17px;font-weight:700;color:var(--ink)">${escH(c.prenom)} ${escH(c.nom||'')}</div>
-      <div style="font-size:12px;color:${c.email?'var(--ink3)':'var(--red)'};margin-top:3px">${c.email||'⚠ Email manquant \u2014 modifiez la fiche d\u2019abord'}</div>
+      <div style="font-size:12px;color:${c.email?'var(--ink3)':'var(--red)'};margin-top:3px">${c.email?escH(c.email):'<span style="display:inline-flex;align-items:center;gap:4px">'+ic('warn','ico-xs')+' Email manquant \u2014 modifiez la fiche d\u2019abord</span>'}</div>
     </div>
     <div style="padding:20px 24px">
       <div style="background:var(--surface);border-radius:10px;padding:12px 14px;margin-bottom:14px;border:1px solid var(--border)">
         <div style="font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Inclus automatiquement dans l'email</div>
-        <div style="font-size:12px;color:var(--ink3);line-height:1.7">🔗 avitaserena.com/espace-clientes.html<br>👤 ${escH(c.prenom)} · 📅 ${ddnF}</div>
+        <div style="font-size:12px;color:var(--ink3);line-height:1.9">
+          <div style="display:flex;align-items:center;gap:6px">${ic('link','ico-xs')} avitaserena.com/espace-clientes.html</div>
+          <div style="display:flex;align-items:center;gap:6px">${ic('user','ico-xs')} ${escH(c.prenom)} · ${ic('calendar','ico-xs')} ${ddnF}</div>
+        </div>
       </div>
       <label class="fl">Lien vers le protocole (PHV)</label>
       <input id="ep-lien-phv" type="url" class="fi" placeholder="https://avitaserena.com/outils/phv-print.html?…" style="margin-bottom:4px">
       <div id="ep-phv-hint" style="font-size:11px;color:var(--muted);margin-bottom:14px;min-height:16px"></div>
       <div style="display:flex;gap:8px;justify-content:flex-end">
         <button onclick="document.getElementById('modal-envoi-protocole').remove()" class="btn btn-ghost">Annuler</button>
-        <button id="ep-send-btn" onclick="envoyerProtocole('${clientId}')" class="btn btn-primary">📨 Envoyer</button>
+        <button id="ep-send-btn" onclick="envoyerProtocole('${clientId}')" class="btn btn-primary">${ic('mail')} Envoyer</button>
       </div>
     </div>
   </div>`;
@@ -4225,7 +4265,7 @@ function ouvrirEnvoiProtocole(clientId){
   const hint = document.getElementById('ep-phv-hint');
   if (c.phv_url) {
     inp.value = c.phv_url;
-    if (hint) hint.innerHTML = '<span style="color:#3D6B2C">✓ URL récupérée automatiquement depuis le dossier</span>';
+    if (hint) hint.innerHTML = '<span style="color:#3D6B2C;display:inline-flex;align-items:center;gap:4px">'+ic('check','ico-xs')+' URL récupérée automatiquement depuis le dossier</span>';
   } else {
     // Fallback localStorage
     const slug = [c.prenom, c.nom, c.ddn].filter(Boolean).join('-').toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9\-]/g,'');
@@ -4244,7 +4284,7 @@ function ouvrirEnvoiProtocole(clientId){
           }
         } catch(e) {}
       }
-      if (!inp.value && hint) hint.textContent = 'Ouvrez phv-print.html → cliquez "📤 Enregistrer & partager" pour générer l\'URL automatiquement.';
+      if (!inp.value && hint) hint.textContent = 'Ouvrez phv-print.html → cliquez "Enregistrer & partager" pour générer l\'URL automatiquement.';
     }
   }
   if (!c.phv_url) setTimeout(()=>inp?.focus(),100);
@@ -4273,9 +4313,9 @@ async function envoyerProtocole(clientId){
     if(!c.workflowDone)c.workflowDone={};c.workflowDone['protocole_envoye']=true;
     c.phv_url=lienPHV;
     await saveClient(c);renderFiche(c);
-    toast('✓ Protocole envoyé à '+c.email,'ok');
+    toast('Protocole envoyé à '+c.email,'ok');
     document.getElementById('modal-envoi-protocole')?.remove();
-  }catch(e){toast('Erreur Brevo : '+e.message,'err');btn.textContent='📨 Envoyer';btn.disabled=false;}
+  }catch(e){toast('Erreur Brevo : '+e.message,'err');btn.textContent='Envoyer';btn.disabled=false;}
 }
 
 
@@ -4301,8 +4341,8 @@ function voirQuestionnaireArchive(clientId, qid){
   modal.id='modal-voir-questionnaire';
   modal.innerHTML=`<div class="modal modal-lg">
     <div style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
-      <div style="font-size:16px;font-weight:700;color:var(--ink)">${q.type==='suivi'?'🔁 Questionnaire de suivi':'📋 Questionnaire de consultation'} — ${escH(q.prenom||'')} · ${fmtDate(q.created_at)}</div>
-      <button onclick="document.getElementById('modal-voir-questionnaire').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted)">✕</button>
+      <div style="font-size:16px;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:8px">${q.type==='suivi'?ic('refresh'):ic('file')} ${q.type==='suivi'?'Questionnaire de suivi':'Questionnaire de consultation'} — ${escH(q.prenom||'')} · ${fmtDate(q.created_at)}</div>
+      <button onclick="document.getElementById('modal-voir-questionnaire').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted)">×</button>
     </div>
     <div style="padding:8px 24px 20px;max-height:70vh;overflow:auto">${rows||'<p style="color:var(--muted);font-style:italic">Aucune donnée.</p>'}</div>
   </div>`;
@@ -4406,7 +4446,7 @@ function ouvrirAlternativesModal(prenomEnc, nomEnc, ddnEnc, refusIdx){
     // Pilier
     const pilierDiv = document.createElement('div');
     pilierDiv.style.cssText = 'font-weight:700;color:#E2445C;font-size:12px;margin-bottom:4px';
-    pilierDiv.textContent = '✗ ' + (r.pilier||'').charAt(0).toUpperCase() + (r.pilier||'').slice(1);
+    pilierDiv.textContent = (r.pilier||'').charAt(0).toUpperCase() + (r.pilier||'').slice(1);
     bloc.appendChild(pilierDiv);
 
     // Texte refus
@@ -4441,7 +4481,7 @@ function ouvrirAlternativesModal(prenomEnc, nomEnc, ddnEnc, refusIdx){
     const btnIA = document.createElement('button');
     btnIA.id = 'btn-gen-' + i;
     btnIA.style.cssText = 'padding:6px 14px;background:#6C47FF;color:white;border:none;border-radius:99px;font-size:12px;font-weight:600;cursor:pointer';
-    btnIA.textContent = '✦ Générer avec l\'IA';
+    btnIA.textContent = 'Générer avec l\'IA';
     btnIA.onclick = () => genererAlternativeIA(i, r.texte||'', r.raison||'', prenom);
     bloc.appendChild(btnIA);
 
@@ -4466,7 +4506,7 @@ function ouvrirAlternativesModal(prenomEnc, nomEnc, ddnEnc, refusIdx){
   title.textContent = 'Alternatives pour ' + prenom + ' ' + nom;
   const subtitle = document.createElement('div');
   subtitle.style.cssText = 'font-size:12px;color:var(--muted);margin-top:3px';
-  subtitle.textContent = refuses.length + ' recommandation(s) refusée(s)' + (email ? ' · 📧 ' + email : ' · email non renseigné');
+  subtitle.textContent = refuses.length + ' recommandation(s) refusée(s)' + (email ? ' · ' + email : ' · email non renseigné');
   headerLeft.appendChild(title);
   headerLeft.appendChild(subtitle);
   const closeBtn = document.createElement('button');
@@ -4497,7 +4537,7 @@ function ouvrirAlternativesModal(prenomEnc, nomEnc, ddnEnc, refusIdx){
   if(email){
     const btnSend = document.createElement('button');
     btnSend.style.cssText = 'padding:9px 20px;background:var(--ocre);color:white;border:none;border-radius:99px;font-size:13px;font-weight:600;cursor:pointer';
-    btnSend.textContent = '✉ Enregistrer & envoyer par email';
+    btnSend.textContent = 'Enregistrer & envoyer par email';
     btnSend.onclick = () => sauvegarderAlternatives(prenom, nom, ddn, email, refusIdx, true);
     footer.appendChild(btnSend);
   }
@@ -4517,7 +4557,7 @@ async function genererAlternativeIA(idx, texteRefus, raison, prenom){
   const apiKey = getAnthropicKey();
   if(!apiKey){ toast('Clé API requise','err'); return; }
 
-  ta.value = ''; ta.placeholder = '✦ Génération en cours…'; ta.disabled = true;
+  ta.value = ''; ta.placeholder = 'Génération en cours…'; ta.disabled = true;
   if(btn){ btn.disabled = true; btn.textContent = '⏳ En cours…'; }
 
   try{
@@ -4552,7 +4592,7 @@ Propose une alternative concrète, bienveillante et réaliste en 2-3 phrases max
     ta.placeholder = 'Rédigez ou générez une alternative…';
   }
   ta.disabled = false;
-  if(btn){ btn.disabled = false; btn.textContent = '✦ Regénérer'; }
+  if(btn){ btn.disabled = false; btn.textContent = 'Regénérer'; }
 }
 
 async function sauvegarderAlternatives(prenom, nom, ddn, email, refusIdx, envoyer){
@@ -4675,12 +4715,12 @@ async function sauvegarderAlternatives(prenom, nom, ddn, email, refusIdx, envoye
         const err = await res.json();
         throw new Error(err.message || res.status);
       }
-      toast(`Email envoyé à ${email} ✓`, 'ok');
+      toast(`Email envoyé à ${email}`, 'ok');
     }catch(e){
       toast('Alternatives enregistrées · Email échoué : '+e.message, 'warn');
     }
   } else {
-    toast(`${saved} alternative(s) enregistrée(s) ✓`, 'ok');
+    toast(`${saved} alternative(s) enregistrée(s)`, 'ok');
   }
 
   document.getElementById('modal-alternatives')?.remove();
@@ -5053,7 +5093,7 @@ function ouvrirBilanEntree(clientId, mode){
       <div class="fg3">
         <div class="fg"><label class="fl">Prénom *</label><input class="fi" id="nc-prenom" placeholder="Marie"></div>
         <div class="fg"><label class="fl">Nom *</label><input class="fi" id="nc-nom" placeholder="Dupont"></div>
-        <div class="fg"><label class="fl">DDN * <span id="ddn-err" style="color:var(--red);display:none">⚠</span></label><input class="fi" id="nc-ddn" type="date" oninput="calcAge(this.value)"></div>
+        <div class="fg"><label class="fl">DDN * <span id="ddn-err" style="color:var(--red);display:none"><svg class="ico-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 20h20L12 3z"/><path d="M12 10v4M12 17h.01"/></svg></span></label><input class="fi" id="nc-ddn" type="date" oninput="calcAge(this.value)"></div>
       </div>
       <div class="fg2">
         <div class="fg"><label class="fl">Email</label><input class="fi" id="nc-email" type="email"></div>
@@ -5188,7 +5228,7 @@ function ouvrirBilanEntree(clientId, mode){
           </select>
         </div>
         <div class="fg"><label class="fl">Statut</label>
-          <select class="fi fs" id="nf-statut"><option value="payee">Payée ✓</option><option value="attente">En attente</option></select>
+          <select class="fi fs" id="nf-statut"><option value="payee">Payée</option><option value="attente">En attente</option></select>
         </div>
       </div>
     </div>
@@ -5249,7 +5289,7 @@ function ouvrirBilanEntree(clientId, mode){
 
 <div class="modal-bg" id="m-doc-medical">
   <div class="modal">
-    <div class="mhead"><div class="mtitle">🩺 Ajouter un document médical</div><button class="mx" onclick="closeM('m-doc-medical')">×</button></div>
+    <div class="mhead"><div class="mtitle"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l3 3v15H6z"/><path d="M15 3v3h3"/></svg> Ajouter un document médical</div><button class="mx" onclick="closeM('m-doc-medical')">×</button></div>
     <div class="mbody">
       <input type="hidden" id="dm-client-id">
       <div class="fg"><label class="fl">Fichier * <span style="font-weight:400;color:var(--muted)">(PDF, photo...)</span></label><input class="fi" id="dm-file" type="file" accept=".pdf,.jpg,.jpeg,.png,.heic,.heif,.webp" onchange="dmAutoNom(this)"></div>

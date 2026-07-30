@@ -381,6 +381,20 @@ body{-webkit-font-smoothing:antialiased}
   .streak-week{order:3;flex-basis:100%;justify-content:center;margin-top:2px}
 }
 
+/* ─── NOTE REPLIABLE — pour garder le parcours principal à 4 gestes ─── */
+.checkin-note-toggle{font-size:13px;font-weight:600;color:var(--ocre);cursor:pointer;margin-top:14px;display:inline-block;text-decoration:underline;text-underline-offset:2px}
+.checkin-note-toggle:hover{color:var(--or)}
+.checkin-note-wrap{margin-top:14px}
+
+/* ─── PALIER DE SÉRIE — moment célébré (3, 7, 14, 30, 60, 90, 180, 365 jours) ─── */
+.checkin-card.milestone{border:1px solid rgba(196,169,125,.55);box-shadow:0 0 0 4px rgba(196,169,125,.14),0 16px 40px rgba(0,0,0,.1);background:linear-gradient(135deg,#F3ECDF,var(--off))}
+.checkin-card.milestone .checkin-done-ic{background:linear-gradient(135deg,var(--ocre),var(--or))}
+
+/* ─── RETOUR TACTILE PASTILLES ─── */
+.checkin-pill{transition:all .15s}
+.checkin-pill:active{transform:scale(.94)}
+.checkin-save:not(:disabled):active{transform:scale(.97)}
+
 /* ─── JALONS (cartes monochromes, alignées sur .db-card) ─── */
 .jalon-card{background:var(--blanc);border:1px solid var(--taupe);border-radius:18px;padding:20px;display:flex;align-items:center;gap:14px;transition:all .3s}
 .jalon-card:hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(0,0,0,.08)}
@@ -1046,7 +1060,7 @@ body{-webkit-font-smoothing:antialiased}
     <div class="tab-content" id="tab-serena">
       <div class="section-eyebrow">Votre canal direct</div>
       <h2 class="section-h2">Le Gardien de Longévité —<br>écrivez directement à Sabrina.</h2>
-      <p class="section-sub">Une question sur votre alimentation, une photo d'un plat, un doute sur votre protocole — votre message lui arrive immédiatement. Sabrina vous répond personnellement, sous 24 à 48h.</p>
+      <p class="section-sub">Une question sur votre alimentation, une photo d'un plat, un doute sur votre protocole — votre message est transmis à Sabrina, qui vous répond personnellement sous 24 à 48h. Avant l'envoi, il se peut qu'on vous pose 1 ou 2 questions rapides : elles servent uniquement à donner à Sabrina un maximum d'informations utiles — ce n'est jamais une IA qui répond à votre place.</p>
 
       <div style="background:#1a1815;border-radius:20px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.18);max-width:640px">
         <div style="display:flex;align-items:center;gap:10px;padding:16px 20px;border-bottom:1px solid rgba(255,255,255,.07)">
@@ -1059,7 +1073,7 @@ body{-webkit-font-smoothing:antialiased}
 
         <div id="serenaMessages" style="padding:20px;max-height:420px;overflow-y:auto;display:flex;flex-direction:column;gap:12px">
           <div style="align-self:flex-start;max-width:85%;background:rgba(255,255,255,.05);border-radius:12px;padding:12px 15px;font-size:15px;color:rgba(237,233,225,.85);line-height:1.6">
-            Bonjour ! Écrivez ici votre question, votre ressenti ou une photo — Sabrina le reçoit immédiatement et vous répond personnellement dès que possible.
+            Bonjour ! Écrivez ici votre question, votre ressenti ou une photo. Avant l'envoi, 1 ou 2 questions rapides peuvent vous être posées pour préparer au mieux votre message — puis tout est transmis à Sabrina, qui vous répond personnellement.
           </div>
         </div>
 
@@ -1073,7 +1087,7 @@ body{-webkit-font-smoothing:antialiased}
         </div>
       </div>
 
-      <p style="font-size:12.5px;color:var(--gris);line-height:1.7;max-width:640px;margin-top:14px">Ce canal n'est pas un outil automatisé : vos messages sont lus et traités personnellement par Sabrina. Il ne remplace jamais une consultation ni un avis médical — en cas d'urgence, contactez votre médecin ou le 15.</p>
+      <p style="font-size:12.5px;color:var(--gris);line-height:1.7;max-width:640px;margin-top:14px">Ce canal n'est pas un outil automatisé : vos messages sont lus et traités personnellement par Sabrina. Les questions de clarification qui peuvent apparaître avant l'envoi ne sont pas des réponses — elles servent seulement à préparer votre message pour elle, qui le reçoit ensuite dans son intégralité. Ce canal ne remplace jamais une consultation ni un avis médical — en cas d'urgence, contactez votre médecin ou le 15.</p>
     </div>
 
     <!-- ─── MON PROCHAIN RDV (reprogrammation, parcours uniquement) ─── -->
@@ -1772,13 +1786,27 @@ function serenaScrollBottom(){
 
 function serenaAddBubble(text, who, meta){
   var box = document.getElementById('serenaMessages');
-  var bubble = document.createElement('div');
   var isUser = who === 'user';
+  var isTriage = who === 'triage';
+
+  // Bulle de clarification IA : étiquette visuelle explicite pour qu'elle ne soit
+  // jamais confondue avec une vraie réponse de Sabrina (bulle pleine, avatar ✦).
+  if(isTriage){
+    var label = document.createElement('div');
+    label.style.cssText = 'align-self:flex-start;font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:rgba(196,169,125,.65);padding:0 4px';
+    label.textContent = 'Pour préparer votre message';
+    label.classList.add('gardien-msg');
+    box.appendChild(label);
+  }
+
+  var bubble = document.createElement('div');
   bubble.style.cssText = 'align-self:' + (isUser ? 'flex-end' : 'flex-start') +
     ';max-width:85%;border-radius:12px;padding:12px 15px;font-size:15px;line-height:1.6;white-space:pre-wrap' +
     (isUser
       ? ';background:var(--ocre);color:#fff'
-      : ';background:rgba(255,255,255,.05);color:rgba(237,233,225,.85)');
+      : isTriage
+        ? ';background:none;border:1px dashed rgba(196,169,125,.45);color:rgba(237,233,225,.85)'
+        : ';background:rgba(255,255,255,.05);color:rgba(237,233,225,.85)');
   bubble.textContent = text;
   box.appendChild(bubble);
   if(meta){
@@ -1830,6 +1858,16 @@ async function gardienLoadHistory(){
   }
 }
 
+// ─── Triage IA avant envoi à Sabrina ───
+// Rôle strict : clarifier et classer, JAMAIS répondre à la question de la cliente.
+// gardienConv.history alimente le contexte envoyé à la fonction Edge chat-triage.
+var gardienConv = { history: [], rounds: 0, pendingFinal: null, imageUrl: null, rawParts: [] };
+var GARDIEN_MAX_ROUNDS = 2; // au-delà, on force la finalisation pour ne jamais bloquer la cliente
+
+function gardienResetConv(){
+  gardienConv = { history: [], rounds: 0, pendingFinal: null, imageUrl: null, rawParts: [] };
+}
+
 function serenaHandleImage(e){
   var file = e.target.files[0];
   if(!file) return;
@@ -1856,6 +1894,8 @@ function serenaClearImage(){
 }
 
 async function serenaSend(){
+  if(gardienConv.pendingFinal) return; // un récapitulatif attend déjà une confirmation
+
   var input = document.getElementById('serenaInput');
   var text = input.value.trim();
   if(!text && !serenaPendingImage) return;
@@ -1873,11 +1913,14 @@ async function serenaSend(){
   var btn = document.getElementById('serenaSendBtn');
   btn.disabled = true; btn.textContent = '…';
 
-  try {
-    var imageUrl = null;
+  // Bulle de la cliente affichée immédiatement
+  serenaAddBubble(text || 'Photo envoyée', 'user').classList.add('gardien-msg');
+  gardienConv.rawParts.push(text || '[photo envoyée]');
 
-    // Upload de la photo si présente, vers le bucket public messages-photos
-    if(imgToSend){
+  var imageForApi = null;
+  try {
+    // Upload de la photo si présente (une seule fois par échange), vers le bucket public messages-photos
+    if(imgToSend && !gardienConv.imageUrl){
       var ext = (imgToSend.file.name.split('.').pop() || 'jpg').toLowerCase();
       var path = session.key + '/' + Date.now() + '.' + ext;
       var uploadRes = await fetch(SUPA_URL + '/storage/v1/object/messages-photos/' + path, {
@@ -1890,10 +1933,113 @@ async function serenaSend(){
         body: imgToSend.file
       });
       if(uploadRes.ok){
-        imageUrl = SUPA_URL + '/storage/v1/object/public/messages-photos/' + path;
+        gardienConv.imageUrl = SUPA_URL + '/storage/v1/object/public/messages-photos/' + path;
       }
+      var parts = (imgToSend.dataUrl || '').split(',');
+      if(parts[1]) imageForApi = { base64: parts[1], mediaType: imgToSend.file.type || 'image/jpeg' };
+    }
+    if(gardienConv.imageUrl){
+      var img = document.createElement('img');
+      img.src = gardienConv.imageUrl;
+      img.style.cssText = 'align-self:flex-end;max-width:60%;border-radius:12px;margin-top:-6px';
+      img.classList.add('gardien-msg');
+      document.getElementById('serenaMessages').appendChild(img);
     }
 
+    gardienConv.rounds += 1;
+    var typingBubble = serenaAddBubble('…', 'triage');
+    typingBubble.classList.add('gardien-msg');
+    var typingLabel = typingBubble.previousElementSibling;
+
+    var res = await fetch(SUPA_URL + '/functions/v1/chat-triage', {
+      method: 'POST',
+      headers: {
+        'apikey': SUPA_KEY,
+        'Authorization': 'Bearer ' + accessToken,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        message: text,
+        image: imageForApi,
+        history: gardienConv.history,
+        forceFinal: gardienConv.rounds > GARDIEN_MAX_ROUNDS
+      })
+    });
+    var data = await res.json();
+    typingBubble.remove();
+    if(typingLabel && typingLabel.classList.contains('gardien-msg')) typingLabel.remove();
+
+    gardienConv.history.push({ role: 'user', content: text || '[photo envoyée]' });
+
+    if(data.error){
+      console.warn('Triage IA indisponible, transmission directe :', data.error);
+      await gardienEnvoyerFinal({ resume: gardienConv.rawParts.join(' '), categorie: 'general', urgence: 'faible' });
+      return;
+    }
+
+    if(data.pret){
+      gardienConv.history.push({ role: 'assistant', content: JSON.stringify(data) });
+      gardienShowRecap(data);
+    } else {
+      gardienConv.history.push({ role: 'assistant', content: data.question || '' });
+      serenaAddBubble(data.question || 'Pouvez-vous préciser ?', 'triage').classList.add('gardien-msg');
+    }
+
+  } catch(err){
+    console.error('Erreur triage :', err);
+    // En cas de souci technique, on ne bloque jamais la cliente : transmission directe du message brut
+    await gardienEnvoyerFinal({ resume: gardienConv.rawParts.join(' '), categorie: 'general', urgence: 'faible' });
+  } finally {
+    btn.disabled = false; btn.textContent = 'Envoyer';
+  }
+}
+
+// Affiche le récapitulatif prêt à être transmis à Sabrina — la cliente garde la main :
+// elle peut confirmer l'envoi ou continuer à préciser son message avant.
+function gardienShowRecap(data){
+  gardienConv.pendingFinal = data;
+  var box = document.getElementById('serenaMessages');
+
+  var label = document.createElement('div');
+  label.className = 'gardien-msg';
+  label.style.cssText = 'align-self:stretch;font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:rgba(196,169,125,.75);padding:0 4px';
+  label.textContent = 'Prêt à transmettre à Sabrina';
+  box.appendChild(label);
+
+  var card = document.createElement('div');
+  card.className = 'gardien-msg';
+  card.style.cssText = 'align-self:stretch;background:rgba(196,169,125,.08);border:1px solid rgba(196,169,125,.3);border-radius:12px;padding:14px 16px';
+  card.innerHTML =
+    '<div style="font-size:14px;color:rgba(237,233,225,.92);line-height:1.6;margin-bottom:14px">' + escHtml(data.resume || '') + '</div>' +
+    '<div style="display:flex;gap:8px">' +
+      '<button onclick="gardienConfirmSend()" style="flex:1;background:var(--ocre);color:#fff;border:none;padding:10px 14px;border-radius:99px;font-size:13.5px;font-weight:600;cursor:pointer;font-family:inherit">Envoyer à Sabrina</button>' +
+      '<button onclick="gardienCancelRecap()" style="background:none;border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.8);padding:10px 14px;border-radius:99px;font-size:13.5px;cursor:pointer;font-family:inherit">Compléter</button>' +
+    '</div>';
+  box.appendChild(card);
+  serenaScrollBottom();
+}
+
+// La cliente veut préciser davantage avant l'envoi : on annule juste le récapitulatif en cours,
+// elle peut retaper un message qui relancera une clarification ou une nouvelle proposition d'envoi.
+function gardienCancelRecap(){
+  gardienConv.pendingFinal = null;
+  document.getElementById('serenaInput').focus();
+}
+
+async function gardienConfirmSend(){
+  var data = gardienConv.pendingFinal;
+  if(!data) return;
+  await gardienEnvoyerFinal(data);
+}
+
+// Envoi effectif et unique vers Sabrina : le message brut complet (tout l'échange de clarification)
+// + la synthèse et le niveau d'urgence estimés par le triage IA, pour qu'elle priorise sa lecture.
+async function gardienEnvoyerFinal(data){
+  var session = JSON.parse(localStorage.getItem('avs_client') || sessionStorage.getItem('avs_client') || '{}');
+  var accessToken = await Auth.getValidAccessToken();
+  if(!session.key || !accessToken){ serenaAddBubble('Session expirée — merci de vous reconnecter.', 'serena'); return; }
+
+  try {
     await fetch(SUPA_URL + '/rest/v1/messages_client', {
       method: 'POST',
       headers: {
@@ -1907,26 +2053,22 @@ async function serenaSend(){
         prenom: session.prenom || '',
         nom: session.nom || '',
         source: 'gardien',
-        message: text || '[photo envoyée]',
-        image_url: imageUrl
+        message: gardienConv.rawParts.join('\n') || '[photo envoyée]',
+        image_url: gardienConv.imageUrl,
+        synthese_ia: data.resume || null,
+        urgence: data.urgence || null
       })
     });
 
-    serenaAddBubble(text || 'Photo envoyée', 'user').classList.add('gardien-msg');
-    if(imageUrl){
-      var img = document.createElement('img');
-      img.src = imageUrl;
-      img.style.cssText = 'align-self:flex-end;max-width:60%;border-radius:12px;margin-top:-6px';
-      img.classList.add('gardien-msg');
-      document.getElementById('serenaMessages').appendChild(img);
+    serenaAddBubble('Votre message a bien été transmis à Sabrina — elle vous répond personnellement sous 24 à 48h.', 'serena').classList.add('gardien-msg');
+    if(data.urgence === 'haute'){
+      serenaAddBubble("Si ce que vous décrivez est intense ou vous inquiète dans l'immédiat, contactez votre médecin ou le 15 sans attendre la réponse de Sabrina.", 'serena').classList.add('gardien-msg');
     }
-    serenaAddBubble('Sabrina a été informée de votre message et va y répondre au plus vite.', 'serena').classList.add('gardien-msg');
-
   } catch(err){
     serenaAddBubble("Une erreur est survenue à l'envoi. Vérifiez votre connexion, ou contactez Sabrina directement si le problème persiste.", 'serena');
     console.error('Erreur envoi message :', err);
   } finally {
-    btn.disabled = false; btn.textContent = 'Envoyer';
+    gardienResetConv();
   }
 }
 
@@ -2289,6 +2431,10 @@ function getCheckinStreak(){
   return { streak: streak, week: week, doneToday: !!dates[todayStr] };
 }
 
+var checkinAutoSaveTimer = null;
+var checkinNoteExpanded = false;
+var CHECKIN_MILESTONES = [3,7,14,30,60,90,180,365];
+
 function renderStreakRow(){
   var st = getCheckinStreak();
   var flame = '<svg viewBox="0 0 24 24" class="streak-flame"><path d="M12 2c1.2 3.1-3 4.4-3 8.3a3 3 0 0 0 6 0c0-1.1-.5-2.1-1-2.7 2.1 1.1 3.3 3.3 3.3 5.9a5.3 5.3 0 0 1-10.6 0c0-4.3 3.2-6.4 3.2-9.4 0-1-.4-1.6-.9-2.1 1 0 2.5.4 3 2z"/></svg>';
@@ -2303,6 +2449,8 @@ async function renderCheckinRapide(){
   var session = JSON.parse(localStorage.getItem('avs_client') || sessionStorage.getItem('avs_client') || '{}');
   var box = document.getElementById('checkinRapide');
   if(!session.key || !box) return;
+  checkinNoteExpanded = false;
+  if(checkinAutoSaveTimer){ clearTimeout(checkinAutoSaveTimer); checkinAutoSaveTimer=null; }
 
   try {
     var token = await Auth.getValidAccessToken();
@@ -2313,10 +2461,13 @@ async function renderCheckinRapide(){
     var rows = res.ok ? await res.json() : [];
 
     if(rows.length){
+      var st = getCheckinStreak();
+      var isMilestone = CHECKIN_MILESTONES.indexOf(st.streak) !== -1;
       var doneSub = [rows[0].humeur, rows[0].energie ? 'Énergie : '+rows[0].energie : '', rows[0].transit, rows[0].ballonnements].filter(Boolean).map(escHtml).join(' · ');
-      box.innerHTML = '<div class="checkin-card">' + renderStreakRow() + '<div class="checkin-done">' +
+      var doneTitle = isMilestone ? st.streak+' jours de suite — c\'est remarquable !' : 'Merci, c\'est noté pour aujourd\'hui';
+      box.innerHTML = '<div class="checkin-card'+(isMilestone?' milestone':'')+'">' + renderStreakRow() + '<div class="checkin-done">' +
         '<div class="checkin-done-ic"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>' +
-        '<div><div class="checkin-title" style="font-size:16px">Merci, c\'est noté pour aujourd\'hui</div>' +
+        '<div><div class="checkin-title" style="font-size:16px">'+doneTitle+'</div>' +
         '<div class="checkin-sub">'+doneSub+' — à demain !</div></div>' +
       '</div></div>';
       return;
@@ -2327,7 +2478,7 @@ async function renderCheckinRapide(){
         renderStreakRow() +
         '<div class="checkin-head">' +
           '<div class="checkin-ic"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div>' +
-          '<div><div class="checkin-title">Comment vous sentez-vous aujourd\'hui ?</div><div class="checkin-sub">Un geste de 10 secondes, tous les jours.</div></div>' +
+          '<div><div class="checkin-title">Comment vous sentez-vous aujourd\'hui ?</div><div class="checkin-sub">4 gestes, 10 secondes, ça s\'enregistre tout seul.</div></div>' +
         '</div>' +
         '<div class="checkin-label">Énergie</div>' +
         '<div class="checkin-pills" id="checkinEnergiePills">' +
@@ -2345,8 +2496,9 @@ async function renderCheckinRapide(){
         '<div class="checkin-pills" id="checkinHumeurPills">' +
           CHECKIN_HUMEUR_OPTS.map(function(h){ return '<div class="checkin-pill" onclick="selectCheckin(\'humeur\',\''+h+'\',this)">'+h+'</div>'; }).join('') +
         '</div>' +
-        '<div class="journal-field full" style="margin-top:14px">' +
-          '<label>Ce que j\'ai remarqué (facultatif)</label>' +
+        '<div id="checkinNoteToggle" class="checkin-note-toggle" onclick="toggleCheckinNote()">+ Ajouter une remarque (facultatif)</div>' +
+        '<div class="journal-field full checkin-note-wrap" id="checkinNoteWrap" style="display:none">' +
+          '<label>Ce que j\'ai remarqué</label>' +
           '<textarea id="checkinNote" placeholder="Un aliment qui a posé problème, un symptôme inhabituel, quelque chose qui s\'est amélioré…"></textarea>' +
         '</div>' +
         '<button class="checkin-save" id="checkinSaveBtn" onclick="saveCheckinRapide()" disabled>Enregistrer →</button>' +
@@ -2357,6 +2509,17 @@ async function renderCheckinRapide(){
   }
 }
 
+function toggleCheckinNote(){
+  checkinNoteExpanded = true;
+  if(checkinAutoSaveTimer){ clearTimeout(checkinAutoSaveTimer); checkinAutoSaveTimer=null; }
+  var wrap = document.getElementById('checkinNoteWrap');
+  var toggle = document.getElementById('checkinNoteToggle');
+  if(wrap) wrap.style.display='block';
+  if(toggle) toggle.style.display='none';
+  var saveBtn = document.getElementById('checkinSaveBtn');
+  if(saveBtn) saveBtn.textContent='Enregistrer →';
+}
+
 function selectCheckin(type, val, btn){
   var container = btn.parentElement;
   container.querySelectorAll('.checkin-pill').forEach(function(p){ p.classList.remove('on'); });
@@ -2365,13 +2528,20 @@ function selectCheckin(type, val, btn){
   if(type==='transit') checkinTransitVal = val;
   if(type==='ballonnements') checkinBallonnementsVal = val;
   if(type==='humeur') checkinHumeurVal = val;
+  var allFilled = !!(checkinEnergieVal && checkinTransitVal && checkinBallonnementsVal && checkinHumeurVal);
   var saveBtn = document.getElementById('checkinSaveBtn');
-  if(saveBtn) saveBtn.disabled = !(checkinEnergieVal && checkinTransitVal && checkinBallonnementsVal && checkinHumeurVal);
+  if(saveBtn) saveBtn.disabled = !allFilled;
+  if(checkinAutoSaveTimer){ clearTimeout(checkinAutoSaveTimer); checkinAutoSaveTimer=null; }
+  if(allFilled && !checkinNoteExpanded){
+    if(saveBtn) saveBtn.textContent = 'Enregistrement…';
+    checkinAutoSaveTimer = setTimeout(function(){ saveCheckinRapide(); }, 600);
+  }
 }
 
 async function saveCheckinRapide(){
   var session = JSON.parse(localStorage.getItem('avs_client') || sessionStorage.getItem('avs_client') || '{}');
   if(!session.key || !checkinEnergieVal || !checkinTransitVal || !checkinBallonnementsVal || !checkinHumeurVal) return;
+  if(checkinAutoSaveTimer){ clearTimeout(checkinAutoSaveTimer); checkinAutoSaveTimer=null; }
   var btn = document.getElementById('checkinSaveBtn');
   if(btn){ btn.disabled=true; btn.textContent='…'; }
   var noteVal = (document.getElementById('checkinNote') || {}).value || '';
@@ -2419,6 +2589,7 @@ async function saveCheckinRapide(){
     if(btn){ btn.disabled=false; btn.textContent='Enregistrer →'; }
   }
 }
+
 
 async function loadJalons(){
   var session = JSON.parse(localStorage.getItem('avs_client') || sessionStorage.getItem('avs_client') || '{}');
