@@ -827,6 +827,7 @@ const PILIER_LABELS = {
   complements:  '✦ Compléments ciblés',
   aromatherapie:'🌸 Aromathérapie',
   bilan:        '📊 Bilan & suivi',
+  programme:    '✦ Parcours recommandé',
   autre:        '— Autre',
 };
 
@@ -1514,6 +1515,14 @@ Si un axe immunitaire, inflammatoire, osseux ou de fatigue de fond est retenu pa
 4. Rappelle si pertinent, dans le PILIER 1 ou le PILIER 3, un geste d'exposition solaire raisonnable et adapté à la saison (quelques minutes de peau exposée sans crème, plusieurs fois par semaine entre avril et octobre) — utile en complément, jamais en remplacement de la supplémentation si un déficit est suspecté ou connu.
 5. Cette vitamine D (± K2) compte dans le total de 2-3 compléments maximum (RÈGLE N°5) — ne jamais l'ajouter en plus des autres soutiens déjà choisis.
 
+━━ RÈGLE N°10 — RECOMMANDATION DE PARCOURS (POURQUOI CETTE DURÉE, JAMAIS UNE VENTE) ━━
+La praticienne a déjà choisi la durée d'accompagnement pour cette cliente : ${d.duree_prog}. Ta mission n'est PAS de vendre ce parcours ni de le présenter comme une option parmi d'autres — c'est une conclusion clinique qui découle directement des axes prioritaires déjà expliqués en s1_corps/s2_axes.
+Rédige le champ « parcours_pourquoi » en 2 courts paragraphes :
+1. Nomme la durée retenue et explique, en te basant SPÉCIFIQUEMENT sur le terrain de cette cliente (jamais un texte générique interchangeable d'une cliente à l'autre), pourquoi ce temps est nécessaire. Exemples de logique à adapter à son cas réel : un déséquilibre isolé et récent ne demande pas le même temps qu'un terrain hormonal installé depuis des années ; un SIBO récidivant ou une thyroïde auto-immune demandent un ancrage plus long qu'un épisode ponctuel. Relie TOUJOURS ce raisonnement à ce qui a été observé chez elle précisément (âge, ancienneté des symptômes, complexité des axes retenus).
+2. Termine TOUJOURS par une phrase de réassurance explicite : cette consultation a une valeur pleine et entière par elle-même, elle n'a absolument aucune obligation de poursuivre au-delà, et rien ne lui sera jamais imposé sans qu'elle comprenne pourquoi.
+Ton : autorité bienveillante, jamais commercial, aucun vocabulaire de vente. Ne JAMAIS mentionner de prix ni de montant (les tarifs sont affichés séparément par l'outil, pas par toi).
+Si ${d.duree_prog} correspond à 1 ou 2 mois (pas de parcours nommé Alba/Aria/Ora) : n'invente aucun nom de parcours, explique simplement pourquoi un protocole court et ciblé est adapté à sa situation actuelle.
+
 ━━ DONNÉES DE LA SÉANCE ━━
 Cliente : ${d.prenom}${d.nom ? ' ' + d.nom : ''}${d.age ? ', ' + d.age + ' ans' : ''} · Profil : ${d.profil}
 Diagnostics médicaux confirmés : ${d.diagnostics_confirmes || 'Aucun renseigné — travailler sur les symptômes et axes prioritaires uniquement'}${d.sibo_type ? ' · Type de SIBO : ' + d.sibo_type : ''}
@@ -1609,6 +1618,7 @@ Réponds UNIQUEMENT avec le JSON pur, sans markdown, sans backticks.
   "s6_signaux": "1 phrase d'introduction personnalisée (basée sur son objectif exprimé).\\n\\nEn 2 à 4 semaines, vous devriez ressentir :\\n• [signal concret 1 lié à ses axes]\\n• [signal concret 2]\\n• [signal concret 3]\\n\\nÀ 6 semaines :\\n• [changement plus profond]\\n• [signe 2]\\n\\nSi vous ne ressentez aucun changement après 3 semaines : [conseil clair]\\n\\nMot de clôture chaleureux (2-3 phrases, signé Sabrina Castelli / A VITA SERENA — Naturopathe, Porto-Vecchio).",
   "s7_aromatherapie": "Voir RÈGLE N°7 (convention de puces \"•\"/\"◦\" de la RÈGLE N°1ter incluse). Chaîne vide si aucune huile compatible pertinente.",
 
+  "parcours_pourquoi": "Voir RÈGLE N°10. 2 courts paragraphes, ton chaleureux et direct, jamais commercial, jamais de prix ni de montant.",
 
 }
 
@@ -1625,6 +1635,18 @@ RÈGLES IMPÉRATIVES :
 }
 
 // ── Génération ──
+// Déduit le parcours nommé (alba/aria/ora) de la durée choisie par la praticienne dans le formulaire.
+// Volontairement calculé ici en JS (jamais par l'IA) pour ne jamais dépendre d'un texte halluciné —
+// garantit que le nom, la durée et le prix affichés dans le PHV restent toujours exacts et cohérents
+// avec reservation.html/parcours.html, quelle que soit la formulation exacte du texte du <select>.
+function programmeCleFromDuree(dureeProg) {
+  const s = (dureeProg || '').toLowerCase();
+  if (s.includes('alba')) return 'alba';
+  if (s.includes('aria')) return 'aria';
+  if (s.includes('ora')) return 'ora';
+  return null; // 1 ou 2 mois : protocole court, pas de parcours nommé
+}
+
 async function generate() {
   if (!AIClient.hasKey()) { alert('Veuillez d\'abord entrer votre clé API Anthropic.'); return; }
   const d = buildClientData();
@@ -1647,6 +1669,7 @@ async function generate() {
     clearInterval(interval);
     generatedData = parseJSONRobuste(raw);
     generatedData._client = d;
+    generatedData.programme_cle = programmeCleFromDuree(d.duree_prog);
 
     // Convertir les 6 sections en blocs éditables
     blocks = [
@@ -1660,6 +1683,7 @@ async function generate() {
     if ((generatedData.s7_aromatherapie || '').trim()) {
       blocks.push({ id:'s7', title:'Votre synergie aromathérapie', pilier:'aromatherapie', content: stripMd(generatedData.s7_aromatherapie) });
     }
+    blocks.push({ id:'sP', title:'Le parcours que je vous recommande', pilier:'programme', content: stripMd(generatedData.parcours_pourquoi || '') });
     renderPreview(generatedData, d);
 
   } catch (err) {
@@ -1814,7 +1838,7 @@ async function ouvrirProtocole() {
   if (!generatedData || !blocks.length) return;
 
   // Synchroniser le contenu édité dans generatedData
-  const map = { s1:'s1_corps', s2:'s2_axes', s3:'s3_protocole', s4:'s4_alimentation', s5:'s5_rituels', s6:'s6_signaux', s7:'s7_aromatherapie' };
+  const map = { s1:'s1_corps', s2:'s2_axes', s3:'s3_protocole', s4:'s4_alimentation', s5:'s5_rituels', s6:'s6_signaux', s7:'s7_aromatherapie', sP:'parcours_pourquoi' };
   blocks.forEach(b => { if (map[b.id]) generatedData[map[b.id]] = b.content; });
 
   localStorage.setItem('avita_phv_print', JSON.stringify({ data: generatedData, blocks }));
