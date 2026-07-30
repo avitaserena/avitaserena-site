@@ -1537,6 +1537,7 @@ let taches=[],rdvs=[],emailCtx=null,curTab='urg',curSearch='',curFilter='all';
 let memoAlerts=[];
 let memoHistoryAll=[]; // tous les mémos PHV, sans dédoublonnage — historique complet par cliente
 let clientMessages=[];
+let clientErrorLogs=[];
 let docsMedicaux={}; // { clientId: [ {id, nom_fichier, type, date_bilan, storage_path, uploaded_at}, ... ] }
 let protocolesClient={}; // { clientId: row de la table protocoles_client (protocole PHV actuellement actif), ou null }
 let protocolesHistory={}; // { clientId: [ {id, created_at}, ... ] } — tous les protocoles jamais générés, jamais écrasés
@@ -1605,6 +1606,7 @@ async function init(){
     loadRdvs(),
     loadMemoAlerts(),
     loadClientMessages(),
+    loadErreurs(),
     loadPilotage()
   ]);
 
@@ -2308,12 +2310,24 @@ function urgenceBadge(urgence){
   return '';
 }
 
+function contexteTechniqueHtml(ctx){
+  if(!ctx) return '';
+  let c = ctx;
+  if(typeof c === 'string'){ try{ c = JSON.parse(c); }catch(e){ return ''; } }
+  const erreurs = Array.isArray(c.dernieres_erreurs) ? c.dernieres_erreurs : [];
+  return `<div style="font-size:11.5px;color:var(--muted);background:var(--bg2,#F7F7FA);border:1px dashed var(--border);border-radius:8px;padding:8px 12px;margin-bottom:10px;line-height:1.6">
+    <strong style="color:var(--ink)">Contexte technique</strong> — page : ${escH(c.page||'—')} · navigateur : ${escH((c.user_agent||'').slice(0,70))}${(c.user_agent||'').length>70?'…':''}
+    ${erreurs.length?`<br>Dernières erreurs de la session : ${erreurs.map(e=>escH(e.message||'')).join(' · ')}`:''}
+  </div>`;
+}
+
 function messagesBox(list, emptyLabel){
   if(!list.length) return `<div class="empty"><div class="eicon">${ic('message')}</div><div class="etitle">${emptyLabel}</div></div>`;
   return sortMessagesByPriorite(list).map(m=>{
     const dateStr = new Date(m.created_at).toLocaleString('fr-FR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
-    const sourceLbl = m.source==='journal' ? 'Question du journal' : 'Le Gardien de Longévité';
-    const bordureUrgence = m.urgence==='haute' ? '3px solid var(--red,#E2445C)' : (!m.lu ? '3px solid #E2445C' : 'none');
+    const sourceLbl = m.source==='journal' ? 'Question du journal' : m.source==='bug' ? 'Signalement technique' : 'A Luma';
+    const estBug = m.source==='bug';
+    const bordureUrgence = estBug ? '3px solid var(--orange,#FFA412)' : m.urgence==='haute' ? '3px solid var(--red,#E2445C)' : (!m.lu ? '3px solid #E2445C' : 'none');
     return `<div class="card" style="margin-bottom:10px;border-left:${bordureUrgence}">
       <div class="card-body" style="padding:16px 18px">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px">
@@ -2322,10 +2336,11 @@ function messagesBox(list, emptyLabel){
             <div style="font-size:11px;color:var(--muted)">${sourceLbl} · ${dateStr}</div>
           </div>
           <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
-            ${urgenceBadge(m.urgence)}
+            ${estBug?`<span class="tab-pill" style="background:#FFF4E0;color:#8A5A00;display:inline-flex;align-items:center;gap:4px">${ic('warn','ico-xs')}Bug signalé</span>`:urgenceBadge(m.urgence)}
             ${!m.lu?'<span class="tab-pill tp-red">Non lu</span>':(m.repondu?'<span class="tab-pill" style="background:#DCFFF0;color:#007A45">Répondu</span>':'<span class="tab-pill tp-orange">À traiter</span>')}
           </div>
         </div>
+        ${estBug?contexteTechniqueHtml(m.contexte_technique):''}
         ${m.synthese_ia?`<div style="font-size:12.5px;color:#6C47FF;background:#F5F3FF;padding:8px 12px;border-radius:8px;margin-bottom:8px"><strong>Résumé préparé pour vous :</strong> ${escH(m.synthese_ia)}</div>`:''}
         <div style="font-size:14px;color:var(--ink);line-height:1.6;background:var(--bg2,#F7F7FA);padding:12px 14px;border-radius:10px;margin-bottom:${m.image_url?'8px':'12px'}">${escH(m.message)}</div>
         ${m.image_url?`<a href="${m.image_url}" target="_blank"><img src="${m.image_url}" style="max-width:160px;border-radius:8px;margin-bottom:12px;display:block"></a>`:''}
@@ -2349,6 +2364,62 @@ function renderMessagesFeed(){
   if(cnt) cnt.textContent = unreadMessagesCount();
   const navBdg = document.getElementById('badge-msg');
   if(navBdg){ navBdg.textContent = unreadMessagesCount(); navBdg.classList.toggle('show', unreadMessagesCount()>0); }
+}
+
+// ── Journal d'erreurs silencieux (client_error_logs) ──
+// Capture automatique des erreurs JS c\u00f4t\u00e9 espace-clientes.html, sans aucune
+// action de la cliente. Ici : simple consultation + marquage lu, pas de r\u00e9ponse
+// possible (ce n'est pas un message, juste un signal technique pour le support).
+async function loadErreurs(){
+  try{
+    clientErrorLogs = await sb('client_error_logs?order=created_at.desc&limit=200');
+  }catch(e){
+    console.error('[CRM] \u2717 Erreurs techniques:', e.message);
+    clientErrorLogs = [];
+  }
+}
+
+function unreadErreursCount(){
+  return clientErrorLogs.filter(e=>!e.lu).length;
+}
+
+async function marquerErreurLue(id){
+  try{
+    await sb('client_error_logs?id=eq.'+id, { method:'PATCH', body: JSON.stringify({ lu:true }) });
+    const e = clientErrorLogs.find(x=>x.id===id);
+    if(e) e.lu = true;
+    renderErreurs();
+  }catch(e){ toast('Erreur : '+e.message,'err'); }
+}
+
+function erreursBox(list){
+  if(!list.length) return `<div class="empty"><div class="eicon">${ic('check')}</div><div class="etitle">Aucune erreur technique enregistr\u00e9e.</div></div>`;
+  return list.map(e=>{
+    const dateStr = new Date(e.created_at).toLocaleString('fr-FR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+    const client = db.clients.find(c=>c.id===e.client_key);
+    const nomCliente = client ? (client.prenom+' '+(client.nom||'')) : (e.email||'Cliente non identifi\u00e9e');
+    return `<div class="card" style="margin-bottom:10px;${!e.lu?'border-left:3px solid #FFA412':''}">
+      <div class="card-body" style="padding:16px 18px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px">
+          <div>
+            <div style="font-size:14px;font-weight:700;color:var(--ink)">${escH(nomCliente)}</div>
+            <div style="font-size:11px;color:var(--muted)">${escH(e.page||'page inconnue')} \u00b7 ${dateStr}</div>
+          </div>
+          ${!e.lu?'<span class="tab-pill tp-red">Non lu</span>':'<span class="tab-pill" style="background:#F0F0F0;color:var(--muted)">Vu</span>'}
+        </div>
+        <div style="font-size:13.5px;color:var(--ink);line-height:1.6;background:var(--bg2,#F7F7FA);padding:10px 14px;border-radius:8px;margin-bottom:8px;font-family:monospace">${escH(e.message)}</div>
+        ${e.user_agent?`<div style="font-size:11px;color:var(--muted);margin-bottom:10px">${escH(e.user_agent.slice(0,90))}</div>`:''}
+        ${!e.lu?`<button class="btn btn-ghost btn-sm" onclick="marquerErreurLue('${e.id}')">Marquer vu</button>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderErreurs(){
+  const box = document.getElementById('erreurs-full-box');
+  if(box) box.innerHTML = erreursBox(clientErrorLogs);
+  const navBdg = document.getElementById('badge-erreurs');
+  if(navBdg){ navBdg.textContent = unreadErreursCount(); navBdg.classList.toggle('show', unreadErreursCount()>0); }
 }
 
 function renderReservationRequests(){
@@ -2486,7 +2557,7 @@ async function deleteRecette(id){
   }catch(e){ toast('Erreur : '+e.message,'err'); }
 }
 
-function mapC(r){return{id:r.id,prenom:r.prenom,nom:r.nom,email:r.email,tel:r.tel,age:r.age,ddn:r.ddn,motifs:r.motifs,axes:r.axes,notes:r.notes,programme:r.programme,dureeTtt:r.duree_ttt,date1:r.date1,dateProtocole:r.date_protocole,phv_url:r.phv_url||'',timeline:r.timeline||[],workflowDone:r.workflow_done||{},createdAt:r.created_at};}
+function mapC(r){return{id:r.id,prenom:r.prenom,nom:r.nom,email:r.email,tel:r.tel,age:r.age,ddn:r.ddn,motifs:r.motifs,axes:r.axes,notes:r.notes,programme:r.programme,dureeTtt:r.duree_ttt,date1:r.date1,dateProtocole:r.date_protocole,phv_url:r.phv_url||'',timeline:r.timeline||[],workflowDone:r.workflow_done||{},createdAt:r.created_at,chat_addon_actif:!!r.chat_addon_actif,chat_addon_prix:r.chat_addon_prix||45,chat_addon_debut:r.chat_addon_debut||'',chat_addon_renouvellement:r.chat_addon_renouvellement||'',chat_addon_source:r.chat_addon_source||''};}
 
 function today(){return new Date().toISOString().split('T')[0];}
 function addD(d,n){if(!d)return null;const dt=new Date(d);dt.setDate(dt.getDate()+n);return dt.toISOString().split('T')[0];}
@@ -2528,7 +2599,8 @@ const ICON_PATHS={
   bolt:'<path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z"/>',
   cash:'<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M6 9v.01M18 15v.01"/>',
   printer:'<path d="M6 9V4h12v5"/><rect x="4" y="9" width="16" height="8" rx="1.5"/><path d="M6 17v3h12v-3"/>',
-  link:'<path d="M9 15l6-6"/><path d="M7 12a4 4 0 0 1 0-6l2-2a4 4 0 0 1 6 6"/><path d="M17 12a4 4 0 0 1 0 6l-2 2a4 4 0 0 1-6-6"/>'
+  link:'<path d="M9 15l6-6"/><path d="M7 12a4 4 0 0 1 0-6l2-2a4 4 0 0 1 6 6"/><path d="M17 12a4 4 0 0 1 0 6l-2 2a4 4 0 0 1-6-6"/>',
+  eye:'<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/>'
 };
 function ic(name,cls){ return '<svg class="ico'+(cls?' '+cls:'')+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+(ICON_PATHS[name]||'')+'</svg>'; }
 
@@ -2539,7 +2611,7 @@ function nav(name,el){
   document.querySelectorAll('.sb-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('page-'+name)?.classList.add('active');
   if(el)el.classList.add('active');
-  const titles={dashboard:"Aujourd'hui",agenda:'Agenda',clients:'Clientes',fiche:'Fiche cliente',factures:'Factures',stats:'Statistiques',settings:'Mon cabinet',messages:'Messages clientes',recettes:'Recettes',pilotage:'Pilotage lancement'};
+  const titles={dashboard:"Aujourd'hui",agenda:'Agenda',clients:'Clientes',fiche:'Fiche cliente',factures:'Factures',stats:'Statistiques',settings:'Mon cabinet',messages:'Messages clientes',erreurs:'Erreurs techniques',recettes:'Recettes',pilotage:'Pilotage lancement'};
   document.getElementById('page-title').textContent=titles[name]||name;
   if(name==='dashboard')renderDashboard();
   if(name==='agenda'){
@@ -2551,6 +2623,7 @@ function nav(name,el){
   if(name==='settings')loadSettings();
   if(name==='stats')renderStats();
   if(name==='messages')renderMessagesFeed();
+  if(name==='erreurs')renderErreurs();
   if(name==='recettes')loadRecettesAdmin();
   if(name==='pilotage')loadPilotage();
 }
@@ -3103,12 +3176,14 @@ function renderClients(){
     const alertCount=getAlerts(c).length;
     const g=gMaps[pCls(c.programme)]||gMaps.alba;
     const progH=c.programme?"<span class='ptag' style='background:"+g+"22;color:"+g+"'>"+pLbl(c.programme)+"</span>":"<span class='ptag-off'>—</span>";
+    const enParcoursListe=c.programme&&['alba','aria','ora'].includes(String(c.programme).toLowerCase());
+    const chatBadge=(c.chat_addon_actif&&!enParcoursListe)?"<span class='ptag' style='background:#F5F3FF;color:#6C47FF;margin-left:4px' title='Option chat active'>"+ic('message','ico-xs')+"</span>":'';
     return "<tr onclick=\"openFiche('"+c.id+"')\">"+
       "<td><div class='ctr-name'><div class='cc-av sm' style='background:"+col+"'>"+init+"</div><div class='ctr-nom'>"+escH(c.prenom)+" "+escH(c.nom||'')+"</div></div></td>"+
       "<td>"+(age?age+' ans':'—')+"</td>"+
       "<td>"+(c.email?escH(c.email):'—')+"</td>"+
       "<td>"+(c.tel?escH(c.tel):'—')+"</td>"+
-      "<td>"+progH+"</td>"+
+      "<td>"+progH+chatBadge+"</td>"+
       "<td><span class='stag "+status.cl+"'>"+status.label+"</span>"+(alertCount?"<span class='ctr-alert' title='"+alertCount+" alerte(s)'><svg width='12' height='12' viewBox='0 0 24 24' fill='none'><path d='M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0' stroke='currentColor' stroke-width='2.5'/></svg></span>":'')+"</td>"+
       "<td>"+fmtDMY(firstDate)+"</td>"+
       "<td>"+fmtDMY(lastDate)+"</td>"+
@@ -3122,7 +3197,7 @@ function updateTopbarActions(page){
   const el=document.getElementById('topbar-actions');if(!el)return;
   if(page==='clients'){
     const existing=document.getElementById('btn-export-csv');
-    if(!existing)el.insertAdjacentHTML('afterbegin','<button class="btn btn-ghost btn-sm" id="btn-export-csv" onclick="exportCSV()" title="Exporter en CSV" style="margin-right:6px">⬇ CSV</button>');
+    if(!existing)el.insertAdjacentHTML('afterbegin','<button class="btn btn-ghost btn-sm" id="btn-export-csv" onclick="exportCSV()" title="Exporter en CSV" style="margin-right:6px">'+ic('download')+' CSV</button>');
   }else{
     document.getElementById('btn-export-csv')?.remove();
   }
@@ -3243,6 +3318,18 @@ function renderFiche(c){
     naHtml=`<div class="next-action done"><div class="na-icon">${ic('check')}</div><div class="na-body"><div class="na-label">Toutes les étapes sont complètes</div></div></div>`;
   }
 
+  // Option chat — incluse en parcours, sinon activable manuellement (test / geste commercial)
+  const enParcoursChat = c.programme && ['alba','aria','ora'].includes(String(c.programme).toLowerCase());
+  const chatActif = !!c.chat_addon_actif;
+  const chatRenouv = c.chat_addon_renouvellement ? fmtDate(c.chat_addon_renouvellement) : '';
+  const chatSourceLbl = c.chat_addon_source==='stripe' ? ' · payant (Stripe)' : c.chat_addon_source==='manuel' ? ' · activé manuellement' : '';
+  const chatAddonHtml = enParcoursChat
+    ? `<span style="color:var(--muted)">Inclus — parcours ${pLbl(c.programme)}</span>`
+    : `<label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer">
+        <input type="checkbox" ${chatActif?'checked':''} onchange="toggleChatAddon('${cid}',this.checked)">
+        <span>${chatActif?'Active'+chatSourceLbl:'Inactive'}</span>
+      </label>${chatActif&&chatRenouv?`<span style="color:var(--muted);font-size:12px;margin-left:8px">Renouvellement le ${chatRenouv}</span>`:''}`;
+
   // Infos
   const infoRows=[
     ['Problématique principale', c.motifs?`<strong style="color:var(--ink)">${escH(c.motifs)}</strong>`:`<span style='color:var(--red);display:inline-flex;align-items:center;gap:4px'>${ic('warn','ico-xs')} Non renseignée</span>`],
@@ -3250,6 +3337,7 @@ function renderFiche(c){
     ['Téléphone', c.tel?`<a href="tel:${escH(c.tel)}" style="color:var(--ink);text-decoration:none">${escH(c.tel)}</a>`:'—'],
     ['Date de naissance', c.ddn?(fmtDate(c.ddn)+(age?` · <span style="color:var(--muted)">${age} ans</span>`:'')):'—'],
     ['Programme', c.programme?`<span class="prog-badge pb-${pCls(c.programme)}">${pLbl(c.programme)}</span>`:"<span style='color:var(--muted)'>Consultation ponctuelle</span>"],
+    ['Option chat', chatAddonHtml],
     ['Axes de travail', escH(c.axes||'—')],
     c.notes?['Notes', `<span style="font-size:12px">${escH(c.notes)}</span>`]:null,
     ['1ère consultation', fmtDate(c.date1)],
@@ -3392,6 +3480,7 @@ function renderFiche(c){
           ${hasPHV?btn('fv2-btn',`window.open('${c.phv_url?escH(c.phv_url):'phv-print.html?client='+encodeURIComponent(cid)}','_blank')`,ic('download')+' Voir le PHV'):''}
           ${btn('fv2-btn',`ouvrirPHVCliente('${cid}')`, hasPHV?ic('refresh')+' Régénérer PHV':ic('spark')+' Générer PHV')}
           ${btn('fv2-btn',`ouvrirLettreClinique('${cid}')`,ic('mail')+' Adressage')}
+          ${c.email?btn('fv2-btn',`voirCommeElle('${cid}')`, ic('eye')+' Voir comme elle'):''}
           ${btn('fv2-btn accent',`ouvrirEditionCliente('${cid}')`, ic('edit')+' Modifier')}
           ${btn('fv2-btn danger',`ouvrirSuppressionCliente('${cid}')`, ic('trash')+' Supprimer')}
         </div>
@@ -3717,9 +3806,48 @@ function ouvrirMailModal(clientId, tplKey){
 function openBrevo(){if(emailCtx)logEmail(emailCtx.id);window.open('https://app.brevo.com','_blank');closeM('m-email');}
 async function addTLEvent(id){const t=prompt("Titre de l\'événement :");if(!t)return;const c=db.clients.find(x=>x.id===id);if(!c)return;if(!c.timeline)c.timeline=[];c.timeline.push({type:'suivi',title:t,icon:'·',date:today()});await saveClient(c);renderFiche(c);toast('Événement ajouté','ok');}
 
+// "Voir comme elle" : génère un lien de connexion temporaire vers l'espace de cette
+// cliente précise, sans jamais avoir besoin de son mot de passe. Réservé à la praticienne
+// (vérifié côté serveur). Toujours ouvrir dans une fenêtre privée pour ne pas mélanger
+// cette session avec la tienne dans le même navigateur.
+async function voirCommeElle(cid){
+  const c = db.clients.find(x=>x.id===cid);
+  if(!c){ toast('Fiche introuvable','err'); return; }
+  if(!c.email){ toast('Email manquant sur cette fiche — impossible de générer le lien','err'); return; }
+  if(!confirm('Ouvrir l\'espace de '+(c.prenom||'')+' '+(c.nom||'')+' tel qu\'elle le voit ?\n\nOuvrez plutôt ce lien dans une fenêtre de navigation privée, pour ne pas mélanger cette session avec la vôtre.')) return;
+  try{
+    const token = await Auth.getValidAccessToken();
+    const res = await fetch(SB+'/functions/v1/impersonate-client', {
+      method:'POST',
+      headers:{ 'apikey':KEY, 'Authorization':'Bearer '+token, 'Content-Type':'application/json' },
+      body: JSON.stringify({ client_id: cid })
+    });
+    const data = await res.json();
+    if(!res.ok || data.error){ toast('Erreur : '+(data.error||'impossible de générer le lien'),'err'); return; }
+    window.open(data.url, '_blank');
+    toast('Lien ouvert — pensez à une fenêtre privée si ce n\'est pas déjà le cas','ok');
+  }catch(e){ toast('Erreur : '+e.message,'err'); }
+}
+
 async function saveClient(c){
   const p={prenom:c.prenom,nom:c.nom,email:c.email,tel:c.tel,age:c.age,ddn:c.ddn,motifs:c.motifs,axes:c.axes,notes:c.notes,programme:c.programme,duree_ttt:c.dureeTtt,date1:c.date1,date_protocole:c.dateProtocole,phv_url:c.phv_url||null,timeline:c.timeline,workflow_done:c.workflowDone,updated_at:new Date().toISOString()};
   try{await sb('clientes?id=eq.'+c.id,{method:'PATCH',body:JSON.stringify(p)});}catch(e){console.error(e);}
+}
+
+// Interrupteur manuel de l'option chat (fiche cliente) — sert à la fois de test
+// pour la praticienne et de geste commercial ponctuel. Distinct d'un abonnement Stripe :
+// chat_addon_source reste 'manuel', donc ces activations ne comptent jamais dans le CA récurrent.
+async function toggleChatAddon(cid, actif){
+  const c=db.clients.find(x=>x.id===cid); if(!c) return;
+  const patch = actif
+    ? { chat_addon_actif:true, chat_addon_source:'manuel', chat_addon_debut: c.chat_addon_debut||today(), chat_addon_renouvellement: (function(){ const d=new Date(); d.setMonth(d.getMonth()+1); return d.toISOString().split('T')[0]; })() }
+    : { chat_addon_actif:false };
+  try{
+    await sb('clientes?id=eq.'+cid,{method:'PATCH',body:JSON.stringify(patch)});
+    Object.assign(c, patch);
+    renderFiche(c);
+    toast(actif?'Option chat activée (test manuel)':'Option chat désactivée','ok');
+  }catch(e){ toast('Erreur : '+e.message,'err'); }
 }
 
 function showNewClientModal(){
@@ -4007,6 +4135,17 @@ function renderStats(){
 
   const gMaps={alba:'#E28B2B',aria:'#7B6EE6',ora:'#0DA678'};
 
+  // Option chat — adoption, usage réel, et poids récurrent dans le CA.
+  // chat_addon_source==='stripe' seul compte dans le CA (le 'manuel' sert aux tests/gestes commerciaux).
+  const chatAdopters=clients.filter(c=>c.chat_addon_actif);
+  const chatAdoptersPayants=chatAdopters.filter(c=>c.chat_addon_source==='stripe');
+  const msgCountByClient={};
+  (typeof clientMessages!=='undefined'?clientMessages:[]).forEach(m=>{msgCountByClient[m.client_key]=(msgCountByClient[m.client_key]||0)+1;});
+  const chatMsgCounts=chatAdopters.map(c=>msgCountByClient[c.id]||0);
+  const chatMsgMoyen=chatMsgCounts.length?(chatMsgCounts.reduce((s,v)=>s+v,0)/chatMsgCounts.length):0;
+  const chatJamaisUtilise=chatAdopters.filter(c=>!msgCountByClient[c.id]).length;
+  const caRecurrentMensuel=chatAdoptersPayants.reduce((s,c)=>s+(c.chat_addon_prix||45),0);
+
   el.innerHTML=`
   <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px">
     ${statCard('<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="2" y="6" width="20" height="12" rx="2" stroke="currentColor" stroke-width="2.2"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2.2"/><path d="M6 9v.01M18 15v.01" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>',caPeriodTotal>0?caPeriodTotal.toFixed(0)+' €':'—','CA · '+periodLbl,'#FF7B2C')}
@@ -4050,6 +4189,22 @@ function renderStats(){
         ${progBar('Aria',caByProg.aria,caTotal,gMaps.aria)}
         ${progBar('Ora',caByProg.ora,caTotal,gMaps.ora)}
         ${caByProg.autre>0?progBar('Autres',caByProg.autre,caTotal,'var(--muted)'):''}
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-head"><div class="card-title"><div class="card-dot" style="background:#6C47FF"></div>Option chat — adoption &amp; revenu récurrent</div></div>
+    <div class="card-body">
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px">
+        ${statCard(ic('message'),chatAdopters.length,"Clientes avec l'option",'#6C47FF')}
+        ${statCard(ic('chart'),chatMsgMoyen.toFixed(1),'Messages / cliente en moyenne','#6C47FF')}
+        ${statCard(ic('warn'),chatJamaisUtilise,"N'ont jamais écrit",'#FFA412')}
+        ${statCard(ic('cash'),caRecurrentMensuel.toFixed(0)+' €','CA récurrent / mois','#00C875')}
+      </div>
+      <div style="background:var(--bg2,#F7F7FA);border-radius:10px;padding:14px 16px;font-size:13px;color:var(--ink);line-height:1.7">
+        <strong>CA prévisionnel du mois prochain (option chat) : ${caRecurrentMensuel.toFixed(0)} €</strong><br>
+        <span style="color:var(--muted);font-size:12px">Estimation basée sur les ${chatAdoptersPayants.length} abonnement(s) payant(s) actif(s) aujourd'hui, à prix inchangé — ne tient pas compte d'éventuelles résiliations à venir avant leur date de renouvellement. Ce chiffre est récurrent, contrairement au CA programmes/consultations qui repart de zéro chaque mois.</span>
       </div>
     </div>
   </div>
@@ -4558,7 +4713,7 @@ async function genererAlternativeIA(idx, texteRefus, raison, prenom){
   if(!apiKey){ toast('Clé API requise','err'); return; }
 
   ta.value = ''; ta.placeholder = 'Génération en cours…'; ta.disabled = true;
-  if(btn){ btn.disabled = true; btn.textContent = '⏳ En cours…'; }
+  if(btn){ btn.disabled = true; btn.textContent = 'En cours…'; }
 
   try{
     const prompt = `Tu es Sabrina Castelli, naturopathe spécialisée en santé digestive et équilibre hormonal.
@@ -4826,6 +4981,11 @@ function ouvrirBilanEntree(clientId, mode){
       <span class="sb-lbl">Messages clientes</span>
       <span class="sb-bdg" id="badge-msg">0</span>
     </div>
+    <div class="sb-item" onclick="nav('erreurs',this)">
+      <div class="sb-ic" style="background:#FFF0DB;color:#FFA412"><svg width="13" height="13" fill="none" viewBox="0 0 24 24"><path d="M12 3 2 20h20L12 3z" stroke="currentColor" stroke-width="2.5"/><path d="M12 10v4M12 17h.01" stroke="currentColor" stroke-width="2.5"/></svg></div>
+      <span class="sb-lbl">Erreurs techniques</span>
+      <span class="sb-bdg" id="badge-erreurs">0</span>
+    </div>
     <div class="sb-sec">Clientes</div>
     <div class="sb-item" onclick="nav('clients',this)">
       <div class="sb-ic" style="background:#E0F2FF;color:#0096FF"><svg width="13" height="13" fill="none" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="2.5"/><circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="2.5"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" stroke-width="2.5"/></svg></div>
@@ -4975,6 +5135,12 @@ function ouvrirBilanEntree(clientId, mode){
     <div id="messages-full-box"></div>
   </div>
 
+  <!-- ERREURS TECHNIQUES (journal silencieux client_error_logs) -->
+  <div class="page" id="page-erreurs">
+    <p style="font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:18px;max-width:640px">Capture automatique des erreurs survenues dans l'espace clientes — sans aucune action de leur part. Utile pour retrouver ce qui s'est passé quand une cliente signale un souci, ou pour repérer un problème avant même qu'elle ne le remarque.</p>
+    <div id="erreurs-full-box"></div>
+  </div>
+
   <!-- CLIENTS -->
   <div class="page" id="page-clients">
     <div class="toolbar">
@@ -5056,7 +5222,7 @@ function ouvrirBilanEntree(clientId, mode){
             <div class="fchip" id="sp-tout" onclick="setStatsPeriod('tout',this)">Tout</div>
           </div>
           <div style="flex:1"></div>
-          <button class="btn btn-ghost btn-sm" onclick="exportStatsCSV()">⬇ Exporter CSV</button>
+          <button class="btn btn-ghost btn-sm" onclick="exportStatsCSV()"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13"/><path d="M7 12l5 5 5-5"/><path d="M5 21h14"/></svg> Exporter CSV</button>
         </div>
         <div id="stats-box"></div>
       </div>
