@@ -738,6 +738,17 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
           </div>
         </div>
       </div>
+
+      <div id="bloc-luma" style="display:none;margin-top:16px;background:var(--blanc);border:1.5px solid var(--taupe);border-radius:12px;padding:16px 18px">
+        <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer;margin:0">
+          <input type="checkbox" id="f-luma" onchange="toggleLuma(this.checked)" style="margin-top:3px;width:17px;height:17px;flex-shrink:0;accent-color:var(--ocre)">
+          <span>
+            <span style="display:block;font-family:'Cormorant Garamond',serif;font-size:17px;color:var(--ardoise);margin-bottom:4px">Ajouter <strong>A Luma</strong> — 45€/mois</span>
+            <span style="display:block;font-size:13px;color:var(--gris);line-height:1.65">Un éclairage entre deux séances : une question, un doute sur un symptôme, un ajustement léger de votre protocole — Sabrina vous répond personnellement sous 24 à 48h. Résiliable à tout moment ; le premier mois n'est pas remboursable une fois activé.</span>
+          </span>
+        </label>
+        <div id="luma-note" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--taupe);font-size:12px;color:var(--gris);line-height:1.6">Votre carte enregistrée pour cette réservation servira aussi au prélèvement mensuel de 45€ — aucune autre saisie nécessaire. Vous recevrez un email de confirmation dès l'activation.</div>
+      </div>
     </div>
 
     <div style="text-align:center">
@@ -1035,7 +1046,7 @@ var state = {
   prestaPrix: null,
   creneauDate: null, creneauHeure: null,
   prenom: '', nom: '', email: '', tel: '', ddn: '', motif: '', message: '',
-  stripe: null, cardElement: null, stripeInitialized: false
+  stripe: null, cardElement: null, stripeInitialized: false, lumaOption: false
 };
 
 var PRESTATIONS = {
@@ -1056,24 +1067,38 @@ function selectionnerPresta(id) {
   var dejaBilanBloc = document.getElementById('bloc-deja-bilan');
   var recapEl = document.getElementById('presta-recap');
   var btnEl = document.getElementById('btn-step1');
+  var lumaBloc = document.getElementById('bloc-luma');
+  var lumaCheckbox = document.getElementById('f-luma');
 
   bilanVerifieEligible = false;
   document.getElementById('f-email-verif').value = '';
   document.getElementById('verif-bilan-msg').textContent = '';
+  state.lumaOption = false;
+  lumaCheckbox.checked = false;
+  document.getElementById('luma-note').style.display = 'none';
 
   if(!id){
     state.prestaId = null; state.prestaLabel = null; state.prestaPrix = null;
     dejaBilanBloc.style.display = 'none';
     recapEl.style.display = 'none';
+    lumaBloc.style.display = 'none';
     btnEl.disabled = true;
     return;
   }
 
   state.prestaId = id;
   dejaBilanBloc.style.display = (PARCOURS_IDS.indexOf(id) >= 0) ? 'block' : 'none';
+  // A Luma est déjà inclus dans les parcours Alba/Aria/Ora — l'option payante ne concerne
+  // que les consultations ponctuelles (bilan, suivi).
+  lumaBloc.style.display = (PARCOURS_IDS.indexOf(id) >= 0) ? 'none' : 'block';
 
   appliquerTarif();
   btnEl.disabled = false;
+}
+
+function toggleLuma(checked){
+  state.lumaOption = checked;
+  document.getElementById('luma-note').style.display = checked ? 'block' : 'none';
 }
 
 function verifierBilan() {
@@ -1418,6 +1443,7 @@ async function lancerPaiement() {
           parcours: ['alba','aria','ora'].indexOf(state.prestaId) >= 0 ? state.prestaId : '',
           bilan_deja_realise: bilanVerifieEligible ? 'oui_verifie' : 'non',
           email_verification_bilan: state.emailVerifBilan || '',
+          luma_option: state.lumaOption ? 'oui' : 'non',
           date: state.creneauDate,
           time: state.creneauHeure
         }
