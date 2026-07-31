@@ -699,8 +699,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     </div>
   </div>
 
-  <!-- ÉTAPE 1 — CHOISIR LA PRESTATION -->
+  <!-- ÉTAPE 1 — CHOISIR LA PRESTATION (ou confirmer un parcours déjà recommandé) -->
   <div class="booking-step active" id="step-1">
+
+    <!-- Mode normal : choix libre du Bilan / Suivi -->
+    <div id="choix-libre-wrap">
     <div class="form-card" style="max-width:560px;margin-left:auto;margin-right:auto">
       <div class="form-title">Quelle consultation souhaitez-vous ?</div>
       <div class="form-sub">Choisissez le motif de votre rendez-vous — la durée et le tarif s'ajustent automatiquement.</div>
@@ -742,6 +745,46 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
     <div style="text-align:center">
       <button class="btn-nav primary" id="btn-step1" onclick="allerEtapeCreneau()" disabled>Continuer →</button>
+    </div>
+    </div>
+
+    <!-- Mode confirmation verrouillée : accessible uniquement via ?confirmer=CLE (lien personnel envoyé par Sabrina) -->
+    <div id="confirm-verrouille-wrap" style="display:none">
+      <div class="form-card" style="max-width:560px;margin-left:auto;margin-right:auto;text-align:center">
+        <div id="cv-loading">
+          <div class="form-title">Un instant…</div>
+          <div class="form-sub">Nous retrouvons votre recommandation.</div>
+        </div>
+        <div id="cv-erreur" style="display:none">
+          <div class="form-title">Lien introuvable</div>
+          <div class="form-sub">Ce lien de confirmation n'est plus valide, ou aucun parcours ne vous a été recommandé pour le moment. Contactez Sabrina si vous pensez qu'il s'agit d'une erreur.</div>
+        </div>
+        <div id="cv-contenu" style="display:none">
+          <div class="form-title" id="cv-titre">Votre parcours</div>
+          <div class="form-sub">Voici ce que Sabrina vous a recommandé à l'issue de votre bilan. Rien ne vous est imposé : vous confirmez uniquement si vous souhaitez poursuivre.</div>
+
+          <div style="background:var(--grege);border-radius:12px;padding:20px 22px;margin:20px 0;text-align:left">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px">
+              <div>
+                <div id="cv-nom" style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:22px;color:var(--ardoise)"></div>
+                <div id="cv-duree" style="font-size:12.5px;color:var(--gris);margin-top:2px"></div>
+              </div>
+              <div style="text-align:right;flex-shrink:0">
+                <div id="cv-prix" style="font-size:28px;font-weight:700;color:var(--ardoise);font-family:'Cormorant Garamond',serif"></div>
+                <div id="cv-remise" style="font-size:11px;color:var(--ocre);font-weight:600;display:none;margin-top:2px">Bilan déjà réglé déduit</div>
+              </div>
+            </div>
+          </div>
+
+          <div id="cv-aluma" style="background:rgba(108,71,255,.08);border:1px solid rgba(108,71,255,.25);border-radius:12px;padding:14px 16px;margin-bottom:20px;text-align:left;font-size:13px;line-height:1.65;color:var(--ardoise)">
+            <strong>A Luma incluse</strong> — un fil de messagerie directe avec Sabrina entre vos rendez-vous, sans frais supplémentaire.
+          </div>
+
+          <p style="font-size:12px;color:var(--gris);margin-bottom:20px">Cette consultation avait déjà, à elle seule, sa pleine valeur — vous n'avez aucune obligation de poursuivre au-delà si vous préférez y réfléchir encore.</p>
+
+          <button class="btn-nav primary" id="btn-confirm-parcours" onclick="confirmerParcoursVerrouille()" style="width:100%">Confirmer et payer →</button>
+        </div>
+      </div>
     </div>
 
   </div>
@@ -1449,6 +1492,84 @@ function showMsg(msg) {
 }
 
 // Init — plus de configuration à restaurer (clé Stripe et prix fixes en dur)
+
+/* ══════════════════════════════
+   CONFIRMATION VERROUILLÉE D'UN PARCOURS
+   (lien personnel envoyé par Sabrina au check-in J+21 — jamais un choix libre)
+══════════════════════════════ */
+var confirmData = null; // réponse serveur, jamais recalculée côté navigateur
+
+function initConfirmationVerrouillee(clientKey) {
+  document.getElementById('choix-libre-wrap').style.display = 'none';
+  document.getElementById('confirm-verrouille-wrap').style.display = 'block';
+  document.getElementById('slbl-1').textContent = 'Votre parcours';
+
+  fetch(SUPA_URL_PUBLIC + '/functions/v1/get-parcours-confirmation', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': SUPA_KEY_PUBLIC,
+      'Authorization': 'Bearer ' + SUPA_KEY_PUBLIC
+    },
+    body: JSON.stringify({ client_key: clientKey })
+  }).then(function(r){ return r.json(); }).then(function(data){
+    document.getElementById('cv-loading').style.display = 'none';
+    if(!data.ok){
+      document.getElementById('cv-erreur').style.display = 'block';
+      console.error('Confirmation parcours indisponible:', data.reason);
+      return;
+    }
+    confirmData = data;
+    document.getElementById('cv-contenu').style.display = 'block';
+    document.getElementById('cv-nom').textContent = data.label + ' · ' + data.duree;
+    document.getElementById('cv-duree').textContent = 'Recommandé par Sabrina à l\'issue de votre bilan';
+    document.getElementById('cv-prix').textContent = data.prix + '€';
+    if(data.bilan_deja_realise && data.prix < data.prix_plein){
+      document.getElementById('cv-remise').style.display = 'block';
+    }
+    if(data.programme_cle === 'alba'){
+      // A Luma n'est incluse gratuitement que pour Aria/Ora ; sur Alba elle reste une option payante,
+      // proposée après coup depuis l'espace cliente plutôt que sur cet écran verrouillé.
+      document.getElementById('cv-aluma').style.display = 'none';
+    }
+    // Pré-remplissage de l'état à partir de la fiche cliente — jamais resaisi par la cliente ici.
+    state.prenom = data.prenom || '';
+    state.nom = data.nom || '';
+    state.email = data.email || '';
+    state.tel = data.tel || '';
+    state.ddn = data.ddn || '';
+  }).catch(function(e){
+    console.error('Erreur chargement confirmation parcours:', e);
+    document.getElementById('cv-loading').style.display = 'none';
+    document.getElementById('cv-erreur').style.display = 'block';
+  });
+}
+
+// Depuis l'écran verrouillé : saute directement au paiement (créneau et informations ne sont
+// pas nécessaires ici — la cliente confirme une décision déjà prise, elle ne saisit rien de plus).
+function confirmerParcoursVerrouille() {
+  if(!confirmData || !confirmData.ok) return;
+  state.prestaId = confirmData.programme_cle;
+  state.prestaLabel = confirmData.label + ' (' + confirmData.duree + ')';
+  state.prestaPrix = confirmData.prix;
+  state.creneauDate = null; state.creneauHeure = null; // le webhook accepte 'à planifier'
+  state.lumaOption = false; // A Luma incluse gérée automatiquement côté serveur pour Aria/Ora, jamais ici
+
+  document.getElementById('sdot-2').style.display = 'none';
+  document.getElementById('sline-2') && (document.getElementById('sline-2').style.display = 'none');
+  document.getElementById('sdot-3').style.display = 'none';
+  document.getElementById('sline-3') && (document.getElementById('sline-3').style.display = 'none');
+
+  majRecap();
+  allerEtape(4);
+  if(!state.stripeInitialized){ initStripe(); }
+}
+
+document.addEventListener('DOMContentLoaded', function(){
+  var params = new URLSearchParams(window.location.search);
+  var clientKey = params.get('confirmer');
+  if(clientKey) initConfirmationVerrouillee(clientKey);
+});
 
 /* ── NAV ── */
 function toggleMenu() {
