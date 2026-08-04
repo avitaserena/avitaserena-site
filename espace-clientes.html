@@ -543,6 +543,14 @@ body{-webkit-font-smoothing:antialiased}
         3&nbsp;·&nbsp;Touchez <strong style="color:#fff">Ajouter</strong> — c'est tout.
       </div>
     </div>
+
+    <!-- ── BANNIÈRE ACTIVATION NOTIFICATIONS ── -->
+    <div id="notifBanner" style="display:none;margin-top:16px;max-width:520px;background:rgba(255,255,255,.06);border:1px solid rgba(196,169,125,.3);border-radius:14px;padding:18px 20px;position:relative">
+      <button onclick="notifDismiss()" aria-label="Fermer" style="position:absolute;top:10px;right:14px;background:none;border:none;color:rgba(255,255,255,.76);font-size:17px;cursor:pointer;line-height:1">×</button>
+      <div style="font-family:'Cormorant Garamond',serif;font-size:19px;color:var(--sable);margin-bottom:6px">Ne manquez plus une réponse</div>
+      <p style="font-size:14px;color:rgba(255,255,255,.82);line-height:1.7;margin-bottom:14px">Recevez une notification directement sur votre téléphone dès que Sabrina vous répond dans le chat.</p>
+      <button id="notifActivateBtn" onclick="activerNotificationsPush()" style="background:var(--ocre);color:#fff;border:none;padding:11px 26px;border-radius:99px;font-family:'Be Vietnam Pro',sans-serif;font-size:13.5px;font-weight:600;letter-spacing:.06em;cursor:pointer">Activer les notifications →</button>
+    </div>
   </section>
 
   <!-- ONGLETS -->
@@ -988,7 +996,7 @@ body{-webkit-font-smoothing:antialiased}
       <h2 class="section-h2">Votre protocole d'hygiène<br>vitale — vivant et interactif.</h2>
       <p class="section-sub">Retrouvez votre protocole complet, validez ou refusez les recommandations, et signalez vos ressentis directement à Sabrina.</p>
 
-      <a href="phv-print.html" target="_blank" class="protocole-link" id="protocoleLink">
+      <a href="outils/phv-print.html" target="_blank" class="protocole-link" id="protocoleLink">
         <div class="protocole-link-icon">
           <svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>
         </div>
@@ -1000,7 +1008,7 @@ body{-webkit-font-smoothing:antialiased}
       </a>
 
       <div class="dl-list">
-        <a href="phv-print.html" class="dl-item" target="_blank" id="protocolePrintLink">
+        <a href="outils/phv-print.html" class="dl-item" target="_blank" id="protocolePrintLink">
           <div class="dl-icon"><svg viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></div>
           <div class="dl-info">
             <div class="dl-title">Imprimer mon protocole</div>
@@ -1161,7 +1169,7 @@ body{-webkit-font-smoothing:antialiased}
 var SUPA_URL = 'https://bqhkdndwldwqacrrbbig.supabase.co';
 var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxaGtkbmR3bGR3cWFjcnJiYmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MzAyNTIsImV4cCI6MjA5NjMwNjI1Mn0.nH2UktMAVKYwng4L3SvW5F0fluV_sObGV0f3Mk1dnOY';
 </script>
-<script src="auth-guard.js"></script>
+<script src="outils/auth-guard.js"></script>
 <script>
 // ── SUPABASE ──
 var SUPA_URL = 'https://bqhkdndwldwqacrrbbig.supabase.co';
@@ -1813,6 +1821,96 @@ window.addEventListener('appinstalled', function(){
   localStorage.setItem('avs_pwa_dismissed', String(Date.now()));
 });
 
+// ═══════════════════════════════════════
+// NOTIFICATIONS PUSH — réponses de Sabrina dans le chat
+// Ne fonctionne que si l'espace client est installé sur l'écran d'accueil
+// (mode standalone) — limitation imposée par iOS depuis Safari 16.4.
+// ═══════════════════════════════════════
+var VAPID_PUBLIC_KEY = 'BEdror59uflJSVU30AXIka03F6t7EX5X1-FqsWYS2X7CSfK_eY3Rw_ZndWet8QKOHBF1l-7PgK17Cp9ctU-v5do';
+
+function urlBase64ToUint8Array(base64String){
+  var padding = '='.repeat((4 - base64String.length % 4) % 4);
+  var base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  var rawData = window.atob(base64);
+  var outputArray = new Uint8Array(rawData.length);
+  for (var i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
+  return outputArray;
+}
+
+function notifShowBannerIfEligible(){
+  if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  if (!pwaIsStandalone()) return; // push indisponible hors mode installé sur iOS
+  if (Notification.permission !== 'default') return; // déjà accepté, refusé, ou pas encore pertinent
+  var dismissed = localStorage.getItem('avs_notif_dismissed');
+  if (dismissed && (Date.now() - parseInt(dismissed,10)) < 14*24*3600*1000) return;
+  var banner = document.getElementById('notifBanner');
+  if (banner) banner.style.display = 'block';
+}
+
+function notifDismiss(){
+  document.getElementById('notifBanner').style.display = 'none';
+  localStorage.setItem('avs_notif_dismissed', String(Date.now()));
+}
+
+async function activerNotificationsPush(){
+  var btn = document.getElementById('notifActivateBtn');
+  if (btn){ btn.textContent = 'Activation…'; btn.disabled = true; }
+  try{
+    var permission = await Notification.requestPermission();
+    if (permission !== 'granted'){
+      if (btn){ btn.textContent = 'Activer les notifications →'; btn.disabled = false; }
+      document.getElementById('notifBanner').style.display = 'none';
+      localStorage.setItem('avs_notif_dismissed', String(Date.now()));
+      return;
+    }
+
+    var registration = await navigator.serviceWorker.ready;
+    var subscription = await registration.pushManager.getSubscription();
+    if (!subscription){
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+      });
+    }
+
+    var sub = subscription.toJSON();
+    var session = JSON.parse(localStorage.getItem('avs_client') || sessionStorage.getItem('avs_client') || '{}');
+    var token = await Auth.getValidAccessToken();
+
+    await fetch(SUPA_URL + '/rest/v1/push_subscriptions', {
+      method: 'POST',
+      headers: {
+        'apikey': SUPA_KEY,
+        'Authorization': 'Bearer ' + (token || SUPA_KEY),
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal,resolution=merge-duplicates'
+      },
+      body: JSON.stringify({
+        client_key: session.key,
+        endpoint: sub.endpoint,
+        p256dh: sub.keys.p256dh,
+        auth: sub.keys.auth,
+        user_agent: navigator.userAgent
+      })
+    });
+
+    document.getElementById('notifBanner').style.display = 'none';
+    toastSimple('Notifications activées — vous recevrez les réponses de Sabrina sur cet appareil.');
+  }catch(e){
+    console.error('Erreur activation notifications :', e);
+    if (btn){ btn.textContent = 'Activer les notifications →'; btn.disabled = false; }
+  }
+}
+
+// Petit toast local (l'espace client n'a pas de système de toast global comme le CRM)
+function toastSimple(msg){
+  var t = document.createElement('div');
+  t.textContent = msg;
+  t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1E1E1C;color:#fff;padding:13px 22px;border-radius:99px;font-size:13.5px;box-shadow:0 8px 24px rgba(0,0,0,.25);z-index:9999;max-width:90vw;text-align:center';
+  document.body.appendChild(t);
+  setTimeout(function(){ t.style.transition = 'opacity .4s'; t.style.opacity = '0'; setTimeout(function(){ t.remove(); }, 400); }, 3200);
+}
+
 // iOS n'émet jamais beforeinstallprompt → affichage direct après connexion
 window.addEventListener('DOMContentLoaded', function(){
   setTimeout(pwaShowBanner, 800);
@@ -2323,6 +2421,7 @@ async function initDashboard(){
   renderCheckinRapide();
   loadJalons();
   loadRappelComplements();
+  notifShowBannerIfEligible();
 }
 
 // Prochain RDV

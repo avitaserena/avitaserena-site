@@ -1,99 +1,55 @@
-/* ═══════════════════════════════════════════════════════
-   A Vita Serena — Service Worker (PWA Espace Clientes)
-   Stratégie :
-   - Pages HTML : réseau d'abord (contenu toujours à jour),
-     cache en secours si hors-ligne
-   - Assets (icônes, images, polices) : cache d'abord
-   - Jamais de cache sur les appels Supabase / GTM / GA
-   ═══════════════════════════════════════════════════════ */
+// ══════════════════════════════════════
+// A VITA SERENA — Service Worker
+// Rôle : réception des notifications push (réponses de Sabrina dans le
+// chat) et ouverture de l'espace client au clic. Volontairement minimal —
+// pas de mise en cache agressive, pour ne jamais servir une version périmée
+// de l'espace client (voir note : le cache navigateur cause déjà assez de
+// faux "aucun changement" pendant le déploiement des autres outils).
+// ══════════════════════════════════════
 
-var CACHE_VERSION = 'avs-v1';
-var PRECACHE = [
-  '/espace-clientes.html',
-  '/manifest.json',
-  '/icon-192.png',
-  '/icon-512.png',
-  '/apple-touch-icon.png',
-  '/fiche-fodmap.html',
-  '/fiche-spm.html',
-  '/fiche-coherence-cardiaque.html'
-];
-
-/* ── Installation : pré-cache du cœur de l'app ── */
-self.addEventListener('install', function (event) {
-  event.waitUntil(
-    caches.open(CACHE_VERSION).then(function (cache) {
-      // addAll échoue en bloc si un fichier manque → on ajoute un par un
-      return Promise.all(
-        PRECACHE.map(function (url) {
-          return cache.add(url).catch(function () { /* fichier absent : on ignore */ });
-        })
-      );
-    }).then(function () { return self.skipWaiting(); })
-  );
+self.addEventListener('install', function(event){
+  self.skipWaiting();
 });
 
-/* ── Activation : purge des anciens caches ── */
-self.addEventListener('activate', function (event) {
-  event.waitUntil(
-    caches.keys().then(function (keys) {
-      return Promise.all(
-        keys.filter(function (k) { return k !== CACHE_VERSION; })
-            .map(function (k) { return caches.delete(k); })
-      );
-    }).then(function () { return self.clients.claim(); })
-  );
+self.addEventListener('activate', function(event){
+  event.waitUntil(self.clients.claim());
 });
 
-/* ── Interception des requêtes ── */
-self.addEventListener('fetch', function (event) {
-  var req = event.request;
-  var url = new URL(req.url);
-
-  // Uniquement les GET
-  if (req.method !== 'GET') return;
-
-  // Jamais d'interception ni de cache pour les outils praticien —
-  // ils doivent toujours être servis frais depuis le réseau
-  if (url.pathname.indexOf('/outils/') > -1) return;
-
-  // Jamais d'interception : Supabase, analytics, API externes
-  if (url.hostname.indexOf('supabase.co') > -1 ||
-      url.hostname.indexOf('googletagmanager.com') > -1 ||
-      url.hostname.indexOf('google-analytics.com') > -1 ||
-      url.hostname.indexOf('anthropic.com') > -1) {
-    return;
+// Réception d'une notification push envoyée par l'Edge Function notify-reply-client
+self.addEventListener('push', function(event){
+  var data = {};
+  try { data = event.data ? event.data.json() : {}; } catch(e){
+    data = { title: 'A Vita Serena', body: event.data ? event.data.text() : 'Vous avez une nouvelle notification.' };
   }
 
-  // Pages HTML → réseau d'abord, cache en secours
-  if (req.mode === 'navigate' || (req.headers.get('accept') || '').indexOf('text/html') > -1) {
-    event.respondWith(
-      fetch(req).then(function (res) {
-        var copy = res.clone();
-        caches.open(CACHE_VERSION).then(function (c) { c.put(req, copy); });
-        return res;
-      }).catch(function () {
-        return caches.match(req).then(function (cached) {
-          return cached || caches.match('/espace-clientes.html');
-        });
-      })
-    );
-    return;
-  }
+  var title = data.title || 'Sabrina vous a répondu';
+  var options = {
+    body: data.body || 'Ouvrez votre espace pour lire le message.',
+    icon: '/apple-touch-icon.png',
+    badge: '/apple-touch-icon.png',
+    data: { url: data.url || 'https://avitaserena.com/espace-clientes.html#serena' },
+    tag: 'avs-reponse-chat',
+    renotify: true
+  };
 
-  // Assets → cache d'abord, réseau en secours (et mise en cache au passage)
-  event.respondWith(
-    caches.match(req).then(function (cached) {
-      if (cached) return cached;
-      return fetch(req).then(function (res) {
-        // On ne met en cache que les réponses valides de notre domaine ou des polices Google
-        if (res.ok && (url.origin === self.location.origin ||
-                       url.hostname.indexOf('fonts.g') > -1)) {
-          var copy = res.clone();
-          caches.open(CACHE_VERSION).then(function (c) { c.put(req, copy); });
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+// Clic sur la notification → ouvre (ou remet au premier plan) l'espace client
+self.addEventListener('notificationclick', function(event){
+  event.notification.close();
+  var targetUrl = (event.notification.data && event.notification.data.url) || 'https://avitaserena.com/espace-clientes.html';
+
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList){
+      for (var i = 0; i < clientList.length; i++){
+        var c = clientList[i];
+        if (c.url.indexOf('espace-clientes.html') > -1 && 'focus' in c){
+          c.navigate(targetUrl);
+          return c.focus();
         }
-        return res;
-      });
+      }
+      if (self.clients.openWindow) return self.clients.openWindow(targetUrl);
     })
   );
 });
