@@ -1200,18 +1200,53 @@ const BILANS_REFERENCE = [
 ].join('\n- ');
 
 // ── Laboratoires partenaires ─────────────────────────────────────────────
-// Liste de départ reprise des principaux acteurs français de la biologie fonctionnelle
-// (cours DFM Duo Pratik, Module 2). À PERSONNALISER par Sabrina avec ses partenariats
-// réels et la marche à suivre exacte pour chacun (email de commande, kit à domicile,
-// prélèvement infirmier/laboratoire de quartier...) — modifier directement ce tableau.
+// Les 3 partenaires retenus par Sabrina, avec les infos vérifiées début août 2026.
+// "contact" reste à finaliser une fois les conditions praticien obtenues (mail envoyé) —
+// modifier directement ce tableau quand les réponses arrivent.
 const LABOS_PARTENAIRES = [
-  { nom: 'Laboratoire Barbier', contact: 'À compléter (email de commande)', modalites: 'Feuille de demande à remplir + kit envoyé à domicile ou prélèvement en laboratoire partenaire.' },
-  { nom: 'Laboratoire Lims-Mbnext', contact: 'À compléter (email de commande)', modalites: 'Feuille de demande à remplir + kit envoyé à domicile ou prélèvement en laboratoire partenaire.' },
-  { nom: 'Synlab', contact: 'À compléter (email de commande)', modalites: 'Feuille de demande à remplir + kit envoyé à domicile ou prélèvement en laboratoire partenaire.' },
-  { nom: 'Laboratoire Réuni', contact: 'À compléter (email de commande)', modalites: 'Feuille de demande à remplir + kit envoyé à domicile ou prélèvement en laboratoire partenaire.' },
-  { nom: 'Juvenalis (Biomnis)', contact: 'À compléter (email de commande)', modalites: 'Feuille de demande à remplir + kit envoyé à domicile ou prélèvement en laboratoire partenaire.' },
-  { nom: 'Biopredix (Cerba)', contact: 'À compléter (email de commande)', modalites: 'Feuille de demande à remplir + kit envoyé à domicile ou prélèvement en laboratoire partenaire.' },
+  { nom: 'LIMS-MBnext', contact: 'bip@mbnext.be · 0800 943 947 (gratuit depuis la France)', modalites: "Espace praticien dédié en ligne — sélection des analyses puis commande de kit par la cliente (urines/salive/selles à domicile, prélèvement sanguin en labo partenaire ou infirmière libérale). Référence pour le test respiratoire SIBO H2/CH4. Résultats sous ~15 jours ouvrés." },
+  { nom: 'BioAvenir (ex-Laboratoire Barbier)', contact: 'secretariat@bioavenir.bio', modalites: "Aucune ordonnance médicale nécessaire — feuille de demande à remplir avec vos coordonnées de praticienne pour la transmission des résultats. Kit envoyé à domicile ou prélèvement en laboratoire partenaire partout en France." },
+  { nom: 'Synlab', contact: 'À compléter (email de commande)', modalites: "Vous identifie explicitement comme praticienne habilitée à prescrire ces bilans. Plus de 700 centres en France — utile pour un prélèvement en présentiel plutôt qu'un kit à domicile." },
 ];
+
+// ── Grille tarifaire indicative ──────────────────────────────────────────
+// Estimations reprises des exemples chiffrés du cours DFM Duo Pratik (Module 2, 2020) —
+// À VÉRIFIER et mettre à jour dès que Sabrina a les tarifs 2026 réels de LIMS-MBnext,
+// BioAvenir et Synlab. Sert uniquement à donner un ordre de grandeur à la cliente pour
+// l'aider à prioriser son budget (cf. formation : "connaître les coûts, savoir prioriser").
+// Correspondance par mot-clé (insensible à la casse) avec le nom du bilan suggéré par l'IA.
+const TARIFS_BILANS = [
+  { motCle: 'crp', prix: 2.5 },
+  { motCle: 'zinc', prix: 8 },
+  { motCle: 'sélénium', prix: 11 },
+  { motCle: 'ferritine', prix: 7 },
+  { motCle: 'homocystéine', prix: 30 },
+  { motCle: 'vitamine d', prix: 11.5 },
+  { motCle: 'tsh', prix: 6.75 },
+  { motCle: 'zonuline', prix: 40 },
+  { motCle: 'calprotectine', prix: 25 },
+  { motCle: 'fut2', prix: 75 },
+  { motCle: 'élastase fécale', prix: 32 },
+  { motCle: 'coproscreen', prix: 198 },
+  { motCle: 'sibo', prix: 220 },
+  { motCle: 'test respiratoire', prix: 220 },
+  { motCle: 'bilan martial', prix: 25 },
+  { motCle: 'thyroïde complète', prix: 60 },
+  { motCle: 'cortisol', prix: 96 },
+  { motCle: 'sopk', prix: 195 },
+  { motCle: 'hormonal', prix: 195 },
+  { motCle: 'métaux lourds', prix: 145 },
+  { motCle: 'glyphosate', prix: 128 },
+];
+
+// Cherche une estimation de prix par correspondance de mot-clé dans le nom du bilan.
+// Retourne null si aucune correspondance — le prix ne s'affiche alors simplement pas
+// plutôt que d'inventer un chiffre.
+function estimerPrixBilan(nomBilan) {
+  const n = (nomBilan || '').toLowerCase();
+  const match = TARIFS_BILANS.find(t => n.includes(t.motCle));
+  return match ? match.prix : null;
+}
 
 // Récupère depuis Supabase les derniers résultats de bilans biologiques déjà saisis dans le CRM
 // pour cette cliente (table bilans_marqueurs, alimentée par l'extraction IA dans crm.html).
@@ -1272,7 +1307,7 @@ Analyse l'intégralité des données de séance ci-dessous et propose les bilans
 4. Base-toi en priorité sur cette liste de référence (celle que Sabrina utilise couramment), sans t'y limiter strictement si un examen standard clairement pertinent n'y figure pas :
 - ${BILANS_REFERENCE}
 5. Justification (usage interne, "justification") = 1 phrase, précise, qui cite le mécanisme physiologique ET l'élément du questionnaire qui la motive (ex : "Ferritine + NFS — fatigue chronique, règles abondantes et chute de cheveux diffuse évoquent une carence martiale probable").
-6. Explication cliente ("explication_cliente") = 1 à 2 phrases, en vouvoiement, dans un langage accessible SANS jargon médical, qui expliquent à la cliente POURQUOI cet examen est proposé pour SON profil — c'est le texte qui accompagnera l'ordonnance qu'elle recevra. Toujours ancrer l'explication dans ce qu'elle vit concrètement (ex : "Comme vos fatigues reviennent surtout en fin de journée et que vos règles sont abondantes, ce bilan permet de vérifier si vos réserves de fer sont en cause — c'est un point simple à corriger une fois identifié."). Jamais de ton alarmiste, jamais de nom de maladie non confirmée par un médecin.
+6. Explication cliente ("explication_cliente") = 1 à 2 phrases, en vouvoiement, dans un langage accessible SANS jargon médical, qui expliquent à la cliente POURQUOI cet examen est proposé pour SON profil — c'est le texte qui accompagnera la recommandation d'analyses qu'elle recevra. Toujours ancrer l'explication dans ce qu'elle vit concrètement (ex : "Comme vos fatigues reviennent surtout en fin de journée et que vos règles sont abondantes, ce bilan permet de vérifier si vos réserves de fer sont en cause — c'est un point simple à corriger une fois identifié."). Jamais de ton alarmiste, jamais de nom de maladie non confirmée par un médecin.
 7. Si des résultats de bilans déjà réalisés sont fournis ci-dessous, ne resuggère pas un examen déjà fait récemment sauf si un contrôle de suivi est cliniquement pertinent (auquel cas le préciser dans la justification : "à recontrôler").
 8. Si les données sont trop pauvres pour identifier un axe clair, dis-le honnêtement plutôt que d'inventer des priorités.
 9. Réponds UNIQUEMENT en JSON valide, sans texte avant ni après, sans balises markdown, selon ce format exact :
@@ -1343,25 +1378,31 @@ function renderBilansSuggestion(data) {
   wrap.innerHTML = `
     <div style="background:#FFF7EC;border:1px solid #D4860A;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:11px;color:#5A3A00;font-weight:600;letter-spacing:.04em;text-transform:uppercase"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-1px;margin-right:5px"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>Usage interne — jamais inclus dans le protocole remis à la cliente</div>
     ${data.intro ? `<div style="font-size:13px;color:var(--ardoise);font-style:italic;margin-bottom:16px;line-height:1.6">${data.intro}</div>` : ''}
-    <div style="font-size:11px;color:var(--gris);margin-bottom:8px;font-style:italic">Cliquez sur un bilan pour le décocher si vous n'êtes pas d'accord — seuls les bilans cochés seront inclus dans la copie ci-dessous.</div>
+    <div style="font-size:11px;color:var(--gris);margin-bottom:8px;font-style:italic">Cliquez sur un bilan pour le décocher si vous n'êtes pas d'accord — seuls les bilans cochés seront inclus dans la copie et la recommandation ci-dessous.</div>
     <div id="bilans-list" style="display:flex;flex-direction:column;gap:10px">
-      ${bilans.map((b, i) => `
+      ${bilans.map((b, i) => {
+        const prix = estimerPrixBilan(b.nom);
+        return `
         <div class="bilan-card" data-idx="${i}" style="display:flex;gap:12px;align-items:flex-start;background:var(--blanc);border:1px solid var(--taupe);border-radius:10px;padding:12px 16px;transition:opacity .15s,border-color .15s;${b.retenu ? '' : 'opacity:.45'}">
           <div onclick="toggleBilanRetenu(${i})" style="cursor:pointer;flex-shrink:0;width:22px;height:22px;border-radius:6px;border:1.5px solid var(--ocre);background:${b.retenu ? 'var(--ocre)' : 'var(--blanc)'};color:var(--blanc);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:2px">${b.retenu ? '✓' : ''}</div>
           <div onclick="toggleBilanRetenu(${i})" style="cursor:pointer;flex-shrink:0;width:26px;height:26px;border-radius:50%;background:var(--or-clair);border:1px solid var(--ocre);color:var(--ardoise);font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center">${b.priorite || '—'}</div>
           <div style="flex:1">
-            <div onclick="toggleBilanRetenu(${i})" style="cursor:pointer;font-weight:700;font-size:13px;color:var(--ardoise);margin-bottom:3px">${b.nom || ''}</div>
-            <div onclick="toggleBilanRetenu(${i})" style="cursor:pointer;font-size:12.5px;color:var(--gris);line-height:1.5;margin-bottom:6px">${b.justification || ''}</div>
+            <div onclick="toggleBilanRetenu(${i})" style="cursor:pointer;display:flex;justify-content:space-between;gap:8px;align-items:baseline">
+              <div style="font-weight:700;font-size:13px;color:var(--ardoise)">${b.nom || ''}</div>
+              ${prix != null ? `<div style="font-size:12px;font-weight:700;color:var(--ocre);flex-shrink:0">≈ ${prix} €</div>` : ''}
+            </div>
+            <div onclick="toggleBilanRetenu(${i})" style="cursor:pointer;font-size:12.5px;color:var(--gris);line-height:1.5;margin:3px 0 6px">${b.justification || ''}</div>
             ${b.explication_cliente ? `<div style="font-size:12px;color:var(--ardoise);background:var(--off);border-radius:8px;padding:8px 10px;line-height:1.5"><strong style="font-weight:600">Pour la cliente :</strong> ${b.explication_cliente}</div>` : ''}
           </div>
-        </div>
-      `).join('')}
+        </div>`;
+      }).join('')}
     </div>
+    <div style="font-size:11px;color:var(--gris);margin-top:8px;font-style:italic">Prix indicatifs (cours DFM 2020) à vérifier avec les tarifs 2026 réels — modifiables dans TARIFS_BILANS.</div>
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">
       <button class="btn" type="button" onclick="copierBilansRetenus(event)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px;margin-right:5px"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>Copier la liste (usage interne)</button>
-      <button class="btn primary" type="button" onclick="genererOrdonnanceCliente()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px;margin-right:5px"><path d="M6 3h9l3 3v15H6z"/><path d="M15 3v3h3"/></svg>Générer l'ordonnance pour la cliente</button>
+      <button class="btn primary" type="button" onclick="genererRecommandationCliente()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px;margin-right:5px"><path d="M6 3h9l3 3v15H6z"/><path d="M15 3v3h3"/></svg>Générer la recommandation pour la cliente</button>
     </div>
-    <div id="ordonnance-wrap" style="display:none;margin-top:18px"></div>`;
+    <div id="recommandation-wrap" style="display:none;margin-top:18px"></div>`;
   wrap.style.display = 'block';
   wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
@@ -1382,22 +1423,34 @@ function copierBilansRetenus(evt) {
   }).catch(() => alert('Impossible de copier — voici la liste :\n\n' + texte));
 }
 
-// ── Ordonnance pour la cliente : reprend les bilans retenus, avec l'explication
-// pédagogique dédiée (vouvoiement, "pourquoi"), les modalités et les laboratoires
-// partenaires (voir LABOS_PARTENAIRES à personnaliser). Distinct de copierBilansRetenus,
+// ── Recommandation d'analyses pour la cliente : reprend les bilans retenus, avec
+// l'explication pédagogique dédiée (vouvoiement, "pourquoi"), les prix indicatifs, le
+// total estimé, les modalités et les laboratoires partenaires (voir LABOS_PARTENAIRES).
+// Volontairement PAS appelée "ordonnance" — Sabrina, en tant que naturopathe, ne délivre
+// pas d'ordonnance médicale ; elle oriente et recommande. Distinct de copierBilansRetenus,
 // qui reste l'usage interne (praticienne uniquement).
-function genererOrdonnanceCliente() {
+function genererRecommandationCliente() {
   const retenus = (dernierResultatBilans?.bilans || []).filter(b => b.retenu);
-  if (!retenus.length) { alert("Sélectionnez au moins un bilan avant de générer l'ordonnance."); return; }
+  if (!retenus.length) { alert("Sélectionnez au moins un bilan avant de générer la recommandation."); return; }
   const d = buildClientData();
   const prenom = d.prenom && d.prenom !== 'Cliente' ? d.prenom : '';
-  const wrap = document.getElementById('ordonnance-wrap');
+  const wrap = document.getElementById('recommandation-wrap');
 
-  const listeHtml = retenus.map((b, i) => `
+  const prixParBilan = retenus.map(b => estimerPrixBilan(b.nom));
+  const totalConnu = prixParBilan.some(p => p != null);
+  const total = prixParBilan.reduce((s, p) => s + (p || 0), 0);
+
+  const listeHtml = retenus.map((b, i) => {
+    const prix = estimerPrixBilan(b.nom);
+    return `
     <div style="margin-bottom:16px">
-      <div style="font-weight:700;font-size:14px;color:var(--ardoise);margin-bottom:4px">${i + 1}. ${escH ? escH(b.nom || '') : (b.nom || '')}</div>
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline;margin-bottom:4px">
+        <div style="font-weight:700;font-size:14px;color:var(--ardoise)">${i + 1}. ${escH ? escH(b.nom || '') : (b.nom || '')}</div>
+        ${prix != null ? `<div style="font-size:13px;font-weight:700;color:var(--ocre);flex-shrink:0">≈ ${prix} €</div>` : ''}
+      </div>
       <div style="font-size:13px;color:var(--gris);line-height:1.6">${b.explication_cliente || b.justification || ''}</div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 
   const labosHtml = LABOS_PARTENAIRES.map(l => `
     <div style="margin-bottom:10px">
@@ -1405,31 +1458,33 @@ function genererOrdonnanceCliente() {
       <div style="font-size:12px;color:var(--gris)">${l.modalites}${l.contact && !l.contact.startsWith('À compléter') ? ' · ' + l.contact : ''}</div>
     </div>`).join('');
 
-  const texteBrut = `ORDONNANCE D'ANALYSES — A VITA SERENA\nSuite à votre consultation du ${new Date().toLocaleDateString('fr-FR')}\n\n` +
-    `Bonjour${prenom ? ' ' + prenom : ''},\n\nVoici les analyses que je vous propose, et pourquoi elles sont pertinentes pour vous :\n\n` +
-    retenus.map((b, i) => `${i + 1}. ${b.nom}\n   ${b.explication_cliente || b.justification || ''}`).join('\n\n') +
+  const texteBrut = `RECOMMANDATION D'ANALYSES — A VITA SERENA\nSuite à votre consultation du ${new Date().toLocaleDateString('fr-FR')}\n\n` +
+    `Bonjour${prenom ? ' ' + prenom : ''},\n\nVoici les analyses que je vous recommande, et pourquoi elles sont pertinentes pour vous :\n\n` +
+    retenus.map((b, i) => `${i + 1}. ${b.nom}${estimerPrixBilan(b.nom) != null ? ' (≈ ' + estimerPrixBilan(b.nom) + ' €)' : ''}\n   ${b.explication_cliente || b.justification || ''}`).join('\n\n') +
+    (totalConnu ? `\n\nBudget total estimé (indicatif) : ≈ ${total.toFixed(2)} €` : '') +
     `\n\nComment procéder :\nVous pouvez faire réaliser ces analyses auprès d'un des laboratoires suivants (envoi d'un kit à domicile, prélèvement par une infirmière ou en laboratoire de proximité) :\n\n` +
     LABOS_PARTENAIRES.map(l => `- ${l.nom} : ${l.modalites}`).join('\n') +
-    `\n\nCes analyses ne sont pour la plupart pas remboursées par la Sécurité sociale — n'hésitez pas à me contacter si vous souhaitez prioriser un examen en particulier selon votre budget.\n\nÀ bientôt,\nSabrina Castelli — A VITA SERENA`;
+    `\n\nCes analyses ne sont pour la plupart pas remboursées par la Sécurité sociale — n'hésitez pas à me contacter si vous souhaitez prioriser un examen en particulier selon votre budget, ou étaler le règlement.\n\nÀ bientôt,\nSabrina Castelli — A VITA SERENA`;
 
   wrap.innerHTML = `
     <div style="border:1.5px solid var(--ocre);border-radius:14px;padding:22px 24px;background:var(--blanc)">
       <div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ocre);margin-bottom:14px">Document pour la cliente — à copier ou envoyer</div>
-      <div style="font-size:14px;color:var(--ardoise);margin-bottom:16px">Bonjour${prenom ? ' ' + prenom : ''}, voici les analyses que je vous propose, et pourquoi elles sont pertinentes pour vous :</div>
+      <div style="font-size:14px;color:var(--ardoise);margin-bottom:16px">Bonjour${prenom ? ' ' + prenom : ''}, voici les analyses que je vous recommande, et pourquoi elles sont pertinentes pour vous :</div>
       ${listeHtml}
+      ${totalConnu ? `<div style="background:var(--off);border-radius:10px;padding:10px 14px;font-size:13px;color:var(--ardoise);font-weight:600;margin:14px 0">Budget total estimé (indicatif) : ≈ ${total.toFixed(2)} €</div>` : ''}
       <div style="font-weight:700;font-size:13px;color:var(--ardoise);margin:18px 0 8px">Comment procéder</div>
       <div style="font-size:13px;color:var(--gris);margin-bottom:12px">Vous pouvez faire réaliser ces analyses auprès d'un des laboratoires suivants (envoi d'un kit à domicile, prélèvement par une infirmière ou en laboratoire de proximité) :</div>
       ${labosHtml}
-      <div style="font-size:12px;color:var(--gris);font-style:italic;margin-top:10px">Ces analyses ne sont pour la plupart pas remboursées par la Sécurité sociale — n'hésitez pas à m'écrire si vous souhaitez prioriser un examen selon votre budget.</div>
+      <div style="font-size:12px;color:var(--gris);font-style:italic;margin-top:10px">Ces analyses ne sont pour la plupart pas remboursées par la Sécurité sociale — n'hésitez pas à m'écrire si vous souhaitez prioriser un examen selon votre budget, ou étaler le règlement.</div>
     </div>
-    <button class="btn" style="margin-top:12px" type="button" onclick="copierOrdonnanceTexte(event)">Copier le texte de l'ordonnance</button>`;
+    <button class="btn" style="margin-top:12px" type="button" onclick="copierRecommandationTexte(event)">Copier le texte de la recommandation</button>`;
   wrap.dataset.texte = texteBrut;
   wrap.style.display = 'block';
   wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
-function copierOrdonnanceTexte(evt) {
-  const wrap = document.getElementById('ordonnance-wrap');
+function copierRecommandationTexte(evt) {
+  const wrap = document.getElementById('recommandation-wrap');
   const texte = wrap?.dataset.texte || '';
   if (!texte) return;
   navigator.clipboard.writeText(texte).then(() => {

@@ -2820,6 +2820,7 @@ function ouvrirAjoutDocMedical(cid){
   document.getElementById('dm-type').value='bilan_sanguin';
   document.getElementById('dm-date').value=today();
   document.getElementById('dm-labo').value='';
+  document.getElementById('dm-prix').value='';
   document.getElementById('dm-extract').checked=true;
   document.getElementById('dm-save-btn').disabled=false;
   document.getElementById('dm-save-btn').textContent='Ajouter';
@@ -2829,8 +2830,10 @@ function ouvrirAjoutDocMedical(cid){
 
 function dmToggleLabo(sel){
   const wrap=document.getElementById('dm-labo-row');
-  if(!wrap) return;
-  wrap.style.display = sel.value==='bilan_sanguin' ? '' : 'none';
+  const wrap2=document.getElementById('dm-extract-toggle-wrap');
+  const show = sel.value==='bilan_sanguin' ? '' : 'none';
+  if(wrap) wrap.style.display=show;
+  if(wrap2) wrap2.style.display=show;
 }
 
 function dmAutoNom(inp){
@@ -2850,6 +2853,8 @@ async function saveDocMedical(){
   const nom=(document.getElementById('dm-nom').value||file.name).trim();
   const type=document.getElementById('dm-type').value;
   const laboratoire=(document.getElementById('dm-labo')?.value||'').trim();
+  const prixVal=document.getElementById('dm-prix')?.value;
+  const prix=prixVal!=='' && prixVal!=null ? parseFloat(prixVal) : null;
   const veutExtraction=type==='bilan_sanguin' && !!document.getElementById('dm-extract')?.checked;
   const btnEl=document.getElementById('dm-save-btn');
   btnEl.disabled=true; btnEl.textContent='Envoi…';
@@ -2870,7 +2875,7 @@ async function saveDocMedical(){
     const publicUrl=SB+'/storage/v1/object/public/avs-bilans/'+path;
     const [bilanRow]=await sb('bilans_biologiques', {
       method:'POST',
-      body: JSON.stringify([{ client_id:cid, client_key:cid, nom_fichier:nom, date_bilan:dateExamen, storage_path:publicUrl, type:type, laboratoire:laboratoire||null }])
+      body: JSON.stringify([{ client_id:cid, client_key:cid, nom_fichier:nom, date_bilan:dateExamen, storage_path:publicUrl, type:type, laboratoire:laboratoire||null, prix:prix }])
     });
     toast('Document ajouté','ok');
     closeM('m-doc-medical');
@@ -3636,7 +3641,7 @@ function renderFiche(c){
   const dmHtml=dm.length>0?dm.map(d=>`
     <div class="doc-item">
       <div class="doc-icon" style="background:var(--blue-lt)">${dmIcons[d.type]||ic('paperclip')}</div>
-      <div class="doc-body"><div class="doc-name">${escH(d.nom_fichier||'Document')}</div><div class="doc-meta">${escH(dmTypeLabels[d.type]||'Document')} · Examen du ${fmtDate(d.date_bilan)}</div></div>
+      <div class="doc-body"><div class="doc-name">${escH(d.nom_fichier||'Document')}</div><div class="doc-meta">${escH(dmTypeLabels[d.type]||'Document')} · Examen du ${fmtDate(d.date_bilan)}${d.laboratoire?' · '+escH(d.laboratoire):''}${d.prix!=null?' · '+Number(d.prix).toFixed(2)+' €':''}</div></div>
       <span class="doc-status ok">Disponible</span>
       ${btn('doc-action',`window.open('${escH(d.storage_path)}','_blank')`,'Voir')}
       ${btn('doc-action',`supprimerDocMedical('${cid}','${d.id}')`,ic('trash'))}
@@ -3644,6 +3649,7 @@ function renderFiche(c){
 
   // Bilans biologiques structurés — regroupés par marqueur, avec tendance avant/après
   const bm=bilansMarqueurs[cid]||[];
+  const totalInvestiBilans=dm.filter(d=>d.type==='bilan_sanguin' && d.prix!=null).reduce((s,d)=>s+Number(d.prix),0);
   const bmGroups={};
   bm.forEach(m=>{
     const key=(m.marqueur||'').trim().toLowerCase();
@@ -3748,7 +3754,7 @@ function renderFiche(c){
           <div class="ic-body"><div class="doc-list">${dmHtml}</div></div>
         </div>
         <div class="info-card">
-          <div class="ic-head"><div class="ic-title">${ic('spark')} Bilans biologiques <span style="font-weight:400;color:var(--muted);font-size:11px">(marqueurs extraits, avant/après)</span></div></div>
+          <div class="ic-head"><div class="ic-title">${ic('spark')} Bilans biologiques <span style="font-weight:400;color:var(--muted);font-size:11px">(marqueurs extraits, avant/après)</span></div>${totalInvestiBilans>0?`<span style="font-size:11px;color:var(--muted)">${totalInvestiBilans.toFixed(2)} € investis</span>`:''}</div>
           <div class="ic-body"><div style="display:flex;flex-direction:column;gap:6px;padding:10px 14px">${bmHtml}</div></div>
         </div>
         <div class="info-card">
@@ -5715,8 +5721,11 @@ function ouvrirBilanEntree(clientId, mode){
         <div class="fg"><label class="fl">Date de l'examen *</label><input class="fi" id="dm-date" type="date"></div>
       </div>
       <div class="fg2" id="dm-labo-row">
-        <div class="fg"><label class="fl">Laboratoire <span style="font-weight:400;color:var(--muted)">(optionnel)</span></label><input class="fi" id="dm-labo" placeholder="Ex: Laboratoire Barbier"></div>
-        <div class="fg" id="dm-extract-toggle-wrap">
+        <div class="fg"><label class="fl">Laboratoire <span style="font-weight:400;color:var(--muted)">(optionnel)</span></label><input class="fi" id="dm-labo" placeholder="Ex: LIMS-MBnext"></div>
+        <div class="fg"><label class="fl">Prix payé (€) <span style="font-weight:400;color:var(--muted)">(optionnel)</span></label><input class="fi" id="dm-prix" type="number" step="0.01" min="0" placeholder="Ex: 220"></div>
+      </div>
+      <div class="fg2" id="dm-extract-toggle-wrap">
+        <div class="fg">
           <label class="fl">Extraction des marqueurs</label>
           <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);height:38px"><input type="checkbox" id="dm-extract" checked style="width:16px;height:16px"> Extraire automatiquement les valeurs (IA)</label>
         </div>
