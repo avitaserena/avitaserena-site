@@ -1199,6 +1199,66 @@ const BILANS_REFERENCE = [
   'Indican / DMI (dysbiose de putréfaction)',
 ].join('\n- ');
 
+// ── Laboratoires partenaires ─────────────────────────────────────────────
+// Liste de départ reprise des principaux acteurs français de la biologie fonctionnelle
+// (cours DFM Duo Pratik, Module 2). À PERSONNALISER par Sabrina avec ses partenariats
+// réels et la marche à suivre exacte pour chacun (email de commande, kit à domicile,
+// prélèvement infirmier/laboratoire de quartier...) — modifier directement ce tableau.
+const LABOS_PARTENAIRES = [
+  { nom: 'Laboratoire Barbier', contact: 'À compléter (email de commande)', modalites: 'Feuille de demande à remplir + kit envoyé à domicile ou prélèvement en laboratoire partenaire.' },
+  { nom: 'Laboratoire Lims-Mbnext', contact: 'À compléter (email de commande)', modalites: 'Feuille de demande à remplir + kit envoyé à domicile ou prélèvement en laboratoire partenaire.' },
+  { nom: 'Synlab', contact: 'À compléter (email de commande)', modalites: 'Feuille de demande à remplir + kit envoyé à domicile ou prélèvement en laboratoire partenaire.' },
+  { nom: 'Laboratoire Réuni', contact: 'À compléter (email de commande)', modalites: 'Feuille de demande à remplir + kit envoyé à domicile ou prélèvement en laboratoire partenaire.' },
+  { nom: 'Juvenalis (Biomnis)', contact: 'À compléter (email de commande)', modalites: 'Feuille de demande à remplir + kit envoyé à domicile ou prélèvement en laboratoire partenaire.' },
+  { nom: 'Biopredix (Cerba)', contact: 'À compléter (email de commande)', modalites: 'Feuille de demande à remplir + kit envoyé à domicile ou prélèvement en laboratoire partenaire.' },
+];
+
+// Récupère depuis Supabase les derniers résultats de bilans biologiques déjà saisis dans le CRM
+// pour cette cliente (table bilans_marqueurs, alimentée par l'extraction IA dans crm.html).
+// Non bloquant : en cas d'échec ou d'absence de client_id, retourne simplement une chaîne vide.
+async function fetchDerniersMarqueurs(clientId) {
+  if (!clientId) return '';
+  try {
+    const SB_URL = 'https://bqhkdndwldwqacrrbbig.supabase.co';
+    const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxaGtkbmR3bGR3cWFjcnJiYmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MzAyNTIsImV4cCI6MjA5NjMwNjI1Mn0.nH2UktMAVKYwng4L3SvW5F0fluV_sObGV0f3Mk1dnOY';
+    let authToken = SB_KEY;
+    if (typeof Auth !== 'undefined') {
+      const token = await Auth.getValidAccessToken();
+      if (token) authToken = token;
+    }
+    const headers = { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + authToken };
+    const res = await fetch(SB_URL + '/rest/v1/bilans_marqueurs?client_id=eq.' + encodeURIComponent(clientId) + '&order=date_bilan.desc&limit=200', { headers });
+    if (!res.ok) return '';
+    const rows = await res.json();
+    if (!rows.length) return '';
+    // Un marqueur peut avoir été mesuré plusieurs fois — ne garder que la valeur la plus récente
+    // de chaque, avec l'évolution vs la mesure précédente si elle existe.
+    const groups = {};
+    rows.forEach(r => {
+      const key = (r.marqueur || '').trim().toLowerCase();
+      if (!key) return;
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(r);
+    });
+    const lignes = Object.values(groups).map(entries => {
+      const sorted = entries.slice().sort((a, b) => (a.date_bilan || '').localeCompare(b.date_bilan || ''));
+      const dernier = sorted[sorted.length - 1];
+      const precedent = sorted.length > 1 ? sorted[sorted.length - 2] : null;
+      const val = dernier.valeur != null ? dernier.valeur : (dernier.valeur_texte || '—');
+      let ligne = `${dernier.marqueur} : ${val}${dernier.unite ? ' ' + dernier.unite : ''} (${dernier.statut || 'à vérifier'}, ${dernier.date_bilan || 'date inconnue'})`;
+      if (precedent && precedent.valeur != null && dernier.valeur != null) {
+        const delta = dernier.valeur - precedent.valeur;
+        ligne += ` — évolution depuis le ${precedent.date_bilan} : ${delta > 0 ? '+' : ''}${delta.toFixed(2)}`;
+      }
+      return ligne;
+    });
+    return lignes.join('\n');
+  } catch (e) {
+    console.warn('⚠ Récupération des bilans biologiques échouée (non bloquant) :', e);
+    return '';
+  }
+}
+
 function buildPromptBilans(d) {
   return `Tu es l'assistante clinique interne de Sabrina Castelli, naturopathe diplômée (A VITA SERENA, Porto-Vecchio), spécialisée en SIBO/SII, endométriose, ménopause/périménopause, SOPK et thyroïde/Hashimoto, formée en micronutrition (DFM Duo Pratik). Ce que tu produis ici n'est JAMAIS lu par la cliente — c'est une aide de travail strictement interne, pour que Sabrina n'ait plus à cocher elle-même une liste de bilans après chaque séance.
 
@@ -1211,10 +1271,15 @@ Analyse l'intégralité des données de séance ci-dessous et propose les bilans
 3. Ne propose que des bilans réellement justifiés par les données — 3 bilans bien argumentés valent mieux que 10 par réflexe. N'en propose pas plus de 8.
 4. Base-toi en priorité sur cette liste de référence (celle que Sabrina utilise couramment), sans t'y limiter strictement si un examen standard clairement pertinent n'y figure pas :
 - ${BILANS_REFERENCE}
-5. Justification = 1 phrase, précise, qui cite le mécanisme physiologique ET l'élément du questionnaire qui la motive (ex : "Ferritine + NFS — fatigue chronique, règles abondantes et chute de cheveux diffuse évoquent une carence martiale probable").
-6. Si les données sont trop pauvres pour identifier un axe clair, dis-le honnêtement plutôt que d'inventer des priorités.
-7. Réponds UNIQUEMENT en JSON valide, sans texte avant ni après, sans balises markdown, selon ce format exact :
-{"intro": "1 phrase de synthèse du profil clinique dominant qui motive ces choix", "bilans": [{"nom": "Nom exact du bilan", "priorite": 1, "justification": "1 phrase précise"}]}
+5. Justification (usage interne, "justification") = 1 phrase, précise, qui cite le mécanisme physiologique ET l'élément du questionnaire qui la motive (ex : "Ferritine + NFS — fatigue chronique, règles abondantes et chute de cheveux diffuse évoquent une carence martiale probable").
+6. Explication cliente ("explication_cliente") = 1 à 2 phrases, en vouvoiement, dans un langage accessible SANS jargon médical, qui expliquent à la cliente POURQUOI cet examen est proposé pour SON profil — c'est le texte qui accompagnera l'ordonnance qu'elle recevra. Toujours ancrer l'explication dans ce qu'elle vit concrètement (ex : "Comme vos fatigues reviennent surtout en fin de journée et que vos règles sont abondantes, ce bilan permet de vérifier si vos réserves de fer sont en cause — c'est un point simple à corriger une fois identifié."). Jamais de ton alarmiste, jamais de nom de maladie non confirmée par un médecin.
+7. Si des résultats de bilans déjà réalisés sont fournis ci-dessous, ne resuggère pas un examen déjà fait récemment sauf si un contrôle de suivi est cliniquement pertinent (auquel cas le préciser dans la justification : "à recontrôler").
+8. Si les données sont trop pauvres pour identifier un axe clair, dis-le honnêtement plutôt que d'inventer des priorités.
+9. Réponds UNIQUEMENT en JSON valide, sans texte avant ni après, sans balises markdown, selon ce format exact :
+{"intro": "1 phrase de synthèse du profil clinique dominant qui motive ces choix", "bilans": [{"nom": "Nom exact du bilan", "priorite": 1, "justification": "1 phrase précise, usage interne", "explication_cliente": "1-2 phrases en vouvoiement, pour la cliente"}]}
+
+🧪 RÉSULTATS DE BILANS DÉJÀ RÉALISÉS (si disponibles, ne pas re-suggérer sans raison de contrôle) :
+${d.bilans_biologiques_resultats || '— Aucun résultat enregistré pour le moment'}
 
 ━━ DONNÉES DE LA SÉANCE ━━
 Cliente : ${d.prenom}${d.age ? ', ' + d.age + ' ans' : ''} · Profil : ${d.profil}
@@ -1245,6 +1310,7 @@ ${d.lifeline || '— Non renseigné'}`;
 async function suggererBilans() {
   if (!AIClient.hasKey()) { alert('Veuillez d\'abord entrer votre clé API Anthropic.'); return; }
   const d = buildClientData();
+  d.bilans_biologiques_resultats = await fetchDerniersMarqueurs(d.client_id);
 
   document.getElementById('bilans-suggest-btn').disabled = true;
   document.getElementById('bilans-loading').style.display = 'block';
@@ -1280,17 +1346,22 @@ function renderBilansSuggestion(data) {
     <div style="font-size:11px;color:var(--gris);margin-bottom:8px;font-style:italic">Cliquez sur un bilan pour le décocher si vous n'êtes pas d'accord — seuls les bilans cochés seront inclus dans la copie ci-dessous.</div>
     <div id="bilans-list" style="display:flex;flex-direction:column;gap:10px">
       ${bilans.map((b, i) => `
-        <div class="bilan-card" data-idx="${i}" onclick="toggleBilanRetenu(${i})" style="cursor:pointer;display:flex;gap:12px;align-items:flex-start;background:var(--blanc);border:1px solid var(--taupe);border-radius:10px;padding:12px 16px;transition:opacity .15s,border-color .15s;${b.retenu ? '' : 'opacity:.45'}">
-          <div style="flex-shrink:0;width:22px;height:22px;border-radius:6px;border:1.5px solid var(--ocre);background:${b.retenu ? 'var(--ocre)' : 'var(--blanc)'};color:var(--blanc);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:2px">${b.retenu ? '✓' : ''}</div>
-          <div style="flex-shrink:0;width:26px;height:26px;border-radius:50%;background:var(--or-clair);border:1px solid var(--ocre);color:var(--ardoise);font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center">${b.priorite || '—'}</div>
-          <div>
-            <div style="font-weight:700;font-size:13px;color:var(--ardoise);margin-bottom:3px">${b.nom || ''}</div>
-            <div style="font-size:12.5px;color:var(--gris);line-height:1.5">${b.justification || ''}</div>
+        <div class="bilan-card" data-idx="${i}" style="display:flex;gap:12px;align-items:flex-start;background:var(--blanc);border:1px solid var(--taupe);border-radius:10px;padding:12px 16px;transition:opacity .15s,border-color .15s;${b.retenu ? '' : 'opacity:.45'}">
+          <div onclick="toggleBilanRetenu(${i})" style="cursor:pointer;flex-shrink:0;width:22px;height:22px;border-radius:6px;border:1.5px solid var(--ocre);background:${b.retenu ? 'var(--ocre)' : 'var(--blanc)'};color:var(--blanc);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:2px">${b.retenu ? '✓' : ''}</div>
+          <div onclick="toggleBilanRetenu(${i})" style="cursor:pointer;flex-shrink:0;width:26px;height:26px;border-radius:50%;background:var(--or-clair);border:1px solid var(--ocre);color:var(--ardoise);font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center">${b.priorite || '—'}</div>
+          <div style="flex:1">
+            <div onclick="toggleBilanRetenu(${i})" style="cursor:pointer;font-weight:700;font-size:13px;color:var(--ardoise);margin-bottom:3px">${b.nom || ''}</div>
+            <div onclick="toggleBilanRetenu(${i})" style="cursor:pointer;font-size:12.5px;color:var(--gris);line-height:1.5;margin-bottom:6px">${b.justification || ''}</div>
+            ${b.explication_cliente ? `<div style="font-size:12px;color:var(--ardoise);background:var(--off);border-radius:8px;padding:8px 10px;line-height:1.5"><strong style="font-weight:600">Pour la cliente :</strong> ${b.explication_cliente}</div>` : ''}
           </div>
         </div>
       `).join('')}
     </div>
-    <button class="btn" style="margin-top:14px" type="button" onclick="copierBilansRetenus(event)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px;margin-right:5px"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>Copier la liste retenue</button>`;
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">
+      <button class="btn" type="button" onclick="copierBilansRetenus(event)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px;margin-right:5px"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>Copier la liste (usage interne)</button>
+      <button class="btn primary" type="button" onclick="genererOrdonnanceCliente()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px;margin-right:5px"><path d="M6 3h9l3 3v15H6z"/><path d="M15 3v3h3"/></svg>Générer l'ordonnance pour la cliente</button>
+    </div>
+    <div id="ordonnance-wrap" style="display:none;margin-top:18px"></div>`;
   wrap.style.display = 'block';
   wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
@@ -1309,6 +1380,62 @@ function copierBilansRetenus(evt) {
     const btn = evt?.target;
     if (btn) { const old = btn.textContent; btn.textContent = '✓ Copié'; setTimeout(() => btn.textContent = old, 1800); }
   }).catch(() => alert('Impossible de copier — voici la liste :\n\n' + texte));
+}
+
+// ── Ordonnance pour la cliente : reprend les bilans retenus, avec l'explication
+// pédagogique dédiée (vouvoiement, "pourquoi"), les modalités et les laboratoires
+// partenaires (voir LABOS_PARTENAIRES à personnaliser). Distinct de copierBilansRetenus,
+// qui reste l'usage interne (praticienne uniquement).
+function genererOrdonnanceCliente() {
+  const retenus = (dernierResultatBilans?.bilans || []).filter(b => b.retenu);
+  if (!retenus.length) { alert("Sélectionnez au moins un bilan avant de générer l'ordonnance."); return; }
+  const d = buildClientData();
+  const prenom = d.prenom && d.prenom !== 'Cliente' ? d.prenom : '';
+  const wrap = document.getElementById('ordonnance-wrap');
+
+  const listeHtml = retenus.map((b, i) => `
+    <div style="margin-bottom:16px">
+      <div style="font-weight:700;font-size:14px;color:var(--ardoise);margin-bottom:4px">${i + 1}. ${escH ? escH(b.nom || '') : (b.nom || '')}</div>
+      <div style="font-size:13px;color:var(--gris);line-height:1.6">${b.explication_cliente || b.justification || ''}</div>
+    </div>`).join('');
+
+  const labosHtml = LABOS_PARTENAIRES.map(l => `
+    <div style="margin-bottom:10px">
+      <div style="font-weight:600;font-size:13px;color:var(--ardoise)">${l.nom}</div>
+      <div style="font-size:12px;color:var(--gris)">${l.modalites}${l.contact && !l.contact.startsWith('À compléter') ? ' · ' + l.contact : ''}</div>
+    </div>`).join('');
+
+  const texteBrut = `ORDONNANCE D'ANALYSES — A VITA SERENA\nSuite à votre consultation du ${new Date().toLocaleDateString('fr-FR')}\n\n` +
+    `Bonjour${prenom ? ' ' + prenom : ''},\n\nVoici les analyses que je vous propose, et pourquoi elles sont pertinentes pour vous :\n\n` +
+    retenus.map((b, i) => `${i + 1}. ${b.nom}\n   ${b.explication_cliente || b.justification || ''}`).join('\n\n') +
+    `\n\nComment procéder :\nVous pouvez faire réaliser ces analyses auprès d'un des laboratoires suivants (envoi d'un kit à domicile, prélèvement par une infirmière ou en laboratoire de proximité) :\n\n` +
+    LABOS_PARTENAIRES.map(l => `- ${l.nom} : ${l.modalites}`).join('\n') +
+    `\n\nCes analyses ne sont pour la plupart pas remboursées par la Sécurité sociale — n'hésitez pas à me contacter si vous souhaitez prioriser un examen en particulier selon votre budget.\n\nÀ bientôt,\nSabrina Castelli — A VITA SERENA`;
+
+  wrap.innerHTML = `
+    <div style="border:1.5px solid var(--ocre);border-radius:14px;padding:22px 24px;background:var(--blanc)">
+      <div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ocre);margin-bottom:14px">Document pour la cliente — à copier ou envoyer</div>
+      <div style="font-size:14px;color:var(--ardoise);margin-bottom:16px">Bonjour${prenom ? ' ' + prenom : ''}, voici les analyses que je vous propose, et pourquoi elles sont pertinentes pour vous :</div>
+      ${listeHtml}
+      <div style="font-weight:700;font-size:13px;color:var(--ardoise);margin:18px 0 8px">Comment procéder</div>
+      <div style="font-size:13px;color:var(--gris);margin-bottom:12px">Vous pouvez faire réaliser ces analyses auprès d'un des laboratoires suivants (envoi d'un kit à domicile, prélèvement par une infirmière ou en laboratoire de proximité) :</div>
+      ${labosHtml}
+      <div style="font-size:12px;color:var(--gris);font-style:italic;margin-top:10px">Ces analyses ne sont pour la plupart pas remboursées par la Sécurité sociale — n'hésitez pas à m'écrire si vous souhaitez prioriser un examen selon votre budget.</div>
+    </div>
+    <button class="btn" style="margin-top:12px" type="button" onclick="copierOrdonnanceTexte(event)">Copier le texte de l'ordonnance</button>`;
+  wrap.dataset.texte = texteBrut;
+  wrap.style.display = 'block';
+  wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function copierOrdonnanceTexte(evt) {
+  const wrap = document.getElementById('ordonnance-wrap');
+  const texte = wrap?.dataset.texte || '';
+  if (!texte) return;
+  navigator.clipboard.writeText(texte).then(() => {
+    const btn = evt?.target;
+    if (btn) { const old = btn.textContent; btn.textContent = '✓ Copié'; setTimeout(() => btn.textContent = old, 1800); }
+  }).catch(() => alert('Impossible de copier automatiquement — voici le texte :\n\n' + texte));
 }
 
 // ── Détection SIBO méthane (IMO) avéré ──
@@ -1648,8 +1775,12 @@ ${d.notes_praticien || '— Non renseigné'}
 - Prête à intégrer des pratiques de gestion du stress : ${d.motiv_stress || '— voir prédispositions ci-dessus'}
 - Soutien de l'entourage : ${d.motiv_entourage || '— voir prédispositions ci-dessus'}
 
-⚠️ BILANS BIOLOGIQUES — NE JAMAIS EN PARLER DANS CE DOCUMENT
-Les bilans à recommander sont gérés séparément par la praticienne, en dehors de ce protocole (analyse IA dédiée, usage interne uniquement). Tu ne dois JAMAIS nommer un examen biologique précis (nom de dosage, marqueur, analyse de laboratoire) ni suggérer à la cliente de demander un bilan à son médecin dans les sections s1 à s7. Si un manque nutritionnel est évoqué dans la cascade explicative (s1/s2), reste au niveau du mécanisme et du geste concret (alimentation, complément) — jamais "faites doser votre X".
+🧪 RÉSULTATS DE BILANS BIOLOGIQUES DÉJÀ RÉALISÉS (dernières valeurs connues, si disponibles) :
+${d.bilans_biologiques_resultats || '— Aucun résultat de bilan biologique enregistré pour le moment'}
+Si des résultats sont listés ci-dessus, utilise-les comme éléments cliniques OBJECTIFS pour affiner ton analyse causale (s1/s2) et pour prioriser les axes et les soutiens ciblés — un marqueur hors norme doit peser dans le choix des 2-3 axes prioritaires (RÈGLE N°1bis) au même titre que le déclaratif du questionnaire. Reste néanmoins dans l'esprit de la règle ci-dessous : n'annonce jamais le nom technique d'un marqueur ou d'un dosage à la cliente, explique seulement le mécanisme physiologique concerné en langage accessible (ex. « votre organisme montre des signes d'inflammation de bas grade » plutôt que « votre CRP ultrasensible est élevée à 2.49 mg/L »).
+
+⚠️ BILANS BIOLOGIQUES — NE JAMAIS NOMMER UN EXAMEN DANS CE DOCUMENT
+La suggestion de NOUVEAUX bilans à faire prescrire est gérée séparément par la praticienne, en dehors de ce protocole (analyse IA dédiée, usage interne uniquement). Tu ne dois JAMAIS nommer un examen biologique précis (nom de dosage, marqueur, analyse de laboratoire) ni suggérer à la cliente de demander un bilan à son médecin dans les sections s1 à s7 — que ce soit pour recommander un nouvel examen ou pour citer un résultat déjà obtenu (voir reformulation en langage accessible ci-dessus). Si un manque nutritionnel est évoqué dans la cascade explicative (s1/s2), reste au niveau du mécanisme et du geste concret (alimentation, complément) — jamais "faites doser votre X" ni "votre X est à 2.49 mg/L".
 
 ━━ RÈGLE N°6 — SÉCURITÉ JSON (IMPÉRATIF, NE JAMAIS ENFREINDRE) ━━
 Le texte que tu rédiges est intégré tel quel dans des valeurs de chaîne JSON. Pour que le document ne casse JAMAIS techniquement :
@@ -1725,6 +1856,7 @@ async function generate() {
   if (!d.prenom || d.prenom === 'Cliente') {
     if (!confirm('Aucun prénom détecté. Continuer quand même ?')) return;
   }
+  d.bilans_biologiques_resultats = await fetchDerniersMarqueurs(d.client_id);
 
   document.getElementById('gen-btn').disabled = true;
   document.getElementById('loading-wrap').style.display = 'block';

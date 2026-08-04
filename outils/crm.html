@@ -2819,9 +2819,18 @@ function ouvrirAjoutDocMedical(cid){
   document.getElementById('dm-nom').value='';
   document.getElementById('dm-type').value='bilan_sanguin';
   document.getElementById('dm-date').value=today();
+  document.getElementById('dm-labo').value='';
+  document.getElementById('dm-extract').checked=true;
   document.getElementById('dm-save-btn').disabled=false;
   document.getElementById('dm-save-btn').textContent='Ajouter';
+  dmToggleLabo(document.getElementById('dm-type'));
   openM('m-doc-medical');
+}
+
+function dmToggleLabo(sel){
+  const wrap=document.getElementById('dm-labo-row');
+  if(!wrap) return;
+  wrap.style.display = sel.value==='bilan_sanguin' ? '' : 'none';
 }
 
 function dmAutoNom(inp){
@@ -2840,6 +2849,8 @@ async function saveDocMedical(){
   if(!dateExamen){ toast("Indiquez la date de l'examen",'err'); return; }
   const nom=(document.getElementById('dm-nom').value||file.name).trim();
   const type=document.getElementById('dm-type').value;
+  const laboratoire=(document.getElementById('dm-labo')?.value||'').trim();
+  const veutExtraction=type==='bilan_sanguin' && !!document.getElementById('dm-extract')?.checked;
   const btnEl=document.getElementById('dm-save-btn');
   btnEl.disabled=true; btnEl.textContent='Envoi…';
   try{
@@ -2857,15 +2868,18 @@ async function saveDocMedical(){
     });
     if(!up.ok){ const t=await up.text(); throw new Error(t||('Erreur upload ('+up.status+')')); }
     const publicUrl=SB+'/storage/v1/object/public/avs-bilans/'+path;
-    await sb('bilans_biologiques', {
+    const [bilanRow]=await sb('bilans_biologiques', {
       method:'POST',
-      body: JSON.stringify([{ client_id:cid, client_key:cid, nom_fichier:nom, date_bilan:dateExamen, storage_path:publicUrl, type:type }])
+      body: JSON.stringify([{ client_id:cid, client_key:cid, nom_fichier:nom, date_bilan:dateExamen, storage_path:publicUrl, type:type, laboratoire:laboratoire||null }])
     });
     toast('Document ajouté','ok');
     closeM('m-doc-medical');
     await loadDocsMedicaux(cid);
     const c=db.clients.find(x=>x.id===cid);
     if(c) renderFiche(c);
+    if(veutExtraction && bilanRow?.id){
+      ouvrirExtractionMarqueurs(cid, bilanRow.id, file, dateExamen, laboratoire);
+    }
   }catch(e){
     toast('Erreur : '+e.message,'err');
   }finally{
@@ -2879,10 +2893,175 @@ async function supprimerDocMedical(cid, docId){
     await sb('bilans_biologiques?id=eq.'+encodeURIComponent(docId), { method:'DELETE', prefer:'return=minimal' });
     toast('Document supprimé','ok');
     await loadDocsMedicaux(cid);
+    await loadBilansMarqueurs(cid);
     const c=db.clients.find(x=>x.id===cid);
     if(c) renderFiche(c);
   }catch(e){
     toast('Erreur suppression : '+e.message,'err');
+  }
+}
+
+// ── Bilans biologiques structurés : extraction IA des marqueurs ────────────
+let bilansMarqueurs={}; // { clientId: [ {id, bilan_id, marqueur, valeur, valeur_texte, unite, ref_min, ref_max, statut, date_bilan, laboratoire}, ... ] }
+let extractionCtx=null; // { cid, bilanId, dateExamen, laboratoire }
+let marqueursExtraits=[]; // lignes en cours de validation dans la modale d'extraction
+
+async function loadBilansMarqueurs(cid){
+  try{
+    const r=await sb('bilans_marqueurs?client_id=eq.'+encodeURIComponent(cid)+'&order=date_bilan.desc');
+    bilansMarqueurs[cid]=r;
+  }catch(e){
+    console.error('[CRM] ✗ Bilans marqueurs:', e.message);
+    bilansMarqueurs[cid]=bilansMarqueurs[cid]||[];
+  }
+}
+
+function fileToBase64(file){
+  return new Promise((resolve,reject)=>{
+    const r=new FileReader();
+    r.onload=()=>resolve(r.result.split(',')[1]);
+    r.onerror=()=>reject(new Error('Lecture du fichier impossible'));
+    r.readAsDataURL(file);
+  });
+}
+
+function parseJSONMarqueurs(raw){
+  let s=(raw||'').replace(/```json|```/g,'').trim();
+  const start=s.indexOf('{'), end=s.lastIndexOf('}');
+  if(start>=0 && end>start) s=s.slice(start,end+1);
+  return JSON.parse(s);
+}
+
+async function ouvrirExtractionMarqueurs(cid, bilanId, file, dateExamen, laboratoire){
+  extractionCtx={cid, bilanId, dateExamen, laboratoire};
+  marqueursExtraits=[];
+  document.getElementById('eb-loading').style.display='block';
+  document.getElementById('eb-loading').textContent='Lecture du document en cours…';
+  document.getElementById('eb-content').style.display='none';
+  document.getElementById('eb-save-btn').style.display='none';
+  openM('m-extraction-bilan');
+
+  const apiKey=getAnthropicKey();
+  if(!apiKey){ toast('Clé API requise pour l\'extraction','err'); closeM('m-extraction-bilan'); return; }
+
+  try{
+    const b64=await fileToBase64(file);
+    const isPdf=(file.type||'').includes('pdf');
+    const contentBlock=isPdf
+      ? { type:'document', source:{ type:'base64', media_type:'application/pdf', data:b64 } }
+      : { type:'image', source:{ type:'base64', media_type:file.type||'image/jpeg', data:b64 } };
+
+    const prompt=`Tu es une assistante clinique qui lit des résultats d'analyses biologiques (bilan sanguin, bilan micronutritionnel ou fonctionnel) et en extrait les données de façon structurée pour une naturopathe.
+
+Analyse le document fourni et extrais CHAQUE marqueur/paramètre mesuré que tu peux identifier clairement.
+
+Réponds UNIQUEMENT en JSON valide, sans texte avant ni après, sans balises markdown, au format exact :
+{"marqueurs":[{"nom":"Nom exact du marqueur","valeur":12.5,"valeur_texte":null,"unite":"µg/L","ref_min":10,"ref_max":120,"statut":"normal"}]}
+
+Règles strictes :
+- "valeur" : nombre seul (point décimal), null si la valeur n'est pas numérique (ex: "positif", "détecté", "négatif")
+- "valeur_texte" : uniquement si la valeur n'est pas numérique (reprendre le texte exact), sinon null
+- "unite" : telle qu'affichée sur le document, null si absente
+- "ref_min"/"ref_max" : bornes de la plage de référence si indiquées ; si la plage est ouverte (ex "<1.00"), ne renseigner que la borne concernée et laisser l'autre à null
+- "statut" : "normal" si la valeur est dans la plage de référence, "bas" ou "eleve" si hors plage, "a_verifier" si aucune plage n'est indiquée ou en cas de doute
+- N'invente rien : si un champ est illisible ou absent, mets null plutôt que de deviner
+- Ignore tout ce qui n'est pas un résultat mesurable (identité, adresse du laboratoire, mentions légales)
+- Si le document ne contient aucun résultat exploitable, réponds {"marqueurs":[]}`;
+
+    const res=await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'x-api-key':apiKey,
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-direct-browser-access':'true'
+      },
+      body:JSON.stringify({
+        model:'claude-sonnet-4-6',
+        max_tokens:4000,
+        messages:[{ role:'user', content:[contentBlock, { type:'text', text:prompt }] }]
+      })
+    });
+    const data=await res.json();
+    if(data.error) throw new Error(data.error.message);
+    const raw=data.content?.[0]?.text || '';
+    const parsed=parseJSONMarqueurs(raw);
+    marqueursExtraits=(parsed.marqueurs||[]).map(m=>({ ...m, retenu:true }));
+    renderMarqueursExtraits();
+  }catch(e){
+    document.getElementById('eb-loading').style.display='none';
+    document.getElementById('eb-content').style.display='block';
+    document.getElementById('eb-content').innerHTML=`<div style="background:#FDEFEC;border:1.5px solid var(--red);border-radius:12px;padding:16px 18px;font-size:13px;color:#8B3A3A">⚠ L'extraction a échoué (${escH(e.message)}). Vous pouvez fermer cette fenêtre — le document reste bien enregistré, vous pourrez saisir les marqueurs manuellement plus tard depuis la fiche cliente.</div>`;
+  }
+}
+
+function renderMarqueursExtraits(){
+  document.getElementById('eb-loading').style.display='none';
+  const wrap=document.getElementById('eb-content');
+  wrap.style.display='block';
+  if(!marqueursExtraits.length){
+    wrap.innerHTML=`<div style="padding:16px;font-size:13px;color:var(--muted);font-style:italic">Aucun marqueur exploitable détecté automatiquement. Le document reste enregistré — vous pourrez ajouter les valeurs manuellement.</div>`;
+    document.getElementById('eb-save-btn').style.display='none';
+    return;
+  }
+  const statutLabel={normal:'Normal',bas:'Bas',eleve:'Élevé',a_verifier:'À vérifier'};
+  const statutColor={normal:'var(--green)',bas:'var(--orange)',eleve:'var(--red)',a_verifier:'var(--muted)'};
+  wrap.innerHTML=`
+    <div style="font-size:12px;color:var(--muted);margin-bottom:12px;font-style:italic">Vérifiez et corrigez si besoin — décochez les lignes à ne pas enregistrer.</div>
+    <div style="display:flex;flex-direction:column;gap:8px;max-height:420px;overflow-y:auto">
+      ${marqueursExtraits.map((m,i)=>`
+        <div style="display:flex;gap:10px;align-items:center;background:var(--surface);border-radius:10px;padding:10px 12px;${m.retenu?'':'opacity:.4'}">
+          <input type="checkbox" ${m.retenu?'checked':''} onchange="toggleMarqueurExtrait(${i})" style="width:16px;height:16px;flex-shrink:0">
+          <input class="fi" style="flex:1.4;font-size:12.5px;padding:6px 8px" value="${escH(m.nom||'')}" onchange="updateMarqueurChamp(${i},'nom',this.value)" placeholder="Nom du marqueur">
+          <input class="fi" style="width:80px;font-size:12.5px;padding:6px 8px" value="${m.valeur!=null?m.valeur:(m.valeur_texte||'')}" onchange="updateMarqueurChamp(${i},'valeur',this.value)" placeholder="Valeur">
+          <input class="fi" style="width:70px;font-size:12.5px;padding:6px 8px" value="${escH(m.unite||'')}" onchange="updateMarqueurChamp(${i},'unite',this.value)" placeholder="Unité">
+          <select class="fi fs" style="width:110px;font-size:12.5px;padding:6px 8px;color:${statutColor[m.statut]||'var(--muted)'}" onchange="updateMarqueurChamp(${i},'statut',this.value)">
+            ${Object.keys(statutLabel).map(s=>`<option value="${s}" ${m.statut===s?'selected':''}>${statutLabel[s]}</option>`).join('')}
+          </select>
+        </div>`).join('')}
+    </div>`;
+  document.getElementById('eb-save-btn').style.display='';
+}
+
+function toggleMarqueurExtrait(idx){
+  marqueursExtraits[idx].retenu=!marqueursExtraits[idx].retenu;
+  renderMarqueursExtraits();
+}
+
+function updateMarqueurChamp(idx, champ, val){
+  if(champ==='valeur'){
+    const n=parseFloat((val||'').replace(',','.'));
+    if(!isNaN(n)){ marqueursExtraits[idx].valeur=n; marqueursExtraits[idx].valeur_texte=null; }
+    else { marqueursExtraits[idx].valeur=null; marqueursExtraits[idx].valeur_texte=val; }
+  } else {
+    marqueursExtraits[idx][champ]=val;
+  }
+}
+
+async function enregistrerMarqueursExtraits(){
+  if(!extractionCtx) return;
+  const {cid, bilanId, dateExamen, laboratoire}=extractionCtx;
+  const retenus=marqueursExtraits.filter(m=>m.retenu && (m.nom||'').trim());
+  if(!retenus.length){ toast('Aucun marqueur retenu','warn'); return; }
+  const btn=document.getElementById('eb-save-btn');
+  btn.disabled=true; btn.textContent='Enregistrement…';
+  try{
+    const rows=retenus.map(m=>({
+      bilan_id:bilanId, client_id:cid, client_key:cid,
+      marqueur:(m.nom||'').trim(), valeur:m.valeur!=null?m.valeur:null, valeur_texte:m.valeur_texte||null,
+      unite:m.unite||null, ref_min:m.ref_min!=null?m.ref_min:null, ref_max:m.ref_max!=null?m.ref_max:null,
+      statut:m.statut||'a_verifier', date_bilan:dateExamen, laboratoire:laboratoire||null
+    }));
+    await sb('bilans_marqueurs', { method:'POST', body:JSON.stringify(rows) });
+    toast(retenus.length+' marqueur(s) enregistré(s)','ok');
+    closeM('m-extraction-bilan');
+    await loadBilansMarqueurs(cid);
+    const c=db.clients.find(x=>x.id===cid);
+    if(c) renderFiche(c);
+  }catch(e){
+    toast('Erreur enregistrement : '+e.message,'err');
+  }finally{
+    btn.disabled=false; btn.textContent='Enregistrer les marqueurs retenus';
   }
 }
 
@@ -3267,7 +3446,7 @@ async function openFiche(id){
   if(!c)return;
   nav('fiche',null);
   renderFiche(c); // affichage immédiat
-  await Promise.allSettled([loadMemoAlerts(), loadDocsMedicaux(id), loadQuestionnaires(id), loadJournalEntries(id), loadProtocoleClient(id), loadProtocolesHistory(id)]); // rechargement frais depuis Supabase
+  await Promise.allSettled([loadMemoAlerts(), loadDocsMedicaux(id), loadBilansMarqueurs(id), loadQuestionnaires(id), loadJournalEntries(id), loadProtocoleClient(id), loadProtocolesHistory(id)]); // rechargement frais depuis Supabase
   if(!c.dateProtocole){
     const fallback=protoDateFor(c);
     if(fallback){
@@ -3463,6 +3642,42 @@ function renderFiche(c){
       ${btn('doc-action',`supprimerDocMedical('${cid}','${d.id}')`,ic('trash'))}
     </div>`).join(''):"<div style='padding:16px;font-size:13px;color:var(--muted);font-style:italic'>Aucun document médical ajouté pour le moment.</div>";
 
+  // Bilans biologiques structurés — regroupés par marqueur, avec tendance avant/après
+  const bm=bilansMarqueurs[cid]||[];
+  const bmGroups={};
+  bm.forEach(m=>{
+    const key=(m.marqueur||'').trim().toLowerCase();
+    if(!key) return;
+    if(!bmGroups[key]) bmGroups[key]={nom:m.marqueur, entries:[]};
+    bmGroups[key].entries.push(m);
+  });
+  const bmStatutColor={normal:'var(--green)',bas:'var(--orange)',eleve:'var(--red)',a_verifier:'var(--muted)'};
+  const bmStatutLabel={normal:'Normal',bas:'Bas',eleve:'Élevé',a_verifier:'À vérifier'};
+  const bmList=Object.values(bmGroups).sort((a,b)=>(a.nom||'').localeCompare(b.nom||''));
+  const bmHtml=bmList.length>0 ? bmList.map(g=>{
+    const sorted=g.entries.slice().sort((a,b)=>(a.date_bilan||'').localeCompare(b.date_bilan||''));
+    const dernier=sorted[sorted.length-1];
+    const precedent=sorted.length>1?sorted[sorted.length-2]:null;
+    let trend='';
+    if(precedent && dernier.valeur!=null && precedent.valeur!=null){
+      const delta=dernier.valeur-precedent.valeur;
+      if(Math.abs(delta)>0.001) trend=`<div style="font-size:11px;color:${delta<0?'var(--green)':'var(--red)'}">${delta>0?'↑':'↓'} ${Math.abs(delta).toFixed(2)} vs ${fmtShort(precedent.date_bilan)}</div>`;
+      else trend=`<div style="font-size:11px;color:var(--muted)">→ stable vs ${fmtShort(precedent.date_bilan)}</div>`;
+    }
+    const valAffiche=dernier.valeur!=null?dernier.valeur:(dernier.valeur_texte||'—');
+    return `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 12px;background:var(--surface);border-radius:9px">
+      <div>
+        <div style="font-size:13px;font-weight:600;color:var(--ink)">${escH(g.nom)}</div>
+        <div style="font-size:11px;color:var(--muted)">${fmtDate(dernier.date_bilan)}${sorted.length>1?' · '+sorted.length+' mesures':''}${dernier.laboratoire?' · '+escH(dernier.laboratoire):''}</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <div style="font-size:13px;font-weight:700;color:${bmStatutColor[dernier.statut]||'var(--ink)'}">${valAffiche}${dernier.unite?' '+escH(dernier.unite):''}</div>
+        <div style="font-size:10px;color:${bmStatutColor[dernier.statut]||'var(--muted)'};text-transform:uppercase;letter-spacing:.04em">${bmStatutLabel[dernier.statut]||''}</div>
+        ${trend}
+      </div>
+    </div>`;
+  }).join('') : "<div style='padding:16px;font-size:13px;color:var(--muted);font-style:italic'>Aucun marqueur biologique enregistré pour le moment — ajoutez un bilan sanguin ci-dessus pour lancer l'extraction automatique.</div>";
+
   // Tags
   let tagHtml='';
   if(c.programme) tagHtml+=`<span class="fv2-tag prog">${pLbl(c.programme)}</span>`;
@@ -3531,6 +3746,10 @@ function renderFiche(c){
         <div class="info-card">
           <div class="ic-head"><div class="ic-title">${ic('drop')} Documents médicaux <span style="font-weight:400;color:var(--muted);font-size:11px">(prises de sang, imagerie...)</span></div>${btn('ic-edit',`ouvrirAjoutDocMedical('${cid}')`,'+ Ajouter')}</div>
           <div class="ic-body"><div class="doc-list">${dmHtml}</div></div>
+        </div>
+        <div class="info-card">
+          <div class="ic-head"><div class="ic-title">${ic('spark')} Bilans biologiques <span style="font-weight:400;color:var(--muted);font-size:11px">(marqueurs extraits, avant/après)</span></div></div>
+          <div class="ic-body"><div style="display:flex;flex-direction:column;gap:6px;padding:10px 14px">${bmHtml}</div></div>
         </div>
         <div class="info-card">
           <div class="ic-head"><div class="ic-title">${ic('cash')} Factures</div><span style="font-size:11px;color:var(--muted)">${facturesDeCetteCliente.length} facture(s) · ${caTotal.toFixed(0)} € encaissés</span></div>
@@ -5485,7 +5704,7 @@ function ouvrirBilanEntree(clientId, mode){
       <div class="fg"><label class="fl">Nom du document</label><input class="fi" id="dm-nom" placeholder="Ex: Bilan sanguin janvier 2026"></div>
       <div class="fg2">
         <div class="fg"><label class="fl">Type</label>
-          <select class="fi fs" id="dm-type">
+          <select class="fi fs" id="dm-type" onchange="dmToggleLabo(this)">
             <option value="bilan_sanguin">Bilan sanguin</option>
             <option value="imagerie">Radio / Imagerie</option>
             <option value="compte_rendu">Compte-rendu médical</option>
@@ -5495,10 +5714,32 @@ function ouvrirBilanEntree(clientId, mode){
         </div>
         <div class="fg"><label class="fl">Date de l'examen *</label><input class="fi" id="dm-date" type="date"></div>
       </div>
+      <div class="fg2" id="dm-labo-row">
+        <div class="fg"><label class="fl">Laboratoire <span style="font-weight:400;color:var(--muted)">(optionnel)</span></label><input class="fi" id="dm-labo" placeholder="Ex: Laboratoire Barbier"></div>
+        <div class="fg" id="dm-extract-toggle-wrap">
+          <label class="fl">Extraction des marqueurs</label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);height:38px"><input type="checkbox" id="dm-extract" checked style="width:16px;height:16px"> Extraire automatiquement les valeurs (IA)</label>
+        </div>
+      </div>
     </div>
     <div class="mfoot">
       <button class="btn btn-ghost" onclick="closeM('m-doc-medical')">Annuler</button>
       <button class="btn btn-primary" id="dm-save-btn" onclick="saveDocMedical()">Ajouter</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ Extraction IA des marqueurs biologiques ═══ -->
+<div class="modal-bg" id="m-extraction-bilan">
+  <div class="modal" style="max-width:720px">
+    <div class="mhead"><div class="mtitle"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3c0 6 12 12 12 18M18 3c0 6-12 12-12 18M7 8h10M7 16h10"/></svg> Marqueurs extraits du bilan</div><button class="mx" onclick="closeM('m-extraction-bilan')">×</button></div>
+    <div class="mbody" id="eb-body">
+      <div style="padding:30px 10px;text-align:center;font-size:13px;color:var(--muted);font-style:italic" id="eb-loading">Lecture du document en cours…</div>
+      <div id="eb-content" style="display:none"></div>
+    </div>
+    <div class="mfoot">
+      <button class="btn btn-ghost" onclick="closeM('m-extraction-bilan')">Fermer sans enregistrer</button>
+      <button class="btn btn-primary" id="eb-save-btn" onclick="enregistrerMarqueursExtraits()" style="display:none">Enregistrer les marqueurs retenus</button>
     </div>
   </div>
 </div>
