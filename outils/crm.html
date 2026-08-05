@@ -1543,6 +1543,7 @@ let docsMedicaux={}; // { clientId: [ {id, nom_fichier, type, date_bilan, storag
 let protocolesClient={}; // { clientId: row de la table protocoles_client (protocole PHV actuellement actif), ou null }
 let protocolesHistory={}; // { clientId: [ {id, created_at}, ... ] } — tous les protocoles jamais générés, jamais écrasés
 let questionnairesClient={}; // { clientId: [ {id, type, prenom, snapshot, created_at}, ... ] }
+let consultationSummariesClient={}; // { clientId: [ {id, plan_type, plan_label, date_consultation, resume_md, created_at}, ... ] }
 let journalEntriesClient={}; // { clientId: [ {date, energie, transit, ballonnements, humeur, note}, ... ] }
 
 // COLORS palette - vibrant Monday-style
@@ -3452,6 +3453,17 @@ async function loadQuestionnaires(cid){
   }
 }
 
+// Résumés narratifs (générés par IA, à partir d'une transcription ou d'un questionnaire) — table consultation_summaries
+async function loadConsultationSummaries(cid){
+  try{
+    const r=await sb('consultation_summaries?client_key=eq.'+encodeURIComponent(cid)+'&order=created_at.desc&select=id,plan_type,plan_label,date_consultation,resume_md,created_at');
+    consultationSummariesClient[cid]=r;
+  }catch(e){
+    console.error('[CRM] ✗ Résumés narratifs:', e.message);
+    consultationSummariesClient[cid]=consultationSummariesClient[cid]||[];
+  }
+}
+
 async function loadJournalEntries(cid){
   try{
     const r=await sb('journal_entries?client_key=eq.'+encodeURIComponent(cid)+'&select=date,energie,transit,ballonnements,humeur,note,created_at&order=date.desc&limit=30');
@@ -3467,7 +3479,7 @@ async function openFiche(id){
   if(!c)return;
   nav('fiche',null);
   renderFiche(c); // affichage immédiat
-  await Promise.allSettled([loadMemoAlerts(), loadDocsMedicaux(id), loadBilansMarqueurs(id), loadRecommandationsAnalyses(id), loadQuestionnaires(id), loadJournalEntries(id), loadProtocoleClient(id), loadProtocolesHistory(id)]); // rechargement frais depuis Supabase
+  await Promise.allSettled([loadMemoAlerts(), loadDocsMedicaux(id), loadBilansMarqueurs(id), loadRecommandationsAnalyses(id), loadQuestionnaires(id), loadConsultationSummaries(id), loadJournalEntries(id), loadProtocoleClient(id), loadProtocolesHistory(id)]); // rechargement frais depuis Supabase
   if(!c.dateProtocole){
     const fallback=protoDateFor(c);
     if(fallback){
@@ -3607,6 +3619,12 @@ function renderFiche(c){
   const docs=[
     {icon:ic('file'),bg:'var(--orange-lt)',name:'Questionnaire de consultation',meta:qConsult.length?'Complété le '+fmtDate(qConsult[0].created_at):'Non rempli',st:qConsult.length?'ok':'missing',stl:qConsult.length?'Complété':'À faire',al:'Ouvrir',ac:qConsult.length?'':'primary',fn:`ouvrirQuestionnaireCliente('${cid}','consultation')`},
     {icon:ic('refresh'),bg:'var(--green-lt)',name:'Questionnaire de suivi',meta:qSuivi.length?qSuivi.length+' suivi(s) enregistré(s) · dernier le '+fmtDate(qSuivi[0].created_at):'Aucun suivi enregistré',st:qSuivi.length?'ok':'missing',stl:qSuivi.length?qSuivi.length+' au total':'Aucun',al:'Nouveau suivi',ac:'',fn:`ouvrirQuestionnaireCliente('${cid}','suivi')`},
+    (()=>{
+      const sums=consultationSummariesClient[cid]||[];
+      if(!qConsult.length) return {icon:ic('spark'),bg:'var(--violet-lt)',name:'Résumé narratif (IA)',meta:'Nécessite un questionnaire de consultation complété',st:'missing',stl:'N/A',al:'—',ac:'',fn:''};
+      if(sums.length) return {icon:ic('spark'),bg:'var(--violet-lt)',name:'Résumé narratif (IA)',meta:sums.length+' résumé(s) · dernier le '+fmtDate(sums[0].created_at),st:'ok',stl:sums.length+' au total',al:'Voir / régénérer',ac:'',fn:`voirResumeNarratif('${cid}')`};
+      return {icon:ic('spark'),bg:'var(--violet-lt)',name:'Résumé narratif (IA)',meta:'Synthèse en prose générée à partir du questionnaire — quelques centimes par génération',st:'missing',stl:'À générer',al:'Générer',ac:'primary',fn:`genererResumeNarratifIA('${cid}')`};
+    })(),
     (()=>{
       const pc=protocolesClient[cid];
       const pcDate=pc?(pc.updated_at||pc.created_at):null;
@@ -4813,8 +4831,145 @@ function voirQuestionnaireArchive(clientId, qid){
   document.body.appendChild(modal);
 }
 
-// ── Ouvrir le générateur PHV pour une cliente spécifique ──
-// (auparavant ouvrait phv-print.html directement — qui sert uniquement à *afficher* un protocole
+/* ══════════════════════════════════════════════
+   RÉSUMÉ NARRATIF DE CONSULTATION (IA)
+   Synthèse en prose générée à partir du dernier questionnaire de
+   consultation complété — complète le résumé structuré gratuit
+   (voirQuestionnaireArchive) par un texte prêt à relire avant un
+   suivi. Modèle Haiku 4.5 : quelques centimes par génération, cette
+   tâche de reformulation ne justifie pas un modèle plus coûteux.
+   Enregistré dans la même table que resume-consultation.html
+   (consultation_summaries), avec plan_type='questionnaire_consultation'
+   pour la distinguer des résumés issus d'une retranscription orale.
+══════════════════════════════════════════════ */
+function texteDonneesQuestionnaire(snap){
+  if(Array.isArray(snap?._resume_sections)){
+    return snap._resume_sections.map(s=>`## ${s.titre}\n${(s.contenu||'').trim()||'Non renseigné'}`).join('\n\n');
+  }
+  // Repli pour les questionnaires archivés avant l'ajout de _resume_sections
+  return Object.entries(snap||{})
+    .filter(([k,v])=>v!==null&&v!==undefined&&String(v).trim()!==''&&!k.startsWith('_'))
+    .map(([k,v])=>`${k} : ${typeof v==='object'?JSON.stringify(v):v}`).join('\n');
+}
+
+async function genererResumeNarratifIA(cid){
+  const c=db.clients.find(x=>x.id===cid);
+  if(!c){ toast('Cliente introuvable','err'); return; }
+  const qList=(questionnairesClient[cid]||[]).filter(q=>q.type==='consultation');
+  if(!qList.length){ toast('Aucun questionnaire de consultation enregistré pour cette cliente','warn'); return; }
+  const q=qList[0]; // le plus récent (déjà trié par created_at desc)
+
+  const apiKey=getAnthropicKey();
+  if(!apiKey){ toast('Clé API requise pour générer le résumé','err'); return; }
+
+  toast('Génération du résumé en cours…','ok');
+
+  const donnees=texteDonneesQuestionnaire(q.snapshot);
+  const prenom=c.prenom||q.prenom||'la cliente';
+
+  const prompt=`Tu es l'assistant de Sabrina Castelli, naturopathe diplômée (A VITA SERENA, Porto-Vecchio, Corse), spécialisée en santé digestive et équilibre hormonal féminin. Tu rédiges, à usage strictement interne pour Sabrina, un résumé synthétique en prose du questionnaire de consultation rempli par une cliente — pour qu'elle puisse s'y référer rapidement avant un suivi, sans avoir à relire toutes les réponses brutes.
+
+━━ RÈGLES ABSOLUES ━━
+1. Ce résumé documente CE QUI A ÉTÉ RENSEIGNÉ DANS LE QUESTIONNAIRE — ce n'est ni un diagnostic, ni un protocole, ni une analyse clinique de ta part. Formulations du type "la cliente rapporte…", "renseigné dans le questionnaire…".
+2. Reste synthétique : chaque section 2 à 5 phrases ou puces courtes, jamais une reformulation exhaustive de chaque champ.
+3. Vocabulaire naturopathique — pas de terme médical diagnostique, sauf s'il s'agit d'un terme employé tel quel par la cliente (ex. un diagnostic médical déjà posé qu'elle mentionne).
+4. N'invente jamais de contenu absent des données fournies. Si une thématique n'a rien de renseigné, ne crée pas de section pour elle.
+5. Document interne, à la troisième personne (le vouvoiement ne s'applique pas ici, ce n'est pas destiné à la cliente).
+6. Priorise ce qui est cliniquement actionnable pour la prochaine séance : motif principal, terrain dominant, signaux d'alerte, pistes déjà évoquées.
+
+━━ FORMAT DE SORTIE ━━
+Réponds UNIQUEMENT en JSON valide, sans texte avant ou après, sans balises markdown :
+{
+  "titre": "Résumé de consultation — ${escH(prenom)}",
+  "sections": [
+    { "label": "Titre de section pertinent", "contenu": "Texte de synthèse" }
+  ]
+}
+Choisis toi-même les libellés de section les plus pertinents au vu des données (ex. "Motif & terrain", "Digestion", "Hormones & cycle", "Stress & sommeil", "Points de vigilance", "Pistes à explorer en séance"...). N'en crée pas plus de 6-7. Le champ "contenu" peut utiliser des puces "- élément" séparées par \\n, ou un paragraphe court.
+
+━━ DONNÉES DU QUESTIONNAIRE ━━
+${donnees}`;
+
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'x-api-key':apiKey,
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-direct-browser-access':'true'
+      },
+      body:JSON.stringify({
+        model:'claude-haiku-4-5-20251001',
+        max_tokens:1500,
+        messages:[{role:'user',content:prompt}]
+      })
+    });
+    const data=await res.json();
+    if(data.error) throw new Error(data.error.message);
+    const raw=(data.content?.[0]?.text||'').replace(/```json|```/g,'').trim();
+    const parsed=JSON.parse(raw);
+    const resumeMd=(parsed.sections||[]).map(s=>`## ${s.label}\n\n${s.contenu}`).join('\n\n');
+
+    await sb('consultation_summaries',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify({
+      id:'resume_'+cid+'_'+Date.now(),
+      client_key:cid,
+      prenom:c.prenom||null,
+      nom:c.nom||null,
+      ddn:c.ddn||null,
+      plan_type:'questionnaire_consultation',
+      plan_label:'Synthèse automatique — Questionnaire de consultation',
+      date_consultation:(q.created_at||'').slice(0,10)||null,
+      resume_md:resumeMd,
+      created_at:new Date().toISOString(),
+      updated_at:new Date().toISOString()
+    })});
+
+    await loadConsultationSummaries(cid);
+    toast('✓ Résumé narratif généré','ok');
+    renderFiche(c);
+    voirResumeNarratif(cid);
+  }catch(e){
+    toast('Erreur de génération : '+e.message,'err');
+  }
+}
+
+function markdownVersHtml(md){
+  return (md||'').split('\n').map(l=>{
+    l=l.trim();
+    if(!l) return '';
+    if(l.startsWith('## ')) return `<h4 style="font-size:13px;font-weight:800;letter-spacing:.04em;color:#6C47FF;margin:16px 0 6px">${escH(l.slice(3))}</h4>`;
+    if(l.startsWith('- ')) return `<div style="font-size:13.5px;color:var(--ink);line-height:1.6;padding-left:14px;position:relative">${escH(l.slice(2))}</div>`;
+    return `<div style="font-size:13.5px;color:var(--ink);line-height:1.65">${escH(l)}</div>`;
+  }).join('');
+}
+
+function voirResumeNarratif(cid){
+  const sums=consultationSummariesClient[cid]||[];
+  if(!sums.length){ toast('Aucun résumé narratif enregistré','warn'); return; }
+  const c=db.clients.find(x=>x.id===cid);
+  const listHtml=sums.map((s,i)=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;${i<sums.length-1?'border-bottom:1px solid var(--border)':''}">
+      <div style="font-size:12.5px;color:var(--muted)">${escH(s.plan_label||'Résumé')} · ${fmtDate(s.created_at)}</div>
+    </div>`).join('');
+  const dernier=sums[0];
+  const modal=document.createElement('div');
+  modal.className='modal-bg open';
+  modal.id='modal-resume-narratif';
+  modal.innerHTML=`<div class="modal modal-lg">
+    <div style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+      <div style="font-size:16px;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:8px">${ic('spark')} Résumé narratif — ${escH(c?.prenom||'')} · ${fmtDate(dernier.created_at)}</div>
+      <button onclick="document.getElementById('modal-resume-narratif').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted)">×</button>
+    </div>
+    <div style="padding:8px 24px 4px;max-height:60vh;overflow:auto">${markdownVersHtml(dernier.resume_md)}</div>
+    <div style="padding:14px 24px 20px;border-top:1px solid var(--border)">
+      <button class="btn-dark" style="padding:9px 16px;border-radius:8px;border:none;background:var(--ink);color:#fff;font-size:12.5px;cursor:pointer;margin-bottom:10px" onclick="document.getElementById('modal-resume-narratif').remove();genererResumeNarratifIA('${cid}')">Régénérer à partir du dernier questionnaire</button>
+      ${sums.length>1?`<div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:4px">Historique (${sums.length})</div>${listHtml}`:''}
+    </div>
+  </div>`;
+  modal.addEventListener('click', e=>{ if(e.target===modal) modal.remove(); });
+  document.body.appendChild(modal);
+}
 // déjà généré, pas à en produire un. Le point d'entrée correct est le générateur lui-même.)
 function ouvrirPHVCliente(clientId){
   const c = db.clients.find(x=>x.id===clientId);
