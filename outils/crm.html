@@ -428,6 +428,7 @@ body {
 .tp-red { background: var(--red); color: white }
 .tp-orange { background: var(--orange-lt); color: var(--orange) }
 .tp-violet { background: var(--violet-lt); color: var(--violet) }
+.tp-blue { background: var(--blue-lt, #E5F0FF); color: var(--blue, #2F6FE0) }
 
 /* ═══ ALERTE ITEMS ═══ */
 .al-item {
@@ -2132,8 +2133,6 @@ async function loadMemoAlerts(){
       catch(e){ return false; }
     }).map(parseMemoRow);
 
-    const badge = document.getElementById('tc-feed');
-    if(badge) badge.textContent = memoAlerts.filter(m => m.refusSansReponse.length > 0).length;
     console.log('[CRM] Mémo alertes refus:', memoAlerts.length, '— historique complet:', memoHistoryAll.length);
   }catch(e){
     console.error('[CRM] Erreur loadMemoAlerts:', e.message);
@@ -3144,6 +3143,7 @@ function renderDashboard(){
   const sem=allAl.filter(a=>!a.alert.isOvd&&a.alert.isSoon);
   document.getElementById('tc-urg').textContent=urg.length+memoUrgAl.length;
   document.getElementById('tc-sem').textContent=sem.length;
+  document.getElementById('tc-msg').textContent=unreadMessagesCount();
   document.getElementById('tc-feed').textContent=memoAlerts.length;
   renderAlerts(curTab,urg,sem,memoUrgAl);
   renderPipeline(actives);
@@ -3152,6 +3152,13 @@ function renderDashboard(){
   renderSilences(sils);
   renderActionsJour();
   renderReservationRequests();
+}
+
+// Clic sur la stat card "Alertes" → défile vers le détail juste en dessous, sur la
+// même page (pas de navigation nécessaire, tout y est déjà : urgentes, cette semaine,
+// messages non lus, historique des retours).
+function allerAuxAlertes(){
+  document.getElementById('tab-row')?.scrollIntoView({behavior:'smooth', block:'center'});
 }
 
 function switchTab(tab,el){
@@ -3167,9 +3174,13 @@ function switchTab(tab,el){
     });
   renderAlerts(tab,allAl.filter(a=>a.alert.isOvd),allAl.filter(a=>!a.alert.isOvd&&a.alert.isSoon),memoUrgAl);
 }
-
 function renderAlerts(tab,urg,sem,memoUrgAl=[]){
   const el=document.getElementById('alerts-box');if(!el)return;
+  if(tab==='msg'){
+    const nonLus = clientMessages.filter(m=>!m.lu);
+    el.innerHTML = messagesBox(nonLus, 'Aucun message non lu — tout est à jour.');
+    return;
+  }
   if(tab==='feed'){
     if(!memoAlerts.length){
       el.innerHTML='<div class="empty"><div class="eicon">'+ic('check')+'</div><div class="etitle">Aucun refus signalé</div><div class="esub">Vos clientes n\'ont pas encore signalé de difficultés.</div></div>';
@@ -5522,7 +5533,7 @@ function ouvrirBilanEntree(clientId, mode){
       <div class="home-stat"><div class="home-stat-ic" style="background:#6C47FF18;color:#6C47FF"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="2.5"/><circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="2.5"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" stroke-width="2.5"/></svg></div><div class="home-stat-val" id="kv-total">—</div><div class="home-stat-lbl">Total clientes</div></div>
       <div class="home-stat"><div class="home-stat-ic" style="background:#00C87518;color:#00C875"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="home-stat-val" id="kv-actives">—</div><div class="home-stat-lbl">En programme</div></div>
       <div class="home-stat"><div class="home-stat-ic" style="background:#0096FF18;color:#0096FF"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" stroke-width="2.5"/><line x1="16" y1="2" x2="16" y2="6" stroke="currentColor" stroke-width="2.5"/><line x1="8" y1="2" x2="8" y2="6" stroke="currentColor" stroke-width="2.5"/><line x1="3" y1="10" x2="21" y2="10" stroke="currentColor" stroke-width="2.5"/></svg></div><div class="home-stat-val" id="kv-rdv">—</div><div class="home-stat-lbl">RDV ce mois</div></div>
-      <div class="home-stat"><div class="home-stat-ic" style="background:#E2445C18;color:#E2445C"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" stroke="currentColor" stroke-width="2.5"/></svg></div><div class="home-stat-val" id="kv-alertes">—</div><div class="home-stat-lbl">Alertes</div></div>
+      <div class="home-stat" onclick="allerAuxAlertes()" style="cursor:pointer" title="Voir le détail des alertes"><div class="home-stat-ic" style="background:#E2445C18;color:#E2445C"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" stroke="currentColor" stroke-width="2.5"/></svg></div><div class="home-stat-val" id="kv-alertes">—</div><div class="home-stat-lbl">Alertes</div></div>
       <div class="home-stat"><div class="home-stat-ic" style="background:#FF7B2C18;color:#FF7B2C"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="2" y="6" width="20" height="12" rx="2" stroke="currentColor" stroke-width="2.5"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2.5"/><path d="M6 9v.01M18 15v.01" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg></div><div class="home-stat-val" id="hca-jour">—</div><div class="home-stat-lbl">CA aujourd'hui</div></div>
       <div class="home-stat"><div class="home-stat-ic" style="background:#FF7B2C18;color:#FF7B2C"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 20V10M11 20V4M18 20v-7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg></div><div class="home-stat-val" id="hca-mois">—</div><div class="home-stat-lbl">CA ce mois</div><div class="hca-trend" id="hca-trend"></div></div>
     </div>
@@ -5554,6 +5565,7 @@ function ouvrirBilanEntree(clientId, mode){
             <div class="tab-row" id="tab-row">
               <button class="tab-btn active" onclick="switchTab('urg',this)">Urgentes <span class="tab-pill tp-red" id="tc-urg">0</span></button>
               <button class="tab-btn" onclick="switchTab('sem',this)">Cette semaine <span class="tab-pill tp-orange" id="tc-sem">0</span></button>
+              <button class="tab-btn" onclick="switchTab('msg',this)">Messages <span class="tab-pill tp-blue" id="tc-msg">0</span></button>
               <button class="tab-btn" onclick="switchTab('feed',this)">Historique retours <span class="tab-pill tp-violet" id="tc-feed">0</span></button>
             </div>
           </div>
