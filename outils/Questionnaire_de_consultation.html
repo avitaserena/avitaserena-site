@@ -5183,6 +5183,91 @@ async function bridgeCRM_questionnaire(d) {
 /* ══════════════════════════════════════
    FINALISER → GÉNÉRATEUR
 ══════════════════════════════════════ */
+/* ══════════════════════════════════════
+   RÉSUMÉ NARRATIF AUTOMATIQUE (IA)
+   Déclenché en tâche de fond à la finalisation — silencieux et non-bloquant :
+   si aucune clé API n'est disponible dans le navigateur, on n'interrompt jamais
+   la praticienne avec une invite, on se contente de ne pas générer (elle peut
+   toujours le faire manuellement depuis la fiche cliente du CRM). La clé est
+   partagée en localStorage avec crm.html (clé 'avs_akey') — une fois saisie
+   une fois dans n'importe quel outil, elle est disponible partout.
+══════════════════════════════════════ */
+async function genererResumeNarratifAuto(d, clientId) {
+  try {
+    const apiKey = localStorage.getItem('avs_akey') || sessionStorage.getItem('avs_akey') || '';
+    if (!apiKey || !apiKey.startsWith('sk-ant') || !clientId) {
+      console.log('[Résumé IA] Clé API non disponible — résumé narratif non généré automatiquement (génération manuelle possible depuis la fiche cliente).');
+      return;
+    }
+
+    const donnees = (d._resume_sections || []).map(s => `## ${s.titre}\n${(s.contenu || '').trim() || 'Non renseigné'}`).join('\n\n');
+    const prenom = d.prenom || 'la cliente';
+
+    const prompt = `Tu es l'assistant de Sabrina Castelli, naturopathe diplômée (A VITA SERENA, Porto-Vecchio, Corse), spécialisée en santé digestive et équilibre hormonal féminin. Tu rédiges, à usage strictement interne pour Sabrina, un résumé synthétique en prose du questionnaire de consultation rempli par une cliente — pour qu'elle puisse s'y référer rapidement avant un suivi, sans avoir à relire toutes les réponses brutes.
+
+━━ RÈGLES ABSOLUES ━━
+1. Ce résumé documente CE QUI A ÉTÉ RENSEIGNÉ DANS LE QUESTIONNAIRE — ce n'est ni un diagnostic, ni un protocole, ni une analyse clinique de ta part. Formulations du type "la cliente rapporte…", "renseigné dans le questionnaire…".
+2. Reste synthétique : chaque section 2 à 5 phrases ou puces courtes, jamais une reformulation exhaustive de chaque champ.
+3. Vocabulaire naturopathique — pas de terme médical diagnostique, sauf s'il s'agit d'un terme employé tel quel par la cliente (ex. un diagnostic médical déjà posé qu'elle mentionne).
+4. N'invente jamais de contenu absent des données fournies. Si une thématique n'a rien de renseigné, ne crée pas de section pour elle.
+5. Document interne, à la troisième personne (le vouvoiement ne s'applique pas ici, ce n'est pas destiné à la cliente).
+6. Priorise ce qui est cliniquement actionnable pour la prochaine séance : motif principal, terrain dominant, signaux d'alerte, pistes déjà évoquées.
+
+━━ FORMAT DE SORTIE ━━
+Réponds UNIQUEMENT en JSON valide, sans texte avant ou après, sans balises markdown :
+{
+  "titre": "Résumé de consultation — ${prenom.replace(/"/g,'')}",
+  "sections": [
+    { "label": "Titre de section pertinent", "contenu": "Texte de synthèse" }
+  ]
+}
+Choisis toi-même les libellés de section les plus pertinents au vu des données (ex. "Motif & terrain", "Digestion", "Hormones & cycle", "Stress & sommeil", "Points de vigilance", "Pistes à explorer en séance"...). N'en crée pas plus de 6-7. Le champ "contenu" peut utiliser des puces "- élément" séparées par \\n, ou un paragraphe court.
+
+━━ DONNÉES DU QUESTIONNAIRE ━━
+${donnees}`;
+
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1500,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+    const raw = (data.content?.[0]?.text || '').replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(raw);
+    const resumeMd = (parsed.sections || []).map(s => `## ${s.label}\n\n${s.contenu}`).join('\n\n');
+
+    await sbFetch('consultation_summaries', {
+      method: 'POST', prefer: 'return=minimal',
+      body: JSON.stringify({
+        id: 'resume_' + clientId + '_' + Date.now(),
+        client_key: clientId,
+        prenom: d.prenom || null,
+        nom: d.nom || null,
+        ddn: d.ddn || null,
+        plan_type: 'questionnaire_consultation',
+        plan_label: 'Synthèse automatique — Questionnaire de consultation',
+        date_consultation: new Date().toISOString().slice(0, 10),
+        resume_md: resumeMd,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+    });
+    console.log('[Résumé IA] Résumé narratif généré et enregistré automatiquement pour', prenom);
+  } catch (e) {
+    console.warn('[Résumé IA] Génération automatique échouée (silencieuse, sans impact sur la suite) :', e);
+  }
+}
+
 async function finalise() {
   const d = collectAllData();
   d._autoGenerate = true; // déclenche la génération automatique dès l'ouverture de generateur.html
@@ -5201,6 +5286,7 @@ async function finalise() {
     if (finalId) {
       d.client_id = finalId;
       localStorage.setItem('avita_session', JSON.stringify(d));
+      genererResumeNarratifAuto(d, finalId); // en tâche de fond — ne bloque jamais l'ouverture du générateur
     }
 
     showToast('✓ Données exportées — ouverture du générateur…');

@@ -243,7 +243,8 @@ const DB = {
         plan_type:     payload.planType || null,     // ex: 'premier_rdv', 'suivi', 'sibo', 'sopk', 'endometriose', 'menopause', 'spm'
         plan_label:    payload.planLabel || null,     // libellé lisible affiché dans la CRM
         date_consultation: payload.dateConsultation || null,
-        resume_md:     payload.resumeMd || '',         // résumé structuré, en markdown
+        resume_md:     payload.resumeMd || '',         // résumé structuré interne, en markdown
+        resume_client_md: payload.resumeClientMd || null, // résumé chaleureux destiné à l'espace personnel de la cliente
         transcript_brute: payload.transcriptBrute || null, // conservée uniquement si Sabrina le souhaite, jamais utilisée par le générateur
         created_at:    new Date().toISOString(),
         updated_at:    new Date().toISOString()

@@ -3623,7 +3623,7 @@ function renderFiche(c){
       const sums=consultationSummariesClient[cid]||[];
       if(!qConsult.length) return {icon:ic('spark'),bg:'var(--violet-lt)',name:'Résumé narratif (IA)',meta:'Nécessite un questionnaire de consultation complété',st:'missing',stl:'N/A',al:'—',ac:'',fn:''};
       if(sums.length) return {icon:ic('spark'),bg:'var(--violet-lt)',name:'Résumé narratif (IA)',meta:sums.length+' résumé(s) · dernier le '+fmtDate(sums[0].created_at),st:'ok',stl:sums.length+' au total',al:'Voir / régénérer',ac:'',fn:`voirResumeNarratif('${cid}')`};
-      return {icon:ic('spark'),bg:'var(--violet-lt)',name:'Résumé narratif (IA)',meta:'Synthèse en prose générée à partir du questionnaire — quelques centimes par génération',st:'missing',stl:'À générer',al:'Générer',ac:'primary',fn:`genererResumeNarratifIA('${cid}')`};
+      return {icon:ic('spark'),bg:'var(--violet-lt)',name:'Résumé narratif (IA)',meta:'Généré automatiquement à la finalisation du questionnaire — pas encore disponible pour cette cliente',st:'missing',stl:'À générer',al:'Générer maintenant',ac:'primary',fn:`genererResumeNarratifIA('${cid}')`};
     })(),
     (()=>{
       const pc=protocolesClient[cid];
@@ -5026,11 +5026,13 @@ function ouvrirLettreClinique(clientId){
 }
 
 // ── Clé API Anthropic (saisie une fois par session) ──
+// ── Clé API Anthropic (saisie une fois, conservée en localStorage — partagée avec
+//    Questionnaire_de_consultation.html pour la génération automatique du résumé narratif) ──
 function getAnthropicKey(){
-  let k = sessionStorage.getItem('avs_akey') || '';
+  let k = localStorage.getItem('avs_akey') || sessionStorage.getItem('avs_akey') || '';
   if(!k || !k.startsWith('sk-ant')){
     k = prompt('Clé API Anthropic (sk-ant-…) :') || '';
-    if(k.startsWith('sk-ant')) sessionStorage.setItem('avs_akey', k);
+    if(k.startsWith('sk-ant')) localStorage.setItem('avs_akey', k);
   }
   return k;
 }
