@@ -4760,18 +4760,45 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ── Voir le contenu d'un questionnaire archivé (consultation ou suivi) ──
+// Depuis la restructuration : le snapshot contient _resume_sections (résumé
+// structuré par thème, identique à celui affiché en fin de consultation).
+// Les questionnaires archivés avant cette évolution n'ont pas ce champ —
+// on retombe alors sur l'ancien dump brut trié par clé technique.
 function voirQuestionnaireArchive(clientId, qid){
   const list = questionnairesClient[clientId] || [];
   const q = list.find(x => String(x.id) === String(qid));
   if(!q){ toast('Questionnaire introuvable','err'); return; }
   const snap = q.snapshot || {};
-  const rows = Object.entries(snap)
+  const sections = Array.isArray(snap._resume_sections) ? snap._resume_sections : null;
+
+  const rawRows = Object.entries(snap)
     .filter(([k,v]) => v !== null && v !== undefined && String(v).trim() !== '' && !k.startsWith('_'))
     .map(([k,v]) => {
       const label = k.replace(/_/g,' ').replace(/([a-z])([A-Z])/g,'$1 $2').replace(/^./, s=>s.toUpperCase());
       const val = typeof v === 'object' ? JSON.stringify(v) : String(v);
       return `<div style="padding:10px 0;border-bottom:1px solid var(--border)"><div style="font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:4px">${escH(label)}</div><div style="font-size:13px;color:var(--ink);white-space:pre-wrap;line-height:1.6">${escH(val)}</div></div>`;
     }).join('');
+
+  let bodyHtml;
+  if(sections){
+    const secHtml = sections.map(s=>{
+      const contenu = (s.contenu||'').trim();
+      return `<div style="margin-bottom:18px">
+        <div style="display:flex;align-items:center;gap:8px;font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:#6C47FF;margin-bottom:8px">${ic(s.icone||'file')} ${escH(s.titre||'')}</div>
+        <div style="font-size:13.5px;color:var(--ink);white-space:pre-wrap;line-height:1.65;padding-left:2px">${contenu ? escH(contenu) : '<span style="color:var(--muted);font-style:italic">Non renseigné</span>'}</div>
+      </div>`;
+    }).join('');
+    bodyHtml = `<div style="padding:8px 24px 4px;max-height:70vh;overflow:auto">
+      ${secHtml}
+      <details style="margin-top:6px">
+        <summary style="cursor:pointer;font-size:12px;color:var(--muted);padding:8px 0">Voir toutes les données brutes du formulaire</summary>
+        <div style="padding-top:8px">${rawRows||'<p style="color:var(--muted);font-style:italic">Aucune donnée.</p>'}</div>
+      </details>
+    </div>`;
+  } else {
+    bodyHtml = `<div style="padding:8px 24px 20px;max-height:70vh;overflow:auto">${rawRows||'<p style="color:var(--muted);font-style:italic">Aucune donnée.</p>'}</div>`;
+  }
+
   const modal=document.createElement('div');
   modal.className='modal-bg open';
   modal.id='modal-voir-questionnaire';
@@ -4780,7 +4807,7 @@ function voirQuestionnaireArchive(clientId, qid){
       <div style="font-size:16px;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:8px">${q.type==='suivi'?ic('refresh'):ic('file')} ${q.type==='suivi'?'Questionnaire de suivi':'Questionnaire de consultation'} — ${escH(q.prenom||'')} · ${fmtDate(q.created_at)}</div>
       <button onclick="document.getElementById('modal-voir-questionnaire').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted)">×</button>
     </div>
-    <div style="padding:8px 24px 20px;max-height:70vh;overflow:auto">${rows||'<p style="color:var(--muted);font-style:italic">Aucune donnée.</p>'}</div>
+    ${bodyHtml}
   </div>`;
   modal.addEventListener('click', e=>{ if(e.target===modal) modal.remove(); });
   document.body.appendChild(modal);

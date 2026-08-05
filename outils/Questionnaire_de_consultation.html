@@ -4940,15 +4940,17 @@ function collectAllData() {
 }
 
 /* ══════════════════════════════════════
-   GÉNÉRATION SYNTHÈSE (modale)
+   CONSTRUCTION DES SECTIONS DE SYNTHÈSE
+   Utilisée à la fois par la modale de consultation (genererSynthese)
+   et par la sauvegarde CRM (bridgeCRM_questionnaire) — une seule source
+   de vérité pour que l'affichage dans crm.html soit identique à celui
+   vu ici en fin de consultation. Pas d'emoji en pictogramme (charte
+   graphique) : chaque section porte une clé "icone" que le CRM mappe
+   vers son propre jeu d'icônes SVG au trait.
 ══════════════════════════════════════ */
-function genererSynthese() {
-  const d = collectAllData();
-  const prenom = d.prenom || 'Cliente';
-  const now = new Date().toLocaleDateString('fr-FR', {day:'2-digit', month:'long', year:'numeric'});
-
-  const sections = [
-    { titre: '👤 Identité & motif', contenu: [
+function construireSectionsSynthese(d) {
+  return [
+    { icone: 'user', titre: 'Identité & motif', contenu: [
       d.prenom ? `Prénom : ${d.prenom}` : '',
       d.age ? `Âge : ${d.age} ans` : '',
       d.sexe ? `Identité : ${d.sexe}` : '',
@@ -4957,18 +4959,29 @@ function genererSynthese() {
       d.motifs ? `Motifs principaux : ${d.motifs}` : '',
       d.objectif_6mois ? `Objectif à 6 mois :\n${d.objectif_6mois}` : '',
     ].filter(Boolean).join('\n') },
-    { titre: '📊 Scores cliniques', contenu: d.scores || '— Non renseignés —' },
-    { titre: '🎯 Prédisposition au changement', contenu: d.motivation || '— Non renseigné —' },
-    { titre: '✅ Symptômes cochés', contenu: d.symptomes_coches || '— Aucun coché —' },
-    { titre: '💊 Sélections & puces', contenu: d.chips_coches || '— Aucune —' },
-    { titre: '🩺 Diagnostics actifs / antécédents résolus', contenu: [
+    { icone: 'chart', titre: 'Scores cliniques', contenu: d.scores || '— Non renseignés —' },
+    { icone: 'trophy', titre: 'Prédisposition au changement', contenu: d.motivation || '— Non renseigné —' },
+    { icone: 'check', titre: 'Symptômes cochés', contenu: d.symptomes_coches || '— Aucun coché —' },
+    { icone: 'pill', titre: 'Sélections & puces', contenu: d.chips_coches || '— Aucune —' },
+    { icone: 'heart', titre: 'Diagnostics actifs / antécédents résolus', contenu: [
       d.diagnostics_actifs ? `Actifs actuellement : ${d.diagnostics_actifs}` : '',
       d.antecedents_resolus ? `Antécédents résolus (non actifs) : ${d.antecedents_resolus}` : '',
     ].filter(Boolean).join('\n') || '— Aucun renseigné —' },
-    { titre: '🩸 Bilans recommandés', contenu: d.bilans_recommandes || '— Aucun sélectionné —' },
-    { titre: '📝 Notes libres & anamnèse', contenu: d.textes_libres || '— Aucune note —' },
-    { titre: '🌿 Synthèse praticien', contenu: d.synthese_praticien || '— Non renseignée —' },
+    { icone: 'drop', titre: 'Bilans recommandés', contenu: d.bilans_recommandes || '— Aucun sélectionné —' },
+    { icone: 'edit', titre: 'Notes libres & anamnèse', contenu: d.textes_libres || '— Aucune note —' },
+    { icone: 'leaf', titre: 'Synthèse praticien', contenu: d.synthese_praticien || '— Non renseignée —' },
   ];
+}
+
+/* ══════════════════════════════════════
+   GÉNÉRATION SYNTHÈSE (modale)
+══════════════════════════════════════ */
+function genererSynthese() {
+  const d = collectAllData();
+  const prenom = d.prenom || 'Cliente';
+  const now = new Date().toLocaleDateString('fr-FR', {day:'2-digit', month:'long', year:'numeric'});
+
+  const sections = construireSectionsSynthese(d);
 
   const modal = document.getElementById('synthese-modal');
   const body = document.getElementById('synthese-body');
@@ -5173,6 +5186,7 @@ async function bridgeCRM_questionnaire(d) {
 async function finalise() {
   const d = collectAllData();
   d._autoGenerate = true; // déclenche la génération automatique dès l'ouverture de generateur.html
+  d._resume_sections = construireSectionsSynthese(d); // résumé structuré par thème, réutilisé tel quel dans la fiche cliente du CRM
   try {
     localStorage.setItem('avita_session', JSON.stringify(d));
     // Effacer l'autosave — la session est finalisée
