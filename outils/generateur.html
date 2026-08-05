@@ -1477,10 +1477,84 @@ function genererRecommandationCliente() {
       ${labosHtml}
       <div style="font-size:12px;color:var(--gris);font-style:italic;margin-top:10px">Ces analyses ne sont pour la plupart pas remboursées par la Sécurité sociale — n'hésitez pas à m'écrire si vous souhaitez prioriser un examen selon votre budget, ou étaler le règlement.</div>
     </div>
-    <button class="btn" style="margin-top:12px" type="button" onclick="copierRecommandationTexte(event)">Copier le texte de la recommandation</button>`;
+    <button class="btn" style="margin-top:12px" type="button" onclick="copierRecommandationTexte(event)">Copier le texte de la recommandation</button>
+    <button class="btn primary" id="rec-send-btn" style="margin-top:12px;margin-left:8px" type="button" onclick="envoyerRecommandationCliente(event)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px;margin-right:5px"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7Z"/></svg>Envoyer par email à la cliente</button>`;
   wrap.dataset.texte = texteBrut;
+  wrap.dataset.total = String(total || 0);
   wrap.style.display = 'block';
   wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// Enregistre la recommandation dans la fiche CRM de la cliente (table recommandations_analyses)
+// puis l'envoie par email via la fonction Edge send-recommandation-analyses. L'enregistrement
+// se fait dans tous les cas, même si l'envoi email échoue ensuite (email manquant, etc.) —
+// la recommandation reste consultable dans le CRM.
+async function envoyerRecommandationCliente(evt) {
+  const wrap = document.getElementById('recommandation-wrap');
+  const texte = wrap?.dataset.texte || '';
+  if (!texte) return;
+  const d = buildClientData();
+  const clientId = d.client_id;
+  if (!clientId) {
+    alert("Impossible d'identifier la cliente (pas de client_id dans la session) — ouvrez le générateur depuis sa fiche CRM ou son questionnaire pour que son identifiant soit transmis.");
+    return;
+  }
+  const retenus = (dernierResultatBilans?.bilans || []).filter(b => b.retenu);
+  const total = parseFloat(wrap.dataset.total || '0') || 0;
+
+  const btn = evt?.target?.closest('button') || document.getElementById('rec-send-btn');
+  const oldLabel = btn?.innerHTML;
+  if (btn) { btn.disabled = true; btn.textContent = 'Envoi en cours…'; }
+
+  const SB_URL = 'https://bqhkdndwldwqacrrbbig.supabase.co';
+  const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxaGtkbmR3bGR3cWFjcnJiYmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MzAyNTIsImV4cCI6MjA5NjMwNjI1Mn0.nH2UktMAVKYwng4L3SvW5F0fluV_sObGV0f3Mk1dnOY';
+  let authToken = SB_KEY;
+  if (typeof Auth !== 'undefined') {
+    const token = await Auth.getValidAccessToken();
+    if (token) authToken = token;
+  }
+  const headers = { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' };
+
+  try {
+    // 1) Sauvegarde dans la fiche CRM — dans tous les cas
+    await fetch(SB_URL + '/rest/v1/recommandations_analyses', {
+      method: 'POST',
+      headers: { ...headers, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({
+        client_id: clientId, client_key: clientId,
+        contenu: texte, bilans: retenus, budget_total: total || null
+      })
+    });
+
+    // 2) Récupération de l'email de la cliente depuis le CRM
+    const clRes = await fetch(SB_URL + '/rest/v1/clientes?id=eq.' + encodeURIComponent(clientId) + '&select=email,prenom,nom', { headers });
+    const clRows = clRes.ok ? await clRes.json() : [];
+    const cl = clRows[0];
+
+    if (!cl || !cl.email) {
+      alert('Recommandation enregistrée dans sa fiche cliente — mais aucun email trouvé pour elle dans le CRM. Complétez sa fiche puis relancez l\'envoi, ou copiez le texte manuellement en attendant.');
+      if (btn) { btn.disabled = false; btn.innerHTML = oldLabel; }
+      return;
+    }
+
+    // 3) Envoi email via la fonction Edge
+    const emailRes = await fetch(SB_URL + '/functions/v1/send-recommandation-analyses', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        to_email: cl.email,
+        to_name: [cl.prenom, cl.nom].filter(Boolean).join(' ') || d.prenom || '',
+        contenu: texte,
+        budget_total: total || null
+      })
+    });
+    if (!emailRes.ok) throw new Error(await emailRes.text());
+
+    if (btn) { btn.disabled = false; btn.textContent = '✓ Envoyée à ' + cl.email; }
+  } catch (e) {
+    alert("La recommandation est enregistrée dans sa fiche, mais l'envoi par email a échoué : " + e.message + ' — vous pouvez copier le texte et l\'envoyer manuellement en attendant.');
+    if (btn) { btn.disabled = false; btn.innerHTML = oldLabel; }
+  }
 }
 
 function copierRecommandationTexte(evt) {

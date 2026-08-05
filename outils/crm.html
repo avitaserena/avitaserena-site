@@ -1995,7 +1995,7 @@ async function sendMailRdv(rdvId, key, tplId, subject, email, name, heure='', da
       }
       // #18 H-1 : contact.FIRSTNAME lu par Brevo depuis le contact, lien Meet hardcod\u00e9 dans le template
       body = JSON.stringify({
-        sender:{name:'Sabrina \u00b7 A Vita Serena',email:'sabrina@avitaserena.com'},
+        sender:{name:'Sabrina · A VITA SERENA',email:'sabrina@avitaserena.com'},
         to:[{email, name}],
         templateId: tplId,
         params
@@ -2003,10 +2003,10 @@ async function sendMailRdv(rdvId, key, tplId, subject, email, name, heure='', da
     } else {
       // Mail libre (suivi J+7 — pas de template)
       body = JSON.stringify({
-        sender:{name:'Sabrina · A Vita Serena',email:'sabrina@avitaserena.com'},
+        sender:{name:'Sabrina · A VITA SERENA',email:'sabrina@avitaserena.com'},
         to:[{email, name}],
         subject,
-        htmlContent: '<p>Bonjour '+escH(name.split(' ')[0])+',</p><p>Comment vous sentez-vous depuis notre séance ?</p><p>Avec bienveillance,<br>Sabrina Castelli<br>A Vita Serena</p>'
+        htmlContent: '<p>Bonjour '+escH(name.split(' ')[0])+',</p><p>Comment vous sentez-vous depuis notre séance ?</p><p>Avec bienveillance,<br>Sabrina Castelli<br>A VITA SERENA</p>'
       });
     }
 
@@ -2921,6 +2921,22 @@ async function loadBilansMarqueurs(cid){
   }
 }
 
+let recommandationsAnalyses={}; // { clientId: [ {id, contenu, bilans, budget_total, created_at}, ... ] }
+async function loadRecommandationsAnalyses(cid){
+  try{
+    const r=await sb('recommandations_analyses?client_id=eq.'+encodeURIComponent(cid)+'&order=created_at.desc');
+    recommandationsAnalyses[cid]=r;
+  }catch(e){
+    console.error('[CRM] ✗ Recommandations d\'analyses:', e.message);
+    recommandationsAnalyses[cid]=recommandationsAnalyses[cid]||[];
+  }
+}
+
+function toggleRecommandationTexte(idx){
+  const el=document.getElementById('rec-texte-'+idx);
+  if(el) el.style.display = el.style.display==='none' ? 'block' : 'none';
+}
+
 function fileToBase64(file){
   return new Promise((resolve,reject)=>{
     const r=new FileReader();
@@ -3451,7 +3467,7 @@ async function openFiche(id){
   if(!c)return;
   nav('fiche',null);
   renderFiche(c); // affichage immédiat
-  await Promise.allSettled([loadMemoAlerts(), loadDocsMedicaux(id), loadBilansMarqueurs(id), loadQuestionnaires(id), loadJournalEntries(id), loadProtocoleClient(id), loadProtocolesHistory(id)]); // rechargement frais depuis Supabase
+  await Promise.allSettled([loadMemoAlerts(), loadDocsMedicaux(id), loadBilansMarqueurs(id), loadRecommandationsAnalyses(id), loadQuestionnaires(id), loadJournalEntries(id), loadProtocoleClient(id), loadProtocolesHistory(id)]); // rechargement frais depuis Supabase
   if(!c.dateProtocole){
     const fallback=protoDateFor(c);
     if(fallback){
@@ -3684,6 +3700,20 @@ function renderFiche(c){
     </div>`;
   }).join('') : "<div style='padding:16px;font-size:13px;color:var(--muted);font-style:italic'>Aucun marqueur biologique enregistré pour le moment — ajoutez un bilan sanguin ci-dessus pour lancer l'extraction automatique.</div>";
 
+  // Recommandations d'analyses envoyées depuis le générateur (historique + relance possible)
+  const ra=recommandationsAnalyses[cid]||[];
+  const raHtml=ra.length>0 ? ra.map((r,i)=>`
+    <div style="background:var(--surface);border-radius:9px;padding:10px 12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;cursor:pointer" onclick="toggleRecommandationTexte(${i})">
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--ink)">${fmtDate(r.created_at)}</div>
+          <div style="font-size:11px;color:var(--muted)">${(r.bilans||[]).filter(b=>b.retenu!==false).length} bilan(s)${r.budget_total?' · ≈ '+Number(r.budget_total).toFixed(2)+' €':''}</div>
+        </div>
+        <span style="font-size:11px;color:var(--ocre)">Voir le texte ▾</span>
+      </div>
+      <div id="rec-texte-${i}" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);white-space:pre-wrap;font-size:12px;color:var(--ink);line-height:1.6">${escH(r.contenu||'')}</div>
+    </div>`).join('') : "<div style='padding:16px;font-size:13px;color:var(--muted);font-style:italic'>Aucune recommandation d'analyses envoyée pour le moment (depuis le générateur, section « Bilans biologiques suggérés »).</div>";
+
   // Tags
   let tagHtml='';
   if(c.programme) tagHtml+=`<span class="fv2-tag prog">${pLbl(c.programme)}</span>`;
@@ -3756,6 +3786,10 @@ function renderFiche(c){
         <div class="info-card">
           <div class="ic-head"><div class="ic-title">${ic('spark')} Bilans biologiques <span style="font-weight:400;color:var(--muted);font-size:11px">(marqueurs extraits, avant/après)</span></div>${totalInvestiBilans>0?`<span style="font-size:11px;color:var(--muted)">${totalInvestiBilans.toFixed(2)} € investis</span>`:''}</div>
           <div class="ic-body"><div style="display:flex;flex-direction:column;gap:6px;padding:10px 14px">${bmHtml}</div></div>
+        </div>
+        <div class="info-card">
+          <div class="ic-head"><div class="ic-title">${ic('mail')} Recommandations d'analyses envoyées</div></div>
+          <div class="ic-body"><div style="display:flex;flex-direction:column;gap:6px;padding:10px 14px">${raHtml}</div></div>
         </div>
         <div class="info-card">
           <div class="ic-head"><div class="ic-title">${ic('cash')} Factures</div><span style="font-size:11px;color:var(--muted)">${facturesDeCetteCliente.length} facture(s) · ${caTotal.toFixed(0)} € encaissés</span></div>
