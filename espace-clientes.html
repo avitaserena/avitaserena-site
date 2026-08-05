@@ -2270,11 +2270,11 @@ async function gardienLoadHistory(){
 // ─── Triage IA avant envoi à Sabrina ───
 // Rôle strict : clarifier et classer, JAMAIS répondre à la question de la cliente.
 // gardienConv.history alimente le contexte envoyé à la fonction Edge chat-triage.
-var gardienConv = { history: [], rounds: 0, pendingFinal: null, imageUrl: null, rawParts: [] };
+var gardienConv = { history: [], rounds: 0, pendingFinal: null, imageUrl: null, rawParts: [], questions: [], pendingQuestion: null };
 var GARDIEN_MAX_ROUNDS = 2; // au-delà, on force la finalisation pour ne jamais bloquer la cliente
 
 function gardienResetConv(){
-  gardienConv = { history: [], rounds: 0, pendingFinal: null, imageUrl: null, rawParts: [] };
+  gardienConv = { history: [], rounds: 0, pendingFinal: null, imageUrl: null, rawParts: [], questions: [], pendingQuestion: null };
 }
 
 function serenaHandleImage(e){
@@ -2325,6 +2325,8 @@ async function serenaSend(){
   // Bulle de la cliente affichée immédiatement
   serenaAddBubble(text || 'Photo envoyée', 'user').classList.add('gardien-msg');
   gardienConv.rawParts.push(text || '[photo envoyée]');
+  gardienConv.questions.push(gardienConv.pendingQuestion);
+  gardienConv.pendingQuestion = null;
 
   var imageForApi = null;
   try {
@@ -2391,6 +2393,7 @@ async function serenaSend(){
       gardienShowRecap(data);
     } else {
       gardienConv.history.push({ role: 'assistant', content: data.question || '' });
+      gardienConv.pendingQuestion = data.question || null;
       serenaAddBubble(data.question || 'Pouvez-vous préciser ?', 'triage').classList.add('gardien-msg');
     }
 
@@ -2462,7 +2465,10 @@ async function gardienEnvoyerFinal(data){
         prenom: session.prenom || '',
         nom: session.nom || '',
         source: 'gardien',
-        message: gardienConv.rawParts.join('\n') || '[photo envoyée]',
+        message: gardienConv.rawParts.map(function(part, i){
+          var q = gardienConv.questions[i];
+          return q ? (q + '\n→ ' + part) : part;
+        }).join('\n\n') || '[photo envoyée]',
         image_url: gardienConv.imageUrl,
         synthese_ia: data.resume || null,
         urgence: data.urgence || null
