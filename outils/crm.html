@@ -934,6 +934,42 @@ body {
 }
 
 /* Info cards */
+/* ═══ MESSAGES CLIENTES — interface de chat praticienne ═══ */
+.msgchat { display: flex; height: calc(100vh - 60px) }
+.msgchat-list { width: 320px; flex-shrink: 0; border-right: 1px solid var(--border); overflow-y: auto; background: var(--white) }
+.msgchat-conv { display: flex; gap: 11px; align-items: flex-start; padding: 13px 16px; border-bottom: 1px solid var(--border); cursor: pointer; transition: var(--t); position: relative }
+.msgchat-conv:hover { background: var(--surface) }
+.msgchat-conv.active { background: var(--gold-lt) }
+.msgchat-conv.active::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--gold) }
+.msgchat-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--gold-lt); color: var(--gold-dk); display: flex; align-items: center; justify-content: center; font-family: var(--serif); font-size: 15px; font-weight: 600; flex-shrink: 0 }
+.msgchat-conv-body { flex: 1; min-width: 0 }
+.msgchat-conv-name { font-size: 13.5px; font-weight: 600; color: var(--ink); display: flex; align-items: center; justify-content: space-between; gap: 6px }
+.msgchat-conv-time { font-size: 10.5px; color: var(--muted); font-weight: 400; flex-shrink: 0 }
+.msgchat-conv-preview { font-size: 12px; color: var(--ink3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px }
+.msgchat-conv-preview.pending { color: var(--gold-dk); font-weight: 600 }
+.msgchat-conv-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); flex-shrink: 0; margin-top: 4px }
+.msgchat-thread { flex: 1; display: flex; flex-direction: column; background: var(--surface); min-width: 0 }
+.msgchat-thead { padding: 14px 22px; border-bottom: 1px solid var(--border); background: var(--white); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0 }
+.msgchat-thead-name { font-size: 14.5px; font-weight: 700; color: var(--ink) }
+.msgchat-thead-sub { font-size: 11.5px; color: var(--muted); margin-top: 1px }
+.msgchat-body { flex: 1; overflow-y: auto; padding: 22px; display: flex; flex-direction: column; gap: 12px }
+.msgchat-bubble { max-width: 72%; padding: 11px 15px; font-size: 13.5px; line-height: 1.6; white-space: pre-wrap }
+.msgchat-bubble.client { align-self: flex-start; background: var(--white); border: 1px solid var(--border); color: var(--ink); border-radius: 14px 14px 14px 4px }
+.msgchat-bubble.mine { align-self: flex-end; background: var(--gold); color: #fff; border-radius: 14px 14px 4px 14px }
+.msgchat-meta { font-size: 10.5px; color: var(--muted); padding: 0 4px }
+.msgchat-urgence { align-self: center; font-size: 11px; font-weight: 600; color: var(--red); background: var(--red-lt); padding: 4px 12px; border-radius: 99px; display: inline-flex; align-items: center; gap: 5px }
+.msgchat-synth { align-self: stretch; font-size: 12px; color: var(--violet,#9C5FA0); background: var(--violet-lt,#F3E7F3); padding: 8px 12px; border-radius: 10px }
+.msgchat-composer { padding: 14px 18px; border-top: 1px solid var(--border); background: var(--white); display: flex; gap: 9px; align-items: flex-end; flex-shrink: 0 }
+.msgchat-input { flex: 1; resize: none; border: 1px solid var(--border); border-radius: 14px; padding: 10px 14px; font-size: 13.5px; font-family: inherit; max-height: 120px; background: var(--surface) }
+.msgchat-send { width: 38px; height: 38px; flex-shrink: 0; border-radius: 50%; background: var(--gold); border: none; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: var(--t) }
+.msgchat-send:hover { background: var(--gold-dk) }
+.msgchat-send svg { width: 16px; height: 16px }
+@media (max-width: 900px) {
+  .msgchat { flex-direction: column; height: auto }
+  .msgchat-list { width: 100%; max-height: 280px; border-right: none; border-bottom: 1px solid var(--border) }
+  .msgchat-thread { min-height: 520px }
+}
+
 .info-card {
   background: var(--white);
   border-radius: var(--r12);
@@ -1673,12 +1709,18 @@ async function init(){
 
   if(titleEl) titleEl.textContent="Aujourd'hui";
   renderDashboard();
+  renderMessagesFeed();
 
   // Ouverture directe d'un onglet via ?open=xxx (ex: lien "Voir →" depuis l'accueil)
   const openParam = new URLSearchParams(location.search).get('open');
   if(openParam){
     const target = document.querySelector(".sb-item[onclick*=\"nav('"+openParam+"'\"]");
     if(target) nav(openParam, target);
+  } else if(groupMessagesByClient(clientMessages).some(c=>c.hasPending)){
+    // Aucune navigation explicite demandée et des réponses sont en attente : on ouvre
+    // directement la messagerie sur la conversation prioritaire, prête à répondre.
+    const msgTarget = document.querySelector(".sb-item[onclick*=\"nav('messages'\"]");
+    if(msgTarget) nav('messages', msgTarget);
   }
 
   // Export CSV automatique hebdomadaire (silencieux)
@@ -2428,12 +2470,182 @@ function messagesBox(list, emptyLabel){
 function renderMessagesFeed(){
   const box = document.getElementById('messages-feed-box');
   if(box) box.innerHTML = messagesBox(sortMessagesByPriorite(clientMessages).slice(0,8), 'Aucun message pour le moment.');
-  const full = document.getElementById('messages-full-box');
-  if(full) full.innerHTML = messagesBox(clientMessages, 'Aucun message pour le moment.');
+  renderMsgChatList();
   const cnt = document.getElementById('msg-unread-count');
   if(cnt) cnt.textContent = unreadMessagesCount();
   const navBdg = document.getElementById('badge-msg');
   if(navBdg){ navBdg.textContent = unreadMessagesCount(); navBdg.classList.toggle('show', unreadMessagesCount()>0); }
+}
+
+// ═══════════════════════════════════════
+// MESSAGES CLIENTES — interface de chat praticienne
+// Regroupe les lignes messages_client par cliente pour reconstituer un vrai fil
+// de discussion avec historique complet, plutôt qu'une liste plate de tickets isolés.
+// ═══════════════════════════════════════
+let msgChatSelected = null; // client_key de la conversation actuellement ouverte
+
+function groupMessagesByClient(list){
+  const byKey = {};
+  list.forEach(m=>{
+    const key = m.client_key || (m.prenom||'')+'|'+(m.nom||'');
+    if(!byKey[key]) byKey[key] = { key, prenom: m.prenom||'', nom: m.nom||'', messages: [] };
+    byKey[key].messages.push(m);
+  });
+  const rang = { haute: 0, moyenne: 1, faible: 2 };
+  return Object.values(byKey).map(conv=>{
+    conv.messages.sort((a,b)=> new Date(a.created_at) - new Date(b.created_at));
+    const last = conv.messages[conv.messages.length-1];
+    conv.lastAt = last.created_at;
+    conv.lastPreview = last.message || (last.image_url?'Photo envoyée':last.doc_url?'Document envoyé':'');
+    conv.hasUnread = conv.messages.some(m=>!m.lu);
+    conv.hasPending = conv.messages.some(m=>!m.repondu);
+    conv.urgenceMax = conv.messages.reduce((u,m)=> (rang[m.urgence] ?? 3) < (rang[u] ?? 3) ? m.urgence : u, null);
+    return conv;
+  }).sort((a,b)=>{
+    const ra = rang[a.urgenceMax] ?? 3, rb = rang[b.urgenceMax] ?? 3;
+    if(ra !== rb) return ra - rb;
+    if(a.hasPending !== b.hasPending) return a.hasPending ? -1 : 1;
+    if(a.hasUnread !== b.hasUnread) return a.hasUnread ? -1 : 1;
+    return new Date(b.lastAt) - new Date(a.lastAt);
+  });
+}
+
+function msgChatInitials(prenom, nom){
+  return ((prenom||'?')[0]||'').toUpperCase() + ((nom||'')[0]||'').toUpperCase();
+}
+
+function renderMsgChatList(){
+  const list = document.getElementById('msgchat-list');
+  if(!list) return;
+  const convs = groupMessagesByClient(clientMessages);
+
+  if(!convs.length){
+    list.innerHTML = `<div class="empty" style="padding:40px 20px"><div class="eicon">${ic('message')}</div><div class="etitle">Aucun message pour le moment</div></div>`;
+  } else {
+    list.innerHTML = convs.map(conv=>{
+      const dateStr = new Date(conv.lastAt).toLocaleDateString('fr-FR',{day:'numeric',month:'short'});
+      const active = conv.key === msgChatSelected ? ' active' : '';
+      return `<div class="msgchat-conv${active}" onclick="openMsgConversation('${conv.key}')">
+        <div class="msgchat-avatar">${msgChatInitials(conv.prenom,conv.nom)}</div>
+        <div class="msgchat-conv-body">
+          <div class="msgchat-conv-name"><span>${escH(conv.prenom)} ${escH(conv.nom)}</span><span class="msgchat-conv-time">${dateStr}</span></div>
+          <div class="msgchat-conv-preview${conv.hasPending?' pending':''}">${escH((conv.lastPreview||'').slice(0,60))}</div>
+        </div>
+        ${conv.hasUnread?'<div class="msgchat-conv-dot"></div>':''}
+      </div>`;
+    }).join('');
+  }
+
+  // Ouverture automatique de la conversation prioritaire en attente — pour que Sabrina
+  // arrive directement sur le fil à traiter sans avoir à cliquer, comme demandé.
+  if(msgChatSelected && convs.some(c=>c.key===msgChatSelected)){
+    renderMsgChatThread(msgChatSelected);
+  } else if(convs.some(c=>c.hasPending)){
+    openMsgConversation(convs.find(c=>c.hasPending).key);
+  } else {
+    msgChatSelected = null;
+  }
+}
+
+async function openMsgConversation(key){
+  msgChatSelected = key;
+  renderMsgChatList();
+  // Marquer comme lus tous les messages non lus de cette cliente à l'ouverture du fil
+  const convs = groupMessagesByClient(clientMessages);
+  const conv = convs.find(c=>c.key===key);
+  if(!conv) return;
+  const aMarquer = conv.messages.filter(m=>!m.lu);
+  if(aMarquer.length){
+    try{
+      await Promise.allSettled(aMarquer.map(m=>sb('messages_client?id=eq.'+m.id,{method:'PATCH',body:JSON.stringify({lu:true})})));
+      aMarquer.forEach(m=>{ const orig = clientMessages.find(x=>x.id===m.id); if(orig) orig.lu = true; });
+      renderMsgChatList();
+      const navBdg = document.getElementById('badge-msg');
+      if(navBdg){ navBdg.textContent = unreadMessagesCount(); navBdg.classList.toggle('show', unreadMessagesCount()>0); }
+    }catch(e){ console.warn('Marquage lu impossible :', e.message); }
+  }
+}
+
+function renderMsgChatThread(key){
+  const box = document.getElementById('msgchat-thread');
+  if(!box) return;
+  const convs = groupMessagesByClient(clientMessages);
+  const conv = convs.find(c=>c.key===key);
+  if(!conv){
+    box.innerHTML = `<div class="empty" style="margin:auto"><div class="eicon">${ic('message')}</div><div class="etitle">Sélectionnez une conversation</div></div>`;
+    return;
+  }
+  const lastPending = [...conv.messages].reverse().find(m=>!m.repondu);
+  const bulles = conv.messages.map(m=>{
+    const dateStr = new Date(m.created_at).toLocaleString('fr-FR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+    const sourceLbl = m.source==='journal' ? 'Question du journal' : m.source==='bug' ? 'Signalement technique' : 'A Luma';
+    let html = '';
+    if(m.urgence==='haute') html += `<div class="msgchat-urgence">${ic('warn','ico-xs')}Urgence signalée</div>`;
+    if(m.synthese_ia) html += `<div class="msgchat-synth"><strong>Résumé préparé pour vous :</strong> ${escH(m.synthese_ia)}</div>`;
+    html += `<div class="msgchat-bubble client">${escH(m.message)}</div><div class="msgchat-meta">${escH(conv.prenom)} · ${sourceLbl} · ${dateStr}</div>`;
+    if(m.image_url) html += `<a href="${m.image_url}" target="_blank"><img src="${m.image_url}" style="max-width:180px;border-radius:12px;display:block"></a>`;
+    if(m.doc_url) html += `<a href="${m.doc_url}" target="_blank" class="msgchat-bubble client" style="display:flex;align-items:center;gap:10px;text-decoration:none">${ic('file')}<span>${escH(m.doc_name||'Document')}</span></a>`;
+    if(m.reponse){
+      const rDateStr = new Date(m.reponse_at || m.created_at).toLocaleString('fr-FR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+      html += `<div class="msgchat-bubble mine">${escH(m.reponse)}</div><div class="msgchat-meta" style="align-self:flex-end;text-align:right">Vous · ${rDateStr}</div>`;
+    }
+    return html;
+  }).join('');
+
+  box.innerHTML = `
+    <div class="msgchat-thead">
+      <div><div class="msgchat-thead-name">${escH(conv.prenom)} ${escH(conv.nom)}</div><div class="msgchat-thead-sub">${conv.messages.length} message(s) · historique complet</div></div>
+      ${btn('fv2-btn','ouvrirFicheDepuisMessage(\''+key+'\')', ic('user')+' Voir la fiche')}
+    </div>
+    <div class="msgchat-body" id="msgchat-body">${bulles}</div>
+    <div class="msgchat-composer">
+      <textarea class="msgchat-input" id="msgchat-composer-input" rows="1" placeholder="Répondre à ${escH(conv.prenom)}…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsgChatReply('${key}');}"></textarea>
+      <button class="msgchat-send" onclick="sendMsgChatReply('${key}')" aria-label="Envoyer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7z"/></svg></button>
+    </div>`;
+
+  const bodyEl = document.getElementById('msgchat-body');
+  if(bodyEl) bodyEl.scrollTop = bodyEl.scrollHeight;
+  if(!lastPending){
+    const composer = document.getElementById('msgchat-composer-input');
+    if(composer) composer.placeholder = 'Aucune question en attente — vous pouvez tout de même écrire à ' + conv.prenom + '…';
+  }
+}
+
+async function sendMsgChatReply(key){
+  const input = document.getElementById('msgchat-composer-input');
+  if(!input) return;
+  const texte = input.value.trim();
+  if(!texte) return;
+  const convs = groupMessagesByClient(clientMessages);
+  const conv = convs.find(c=>c.key===key);
+  if(!conv) return;
+  // La réponse s'attache au dernier message sans réponse ; s'il n'y en a plus,
+  // au tout dernier message du fil (permet de continuer à échanger librement).
+  const target = [...conv.messages].reverse().find(m=>!m.repondu) || conv.messages[conv.messages.length-1];
+  if(!target) return;
+  input.disabled = true;
+  try{
+    await sb('messages_client?id=eq.'+target.id, {
+      method:'PATCH',
+      body: JSON.stringify({ reponse: texte, repondu:true, lu:true, reponse_vue:false, reponse_at: new Date().toISOString() })
+    });
+    const m = clientMessages.find(x=>x.id===target.id);
+    if(m){ m.reponse = texte; m.repondu = true; m.lu = true; m.reponse_vue = false; m.reponse_at = new Date().toISOString(); }
+    input.value = '';
+    renderMsgChatList();
+    toast('Réponse envoyée — visible immédiatement dans son chat A Luma','ok');
+  }catch(e){
+    toast('Erreur : '+e.message,'err');
+  }finally{
+    input.disabled = false;
+  }
+}
+
+function ouvrirFicheDepuisMessage(key){
+  const c = db.clients.find(x=>x.id===key);
+  if(!c){ toast('Aucune fiche associée à cette conversation','err'); return; }
+  nav('fiche', document.querySelector(".sb-item[onclick*=\"nav('fiche'\"]"));
+  renderFiche(c);
 }
 
 // ── Journal d'erreurs silencieux (client_error_logs) ──
@@ -5740,12 +5952,15 @@ function ouvrirBilanEntree(clientId, mode){
   </div>
 
   <!-- MESSAGES CLIENTES -->
-  <div class="page" id="page-messages">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
-      <span style="font-size:13px;font-weight:600;color:var(--muted)"><span id="msg-unread-count">0</span> non lu(s)</span>
+  <div class="page" id="page-messages" style="padding:0">
+    <div class="msgchat">
+      <div class="msgchat-list" id="msgchat-list"></div>
+      <div class="msgchat-thread" id="msgchat-thread">
+        <div class="empty" style="margin:auto"><div class="eicon"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-4 4V5z"/></svg></div><div class="etitle">Sélectionnez une conversation</div></div>
+      </div>
     </div>
-    <div id="messages-full-box"></div>
   </div>
+
 
   <!-- ERREURS TECHNIQUES (journal silencieux client_error_logs) -->
   <div class="page" id="page-erreurs">
