@@ -2471,11 +2471,28 @@ function renderMessagesFeed(){
   const box = document.getElementById('messages-feed-box');
   if(box) box.innerHTML = messagesBox(sortMessagesByPriorite(clientMessages).slice(0,8), 'Aucun message pour le moment.');
   renderMsgChatList();
+  msgChatEnsureSelection();
   const cnt = document.getElementById('msg-unread-count');
   if(cnt) cnt.textContent = unreadMessagesCount();
   const navBdg = document.getElementById('badge-msg');
   if(navBdg){ navBdg.textContent = unreadMessagesCount(); navBdg.classList.toggle('show', unreadMessagesCount()>0); }
 }
+
+// Actualisation silencieuse en arrière-plan : ne recharge que la liste des conversations
+// (badges, aperçus, pastilles non-lu) — ne touche jamais au fil ouvert ni à la réponse
+// en cours de frappe. Permet de voir arriver une nouvelle question sans avoir à recharger
+// la page ni perdre ce qu'on est en train d'écrire.
+async function pollNewMessages(){
+  try{
+    await loadClientMessages();
+    renderMsgChatList();
+    const cnt = document.getElementById('msg-unread-count');
+    if(cnt) cnt.textContent = unreadMessagesCount();
+    const navBdg = document.getElementById('badge-msg');
+    if(navBdg){ navBdg.textContent = unreadMessagesCount(); navBdg.classList.toggle('show', unreadMessagesCount()>0); }
+  }catch(e){ console.warn('Actualisation messages impossible :', e.message); }
+}
+setInterval(pollNewMessages, 45000);
 
 // ═══════════════════════════════════════
 // MESSAGES CLIENTES — interface de chat praticienne
@@ -2535,13 +2552,19 @@ function renderMsgChatList(){
       </div>`;
     }).join('');
   }
+  return convs;
+}
 
-  // Ouverture automatique de la conversation prioritaire en attente — pour que Sabrina
-  // arrive directement sur le fil à traiter sans avoir à cliquer, comme demandé.
-  if(msgChatSelected && convs.some(c=>c.key===msgChatSelected)){
-    renderMsgChatThread(msgChatSelected);
-  } else if(convs.some(c=>c.hasPending)){
+// N'ouvre/rouvre automatiquement le fil que si aucune conversation n'est encore sélectionnée
+// (arrivée sur la page) ou si celle sélectionnée a disparu — jamais lors d'un simple
+// rafraîchissement en arrière-plan, pour ne jamais écraser une réponse en cours de frappe.
+function msgChatEnsureSelection(){
+  const convs = groupMessagesByClient(clientMessages);
+  if(msgChatSelected && convs.some(c=>c.key===msgChatSelected)) return;
+  if(convs.some(c=>c.hasPending)){
     openMsgConversation(convs.find(c=>c.hasPending).key);
+  } else if(convs.length){
+    openMsgConversation(convs[0].key);
   } else {
     msgChatSelected = null;
   }
@@ -2550,6 +2573,7 @@ function renderMsgChatList(){
 async function openMsgConversation(key){
   msgChatSelected = key;
   renderMsgChatList();
+  renderMsgChatThread(key);
   // Marquer comme lus tous les messages non lus de cette cliente à l'ouverture du fil
   const convs = groupMessagesByClient(clientMessages);
   const conv = convs.find(c=>c.key===key);
@@ -2633,6 +2657,7 @@ async function sendMsgChatReply(key){
     if(m){ m.reponse = texte; m.repondu = true; m.lu = true; m.reponse_vue = false; m.reponse_at = new Date().toISOString(); }
     input.value = '';
     renderMsgChatList();
+    renderMsgChatThread(key);
     toast('Réponse envoyée — visible immédiatement dans son chat A Luma','ok');
   }catch(e){
     toast('Erreur : '+e.message,'err');
