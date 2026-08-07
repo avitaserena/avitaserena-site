@@ -1275,6 +1275,17 @@ var creneauxDisponibles = {}; // { 'YYYY-MM-DD': ['09:00', '09:30', ...] }
 var slotStripStart = null;    // premier jour visible dans la bande
 var slotStripExpanded = {};   // { 'YYYY-MM-DD': true } jours dépliés
 
+// IMPORTANT : ne jamais utiliser .toISOString() pour obtenir une date calendaire locale (YYYY-MM-DD).
+// .toISOString() convertit toujours en UTC, ce qui décale la date d'un jour en été (UTC+2) dès
+// que l'heure locale se situe entre 00h00 et 01h59 — et surtout, désynchronise silencieusement
+// les dates affichées (calculées en local) des dates envoyées/lues côté serveur (calculées via
+// toISOString), ce qui a pour effet de faire apparaître les disponibilités d'un jour sous le
+// libellé du jour suivant. On utilise donc systématiquement cette fonction, basée sur les
+// composants de date locale, partout où une date calendaire doit être formatée en YYYY-MM-DD.
+function toLocalYMD(d) {
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
 function initCalendrier() {
   slotStripStart = new Date();
   slotStripStart.setHours(0,0,0,0);
@@ -1297,8 +1308,8 @@ async function chargerCreneauxFenetre() {
         'Authorization': 'Bearer ' + SUPA_KEY_PUBLIC
       },
       body: JSON.stringify({
-        from: debut.toISOString().slice(0,10),
-        to: fin.toISOString().slice(0,10),
+        from: toLocalYMD(debut),
+        to: toLocalYMD(fin),
         durationMinutes: duree
       })
     });
@@ -1323,13 +1334,13 @@ function slotStripNav(delta) {
 
 function renderSlotStrip() {
   var wrap = document.getElementById('slotstrip-days');
-  var today = new Date().toISOString().slice(0,10);
+  var today = toLocalYMD(new Date());
   var html = '';
   var auMoinsUnCreneau = false;
 
   for(var i=0; i<SLOT_WINDOW; i++){
     var d = new Date(slotStripStart); d.setDate(d.getDate()+i);
-    var dStr = d.toISOString().slice(0,10);
+    var dStr = toLocalYMD(d);
     var heures = creneauxDisponibles[dStr] || [];
     var estPasse = dStr < today;
     var expanded = !!slotStripExpanded[dStr];
