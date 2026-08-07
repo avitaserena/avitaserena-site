@@ -1246,7 +1246,7 @@ body {
 .hca-trend.down { color:var(--red) }
 
 /* Grille de statistiques — chaque carte porte la teinte de sa catégorie, plus de blanc plat partout */
-.home-stat-grid { display:grid; grid-template-columns:repeat(6,1fr); gap:10px; margin-bottom:20px }
+.home-stat-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:10px; margin-bottom:20px }
 .home-stat {
   position: relative;
   background: var(--stat-wash, var(--white)) var(--white);
@@ -1266,7 +1266,12 @@ body {
 .home-stat-ic { width:32px; height:32px; border-radius:var(--r12); display:flex; align-items:center; justify-content:center; font-size:15px; margin-bottom:10px }
 .home-stat-val { font-size:24px; font-weight:800; color:var(--ink); letter-spacing:-.02em; font-family:'DM Mono',monospace }
 .home-stat-lbl { font-size:10px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; margin-top:3px }
-@media (max-width:1100px){ .home-stat-grid{ grid-template-columns:repeat(3,1fr) } }
+/* Variante discrète — pour les indicateurs importants mais moins urgents que les messages :
+   valeur plus petite, pas de fond coloré, opacité réduite au repos. */
+.home-stat-soft { box-shadow: none; opacity: .82 }
+.home-stat-soft:hover { opacity: 1 }
+.home-stat-soft .home-stat-val { font-size: 19px; color: var(--ink3) }
+@media (max-width:1100px){ .home-stat-grid{ grid-template-columns:repeat(4,1fr) } }
 @media (max-width:640px){ .home-stat-grid{ grid-template-columns:repeat(2,1fr) } }
 
 .home-grid { display:grid; grid-template-columns:1.15fr 1fr; gap:18px; margin-bottom:24px }
@@ -1629,7 +1634,7 @@ function loadL(){try{return JSON.parse(localStorage.getItem(LKEY)||'{}')}catch(e
 function saveL(d){localStorage.setItem(LKEY,JSON.stringify(d))}
 
 let db={clients:[],factures:[],settings:null,nextF:1};
-let taches=[],rdvs=[],emailCtx=null,curTab='urg',curSearch='',curFilter='all';
+let taches=[],rdvs=[],emailCtx=null,curTab='msg',curSearch='',curFilter='all';
 let memoAlerts=[];
 let memoHistoryAll=[]; // tous les mémos PHV, sans dédoublonnage — historique complet par cliente
 let clientMessages=[];
@@ -2619,7 +2624,7 @@ function renderMsgChatThread(key){
   box.innerHTML = `
     <div class="msgchat-thead">
       <div><div class="msgchat-thead-name">${escH(conv.prenom)} ${escH(conv.nom)}</div><div class="msgchat-thead-sub">${conv.messages.length} message(s) · historique complet</div></div>
-      ${btn('fv2-btn','ouvrirFicheDepuisMessage(\''+key+'\')', ic('user')+' Voir la fiche')}
+      <button class="fv2-btn" onclick="ouvrirFicheDepuisMessage('${key}')">${ic('user')} Voir la fiche</button>
     </div>
     <div class="msgchat-body" id="msgchat-body">${bulles}</div>
     <div class="msgchat-composer">
@@ -3493,10 +3498,13 @@ function renderDashboard(){
     });
 
   const totalAlerts = allAl.length + memoUrgAl.length + unreadMessagesCount();
+  const echeancesCount = allAl.length + memoUrgAl.length;
   animateNum('kv-actives',actives.length);
   animateNum('kv-rdv',rdvM.length);
-  animateNum('kv-alertes',totalAlerts);
-  document.getElementById('kv-ca').textContent=caM>0?caM.toFixed(0)+' €':'—';
+  animateNum('kv-messages',unreadMessagesCount());
+  animateNum('kv-echeances',echeancesCount);
+  const kvCaEl = document.getElementById('kv-ca');
+  if(kvCaEl) kvCaEl.textContent = caM>0?caM.toFixed(0)+' €':'—';
   animateNum('kv-total',db.clients.length);
   const bdg=document.getElementById('badge-al');
   bdg.textContent=totalAlerts;bdg.classList.toggle('show',totalAlerts>0);
@@ -3517,9 +3525,16 @@ function renderDashboard(){
   renderReservationRequests();
 }
 
-// Clic sur la stat card "Alertes" → défile vers le détail juste en dessous, sur la
-// même page (pas de navigation nécessaire, tout y est déjà : urgentes, cette semaine,
-// messages non lus, historique des retours).
+// Clic sur la stat card "Messages non lus" → va directement à la messagerie, la
+// chose la plus importante et la plus urgente à traiter.
+function allerAuxMessages(){
+  const target = document.querySelector(".sb-item[onclick*=\"nav('messages'\"]");
+  nav('messages', target||null);
+}
+
+// Clic sur la stat card "Échéances" → défile vers le détail juste en dessous, sur la
+// même page (urgentes, cette semaine, refus signalés) — moins urgent que les messages,
+// donc pas de changement de page, juste un défilement.
 function allerAuxAlertes(){
   document.getElementById('tab-row')?.scrollIntoView({behavior:'smooth', block:'center'});
 }
@@ -5844,7 +5859,7 @@ function ouvrirBilanEntree(clientId, mode){
     </div>
     <div class="sb-item" onclick="nav('clients',this);setTimeout(()=>setFilter('alerte',document.getElementById('fc-al')),60)">
       <div class="sb-ic" style="background:#FFE5EA;color:#D1553A"><svg width="13" height="13" fill="none" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" stroke="currentColor" stroke-width="2.5"/></svg></div>
-      <span class="sb-lbl">Alertes</span>
+      <span class="sb-lbl">Échéances</span>
     </div>
     <div class="sb-sec">Outils</div>
     <div class="sb-item" onclick="nav('factures',this)">
@@ -5902,10 +5917,11 @@ function ouvrirBilanEntree(clientId, mode){
     </div>
 
     <div class="home-stat-grid">
+      <div class="home-stat" onclick="allerAuxMessages()" style="cursor:pointer;--stat-wash:#D1553A18" title="Voir les messages non lus"><div class="home-stat-ic" style="background:#D1553A20;color:#D1553A"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="home-stat-val" id="kv-messages" style="color:#D1553A">—</div><div class="home-stat-lbl" style="color:#D1553A;opacity:.85">Messages non lus</div></div>
+      <div class="home-stat home-stat-soft" onclick="allerAuxAlertes()" style="cursor:pointer" title="Voir le détail des échéances"><div class="home-stat-ic" style="background:var(--surface);color:var(--muted)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" stroke="currentColor" stroke-width="2.5"/></svg></div><div class="home-stat-val" id="kv-echeances">—</div><div class="home-stat-lbl">Échéances</div></div>
       <div class="home-stat" style="--stat-wash:#9C5FA014"><div class="home-stat-ic" style="background:#9C5FA018;color:#9C5FA0"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="2.5"/><circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="2.5"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" stroke-width="2.5"/></svg></div><div class="home-stat-val" id="kv-total">—</div><div class="home-stat-lbl">Total clientes</div></div>
       <div class="home-stat" style="--stat-wash:#4C8B5C14"><div class="home-stat-ic" style="background:#4C8B5C18;color:#4C8B5C"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="home-stat-val" id="kv-actives">—</div><div class="home-stat-lbl">En programme</div></div>
       <div class="home-stat" style="--stat-wash:#4177A014"><div class="home-stat-ic" style="background:#4177A018;color:#4177A0"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" stroke-width="2.5"/><line x1="16" y1="2" x2="16" y2="6" stroke="currentColor" stroke-width="2.5"/><line x1="8" y1="2" x2="8" y2="6" stroke="currentColor" stroke-width="2.5"/><line x1="3" y1="10" x2="21" y2="10" stroke="currentColor" stroke-width="2.5"/></svg></div><div class="home-stat-val" id="kv-rdv">—</div><div class="home-stat-lbl">RDV ce mois</div></div>
-      <div class="home-stat" onclick="allerAuxAlertes()" style="cursor:pointer;--stat-wash:#D1553A16" title="Voir le détail des alertes"><div class="home-stat-ic" style="background:#D1553A18;color:#D1553A"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" stroke="currentColor" stroke-width="2.5"/></svg></div><div class="home-stat-val" id="kv-alertes">—</div><div class="home-stat-lbl">Alertes</div></div>
       <div class="home-stat" style="--stat-wash:#D98C2B14"><div class="home-stat-ic" style="background:#D98C2B18;color:#D98C2B"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="2" y="6" width="20" height="12" rx="2" stroke="currentColor" stroke-width="2.5"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2.5"/><path d="M6 9v.01M18 15v.01" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg></div><div class="home-stat-val" id="hca-jour">—</div><div class="home-stat-lbl">CA aujourd'hui</div></div>
       <div class="home-stat" style="--stat-wash:#D98C2B14"><div class="home-stat-ic" style="background:#D98C2B18;color:#D98C2B"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 20V10M11 20V4M18 20v-7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg></div><div class="home-stat-val" id="hca-mois">—</div><div class="home-stat-lbl">CA ce mois</div><div class="hca-trend" id="hca-trend"></div></div>
     </div>
@@ -5933,12 +5949,12 @@ function ouvrirBilanEntree(clientId, mode){
       <div class="dash-main">
         <div class="card">
           <div class="card-head">
-            <div class="card-title"><div class="card-dot" style="background:#D1553A"></div>Détail des alertes</div>
+            <div class="card-title"><div class="card-dot" style="background:#D1553A"></div>À traiter</div>
             <div class="tab-row" id="tab-row">
-              <button class="tab-btn active" onclick="switchTab('urg',this)">Urgentes <span class="tab-pill tp-red" id="tc-urg">0</span></button>
+              <button class="tab-btn active" onclick="switchTab('msg',this)">Messages clientes <span class="tab-pill tp-blue" id="tc-msg">0</span></button>
+              <button class="tab-btn" onclick="switchTab('urg',this)">Échéances urgentes <span class="tab-pill tp-red" id="tc-urg">0</span></button>
               <button class="tab-btn" onclick="switchTab('sem',this)">Cette semaine <span class="tab-pill tp-orange" id="tc-sem">0</span></button>
-              <button class="tab-btn" onclick="switchTab('msg',this)">Messages <span class="tab-pill tp-blue" id="tc-msg">0</span></button>
-              <button class="tab-btn" onclick="switchTab('feed',this)">Historique retours <span class="tab-pill tp-violet" id="tc-feed">0</span></button>
+              <button class="tab-btn" onclick="switchTab('feed',this)">Refus signalés <span class="tab-pill tp-violet" id="tc-feed">0</span></button>
             </div>
           </div>
           <div class="card-body"><div id="alerts-box"></div></div>
@@ -6000,7 +6016,7 @@ function ouvrirBilanEntree(clientId, mode){
       <div class="fchips">
         <div class="fchip on" id="fc-all" onclick="setFilter('all',this)">Toutes</div>
         <div class="fchip" id="fc-prog" onclick="setFilter('programme',this)">En programme</div>
-        <div class="fchip" id="fc-al" onclick="setFilter('alerte',this)">Alertes</div>
+        <div class="fchip" id="fc-al" onclick="setFilter('alerte',this)">Échéances</div>
         <div class="fchip" id="fc-sil" onclick="setFilter('silence',this)">Silences</div>
       </div>
       <span id="c-count" style="font-size:12px;font-weight:600;color:var(--muted);white-space:nowrap">0</span>
