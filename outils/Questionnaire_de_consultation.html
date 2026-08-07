@@ -825,6 +825,10 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
         <div id="sommeil-heure-reveil-wrap" style="display:none"><label class="fl">Vers quelle heure ?</label><input class="fi" type="time" id="sommeil-reveil-heure" placeholder="ex : 02:30"></div>
       </div>
       <div class="trig-hint" style="margin-top:10px;padding:12px 14px;background:var(--grege);border-radius:10px">Deux hypothèses à croiser selon l'heure : <strong>1h-3h</strong> correspond au pic d'activité du foie en médecine chinoise — un réveil systématique à cette heure évoque une surcharge hépatique. <strong>Entre 1h et 4h plus largement</strong>, une chute de glycémie nocturne déclenchant un pic de cortisol est tout aussi probable, surtout si le profil correspond par ailleurs à un déficit de cortisol (voir carte Surrénales). Les deux causes coexistent souvent — ce n'est pas l'une ou l'autre.</div>
+      <button type="button" class="btn" style="font-size:12px;padding:7px 12px;margin-bottom:4px" onclick="ouvrirHorlogePleinEcran()">
+        <svg class="picto" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+        Montrer l'horloge des organes à la cliente
+      </button>
       <div class="g2" style="margin-top:12px">
         <div>
           <label class="fl">Signaux complémentaires</label>
@@ -1594,7 +1598,20 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
       <div class="slider-row"><div class="slider-lbl">Confort digestif<small>1 = symptômes quotidiens intenses</small></div><input type="range" min="1" max="10" value="5" oninput="sv(this,'rv-d')"><div class="slider-val" id="rv-d">5</div></div>
       <div class="slider-row"><div class="slider-lbl">Bien-être émotionnel<small>1 = anxiété / tristesse constante</small></div><input type="range" min="1" max="10" value="5" oninput="sv(this,'rv-em')"><div class="slider-val" id="rv-em">5</div></div>
       <div class="slider-row"><div class="slider-lbl">Satisfaction globale de vie<small>1 = sentiment que tout va mal</small></div><input type="range" min="1" max="10" value="5" oninput="sv(this,'rv-v')"><div class="slider-val" id="rv-v">5</div></div>
-      <div class="slider-row"><div class="slider-lbl">Douleurs chroniques<small>1 = douleurs invalidantes quotidiennes</small></div><input type="range" min="1" max="10" value="5" oninput="sv(this,'rv-doul')"><div class="slider-val" id="rv-doul">5</div></div>
+      <div class="slider-row"><div class="slider-lbl">Douleurs chroniques<small>1 = douleurs invalidantes quotidiennes</small></div><input type="range" id="rv-doul-input" min="1" max="10" value="5" oninput="sv(this,'rv-doul')"><div class="slider-val" id="rv-doul">5</div></div>
+      <div style="display:flex;gap:10px;margin:2px 0 4px;flex-wrap:wrap">
+        <button type="button" class="btn" style="font-size:12px;padding:7px 12px" onclick="ouvrirDouleurPleinEcran()">
+          <svg class="picto" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+          Échelle de douleur — plein écran cliente
+        </button>
+        <button type="button" class="btn" style="font-size:12px;padding:7px 12px" onclick="ouvrirSilhouettePleinEcran()">
+          <svg class="picto" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0" aria-hidden="true"><circle cx="12" cy="5" r="2.3"/><path d="M12 8 L12 15 M12 10 L7 13 M12 10 L17 13 M12 15 L8 21 M12 15 L16 21"/></svg>
+          Localiser les douleurs — silhouette
+        </button>
+      </div>
+      <div style="margin-top:6px"><label class="fl">Localisation des douleurs (désignée par la cliente)</label>
+        <textarea class="fi" id="douleur-localisation-notes" style="min-height:44px" placeholder="Utilisez le bouton « silhouette » ci-dessus, ou saisissez librement…"></textarea>
+      </div>
 
       <div style="margin-top:4px"><label class="fl">Notes libres — scores & contexte de vie global</label>
         <textarea class="fi" placeholder="Saisissez vos notes…"></textarea>
@@ -3956,6 +3973,10 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
         <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> <svg class="picto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0" aria-hidden="true"><line x1="4" y1="20" x2="4" y2="10"/><line x1="10" y1="20" x2="10" y2="4"/><line x1="16" y1="20" x2="16" y2="14"/><line x1="20" y1="20" x2="4" y2="20"/></svg> SPM sévère — syndrome prémenstruel invalidant, irritabilité majeure, douleurs, rétention</button>
         <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> <svg class="picto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0" aria-hidden="true"><ellipse cx="7" cy="9" rx="4" ry="5"/><ellipse cx="17" cy="9" rx="4" ry="5"/><ellipse cx="7" cy="15" rx="3" ry="4"/><ellipse cx="17" cy="15" rx="3" ry="4"/><line x1="12" y1="4" x2="12" y2="20"/></svg> Hypothyroïdie — confirmée (TSH élevée), traitée ou non, Hashimoto possible</button>
       </div>
+      <button type="button" class="btn" style="font-size:12px;padding:7px 12px;margin-top:14px" onclick="ouvrirCyclePleinEcran()">
+        <svg class="picto" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><line x1="12" y1="3" x2="12" y2="6"/><line x1="21" y1="12" x2="18" y2="12"/></svg>
+        Roue du cycle — plein écran cliente
+      </button>
       <div style="margin-top:14px">
         <label class="fl">Précisions — traitements en cours, dosages récents, antécédents hormonaux</label>
         <textarea class="fi" style="min-height:56px" id="gyneco-notes" placeholder="Ex : Endométriose stade II confirmée cœlioscopie 2022, actuellement sous pilule Dienogest. / SOPK diagnostic 2021, pas de traitement médical, cycles 40-45j, acné persistante. / Périménopause depuis 2023, dernières règles il y a 8 mois, pas de THM. / Aménorrhée depuis arrêt pilule il y a 6 mois, TSH normale, poids stable…"></textarea>
@@ -5223,6 +5244,314 @@ function fermerBristolPleinEcran(reporter) {
   document.body.style.overflow = '';
 }
 
+/* ══════════════════════════════════════════════════════
+   ROUE DU CYCLE
+══════════════════════════════════════════════════════ */
+const CYCLE_COLORS = { regles:'#C1694F', follic:'#C4A882', ovul:'#B4906A', luteale:'#6B4A5C' };
+function phaseDuJour(d) {
+  const j = ((d - 1) % 28) + 1;
+  if (j <= 5) return { name: 'Règles', key: 'regles' };
+  if (j <= 13) return { name: 'Folliculaire', key: 'follic' };
+  if (j <= 16) return { name: 'Ovulation', key: 'ovul' };
+  return { name: 'Lutéale', key: 'luteale' };
+}
+let cycleSymptomDays = new Set();
+let cycleBuilt = false;
+
+function polarPt(cx, cy, r, angleDeg) {
+  const a = (angleDeg - 90) * Math.PI / 180;
+  return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) };
+}
+
+function construireRoueCycle() {
+  const svg = document.getElementById('c-svg');
+  svg.innerHTML = '';
+  const cx = 150, cy = 150, r = 118;
+  for (let j = 1; j <= 28; j++) {
+    const angle = (j - 1) / 28 * 360;
+    const pt = polarPt(cx, cy, r, angle);
+    const phase = phaseDuJour(j);
+    const big = phase.key === 'ovul';
+    const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    dot.setAttribute('cx', pt.x); dot.setAttribute('cy', pt.y);
+    dot.setAttribute('r', big ? 7 : 5.5);
+    dot.setAttribute('fill', CYCLE_COLORS[phase.key]);
+    dot.setAttribute('opacity', '0.45');
+    dot.classList.add('c-dot');
+    dot.dataset.jour = j;
+    dot.addEventListener('click', () => {
+      if (cycleSymptomDays.has(j)) cycleSymptomDays.delete(j); else cycleSymptomDays.add(j);
+      majRoueCycle();
+    });
+    svg.appendChild(dot);
+  }
+  cycleBuilt = true;
+}
+
+function majRoueCycle() {
+  document.querySelectorAll('#c-svg .c-dot').forEach(dot => {
+    const j = parseInt(dot.dataset.jour, 10);
+    dot.setAttribute('opacity', cycleSymptomDays.has(j) ? '1' : '0.45');
+    dot.setAttribute('stroke', cycleSymptomDays.has(j) ? '#211C16' : 'none');
+    dot.setAttribute('stroke-width', cycleSymptomDays.has(j) ? '2' : '0');
+  });
+  const jours = [...cycleSymptomDays].sort((a,b)=>a-b);
+  const txt = document.getElementById('c-symptomes-txt');
+  txt.textContent = jours.length ? 'Symptômes marqués aux jours : J' + jours.join(', J') : '';
+}
+
+function majJourActuel() {
+  const j = parseInt(document.getElementById('c-jour-actuel').value, 10) || 1;
+  const phase = phaseDuJour(j);
+  document.getElementById('c-center-day').textContent = 'J' + j;
+  document.getElementById('c-center-phase').textContent = phase.name;
+  document.getElementById('c-center-phase').style.color = CYCLE_COLORS[phase.key];
+}
+
+function ouvrirCyclePleinEcran() {
+  if (!cycleBuilt) construireRoueCycle();
+  document.getElementById('c-jour-actuel').addEventListener('input', majJourActuel);
+  majJourActuel();
+  majRoueCycle();
+  document.getElementById('cycle-overlay').style.display = 'block';
+  document.body.style.overflow = 'hidden';
+}
+
+function fermerCyclePleinEcran(reporter) {
+  if (reporter) {
+    const j = parseInt(document.getElementById('c-jour-actuel').value, 10) || '';
+    const phase = phaseDuJour(j);
+    const jours = [...cycleSymptomDays].sort((a,b)=>a-b);
+    const champ = document.getElementById('gyneco-notes');
+    const ligne = `Cycle (roue plein écran) : jour actuel J${j} (${phase.name}).` + (jours.length ? ` Symptômes rapportés aux jours : J${jours.join(', J')}.` : '');
+    champ.value = champ.value ? champ.value.trim() + '\n' + ligne : ligne;
+    formTouched = true; updateCounter();
+    showToast('✓ Cycle reporté dans les notes gynéco');
+  }
+  document.getElementById('cycle-overlay').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+/* ══════════════════════════════════════════════════════
+   HORLOGE DES ORGANES
+══════════════════════════════════════════════════════ */
+const ORGANES_HORLOGE = [
+  { h0:23, h1:1,  nom:'Vésicule biliaire',   desc:'Digestion des graisses de la veille : tri et évacuation.' },
+  { h0:1,  h1:3,  nom:'Foie',                desc:'Filtration du sang et détoxification — un réveil systématique à cette heure évoque en premier lieu une surcharge hépatique.' },
+  { h0:3,  h1:5,  nom:'Poumons',             desc:'Oxygénation profonde — les toux ou gênes respiratoires nocturnes surviennent souvent à cette heure.' },
+  { h0:5,  h1:7,  nom:'Gros intestin',       desc:'Élimination — l\'heure naturelle du transit du matin.' },
+  { h0:7,  h1:9,  nom:'Estomac',             desc:'Le moment où l\'organisme est le mieux préparé à digérer — d\'où l\'importance d\'un vrai petit-déjeuner.' },
+  { h0:9,  h1:11, nom:'Rate / Pancréas',     desc:'Transformation des aliments en énergie utilisable — période de concentration souvent optimale.' },
+  { h0:11, h1:13, nom:'Cœur',                desc:'Pic de circulation — moment favorable à l\'activité physique.' },
+  { h0:13, h1:15, nom:'Intestin grêle',      desc:'Absorption des nutriments — la digestion du déjeuner se poursuit.' },
+  { h0:15, h1:17, nom:'Vessie',              desc:'Élimination des toxines — le coup de barre classique de 16h coïncide souvent avec cette phase.' },
+  { h0:17, h1:19, nom:'Reins',               desc:'Filtration et régulation de l\'énergie vitale profonde.' },
+  { h0:19, h1:21, nom:'Péricarde',           desc:'Régulation émotionnelle — moment propice à la détente, avant la préparation au sommeil.' },
+  { h0:21, h1:23, nom:'Triple Réchauffeur',  desc:'Régulation thermique et hormonale globale — l\'heure idéale pour s\'endormir.' },
+];
+let horlogeBuilt = false;
+
+function ringSegmentPath(cx, cy, rOut, rIn, a0, a1) {
+  const p0o = polarPt(cx, cy, rOut, a0), p1o = polarPt(cx, cy, rOut, a1);
+  const p1i = polarPt(cx, cy, rIn, a1), p0i = polarPt(cx, cy, rIn, a0);
+  const large = (a1 - a0) > 180 ? 1 : 0;
+  return `M ${p0o.x} ${p0o.y} A ${rOut} ${rOut} 0 ${large} 1 ${p1o.x} ${p1o.y} L ${p1i.x} ${p1i.y} A ${rIn} ${rIn} 0 ${large} 0 ${p0i.x} ${p0i.y} Z`;
+}
+
+function construireHorloge() {
+  const svg = document.getElementById('h-svg');
+  svg.innerHTML = '';
+  const cx = 150, cy = 150, rOut = 138, rIn = 82;
+  ORGANES_HORLOGE.forEach((o, i) => {
+    const a0 = (o.h0 % 24) / 24 * 360;
+    const a1 = a0 + 30;
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', ringSegmentPath(cx, cy, rOut, rIn, a0, a1));
+    path.setAttribute('fill', '#B4906A');
+    path.setAttribute('stroke', '#F7F6F4');
+    path.setAttribute('stroke-width', '2');
+    path.classList.add('h-seg');
+    path.dataset.i = i;
+    path.addEventListener('click', () => selectionnerOrgane(i));
+    svg.appendChild(path);
+
+    const mid = a0 + 15;
+    const lp = polarPt(cx, cy, (rOut + rIn) / 2, mid);
+    const lbl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    lbl.setAttribute('x', lp.x); lbl.setAttribute('y', lp.y);
+    lbl.setAttribute('text-anchor', 'middle');
+    lbl.setAttribute('dominant-baseline', 'middle');
+    lbl.classList.add('h-lbl');
+    lbl.textContent = o.nom.split(' ')[0].split('/')[0];
+    svg.appendChild(lbl);
+  });
+  horlogeBuilt = true;
+}
+
+function selectionnerOrgane(i) {
+  const o = ORGANES_HORLOGE[i];
+  document.querySelectorAll('#h-svg .h-seg').forEach(s => s.classList.toggle('active', parseInt(s.dataset.i,10) === i));
+  document.getElementById('h-center-organ').textContent = o.nom;
+  document.getElementById('h-center-heures').textContent = o.h0 + 'h – ' + o.h1 + 'h';
+  document.getElementById('h-center-desc').textContent = o.desc;
+}
+
+function ouvrirHorlogePleinEcran() {
+  if (!horlogeBuilt) construireHorloge();
+  // Pré-sélectionne l'organe correspondant à l'heure de réveil déjà renseignée, si disponible
+  const heureReveil = document.getElementById('sommeil-reveil-heure')?.value;
+  if (heureReveil) {
+    const h = parseInt(heureReveil.split(':')[0], 10);
+    const idx = ORGANES_HORLOGE.findIndex(o => (o.h0 < o.h1) ? (h >= o.h0 && h < o.h1) : (h >= o.h0 || h < o.h1));
+    if (idx >= 0) selectionnerOrgane(idx);
+  }
+  document.getElementById('horloge-overlay').style.display = 'block';
+  document.body.style.overflow = 'hidden';
+}
+
+function fermerHorlogePleinEcran() {
+  document.getElementById('horloge-overlay').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+/* ══════════════════════════════════════════════════════
+   SILHOUETTE — localisation des douleurs
+══════════════════════════════════════════════════════ */
+const ZONES_SILHOUETTE = [
+  { id:'tete',     x:100, y:38,  r:16, lbl:'Tête / migraines' },
+  { id:'gorge',    x:100, y:72,  r:9,  lbl:'Gorge / thyroïde' },
+  { id:'poitrine', x:100, y:118, r:20, lbl:'Poitrine' },
+  { id:'foie',     x:122, y:158, r:11, lbl:'Foie / hypochondre droit' },
+  { id:'estomac',  x:100, y:165, r:13, lbl:'Estomac / plexus' },
+  { id:'ventre',   x:100, y:205, r:18, lbl:'Bas-ventre / pelvis' },
+  { id:'lombaires',x:75,  y:210, r:10, lbl:'Bas du dos / lombaires' },
+  { id:'hanches',  x:125, y:222, r:10, lbl:'Hanches' },
+  { id:'poignets', x:38,  y:225, r:9,  lbl:'Mains / poignets' },
+  { id:'poignets2',x:162, y:225, r:9,  lbl:'Mains / poignets' },
+  { id:'genoux',   x:85,  y:295, r:10, lbl:'Genoux' },
+  { id:'genoux2',  x:115, y:295, r:10, lbl:'Genoux' },
+];
+let silhouetteBuilt = false;
+let silhouetteActives = new Set();
+
+function construireSilhouette() {
+  const svg = document.getElementById('s-svg');
+  svg.innerHTML = '';
+  const ns = 'http://www.w3.org/2000/svg';
+  const outline = document.createElementNS(ns, 'g');
+  outline.setAttribute('stroke', '#1E1E1C');
+  outline.setAttribute('stroke-width', '2.5');
+  outline.setAttribute('fill', 'none');
+  outline.setAttribute('opacity', '0.55');
+  outline.innerHTML = `
+    <circle cx="100" cy="38" r="22"/>
+    <path d="M100 60 L100 230"/>
+    <path d="M60 100 Q100 85 140 100 L150 230 Q100 250 50 230 Z"/>
+    <path d="M65 105 L25 200"/>
+    <path d="M135 105 L175 200"/>
+    <path d="M85 230 L78 370"/>
+    <path d="M115 230 L122 370"/>
+    <line x1="60" y1="300" x2="96" y2="300"/>
+    <line x1="104" y1="300" x2="140" y2="300"/>
+  `;
+  svg.appendChild(outline);
+
+  ZONES_SILHOUETTE.forEach(z => {
+    const c = document.createElementNS(ns, 'circle');
+    c.setAttribute('cx', z.x); c.setAttribute('cy', z.y); c.setAttribute('r', z.r);
+    c.classList.add('s-zone');
+    c.dataset.id = z.id; c.dataset.lbl = z.lbl;
+    c.addEventListener('click', () => {
+      if (silhouetteActives.has(z.id)) silhouetteActives.delete(z.id); else silhouetteActives.add(z.id);
+      majSilhouette();
+    });
+    svg.appendChild(c);
+  });
+  silhouetteBuilt = true;
+}
+
+function majSilhouette() {
+  document.querySelectorAll('#s-svg .s-zone').forEach(c => {
+    c.classList.toggle('active', silhouetteActives.has(c.dataset.id));
+  });
+  const chipsEl = document.getElementById('s-chips');
+  const labels = [...new Set([...silhouetteActives].map(id => ZONES_SILHOUETTE.find(z => z.id === id).lbl))];
+  chipsEl.innerHTML = labels.map(l => `<span class="s-chip">${l}</span>`).join('');
+}
+
+function ouvrirSilhouettePleinEcran() {
+  if (!silhouetteBuilt) construireSilhouette();
+  majSilhouette();
+  document.getElementById('silhouette-overlay').style.display = 'block';
+  document.body.style.overflow = 'hidden';
+}
+
+function fermerSilhouettePleinEcran(reporter) {
+  if (reporter) {
+    const labels = [...new Set([...silhouetteActives].map(id => ZONES_SILHOUETTE.find(z => z.id === id).lbl))];
+    const champ = document.getElementById('douleur-localisation-notes');
+    champ.value = labels.join(', ');
+    formTouched = true; updateCounter();
+    showToast('✓ Localisation des douleurs reportée');
+  }
+  document.getElementById('silhouette-overlay').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+/* ══════════════════════════════════════════════════════
+   ÉCHELLE DE DOULEUR
+══════════════════════════════════════════════════════ */
+const DOULEUR_LABELS = {
+  1:'Douleur invalidante, impossible d\'ignorer', 2:'Douleur très intense', 3:'Douleur intense',
+  4:'Douleur marquée', 5:'Douleur modérée', 6:'Gêne présente mais supportable',
+  7:'Légère gêne', 8:'Presque rien', 9:'Très légère sensation', 10:'Aucune douleur'
+};
+
+function dessinerVagueDouleur(valeur) {
+  const svg = document.getElementById('d-wave-svg');
+  // valeur 1 (douleur max) → vague très hachée ; valeur 10 (aucune douleur) → ligne quasi plate
+  const amplitude = (11 - valeur) * 2.6;
+  const points = [];
+  const n = 40;
+  for (let i = 0; i <= n; i++) {
+    const x = i / n * 400;
+    const y = 30 + Math.sin(i * (11 - valeur) * 0.9) * amplitude * (i % 2 === 0 ? 1 : -0.85);
+    points.push(x.toFixed(1) + ',' + y.toFixed(1));
+  }
+  const color = valeur <= 3 ? '#C1694F' : valeur <= 6 ? '#B4906A' : '#8A9A82';
+  svg.innerHTML = `<polyline points="${points.join(' ')}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>`;
+}
+
+function majDouleur() {
+  const v = parseInt(document.getElementById('d-slider').value, 10);
+  document.getElementById('d-num').textContent = v;
+  document.getElementById('d-lbl').textContent = DOULEUR_LABELS[v];
+  dessinerVagueDouleur(v);
+}
+
+function ouvrirDouleurPleinEcran() {
+  const actuel = document.getElementById('rv-doul-input')?.value || 5;
+  document.getElementById('d-slider').value = actuel;
+  document.getElementById('d-slider').removeEventListener('input', majDouleur);
+  document.getElementById('d-slider').addEventListener('input', majDouleur);
+  majDouleur();
+  document.getElementById('douleur-overlay').style.display = 'block';
+  document.body.style.overflow = 'hidden';
+}
+
+function fermerDouleurPleinEcran(reporter) {
+  if (reporter) {
+    const v = document.getElementById('d-slider').value;
+    const input = document.getElementById('rv-doul-input');
+    input.value = v;
+    if (typeof sv === 'function') sv(input, 'rv-doul');
+    formTouched = true; updateCounter();
+    showToast('✓ Douleur reportée dans les scores cliniques');
+  }
+  document.getElementById('douleur-overlay').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
 function copierSynthese() {
   const d = collectAllData();
   const prenom = d.prenom || 'Cliente';
@@ -6060,5 +6389,174 @@ document.addEventListener('DOMContentLoaded', () => { showAuthGate('praticienne'
     </div>
   </div>
 </div>
+
+<!-- ══════════════════════════════════════════════════════
+     ÉCRAN ROUE DU CYCLE — plein écran cliente
+══════════════════════════════════════════════════════ -->
+<div id="cycle-overlay" style="display:none;position:fixed;inset:0;z-index:9999;background:#F7F6F4;overflow-y:auto">
+  <style>
+    #cycle-overlay{ --c-ivoire:#F7F6F4; --c-ardoise:#1E1E1C; --c-anthracite:#211C16; --c-ocre:#B4906A; --c-sable:#C4A882; --c-terracotta:#C1694F; --c-sauge:#8A9A82; --c-prune:#6B4A5C; }
+    #cycle-overlay *{ box-sizing:border-box; font-family:'Be Vietnam Pro',Inter,sans-serif; }
+    #cycle-overlay .cw{ width:100%; max-width:760px; margin:0 auto; padding:48px 24px 40px; text-align:center; }
+    #cycle-overlay .c-eyebrow{ font-size:12px; font-weight:600; letter-spacing:.16em; text-transform:uppercase; color:var(--c-ocre); margin-bottom:10px; }
+    #cycle-overlay h2{ font-family:'Cormorant Garamond',serif; font-weight:500; font-style:italic; font-size:clamp(26px,4.2vw,42px); margin:0 0 6px; color:var(--c-ardoise); }
+    #cycle-overlay .c-sub{ font-size:14px; color:rgba(30,30,28,.6); margin:0 0 30px; }
+    #cycle-overlay .c-wheel-wrap{ position:relative; width:min(420px,80vw); height:min(420px,80vw); margin:0 auto 24px; }
+    #cycle-overlay .c-center-txt{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; pointer-events:none; }
+    #cycle-overlay .c-center-day{ font-family:'Cormorant Garamond',serif; font-style:italic; font-size:34px; color:var(--c-anthracite); }
+    #cycle-overlay .c-center-phase{ font-size:12px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; margin-top:2px; }
+    #cycle-overlay .c-dot{ cursor:pointer; transition:transform .15s ease; }
+    #cycle-overlay .c-dot:hover{ transform:scale(1.35); }
+    #cycle-overlay .c-legend{ display:flex; justify-content:center; gap:20px; flex-wrap:wrap; margin-bottom:26px; }
+    #cycle-overlay .c-leg-item{ display:flex; align-items:center; gap:7px; font-size:12px; color:rgba(30,30,28,.65); }
+    #cycle-overlay .c-leg-dot{ width:10px; height:10px; border-radius:50%; }
+    #cycle-overlay .c-jour-row{ display:flex; align-items:center; justify-content:center; gap:12px; margin-bottom:10px; }
+    #cycle-overlay .c-jour-row label{ font-size:13px; font-weight:600; color:var(--c-ardoise); }
+    #cycle-overlay .c-jour-row input{ width:70px; text-align:center; font-size:15px; padding:8px 6px; border-radius:10px; border:1.5px solid rgba(30,30,28,.15); font-family:inherit; }
+    #cycle-overlay .c-hint{ font-size:12px; color:rgba(30,30,28,.5); margin-bottom:38px; }
+    #cycle-overlay .c-symptomes{ font-size:12px; color:rgba(30,30,28,.55); min-height:18px; margin-bottom:30px; }
+    #cycle-overlay .c-actions{ display:flex; justify-content:center; gap:12px; }
+    #cycle-overlay .c-btn{ font-family:'Be Vietnam Pro',sans-serif; font-size:13px; font-weight:600; padding:12px 26px; border-radius:99px; border:none; cursor:pointer; }
+    #cycle-overlay .c-btn-valider{ background:var(--c-anthracite); color:var(--c-ivoire); }
+    #cycle-overlay .c-btn-annuler{ background:none; color:rgba(30,30,28,.5); border:1.5px solid rgba(30,30,28,.15); }
+  </style>
+  <div class="cw">
+    <div class="c-eyebrow">A VITA SERENA</div>
+    <h2>Où en êtes-vous dans votre cycle&nbsp;?</h2>
+    <p class="c-sub">Cliquez les jours où reviennent ses symptômes — et indiquez le jour du cycle aujourd'hui.</p>
+    <div class="c-wheel-wrap"><svg id="c-svg" viewBox="0 0 300 300" width="100%" height="100%"></svg>
+      <div class="c-center-txt"><div class="c-center-day" id="c-center-day">J14</div><div class="c-center-phase" id="c-center-phase">Ovulation</div></div>
+    </div>
+    <div class="c-legend">
+      <div class="c-leg-item"><span class="c-leg-dot" style="background:var(--c-terracotta)"></span>Règles</div>
+      <div class="c-leg-item"><span class="c-leg-dot" style="background:var(--c-sable)"></span>Folliculaire</div>
+      <div class="c-leg-item"><span class="c-leg-dot" style="background:var(--c-ocre)"></span>Ovulation</div>
+      <div class="c-leg-item"><span class="c-leg-dot" style="background:var(--c-prune)"></span>Lutéale</div>
+    </div>
+    <div class="c-jour-row"><label for="c-jour-actuel">Jour actuel du cycle</label><input type="number" id="c-jour-actuel" min="1" max="35" value="14"></div>
+    <div class="c-hint">Cliquez un point de la roue pour marquer un jour où les symptômes reviennent</div>
+    <div class="c-symptomes" id="c-symptomes-txt"></div>
+    <div class="c-actions">
+      <button class="c-btn c-btn-annuler" onclick="fermerCyclePleinEcran(false)">Fermer sans reporter</button>
+      <button class="c-btn c-btn-valider" onclick="fermerCyclePleinEcran(true)">Valider et reporter dans le questionnaire</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     ÉCRAN HORLOGE DES ORGANES — plein écran cliente (pédagogique)
+══════════════════════════════════════════════════════ -->
+<div id="horloge-overlay" style="display:none;position:fixed;inset:0;z-index:9999;background:#F7F6F4;overflow-y:auto">
+  <style>
+    #horloge-overlay{ --h-ivoire:#F7F6F4; --h-ardoise:#1E1E1C; --h-anthracite:#211C16; --h-ocre:#B4906A; --h-sable:#C4A882; --h-terracotta:#C1694F; }
+    #horloge-overlay *{ box-sizing:border-box; font-family:'Be Vietnam Pro',Inter,sans-serif; }
+    #horloge-overlay .hw{ width:100%; max-width:800px; margin:0 auto; padding:48px 24px 40px; text-align:center; }
+    #horloge-overlay .h-eyebrow{ font-size:12px; font-weight:600; letter-spacing:.16em; text-transform:uppercase; color:var(--h-ocre); margin-bottom:10px; }
+    #horloge-overlay h2{ font-family:'Cormorant Garamond',serif; font-weight:500; font-style:italic; font-size:clamp(26px,4.2vw,42px); margin:0 0 6px; color:var(--h-ardoise); }
+    #horloge-overlay .h-sub{ font-size:14px; color:rgba(30,30,28,.6); margin:0 0 34px; }
+    #horloge-overlay .h-wheel-wrap{ position:relative; width:min(440px,82vw); height:min(440px,82vw); margin:0 auto 30px; }
+    #horloge-overlay .h-seg{ cursor:pointer; transition:opacity .15s ease; opacity:.55; }
+    #horloge-overlay .h-seg:hover{ opacity:.8; }
+    #horloge-overlay .h-seg.active{ opacity:1; fill:var(--h-terracotta) !important; }
+    #horloge-overlay .h-lbl{ font-size:10.5px; font-weight:600; fill:var(--h-anthracite); pointer-events:none; }
+    #horloge-overlay .h-center-txt{ position:absolute; inset:22%; display:flex; align-items:center; justify-content:center; pointer-events:none; }
+    #horloge-overlay .h-center-inner{ max-width:200px; }
+    #horloge-overlay .h-center-organ{ font-family:'Cormorant Garamond',serif; font-style:italic; font-size:24px; color:var(--h-anthracite); margin-bottom:4px; }
+    #horloge-overlay .h-center-heures{ font-size:11px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--h-ocre); margin-bottom:8px; }
+    #horloge-overlay .h-center-desc{ font-size:12.5px; line-height:1.55; color:rgba(30,30,28,.7); }
+    #horloge-overlay .h-actions{ display:flex; justify-content:center; }
+    #horloge-overlay .h-btn{ font-family:'Be Vietnam Pro',sans-serif; font-size:13px; font-weight:600; padding:12px 26px; border-radius:99px; border:1.5px solid rgba(30,30,28,.15); background:none; color:rgba(30,30,28,.6); cursor:pointer; }
+  </style>
+  <div class="hw">
+    <div class="h-eyebrow">A VITA SERENA</div>
+    <h2>L'horloge des organes</h2>
+    <p class="h-sub">Chaque organe a son pic d'activité — cliquez une tranche horaire pour en savoir plus.</p>
+    <div class="h-wheel-wrap"><svg id="h-svg" viewBox="0 0 300 300" width="100%" height="100%"></svg>
+      <div class="h-center-txt"><div class="h-center-inner">
+        <div class="h-center-organ" id="h-center-organ">Cliquez un secteur</div>
+        <div class="h-center-heures" id="h-center-heures"></div>
+        <div class="h-center-desc" id="h-center-desc">Chaque organe a, selon la médecine chinoise, une plage de deux heures où son activité est à son maximum.</div>
+      </div></div>
+    </div>
+    <div class="h-actions"><button class="h-btn" onclick="fermerHorlogePleinEcran()">Fermer</button></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     ÉCRAN SILHOUETTE — localisation des douleurs
+══════════════════════════════════════════════════════ -->
+<div id="silhouette-overlay" style="display:none;position:fixed;inset:0;z-index:9999;background:#F7F6F4;overflow-y:auto">
+  <style>
+    #silhouette-overlay{ --s-ivoire:#F7F6F4; --s-ardoise:#1E1E1C; --s-anthracite:#211C16; --s-ocre:#B4906A; --s-sable:#C4A882; --s-terracotta:#C1694F; }
+    #silhouette-overlay *{ box-sizing:border-box; font-family:'Be Vietnam Pro',Inter,sans-serif; }
+    #silhouette-overlay .sw{ width:100%; max-width:640px; margin:0 auto; padding:48px 24px 40px; text-align:center; }
+    #silhouette-overlay .s-eyebrow{ font-size:12px; font-weight:600; letter-spacing:.16em; text-transform:uppercase; color:var(--s-ocre); margin-bottom:10px; }
+    #silhouette-overlay h2{ font-family:'Cormorant Garamond',serif; font-weight:500; font-style:italic; font-size:clamp(26px,4.2vw,42px); margin:0 0 6px; color:var(--s-ardoise); }
+    #silhouette-overlay .s-sub{ font-size:14px; color:rgba(30,30,28,.6); margin:0 0 30px; }
+    #silhouette-overlay .s-body-wrap{ position:relative; width:min(260px,60vw); margin:0 auto 24px; }
+    #silhouette-overlay .s-zone{ cursor:pointer; fill:var(--s-ocre); opacity:.28; transition:opacity .15s ease, transform .15s ease; }
+    #silhouette-overlay .s-zone:hover{ opacity:.5; }
+    #silhouette-overlay .s-zone.active{ opacity:.85; fill:var(--s-terracotta); }
+    #silhouette-overlay .s-chips{ display:flex; justify-content:center; gap:8px; flex-wrap:wrap; min-height:30px; margin-bottom:34px; }
+    #silhouette-overlay .s-chip{ font-size:11.5px; font-weight:600; color:var(--s-terracotta); background:rgba(193,105,79,.12); padding:6px 13px; border-radius:99px; }
+    #silhouette-overlay .s-actions{ display:flex; justify-content:center; gap:12px; }
+    #silhouette-overlay .s-btn{ font-family:'Be Vietnam Pro',sans-serif; font-size:13px; font-weight:600; padding:12px 26px; border-radius:99px; border:none; cursor:pointer; }
+    #silhouette-overlay .s-btn-valider{ background:var(--s-anthracite); color:var(--s-ivoire); }
+    #silhouette-overlay .s-btn-annuler{ background:none; color:rgba(30,30,28,.5); border:1.5px solid rgba(30,30,28,.15); }
+  </style>
+  <div class="sw">
+    <div class="s-eyebrow">A VITA SERENA</div>
+    <h2>Où se situe la gêne&nbsp;?</h2>
+    <p class="s-sub">Elle vous montre ou vous décrit — cliquez la ou les zones concernées.</p>
+    <div class="s-body-wrap"><svg id="s-svg" viewBox="0 0 200 400" width="100%" height="100%"></svg></div>
+    <div class="s-chips" id="s-chips"></div>
+    <div class="s-actions">
+      <button class="s-btn s-btn-annuler" onclick="fermerSilhouettePleinEcran(false)">Fermer sans reporter</button>
+      <button class="s-btn s-btn-valider" onclick="fermerSilhouettePleinEcran(true)">Valider et reporter dans le questionnaire</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     ÉCRAN ÉCHELLE DE DOULEUR — plein écran cliente
+══════════════════════════════════════════════════════ -->
+<div id="douleur-overlay" style="display:none;position:fixed;inset:0;z-index:9999;background:#F7F6F4;overflow-y:auto">
+  <style>
+    #douleur-overlay{ --d-ivoire:#F7F6F4; --d-ardoise:#1E1E1C; --d-anthracite:#211C16; --d-ocre:#B4906A; --d-sauge:#8A9A82; --d-terracotta:#C1694F; }
+    #douleur-overlay *{ box-sizing:border-box; font-family:'Be Vietnam Pro',Inter,sans-serif; }
+    #douleur-overlay .dw{ width:100%; max-width:640px; margin:0 auto; padding:56px 24px 40px; text-align:center; }
+    #douleur-overlay .d-eyebrow{ font-size:12px; font-weight:600; letter-spacing:.16em; text-transform:uppercase; color:var(--d-ocre); margin-bottom:10px; }
+    #douleur-overlay h2{ font-family:'Cormorant Garamond',serif; font-weight:500; font-style:italic; font-size:clamp(26px,4.2vw,42px); margin:0 0 6px; color:var(--d-ardoise); }
+    #douleur-overlay .d-sub{ font-size:14px; color:rgba(30,30,28,.6); margin:0 0 36px; }
+    #douleur-overlay .d-wave{ margin-bottom:22px; }
+    #douleur-overlay .d-num{ font-family:'Cormorant Garamond',serif; font-style:italic; font-size:64px; color:var(--d-anthracite); line-height:1; }
+    #douleur-overlay .d-lbl{ font-size:15px; font-weight:600; color:var(--d-terracotta); margin:4px 0 34px; min-height:20px; }
+    #douleur-overlay .d-track{ position:relative; height:10px; border-radius:99px; background:linear-gradient(90deg, var(--d-terracotta), var(--d-ocre), var(--d-sauge)); margin:0 10px 8px; }
+    #douleur-overlay input[type=range]{ -webkit-appearance:none; appearance:none; width:100%; height:10px; background:transparent; position:relative; top:-10px; margin:0 0 18px; cursor:pointer; }
+    #douleur-overlay input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:34px; height:34px; border-radius:50%; background:var(--d-anthracite); border:4px solid var(--d-ivoire); box-shadow:0 3px 10px rgba(0,0,0,.25); cursor:grab; }
+    #douleur-overlay input[type=range]::-moz-range-thumb{ width:26px; height:26px; border-radius:50%; background:var(--d-anthracite); border:4px solid var(--d-ivoire); box-shadow:0 3px 10px rgba(0,0,0,.25); cursor:grab; }
+    #douleur-overlay .d-endpoints{ display:flex; justify-content:space-between; font-size:11px; color:rgba(30,30,28,.45); margin:0 6px 40px; }
+    #douleur-overlay .d-actions{ display:flex; justify-content:center; gap:12px; }
+    #douleur-overlay .d-btn{ font-family:'Be Vietnam Pro',sans-serif; font-size:13px; font-weight:600; padding:12px 26px; border-radius:99px; border:none; cursor:pointer; }
+    #douleur-overlay .d-btn-valider{ background:var(--d-anthracite); color:var(--d-ivoire); }
+    #douleur-overlay .d-btn-annuler{ background:none; color:rgba(30,30,28,.5); border:1.5px solid rgba(30,30,28,.15); }
+  </style>
+  <div class="dw">
+    <div class="d-eyebrow">A VITA SERENA</div>
+    <h2>Comment évaluez-vous votre douleur&nbsp;?</h2>
+    <p class="d-sub">Regardez le curseur et dites-moi où le placer.</p>
+    <svg class="d-wave" id="d-wave-svg" viewBox="0 0 400 60" width="100%" height="60"></svg>
+    <div class="d-num" id="d-num">5</div>
+    <div class="d-lbl" id="d-lbl">Douleur modérée</div>
+    <div class="d-track"></div>
+    <input type="range" id="d-slider" min="1" max="10" value="5">
+    <div class="d-endpoints"><span>1 — Douleur invalidante</span><span>10 — Aucune douleur</span></div>
+    <div class="d-actions">
+      <button class="d-btn d-btn-annuler" onclick="fermerDouleurPleinEcran(false)">Fermer sans reporter</button>
+      <button class="d-btn d-btn-valider" onclick="fermerDouleurPleinEcran(true)">Valider et reporter dans le questionnaire</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
