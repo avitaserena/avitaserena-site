@@ -1390,6 +1390,19 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 var SUPA_URL = 'https://bqhkdndwldwqacrrbbig.supabase.co';
 var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxaGtkbmR3bGR3cWFjcnJiYmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MzAyNTIsImV4cCI6MjA5NjMwNjI1Mn0.nH2UktMAVKYwng4L3SvW5F0fluV_sObGV0f3Mk1dnOY';
 
+// Date calendaire LOCALE (jour réel de la cliente, pas UTC) au format YYYY-MM-DD.
+// ⚠️ Ne jamais utiliser .toISOString().slice(0,10) pour "la date d'aujourd'hui" ou pour
+// une date affichée à l'écran : toISOString() convertit d'abord en UTC, ce qui recule
+// d'un jour toute date locale prise entre minuit et 2h du matin en heure d'été (Europe/Paris
+// = UTC+2) — et donc décale de la même façon TOUTES les dates dérivées (créneaux de RDV,
+// jours de la semaine du suivi...). localISO() lit les composants locaux du navigateur,
+// jamais convertis, donc toujours le bon jour affiché à l'écran.
+function localISO(d){
+  d = d || new Date();
+  var y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), day = String(d.getDate()).padStart(2,'0');
+  return y+'-'+m+'-'+day;
+}
+
 /* ── JOURNAL D'ERREURS SILENCIEUX ──
    Capture automatiquement toute erreur JS ou promesse rejetée, sans aucune action
    de la cliente (pas de F12, rien à faire). Alimente client_error_logs, consultable
@@ -2680,8 +2693,8 @@ async function rdvChargerFenetre() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY },
       body: JSON.stringify({
-        from: debut.toISOString().slice(0,10),
-        to: fin.toISOString().slice(0,10),
+        from: localISO(debut),
+        to: localISO(fin),
         durationMinutes: DUREE_SUIVI_PARCOURS
       })
     });
@@ -2706,13 +2719,13 @@ function rdvSlotStripNav(delta) {
 
 function rdvRenderSlotStrip() {
   var wrap = document.getElementById('rdv-slotstrip-days');
-  var today = new Date().toISOString().slice(0,10);
+  var today = localISO();
   var html = '';
   var auMoinsUnCreneau = false;
 
   for (var i=0; i<RDV_SLOT_WINDOW; i++) {
     var d = new Date(rdvSlotStripStart); d.setDate(d.getDate()+i);
-    var dStr = d.toISOString().slice(0,10);
+    var dStr = localISO(d);
     var heures = rdvCreneauxDispo[dStr] || [];
     var estPasse = dStr < today;
     var expanded = !!rdvSlotStripExpanded[dStr];
@@ -2807,7 +2820,7 @@ async function initDashboardRdv(){
     var c = JSON.parse(saved);
     var email = c.email || '';
     var prenom = c.prenom || '';
-    var today = new Date().toISOString().slice(0,10);
+    var today = localISO();
     var res = await fetch(SUPA_URL+'/rest/v1/rendez_vous?date=gte.'+today+'&status=neq.annule&order=date.asc,time.asc&limit=1',{
       headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}
     });
@@ -2925,7 +2938,7 @@ async function loadRappelComplements(){
     var rappel = rows?.[0]?.data?.protocolData?.complements_rappel;
     if(!Array.isArray(rappel) || !rappel.length){ box.style.display='none'; return; }
 
-    var todayKey = 'avs_rappel_' + new Date().toISOString().slice(0,10);
+    var todayKey = 'avs_rappel_' + localISO();
     var cochés = JSON.parse(localStorage.getItem(todayKey) || '{}');
 
     var parMoment = {};
@@ -2986,22 +2999,22 @@ function getCheckinStreak(){
   var dates = {};
   entries.forEach(function(e){
     if(e && e.date){
-      try { dates[new Date(e.date).toISOString().slice(0,10)] = true; } catch(err){}
+      try { dates[localISO(new Date(e.date))] = true; } catch(err){}
     }
   });
-  var todayStr = new Date().toISOString().slice(0,10);
+  var todayStr = localISO();
   var streak = 0;
   var cursor = new Date();
   if(!dates[todayStr]) cursor.setDate(cursor.getDate()-1);
   while(true){
-    var ds = cursor.toISOString().slice(0,10);
+    var ds = localISO(cursor);
     if(dates[ds]){ streak++; cursor.setDate(cursor.getDate()-1); } else break;
   }
   var week = [];
   for(var i=6;i>=0;i--){
     var d = new Date();
     d.setDate(d.getDate()-i);
-    var ds2 = d.toISOString().slice(0,10);
+    var ds2 = localISO(d);
     week.push({ done: !!dates[ds2], today: ds2===todayStr });
   }
   return { streak: streak, week: week, doneToday: !!dates[todayStr] };
@@ -3030,7 +3043,7 @@ async function renderCheckinRapide(){
 
   try {
     var token = await Auth.getValidAccessToken();
-    var today = new Date().toISOString().slice(0,10);
+    var today = localISO();
     var res = await fetch(SUPA_URL + '/rest/v1/journal_entries?client_key=eq.' + encodeURIComponent(session.key) + '&date=eq.' + today + '&select=energie,humeur,transit,ballonnements,note&order=created_at.desc&limit=1', {
       headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (token || SUPA_KEY) }
     });
@@ -3122,7 +3135,7 @@ async function saveCheckinRapide(){
   if(btn){ btn.disabled=true; btn.textContent='…'; }
   var noteVal = (document.getElementById('checkinNote') || {}).value || '';
   noteVal = noteVal.trim();
-  var todayISO = new Date().toISOString().slice(0,10);
+  var todayISO = localISO();
 
   // Cache local — alimente l'historique et la courbe de progression même hors-ligne
   var cacheKey = 'avs_journal_' + todayISO;
@@ -3227,7 +3240,7 @@ async function saveCycleEntry(){
   if(!session.key) return;
   var data = {
     client_key: session.key,
-    date: new Date().toISOString().slice(0,10),
+    date: localISO(),
     phase: document.getElementById('cyclePhase').value,
     flux: document.getElementById('cycleFlux').value,
     humeur: document.getElementById('cycleHumeur').value,
