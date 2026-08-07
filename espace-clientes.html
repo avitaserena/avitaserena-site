@@ -143,6 +143,11 @@ body{min-height:100vh}
 .luma-chip{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.86);font-size:12px;font-weight:500;padding:7px 13px;border-radius:99px;cursor:pointer;font-family:'Be Vietnam Pro',sans-serif;transition:all .18s}
 .luma-chip:hover{border-color:rgba(196,169,125,.5);background:rgba(255,255,255,.09)}
 .luma-chip svg{width:13px;height:13px;stroke:var(--sable);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.luma-quickreplies{align-self:stretch;display:flex;gap:7px;flex-wrap:wrap;padding:0 4px}
+.luma-quickreply{background:none;border:1px solid rgba(196,169,125,.4);color:var(--sable);font-size:12.5px;font-weight:500;padding:8px 14px;border-radius:99px;cursor:pointer;font-family:'Be Vietnam Pro',sans-serif;transition:all .18s}
+.luma-quickreply:hover{background:rgba(196,169,125,.12);border-color:var(--sable)}
+.luma-quickreply:disabled{opacity:.4;cursor:default}
+
 .luma-composer{padding:12px 16px 16px;border-top:1px solid rgba(255,255,255,.07);display:flex;gap:8px;align-items:flex-end;flex-shrink:0}
 .luma-attach-btn{width:38px;height:38px;flex-shrink:0;border-radius:50%;border:1px solid rgba(255,255,255,.15);background:none;color:rgba(255,255,255,.82);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:border-color .18s}
 .luma-attach-btn:hover{border-color:rgba(196,169,125,.5)}
@@ -2313,6 +2318,30 @@ function serenaAddCard(opts){
 var LUMA_ICON_DOC = '<svg viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"/><path d="M15 3v3h3"/></svg>';
 var LUMA_ICON_IMG = '<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>';
 
+// Puces de réponse rapide sous une question de clarification du triage IA — la cliente
+// peut taper sa propre réponse dans le champ, ou taper une puce pour l'envoyer directement.
+function serenaAddQuickReplies(options){
+  var box = document.getElementById('serenaMessages');
+  var row = document.createElement('div');
+  row.className = 'luma-quickreplies gardien-msg';
+  options.forEach(function(opt){
+    var chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'luma-quickreply';
+    chip.textContent = opt;
+    chip.onclick = function(){
+      row.querySelectorAll('.luma-quickreply').forEach(function(b){ b.disabled = true; });
+      document.getElementById('serenaInput').value = opt;
+      serenaSend();
+    };
+    row.appendChild(chip);
+  });
+  box.appendChild(row);
+  serenaScrollBottom();
+  return row;
+}
+
+
 // Charge l'historique réel des échanges (messages envoyés + réponses de Sabrina)
 async function gardienLoadHistory(){
   var session = JSON.parse(localStorage.getItem('avs_client') || sessionStorage.getItem('avs_client') || '{}');
@@ -2413,6 +2442,8 @@ async function serenaSend(){
   var text = input.value.trim();
   if(!text && !serenaPendingImage) return;
 
+  document.querySelectorAll('.luma-quickreply').forEach(function(b){ b.disabled = true; });
+
   var session = JSON.parse(localStorage.getItem('avs_client') || sessionStorage.getItem('avs_client') || '{}');
   if(!session.key){ serenaAddBubble('Session expirée — merci de vous reconnecter.', 'serena'); return; }
 
@@ -2510,6 +2541,9 @@ async function serenaSend(){
       gardienConv.history.push({ role: 'assistant', content: data.question || '' });
       gardienConv.pendingQuestion = data.question || null;
       serenaAddBubble(data.question || 'Pouvez-vous préciser ?', 'triage').classList.add('gardien-msg');
+      if(Array.isArray(data.options) && data.options.length){
+        serenaAddQuickReplies(data.options);
+      }
     }
 
   } catch(err){
