@@ -985,11 +985,12 @@ function renderSessionCard() {
     ['Motifs & mots-clés', [d.motifs, d.mots_cles].filter(Boolean).join(' · ') || '—'],
     ['Scores vitalité', d.scores || '—'],
     ['Objectif 6 mois', d.objectif_6mois || '—'],
+    ['Pathologies pressenties (détectées)', d.pathologies_pressenties ? d.pathologies_pressenties.split('\n')[0] + (d.pathologies_pressenties.includes('\n') ? '…' : '') : '—'],
     ['Bilans recommandés', d.bilans_recommandes || '—'],
   ];
   // Compter les champs réellement remplis (utiles)
   const richFields = ['prenom','age','duree_symptomes','motifs','mots_cles','objectif_6mois','scores',
-    'symptomes_coches','chips_coches','selects','textes_libres','synthese_praticien','bilans_recommandes','motivation'];
+    'symptomes_coches','chips_coches','selects','textes_libres','synthese_praticien','bilans_recommandes','motivation','pathologies_pressenties'];
   const filled = richFields.filter(k => d[k] && d[k].length > 2).length;
   const totalChars = Object.values(d).reduce((acc, v) => acc + (typeof v === 'string' ? v.length : 0), 0);
 
@@ -1000,7 +1001,7 @@ function renderSessionCard() {
 
 function prefillParams() {
   if (!sessionData) return;
-  const checks = (sessionData.symptomes_coches || '') + (sessionData.motifs || '') + (sessionData.chips_coches || '');
+  const checks = (sessionData.symptomes_coches || '') + (sessionData.motifs || '') + (sessionData.chips_coches || '') + (sessionData.pathologies_pressenties || '') + (sessionData.textes_libres || '');
   // Auto-cocher les axes prioritaires selon les symptômes
   const autoAxes = [];
   // SIBO / dysbiose est détecté spécifiquement en premier : avant, il était noyé dans la
