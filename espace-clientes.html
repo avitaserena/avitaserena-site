@@ -2536,7 +2536,13 @@ async function serenaSend(){
 
     if(data.pret){
       gardienConv.history.push({ role: 'assistant', content: JSON.stringify(data) });
-      gardienShowRecap(data);
+      if(data.trivial){
+        // Message simple (remerciement, clôture...) : pas de récapitulatif à confirmer,
+        // il part directement pour que ça reste un vrai fil de discussion.
+        await gardienEnvoyerFinal(data);
+      } else {
+        gardienShowRecap(data);
+      }
     } else {
       gardienConv.history.push({ role: 'assistant', content: data.question || '' });
       gardienConv.pendingQuestion = data.question || null;
@@ -2626,7 +2632,9 @@ async function gardienEnvoyerFinal(data){
       })
     });
 
-    serenaAddBubble('Votre message a bien été transmis à Sabrina — elle vous répond personnellement sous 24h.', 'serena').classList.add('gardien-msg');
+    if(!data.trivial){
+      serenaAddBubble('Votre message a bien été transmis à Sabrina — elle vous répond personnellement sous 24h.', 'serena').classList.add('gardien-msg');
+    }
     if(data.urgence === 'haute'){
       serenaAddBubble("Si ce que vous décrivez est intense ou vous inquiète dans l'immédiat, contactez votre médecin ou le 15 sans attendre la réponse de Sabrina.", 'serena').classList.add('gardien-msg');
     }
