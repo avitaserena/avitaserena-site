@@ -979,7 +979,7 @@ body {
 }
 .ic-row:last-child { border: none }
 .ic-key { font-size: 12px; font-weight: 500; color: var(--muted); min-width: 110px; flex-shrink: 0; padding-top: 1px }
-.ic-val { font-size: 13.5px; font-weight: 400; color: var(--ink); flex: 1; line-height: 1.5 }
+.ic-val { font-size: 13.5px; font-weight: 400; color: var(--ink); flex: 1; min-width: 0; line-height: 1.5; overflow-wrap: anywhere; word-break: break-word }
 
 /* Progression programme */
 .prog-card {
@@ -2778,6 +2778,63 @@ function rdvMatchesClient(rdv, c){
 function matchClientForRdv(rdv){ return db.clients.find(c => rdvMatchesClient(rdv, c)) || null; }
 function cRdvs(c){ return rdvs.filter(r => rdvMatchesClient(r, c)); }
 
+// ── Création d'un RDV pré-rempli depuis la fiche cliente ────────────────────
+// Insertion directe dans rendez_vous : le trigger DB trg_google_calendar_push
+// pousse automatiquement vers Google Agenda si le RDV est créé avec le statut
+// "confirme". S'il est créé "en attente", Sabrina reçoit un email de rappel
+// (même mécanisme que pour une demande venue du site public) et la cliente ne
+// reçoit sa confirmation qu'au moment où le statut passe à "confirme".
+function ouvrirNouveauRdv(cid){
+  const c = db.clients.find(x=>x.id===cid);
+  if(!c){ toast('Fiche introuvable','err'); return; }
+  document.getElementById('nr-client-id').value = cid;
+  document.getElementById('nr-client-nom').textContent = (c.prenom||'')+' '+(c.nom||'');
+  document.getElementById('nr-client-email').textContent = c.email||'Email manquant sur la fiche';
+  document.getElementById('nr-date').value = '';
+  document.getElementById('nr-heure').value = '';
+  document.getElementById('nr-type').value = 'suivi';
+  document.getElementById('nr-statut').value = 'confirme';
+  document.getElementById('nr-notes').value = '';
+  openM('m-nouveau-rdv');
+}
+async function saveNouveauRdv(){
+  const cid = document.getElementById('nr-client-id').value;
+  const c = db.clients.find(x=>x.id===cid);
+  if(!c){ toast('Fiche introuvable','err'); return; }
+  const date = document.getElementById('nr-date').value;
+  const heure = document.getElementById('nr-heure').value;
+  if(!date){ toast('Indiquez une date','err'); return; }
+  const type = document.getElementById('nr-type').value;
+  const statut = document.getElementById('nr-statut').value;
+  const notes = document.getElementById('nr-notes').value.trim();
+  const btnEl = document.getElementById('nr-save-btn');
+  btnEl.disabled = true; btnEl.textContent = 'Création…';
+  try{
+    await sb('rendez_vous', {
+      method:'POST',
+      body: JSON.stringify([{
+        name: (c.prenom||'')+' '+(c.nom||''),
+        email: c.email||null,
+        phone: c.tel||null,
+        client_key: c.id,
+        date, time: heure||null,
+        type, status: statut,
+        notes: notes||null,
+        sync_source: 'local'
+      }])
+    });
+    toast(statut==='confirme'?'Rendez-vous créé et synchronisé à l\'agenda':'Rendez-vous créé, en attente de confirmation','ok');
+    closeM('m-nouveau-rdv');
+    await loadRdvs();
+    renderFiche(c);
+    renderActionsJour?.();
+  }catch(e){
+    toast('Erreur : '+e.message,'err');
+  }finally{
+    btnEl.disabled = false; btnEl.textContent = 'Créer le rendez-vous';
+  }
+}
+
 // ── Annulation d'un rendez-vous (ex: cliente qui appelle pour annuler) ──────
 async function annulerRdv(rdvId, cid){
   if(!confirm("Confirmer l'annulation de ce rendez-vous ? Il disparaîtra de l'agenda.")) return;
@@ -3078,7 +3135,7 @@ Règles strictes :
   }catch(e){
     document.getElementById('eb-loading').style.display='none';
     document.getElementById('eb-content').style.display='block';
-    document.getElementById('eb-content').innerHTML=`<div style="background:#FDEFEC;border:1.5px solid var(--red);border-radius:12px;padding:16px 18px;font-size:13px;color:#8B3A3A">⚠ L'extraction a échoué (${escH(e.message)}). Vous pouvez fermer cette fenêtre — le document reste bien enregistré, vous pourrez saisir les marqueurs manuellement plus tard depuis la fiche cliente.</div>`;
+    document.getElementById('eb-content').innerHTML=`<div style="background:#FDEFEC;border:1.5px solid var(--red);border-radius:12px;padding:16px 18px;font-size:13px;color:#8B3A3A;display:flex;align-items:flex-start;gap:9px">${ic('warn','ico-xs')}<span>L'extraction a échoué (${escH(e.message)}). Vous pouvez fermer cette fenêtre — le document reste bien enregistré, vous pourrez saisir les marqueurs manuellement plus tard depuis la fiche cliente.</span></div>`;
   }
 }
 
@@ -3842,7 +3899,7 @@ function renderFiche(c){
       </div>
       <div class="fv2-kpis">
         <div class="fv2-kpi"><div class="fv2-kpi-val">${cr.length}</div><div class="fv2-kpi-lbl">Consultations</div></div>
-        <div class="fv2-kpi"><div class="fv2-kpi-val sm">${fmtShort(lastR?.date||c.date1)}</div><div class="fv2-kpi-lbl">Dernière séance</div></div>
+        <div class="fv2-kpi"><div class="fv2-kpi-val sm">${fmtDate(lastR?.date||c.date1)}</div><div class="fv2-kpi-lbl">Dernière séance</div></div>
         <div class="fv2-kpi"><div class="fv2-kpi-val">${pct>0?pct+'%':'—'}</div><div class="fv2-kpi-lbl">${c.programme?'Programme':'Ponctuelle'}</div>${daysLeft!==null?`<div class="fv2-kpi-sub">${daysLeft}j restants</div>`:''}</div>
         <div class="fv2-kpi"><div class="fv2-kpi-val sm">${caTotal>0?caTotal.toFixed(0)+' €':'—'}</div><div class="fv2-kpi-lbl">CA généré</div></div>
         <div class="fv2-kpi"><div class="fv2-kpi-val">${docsCount}</div><div class="fv2-kpi-lbl">Documents</div></div>
@@ -3858,7 +3915,7 @@ function renderFiche(c){
           <div class="ic-head"><div class="ic-title">${ic('user')} Informations</div>${btn('ic-edit',`ouvrirEditionCliente('${cid}')`, ic('edit')+' Modifier')}</div>
           <div class="ic-body">${infoRows}</div>
         </div>
-        ${cr.length>0?`<div class="info-card"><div class="ic-head"><div class="ic-title">${ic('calendar')} Rendez-vous</div><span style="font-size:11px;color:var(--muted)">${cr.length} au total</span></div><div class="ic-body">${rdvHtml}</div></div>`:''}
+        <div class="info-card"><div class="ic-head"><div class="ic-title">${ic('calendar')} Rendez-vous</div><div style="display:flex;align-items:center;gap:10px">${cr.length>0?`<span style="font-size:11px;color:var(--muted)">${cr.length} au total</span>`:''}${btn('ic-edit',`ouvrirNouveauRdv('${cid}')`,'+ Nouveau RDV')}</div></div><div class="ic-body">${rdvHtml}</div></div>
       </div>
       <div class="fv2-col">
         ${progCardHtml}
@@ -4034,7 +4091,7 @@ async function toggleWF(id,key){
   if(done){
     if(!c.timeline)c.timeline=[];
     const lbs={bilan_entree:"Bilan d'entrée créé",protocole_envoye:'Protocole PHV envoyé',checkin_active:'Lien check-in envoyé',check_j7:'Check-in J+7 fait',check_j21:'Point J+21 fait',suivi_jX:'Consultation de suivi',fin_programme:'Programme clôturé'};
-    c.timeline.push({type:'suivi',title:lbs[key]||key,icon:'✓',date:today()});
+    c.timeline.push({type:'suivi',title:lbs[key]||key,icon:'·',date:today()});
   }
   await saveClient(c);renderFiche(c);toast(done?'Étape validée':'Étape réouverte',done?'ok':'warn');
 }
@@ -4066,7 +4123,7 @@ function openEmail(id,key){
 }
 function loadTpl(key){if(!emailCtx)return;const t=tpls(emailCtx);if(t[key]){document.getElementById('em-sub').value=t[key].sub;document.getElementById('em-body').value=t[key].body;}}
 function loadFicheTpl(key,id){const c=db.clients.find(x=>x.id===id);if(!c)return;const t=tpls(c);if(t[key]){document.getElementById('fe-sub').value=t[key].sub;document.getElementById('fe-body').value=t[key].body;}}
-async function logEmail(id){const c=db.clients.find(x=>x.id===id);if(!c)return;const sub=document.getElementById('fe-sub')?.value||'Email';if(!c.timeline)c.timeline=[];c.timeline.push({type:'suivi',title:sub,icon:'✉',date:today()});await saveClient(c);renderFiche(c);toast('Loggé','ok');}
+async function logEmail(id){const c=db.clients.find(x=>x.id===id);if(!c)return;const sub=document.getElementById('fe-sub')?.value||'Email';if(!c.timeline)c.timeline=[];c.timeline.push({type:'suivi',title:sub,icon:'·',date:today()});await saveClient(c);renderFiche(c);toast('Loggé','ok');}
 async function sendBrevoFiche(id){
   // Conservée pour compatibilité — utilise ouvrirMailModal maintenant
   const c = db.clients.find(x=>x.id===id);
@@ -4163,7 +4220,7 @@ function ouvrirMailModal(clientId, tplKey){
       });
       if(!res.ok){ const e=await res.json(); throw new Error(e.message||res.status); }
       if(!c.timeline) c.timeline=[];
-      c.timeline.push({type:'suivi',title:'\u2709 '+sub,icon:'\u2709',date:today()});
+      c.timeline.push({type:'suivi',title:sub,icon:'·',date:today()});
       await saveClient(c);
       toast('Email envoy\u00e9 \u00e0 '+to+' \u2713','ok');
       modal.remove();
@@ -4191,18 +4248,25 @@ async function voirCommeElle(cid){
   if(!c){ toast('Fiche introuvable','err'); return; }
   if(!c.email){ toast('Email manquant sur cette fiche — impossible de générer le lien','err'); return; }
   if(!confirm('Ouvrir l\'espace de '+(c.prenom||'')+' '+(c.nom||'')+' tel qu\'elle le voit ?\n\nOuvrez plutôt ce lien dans une fenêtre de navigation privée, pour ne pas mélanger cette session avec la vôtre.')) return;
+  // On ouvre l'onglet tout de suite, dans le geste de clic — sinon, après l'await du fetch,
+  // le navigateur considère que ce n'est plus une action utilisateur directe et bloque le popup.
+  const w = window.open('', '_blank');
   try{
-    const token = await Auth.getValidAccessToken();
+    let authToken = KEY;
+    if (typeof Auth !== 'undefined') {
+      const token = await Auth.getValidAccessToken();
+      if (token) authToken = token;
+    }
     const res = await fetch(SB+'/functions/v1/impersonate-client', {
       method:'POST',
-      headers:{ 'apikey':KEY, 'Authorization':'Bearer '+token, 'Content-Type':'application/json' },
+      headers:{ 'apikey':KEY, 'Authorization':'Bearer '+authToken, 'Content-Type':'application/json' },
       body: JSON.stringify({ client_id: cid })
     });
     const data = await res.json();
-    if(!res.ok || data.error){ toast('Erreur : '+(data.error||'impossible de générer le lien'),'err'); return; }
-    window.open(data.url, '_blank');
+    if(!res.ok || data.error){ if(w) w.close(); toast('Erreur : '+(data.error||'impossible de générer le lien'),'err'); return; }
+    if(w) w.location.href = data.url; else window.open(data.url, '_blank');
     toast('Lien ouvert — pensez à une fenêtre privée si ce n\'est pas déjà le cas','ok');
-  }catch(e){ toast('Erreur : '+e.message,'err'); }
+  }catch(e){ if(w) w.close(); toast('Erreur : '+e.message,'err'); }
 }
 
 async function saveClient(c){
@@ -4249,7 +4313,7 @@ async function saveNewClient(){
   if(dup){toast('Cliente déjà existante','err');return;}
   const age=ageFrom(ddn);
   const id=prenom.toLowerCase().replace(/[\s\']/g,'_')+(nom?'-'+nom.toLowerCase().replace(/[\s\']/g,'_'):'')+'-'+ddn.replace(/-/g,'');
-  const payload={id,prenom,nom,email:document.getElementById('nc-email')?.value||'',tel:document.getElementById('nc-tel')?.value||'',age:age?String(age):'',ddn,motifs:document.getElementById('nc-motifs')?.value||'',axes:document.getElementById('nc-axes')?.value||'',notes:document.getElementById('nc-notes')?.value||'',programme:document.getElementById('nc-prog')?.value||'',duree_ttt:document.getElementById('nc-duree')?.value||'60',date1:document.getElementById('nc-date1')?.value||today(),date_protocole:document.getElementById('nc-dateproto')?.value||'',timeline:[{type:'creation',title:'Dossier créé',icon:'✦',date:today()}],workflow_done:{},created_at:new Date().toISOString()};
+  const payload={id,prenom,nom,email:document.getElementById('nc-email')?.value||'',tel:document.getElementById('nc-tel')?.value||'',age:age?String(age):'',ddn,motifs:document.getElementById('nc-motifs')?.value||'',axes:document.getElementById('nc-axes')?.value||'',notes:document.getElementById('nc-notes')?.value||'',programme:document.getElementById('nc-prog')?.value||'',duree_ttt:document.getElementById('nc-duree')?.value||'60',date1:document.getElementById('nc-date1')?.value||today(),date_protocole:document.getElementById('nc-dateproto')?.value||'',timeline:[{type:'creation',title:'Dossier créé',icon:'·',date:today()}],workflow_done:{},created_at:new Date().toISOString()};
   try{
     await sb('clientes',{method:'POST',headers:{'Prefer':'return=representation,resolution=merge-duplicates'},body:JSON.stringify(payload)});
     // Mettre à jour en mémoire (remplacer si existant, ajouter sinon)
@@ -4840,7 +4904,7 @@ async function envoyerProtocole(clientId){
     });
     if(!res.ok){const err=await res.json();throw new Error(err.message||res.status);}
     if(!c.timeline)c.timeline=[];
-    c.timeline.push({type:'protocole',title:'📨 Protocole envoyé',icon:'📨',date:today()});
+    c.timeline.push({type:'protocole',title:'Protocole envoyé',icon:'·',date:today()});
     if(!c.workflowDone)c.workflowDone={};c.workflowDone['protocole_envoye']=true;
     c.phv_url=lienPHV;
     await saveClient(c);renderFiche(c);
@@ -5003,7 +5067,7 @@ ${donnees}`;
     })});
 
     await loadConsultationSummaries(cid);
-    toast('✓ Résumé narratif généré','ok');
+    toast('Résumé narratif généré','ok');
     renderFiche(c);
     voirResumeNarratif(cid);
   }catch(e){
@@ -5450,7 +5514,7 @@ async function envoyerCheckinBrevoTpl(clientId){
     });
     if(!res.ok){ const e=await res.json(); throw new Error(e.message||res.status); }
     if(!c.timeline) c.timeline=[];
-    c.timeline.push({type:'suivi',title:'Lien check-in envoye',icon:'📊',date:today()});
+    c.timeline.push({type:'suivi',title:'Lien check-in envoyé',icon:'·',date:today()});
     if(!c.workflowDone) c.workflowDone={};
     c.workflowDone['checkin_active'] = true;
     await saveClient(c);
@@ -5946,6 +6010,46 @@ function ouvrirBilanEntree(clientId, mode){
     <div class="mfoot">
       <button class="btn btn-ghost" onclick="closeM('m-facture')">Annuler</button>
       <button class="btn btn-primary" onclick="saveFacture()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="m-nouveau-rdv">
+  <div class="modal">
+    <div class="mhead"><div class="mtitle">${ic('calendar')} Nouveau rendez-vous</div><button class="mx" onclick="closeM('m-nouveau-rdv')">×</button></div>
+    <div class="mbody">
+      <input type="hidden" id="nr-client-id">
+      <div class="fg" style="background:var(--surface);border-radius:var(--r8);padding:10px 14px;margin-bottom:4px">
+        <div style="font-size:14px;font-weight:600;color:var(--ink)" id="nr-client-nom"></div>
+        <div style="font-size:12.5px;color:var(--ink3)" id="nr-client-email"></div>
+      </div>
+      <div class="fg2">
+        <div class="fg"><label class="fl">Date *</label><input class="fi" id="nr-date" type="date"></div>
+        <div class="fg"><label class="fl">Heure</label><input class="fi" id="nr-heure" type="time"></div>
+      </div>
+      <div class="fg2">
+        <div class="fg"><label class="fl">Type</label>
+          <select class="fi fs" id="nr-type">
+            <option value="bilan">Bilan de vitalité</option>
+            <option value="suivi" selected>Consultation de suivi</option>
+            <option value="alba">Programme Alba</option>
+            <option value="aria">Programme Aria</option>
+            <option value="ora">Programme Ora</option>
+            <option value="autre">Autre</option>
+          </select>
+        </div>
+        <div class="fg"><label class="fl">Statut</label>
+          <select class="fi fs" id="nr-statut">
+            <option value="confirme" selected>Confirmé (synchro Agenda)</option>
+            <option value="attente">En attente</option>
+          </select>
+        </div>
+      </div>
+      <div class="fg"><label class="fl">Notes</label><textarea class="fi ft" id="nr-notes" rows="3" placeholder="Notes internes sur ce rendez-vous..."></textarea></div>
+    </div>
+    <div class="mfoot">
+      <button class="btn btn-ghost" onclick="closeM('m-nouveau-rdv')">Annuler</button>
+      <button class="btn btn-primary" id="nr-save-btn" onclick="saveNouveauRdv()">Créer le rendez-vous</button>
     </div>
   </div>
 </div>
