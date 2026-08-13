@@ -1192,15 +1192,7 @@ a,button{-webkit-tap-highlight-color:transparent}
     <div class="bilan-box" id="bilanBox">
       <div class="bilan-empty">Remplissez votre questionnaire quotidien pour voir apparaître votre progression ici.</div>
     </div>
-    <div style="padding:14px var(--gutter) 0">
-      <div style="background:#fff;border:1px solid var(--taupe);border-radius:16px;padding:16px;overflow:hidden">
-        <canvas id="miniChart" height="80" style="width:100%;display:block"></canvas>
-        <div style="display:flex;gap:16px;margin-top:10px">
-          <div style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--gris)"><div style="width:10px;height:10px;border-radius:50%;background:var(--sable)"></div>Énergie</div>
-          <div style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--gris)"><div style="width:10px;height:10px;border-radius:50%;background:rgba(138,154,130,.5)"></div>Bien-être digestif</div>
-        </div>
-      </div>
-    </div>
+    
 
     <!-- Précisions notées aujourd'hui -->
     <div class="db2-section-title" id="sympSection" style="display:none">Précisions notées aujourd'hui</div>
@@ -4401,7 +4393,8 @@ function _renderDrawerPillRow(containerId, field, options, currentVal){
     var val = (typeof o === 'object') ? o.v : o;
     var label = (typeof o === 'object') ? o.l : o;
     var sel = currentVal === val;
-    return '<button type="button" class="symptome-chip'+(sel?' selected':'')+'" onclick="drawerSelectPill(\''+field+'\','+JSON.stringify(val)+',this)">'+label+'</button>';
+    var valEsc = String(val).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    return '<button type="button" class="symptome-chip'+(sel?' selected':'')+'" onclick="drawerSelectPill(\''+field+'\',\''+valEsc+'\',this)">'+label+'</button>';
   }).join('');
 }
 
@@ -4444,7 +4437,8 @@ function ouvrirDrawerSymptomes() {
     el.innerHTML = SYMPTOMES_CATEGORIES[cat].map(function(s){
       var sel = !!_selectedChips[s.id];
       var icon = CHIP_ICONS[s.icon]||CHIP_ICONS.alert;
-      return '<button class="symptome-chip'+(sel?' selected':'')+'" data-id="'+s.id+'" onclick="toggleChip(this,'+JSON.stringify(s.id)+')">' 
+      var idEsc = String(s.id).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+      return '<button class="symptome-chip'+(sel?' selected':'')+'" data-id="'+s.id+'" onclick="toggleChip(this,\''+idEsc+'\')">' 
         +'<svg width="14" height="14" viewBox="0 0 24 24" style="stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round">'+icon+'</svg>'
         +s.label+'</button>';
     }).join('');
@@ -4514,7 +4508,6 @@ async function sauvegarderSymptomes() {
   lancerConfettis();
   if(typeof initProgressChart === 'function') initProgressChart();
   if(typeof loadJalons === 'function') loadJalons();
-  setTimeout(renderMiniChart, 200);
   afficherBilan(_bilanJoursActifs, null);
 
   // Persistance serveur — upsert sur (client_key, date) pour ne jamais dupliquer
@@ -4794,7 +4787,6 @@ function initAppMobile() {
   renderTodayCard();
   afficherSymptomesToday();
   afficherBilan(30, null);
-  setTimeout(renderMiniChart, 300);
 }
 
 </script>
