@@ -642,7 +642,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <div class="aluma-layout">
   <!-- TEXTE GAUCHE -->
   <div class="aluma-left">
-    <div class="aluma-eyebrow">Inclus dans votre réservation</div>
+    <div class="aluma-eyebrow">En option avec votre réservation</div>
     <h2 class="aluma-title">Plus qu'une consultation.<br><em style="font-style:italic;color:var(--sable)">Un lien continu.</em></h2>
     <p class="aluma-sub">Avec votre bilan, vous activez 7 jours d'essai gratuit à l'espace cliente — une application installée sur votre téléphone qui centralise tout ce qui se passe entre les séances.</p>
 
@@ -679,7 +679,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
     <div class="aluma-prix">
       <div class="aluma-prix-pill">45€/mois · 7 jours offerts</div>
-      <div class="aluma-prix-note">Inclus dans Aria &amp; Ora · Inclus dans Alba le 1er mois<br>Résiliable en un clic · Notification 24h avant tout prélèvement</div>
+      <div class="aluma-prix-note">Option indépendante de votre parcours — Bilan, Suivi, Alba, Aria ou Ora<br>Résiliable en un clic · Notification 24h avant tout prélèvement</div>
     </div>
   </div>
 
@@ -996,7 +996,6 @@ _alumaTimer = setInterval(function(){ switchAlumaScreen((_alumaActive+1)%4, null
           <li>Check-ins réguliers tout au long du parcours</li>
           <li>Révision du protocole à chaque étape</li>
           <li>Accès prioritaire aux ressources clientes</li>
-          <li>A Luma incluse — messagerie directe entre les séances</li>
         </ul>
         <p class="card-note">Paiement en 2 ou 3 fois disponible</p>
       </div>
@@ -1021,7 +1020,6 @@ _alumaTimer = setInterval(function(){ switchAlumaScreen((_alumaActive+1)%4, null
           <li>Protocole personnalisé écrit sous 24h</li>
           <li>7 consultations de suivi approfondies</li>
           <li>Révisions complètes du protocole trimestrielles</li>
-          <li>A Luma incluse — messagerie directe illimitée</li>
           <li>Accès en avant-première aux ressources</li>
           <li>Coordination avec votre équipe médicale si besoin</li>
         </ul>
@@ -1111,7 +1109,7 @@ _alumaTimer = setInterval(function(){ switchAlumaScreen((_alumaActive+1)%4, null
         <div style="padding:16px 20px">
           <p style="font-size:13.5px;color:rgba(255,255,255,.8);line-height:1.7;margin:0 0 14px">Un canal direct avec Sabrina entre vos séances — une question, un doute sur un symptôme, un ajustement de votre protocole. Elle vous répond personnellement sous 24h.</p>
           <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer;margin:0">
-            <input type="checkbox" id="f-luma" onchange="toggleLuma(this.checked)" style="margin-top:3px;width:18px;height:18px;flex-shrink:0;accent-color:var(--ocre)" checked>
+            <input type="checkbox" id="f-luma" onchange="toggleLuma(this.checked)" style="margin-top:3px;width:18px;height:18px;flex-shrink:0;accent-color:var(--ocre)">
             <span style="font-size:14px;font-weight:600;color:#fff;line-height:1.4">Activer mon essai gratuit de 7&nbsp;jours</span>
           </label>
           <!-- RÉASSURANCE — toujours visible -->
@@ -1168,8 +1166,8 @@ _alumaTimer = setInterval(function(){ switchAlumaScreen((_alumaActive+1)%4, null
             </div>
           </div>
 
-          <div id="cv-aluma" style="background:rgba(108,71,255,.08);border:1px solid rgba(108,71,255,.25);border-radius:12px;padding:14px 16px;margin-bottom:20px;text-align:left;font-size:13px;line-height:1.65;color:var(--ardoise)">
-            <strong>A Luma incluse</strong> — un fil de messagerie directe avec Sabrina entre vos rendez-vous, sans frais supplémentaire.
+          <div id="cv-aluma" style="background:rgba(180,144,106,.08);border:1px solid rgba(180,144,106,.25);border-radius:12px;padding:14px 16px;margin-bottom:20px;text-align:left;font-size:13px;line-height:1.65;color:var(--ardoise)">
+            <strong>A Luma, en option</strong> — un fil de messagerie directe avec Sabrina entre vos rendez-vous, à 45€/mois, résiliable à tout moment. Proposée depuis votre espace cliente une fois votre parcours démarré, indépendamment de sa durée.
           </div>
 
           <p style="font-size:12px;color:var(--gris);margin-bottom:20px">Cette consultation avait déjà, à elle seule, sa pleine valeur — vous n'avez aucune obligation de poursuivre au-delà si vous préférez y réfléchir encore.</p>
@@ -1532,9 +1530,10 @@ function selectionnerPresta(id) {
   var lumaBloc = document.getElementById('bloc-luma');
   var lumaCheckbox = document.getElementById('f-luma');
 
-  // A Luma cochée par défaut — l'essai offert est la norme, pas l'option
-  state.lumaOption = true;
-  lumaCheckbox.checked = true;
+  // A Luma reste une option payante à part entière : jamais cochée par défaut
+  // (case pré-cochée interdite pour une prestation additionnelle payante — art. L.121-17 du Code de la consommation).
+  state.lumaOption = false;
+  lumaCheckbox.checked = false;
 
   if(!id){
     state.prestaId = null; state.prestaLabel = null; state.prestaPrix = null;
@@ -1546,8 +1545,9 @@ function selectionnerPresta(id) {
 
   state.prestaId = id;
   // Seules les consultations ponctuelles (bilan, suivi) se réservent ici — A Luma leur est donc
-  // toujours proposée en option. Les parcours Alba/Aria/Ora ne sont jamais réservés directement :
-  // ils sont attribués par Sabrina après le bilan, A Luma y est alors déjà inclus.
+  // toujours proposée en option, à 45€/mois, jamais cochée par défaut. Les parcours Alba/Aria/Ora
+  // ne sont jamais réservés directement : ils sont attribués par Sabrina après le bilan, et A Luma
+  // y reste elle aussi une option payante distincte, jamais incluse automatiquement.
   lumaBloc.style.display = 'block';
 
   appliquerTarif();
@@ -1974,11 +1974,8 @@ function initConfirmationVerrouillee(clientKey) {
     if(data.bilan_deja_realise && data.prix < data.prix_plein){
       document.getElementById('cv-remise').style.display = 'block';
     }
-    if(data.programme_cle === 'alba'){
-      // A Luma n'est incluse gratuitement que pour Aria/Ora ; sur Alba elle reste une option payante,
-      // proposée après coup depuis l'espace cliente plutôt que sur cet écran verrouillé.
-      document.getElementById('cv-aluma').style.display = 'none';
-    }
+    // cv-aluma affiche désormais un message neutre valable pour Alba/Aria/Ora : A Luma
+    // reste une option payante à 45€/mois quel que soit le parcours, jamais incluse automatiquement.
     // Pré-remplissage de l'état à partir de la fiche cliente — jamais resaisi par la cliente ici.
     state.prenom = data.prenom || '';
     state.nom = data.nom || '';
@@ -2000,7 +1997,7 @@ function confirmerParcoursVerrouille() {
   state.prestaLabel = confirmData.label + ' (' + confirmData.duree + ')';
   state.prestaPrix = confirmData.prix;
   state.creneauDate = null; state.creneauHeure = null; // le webhook accepte 'à planifier'
-  state.lumaOption = false; // A Luma incluse gérée automatiquement côté serveur pour Aria/Ora, jamais ici
+  state.lumaOption = false; // A Luma n'est jamais incluse automatiquement ; elle se souscrit séparément depuis l'espace cliente
 
   document.getElementById('sdot-2').style.display = 'none';
   document.getElementById('sline-2') && (document.getElementById('sline-2').style.display = 'none');
