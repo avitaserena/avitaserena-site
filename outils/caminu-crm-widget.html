@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>U Caminu — Envoi hebdomadaire | A Vita Serena</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ardoise:#211C16;--ocre:#B4906A;--sable:#C4A882;--terracotta:#C1694F;
+  --sauge:#8A9A82;--prune:#6B4A5C;--ivoire:#FAF8F4;--or-clair:#F3E7D8;
+  --gris:#7A746E;--taupe:#D5CFC6;--blanc:#fff;
+  --sidebar-w:260px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Be Vietnam Pro',sans-serif;background:var(--ivoire);color:var(--ardoise);min-height:100vh;display:flex}
+
+/* ── SIDEBAR ── */
+.sidebar{width:var(--sidebar-w);background:var(--ardoise);display:flex;flex-direction:column;flex-shrink:0;position:fixed;top:0;left:0;height:100vh;z-index:100}
+.sb-logo{padding:28px 24px 20px;border-bottom:1px solid rgba(255,255,255,.06)}
+.sb-logo svg{height:22px;width:auto;fill:#fff}
+.sb-nav{padding:20px 12px;flex:1;overflow-y:auto}
+.sb-item{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:10px;cursor:pointer;font-size:13.5px;color:rgba(255,255,255,.65);transition:.2s;text-decoration:none;border:none;background:none;width:100%;font-family:'Be Vietnam Pro',sans-serif}
+.sb-item:hover{background:rgba(255,255,255,.06);color:rgba(255,255,255,.9)}
+.sb-item.active{background:rgba(180,144,106,.15);color:var(--sable)}
+.sb-item svg{flex-shrink:0;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.sb-label{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.3);font-weight:700;padding:16px 12px 6px}
+
+/* ── MAIN ── */
+.main{margin-left:var(--sidebar-w);flex:1;padding:40px 48px;max-width:900px}
+.page-eyebrow{font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--ocre);font-weight:700;margin-bottom:10px}
+.page-title{font-family:'Cormorant Garamond',serif;font-size:36px;font-weight:300;color:var(--ardoise);margin-bottom:6px;line-height:1.2}
+.page-sub{font-size:14px;color:var(--gris);line-height:1.7;margin-bottom:36px;max-width:560px}
+
+/* ── SEMAINE PICKER ── */
+.semaine-row{display:flex;align-items:center;gap:16px;margin-bottom:28px;flex-wrap:wrap}
+.semaine-nav{display:flex;align-items:center;gap:6px;background:#fff;border:1px solid var(--taupe);border-radius:99px;padding:6px 12px}
+.semaine-nav button{background:none;border:none;cursor:pointer;padding:4px 8px;border-radius:99px;font-size:20px;color:var(--gris);transition:.2s;line-height:1}
+.semaine-nav button:hover{color:var(--ardoise);background:var(--or-clair)}
+.semaine-label{font-size:14px;font-weight:600;color:var(--ardoise);min-width:180px;text-align:center}
+.semaine-badge{font-size:11px;padding:5px 12px;border-radius:99px;background:var(--or-clair);color:var(--ocre);font-weight:700;letter-spacing:.06em}
+.semaine-badge.current{background:rgba(138,154,130,.15);color:var(--sauge)}
+
+/* ── STATS CLIENTES DE LA SEMAINE ── */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:32px}
+.stat-card{background:#fff;border:1px solid var(--taupe);border-radius:14px;padding:16px;text-align:center}
+.stat-num{font-family:'Cormorant Garamond',serif;font-size:30px;color:var(--ardoise);line-height:1}
+.stat-lbl{font-size:11px;color:var(--gris);margin-top:4px;letter-spacing:.04em}
+
+/* ── LISTE CLIENTES ── */
+.cliente-table{background:#fff;border:1px solid var(--taupe);border-radius:18px;overflow:hidden;margin-bottom:32px}
+.ct-header{display:grid;grid-template-columns:2fr 1.2fr 1.2fr 80px 160px;gap:0;padding:12px 20px;background:var(--or-clair);border-bottom:1px solid var(--taupe)}
+.ct-header-cell{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--ocre);font-weight:700}
+.ct-row{display:grid;grid-template-columns:2fr 1.2fr 1.2fr 80px 160px;gap:0;padding:14px 20px;border-bottom:1px solid var(--taupe);align-items:center;transition:.15s}
+.ct-row:last-child{border-bottom:none}
+.ct-row:hover{background:var(--ivoire)}
+.ct-name{font-size:14.5px;font-weight:600;color:var(--ardoise)}
+.ct-sub{font-size:12px;color:var(--gris);margin-top:1px}
+.ct-checkin{font-size:13px;color:var(--ardoise)}
+.ct-checkin.low{color:var(--terracotta)}
+.ct-checkin.ok{color:var(--sauge)}
+.ct-sent{display:flex;align-items:center;gap:6px;font-size:13px}
+.ct-sent.yes{color:var(--sauge)}
+.ct-sent.no{color:var(--gris)}
+.pill{display:inline-block;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:600}
+.pill.aria{background:rgba(138,154,130,.15);color:var(--sauge)}
+.pill.ora{background:rgba(107,74,92,.12);color:var(--prune)}
+.pill.luma{background:rgba(180,144,106,.15);color:var(--ocre)}
+.pill.aucun{background:var(--taupe);color:var(--gris)}
+.btn-send{background:var(--ocre);color:#fff;border:none;padding:7px 14px;border-radius:99px;font-size:12px;font-weight:600;cursor:pointer;font-family:'Be Vietnam Pro',sans-serif;transition:.2s;white-space:nowrap}
+.btn-send:hover{background:#9d7a59}
+.btn-send:disabled{opacity:.4;cursor:default}
+.btn-send.sent{background:var(--sauge)}
+
+/* ── PANNEAU D'ÉCRITURE ── */
+.write-panel{background:#fff;border:1px solid var(--taupe);border-radius:18px;overflow:hidden;display:none}
+.write-panel.open{display:block}
+.wp-header{background:var(--ardoise);padding:20px 24px;display:flex;align-items:center;justify-content:space-between}
+.wp-header-left{display:flex;align-items:center;gap:12px}
+.wp-avatar{width:38px;height:38px;border-radius:50%;background:var(--ocre);display:flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',serif;font-size:18px;color:#fff;font-weight:400}
+.wp-name{font-family:'Cormorant Garamond',serif;font-size:20px;color:#fff}
+.wp-sub{font-size:12px;color:rgba(255,255,255,.55);margin-top:1px}
+.wp-close{background:none;border:none;color:rgba(255,255,255,.6);cursor:pointer;font-size:22px;line-height:1;padding:4px}
+.wp-close:hover{color:#fff}
+.wp-body{padding:24px}
+
+/* Données de la semaine */
+.checkin-summary{background:var(--or-clair);border-radius:12px;padding:16px 18px;margin-bottom:20px}
+.cs-title{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ocre);font-weight:700;margin-bottom:12px}
+.cs-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.cs-item{text-align:center}
+.cs-val{font-family:'Cormorant Garamond',serif;font-size:22px;color:var(--ardoise)}
+.cs-lbl{font-size:10.5px;color:var(--gris);margin-top:2px;letter-spacing:.06em}
+
+/* Mémos de la fiche cliente */
+.memo-bloc{background:var(--ivoire);border-radius:10px;padding:14px 16px;margin-bottom:20px;font-size:13px;color:var(--ardoise);line-height:1.7;border-left:3px solid var(--ocre)}
+.memo-lbl{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--ocre);font-weight:700;margin-bottom:6px}
+
+/* Champs de rédaction */
+.wp-field{margin-bottom:16px}
+.wp-label{font-size:12px;font-weight:600;color:var(--gris);letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px;display:block}
+.wp-input{width:100%;border:1.5px solid var(--taupe);border-radius:10px;padding:12px 14px;font-family:'Cormorant Garamond',serif;font-size:18px;color:var(--ardoise);outline:none;transition:.2s;background:#fff}
+.wp-input:focus{border-color:var(--ocre);box-shadow:0 0 0 3px rgba(180,144,106,.1)}
+.wp-textarea{width:100%;border:1.5px solid var(--taupe);border-radius:10px;padding:14px 16px;font-family:'Be Vietnam Pro',sans-serif;font-size:14.5px;color:var(--ardoise);line-height:1.75;outline:none;transition:.2s;background:#fff;resize:vertical;min-height:220px}
+.wp-textarea:focus{border-color:var(--ocre);box-shadow:0 0 0 3px rgba(180,144,106,.1)}
+.wp-hint{font-size:12px;color:var(--gris);margin-top:6px;line-height:1.5}
+
+/* Brouillon IA */
+.draft-bloc{background:rgba(180,144,106,.06);border:1px solid rgba(180,144,106,.25);border-radius:12px;padding:16px 18px;margin-bottom:20px}
+.draft-lbl{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--ocre);font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.draft-lbl svg{stroke:var(--ocre);fill:none;stroke-width:1.8;stroke-linecap:round}
+.draft-text{font-size:13.5px;color:var(--ardoise);line-height:1.7;white-space:pre-wrap}
+.draft-actions{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}
+.draft-btn{background:none;border:1.5px solid var(--taupe);border-radius:99px;padding:7px 16px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:'Be Vietnam Pro',sans-serif;color:var(--ardoise);transition:.2s}
+.draft-btn:hover{border-color:var(--ocre);color:var(--ocre)}
+.draft-btn.primary{background:var(--ocre);border-color:var(--ocre);color:#fff}
+.draft-btn.primary:hover{background:#9d7a59}
+
+/* Pied du panneau */
+.wp-footer{display:flex;align-items:center;justify-content:space-between;padding:18px 24px;border-top:1px solid var(--taupe);flex-wrap:wrap;gap:12px}
+.wp-footer-info{font-size:12.5px;color:var(--gris);line-height:1.5}
+.wp-send-btn{background:var(--ardoise);color:#fff;border:none;padding:13px 28px;border-radius:99px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Be Vietnam Pro',sans-serif;transition:.2s;display:flex;align-items:center;gap:8px}
+.wp-send-btn:hover{background:#3a3228}
+.wp-send-btn:disabled{opacity:.4;cursor:default}
+.wp-send-btn svg{stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* Toast */
+.toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ardoise);color:#fff;padding:13px 24px;border-radius:99px;font-size:13.5px;box-shadow:0 8px 32px rgba(0,0,0,.2);z-index:9999;opacity:0;transition:all .3s;white-space:nowrap;max-width:90vw;text-align:center}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.success{background:var(--sauge)}
+
+/* Chargement */
+.loading-row{padding:40px;text-align:center;color:var(--gris);font-size:14px}
+.spinner{display:inline-block;width:20px;height:20px;border:2px solid var(--taupe);border-top-color:var(--ocre);border-radius:50%;animation:spin .8s linear infinite;vertical-align:-4px;margin-right:8px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Responsive */
+@media(max-width:800px){
+  .sidebar{display:none}
+  .main{margin-left:0;padding:24px 20px}
+  .stats-grid{grid-template-columns:1fr 1fr}
+  .ct-header,.ct-row{grid-template-columns:2fr 1fr 100px}
+  .ct-header-cell:nth-child(2),.ct-row>*:nth-child(2),
+  .ct-header-cell:nth-child(4),.ct-row>*:nth-child(4){display:none}
+  .cs-grid{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sb-logo">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 402.52 116.56">
+      <path d="M162.95,72.57l3.25-4.84,9.58.03c.78,3.69,3.67,5.27,7.1,4.22.97-.3,2.42-1.88,2.53-2.84s-1.28-2.97-2.28-3.23l-8.34-2.11c-4.91-1.24-8.06-4.75-8.47-9.24-.44-4.81,1.6-9.22,6.5-11.26,5-2.08,11.05-2.11,15.88.45,3.68,1.95,6.1,4.92,6.23,9.84l-10.51.07c-.76-2.47-1.97-3.74-3.8-4.03-1.71-.27-4.44.97-4.65,2.56-.86,6.57,11.83,2.59,18.58,11.21.11-7.57,1.63-13.97,7.28-18.15,6.72-4.98,17.13-4.76,23.14,1.18,4.79,4.73,5.31,11.39,4.95,17.87h-24.66c-.01,3.74,2.16,6.58,4.86,7.3,3.86,1.04,7.16-.25,9.01-3.73l10.55.08c-1.97,8.22-8.98,12.8-17.18,12.72-7.82-.07-14.07-4.26-16.92-12.24-.16,4.57-2.35,8.46-6.78,10.44-9.31,4.18-20.95.92-23.22-8.57l-2.64,2.24ZM219.57,57.17c-.25-5.88-3.7-7.48-7.43-7.39s-6.62,2.7-6.49,7.48l13.92-.09Z"/><path d="M253.59,52.74c-2.81-.51-5.64-.46-8,.7-1.91.94-3.41,4.33-3.42,6.93l-.08,19.66-10.92-.02v-37.4s10.75-.04,10.75-.04l.42,6.19c2.57-4.99,7.36-7.01,12.48-5.84l-.12,7.28c3.45-5.62,8.94-8.39,15.57-8.41,7.13-.03,13.34,3.65,15.77,10.49,1.34,3.77,1.62,7.78,1.41,12.02l-24.74.02c-.24,3.63,2.12,6.55,5.11,7.34,3.48.92,6.72-.17,8.55-3.72h10.71c-2.02,8.06-8.77,12.75-16.83,12.73-6.2-.01-12.06-2.5-15.18-7.95-3.56-6.22-3.82-13.17-1.48-19.98ZM276.83,57.27c.33-4.4-2.56-7.6-6.91-7.56-3.86.03-7.18,3.02-6.84,7.53l13.75.03Z"/><path d="M94.2,44.41c2.9,8.48-11.51,26.99-20.05,35.88-.7-10.41-.27-33.35-4.52-34.63l-4.38-1.33,11.07-2.5c3,9.31,2.78,18.37,3.47,29.21,4.69-4.95,8.38-11.12,10.72-17.74,1.06-3.01-.14-4.67-2.58-6.33-1.4-.95-.63-4.01.93-4.69,1.47-.65,4.48-.43,5.36,2.14Z"/><path d="M120.11,45.44l-5.73-.25.32-1.54c8.33-1.71,9.68-7.15,14.88-11.15l-2.52,10.21,5.22.09-.32,2c-.07.45-1.42.28-1.93.35l-4.04.05"/><circle cx="371.06" cy="74.61" r="6.06"/><circle cx="109.39" cy="29.9" r="4.02"/><path d="M288.2,42.48h11.03v5.48h.57c.8-1.75,2.11-3.24,3.92-4.45,1.81-1.21,4.02-1.81,6.61-1.81,4.9,0,8.3,1.55,10.18,4.66,1.88,3.11,2.83,6.58,2.83,10.43v23.34h-11.03v-21.42c0-2.47-.54-4.41-1.63-5.83-1.08-1.42-2.69-2.14-4.81-2.14-2.26,0-3.94.75-5.02,2.24-1.08,1.49-1.63,3.41-1.63,5.73v21.42h-11.03v-37.65Z"/><path d="M327.38,74.8c-2.49-3.46-3.73-8.1-3.73-13.92s1.28-10.53,3.83-13.99c2.55-3.46,6.08-5.2,10.59-5.2,3.11,0,5.5.69,7.18,2.06,1.67,1.37,2.83,2.76,3.48,4.15h.56v-5.44h10.94v36.91h-10.94v-5.93h-.56c-.7,1.49-1.89,2.96-3.59,4.4-1.7,1.44-4.1,2.16-7.21,2.16-4.55,0-8.07-1.73-10.56-5.2ZM347.56,68.18c1.21-2.07,1.81-4.52,1.81-7.36s-.61-5.22-1.81-7.29c-1.21-2.07-3.04-3.11-5.5-3.11s-4.43,1.01-5.61,3.03c-1.19,2.02-1.78,4.45-1.78,7.29s.59,5.36,1.78,7.43c1.18,2.07,3.05,3.11,5.61,3.11s4.3-1.03,5.5-3.11Z"/><path d="M109.5,42.59c-5.71,0-9.52-.14-13.94.44l3.01,1.11c.31.12,1.59.77,1.84,1.02.87.88,1.09,2.22.75,3.4"/><path d="M58.11,75.36c-3.64,1.91-1.82-3.73-1.82-3.73l8.47-29.04h-6.46s-.33,1-.85,2.66c-.64-.77-1.47-1.35-2.48-1.75-1.08-.42-2.18-.63-3.32-.63-3.05,0-6.31,1.39-9.78,4.17-3.47,2.78-6.49,6.32-9.06,10.63-2.57,4.31-4.16,8.58-4.75,12.83-.12,1.32-.18,2.21-.18,2.69,0,4.43,1.85,6.64,5.56,6.64,3.17,0,6.47-1.69,9.91-5.07,3.44-3.38,6.53-7.85,9.28-13.41l-.68,3.92c-1.58,7.22-2.3,13.54-.21,14.29,6.03,2.15,11.84-8.29,11.84-8.29l.84-1.5s-2.66,3.69-6.3,5.6ZM50.03,63.72c-1.92,3.38-4.08,6.18-6.5,8.39-2.42,2.21-4.71,3.32-6.86,3.32-2.51,0-3.77-1.79-3.77-5.38,0-1.08.09-2.27.27-3.59.54-3.77,1.62-7.19,3.23-10.27,1.61-3.08,3.51-5.53,5.7-7.36,2.18-1.82,4.32-2.77,6.41-2.83,1.85,0,3.24.51,4.17,1.53.93,1.02,1.39,2.42,1.39,4.22.06.6,0,1.29-.18,2.06-.66,3.23-1.94,6.53-3.86,9.91Z"/><path d="M159.76,75.36c-3.39,2.33-1.82-3.73-1.82-3.73l8.47-29.04h-6.46s-.33,1-.85,2.66c-.64-.77-1.47-1.35-2.48-1.75-1.08-.42-2.18-.63-3.32-.63-3.05,0-6.31,1.39-9.78,4.17-3.47,2.78-6.49,6.32-9.06,10.63-2.57,4.31-4.16,8.58-4.75,12.83-.12,1.32-.18,2.21-.18,2.69,0,4.43,1.85,6.64,5.56,6.64,3.17,0,6.47-1.69,9.91-5.07,3.44-3.38,6.53-7.85,9.28-13.41l-.68,3.92c-1.58,7.22-2.3,13.54-.21,14.29,6.03,2.15,11.84-8.29,11.84-8.29l.93-2.18s-3.74,4.45-6.39,6.28ZM151.68,63.72c-1.92,3.38-4.08,6.18-6.5,8.39-2.42,2.21-4.71,3.32-6.86,3.32-2.51,0-3.77-1.79-3.77-5.38,0-1.08.09-2.27.27-3.59.54-3.77,1.62-7.19,3.23-10.27,1.61-3.08,3.51-5.53,5.7-7.36,2.18-1.82,4.32-2.77,6.41-2.83,1.85,0,3.24.51,4.17,1.53.93,1.02,1.39,2.42,1.39,4.22.06.6,0,1.29-.18,2.06-.66,3.23-1.94,6.53-3.86,9.91Z"/><path d="M103.04,42.59h6.46l-8.47,29.04s-1.82,5.64,1.82,3.73c3.64-1.91,6.3-5.6,6.3-5.6l-.84,1.5s-5.8,10.44-11.84,8.29c-5.1-1.82,6.56-36.97,6.56-36.97Z"/><path d="M120.54,42.59h6.46l-8.47,29.04s-1.82,5.64,1.82,3.73,6.3-5.6,6.3-5.6l-.84,1.5s-5.8,10.44-11.84,8.29c-5.1-1.82,6.56-36.97,6.56-36.97Z"/>
+    </svg>
+  </div>
+  <div class="sb-nav">
+    <div class="sb-label">Outils</div>
+    <a href="crm.html" class="sb-item">
+      <svg width="16" height="16" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Clientes
+    </a>
+    <a href="agenda.html" class="sb-item">
+      <svg width="16" height="16" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Agenda
+    </a>
+    <a href="generateur.html" class="sb-item">
+      <svg width="16" height="16" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+      Générateur PHV
+    </a>
+    <div class="sb-label" style="margin-top:8px">Communication</div>
+    <a href="#" class="sb-item active">
+      <svg width="16" height="16" viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-10"/><circle cx="19" cy="5" r="2"/></svg>
+      U Caminu
+    </a>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+  <div class="page-eyebrow">U Caminu · [u ka-MI-nu] · « Le chemin »</div>
+  <h1 class="page-title">Synthèses hebdomadaires</h1>
+  <p class="page-sub">Chaque dimanche, rédigez et envoyez une synthèse personnalisée à chaque abonnée. L'outil rassemble les check-ins, les mémos et les données de la semaine pour vous — vous rédigez, vous validez, vous envoyez.</p>
+
+  <!-- SÉLECTEUR DE SEMAINE -->
+  <div class="semaine-row">
+    <div class="semaine-nav">
+      <button onclick="changerSemaine(-1)" title="Semaine précédente">‹</button>
+      <span class="semaine-label" id="semaineLabel">Chargement…</span>
+      <button onclick="changerSemaine(1)" title="Semaine suivante">›</button>
+    </div>
+    <span class="semaine-badge" id="semaineBadge">Cette semaine</span>
+    <button onclick="chargerClientes()" style="background:none;border:1.5px solid var(--taupe);border-radius:99px;padding:7px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Be Vietnam Pro',sans-serif;color:var(--gris);transition:.2s" onmouseover="this.style.borderColor='var(--ocre)';this.style.color='var(--ocre)'" onmouseout="this.style.borderColor='var(--taupe)';this.style.color='var(--gris)'">
+      <svg width="13" height="13" viewBox="0 0 24 24" style="stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;vertical-align:-2px;margin-right:4px"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>Actualiser
+    </button>
+  </div>
+
+  <!-- STATS RAPIDES -->
+  <div class="stats-grid" id="statsGrid">
+    <div class="stat-card"><div class="stat-num" id="statTotal">—</div><div class="stat-lbl">Abonnées actives</div></div>
+    <div class="stat-card"><div class="stat-num" id="statCheckin">—</div><div class="stat-lbl">Check-ins cette semaine</div></div>
+    <div class="stat-card"><div class="stat-num" id="statEnvoyes">—</div><div class="stat-lbl">Synthèses envoyées</div></div>
+    <div class="stat-card"><div class="stat-num" id="statRestants" style="color:var(--terracotta)">—</div><div class="stat-lbl">À rédiger</div></div>
+  </div>
+
+  <!-- LISTE DES CLIENTES -->
+  <div class="cliente-table">
+    <div class="ct-header">
+      <div class="ct-header-cell">Cliente</div>
+      <div class="ct-header-cell">Abonnement</div>
+      <div class="ct-header-cell">Check-ins S.</div>
+      <div class="ct-header-cell">Envoyé</div>
+      <div class="ct-header-cell"></div>
+    </div>
+    <div id="clienteList">
+      <div class="loading-row"><span class="spinner"></span>Chargement des clientes…</div>
+    </div>
+  </div>
+
+  <!-- PANNEAU D'ÉCRITURE -->
+  <div class="write-panel" id="writePanel">
+    <div class="wp-header">
+      <div class="wp-header-left">
+        <div class="wp-avatar" id="wpAvatar">—</div>
+        <div>
+          <div class="wp-name" id="wpName">—</div>
+          <div class="wp-sub" id="wpSub">U Caminu · semaine en cours</div>
+        </div>
+      </div>
+      <button class="wp-close" onclick="fermerPanneau()">×</button>
+    </div>
+    <div class="wp-body">
+
+      <!-- Données de la semaine -->
+      <div class="checkin-summary" id="wpCheckinSummary">
+        <div class="cs-title">Check-ins de la semaine</div>
+        <div class="cs-grid">
+          <div class="cs-item"><div class="cs-val" id="csEnergie">—</div><div class="cs-lbl">Énergie moy.</div></div>
+          <div class="cs-item"><div class="cs-val" id="csHumeur">—</div><div class="cs-lbl">Humeur moy.</div></div>
+          <div class="cs-item"><div class="cs-val" id="csSommeil">—</div><div class="cs-lbl">Sommeil moy.</div></div>
+          <div class="cs-item"><div class="cs-val" id="csJours">—</div><div class="cs-lbl">Jours notés</div></div>
+        </div>
+      </div>
+
+      <!-- Mémos fiche cliente -->
+      <div class="memo-bloc" id="wpMemos" style="display:none">
+        <div class="memo-lbl">De sa fiche cliente — ce qu'elle vous a confié</div>
+        <div id="wpMemosContent"></div>
+      </div>
+
+      <!-- Brouillon IA -->
+      <div class="draft-bloc" id="draftBloc" style="display:none">
+        <div class="draft-lbl">
+          <svg width="14" height="14" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          Brouillon — à relire, corriger et personnaliser avant d'envoyer
+        </div>
+        <div class="draft-text" id="draftText"></div>
+        <div class="draft-actions">
+          <button class="draft-btn primary" onclick="utiliserBrouillon()">Utiliser ce brouillon →</button>
+          <button class="draft-btn" onclick="regenererBrouillon()">Regénérer</button>
+          <button class="draft-btn" onclick="ignorerBrouillon()">Partir de zéro</button>
+        </div>
+      </div>
+
+      <!-- Champs de rédaction -->
+      <div id="redactionZone" style="display:none">
+        <div class="wp-field">
+          <label class="wp-label" for="wpTitre">Titre de la synthèse</label>
+          <input type="text" class="wp-input" id="wpTitre" placeholder="ex : Votre semaine — une belle progression" maxlength="120">
+        </div>
+        <div class="wp-field">
+          <label class="wp-label" for="wpContenu">Votre message</label>
+          <textarea class="wp-textarea" id="wpContenu" placeholder="Rédigez votre synthèse ici…&#10;&#10;Rappel : mentionnez quelque chose qu'elle vous a confié — son voyage, son travail, ce qu'elle avait peur d'essayer. C'est ce détail qui rend le message inimitable."></textarea>
+          <div class="wp-hint">Visez 150 à 250 mots. Pas de formule générique — un détail personnel suffit à tout changer.</div>
+        </div>
+        <!-- Compteur de mots -->
+        <div style="text-align:right;font-size:12px;color:var(--gris);margin-top:-10px;margin-bottom:16px">
+          <span id="wordCount">0</span> mot(s)
+        </div>
+        <!-- Vérification anti-générique -->
+        <div id="genericWarn" style="display:none;background:rgba(193,105,79,.08);border:1px solid rgba(193,105,79,.25);border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--terracotta)">
+          <strong>⚠ Attention :</strong> ce message semble générique. Vérifiez qu'il contient au moins un détail issu de la fiche ou des mémos de cette cliente.
+        </div>
+      </div>
+
+      <!-- Bouton brouillon IA si pas encore généré -->
+      <div id="genDraftBtn" style="text-align:center;padding:16px 0">
+        <button class="draft-btn primary" onclick="genererBrouillon()" id="genDraftBtnEl">
+          <svg width="14" height="14" viewBox="0 0 24 24" style="stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;vertical-align:-2px;margin-right:6px"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>Générer un brouillon
+        </button>
+        <div style="margin-top:8px;font-size:12px;color:var(--gris)">Le brouillon croise les check-ins, les mémos et les données de la fiche. Il vous appartient de le personnaliser avant d'envoyer.</div>
+      </div>
+
+    </div>
+    <div class="wp-footer">
+      <div class="wp-footer-info">
+        Envoi immédiat dans l'espace cliente · visible dans U Caminu
+      </div>
+      <button class="wp-send-btn" id="wpSendBtn" onclick="envoyerSynthese()" disabled>
+        <svg width="15" height="15" viewBox="0 0 24 24"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7z"/></svg>
+        Envoyer à <span id="wpSendPrenom">—</span>
+      </button>
+    </div>
+  </div>
+
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+var SUPA_URL = 'https://bqhkdndwldwqacrrbbig.supabase.co';
+var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxaGtkbmR3bGR3cWFjcnJiYmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MzAyNTIsImV4cCI6MjA5NjMwNjI1Mn0.nH2UktMAVKYwng4L3SvW5F0fluV_sObGV0f3Mk1dnOY';
+// Clé API Anthropic — récupérée depuis localStorage (même clé que le générateur PHV)
+var ANTH_KEY = localStorage.getItem('avs_akey') || '';
+
+// ─── GESTION DE LA SEMAINE ───────────────────────────────
+var _offsetSemaine = 0; // 0 = cette semaine, -1 = semaine dernière, etc.
+
+function getISOWeek(d) {
+  var dt = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  var dayNum = dt.getUTCDay() || 7;
+  dt.setUTCDate(dt.getUTCDate() + 4 - dayNum);
+  var yearStart = new Date(Date.UTC(dt.getUTCFullYear(), 0, 1));
+  return {
+    year: dt.getUTCFullYear(),
+    week: Math.ceil((((dt - yearStart) / 86400000) + 1) / 7)
+  };
+}
+
+function getSemaineInfo(offset) {
+  var now = new Date();
+  var lundi = new Date(now);
+  var day = lundi.getDay() || 7;
+  lundi.setDate(lundi.getDate() - day + 1 + offset * 7);
+  var dimanche = new Date(lundi);
+  dimanche.setDate(lundi.getDate() + 6);
+  var w = getISOWeek(lundi);
+  var iso = w.year + '-W' + String(w.week).padStart(2,'0');
+  var fmt = function(d) { return d.toLocaleDateString('fr-FR', {day:'numeric', month:'long'}); };
+  return { lundi: lundi, dimanche: dimanche, iso: iso, label: fmt(lundi) + ' — ' + fmt(dimanche) + ' ' + w.year };
+}
+
+function changerSemaine(delta) {
+  _offsetSemaine += delta;
+  mettreAJourSemaine();
+  chargerClientes();
+}
+
+function mettreAJourSemaine() {
+  var info = getSemaineInfo(_offsetSemaine);
+  document.getElementById('semaineLabel').textContent = info.label;
+  var badge = document.getElementById('semaineBadge');
+  if (_offsetSemaine === 0) {
+    badge.textContent = 'Cette semaine';
+    badge.className = 'semaine-badge current';
+  } else if (_offsetSemaine === -1) {
+    badge.textContent = 'Semaine dernière';
+    badge.className = 'semaine-badge';
+  } else if (_offsetSemaine < -1) {
+    badge.textContent = 'Il y a ' + Math.abs(_offsetSemaine) + ' semaines';
+    badge.className = 'semaine-badge';
+  } else {
+    badge.textContent = 'Semaine future';
+    badge.className = 'semaine-badge';
+  }
+}
+
+// ─── CHARGEMENT DES CLIENTES ─────────────────────────────
+var _clientes = [];
+var _synthesesEnvoyees = {}; // client_key -> true/false
+
+async function chargerClientes() {
+  document.getElementById('clienteList').innerHTML = '<div class="loading-row"><span class="spinner"></span>Chargement…</div>';
+  fermerPanneau();
+
+  var semaine = getSemaineInfo(_offsetSemaine);
+  try {
+    // 1. Clientes avec A Luma ou parcours Aria/Ora
+    var r1 = await supa('GET', '/rest/v1/clientes?or=(a_luma.eq.true,programme.eq.aria,programme.eq.ora)&order=prenom.asc&select=*');
+    _clientes = r1 || [];
+
+    // 2. Synthèses déjà envoyées cette semaine
+    var r2 = await supa('GET', '/rest/v1/caminu_syntheses?semaine_iso=eq.' + encodeURIComponent(semaine.iso) + '&select=client_key');
+    _synthesesEnvoyees = {};
+    (r2 || []).forEach(function(row) { _synthesesEnvoyees[row.client_key] = true; });
+
+    // 3. Check-ins de la semaine (depuis localStorage agrégés si besoin — ici on compte depuis Supabase)
+    var lundiISO = semaine.lundi.toISOString().slice(0,10);
+    var dimISO = semaine.dimanche.toISOString().slice(0,10);
+    // On compte uniquement si la table journal_checkins existe
+    var checkinsByKey = {};
+
+    renderClientes(checkinsByKey);
+  } catch(e) {
+    console.error(e);
+    document.getElementById('clienteList').innerHTML = '<div class="loading-row" style="color:var(--terracotta)">Erreur de chargement — vérifiez votre connexion.</div>';
+  }
+}
+
+function renderClientes(checkinsByKey) {
+  var list = document.getElementById('clienteList');
+  if (!_clientes.length) {
+    list.innerHTML = '<div class="loading-row">Aucune abonnée active pour le moment.</div>';
+    updateStats(0,0,0,0);
+    return;
+  }
+
+  var envoyes = 0;
+  list.innerHTML = _clientes.map(function(c) {
+    var key = c.key || (c.prenom + '-' + c.nom + '-' + (c.ddn||'')).toLowerCase();
+    var sent = !!_synthesesEnvoyees[key];
+    if(sent) envoyes++;
+    var prog = c.programme || (c.a_luma ? 'luma' : '');
+    var pillHtml = prog === 'ora' ? '<span class="pill ora">Ora</span>' :
+                   prog === 'aria' ? '<span class="pill aria">Aria</span>' :
+                   prog === 'alba' ? '<span class="pill aria">Alba</span>' :
+                   '<span class="pill luma">A Luma</span>';
+    var nCheckins = checkinsByKey[key] || '—';
+    var checkinClass = typeof nCheckins === 'number' && nCheckins < 3 ? 'low' : 'ok';
+
+    return '<div class="ct-row">' +
+      '<div><div class="ct-name">' + escHtml(c.prenom || '') + ' ' + escHtml(c.nom || '') + '</div>' +
+        '<div class="ct-sub">' + escHtml(c.email || '') + '</div></div>' +
+      '<div>' + pillHtml + '</div>' +
+      '<div class="ct-checkin ' + checkinClass + '">' + nCheckins + ' jour(s)</div>' +
+      '<div class="ct-sent ' + (sent?'yes':'no') + '">' +
+        (sent ? '<svg width="14" height="14" viewBox="0 0 24 24" style="stroke:currentColor;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;vertical-align:-2px"><path d="M5 12l5 5 9-10"/></svg> Envoyé' : '—') +
+      '</div>' +
+      '<div>' +
+        '<button class="btn-send' + (sent?' sent':' ') + '" ' + (sent?'disabled':'') +
+        ' onclick="ouvrirPanneau(' + JSON.stringify(c) + ')">'+
+        (sent ? 'Modifier' : 'Rédiger') + '</button>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+
+  var restants = _clientes.length - envoyes;
+  updateStats(_clientes.length, '—', envoyes, restants);
+}
+
+function updateStats(total, checkins, envoyes, restants) {
+  document.getElementById('statTotal').textContent = total;
+  document.getElementById('statCheckin').textContent = checkins;
+  document.getElementById('statEnvoyes').textContent = envoyes;
+  document.getElementById('statRestants').textContent = restants;
+}
+
+// ─── PANNEAU D'ÉCRITURE ───────────────────────────────────
+var _currentCliente = null;
+var _draftGenere = false;
+
+function ouvrirPanneau(cliente) {
+  _currentCliente = typeof cliente === 'string' ? JSON.parse(cliente) : cliente;
+  _draftGenere = false;
+
+  var prenom = _currentCliente.prenom || '';
+  document.getElementById('wpAvatar').textContent = prenom.charAt(0).toUpperCase();
+  document.getElementById('wpName').textContent = prenom + ' ' + (_currentCliente.nom || '');
+  document.getElementById('wpSub').textContent = 'U Caminu · ' + getSemaineInfo(_offsetSemaine).label;
+  document.getElementById('wpSendPrenom').textContent = prenom;
+  document.getElementById('wpTitre').value = '';
+  document.getElementById('wpContenu').value = '';
+  document.getElementById('wordCount').textContent = '0';
+  document.getElementById('draftBloc').style.display = 'none';
+  document.getElementById('redactionZone').style.display = 'none';
+  document.getElementById('genDraftBtn').style.display = 'block';
+  document.getElementById('genericWarn').style.display = 'none';
+  document.getElementById('wpSendBtn').disabled = true;
+
+  // Afficher les mémos de la fiche
+  var memos = _currentCliente.notes || _currentCliente.memo || '';
+  var memosEl = document.getElementById('wpMemos');
+  if (memos) {
+    document.getElementById('wpMemosContent').textContent = memos;
+    memosEl.style.display = 'block';
+  } else {
+    memosEl.style.display = 'none';
+  }
+
+  // Stats check-in fictifs pour la démo (à remplacer par vraies données)
+  document.getElementById('csEnergie').textContent = '—';
+  document.getElementById('csHumeur').textContent = '—';
+  document.getElementById('csSommeil').textContent = '—';
+  document.getElementById('csJours').textContent = '—';
+
+  var panel = document.getElementById('writePanel');
+  panel.classList.add('open');
+  panel.scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function fermerPanneau() {
+  document.getElementById('writePanel').classList.remove('open');
+  _currentCliente = null;
+}
+
+// ─── BROUILLON IA ─────────────────────────────────────────
+async function genererBrouillon() {
+  if (!ANTH_KEY) {
+    toast('Clé API Anthropic manquante — configurez-la dans le générateur PHV.', false);
+    return;
+  }
+  var btn = document.getElementById('genDraftBtnEl');
+  btn.textContent = 'Génération…';
+  btn.disabled = true;
+
+  var c = _currentCliente;
+  var prenom = c.prenom || 'la cliente';
+  var memos = c.notes || c.memo || 'Aucun mémo disponible.';
+  var checkins = 'Données de check-in non disponibles pour cette semaine.';
+
+  var prompt = [
+    'Tu es l\'assistante de rédaction de Sabrina Castelli, naturopathe spécialisée en SIBO et hormonal (A Vita Serena, Porto-Vecchio).',
+    '',
+    'Rédige une synthèse hebdomadaire U Caminu pour ' + prenom + '.',
+    '',
+    'DONNÉES DE LA SEMAINE :',
+    checkins,
+    '',
+    'MÉMOS DE LA FICHE CLIENTE (informations confidentielles confiées à Sabrina) :',
+    memos,
+    '',
+    'RÈGLES ABSOLUES :',
+    '- Vouvoiement obligatoire',
+    '- 150 à 220 mots maximum',
+    '- Mentionner AU MOINS UN élément issu des mémos (voyage, travail, famille, peur, espoir confié)',
+    '- Expliquer POURQUOI ce qui a été noté se produit dans le corps (posture pédagogique)',
+    '- Pas de formule générique comme "prenez soin de vous" ou "continuez ainsi"',
+    '- Ton : chaleureux, direct, expert — comme une lettre de quelqu\'un qui vous connaît vraiment',
+    '- Terminer sur une intention concrète pour la semaine suivante (un seul geste, simple)',
+    '',
+    'Ne fournis QUE le texte de la synthèse, sans titre, sans en-tête, sans signature.'
+  ].join('\n');
+
+  try {
+    var resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': ANTH_KEY,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 400,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    var data = await resp.json();
+    var texte = (data.content && data.content[0] && data.content[0].text) || '';
+    if (!texte) throw new Error('Réponse vide');
+
+    document.getElementById('draftText').textContent = texte;
+    document.getElementById('draftBloc').style.display = 'block';
+    document.getElementById('genDraftBtn').style.display = 'none';
+    _draftGenere = true;
+  } catch(e) {
+    toast('Erreur lors de la génération : ' + e.message, false);
+    btn.textContent = 'Générer un brouillon';
+    btn.disabled = false;
+  }
+}
+
+function utiliserBrouillon() {
+  var texte = document.getElementById('draftText').textContent;
+  document.getElementById('wpContenu').value = texte;
+  document.getElementById('wpTitre').value = 'Votre semaine — ' + (getSemaineInfo(_offsetSemaine).label.split('—')[0].trim());
+  document.getElementById('draftBloc').style.display = 'none';
+  document.getElementById('redactionZone').style.display = 'block';
+  document.getElementById('genDraftBtn').style.display = 'none';
+  mettreAJourCompteur();
+  document.getElementById('wpSendBtn').disabled = false;
+}
+
+function ignorerBrouillon() {
+  document.getElementById('draftBloc').style.display = 'none';
+  document.getElementById('redactionZone').style.display = 'block';
+  document.getElementById('genDraftBtn').style.display = 'none';
+  document.getElementById('wpSendBtn').disabled = false;
+}
+
+async function regenererBrouillon() {
+  document.getElementById('draftBloc').style.display = 'none';
+  document.getElementById('genDraftBtn').style.display = 'block';
+  await genererBrouillon();
+}
+
+// Compteur de mots + vérification générique
+document.addEventListener('DOMContentLoaded', function() {
+  var ta = document.getElementById('wpContenu');
+  if(ta) ta.addEventListener('input', mettreAJourCompteur);
+});
+function mettreAJourCompteur() {
+  var txt = document.getElementById('wpContenu').value.trim();
+  var mots = txt ? txt.split(/\s+/).length : 0;
+  document.getElementById('wordCount').textContent = mots;
+  // Vérif générique basique
+  var generiques = ['prenez soin','continuez ainsi','bonne continuation','à très vite','belle semaine','courage'];
+  var estGenerique = generiques.some(function(g){ return txt.toLowerCase().indexOf(g) > -1; });
+  document.getElementById('genericWarn').style.display = estGenerique ? 'block' : 'none';
+  document.getElementById('wpSendBtn').disabled = mots < 50;
+}
+
+// ─── ENVOI ────────────────────────────────────────────────
+async function envoyerSynthese() {
+  var titre = document.getElementById('wpTitre').value.trim();
+  var contenu = document.getElementById('wpContenu').value.trim();
+  if (!titre || !contenu) { toast('Renseignez le titre et le message.', false); return; }
+  if (contenu.split(/\s+/).length < 50) { toast('Message trop court — minimum 50 mots.', false); return; }
+
+  var btn = document.getElementById('wpSendBtn');
+  btn.disabled = true;
+  btn.querySelector('span').previousSibling;
+  var origHtml = btn.innerHTML;
+  btn.innerHTML = '<span class="spinner" style="border-color:rgba(255,255,255,.3);border-top-color:#fff;width:16px;height:16px"></span> Envoi…';
+
+  var semaine = getSemaineInfo(_offsetSemaine);
+  var key = _currentCliente.key || (_currentCliente.prenom+'-'+_currentCliente.nom+'-'+(_currentCliente.ddn||'')).toLowerCase();
+
+  try {
+    var r = await supa('POST', '/rest/v1/caminu_syntheses', {
+      client_key: key,
+      titre: titre,
+      contenu: contenu,
+      semaine_iso: semaine.iso
+    });
+    if (r && r.error) throw new Error(r.error.message || JSON.stringify(r.error));
+
+    _synthesesEnvoyees[key] = true;
+    toast('Synthèse envoyée à ' + (_currentCliente.prenom||'la cliente') + ' ✓', true);
+    fermerPanneau();
+    chargerClientes();
+  } catch(e) {
+    toast('Erreur d\'envoi : ' + e.message, false);
+    btn.disabled = false;
+    btn.innerHTML = origHtml;
+  }
+}
+
+// ─── UTILITAIRES ──────────────────────────────────────────
+async function supa(method, path, body) {
+  var opts = {
+    method: method,
+    headers: {
+      'apikey': SUPA_KEY,
+      'Authorization': 'Bearer ' + SUPA_KEY,
+      'Content-Type': 'application/json',
+      'Prefer': method === 'POST' ? 'return=representation' : ''
+    }
+  };
+  if (body) opts.body = JSON.stringify(body);
+  var r = await fetch(SUPA_URL + path, opts);
+  if (!r.ok) { var e = await r.json(); throw new Error(JSON.stringify(e)); }
+  if (r.status === 204) return null;
+  return r.json();
+}
+
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function toast(msg, success) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (success ? ' success' : '');
+  clearTimeout(t._t);
+  t._t = setTimeout(function(){ t.className = 'toast'; }, 4000);
+}
+
+// ─── INIT ─────────────────────────────────────────────────
+mettreAJourSemaine();
+chargerClientes();
+</script>
+</body>
+</html>
