@@ -1994,6 +1994,21 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 </script>
 <script src="outils/auth-guard.js"></script>
 <script>
+  // === Lecture sécurisée de la session cliente (corrige les plantages en cascade
+  //     "SyntaxError: Unexpected token '}'" si avs_client est corrompu en localStorage) ===
+  function avsGetSession(){
+    var raw = null;
+    try{
+      raw = localStorage.getItem('avs_client') || sessionStorage.getItem('avs_client') || '{}';
+      return JSON.parse(raw);
+    }catch(e){
+      console.warn('[avsGetSession] session corrompue, réinitialisation:', raw, e);
+      try{ localStorage.removeItem('avs_client'); }catch(_e){}
+      try{ sessionStorage.removeItem('avs_client'); }catch(_e){}
+      return {};
+    }
+  }
+
 // ── SUPABASE ──
 var SUPA_URL = 'https://bqhkdndwldwqacrrbbig.supabase.co';
 var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxaGtkbmR3bGR3cWFjcnJiYmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MzAyNTIsImV4cCI6MjA5NjMwNjI1Mn0.nH2UktMAVKYwng4L3SvW5F0fluV_sObGV0f3Mk1dnOY';
@@ -2018,7 +2033,7 @@ function localISO(d){
 window._recentClientErrors = [];
 async function logClientError(message, stack){
   try {
-    var session = JSON.parse(localStorage.getItem('avs_client') || sessionStorage.getItem('avs_client') || '{}');
+    var session = avsGetSession();
     var entry = { message: String(message||'').slice(0,500), stack: stack ? String(stack).slice(0,300) : null, at: new Date().toISOString() };
     window._recentClientErrors.push(entry);
     if (window._recentClientErrors.length > 5) window._recentClientErrors.shift();
@@ -2076,7 +2091,7 @@ async function envoyerSignalerSouci(){
   var btn = document.getElementById('signalerSouciBtn');
   if (btn) { btn.disabled = true; btn.textContent = 'Envoi…'; }
 
-  var session = JSON.parse(localStorage.getItem('avs_client') || sessionStorage.getItem('avs_client') || '{}');
+  var session = avsGetSession();
   try {
     var accessToken = await Auth.getValidAccessToken();
     await fetch(SUPA_URL + '/rest/v1/messages_client', {
@@ -2322,7 +2337,7 @@ function openSpace(prenom, programme, chatAddonActif){
   appliquerAccesSerena(programme, chatAddonActif);
   // Lien vers le protocole interactif réel (outils/phv-print.html), avec la clé de la cliente
   // — indispensable pour que la page charge SON protocole via chargerProtocoleCliente()
-  var session = JSON.parse(localStorage.getItem('avs_client') || sessionStorage.getItem('avs_client') || '{}');
+  var session = avsGetSession();
   if (session.key) {
     var protoUrl = 'outils/phv-print.html?client=' + encodeURIComponent(session.key);
     var protoLink = document.getElementById('protocoleLink');
@@ -2464,7 +2479,7 @@ function ccComplete(){
 }
 
 async function enregistrerSeanceCoherence(){
-  var session = JSON.parse(localStorage.getItem('avs_client') || sessionStorage.getItem('avs_client') || '{}');
+  var session = avsGetSession();
   if(!session.key) return;
   try {
     var token = await Auth.getValidAccessToken();
@@ -2764,7 +2779,7 @@ async function activerNotificationsPush(){
     }
 
     var sub = subscription.toJSON();
-    var session = JSON.parse(localStorage.getItem('avs_client') || sessionStorage.getItem('avs_client') || '{}');
+    var session = avsGetSession();
     var token = await Auth.getValidAccessToken();
 
     await fetch(SUPA_URL + '/rest/v1/push_subscriptions', {
@@ -2810,7 +2825,7 @@ window.addEventListener('DOMContentLoaded', function(){
 // ALERTE "SABRINA VOUS A RÉPONDU" — visible dès l'arrivée sur le tableau de bord
 // ═══════════════════════════════════════
 async function checkNouvelleReponse(){
-  var session = JSON.parse(localStorage.getItem('avs_client') || sessionStorage.getItem('avs_client') || '{}');
+  var session = avsGetSession();
   var box = document.getElementById('reponseAlertBox');
   if(!session.key || !box) return;
 
@@ -2843,7 +2858,7 @@ async function checkNouvelleReponse(){
 
 // Marque toutes les réponses de la cliente comme vues (appelé à l'ouverture d'A Luma)
 async function marquerReponsesVues(){
-  var session = JSON.parse(localStorage.getItem('avs_client') || sessionStorage.getItem('avs_client') || '{}');
+  var session = avsGetSession();
   if(!session.key) return;
   try {
     var token = await Auth.getValidAccessToken();
@@ -2969,7 +2984,7 @@ function serenaAddQuickReplies(options){
 
 // Charge l'historique réel des échanges (messages envoyés + réponses de Sabrina)
 async function gardienLoadHistory(){
-  var session = JSON.parse(localStorage.getItem('avs_client') || sessionStorage.getItem('avs_client') || '{}');
+  var session = avsGetSession();
   if(!session.key) return;
   var box = document.getElementById('serenaMessages');
 
@@ -3069,7 +3084,7 @@ async function serenaSend(){
 
   document.querySelectorAll('.luma-quickreply').forEach(function(b){ b.disabled = true; });
 
-  var session = JSON.parse(localStorage.getItem('avs_client') || sessionStorage.getItem('avs_client') || '{}');
+  var session = avsGetSession();
   if(!session.key){ serenaAddBubble('Session expirée — merci de vous reconnecter.', 'serena'); return; }
 
   var accessToken = await Auth.getValidAccessToken();
@@ -3227,7 +3242,7 @@ async function gardienConfirmSend(){
 // Envoi effectif et unique vers Sabrina : le message brut complet (tout l'échange de clarification)
 // + la synthèse et le niveau d'urgence estimés par le triage IA, pour qu'elle priorise sa lecture.
 async function gardienEnvoyerFinal(data){
-  var session = JSON.parse(localStorage.getItem('avs_client') || sessionStorage.getItem('avs_client') || '{}');
+  var session = avsGetSession();
   var accessToken = await Auth.getValidAccessToken();
   if(!session.key || !accessToken){ serenaAddBubble('Session expirée — merci de vous reconnecter.', 'serena'); return; }
 
@@ -3372,7 +3387,7 @@ function rdvDeplierJour(dStr) {
 }
 
 async function rdvConfirmer(dStr, heure) {
-  var session = JSON.parse(localStorage.getItem('avs_client') || sessionStorage.getItem('avs_client') || '{}');
+  var session = avsGetSession();
   if (!session.key) { alert('Session expirée — merci de vous reconnecter.'); return; }
 
   try {
@@ -3538,7 +3553,7 @@ var MOMENT_LABELS = { matin:'Le matin', midi:'Le midi', soir:'Le soir', coucher:
 var MOMENT_ORDER = ['matin','midi','soir','coucher'];
 
 async function loadRappelComplements(){
-  var session = JSON.parse(localStorage.getItem('avs_client') || sessionStorage.getItem('avs_client') || '{}');
+  var session = avsGetSession();
   var box = document.getElementById('rappelComplementsBox');
   if(!session.key || !box) return;
   try {
@@ -3649,7 +3664,7 @@ function renderStreakRow(){
 }
 
 async function renderCheckinRapide(){
-  var session = JSON.parse(localStorage.getItem('avs_client') || sessionStorage.getItem('avs_client') || '{}');
+  var session = avsGetSession();
   var box = document.getElementById('checkinRapide');
   if(!session.key || !box) return;
   checkinNoteExpanded = false;
@@ -3742,7 +3757,7 @@ function selectCheckin(type, val, btn){
 }
 
 async function saveCheckinRapide(){
-  var session = JSON.parse(localStorage.getItem('avs_client') || sessionStorage.getItem('avs_client') || '{}');
+  var session = avsGetSession();
   if(!session.key || !checkinEnergieVal || !checkinTransitVal || !checkinBallonnementsVal || !checkinHumeurVal) return;
   if(checkinAutoSaveTimer){ clearTimeout(checkinAutoSaveTimer); checkinAutoSaveTimer=null; }
   var btn = document.getElementById('checkinSaveBtn');
@@ -3795,7 +3810,7 @@ async function saveCheckinRapide(){
 
 
 async function loadJalons(){
-  var session = JSON.parse(localStorage.getItem('avs_client') || sessionStorage.getItem('avs_client') || '{}');
+  var session = avsGetSession();
   var box = document.getElementById('jalonsBox');
   if(!session.key || !box) return;
   try {
@@ -3850,7 +3865,7 @@ async function loadJalons(){
 
 /* ─── SUIVI DE CYCLE ─── */
 async function saveCycleEntry(){
-  var session = JSON.parse(localStorage.getItem('avs_client') || sessionStorage.getItem('avs_client') || '{}');
+  var session = avsGetSession();
   if(!session.key) return;
   var data = {
     client_key: session.key,
@@ -3882,7 +3897,7 @@ async function saveCycleEntry(){
 }
 
 async function loadCycleHistory(){
-  var session = JSON.parse(localStorage.getItem('avs_client') || sessionStorage.getItem('avs_client') || '{}');
+  var session = avsGetSession();
   var box = document.getElementById('cycleHistory');
   if(!session.key || !box) return;
   try {
@@ -3958,7 +3973,7 @@ function renderRecettesGrid(list){
 
 /* ─── BILANS BIOLOGIQUES ─── */
 async function loadBilans(){
-  var session = JSON.parse(localStorage.getItem('avs_client') || sessionStorage.getItem('avs_client') || '{}');
+  var session = avsGetSession();
   var list = document.getElementById('bilansList');
   var empty = document.getElementById('bilansEmpty');
   if(!session.key || !list) return;
@@ -3988,7 +4003,7 @@ async function loadBilans(){
 
 /* ─── HISTORIQUE DES SÉANCES ─── */
 async function loadSeances(){
-  var session = JSON.parse(localStorage.getItem('avs_client') || sessionStorage.getItem('avs_client') || '{}');
+  var session = avsGetSession();
   var list = document.getElementById('seancesList');
   var empty = document.getElementById('seancesEmpty');
   if(!session.key || !list) return;
@@ -4112,7 +4127,7 @@ function _capsuleStartDate(session){
 }
 
 function initCapsules(){
-  var session = JSON.parse(localStorage.getItem('avs_client')||sessionStorage.getItem('avs_client')||'{}');
+  var session = avsGetSession();
   var hasAccess = !!session.chatAddonActif || session.programme==='aria' || session.programme==='ora';
   document.getElementById('capsuleLocked').style.display   = hasAccess?'none':'block';
   document.getElementById('capsuleUnlocked').style.display = hasAccess?'block':'none';
@@ -4131,7 +4146,7 @@ function initCapsules(){
 function renderCapsuleGrid(session){
   var grid = document.getElementById('capsuleGrid');
   if(!grid) return;
-  session = session || JSON.parse(localStorage.getItem('avs_client')||sessionStorage.getItem('avs_client')||'{}');
+  session = session || avsGetSession();
 
   // Tri par pertinence (thème vs motifs/axes de la cliente), en gardant l'ordre
   // d'origine comme critère secondaire pour ne pas mélanger le fil éditorial.
@@ -4210,7 +4225,7 @@ function ouvrirCapsule(id){
 // Table Supabase : caminu_syntheses (client_key, titre, contenu, created_at)
 // ═══════════════════════════════════════
 async function initCaminu(){
-  var session = JSON.parse(localStorage.getItem('avs_client')||sessionStorage.getItem('avs_client')||'{}');
+  var session = avsGetSession();
   var hasAccess = !!session.chatAddonActif || session.programme==='aria' || session.programme==='ora';
   document.getElementById('caminuLocked').style.display   = hasAccess?'none':'block';
   document.getElementById('caminuUnlocked').style.display = hasAccess?'block':'none';
@@ -4586,7 +4601,7 @@ async function sauvegarderSymptomes() {
   // Persistance serveur — upsert sur (client_key, date) pour ne jamais dupliquer
   // l'entrée du jour, quel que soit l'appareil utilisé pour la remplir.
   try {
-    var session = JSON.parse(localStorage.getItem('avs_client') || sessionStorage.getItem('avs_client') || '{}');
+    var session = avsGetSession();
     if(!session.key) return;
     var token = await Auth.getValidAccessToken();
     await fetch(SUPA_URL + '/rest/v1/journal_entries?on_conflict=client_key,date', {
@@ -4789,7 +4804,7 @@ var _scHistory = [];
 var _scLoaded = false;
 
 function initScintillaTab(){
-  var session = JSON.parse(localStorage.getItem('avs_client') || sessionStorage.getItem('avs_client') || '{}');
+  var session = avsGetSession();
   var programme = (session.programme || '').toLowerCase();
   var aAcces = ['alba','aria','ora'].indexOf(programme) > -1 || !!session.chatAddonActif;
   var locked = document.getElementById('scintillaLocked');
