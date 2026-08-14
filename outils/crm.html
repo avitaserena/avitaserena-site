@@ -3167,9 +3167,10 @@ function ouvrirNouveauRdv(cid){
   openM('m-nouveau-rdv');
 }
 // Durée par type — DOIT rester identique à check_rdv_overlap() (trigger DB),
-// get-available-slots (edge function) et findConflictingRdv() dans agenda.html.
-// Seuls bilan/initial durent 90 min ; tout le reste (suivi, alba, aria, ora, autre) dure 45 min.
-function dureeParTypeCRM(type){ return (type==='initial'||type==='bilan') ? 90 : 45; }
+// get-available-slots (edge function), findConflictingRdv() dans agenda.html, et
+// reservation.html (state.prestaId === 'suivi' ? 45 : 90).
+// Seul "suivi" dure 45 min ; tout le reste (bilan, initial, alba, aria, ora, autre) dure 90 min.
+function dureeParTypeCRM(type){ return type==='suivi' ? 45 : 90; }
 function timeToMinsCRM(t){ if(!t) return null; var p=t.split(':'); return parseInt(p[0])*60+parseInt(p[1]); }
 
 // Vérification anti-chevauchement côté écran, avant même d'appeler la base — donne un
@@ -4731,7 +4732,7 @@ async function saveNewClient(){
   const dup=db.clients.find(c=>(c.prenom||'').toLowerCase()===prenom.toLowerCase()&&(c.nom||'').toLowerCase()===nom.toLowerCase()&&c.ddn===ddn);
   if(dup){toast('Cliente déjà existante','err');return;}
   const age=ageFrom(ddn);
-  const id=prenom.toLowerCase().replace(/[\s\']/g,'_')+(nom?'-'+nom.toLowerCase().replace(/[\s\']/g,'_'):'')+'-'+ddn.replace(/-/g,'');
+  const id=idCanoniqueCliente(prenom,nom,ddn);
   const payload={id,prenom,nom,email:document.getElementById('nc-email')?.value||'',tel:document.getElementById('nc-tel')?.value||'',age:age?String(age):'',ddn,motifs:document.getElementById('nc-motifs')?.value||'',axes:document.getElementById('nc-axes')?.value||'',notes:document.getElementById('nc-notes')?.value||'',programme:document.getElementById('nc-prog')?.value||'',duree_ttt:document.getElementById('nc-duree')?.value||'60',date1:document.getElementById('nc-date1')?.value||today(),date_protocole:document.getElementById('nc-dateproto')?.value||'',timeline:[{type:'creation',title:'Dossier créé',icon:'·',date:today()}],workflow_done:{},created_at:new Date().toISOString()};
   try{
     await sb('clientes',{method:'POST',headers:{'Prefer':'return=representation,resolution=merge-duplicates'},body:JSON.stringify(payload)});
@@ -5114,10 +5115,19 @@ const CLIENT_REF_TABLES=[
   {table:'phv_memos',col:'client_key'}
 ];
 
-/* Identifiant standard prenom-nom-AAAAMMJJ, cohérent avec saveNewClient(). */
+/* Identifiant standard prenom-nom-AAAAMMJJ, cohérent avec saveNewClient(), agenda.html
+   et stripe-webhook. Normalise les accents (é→e, ç→c...) pour que "Zoé" et "Zoe" tapés
+   différemment donnent toujours le même identifiant. */
+function normalizeIdPart(s){
+  return (s||'')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .trim().toLowerCase()
+    .replace(/[^a-z0-9]+/g,'_')
+    .replace(/^_+|_+$/g,'');
+}
 function idCanoniqueCliente(prenom,nom,ddn){
-  const p=(prenom||'').trim().toLowerCase().replace(/[\s']/g,'_');
-  const n=(nom||'').trim().toLowerCase().replace(/[\s']/g,'_');
+  const p=normalizeIdPart(prenom);
+  const n=normalizeIdPart(nom);
   const d=(ddn||'').replace(/-/g,'');
   if(!p||!d) return null;
   return p+(n?'-'+n:'')+'-'+d;

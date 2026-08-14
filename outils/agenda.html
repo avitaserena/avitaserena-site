@@ -564,7 +564,7 @@ function savePrepTime(val) {
 }
 
 function getEndTime(time, type, prepTime) {
-  var duration = type === 'initial' ? 90 : 45;
+  var duration = type === 'suivi' ? 45 : 90;
   var total = duration + (prepTime || 0);
   var parts = time.split(':');
   var mins = parseInt(parts[0]) * 60 + parseInt(parts[1]) + total;
@@ -572,10 +572,12 @@ function getEndTime(time, type, prepTime) {
 }
 
 // Durée par type — DOIT rester identique à check_rdv_overlap() (trigger DB),
-// get-available-slots (edge function) et saveNouveauRdv() dans crm.html.
-// Seuls bilan/initial durent 90 min ; tout le reste (suivi, alba, aria, ora, autre) dure 45 min.
+// get-available-slots (edge function), saveNouveauRdv() dans crm.html, et
+// reservation.html (state.prestaId === 'suivi' ? 45 : 90).
+// Seul "suivi" dure 45 min ; tout le reste (bilan, initial, alba, aria, ora, autre) dure
+// 90 min, car un parcours démarre toujours par un bilan complet.
 function dureeParType(type) {
-  return (type === 'initial' || type === 'bilan') ? 90 : 45;
+  return type === 'suivi' ? 45 : 90;
 }
 
 function findConflictingRdv(date, time, type, excludeId) {
@@ -1027,7 +1029,14 @@ function removeBlock(i) {
 // ════════════════════════════════
 // AGENDA
 // ════════════════════════════════
-function getTypeLabel(t) { return t==='initial' ? 'Consultation initiale — 90 min' : 'Consultation de suivi — 45 min'; }
+function getTypeLabel(t) {
+  if (t === 'suivi') return 'Consultation de suivi — 45 min';
+  var labels = { initial: 'Consultation initiale', bilan: 'Bilan de vitalité', alba: 'Bilan — entrée parcours Alba', aria: 'Bilan — entrée parcours Aria', ora: 'Bilan — entrée parcours Ora' };
+  return (labels[t] || 'Consultation') + ' — 90 min';
+}
+function isEvenementPerso(rdv) {
+  return rdv.sync_source === 'google' && !rdv.client_key;
+}
 function getStatusLabel(s) { return {attente:'En attente',confirme:'Confirmé',annule:'Annulé'}[s]||s; }
 function getParcoursLabel(p) { return {alba:'Parcours Alba',aria:'Parcours Aria',ora:'Parcours Ora',bilan:'Bilan seul','':''}[p]||p; }
 
@@ -1083,13 +1092,36 @@ function renderAgenda() {
       const card = document.createElement('div');
       if (item.kind === 'rdv') {
         const rdv = item.data;
-        card.className = `rdv-card ${rdv.status}`;
+        const perso = isEvenementPerso(rdv);
+        card.className = `rdv-card ${perso ? 'rdv-perso' : rdv.status}`;
         card.style.animation = 'fadeUp .4s cubic-bezier(.16,1,.3,1) backwards';
         card.style.animationDelay = (idx*0.04)+'s';
+        if (perso) {
+          // Événement personnel remonté depuis Google Calendar (pas une cliente) — habillage
+          // volontairement neutre et discret pour ne jamais le confondre avec un vrai RDV,
+          // tout en gardant le créneau visible puisqu'il vous rend indisponible.
+          card.style.cssText = 'background:repeating-linear-gradient(135deg, rgba(107,101,96,.05) 0 10px, rgba(107,101,96,.09) 10px 20px);border-left:3px solid #9C958C;cursor:default;opacity:.82';
+          card.innerHTML = `
+            <div>
+              <div class="rdv-time" style="color:#6B6560">${rdv.time}</div>
+              <div class="rdv-duration" style="color:#9C958C">${getEndTime(rdv.time, rdv.type, 0)}</div>
+            </div>
+            <div>
+              <div class="rdv-name" style="color:#6B6560;display:flex;align-items:center;gap:6px">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                ${rdv.name}
+              </div>
+              <div class="rdv-type" style="color:#9C958C;font-style:italic">Événement personnel — indisponible</div>
+            </div>
+            <span class="rdv-status" style="background:rgba(107,101,96,.1);color:#6B6560">Perso</span>
+          `;
+          section.appendChild(card);
+          return;
+        }
         card.innerHTML = `
           <div>
             <div class="rdv-time">${rdv.time}</div>
-            <div class="rdv-duration">${rdv.type==='initial'?'90':'45'} min → ${getEndTime(rdv.time, rdv.type, 0)}<span style="color:var(--taupe)"> +${state.prepTime}min</span></div>
+            <div class="rdv-duration">${dureeParType(rdv.type)} min → ${getEndTime(rdv.time, rdv.type, 0)}<span style="color:var(--taupe)"> +${state.prepTime}min</span></div>
           </div>
           <div>
             <div class="rdv-name">${rdv.name}</div>
@@ -1461,10 +1493,18 @@ function splitRdvName(name) {
 
 // Même formule que idCanoniqueCliente() / DB.clientKey() partout ailleurs dans le système —
 // permet de rattacher un RDV à une fiche cliente de façon fiable (pas seulement par nom/email).
+// Normalise aussi les accents (é→e, ç→c...) pour que "Zoé" et "Zoe" tapés différemment
+// donnent toujours le même identifiant, et évitent de créer deux fiches pour la même personne.
+function normalizeIdPart(s) {
+  return (s || '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .trim().toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+}
 function computeClientKey(prenom, nom, ddn) {
-  const normalize = s => (s||'').trim().toLowerCase().replace(/[\s']/g,'_');
-  const p = normalize(prenom);
-  const n = normalize(nom);
+  const p = normalizeIdPart(prenom);
+  const n = normalizeIdPart(nom);
   const dateDigits = (ddn||'').replace(/-/g,'');
   if (!p || !dateDigits) return null;
   return p + (n ? '-' + n : '') + '-' + dateDigits;
