@@ -1278,7 +1278,7 @@ a,button{-webkit-tap-highlight-color:transparent}
         <div class="sc-lock">
           <svg class="lk" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
           <div class="sc-lock-t">Une explication,<br>chaque fois qu'il en faut une.</div>
-          <p class="sc-lock-p">A Scintilla fait partie de votre abonnement A Luma — elle s'appuie sur votre protocole pour répondre à vos questions du quotidien, à toute heure.</p>
+          <p class="sc-lock-p">A Scintilla est incluse dans les parcours Alba, Aria et Ora — ou accessible via l'abonnement A Luma. Elle s'appuie sur votre protocole pour répondre à vos questions du quotidien, à toute heure.</p>
           <button onclick="souscrireALuma()" style="background:var(--ocre);color:#fff;border:none;padding:14px 34px;border-radius:99px;font-size:14px;font-weight:700;letter-spacing:.03em;cursor:pointer;font-family:'Be Vietnam Pro',sans-serif">S'abonner à A Luma →</button>
           <p style="font-size:11.5px;color:rgba(255,255,255,.68);margin-top:12px">A Scintilla est incluse · 7 jours offerts · résiliable en un clic</p>
         </div>
@@ -1759,18 +1759,18 @@ a,button{-webkit-tap-highlight-color:transparent}
     </div>
 
 
-    <!-- ─── CAPSULES AUDIO — A Scintilla [a shin-TIL-la] "l'étincelle" ─── -->
+    <!-- ─── CAPSULES AUDIO — la voix de Sabrina ─── -->
     <div class="tab-content" id="tab-capsules">
       <div class="section-eyebrow">Vos capsules audio</div>
       <h2 class="section-h2">Capsules audio —<br>la voix de Sabrina, au bon moment.</h2>
-      <p class="section-sub">Des capsules de 2 à 4 minutes enregistrées par Sabrina, débloquées selon votre protocole et votre phase de cycle. Chaque capsule explique <em>pourquoi</em> votre corps fait ce qu’il fait — pas seulement quoi faire.</p>
+      <p class="section-sub">Des capsules de 2 à 4 minutes enregistrées par Sabrina, débloquées selon votre profil et votre avancée dans l’accompagnement. Chaque capsule explique <em>pourquoi</em> votre corps fait ce qu’il fait — pas seulement quoi faire.</p>
 
       <!-- VERROUILLÉ -->
       <div id="capsuleLocked" style="display:none">
         <div style="background:var(--ardoise);border-radius:20px;padding:40px 28px;text-align:center;margin-top:24px">
           <svg width="44" height="44" viewBox="0 0 24 24" style="stroke:var(--sable);fill:none;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round;margin-bottom:16px"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
           <div style="font-family:'Cormorant Garamond',serif;font-size:26px;color:var(--sable);margin-bottom:10px;line-height:1.3">Votre prochaine capsule<br>vous attend.</div>
-          <p style="font-size:14px;color:rgba(255,255,255,.72);line-height:1.75;max-width:420px;margin:0 auto 20px">Les capsules sont débloquées en fonction de votre protocole et de votre phase de cycle. Elles font partie de votre abonnement A Luma.</p>
+          <p style="font-size:14px;color:rgba(255,255,255,.72);line-height:1.75;max-width:420px;margin:0 auto 20px">Les capsules se débloquent selon votre profil et une nouvelle chaque semaine, tout au long de votre accompagnement.</p>
           <div style="margin:0 auto 24px;background:rgba(255,255,255,.06);border-radius:14px;padding:18px 20px;max-width:380px">
             <div style="font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.65);font-weight:700;margin-bottom:12px">Exemples de capsules qui vous attendent</div>
             <div id="capsulePreviewList"></div>
@@ -2196,7 +2196,7 @@ async function tryAutoLogin() {
     const rows = await DB_getOwnClientRow();
     if (rows && rows.length > 0) {
       const c = rows[0];
-      localStorage.setItem('avs_client', JSON.stringify({ prenom: c.prenom, nom: c.nom, email: c.email, ok: true, key: c.id, programme: c.programme || '', chatAddonActif: !!c.chat_addon_actif }));
+      localStorage.setItem('avs_client', JSON.stringify({ prenom: c.prenom, nom: c.nom, email: c.email, ok: true, key: c.id, programme: c.programme || '', chatAddonActif: !!c.chat_addon_actif, chatAddonDebut: c.chat_addon_debut || null, axes: c.axes || '', motifs: c.motifs || '', dateProtocole: c.date_protocole || null, date1: c.date1 || null }));
       openSpace(c.prenom, c.programme, c.chat_addon_actif);
       return true;
     } else {
@@ -2212,7 +2212,7 @@ async function tryAutoLogin() {
 
 async function DB_getOwnClientRow() {
   const token = await Auth.getValidAccessToken();
-  const res = await fetch(SUPA_URL + '/rest/v1/clientes?select=id,prenom,nom,email,programme,chat_addon_actif,chat_addon_renouvellement', {
+  const res = await fetch(SUPA_URL + '/rest/v1/clientes?select=id,prenom,nom,email,programme,chat_addon_actif,chat_addon_renouvellement,chat_addon_debut,axes,motifs,date_protocole,date1', {
     headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + token }
   });
   if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -4062,8 +4062,8 @@ function loadJournalHistory(){
 
 
 // ═══════════════════════════════════════
-// CAPSULES AUDIO — A Scintilla [a shin-TIL-la] "l'étincelle"
-// Accès : abonnement A Luma (session.a_luma) ou parcours Aria/Ora
+// CAPSULES AUDIO — la voix de Sabrina (distinct d'A Scintilla, qui est le chat instantané)
+// Accès : abonnement A Luma (session.chatAddonActif) ou parcours Aria/Ora
 // ═══════════════════════════════════════
 var CAPSULES_CATALOGUE = [
   {id:"c01",num:"01",titre:"Pourquoi vos ballonnements empirent en fin de journ\u00e9e",desc:"Votre intestin suit une horloge biologique. En fin de journ\u00e9e, la motilit\u00e9 ralentit et les bact\u00e9ries fermentent davantage \u2014 voici exactement pourquoi, et ce que vous pouvez changer d\u00e8s ce soir.",duree:"3 min",phase:"ALL",theme:"digestif",audio:""},
@@ -4080,9 +4080,40 @@ var CAPSULES_CATALOGUE = [
   {id:"c12",num:"12",titre:"Pourquoi un protocole se modifie \u2014 et jamais trop vite",desc:"Un protocole en naturopathie n\u2019est pas une ordonnance fig\u00e9e. Je vous explique comment je lis les signaux qui indiquent qu\u2019il est temps de changer de cap \u2014 et pourquoi la patience est th\u00e9rapeutique.",duree:"3 min",phase:"ALL",theme:"general",audio:""}
 ];
 
+/* Déblocage des capsules : deux critères, jamais la phase de cycle seule
+   (la plupart des capsules — SIBO, thyroïde, stress — n'ont rien à voir avec le cycle).
+   1) PERTINENCE — les capsules dont le thème correspond aux motifs/axes de la cliente
+      passent en premier (ex. cliente SIBO → capsules "digestif" en tête).
+   2) RYTHME — une capsule de plus se débloque chaque semaine depuis le début du
+      protocole (date_protocole/date1) ou de l'abonnement A Luma (chat_addon_debut),
+      pour garder un fil sur toute la durée de l'accompagnement plutôt que de tout
+      donner d'un coup le jour 1. */
+var THEME_LABELS = { digestif:'Digestif', hormonal:'Hormonal', nerveux:'Nerveux', general:'Général' };
+var THEME_KEYWORDS = {
+  digestif: ['digest','sibo','ballonnement','transit','intestin','sii','microbiote','constipation','reflux'],
+  hormonal: ['hormon','sopk','endometriose','spm','cycle','oestrogen','progesterone','menopause','thyroid','thyroïde'],
+  nerveux:  ['stress','sommeil','nerveux','anxiet','cortisol','fatigue']
+};
+
+function _normText(s){
+  return (s||'').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+}
+
+function _themeScore(theme, profilTexte){
+  var kws = THEME_KEYWORDS[theme];
+  if(!kws) return 0.3; // "general" — toujours un peu pertinent, jamais prioritaire
+  var score = 0;
+  for(var i=0;i<kws.length;i++){ if(profilTexte.indexOf(kws[i])>-1) score++; }
+  return score;
+}
+
+function _capsuleStartDate(session){
+  return session.dateProtocole || session.date1 || session.chatAddonDebut || null;
+}
+
 function initCapsules(){
   var session = JSON.parse(localStorage.getItem('avs_client')||sessionStorage.getItem('avs_client')||'{}');
-  var hasAccess = session.a_luma===true || session.programme==='aria' || session.programme==='ora';
+  var hasAccess = !!session.chatAddonActif || session.programme==='aria' || session.programme==='ora';
   document.getElementById('capsuleLocked').style.display   = hasAccess?'none':'block';
   document.getElementById('capsuleUnlocked').style.display = hasAccess?'block':'none';
   if(!hasAccess){
@@ -4094,27 +4125,68 @@ function initCapsules(){
     }).join('');
     return;
   }
-  renderCapsuleGrid();
+  renderCapsuleGrid(session);
 }
 
-function renderCapsuleGrid(){
+function renderCapsuleGrid(session){
   var grid = document.getElementById('capsuleGrid');
   if(!grid) return;
-  grid.innerHTML = CAPSULES_CATALOGUE.map(function(c){
-    var avail = c.audio!=='';
-    var onclk = avail ? ' onclick="ouvrirCapsule(\'' + c.id + '\')"' : '';
-    return '<div class="capsule-card'+(avail?'':' locked')+'"'+onclk+'>'+
+  session = session || JSON.parse(localStorage.getItem('avs_client')||sessionStorage.getItem('avs_client')||'{}');
+
+  // Tri par pertinence (thème vs motifs/axes de la cliente), en gardant l'ordre
+  // d'origine comme critère secondaire pour ne pas mélanger le fil éditorial.
+  var profil = _normText((session.axes||'') + ' ' + (session.motifs||''));
+  var ordered = CAPSULES_CATALOGUE.map(function(c,i){ return {c:c, i:i, score:_themeScore(c.theme, profil)}; })
+    .sort(function(a,b){ return b.score - a.score || a.i - b.i; })
+    .map(function(x){ return x.c; });
+
+  // Rythme hebdomadaire : 1 capsule accessible dès le départ, +1 par semaine écoulée.
+  var startRaw = _capsuleStartDate(session);
+  var nDeblocables = ordered.length; // par défaut, pas de date connue → tout est débloqué par la pertinence
+  if(startRaw){
+    var start = new Date(startRaw);
+    if(!isNaN(start.getTime())){
+      var joursEcoules = Math.floor((Date.now() - start.getTime()) / 86400000);
+      var semaines = Math.max(0, Math.floor(joursEcoules / 7));
+      nDeblocables = Math.min(ordered.length, semaines + 1);
+    }
+  }
+
+  grid.innerHTML = ordered.map(function(c, idx){
+    var estDebloquee = idx < nDeblocables;
+    var aAudio = c.audio !== '';
+    var themeLbl = THEME_LABELS[c.theme] || 'Général';
+    var phaseNote = (c.phase && c.phase !== 'ALL') ? ' · adaptée à votre phase actuelle' : '';
+
+    if(!estDebloquee){
+      var semaineDispo = idx + 1; // la capsule à l'index idx se débloque à la semaine idx+1
+      return '<div class="capsule-card locked">'+
+        '<div class="capsule-top">'+
+          '<div class="capsule-num">Capsule '+c.num+'</div>'+
+          '<div class="capsule-title">'+escHtml(c.titre)+'</div>'+
+          '<div class="capsule-lock-icon"><svg width="13" height="13" viewBox="0 0 24 24" style="stroke:rgba(255,255,255,.6);fill:none;stroke-width:2;stroke-linecap:round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>'+
+        '</div>'+
+        '<div class="capsule-bottom">'+
+          '<div class="capsule-phase">'+themeLbl+'</div>'+
+          '<div class="capsule-desc">'+escHtml(c.desc.slice(0,90))+'…</div>'+
+          '<div class="capsule-cta"><span class="capsule-dur">'+c.duree+'</span>'+
+          '<span style="font-size:12px;color:var(--gris)">Se débloque semaine '+semaineDispo+'</span></div>'+
+        '</div>'+
+      '</div>';
+    }
+
+    var onclk = aAudio ? ' onclick="ouvrirCapsule(\'' + c.id + '\')"' : '';
+    return '<div class="capsule-card'+(aAudio?'':' locked')+'"'+onclk+'>'+
       '<div class="capsule-top">'+
         '<div class="capsule-num">Capsule '+c.num+'</div>'+
         '<div class="capsule-title">'+escHtml(c.titre)+'</div>'+
-        (avail?'':'<div class="capsule-lock-icon"><svg width="13" height="13" viewBox="0 0 24 24" style="stroke:rgba(255,255,255,.6);fill:none;stroke-width:2;stroke-linecap:round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>')+
       '</div>'+
       '<div class="capsule-bottom">'+
-        '<div class="capsule-phase">'+(c.phase==='ALL'?'Toutes les clientes':c.phase)+'</div>'+
+        '<div class="capsule-phase">'+themeLbl+escHtml(phaseNote)+'</div>'+
         '<div class="capsule-desc">'+escHtml(c.desc.slice(0,90))+'…</div>'+
         '<div class="capsule-cta">'+
           '<span class="capsule-dur">'+c.duree+'</span>'+
-          (avail?'<button class="capsule-play-btn">Écouter →</button>':'<span style="font-size:12px;color:var(--gris)">Bientôt disponible</span>')+
+          (aAudio?'<button class="capsule-play-btn">Écouter →</button>':'<span style="font-size:12px;color:var(--gris)">Bientôt disponible</span>')+
         '</div>'+
       '</div>'+
     '</div>';
@@ -4139,7 +4211,7 @@ function ouvrirCapsule(id){
 // ═══════════════════════════════════════
 async function initCaminu(){
   var session = JSON.parse(localStorage.getItem('avs_client')||sessionStorage.getItem('avs_client')||'{}');
-  var hasAccess = session.a_luma===true || session.programme==='aria' || session.programme==='ora';
+  var hasAccess = !!session.chatAddonActif || session.programme==='aria' || session.programme==='ora';
   document.getElementById('caminuLocked').style.display   = hasAccess?'none':'block';
   document.getElementById('caminuUnlocked').style.display = hasAccess?'block':'none';
   if(!hasAccess) return;
