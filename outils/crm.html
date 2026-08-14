@@ -1784,6 +1784,7 @@ async function init(){
   if(titleEl) titleEl.textContent="Aujourd'hui";
   renderDashboard();
   renderMessagesFeed();
+  renderAttentePopup();
 
   // Ouverture directe d'un onglet via ?open=xxx (ex: lien "Voir →" depuis l'accueil)
   const openParam = new URLSearchParams(location.search).get('open');
@@ -2568,6 +2569,16 @@ async function pollNewMessages(){
 }
 setInterval(pollNewMessages, 45000);
 
+// ── Popup persistante RDV en attente ────────────────────────────────────────
+// Se réaffiche tant qu'il reste au moins un RDV non validé, y compris si elle a
+// été fermée puis qu'un nouveau paiement Stripe arrive pendant que le CRM reste
+// ouvert (poll toutes les 5 min, + relance email horaire côté serveur en parallèle).
+async function pollAttenteRdv(){
+  try{ await loadRdvs(); }catch(e){}
+  renderAttentePopup();
+}
+setInterval(pollAttenteRdv, 5*60*1000);
+
 // ═══════════════════════════════════════
 // MESSAGES CLIENTES — interface de chat praticienne
 // Regroupe les lignes messages_client par cliente pour reconstituer un vrai fil
@@ -2814,10 +2825,54 @@ async function confirmerReservation(id){
     await sb('rendez_vous?id=eq.'+id, { method:'PATCH', body: JSON.stringify({ status:'confirme' }) });
     const r = rdvs.find(x=>x.id===id);
     if(r) r.status='confirme';
-    toast('Rendez-vous confirmé','ok');
+    toast('Rendez-vous confirmé — la cliente reçoit son email de confirmation','ok');
     renderReservationRequests();
+    renderAttentePopup();
     renderActionsJour();
   }catch(e){ toast('Erreur : '+e.message,'err'); }
+}
+
+async function refuserReservationPopup(id){
+  if(!confirm("Annuler cette demande de rendez-vous ? La cliente ne recevra aucune confirmation.")) return;
+  try{
+    await sb('rendez_vous?id=eq.'+id, { method:'PATCH', body: JSON.stringify({ status:'annule' }) });
+    const r = rdvs.find(x=>x.id===id);
+    if(r) r.status='annule';
+    toast('Demande annulée','ok');
+    renderReservationRequests();
+    renderAttentePopup();
+    renderActionsJour();
+  }catch(e){ toast('Erreur : '+e.message,'err'); }
+}
+
+// ── Popup persistante : reste ouverte tant qu'il existe au moins un RDV
+// en statut "attente". Une relance email automatique part aussi côté serveur
+// toutes les heures (fonction remind-attente-rdv) tant que ce n'est pas validé. ──
+function renderAttentePopup(){
+  const box = document.getElementById('attente-popup-list');
+  const modal = document.getElementById('m-attente-popup');
+  if(!box || !modal) return;
+  const demandes = (typeof rdvs!=='undefined'?rdvs:[]).filter(r=>r.status==='attente');
+  if(demandes.length===0){ modal.classList.remove('open'); box.innerHTML=''; return; }
+
+  demandes.sort((a,b)=> new Date(a.date+'T'+(a.time||'00:00')) - new Date(b.date+'T'+(b.time||'00:00')));
+  document.getElementById('attente-popup-count').textContent = demandes.length + (demandes.length>1?' demandes':' demande') + ' à valider';
+  box.innerHTML = demandes.map(r=>{
+    const d = new Date(r.date+'T12:00:00');
+    const dateStr = isNaN(d) ? r.date : d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
+    return `<div class="card" style="margin-bottom:10px">
+      <div class="card-body" style="padding:14px 16px">
+        <div style="font-size:14px;font-weight:700;color:var(--ink);margin-bottom:2px">${escH(r.name||'Cliente non identifiée')}</div>
+        <div style="font-size:13px;color:var(--ink3);margin-bottom:2px">${escH(dateStr)} à ${escH(r.time||'—')} · ${escH(r.type||'')}</div>
+        ${r.email?`<div style="font-size:12px;color:var(--muted);margin-bottom:10px">${escH(r.email)}</div>`:''}
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary btn-sm" onclick="confirmerReservation(${r.id})">Confirmer</button>
+          <button class="btn btn-ghost btn-sm" onclick="refuserReservationPopup(${r.id})">Annuler la demande</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  modal.classList.add('open');
 }
 
 // ═══ RECETTES (gestion) ═══
@@ -3111,6 +3166,30 @@ function ouvrirNouveauRdv(cid){
   document.getElementById('nr-notes').value = '';
   openM('m-nouveau-rdv');
 }
+// Durée par type — DOIT rester identique à check_rdv_overlap() (trigger DB),
+// get-available-slots (edge function) et findConflictingRdv() dans agenda.html.
+// Seuls bilan/initial durent 90 min ; tout le reste (suivi, alba, aria, ora, autre) dure 45 min.
+function dureeParTypeCRM(type){ return (type==='initial'||type==='bilan') ? 90 : 45; }
+function timeToMinsCRM(t){ if(!t) return null; var p=t.split(':'); return parseInt(p[0])*60+parseInt(p[1]); }
+
+// Vérification anti-chevauchement côté écran, avant même d'appeler la base — donne un
+// message immédiat et clair. Le trigger DB check_rdv_overlap() reste le filet de sécurité
+// final (au cas où la liste `rdvs` chargée en mémoire ne serait pas à jour).
+function findConflictCRM(date, time, type, excludeId){
+  if(!time) return null;
+  var prepTime = (typeof agendaConfigCache!=='undefined' && agendaConfigCache?.prep_time) || 10;
+  var newStart = timeToMinsCRM(time);
+  var newEnd = newStart + dureeParTypeCRM(type) + prepTime;
+  return (typeof rdvs!=='undefined'?rdvs:[]).find(function(r){
+    if(r.date!==date || r.status==='annule') return false;
+    if(excludeId!=null && r.id===excludeId) return false;
+    var rStart = timeToMinsCRM(r.time);
+    if(rStart==null) return false;
+    var rEnd = rStart + dureeParTypeCRM(r.type) + prepTime;
+    return newStart < rEnd && newEnd > rStart;
+  }) || null;
+}
+
 async function saveNouveauRdv(){
   const cid = document.getElementById('nr-client-id').value;
   const c = db.clients.find(x=>x.id===cid);
@@ -3121,6 +3200,15 @@ async function saveNouveauRdv(){
   const type = document.getElementById('nr-type').value;
   const statut = document.getElementById('nr-statut').value;
   const notes = document.getElementById('nr-notes').value.trim();
+
+  if(statut!=='annule' && heure){
+    const conflit = findConflictCRM(date, heure, type, null);
+    if(conflit){
+      toast('Ce créneau chevauche déjà un rendez-vous à '+conflit.time+' ('+(conflit.name||'cliente non identifiée')+'). Choisissez un autre horaire.', 'err');
+      return;
+    }
+  }
+
   const btnEl = document.getElementById('nr-save-btn');
   btnEl.disabled = true; btnEl.textContent = 'Création…';
   try{
@@ -3143,7 +3231,13 @@ async function saveNouveauRdv(){
     renderFiche(c);
     renderActionsJour?.();
   }catch(e){
-    toast('Erreur : '+e.message,'err');
+    // Filet de sécurité : si la vérification ci-dessus a été contournée (liste `rdvs` pas à jour),
+    // le trigger DB check_rdv_overlap() rejette quand même l'insertion — message lisible ici.
+    if(String(e.message||'').includes('CHEVAUCHEMENT_RDV')){
+      toast('Ce créneau chevauche un rendez-vous déjà enregistré en base. Rechargez la page et réessayez.', 'err');
+    } else {
+      toast('Erreur : '+e.message,'err');
+    }
   }finally{
     btnEl.disabled = false; btnEl.textContent = 'Créer le rendez-vous';
   }
@@ -6672,6 +6766,20 @@ function camInit(){
     <div class="mfoot">
       <button class="btn btn-ghost" onclick="closeM('m-facture')">Annuler</button>
       <button class="btn btn-primary" onclick="saveFacture()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="m-attente-popup">
+  <div class="modal">
+    <div class="mhead">
+      <div class="mtitle">${ic('calendar')} <span id="attente-popup-count">Demandes à valider</span></div>
+    </div>
+    <div class="mbody">
+      <div style="font-size:13px;color:var(--ink3);line-height:1.6;margin-bottom:14px">
+        Ces rendez-vous ont été réservés et payés en ligne, mais la cliente n'a pas encore reçu sa confirmation. Validez ou annulez chaque demande pour que l'email parte (ou pour libérer le créneau).
+      </div>
+      <div id="attente-popup-list"></div>
     </div>
   </div>
 </div>

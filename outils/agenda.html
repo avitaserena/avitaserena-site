@@ -571,16 +571,23 @@ function getEndTime(time, type, prepTime) {
   return String(Math.floor(mins/60)).padStart(2,'0') + ':' + String(mins%60).padStart(2,'0');
 }
 
+// Durée par type — DOIT rester identique à check_rdv_overlap() (trigger DB),
+// get-available-slots (edge function) et saveNouveauRdv() dans crm.html.
+// Seuls bilan/initial durent 90 min ; tout le reste (suivi, alba, aria, ora, autre) dure 45 min.
+function dureeParType(type) {
+  return (type === 'initial' || type === 'bilan') ? 90 : 45;
+}
+
 function findConflictingRdv(date, time, type, excludeId) {
   var prep = state.prepTime || 0;
-  var duration = type === 'initial' ? 90 : 45;
+  var duration = dureeParType(type);
   var newStart = timeToMins(time);
   var newEnd = newStart + duration + prep;
   return state.rdvs.find(function(r) {
     if (r.date !== date || r.status === 'annule') return false;
     if (excludeId !== undefined && excludeId !== null && r.id === excludeId) return false;
     var rStart = timeToMins(r.time);
-    var rEnd = rStart + (r.type === 'initial' ? 90 : 45) + prep;
+    var rEnd = rStart + dureeParType(r.type) + prep;
     return newStart < rEnd && newEnd > rStart;
   }) || null;
 }
