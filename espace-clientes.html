@@ -1899,7 +1899,6 @@ a,button{-webkit-tap-highlight-color:transparent}
             <div style="font-family:'Cormorant Garamond',serif;font-size:32px;color:#fff;margin-bottom:2px">45€<span style="font-size:15px;color:rgba(255,255,255,.65);font-family:'Be Vietnam Pro',sans-serif">/mois</span></div>
             <button id="lumaSubscribeBtn" onclick="souscrireALuma()" style="background:var(--ocre);color:#fff;border:none;padding:14px 34px;border-radius:99px;font-size:14px;font-weight:700;letter-spacing:.03em;cursor:pointer;margin-top:10px">S'abonner à A Luma →</button>
             <p style="font-size:11.5px;color:rgba(255,255,255,.65);margin:14px 0 0">Paiement sécurisé par Stripe · résiliable à tout moment</p>
-            <p style="font-size:12px;margin:16px 0 0"><a href="/parcours.html" style="color:rgba(255,255,255,.65);text-decoration:underline">A Luma est inclus dans les parcours Aria et Ora →</a></p>
           </div>
         </div>
       </div>
@@ -2220,9 +2219,9 @@ async function DB_getOwnClientRow() {
   return await res.json();
 }
 
-/* ── Le chat est accessible aux clientes en parcours (Alba/Aria/Ora) OU ayant
-   l'option de messagerie payante active. La reprogrammation de RDV, elle, reste
-   réservée aux parcours uniquement — ce sont deux droits distincts. ── */
+/* ── La reprogrammation de RDV est réservée aux clientes en parcours (Alba/Aria/Ora).
+   A Luma, elle, est une option payante à part entière, indépendante du parcours : seul un
+   abonnement actif (chat_addon_actif) y donne accès, jamais le fait d'être en parcours. ── */
 var PARCOURS_AVEC_SERENA = ['alba', 'aria', 'ora'];
 // Crée une session de paiement Stripe pour l'abonnement A Luma (45€/mois) et
 // redirige la cliente vers la page de paiement hébergée par Stripe. L'accès
@@ -2272,7 +2271,9 @@ function verifierRetourLuma(){
 
 function appliquerAccesSerena(programme, chatAddonActif) {
   const enParcours = programme && PARCOURS_AVEC_SERENA.indexOf(String(programme).toLowerCase()) > -1;
-  const aAccesChat = enParcours || !!chatAddonActif;
+  // A Luma est toujours une option payante distincte, indépendante du parcours — l'accès ne
+  // dépend que de l'abonnement actif, jamais du fait d'être en parcours Alba/Aria/Ora.
+  const aAccesChat = !!chatAddonActif;
 
   // L'onglet A Luma reste toujours visible — les clientes sans accès voient
   // un état "verrouillé" qui les invite à s'abonner, plutôt que de disparaître.
