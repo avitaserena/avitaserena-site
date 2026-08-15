@@ -197,6 +197,13 @@ body.is-embed .app{min-height:100vh}
 .wk-evt.tache{background:rgba(156,95,160,.12);border-left:3px solid #9C5FA0;font-size:10px;font-weight:600;color:#7A4680;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .wk-evt-time{font-size:10px;font-weight:700;color:var(--ardoise);font-family:'DM Mono',monospace}
 .wk-evt-name{font-size:11px;font-weight:600;color:var(--ardoise);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wk-nav-btn{background:var(--off);border:1px solid var(--taupe);width:30px;height:30px;border-radius:var(--r99);cursor:pointer;font-size:14px;transition:var(--t);color:var(--ardoise)}
+.wk-nav-btn:hover{background:var(--ocre);color:#fff;border-color:var(--ocre)}
+.wk-nav-today{background:none;border:1px solid var(--taupe);padding:0 14px;height:30px;border-radius:var(--r99);cursor:pointer;font-size:11px;font-weight:600;color:var(--ardoise);font-family:inherit;transition:var(--t)}
+.wk-nav-today:hover{border-color:var(--ocre);color:var(--or)}
+.brevo-accordion-toggle{cursor:pointer;user-select:none}
+.brevo-accordion-icon{display:inline-block;transition:transform .2s ease;font-size:10px;color:var(--gris)}
+.brevo-accordion-icon.open{transform:rotate(90deg)}
 
 /* Toast */
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(70px);background:var(--blanc);color:var(--ardoise);padding:12px 22px;border-radius:var(--r99);font-size:14px;font-weight:500;box-shadow:0 24px 64px rgba(74,58,32,.16);border:1px solid var(--taupe);z-index:9999;transition:transform .3s cubic-bezier(.34,1.3,.64,1);white-space:nowrap}
@@ -287,11 +294,14 @@ body.is-embed .app{min-height:100vh}
 
     <!-- Config EmailJS -->
     <div id="emailjsConfig">
-      <div class="sidebar-section-title" style="display:flex;align-items:center;justify-content:space-between">
-        Notifications Brevo
+      <div class="sidebar-section-title brevo-accordion-toggle" onclick="toggleBrevoAccordion()" style="display:flex;align-items:center;justify-content:space-between">
+        <span style="display:flex;align-items:center;gap:8px">
+          <span class="brevo-accordion-icon" id="brevoAccordionIcon">›</span>
+          Notifications Brevo
+        </span>
         <span id="emailjsStatus" style="font-size:9px;font-weight:700;padding:2px 8px;border-radius:99px;background:rgba(209,85,58,.1);color:var(--rouge)">Non configuré</span>
       </div>
-      <div id="emailjsSetupGuide" style="background:rgba(193,121,60,.08);border:1px solid rgba(193,121,60,.2);border-radius:10px;padding:12px;font-size:12px;line-height:1.7;color:var(--gris)">
+      <div id="emailjsSetupGuide" style="display:none;background:rgba(193,121,60,.08);border:1px solid rgba(193,121,60,.2);border-radius:10px;padding:12px;font-size:12px;line-height:1.7;color:var(--gris)">
         <div style="font-weight:700;color:var(--ardoise);margin-bottom:6px">Configuration Brevo</div>
         <div style="margin-bottom:8px">
           <b>1.</b> Va sur <a href="https://app.brevo.com" target="_blank" style="color:var(--ocre)">app.brevo.com</a> → ton compte<br>
@@ -922,6 +932,7 @@ function selectDate(dateStr) {
     JOURS_LONG[d.getDay()] + ' ' + d.getDate() + ' ' + MOIS[d.getMonth()];
   renderMiniCal();
   renderAgenda();
+  renderSemaine();
 }
 
 // ════════════════════════════════
@@ -1227,6 +1238,16 @@ function rejectRdv(id) {
 // ════════════════════════════════
 function escHtmlWk(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
+function weekNav(dir) {
+  if (dir === 0) {
+    selectDate(new Date().toISOString().slice(0,10));
+    return;
+  }
+  const d = new Date(state.selectedDate + 'T12:00:00');
+  d.setDate(d.getDate() + dir * 7);
+  selectDate(d.toISOString().slice(0,10));
+}
+
 function renderSemaine() {
   const body = document.getElementById('semaineBody');
   const startDate = new Date(state.selectedDate + 'T12:00:00');
@@ -1298,8 +1319,15 @@ function renderSemaine() {
     return '<div class="wk-daycol'+(isBlocked?' blocked':'')+'" style="height:'+totalH+'px">'+hourlines+nowLine+evts+taskEvts+'</div>';
   }).join('');
 
-  body.innerHTML = `<div style="font-size:14px;font-weight:600;color:var(--gris);margin-bottom:16px">
-    Semaine du ${s.getDate()} ${MOIS[s.getMonth()]} au ${e.getDate()} ${MOIS[e.getMonth()]} ${e.getFullYear()}
+  body.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px">
+    <div style="font-size:14px;font-weight:600;color:var(--gris)">
+      Semaine du ${s.getDate()} ${MOIS[s.getMonth()]} au ${e.getDate()} ${MOIS[e.getMonth()]} ${e.getFullYear()}
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <button class="wk-nav-btn" onclick="weekNav(-1)" aria-label="Semaine précédente">‹</button>
+      <button class="wk-nav-today" onclick="weekNav(0)">Aujourd'hui</button>
+      <button class="wk-nav-btn" onclick="weekNav(1)" aria-label="Semaine suivante">›</button>
+    </div>
   </div>
   <div class="wk-grid-wrap">
     <div class="wk-head" style="grid-template-columns:44px repeat(7,1fr)">
@@ -1879,6 +1907,14 @@ function filterType(type, btn) {
   document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   renderAgenda();
+}
+
+function toggleBrevoAccordion() {
+  const guide = document.getElementById('emailjsSetupGuide');
+  const icon = document.getElementById('brevoAccordionIcon');
+  const isOpen = guide.style.display !== 'none';
+  guide.style.display = isOpen ? 'none' : 'block';
+  if (icon) icon.classList.toggle('open', !isOpen);
 }
 
 function closeModal(e) { if (e.target.classList.contains('modal-overlay')) closeModalDirect(e.target.id); }
