@@ -1778,7 +1778,8 @@ async function init(){
     loadMemoAlerts(),
     loadClientMessages(),
     loadErreurs(),
-    loadPilotage()
+    loadPilotage(),
+    loadCheckinsToday()
   ]);
 
   if(titleEl) titleEl.textContent="Aujourd'hui";
@@ -1846,6 +1847,48 @@ async function loadRdvs(){
     console.error('[CRM] ✗ RDV:', e.message);
     rdvs=[];
   }
+}
+
+// ── CHECK-INS DU JOUR — état quotidien rempli par les clientes dans leur espace ──
+var checkinsToday=[];
+async function loadCheckinsToday(){
+  try{
+    const tdy=today();
+    checkinsToday=await sb('journal_entries?date=eq.'+tdy+'&select=client_key,energie,transit,ballonnements,humeur,note,created_at&order=created_at.desc&limit=100');
+    console.log('[CRM] ✓ Check-ins du jour:', checkinsToday.length);
+  }catch(e){
+    console.error('[CRM] ✗ Check-ins du jour:', e.message);
+    checkinsToday=[];
+  }
+}
+function renderCheckinsToday(){
+  const el=document.getElementById('checkins-box');if(!el)return;
+  const bdg=document.getElementById('chk-badge');
+  if(bdg) bdg.textContent=checkinsToday.length?checkinsToday.length+' aujourd\'hui':'';
+  if(!checkinsToday.length){
+    el.innerHTML='<div class="empty"><div class="eicon">'+ic('heart')+'</div><div class="etitle">Aucun check-in aujourd\'hui</div><div class="esub">L\'état du jour rempli par vos clientes apparaîtra ici.</div></div>';
+    return;
+  }
+  el.innerHTML=checkinsToday.map(function(j){
+    const c=db.clients.find(x=>x.id===j.client_key);
+    const prenom=c?c.prenom:(j.client_key||'').split('-')[0];
+    const nom=c?(c.nom||''):'';
+    const col=avColor(prenom);
+    const init=(prenom||'?')[0].toUpperCase();
+    const heure=j.created_at?new Date(j.created_at).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}):'';
+    const meta=[j.energie?'Énergie '+escH(j.energie)+'/10':null, j.humeur?escH(j.humeur):null, j.transit?escH(j.transit):null].filter(Boolean).join(' · ');
+    const onclick=c?" onclick=\"openFiche('"+c.id+"')\"":'';
+    return "<div class='al-item'"+onclick+" style='flex-direction:column;align-items:flex-start;padding:12px 14px'>"+
+      "<div style='display:flex;align-items:center;gap:10px;width:100%'>"+
+        "<div class='al-av' style='background:"+col+"'>"+init+"</div>"+
+        "<div class='al-body' style='flex:1'>"+
+          "<div class='al-name'>"+escH(prenom)+" "+escH(nom)+"</div>"+
+          "<div class='al-meta'>"+meta+(heure?' · '+heure:'')+"</div>"+
+        "</div>"+
+      "</div>"+
+      (j.note?"<div style='margin-top:6px;font-size:11.5px;color:var(--muted);font-style:italic'>« "+escH(j.note)+" »</div>":'')+
+    "</div>";
+  }).join('');
 }
 
 // ── ACTIONS DU JOUR ─────────────────────────────────────────────────────────
@@ -2497,6 +2540,16 @@ function urgenceBadge(urgence){
   return '';
 }
 
+// Badge visuel distinguant l'origine d'un message : A Luma (chat filtré par le Gardien IA,
+// couleur ocre — cohérent avec le badge A Luma déjà utilisé dans U Caminu) vs Signalement
+// technique (bouton "Signaler un souci", accessible à toute cliente même sans A Luma) vs
+// Journal (ancien canal texte libre du journal, retiré mais conservé pour l'historique).
+function sourceBadge(source){
+  if(source==='bug') return `<span class="tab-pill" style="background:#FFF4E0;color:#8A5A00;display:inline-flex;align-items:center;gap:4px">${ic('warn','ico-xs')}Signalement</span>`;
+  if(source==='journal') return `<span class="tab-pill" style="background:var(--bg2,#F7F7FA);color:var(--muted);display:inline-flex;align-items:center;gap:4px">${ic('file','ico-xs')}Journal</span>`;
+  return `<span class="tab-pill" style="background:rgba(180,144,106,.15);color:var(--ocre);display:inline-flex;align-items:center;gap:4px">${ic('heart','ico-xs')}A Luma</span>`;
+}
+
 function contexteTechniqueHtml(ctx){
   if(!ctx) return '';
   let c = ctx;
@@ -2512,7 +2565,6 @@ function messagesBox(list, emptyLabel){
   if(!list.length) return `<div class="empty"><div class="eicon">${ic('message')}</div><div class="etitle">${emptyLabel}</div></div>`;
   return sortMessagesByPriorite(list).map(m=>{
     const dateStr = new Date(m.created_at).toLocaleString('fr-FR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
-    const sourceLbl = m.source==='journal' ? 'Question du journal' : m.source==='bug' ? 'Signalement technique' : 'A Luma';
     const estBug = m.source==='bug';
     const bordureUrgence = estBug ? '3px solid var(--orange,#FFA412)' : m.urgence==='haute' ? '3px solid var(--red,#D1553A)' : (!m.lu ? '3px solid #D1553A' : 'none');
     return `<div class="card" style="margin-bottom:10px;border-left:${bordureUrgence}">
@@ -2520,10 +2572,11 @@ function messagesBox(list, emptyLabel){
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px">
           <div>
             <div style="font-size:14px;font-weight:700;color:var(--ink)">${escH(m.prenom||'')} ${escH(m.nom||'')}</div>
-            <div style="font-size:11px;color:var(--muted)">${sourceLbl} · ${dateStr}</div>
+            <div style="font-size:11px;color:var(--muted)">${dateStr}</div>
           </div>
           <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
-            ${estBug?`<span class="tab-pill" style="background:#FFF4E0;color:#8A5A00;display:inline-flex;align-items:center;gap:4px">${ic('warn','ico-xs')}Bug signalé</span>`:urgenceBadge(m.urgence)}
+            ${sourceBadge(m.source)}
+            ${urgenceBadge(m.urgence)}
             ${!m.lu?'<span class="tab-pill tp-red">Non lu</span>':(m.repondu?'<span class="tab-pill" style="background:#DCFFF0;color:#007A45">Répondu</span>':'<span class="tab-pill tp-orange">À traiter</span>')}
           </div>
         </div>
@@ -2601,6 +2654,8 @@ function groupMessagesByClient(list){
     conv.lastPreview = last.message || (last.image_url?'Photo envoyée':last.doc_url?'Document envoyé':'');
     conv.hasUnread = conv.messages.some(m=>!m.lu);
     conv.hasPending = conv.messages.some(m=>!m.repondu);
+    conv.hasBug = conv.messages.some(m=>m.source==='bug');
+    conv.lastSource = last.source;
     conv.urgenceMax = conv.messages.reduce((u,m)=> (rang[m.urgence] ?? 3) < (rang[u] ?? 3) ? m.urgence : u, null);
     return conv;
   }).sort((a,b)=>{
@@ -2627,8 +2682,16 @@ function renderMsgChatList(){
     list.innerHTML = convs.map(conv=>{
       const dateStr = new Date(conv.lastAt).toLocaleDateString('fr-FR',{day:'numeric',month:'short'});
       const active = conv.key === msgChatSelected ? ' active' : '';
+      // Pastille de source sur l'avatar : orange si un signalement technique existe dans le
+      // fil (priorité visuelle — un bug mérite d'être repéré même noyé dans d'autres messages
+      // A Luma), sinon ocre pour A Luma — cohérent avec le badge sourceBadge() du fil détaillé.
+      const srcDotColor = conv.hasBug ? '#FFA412' : 'var(--ocre)';
+      const srcDotTitle = conv.hasBug ? 'Contient un signalement technique' : 'A Luma';
       return `<div class="msgchat-conv${active}" onclick="openMsgConversation('${conv.key}')">
-        <div class="msgchat-avatar">${msgChatInitials(conv.prenom,conv.nom)}</div>
+        <div style="position:relative;flex-shrink:0">
+          <div class="msgchat-avatar">${msgChatInitials(conv.prenom,conv.nom)}</div>
+          <span style="position:absolute;bottom:-1px;right:-1px;width:11px;height:11px;border-radius:50%;background:${srcDotColor};border:2px solid var(--white,#fff)" title="${srcDotTitle}"></span>
+        </div>
         <div class="msgchat-conv-body">
           <div class="msgchat-conv-name"><span>${escH(conv.prenom)} ${escH(conv.nom)}</span><span class="msgchat-conv-time">${dateStr}</span></div>
           <div class="msgchat-conv-preview${conv.hasPending?' pending':''}">${escH((conv.lastPreview||'').slice(0,60))}</div>
@@ -2687,11 +2750,10 @@ function renderMsgChatThread(key){
   const lastPending = [...conv.messages].reverse().find(m=>!m.repondu);
   const bulles = conv.messages.map(m=>{
     const dateStr = new Date(m.created_at).toLocaleString('fr-FR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
-    const sourceLbl = m.source==='journal' ? 'Question du journal' : m.source==='bug' ? 'Signalement technique' : 'A Luma';
     let html = '';
     if(m.urgence==='haute') html += `<div class="msgchat-urgence">${ic('warn','ico-xs')}Urgence signalée</div>`;
     if(m.synthese_ia) html += `<div class="msgchat-synth"><strong>Résumé préparé pour vous :</strong> ${escH(m.synthese_ia)}</div>`;
-    html += `<div class="msgchat-bubble client">${escH(m.message)}</div><div class="msgchat-meta">${escH(conv.prenom)} · ${sourceLbl} · ${dateStr}</div>`;
+    html += `<div class="msgchat-bubble client">${escH(m.message)}</div><div class="msgchat-meta" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">${sourceBadge(m.source)}<span>${dateStr}</span></div>`;
     if(m.image_url) html += `<a href="${m.image_url}" target="_blank"><img src="${m.image_url}" style="max-width:180px;border-radius:12px;display:block"></a>`;
     if(m.doc_url) html += `<a href="${m.doc_url}" target="_blank" class="msgchat-bubble client" style="display:flex;align-items:center;gap:10px;text-decoration:none">${ic('file')}<span>${escH(m.doc_name||'Document')}</span></a>`;
     if(m.reponse){
@@ -3687,6 +3749,7 @@ function renderDashboard(){
   renderSilences(sils);
   renderActionsJour();
   renderReservationRequests();
+  renderCheckinsToday();
 }
 
 // Clic sur la stat card "Messages non lus" → va directement à la messagerie, la
@@ -6026,7 +6089,7 @@ async function camChargerClientes(){
   camFermerPanel();
   var semaine=camGetSemaineInfo(_cam_offsetSemaine);
   try{
-    var r1=await sb('clientes?or=(a_luma.eq.true,programme.eq.aria,programme.eq.ora)&order=prenom.asc&select=*',{method:'GET'});
+    var r1=await sb('clientes?or=(chat_addon_actif.eq.true,programme.eq.aria,programme.eq.ora)&order=prenom.asc&select=*',{method:'GET'});
     _cam_clientes=Array.isArray(r1)?r1:[];
     var r2=await sb('caminu_syntheses?semaine_iso=eq.'+encodeURIComponent(semaine.iso)+'&select=client_key',{method:'GET'});
     _cam_synthesesEnvoyees={};
@@ -6050,7 +6113,7 @@ function camRenderClientes(){
     var key=c.key||((c.prenom||'')+'-'+(c.nom||'')+'-'+(c.ddn||'')).toLowerCase().replace(/\s+/g,'-');
     var sent=!!_cam_synthesesEnvoyees[key];
     if(sent) envoyes++;
-    var prog=c.programme||(c.a_luma?'luma':'');
+    var prog=c.programme||(c.chat_addon_actif?'luma':'');
     var pill=prog==='ora'?'<span class="cam-prog-pill cam-prog-ora">Ora</span>':
              prog==='aria'?'<span class="cam-prog-pill cam-prog-aria">Aria</span>':
              prog==='alba'?'<span class="cam-prog-pill cam-prog-aria">Alba</span>':
@@ -6384,6 +6447,10 @@ function camInit(){
         </div>
       </div>
       <div class="dash-side">
+        <div class="card">
+          <div class="card-head"><div class="card-title"><div class="card-dot" style="background:#C1694F"></div>Check-ins du jour</div><span id="chk-badge" style="font-size:12px;font-weight:700;color:var(--ink)"></span></div>
+          <div class="card-body"><div id="checkins-box"></div></div>
+        </div>
         <div class="card">
           <div class="card-head"><div class="card-title"><div class="card-dot" style="background:#4C8B5C"></div>CA 6 mois</div><span id="ca-total-lbl" style="font-size:12px;font-weight:700;color:var(--ink)"></span></div>
           <div class="card-body"><div class="ca-bars" id="ca-bars"></div></div>
