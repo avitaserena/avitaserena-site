@@ -775,6 +775,7 @@ input.fi[readonly]{background:var(--taupe);cursor:default;opacity:.75}
 </div>
 
 <!-- PREVIEW / ÉDITEUR DE BLOCS -->
+<div id="alertes-conformite" style="display:none"></div>
 <div id="preview-wrap">
   <div class="prev-hero">
     <div>
@@ -2018,6 +2019,7 @@ async function generate() {
       blocks.push({ id:'s7', title:'Votre synergie aromathérapie', pilier:'aromatherapie', content: stripMd(generatedData.s7_aromatherapie) });
     }
     blocks.push({ id:'sP', title:'Le parcours que je vous recommande', pilier:'programme', content: stripMd(generatedData.parcours_pourquoi || '') });
+    afficherAlertesConformite(blocks);
     renderPreview(generatedData, d);
 
   } catch (err) {
@@ -2091,6 +2093,56 @@ function renderPreview(data, d) {
 
   renderBlocks();
   document.getElementById('preview-wrap').scrollIntoView({ behavior: 'smooth' });
+}
+
+// ── Filet de sécurité post-génération (15/08/2026) ──────────────────────────
+// Les règles non-négociables (jamais de bouillon d'os, jamais de DHEA dosée, jamais
+// d'appli externe, 2-3 compléments max) sont données à l'IA dans le prompt — mais rien
+// ne garantissait qu'elles soient bien respectées dans le texte réellement généré. Ce
+// contrôle relit le protocole après génération et affiche une bannière si un terme
+// interdit apparaît, pour que vous le voyiez AVANT d'envoyer à la cliente. Il n'empêche
+// jamais l'affichage ni la modification — c'est un avertissement, pas un blocage : vous
+// gardez toujours la décision finale.
+function afficherAlertesConformite(blocksArr) {
+  const zone = document.getElementById('alertes-conformite');
+  if (!zone) return;
+  const texte = blocksArr.map(b => b.content || '').join(' \n ');
+  const texteLower = texte.toLowerCase();
+  const alertes = [];
+
+  if (/bouillon\s+d.?os|bone\s*broth/i.test(texteLower)) {
+    alertes.push("Mention de bouillon d'os détectée — interdiction absolue, à corriger avant tout envoi.");
+  }
+  if (/\bdhea\b/i.test(texteLower)) {
+    alertes.push('Le mot "DHEA" apparaît dans le texte — vérifiez qu\'aucune posologie ni recommandation de complément DHEA n\'est proposée (mention purement explicative uniquement autorisée).');
+  }
+  if (/respirelax|petit\s*bambou|kardia|youtube|headspace|calm\b/i.test(texteLower)) {
+    alertes.push("Renvoi vers une application ou plateforme externe détecté — doit toujours rediriger vers l'espace Bien-être de l'espace cliente.");
+  }
+
+  // Comptage des compléments proposés (puce "•" dans le bloc soutiens ciblés, s3) — doit être 2 ou 3.
+  const blocSoutiens = blocksArr.find(b => b.id === 's3');
+  if (blocSoutiens) {
+    const nbPuces = (blocSoutiens.content.match(/^•\s/gm) || []).length;
+    if (nbPuces > 0 && (nbPuces < 2 || nbPuces > 3)) {
+      alertes.push(`${nbPuces} complément(s) détecté(s) dans "Vos 3 piliers & soutiens ciblés" — la règle impose 2 à 3 maximum. Vérifiez le bloc avant envoi.`);
+    }
+  }
+
+  if (alertes.length === 0) { zone.style.display = 'none'; zone.innerHTML = ''; return; }
+
+  zone.style.display = 'block';
+  zone.innerHTML = `
+    <div style="background:#fdf3ea;border:1.5px solid #B4906A;border-radius:12px;padding:16px 18px;margin-bottom:18px">
+      <div style="font-weight:700;color:#8a5f3a;margin-bottom:8px;display:flex;align-items:center;gap:8px">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+        À vérifier avant d'envoyer ce protocole
+      </div>
+      <ul style="margin:0;padding-left:20px;font-size:13.5px;color:#5c4530;line-height:1.7">
+        ${alertes.map(a => `<li>${escH(a)}</li>`).join('')}
+      </ul>
+    </div>`;
+  zone.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 // Permet de corriger la durée retenue après génération (ex. : la cliente a déjà dit que c'était cher,

@@ -1449,9 +1449,8 @@ var PRESTATIONS = {
   aria:   {label:'Parcours Aria (6 mois) — Bilan de démarrage', prix:560, id:'aria'},
   ora:    {label:'Parcours Ora (9 mois) — Bilan de démarrage',  prix:780, id:'ora'}
 };
-var PARCOURS_IDS = ['alba','aria','ora'];
-var PRIX_BILAN_DEJA_REGLE = 90; // déduit du parcours si le bilan initial a déjà été réalisé/réglé
-var bilanVerifieEligible = false; // résultat de la vérification serveur, jamais une simple déclaration
+// NB : les parcours (alba/aria/ora) ne sont jamais réservables depuis ce menu libre — voir
+// initConfirmationVerrouillee() plus bas pour le seul chemin possible (lien ?confirmer=).
 
 /* ══════════════════════════════
    SÉLECTION PRESTATION
@@ -1496,26 +1495,20 @@ function toggleLuma(checked){
 function appliquerTarif() {
   var id = state.prestaId;
   if(!id) return;
-  var basePrix = PRESTATIONS[id].prix;
-  var estParcours = PARCOURS_IDS.indexOf(id) >= 0;
-  var dejaBilan = estParcours && bilanVerifieEligible;
-  var prixFinal = dejaBilan ? Math.max(0, basePrix - PRIX_BILAN_DEJA_REGLE) : basePrix;
+  // NB : ce menu libre ne propose jamais alba/aria/ora (voir #f-typeconsult) — un parcours
+  // ne se réserve que via le lien verrouillé ?confirmer=, où la remise "bilan déjà réglé"
+  // est calculée et vérifiée côté serveur par get-parcours-confirmation. Ici, seul bilan/suivi
+  // au tarif plein est possible.
+  var prixFinal = PRESTATIONS[id].prix;
 
   state.prestaPrix = prixFinal;
-  state.prestaLabel = PRESTATIONS[id].label + (dejaBilan ? ' — bilan initial déjà réalisé (vérifié)' : '');
+  state.prestaLabel = PRESTATIONS[id].label;
 
   document.getElementById('presta-recap').style.display = 'block';
   document.getElementById('presta-recap-nom').textContent = PRESTATIONS[id].label.split(' (')[0].split(' —')[0];
-  document.getElementById('presta-recap-duree').textContent = estParcours ? 'Bilan 90 min pour démarrer' : (id==='suivi' ? '45 min · Visio' : '90 min · Visio');
+  document.getElementById('presta-recap-duree').textContent = id==='suivi' ? '45 min · Visio' : '90 min · Visio';
   document.getElementById('presta-recap-prix').textContent = prixFinal + ' €';
-
-  var remiseEl = document.getElementById('presta-recap-remise');
-  if(dejaBilan){
-    remiseEl.style.display = 'block';
-    remiseEl.textContent = 'Bilan déjà réglé : − ' + PRIX_BILAN_DEJA_REGLE + ' € déduits du parcours';
-  } else {
-    remiseEl.style.display = 'none';
-  }
+  document.getElementById('presta-recap-remise').style.display = 'none';
 }
 
 /* ══════════════════════════════
@@ -1800,8 +1793,7 @@ async function lancerPaiement() {
           prestation: state.prestaLabel,
           presta_id: state.prestaId,
           parcours: ['alba','aria','ora'].indexOf(state.prestaId) >= 0 ? state.prestaId : '',
-          bilan_deja_realise: bilanVerifieEligible ? 'oui_verifie' : 'non',
-          email_verification_bilan: state.emailVerifBilan || '',
+          bilan_deja_realise: 'non',
           luma_option: state.lumaOption ? 'oui' : 'non',
           date: state.creneauDate,
           time: state.creneauHeure
