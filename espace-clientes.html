@@ -1373,6 +1373,7 @@ a,button{-webkit-tap-highlight-color:transparent}
           <div class="progress-legend" id="progressLegend" style="display:none">
             <div class="legend-item"><div class="legend-dot" style="background:var(--sable)"></div>Énergie</div>
             <div class="legend-item"><div class="legend-dot" style="background:rgba(196,169,125,.4)"></div>Bien-être digestif</div>
+            <div class="legend-item" id="progressLegendClinical" style="display:none"><div class="legend-dot" style="background:#211C16;border:1.5px solid #fff"></div>Point posé par Sabrina</div>
           </div>
         </div>
 
@@ -1816,6 +1817,7 @@ a,button{-webkit-tap-highlight-color:transparent}
 
       <!-- DÉVERROUILLÉ -->
       <div id="caminuUnlocked" style="display:none">
+        <div id="caminuGiftCard" style="display:none;margin-top:24px"></div>
         <div id="caminuList" style="display:flex;flex-direction:column;gap:20px;margin-top:24px"></div>
         <div id="caminuEmpty" style="display:none;text-align:center;padding:48px 0">
           <div style="font-family:'Cormorant Garamond',serif;font-size:22px;color:var(--ardoise);margin-bottom:8px">Votre première synthèse arrive dimanche.</div>
@@ -3428,6 +3430,10 @@ async function rdvConfirmer(dStr, heure) {
 // TABLEAU DE BORD
 // ═══════════════════════════════════════
 async function initDashboard(){
+  // Rapatrier le journal (multi-appareil) et les points cliniques AVANT de dessiner
+  // la courbe, pour qu'elle soit correcte dès le premier affichage.
+  await syncJournalFromSupabase();
+  await loadClinicalPoints();
   initAppMobile();
   initDashboardRdv();
   initDashboardJournal();
@@ -3498,6 +3504,61 @@ function initDashboardJournal(){
 
 function escHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
+// ── SYNCHRONISATION MULTI-APPAREIL DU JOURNAL ──
+// getJournalEntries() lit le cache local (avs_journal_*) pour que la courbe et le bilan
+// s'affichent même hors-ligne. Mais ce cache seul ne suffit pas si la cliente change
+// d'appareil (check-in rempli sur le téléphone le matin, espace ouvert sur l'ordinateur
+// le soir) : sans synchronisation, la courbe "oublierait" ce qu'elle a noté ailleurs.
+// On rapatrie donc l'historique Supabase (source de vérité) et on le fusionne dans le
+// cache local avant que les graphiques ne soient dessinés.
+async function syncJournalFromSupabase(){
+  var session = avsGetSession();
+  if(!session.key) return;
+  try {
+    var token = await Auth.getValidAccessToken();
+    var res = await fetch(SUPA_URL + '/rest/v1/journal_entries?client_key=eq.' + encodeURIComponent(session.key) + '&select=date,energie,sommeil,transit,ballonnements,humeur,note&order=date.asc', {
+      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (token || SUPA_KEY) }
+    });
+    if(!res.ok) return;
+    var rows = await res.json();
+    (rows||[]).forEach(function(r){
+      if(!r.date) return;
+      localStorage.setItem('avs_journal_'+r.date, JSON.stringify({
+        date: r.date+'T12:00:00',
+        energie: r.energie, sommeil: r.sommeil, transit: r.transit,
+        ballonnements: r.ballonnements, humeur: r.humeur, note: r.note
+      }));
+    });
+  } catch(e){ console.warn('Synchronisation journal échouée (mode hors-ligne) :', e); }
+}
+
+// ── POINTS DE REPÈRE CLINIQUES ──
+// Scores posés par Sabrina elle-même lors de chaque consultation de Suivi (10 axes,
+// dont Digestion et Énergie qui recoupent les axes du journal quotidien). Contrairement
+// au journal, ce sont des points validés en consultation — un repère plus fort que le
+// ressenti du jour, affiché comme un point noir distinct sur la même courbe.
+var _clinicalPoints = [];
+async function loadClinicalPoints(){
+  var session = avsGetSession();
+  if(!session.key) return;
+  try {
+    var token = await Auth.getValidAccessToken();
+    var res = await fetch(SUPA_URL + '/rest/v1/questionnaires?client_id=eq.' + encodeURIComponent(session.key) + '&type=eq.suivi&select=snapshot,created_at&order=created_at.asc', {
+      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (token || SUPA_KEY) }
+    });
+    if(!res.ok) return;
+    var rows = await res.json();
+    _clinicalPoints = (rows||[]).map(function(r){
+      var s = r.snapshot || {};
+      var date = s['date-suivi'] || localISO(new Date(r.created_at));
+      var ene = parseInt(s['now-ene'], 10);
+      var dig = parseInt(s['now-dig'], 10);
+      if(isNaN(ene) && isNaN(dig)) return null;
+      return { date: date, energie: isNaN(ene)?null:ene, digestion: isNaN(dig)?null:dig };
+    }).filter(Boolean);
+  } catch(e){ console.warn('Points cliniques non chargés :', e); }
+}
+
 // Courbe de progression
 function initProgressChart(){
   var entries = getJournalEntries().slice(0,30).reverse();
@@ -3514,37 +3575,57 @@ function initProgressChart(){
   var H = 90;
   canvas.width = W; canvas.height = H;
   ctx.clearRect(0,0,W,H);
-  var n = entries.length;
-  function drawLine(data, color, alpha){
+
+  // Axe X basé sur les dates réelles (et non sur le simple index) : c'est ce qui permet
+  // aux points cliniques de se positionner au bon endroit sur la même échelle de temps.
+  var t0 = new Date(entries[0].date).getTime();
+  var t1 = new Date(entries[entries.length-1].date).getTime();
+  var span = Math.max(t1 - t0, 86400000);
+  function xForDate(d){ return ((new Date(d).getTime()-t0)/span)*(W-20)+10; }
+  function yForVal(v){ return H - (v/10)*(H-10) - 5; }
+
+  function drawLine(pts, color, alpha){
     ctx.beginPath();
     ctx.strokeStyle = color;
     ctx.globalAlpha = alpha;
     ctx.lineWidth = 2;
     ctx.lineJoin = 'round';
-    data.forEach(function(v,i){
-      var x = (i/(n-1))*(W-20)+10;
-      var y = H - (v/10)*(H-10) - 5;
+    pts.forEach(function(p,i){
+      var x = xForDate(p.date), y = yForVal(p.v);
       i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
     });
     ctx.stroke();
     ctx.globalAlpha = 1;
     // Remplissage
     ctx.beginPath();
-    data.forEach(function(v,i){
-      var x = (i/(n-1))*(W-20)+10;
-      var y = H - (v/10)*(H-10) - 5;
+    pts.forEach(function(p,i){
+      var x = xForDate(p.date), y = yForVal(p.v);
       i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
     });
-    ctx.lineTo((W-20)*(1)+10, H); ctx.lineTo(10,H); ctx.closePath();
+    ctx.lineTo(xForDate(pts[pts.length-1].date), H); ctx.lineTo(xForDate(pts[0].date), H); ctx.closePath();
     ctx.fillStyle = color; ctx.globalAlpha = 0.06; ctx.fill(); ctx.globalAlpha=1;
   }
-  var energies = entries.map(function(e){ return parseInt((e.energie||'5').split(' ')[0])||5; });
+  var energies = entries.map(function(e){ return { date:e.date, v: parseInt((e.energie||'5').split(' ')[0])||5 }; });
   var ballo = entries.map(function(e){
     var b = e.ballonnements||'Modérés';
-    return b==='Absents'?10:b==='Légers'?7:b==='Modérés'?5:b==='Importants'?3:1;
+    return { date:e.date, v: b==='Absents'?10:b==='Légers'?7:b==='Modérés'?5:b==='Importants'?3:1 };
   });
   drawLine(energies,'#C4A882',0.9);
   drawLine(ballo,'rgba(196,169,125,.5)',0.6);
+
+  // Points de repère cliniques posés par Sabrina, s'ils tombent dans la fenêtre affichée
+  var legendClinical = document.getElementById('progressLegendClinical');
+  var aAffiche = false;
+  (_clinicalPoints||[]).forEach(function(p){
+    var t = new Date(p.date).getTime();
+    if(isNaN(t) || t < t0 || t > t1 || p.energie==null) return;
+    var x = xForDate(p.date), y = yForVal(p.energie);
+    ctx.beginPath(); ctx.arc(x,y,4,0,Math.PI*2);
+    ctx.fillStyle = '#211C16'; ctx.fill();
+    ctx.lineWidth = 1.5; ctx.strokeStyle = '#fff'; ctx.stroke();
+    aAffiche = true;
+  });
+  if(legendClinical) legendClinical.style.display = aAffiche ? 'flex' : 'none';
 }
 
 // ═══════════════════════════════════════
@@ -4233,13 +4314,13 @@ async function initCaminu(){
   loadNotifSettings();
   try{
     var token = await Auth.getValidAccessToken();
-    var res = await fetch(SUPA_URL+'/rest/v1/caminu_syntheses?client_key=eq.'+encodeURIComponent(session.key)+'&order=created_at.desc&limit=10',{
+    var res = await fetch(SUPA_URL+'/rest/v1/caminu_syntheses?client_key=eq.'+encodeURIComponent(session.key)+'&order=created_at.desc&limit=10&select=titre,contenu,created_at,suggestion_cadeau',{
       headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+(token||SUPA_KEY)}
     });
     var rows = await res.json();
     var list=document.getElementById('caminuList'), empty=document.getElementById('caminuEmpty');
     if(!list) return;
-    if(!rows||!rows.length||rows.error){if(empty)empty.style.display='block';list.innerHTML='';return;}
+    if(!rows||!rows.length||rows.error){if(empty)empty.style.display='block';list.innerHTML='';renderCaminuGiftCard(false);return;}
     if(empty) empty.style.display='none';
     list.innerHTML = rows.map(function(r){
       var date=r.created_at?new Date(r.created_at).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'}):'';
@@ -4249,7 +4330,39 @@ async function initCaminu(){
         '<div class="caminu-body-txt">'+escHtml(r.contenu||'')+'</div>'+
       '</div>';
     }).join('');
+    // La carte cadeau ne s'affiche que si Sabrina l'a explicitement activée sur la
+    // synthèse la plus récente — jamais automatique, jamais répété semaine après semaine.
+    renderCaminuGiftCard(!!(rows[0] && rows[0].suggestion_cadeau), session);
   }catch(e){console.warn('Chargement U Caminu impossible:',e);}
+}
+
+// ── CARTE CADEAU — invitation à partager, jamais une remise ──
+// N'apparaît que lorsque Sabrina a coché "inclure une invitation à partager" en rédigeant
+// la synthèse de la semaine (voir U Caminu côté CRM), c'est-à-dire à un vrai moment de
+// progression qu'elle a elle-même repéré — jamais un bandeau commercial permanent.
+var _caminuGiftText = '';
+function copierMessageCadeau(){
+  if(!_caminuGiftText) return;
+  navigator.clipboard.writeText(_caminuGiftText)
+    .then(function(){ toastSimple("Message copié — à vous de l'envoyer."); })
+    .catch(function(){ toastSimple('Impossible de copier automatiquement — sélectionnez le texte manuellement.'); });
+}
+function renderCaminuGiftCard(show, session){
+  var box = document.getElementById('caminuGiftCard');
+  if(!box) return;
+  if(!show){ box.style.display='none'; box.innerHTML=''; return; }
+  var lien = 'https://www.avitaserena.com/reservation.html?invite=' + encodeURIComponent((session&&session.key)||'');
+  _caminuGiftText = "J'ai commencé un accompagnement avec A VITA SERENA et ça change vraiment ma façon de comprendre mon corps. Si ça t'intéresse, voici le lien pour réserver un premier bilan : " + lien;
+  box.innerHTML =
+    '<div style="background:var(--ardoise);border-radius:20px;padding:28px;color:#fff">' +
+      '<div style="font-family:\'Cormorant Garamond\',serif;font-style:italic;font-size:21px;color:var(--sable);margin-bottom:8px;line-height:1.3">Un geste qui compte</div>' +
+      '<p style="font-size:13.5px;color:rgba(255,255,255,.82);line-height:1.75;margin-bottom:18px">Sabrina a remarqué votre progression cette semaine. Si quelqu\'un que vous aimez pourrait bénéficier du même accompagnement, vous pouvez lui offrir un premier Bilan de vitalité — un vrai cadeau, pas un code promo.</p>' +
+      '<div style="background:rgba(255,255,255,.06);border-radius:12px;padding:14px 16px;font-size:12.5px;color:rgba(255,255,255,.75);line-height:1.7;margin-bottom:16px;word-break:break-word">' + escHtml(_caminuGiftText) + '</div>' +
+      '<div style="display:flex;gap:10px;flex-wrap:wrap">' +
+        '<button onclick="copierMessageCadeau()" style="background:var(--ocre);color:#fff;border:none;padding:11px 22px;border-radius:99px;font-size:13px;font-weight:700;cursor:pointer;font-family:\'Be Vietnam Pro\',sans-serif">Copier le message</button>' +
+      '</div>' +
+    '</div>';
+  box.style.display = 'block';
 }
 
 // ═══════════════════════════════════════

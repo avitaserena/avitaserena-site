@@ -2887,6 +2887,23 @@ async function confirmerReservation(id){
     await sb('rendez_vous?id=eq.'+id, { method:'PATCH', body: JSON.stringify({ status:'confirme' }) });
     const r = rdvs.find(x=>x.id===id);
     if(r) r.status='confirme';
+
+    // Parrainage : si cette réservation vient d'un lien d'invitation partagé par une autre
+    // cliente (?invite=... sur reservation.html → rendez_vous.parraine_par via stripe-webhook),
+    // on reporte automatiquement l'info sur sa fiche clientes — qu'elle existe déjà ou soit créée
+    // plus tard — sans aucune saisie manuelle de votre part.
+    if(r && r.parraine_par && r.client_key){
+      try{
+        await sb('clientes', {
+          method:'POST',
+          headers:{'Prefer':'resolution=merge-duplicates'},
+          body: JSON.stringify({ id: r.client_key, parraine_par: r.parraine_par })
+        });
+        const c = db.clients.find(x=>x.id===r.client_key);
+        if(c) c.parraine_par = r.parraine_par;
+      }catch(e){ console.warn('Report automatique du parrainage échoué :', e); }
+    }
+
     toast('Rendez-vous confirmé — la cliente reçoit son email de confirmation','ok');
     renderReservationRequests();
     renderAttentePopup();
