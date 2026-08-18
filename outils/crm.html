@@ -1783,14 +1783,51 @@ async function loadRdvs(){
 
 // ── CHECK-INS DU JOUR — état quotidien rempli par les clientes dans leur espace ──
 var checkinsToday=[];
+var checkinAlerts=[];
+
+// Seuil d'alerte énergie : l'échelle client va par paliers fixes 2 (Épuisée) / 4 (Faible) /
+// 6 (Correcte) / 8 (Bonne) / 10 (Excellente). Un seuil à 3 déclenche l'alerte uniquement sur
+// "Épuisée" — le signal le plus net, sans remonter les jours "Faible" qui restent courants.
+var CHECKIN_SEUIL_ENERGIE = 3;
+var CHECKIN_HUMEUR_ALERTE = ['Anxieuse','Fatiguée mentalement','Irritable'];
+var CHECKIN_ALERT_KEYWORDS = [
+  'epuisee','epuisement','n en peux plus','insupportable','tres mal','douleur intense',
+  'urgence','urgent','vomi','sang','crise','desespoir','desesperee','angoisse','anxiete',
+  'panique','pleure','pleurer','abandon','suicid','effondree','effondrement','mal etre',
+  'ne va plus','plus la force','plus envie de rien'
+];
+function normTxt(s){
+  return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+}
+// Analyse un check-in et renvoie les raisons d'alerte (énergie sous le seuil, humeur
+// préoccupante, mot-clé de détresse dans le champ libre) — vide si rien à signaler.
+function checkinAlertInfo(j){
+  const reasons=[];
+  const en=parseInt(j.energie,10);
+  if(!isNaN(en) && en<=CHECKIN_SEUIL_ENERGIE) reasons.push('Énergie très basse ('+en+'/10)');
+  if(j.humeur && CHECKIN_HUMEUR_ALERTE.indexOf(j.humeur)!==-1) reasons.push('Humeur : '+j.humeur);
+  const noteNorm=normTxt(j.note);
+  if(noteNorm && CHECKIN_ALERT_KEYWORDS.some(k=>noteNorm.indexOf(k)!==-1)){
+    const txt=(j.note||'').length>90?(j.note||'').slice(0,90)+'…':(j.note||'');
+    reasons.push('Message : « '+txt+' »');
+  }
+  return {alert:reasons.length>0, reasons};
+}
+function computeCheckinAlerts(){
+  checkinAlerts = checkinsToday
+    .map(j=>({j, info:checkinAlertInfo(j)}))
+    .filter(x=>x.info.alert);
+}
 async function loadCheckinsToday(){
   try{
     const tdy=today();
     checkinsToday=await sb('journal_entries?date=eq.'+tdy+'&select=client_key,energie,transit,ballonnements,humeur,note,created_at&order=created_at.desc&limit=100');
-    console.log('[CRM] ✓ Check-ins du jour:', checkinsToday.length);
+    computeCheckinAlerts();
+    console.log('[CRM] ✓ Check-ins du jour:', checkinsToday.length, '— alertes:', checkinAlerts.length);
   }catch(e){
     console.error('[CRM] ✗ Check-ins du jour:', e.message);
     checkinsToday=[];
+    checkinAlerts=[];
   }
 }
 function renderCheckinsToday(){
@@ -1801,7 +1838,13 @@ function renderCheckinsToday(){
     el.innerHTML='<div class="empty"><div class="eicon">'+ic('heart')+'</div><div class="etitle">Aucun check-in aujourd\'hui</div><div class="esub">L\'état du jour rempli par vos clientes apparaîtra ici.</div></div>';
     return;
   }
-  el.innerHTML=checkinsToday.map(function(j){
+  // Alertes d'abord, puis le reste par heure décroissante (déjà trié par la requête)
+  const sorted=checkinsToday.slice().sort(function(a,b){
+    const aAl=checkinAlertInfo(a).alert, bAl=checkinAlertInfo(b).alert;
+    if(aAl===bAl) return 0;
+    return aAl?-1:1;
+  });
+  el.innerHTML=sorted.map(function(j){
     const c=db.clients.find(x=>x.id===j.client_key);
     const prenom=c?c.prenom:(j.client_key||'').split('-')[0];
     const nom=c?(c.nom||''):'';
@@ -1810,15 +1853,20 @@ function renderCheckinsToday(){
     const heure=j.created_at?new Date(j.created_at).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}):'';
     const meta=[j.energie?'Énergie '+escH(j.energie)+'/10':null, j.humeur?escH(j.humeur):null, j.transit?escH(j.transit):null].filter(Boolean).join(' · ');
     const onclick=c?" onclick=\"openFiche('"+c.id+"')\"":'';
-    return "<div class='al-item'"+onclick+" style='flex-direction:column;align-items:flex-start;padding:12px 14px'>"+
+    const info=checkinAlertInfo(j);
+    const alertStyle=info.alert?"border:1.5px solid var(--rouge);background:rgba(184,50,50,.05);border-radius:10px":'';
+    const alertBadge=info.alert?"<span class='tab-pill tp-red' style='margin-left:8px'>Alerte</span>":'';
+    const alertReasons=info.alert?"<div style='margin-top:6px;font-size:11px;color:var(--rouge);font-weight:600'>"+info.reasons.map(escH).join(' · ')+"</div>":'';
+    return "<div class='al-item'"+onclick+" style='flex-direction:column;align-items:flex-start;padding:12px 14px;"+alertStyle+"'>"+
       "<div style='display:flex;align-items:center;gap:10px;width:100%'>"+
         "<div class='al-av' style='background:"+col+"'>"+init+"</div>"+
         "<div class='al-body' style='flex:1'>"+
-          "<div class='al-name'>"+escH(prenom)+" "+escH(nom)+"</div>"+
+          "<div class='al-name'>"+escH(prenom)+" "+escH(nom)+alertBadge+"</div>"+
           "<div class='al-meta'>"+meta+(heure?' · '+heure:'')+"</div>"+
         "</div>"+
       "</div>"+
       (j.note?"<div style='margin-top:6px;font-size:11.5px;color:var(--muted);font-style:italic'>« "+escH(j.note)+" »</div>":'')+
+      alertReasons+
     "</div>";
   }).join('');
 }
@@ -1997,6 +2045,25 @@ function renderActionsJour(){
 
   // ── Rassembler toutes les sources en une seule file, triée par urgence ──
   const items = [];
+
+  // 0) Alertes santé — check-ins du jour signalant une énergie très basse, une humeur
+  // préoccupante ou un message inquiet dans le champ libre. Priorité maximale, à égalité
+  // avec les messages urgents signalés par le triage IA.
+  checkinAlerts.forEach(function(x){
+    const j=x.j, info=x.info;
+    const c=db.clients.find(cl=>cl.id===j.client_key);
+    const prenom=c?c.prenom:(j.client_key||'').split('-')[0];
+    const nom=c?(c.nom||''):'';
+    items.push({u:5, html:
+      '<div class="feed-item feed-message feed-message-urgent">'+
+        '<div class="feed-ic">'+ic('warn')+'</div>'+
+        '<div class="feed-body">'+
+          '<div class="feed-title">'+escH(prenom)+' '+escH(nom)+' <span class="tab-pill" style="background:var(--red-lt,#FEE2E2);color:var(--red,#D1553A)">Alerte check-in</span></div>'+
+          '<div class="feed-text" style="color:var(--rouge)">'+info.reasons.map(escH).join(' · ')+'</div>'+
+        '</div>'+
+        '<div class="feed-actions">'+(c?'<button class="feed-btn feed-btn-ghost" onclick="openFiche(\''+c.id+'\')">Fiche</button>':'')+'</div>'+
+      '</div>'});
+  });
 
   // 1) Recommandations refusées sans alternative — priorité maximale
   const memoUrg = memoAlerts.filter(m => m.refusSansReponse.length > 0);
@@ -3695,7 +3762,7 @@ function renderDashboard(){
       return { client: client||{prenom:m.prenom,nom:m.nom,id:null}, memo:m, isMemo:true };
     });
 
-  const totalAlerts = allAl.length + memoUrgAl.length + unreadMessagesCount();
+  const totalAlerts = allAl.length + memoUrgAl.length + unreadMessagesCount() + checkinAlerts.length;
   const echeancesCount = allAl.length + memoUrgAl.length;
   animateNum('kv-actives',actives.length);
   animateNum('kv-rdv',rdvM.length);
@@ -3714,6 +3781,7 @@ function renderDashboard(){
   document.getElementById('tc-sem').textContent=sem.length;
   document.getElementById('tc-msg').textContent=unreadMessagesCount();
   document.getElementById('tc-feed').textContent=memoAlerts.length;
+  document.getElementById('tc-sante').textContent=checkinAlerts.length;
   renderAlerts(curTab,urg,sem,memoUrgAl);
   renderPipeline(actives);
   renderCA();
@@ -3756,6 +3824,34 @@ function renderAlerts(tab,urg,sem,memoUrgAl=[]){
   if(tab==='msg'){
     const nonLus = clientMessages.filter(m=>!m.lu);
     el.innerHTML = messagesBox(nonLus, 'Aucun message non lu — tout est à jour.');
+    return;
+  }
+  if(tab==='sante'){
+    if(!checkinAlerts.length){
+      el.innerHTML='<div class="empty"><div class="eicon">'+ic('heart')+'</div><div class="etitle">Aucune alerte aujourd\'hui</div><div class="esub">Énergie basse, humeur préoccupante ou message inquiet dans les check-ins remontent ici.</div></div>';
+      return;
+    }
+    el.innerHTML = checkinAlerts.map(function(x){
+      const j=x.j, info=x.info;
+      const c=db.clients.find(cl=>cl.id===j.client_key);
+      const prenom=c?c.prenom:(j.client_key||'').split('-')[0];
+      const nom=c?(c.nom||''):'';
+      const col=avColor(prenom);
+      const init=(prenom||'?')[0].toUpperCase();
+      const heure=j.created_at?new Date(j.created_at).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}):'';
+      const onclick=c?" onclick=\"openFiche('"+c.id+"')\"":'';
+      return "<div class='al-item urg'"+onclick+" style='flex-direction:column;align-items:flex-start;padding:12px 14px;border-left:4px solid var(--rouge)'>"+
+        "<div style='display:flex;align-items:center;gap:10px;width:100%'>"+
+          "<div class='al-av' style='background:"+col+"'>"+init+"</div>"+
+          "<div class='al-body' style='flex:1'>"+
+            "<div class='al-name'>"+escH(prenom)+" "+escH(nom)+"</div>"+
+            "<div class='al-meta'>"+(heure?'Check-in de '+heure:'Check-in du jour')+"</div>"+
+          "</div>"+
+        "</div>"+
+        "<div style='margin-top:8px;font-size:11.5px;color:var(--rouge);font-weight:600'>"+info.reasons.map(escH).join(' · ')+"</div>"+
+        (c?"<button onclick=\"event.stopPropagation();openFiche('"+c.id+"')\" style='margin-top:8px;padding:5px 12px;background:var(--ardoise);color:white;border:none;border-radius:99px;font-size:11px;font-weight:600;cursor:pointer'>Voir la fiche →</button>":'')+
+      "</div>";
+    }).join('');
     return;
   }
   if(tab==='feed'){
@@ -6205,6 +6301,7 @@ function ouvrirBilanEntree(clientId, mode){
             <div class="card-title"><div class="card-dot" style="background:#D1553A"></div>À traiter</div>
             <div class="tab-row" id="tab-row">
               <button class="tab-btn active" onclick="switchTab('msg',this)">Messages clientes <span class="tab-pill tp-blue" id="tc-msg">0</span></button>
+              <button class="tab-btn" onclick="switchTab('sante',this)">Alertes santé <span class="tab-pill tp-red" id="tc-sante">0</span></button>
               <button class="tab-btn" onclick="switchTab('urg',this)">Échéances urgentes <span class="tab-pill tp-red" id="tc-urg">0</span></button>
               <button class="tab-btn" onclick="switchTab('sem',this)">Cette semaine <span class="tab-pill tp-orange" id="tc-sem">0</span></button>
               <button class="tab-btn" onclick="switchTab('feed',this)">Refus signalés <span class="tab-pill tp-violet" id="tc-feed">0</span></button>
