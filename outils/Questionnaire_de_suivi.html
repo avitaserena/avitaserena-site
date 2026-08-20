@@ -2423,6 +2423,24 @@ function startAutosave() {
 
 function sauvegarderMaintenant() {
   const snap=captureSnapshot();
+  // ⚠️ captureSnapshot() ne conserve que des clés positionnelles/préfixées par id (ex: "select_secu-grossesse"),
+  // jamais lues par chargerDossierSupabase()/afficherBandeauDossier() au suivi suivant, qui attendent des
+  // clés sémantiques (ex: "secu_grossesse"). Sans ce complément, la chaîne de continuité se brise silencieusement
+  // à chaque suivi : on fusionne donc ici les champs sémantiques essentiels avant l'enregistrement Supabase.
+  try {
+    const dc = collectData();
+    snap.motifs = dc.motifsInitiaux || snap.motifs;
+    snap.objectif = dc.objectifNouveau || dc.objectifInitial || snap.objectif;
+    snap.programme = dc.programme || snap.programme;
+    snap.diagnostics_actifs = dc.diagnosticsActifs;
+    snap.antecedents_resolus = dc.antecedentsResolus;
+    snap.secu_grossesse = dc.secuGrossesse;
+    snap.secu_cancer = dc.secuCancer;
+    snap.traitements_vigilance = dc.traitementsVigilance;
+    snap.allergies_alim = dc.allergiesAlim;
+    const specChips = [...document.querySelectorAll('#sec-0 .chip-wrap .chip.on')].map(c=>c.textContent.replace('✓','').trim());
+    if (specChips.length) snap.specialites = specChips.join(', ');
+  } catch(e) { console.warn('Enrichissement snapshot suivi échoué', e); }
   localStorage.setItem(SAVE_KEY, JSON.stringify(snap));
   sauvegarderSupabase(snap);
   sauvegarderRessentiProtocole();
@@ -2855,7 +2873,44 @@ function finalise() {
   localStorage.setItem('avita_suivi_session', JSON.stringify(suivi_session));
   localStorage.setItem('avita_session', JSON.stringify(suivi_session));
 
+  // ⚠️ Sans cet appel, ce suivi n'apparaît JAMAIS dans la timeline de la fiche cliente du CRM
+  // (contrairement à la consultation initiale, qui y ajoute une entrée) — la fiche cliente peut
+  // alors sembler "en silence" depuis des mois alors que des suivis récents existent bel et bien.
+  majTimelineClient(suivi_session.client_id, d);
+
   toast('Données exportées → redirection vers le générateur PHV…');
   setTimeout(()=>{ window.location.href = '../outils/generateur.html'; }, 1600);
+}
+
+/* ══════════════════════════════════════════════════════
+   MISE À JOUR TIMELINE CLIENT (CRM) — pour que ce suivi soit
+   visible dans l'historique de la fiche cliente, au même titre
+   que la consultation initiale.
+══════════════════════════════════════════════════════ */
+async function majTimelineClient(clientId, d) {
+  if (!clientId) return;
+  let authToken = SUPA_KEY;
+  if (typeof Auth !== 'undefined') {
+    const token = await Auth.getValidAccessToken();
+    if (token) authToken = token;
+  }
+  const headers = {'apikey':SUPA_KEY,'Authorization':'Bearer '+authToken,'Content-Type':'application/json'};
+  try {
+    const r = await fetch(SUPA_URL+'/rest/v1/clientes?id=eq.'+encodeURIComponent(clientId)+'&select=timeline', { headers });
+    const rows = await r.json();
+    if (!rows || !rows.length) { console.warn('[Timeline suivi] Fiche cliente introuvable pour', clientId); return; }
+    const timeline = Array.isArray(rows[0].timeline) ? rows[0].timeline : [];
+    timeline.push({
+      type: 'suivi',
+      title: '📋 Suivi n°' + (d.numSuivi||'?') + ' complété',
+      icon: '·',
+      date: new Date().toISOString().slice(0,10),
+      desc: `Objectif : ${(d.objectifNouveau||d.objectifInitial||'—')} · Ressenti global : ${d.globalVal||'—'}/10`
+    });
+    await fetch(SUPA_URL+'/rest/v1/clientes?id=eq.'+encodeURIComponent(clientId), {
+      method: 'PATCH', headers: {...headers, 'Prefer':'return=minimal'},
+      body: JSON.stringify({ timeline })
+    });
+  } catch(e) { console.warn('[Timeline suivi] Échec de mise à jour', e); }
 }
 </script>
