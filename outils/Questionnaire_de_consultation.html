@@ -31,6 +31,25 @@
   --hashi-bg:#FDEFEC; --hashi-bd:#D4534A; --hashi-tx:#7A1A1A; --hashi-lt:#FBD8D5;
   --surr-bg:#EAF6F7; --surr-bd:#1E8A94; --surr-tx:#0F4A50; --surr-lt:#CCEEF0;
 }
+/* ── FENÊTRE FLOTTANTE — SUSPICIONS CLINIQUES EN DIRECT ── */
+#float-susp{position:fixed;right:22px;bottom:22px;z-index:500;width:340px;max-width:calc(100vw - 32px);font-family:'Inter',-apple-system,sans-serif}
+#float-susp.minimized #float-susp-body{display:none}
+.float-susp-hdr{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--ardoise);color:rgba(255,255,255,.92);padding:12px 16px;border-radius:14px;cursor:pointer;box-shadow:var(--shadow);transition:var(--transition)}
+.float-susp-hdr:hover{background:#2C251D}
+.float-susp-hdr-left{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;letter-spacing:.02em}
+.float-susp-count{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;border-radius:var(--r99);background:var(--sable);color:var(--ardoise);font-size:11px;font-weight:800}
+.float-susp-chevron{transition:transform .2s;color:rgba(255,255,255,.65)}
+#float-susp.minimized .float-susp-chevron{transform:rotate(180deg)}
+#float-susp-body{margin-top:8px;max-height:min(60vh,520px);overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding-right:2px}
+.float-susp-card{background:var(--blanc);border:1px solid var(--taupe);border-radius:12px;padding:12px 14px;box-shadow:0 6px 18px rgba(33,28,22,.07)}
+.float-susp-label{font-size:12.5px;font-weight:700;color:var(--ardoise);margin-bottom:4px;display:flex;align-items:center;gap:6px}
+.float-susp-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.float-susp-why{font-size:11.5px;color:var(--gris);line-height:1.55;margin-bottom:8px}
+.float-susp-relance{font-size:11.5px;color:var(--ardoise);line-height:1.5;background:var(--off);border-left:2.5px solid var(--sable);border-radius:0 8px 8px 0;padding:7px 10px}
+.float-susp-relance b{font-weight:700;color:var(--gris);font-size:10px;letter-spacing:.08em;text-transform:uppercase;display:block;margin-bottom:2px}
+.float-susp-empty{font-size:11.5px;color:var(--gris);font-style:italic;padding:14px 4px;text-align:center}
+@media (max-width:640px){#float-susp{right:12px;bottom:12px;left:12px;width:auto}}
+
 *{box-sizing:border-box;margin:0;padding:0}
 html{font-family:'Inter',-apple-system,sans-serif;color:var(--ardoise);background:var(--off);font-size:16px;line-height:1.65;scroll-behavior:smooth}
 body{
@@ -438,6 +457,16 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 <script src="ai-explain-panel.js"></script>
 </head>
 <body>
+<div id="float-susp">
+  <div class="float-susp-hdr" onclick="document.getElementById('float-susp').classList.toggle('minimized')">
+    <div class="float-susp-hdr-left">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 8v5"/><path d="M12 16h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/></svg>
+      Pistes en direct <span class="float-susp-count" id="float-susp-count">0</span>
+    </div>
+    <svg class="float-susp-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+  </div>
+  <div id="float-susp-body"></div>
+</div>
 
 <!-- ═══ HEADER ═══ -->
 <div class="hdr">
@@ -6268,7 +6297,11 @@ const SPEC_KEYWORDS = {
   sii: [/douleur.*soulagée.*défécation/i, /urgences défécatoires/i],
   meno: [/bouffées de chaleur/i, /sécheresse vaginale/i, /vaginose/i, /odeur de poisson/i, /cystites? récidivante/i, /alopécie androgénique/i, /fuites urinaires/i, /incontinence/i],
   hashi: [/frilosité/i, /queue.*sourcil/i, /perdu la queue de vos sourcils/i],
-  surr: [/épuisée le matin/i, /coup de barre.*16h/i, /réveil.*3h/i, /hyper[- ]?tendue/i, /craquages? sucrés?/i, /ne tient plus le stress/i]
+  surr: [/épuisée le matin/i, /coup de barre.*16h/i, /réveil.*3h/i, /hyper[- ]?tendue/i, /craquages? sucrés?/i, /ne tient plus le stress/i],
+  // ── Ajouts branche Gonades (Hormono Pratik — 20/08/2026) ──
+  hyperoestro: [/règles abondantes \(hémorragiques, caillots importants\)/i, /douleurs à la poitrine.*seins.*hors spm/i, /gonflement du ventre ou des seins en 2e partie de cycle/i, /migraines cycliques/i, /seins fibrokystiques/i, /tension mammaire/i],
+  progesterone_def: [/déficit de progestérone/i, /phase lutéale courte/i, /fausse\(s\) couche\(s\) récente/i, /cycles? courts? \(/i],
+  androgene_f: [/baisse de libido/i, /perte de densité osseuse/i, /perte de masse musculaire/i]
 };
 // Causes SOPK précises (P2) — n'alimentent QUE le pré-cochage des bilans ciblés,
 // jamais le compteur "spécialités suggérées" (voir SOPK_CAUSE_KEYWORDS plus bas dans analyserSeance)
@@ -6312,8 +6345,40 @@ function detecterSpecialites() {
     hdr.classList.toggle('suggere', suggestions.has(hdr.dataset.spec));
   });
 
+  renderFloatSuspicions(suggestions);
   return suggestions;
 }
+
+/* ══════════════════════════════════════════════════════
+   FENÊTRE FLOTTANTE — rendu des pistes en direct
+   Réutilise SPEC_REASONS (label, pourquoi, relance) déjà défini plus bas —
+   voir la déclaration de SPEC_REASONS pour ajouter/modifier une piste.
+══════════════════════════════════════════════════════ */
+const FLOAT_SUSP_DOT = {
+  sibo:'var(--sibo-bd)', sii:'var(--sii-bd)', endo:'var(--endo-bd)', sopk:'var(--sopk-bd)',
+  meno:'var(--meno-bd)', hashi:'var(--hashi-bd)', surr:'var(--surr-bd)',
+  hyperoestro:'var(--rouge)', progesterone_def:'var(--rose)', androgene_f:'var(--violet)'
+};
+function renderFloatSuspicions(suggestions) {
+  const body = document.getElementById('float-susp-body');
+  const count = document.getElementById('float-susp-count');
+  if (!body || !count) return;
+  const list = [...suggestions].filter(s => typeof SPEC_REASONS !== 'undefined' && SPEC_REASONS[s]);
+  count.textContent = list.length;
+  if (list.length === 0) {
+    body.innerHTML = '<div class="float-susp-empty">Aucune piste détectée pour l\'instant — continuez la saisie, les suspicions apparaîtront ici au fur et à mesure.</div>';
+    return;
+  }
+  body.innerHTML = list.map(s => {
+    const r = SPEC_REASONS[s];
+    return `<div class="float-susp-card">
+      <div class="float-susp-label"><span class="float-susp-dot" style="background:${FLOAT_SUSP_DOT[s] || 'var(--sable)'}"></span>${r.label}</div>
+      <div class="float-susp-why">${r.pourquoi}</div>
+      ${r.relance ? `<div class="float-susp-relance"><b>Question de relance</b>${r.relance}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+document.addEventListener('DOMContentLoaded', () => { try { renderFloatSuspicions(new Set()); } catch(e) {} });
 
 /* ══════════════════════════════════════════════════════
    MOTEUR D'ANALYSE — « Analyser mes réponses »
@@ -6324,13 +6389,17 @@ function detecterSpecialites() {
    Rien n'est jamais décoché automatiquement — la praticienne garde la main.
 ══════════════════════════════════════════════════════ */
 const SPEC_REASONS = {
-  sibo:  { label: 'SIBO (prolifération bactérienne de l\'intestin grêle)', pourquoi: 'Ballonnements marqués après les repas et/ou antécédent d\'antibiotiques à large spectre / gastro-entérite sévère — la muqueuse et la motilité peuvent rester perturbées longtemps après.' },
-  sii:   { label: 'SII / côlon irritable', pourquoi: 'Douleur soulagée par la défécation et/ou urgences défécatoires évoquent un syndrome de l\'intestin irritable, souvent amplifié par le stress.' },
-  endo:  { label: 'Endométriose', pourquoi: 'Dysménorrhée sévère, dyspareunie ou douleurs pelviennes chroniques en dehors des règles orientent vers une endométriose à investiguer, confirmée ou non par imagerie.' },
-  sopk:  { label: 'SOPK (syndrome des ovaires polykystiques)', pourquoi: 'Signes d\'hyperandrogénie (acné hormonale, hirsutisme, chute de cheveux en couronne) et/ou cycles irréguliers évoquent un terrain SOPK, souvent lié à une résistance à l\'insuline.' },
-  meno:  { label: 'Périménopause / ménopause', pourquoi: 'Âge ≥ 45 ans et/ou bouffées de chaleur, sécheresse vaginale — la baisse progressive des œstrogènes explique une grande partie du tableau clinique.' },
-  hashi: { label: 'Hashimoto / hypothyroïdie', pourquoi: 'Frilosité et/ou perte du tiers externe des sourcils sont des signes cliniques classiques d\'hypothyroïdie, avec une composante auto-immune (Hashimoto) à ne jamais exclure.' },
-  surr:  { label: 'Fatigue surrénalienne / dysrégulation du cortisol', pourquoi: 'Épuisement matinal, coup de barre à 16h, réveils nocturnes vers 1h-4h et craquages sucrés dessinent un profil de cortisol dérégulé (souvent inversé : bas le matin, encore actif le soir).' }
+  sibo:  { label: 'SIBO (prolifération bactérienne de l\'intestin grêle)', pourquoi: 'Ballonnements marqués après les repas et/ou antécédent d\'antibiotiques à large spectre / gastro-entérite sévère — la muqueuse et la motilité peuvent rester perturbées longtemps après.', relance: 'Le ballonnement survient-il systématiquement dans l\'heure suivant le repas, même léger ? Y a-t-il eu une gastro-entérite ou une cure d\'antibiotiques avant le début des symptômes ?' },
+  sii:   { label: 'SII / côlon irritable', pourquoi: 'Douleur soulagée par la défécation et/ou urgences défécatoires évoquent un syndrome de l\'intestin irritable, souvent amplifié par le stress.', relance: 'La douleur est-elle nettement soulagée après être allée à la selle ? Y a-t-il des urgences défécatoires qui limitent ses sorties ou ses trajets ?' },
+  endo:  { label: 'Endométriose', pourquoi: 'Dysménorrhée sévère, dyspareunie ou douleurs pelviennes chroniques en dehors des règles orientent vers une endométriose à investiguer, confirmée ou non par imagerie.', relance: 'Les douleurs sont-elles présentes aussi en dehors des règles ? A-t-elle déjà consulté un gynécologue pour ce motif, avec ou sans diagnostic posé ?' },
+  sopk:  { label: 'SOPK (syndrome des ovaires polykystiques)', pourquoi: 'Signes d\'hyperandrogénie (acné hormonale, hirsutisme, chute de cheveux en couronne) et/ou cycles irréguliers évoquent un terrain SOPK, souvent lié à une résistance à l\'insuline.', relance: 'Où se situe la pilosité (menton/dos/pubis) ? Les cycles sont-ils longs (>35 jours) ou espacés ? A-t-elle déjà un dosage AMH, testostérone ou une échographie ovarienne ?' },
+  meno:  { label: 'Périménopause / ménopause', pourquoi: 'Âge ≥ 45 ans et/ou bouffées de chaleur, sécheresse vaginale — la baisse progressive des œstrogènes explique une grande partie du tableau clinique.', relance: 'Ses cycles sont-ils encore réguliers, ou plus de règles depuis 12 mois ? Les bouffées de chaleur s\'accompagnent-elles plutôt de tension mammaire, ou plutôt de sécheresse ?' },
+  hashi: { label: 'Hashimoto / hypothyroïdie', pourquoi: 'Frilosité et/ou perte du tiers externe des sourcils sont des signes cliniques classiques d\'hypothyroïdie, avec une composante auto-immune (Hashimoto) à ne jamais exclure.', relance: 'A-t-elle déjà eu un dosage TSH ou anti-TPO ? Ressent-elle un froid inhabituel aux extrémités, même en été ?' },
+  surr:  { label: 'Fatigue surrénalienne / dysrégulation du cortisol', pourquoi: 'Épuisement matinal, coup de barre à 16h, réveils nocturnes vers 1h-4h et craquages sucrés dessinent un profil de cortisol dérégulé (souvent inversé : bas le matin, encore actif le soir).', relance: 'Décrivez sa courbe d\'énergie sur une journée type — pic ou creux à quelle heure ? Les réveils nocturnes sont-ils toujours à la même heure ?' },
+  // ── Ajouts branche Gonades (Hormono Pratik — 20/08/2026) ──
+  hyperoestro: { label: 'Excès d\'imprégnation œstrogénique', pourquoi: 'Tension mammaire, règles abondantes ou migraines cycliques évoquent un excès d\'imprégnation œstrogénique — réel ou relatif par manque de progestérone — à explorer via les 5 familles de causes (production, SHBG, progestérone, perturbateurs endocriniens, détox) avant de choisir un levier.', relance: 'Les seins sont-ils tendus/douloureux surtout en 2e partie de cycle ? Les règles sont-elles devenues plus abondantes qu\'avant, avec des caillots ?' },
+  progesterone_def: { label: 'Déficit de progestérone', pourquoi: 'Un cycle raccourci, une phase lutéale courte ou une fausse couche précoce orientent vers un manque de progestérone, le plus souvent lié à une anovulation ou une ovulation de mauvaise qualité.', relance: 'Le cycle est-il plus court qu\'avant (moins de 25 jours) ? Y a-t-il eu une ou plusieurs fausses couches précoces, ou un désir de grossesse en cours ?' },
+  androgene_f: { label: 'Possible déficit androgénique féminin', pourquoi: 'Une baisse de libido associée à une fatigue résistante peut évoquer, chez la femme, un manque d\'androgènes d\'origine surrénalienne — à confirmer par le contexte global avant tout levier actif (jamais de DHEA en supplémentation).', relance: 'Depuis combien de temps la libido a-t-elle baissé ? Y a-t-il aussi une perte de tonus musculaire, de densité osseuse ou de motivation, sans autre explication évidente ?' }
 };
 const BILANS_BASELINE = ['baseline'];
 
