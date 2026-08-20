@@ -988,6 +988,7 @@ function renderSessionCard() {
     ['Objectif 6 mois', d.objectif_6mois || '—'],
     ['Pathologies pressenties (détectées)', d.pathologies_pressenties ? d.pathologies_pressenties.split('\n')[0] + (d.pathologies_pressenties.includes('\n') ? '…' : '') : '—'],
     ['Bilans recommandés', d.bilans_recommandes || '—'],
+    ['Sécurité importée', [d.secu_grossesse, d.secu_cancer, d.traitements_vigilance, d.allergies_alim].filter(Boolean).join(' · ') || 'Aucune donnée de sécurité importée — à vérifier ci-dessous'],
   ];
   // Compter les champs réellement remplis (utiles)
   const richFields = ['prenom','age','duree_symptomes','motifs','mots_cles','objectif_6mois','scores',
@@ -1035,6 +1036,24 @@ function prefillParams() {
   if (sessionData.antecedents_resolus) {
     const champ = document.getElementById('antecedents-resolus');
     if (champ && !champ.value) champ.value = sessionData.antecedents_resolus;
+  }
+
+  // ── Champs de sécurité (grossesse, cancer, traitements, allergies), importés depuis le
+  // questionnaire de consultation ou de suivi — vocabulaire identique, jamais à ressaisir
+  // manuellement sauf si le champ ici est déjà rempli (on ne touche jamais une saisie manuelle). ──
+  const sg = document.getElementById('secu-grossesse');
+  if (sg && !sg.value && sessionData.secu_grossesse) sg.value = sessionData.secu_grossesse;
+  const sc = document.getElementById('secu-cancer');
+  if (sc && !sc.value && sessionData.secu_cancer) sc.value = sessionData.secu_cancer;
+  if (sessionData.traitements_vigilance) {
+    document.querySelectorAll('#secu-traitements-group .p-toggle').forEach(btn => {
+      if (!btn.classList.contains('on') && sessionData.traitements_vigilance.includes(btn.dataset.val)) btn.classList.add('on');
+    });
+  }
+  if (sessionData.allergies_alim) {
+    document.querySelectorAll('#allergies-group .p-toggle').forEach(btn => {
+      if (!btn.classList.contains('on') && sessionData.allergies_alim.includes(btn.dataset.val)) btn.classList.add('on');
+    });
   }
 }
 
@@ -1864,7 +1883,7 @@ Si un axe périménopause/ménopause est retenu parmi les axes prioritaires :
    - ⚠️ MÉCANISME DU RACCOURCISSEMENT DE CYCLE (voir champ "Mécanisme du cycle court" du questionnaire, repéré par observation du cycle si disponible) : un cycle raccourci peut venir soit d'une phase folliculaire courte (les follicules restants répondent moins bien au signal hormonal, ce qui peut accélérer l'ovulation sans nécessairement abîmer sa qualité — oriente vers la modulation des œstrogènes, point 2), soit d'une phase lutéale courte <11 jours (l'ovulation a bien eu lieu mais le corps jaune s'épuise trop vite et ne produit pas assez de progestérone — oriente vers un soutien direct de la progestérone, point 3). Les deux situations peuvent donner un tableau clinique similaire en surface : ne jamais choisir la stratégie sans cette distinction si l'information est disponible ; si elle ne l'est pas, rester sur les leviers communs des deux axes.
    - Risques supplémentaires à toujours vérifier en période de déséquilibre œstroprogestatif, en plus des risques hormono-dépendants déjà couverts (garde-fou sécurité point 2) : tension artérielle (HTA nouvelle ou limite — vigilance renforcée si réglisse envisagée, voir point 4b et RÈGLE N°12), fausse(s) couche(s) en cas de désir de grossesse à cet âge (un déficit de progestérone en début de grossesse augmente ce risque — les grossesses tardives croisent de plus en plus une périménopause précoce), et hypothyroïdie fruste (le déséquilibre œstroprogestatif peut lui-même altérer la fonction thyroïdienne — si signes présents, relier explicitement à la section Thyroïde plutôt que de traiter isolément).
 
-2. LEVIERS POUR L'EXCÈS RELATIF D'ŒSTROGÈNES (profil périménopause hyperoestrogénie relative) :
+2. LEVIERS POUR L'EXCÈS RELATIF D'ŒSTROGÈNES (profil périménopause hyperoestrogénie relative) — ⚠️ avant de choisir un levier, identifie la famille de cause précise chez cette cliente via la RÈGLE N°18 (production, SHBG, progestérone, perturbateurs endocriniens, ou détox/élimination) plutôt que d'appliquer un protocole générique :
    - Alimentation/détox œstrogénique : crucifères, fibres, hydratation, réduction alcool (s'appuie sur les mêmes bases que la RÈGLE N°8 détox hépatique — ne pas dupliquer un 2e axe détox si celui-ci est déjà retenu ailleurs, fusionner l'explication).
    - Modulation des récepteurs et de la production : gestion du stress, du poids, de l'insuline — jamais de discours culpabilisant sur le poids.
    - ⛔️ Phytoestrogènes (soja, houblon, sauge) → à éviter en excès relatif d'œstrogènes déjà présent, et JAMAIS en cas de cancer hormono-dépendant, d'endométriose active ou de fibrome symptomatique (voir garde-fou sécurité existant : "Cancer hormono-dépendant → JAMAIS Feminabiane Ménopause ni phytoestrogènes").
@@ -1940,7 +1959,7 @@ Si un axe endométriose est retenu parmi les axes prioritaires (diagnostic confi
 
 1. ⚠️ PRINCIPE FONDATEUR : l'endométriose n'est jamais traitée naturopathiquement comme une pathologie en soi — c'est un cercle vicieux entre inflammation locale et prolifération des lésions, alimenté par 3 axes de causes possibles chez CETTE cliente précise (voir champ "Axe de causes prioritaire retenu" du questionnaire). Ne propose jamais un protocole générique "anti-endométriose" : identifie et cible le ou les axes réellement concernés. Rappelle explicitement dans le PHV que l'accompagnement est anti-inflammatoire et complémentaire au suivi gynécologique, jamais un substitut — vérifie toujours où en est le suivi médical avant de rédiger.
 
-2. AXE 1 — DÉSÉQUILIBRE ŒSTROPROGESTATIF : les cellules d'endométriose portent les mêmes récepteurs aux œstrogènes que l'endomètre normal — un excès d'œstrogènes (réel ou relatif) les fait proliférer, la progestérone freine normalement cette prolifération et réduit l'inflammation locale.
+2. AXE 1 — DÉSÉQUILIBRE ŒSTROPROGESTATIF : les cellules d'endométriose portent les mêmes récepteurs aux œstrogènes que l'endomètre normal — un excès d'œstrogènes (réel ou relatif) les fait proliférer, la progestérone freine normalement cette prolifération et réduit l'inflammation locale. Identifie la famille de cause précise via la RÈGLE N°18 avant de choisir un levier.
    - Si excès d'imprégnation œstrogénique retenu : applique les mêmes leviers que la RÈGLE N°13 point 2 (détox œstrogénique, crucifères, fibres, réduction alcool — fusionner avec la RÈGLE N°8 si l'axe détox hépatique est déjà retenu, ne jamais dupliquer). Vérifie particulièrement l'exposition aux perturbateurs endocriniens œstrogéno-mimétiques (RÈGLE N°8/9) et le statut en iode.
    - Si déficit de progestérone retenu (anovulation, stress, faible réserve ovarienne) : applique le même timing strict que la RÈGLE N°13 point 3 — plantes progestatives (gattilier, alchémille) JAMAIS avant l'ovulation, uniquement à partir de Pic+3. Même CI gattilier (jamais avec un traitement hormonal sans en parler au médecin, déconseillé si cancer hormono-dépendant).
    - ⛔️ Phytoestrogènes (soja, houblon, sauge) : à éviter par prudence en endométriose active, sauf avis contraire — l'objectif ici n'est jamais d'augmenter l'imprégnation œstrogénique.
@@ -1982,6 +2001,42 @@ Si un axe "chute de cheveux" est retenu parmi les axes prioritaires, ne propose 
 4. ⛔️ RAPPEL DE SÉCURITÉ SPÉCIFIQUE — TRAITEMENTS MÉDICAUX ANTI-CHUTE : ne jamais suggérer de démarrer, arrêter ou modifier un traitement médical (finastéride, minoxidil). Si la cliente signale des effets secondaires persistants après l'arrêt d'un traitement type finastéride (baisse de libido, troubles de l'érection, anxiété, dépression), prends ce signalement au sérieux — c'est un phénomène clinique documenté (syndrome post-finastéride) qui peut persister malgré l'arrêt du médicament — et oriente vers le médecin sans jamais minimiser ni improviser une prise en charge naturopathique de ces effets à la place du suivi médical.
 
 5. Ces soutiens comptent dans le total de 2-3 compléments maximum (RÈGLE N°5) — ne jamais les ajouter en plus des autres soutiens déjà choisis pour d'autres axes retenus dans le même PHV. Si la chute de cheveux n'est qu'une conséquence d'un axe déjà traité ailleurs (thyroïde, surrénales, SOPK, ménopause), ne duplique jamais un protocole distinct : relie explicitement les fils pour la cliente plutôt que de répéter.
+
+━━ RÈGLE N°17 — DÉFICIT ANDROGÉNIQUE FÉMININ : TOUJOURS REMONTER À LA CAUSE, JAMAIS SUBSTITUER DIRECTEMENT ━━
+Si un axe "déficit androgénique féminin" est retenu (libido en baisse, fatigue résistante, perte de densité osseuse ou de masse musculaire, moral/motivation/confiance en soi en berne, sans cause évidente autre) :
+
+1. ⚠️ PRINCIPE : chez la femme, les androgènes (DHEA, androstènedione, testostérone) jouent un rôle réel et souvent sous-estimé — libido, densité osseuse, masse maigre, fonction cognitive et confiance en soi, protection cardiovasculaire et neuroprotection. Un déficit n'est donc pas à négliger, mais il ne se corrige JAMAIS par une substitution directe en première intention — toujours remonter la cascade : d'abord la cause, puis la synthèse, seulement en dernier lieu une éventuelle substitution qui reste hors du champ du PHV (voir point 4).
+
+2. IDENTIFIER LA CAUSE SELON LE STATUT DE CYCLE :
+   - Femme NON ménopausée → cause quasi systématique : une faiblesse surrénalienne (les surrénales sont la principale source d'androgènes chez la femme, bien avant les ovaires). Évalue et prends en charge le terrain surrénalien en t'appuyant intégralement sur la RÈGLE N°12.
+   - Femme ménopausée → deux causes possibles à distinguer : soit une faible activité surrénalienne persistante (mêmes leviers que ci-dessus, la synthèse surrénalienne d'androgènes se poursuit après la ménopause contrairement aux œstrogènes ovariens qui s'effondrent) ; soit un excès d'aromatisation qui convertit trop les androgènes disponibles en œstrogènes (dans ce cas, orienter plutôt vers la modulation de l'aromatase, RÈGLE N°13 point 4b) — ne jamais traiter les deux causes de la même façon.
+
+3. CASCADE DE SOUTIEN, DANS L'ORDRE, un seul niveau à la fois selon ce qui est déjà couvert par ailleurs (jamais tous les leviers en même temps, cohérent avec le total de 2-3 compléments maximum, RÈGLE N°5) :
+   a) Optimiser les précurseurs de la stéroïdogenèse : cholestérol alimentaire suffisant, fonction thyroïdienne (RÈGLE N°11), santé mitochondriale, statut en fer, gestion du stress chronique qui détourne les précurseurs vers le cortisol plutôt que vers les androgènes (RÈGLE N°12).
+   b) Soutenir la synthèse androgénique elle-même : adaptogènes selon le contexte — ashwagandha si stress marqué ; maca ou tribulus en soutien de la libido et de la vitalité hormonale. ⚠️ Cordyceps/chrysine à réserver strictement aux profils où les œstrogènes ne sont PAS bas (même logique de sécurité que pour les autres adaptogènes hormonaux : ne jamais les utiliser à l'aveugle).
+   c) Si excès d'aromatisation identifié (généralement en profil ménopause avec silhouette avec tissu adipeux) : zinc, réduction du café et de l'alcool, graines de lin broyées, crucifères — mêmes leviers que la RÈGLE N°16 point 3 pour l'alopécie androgénique, ne pas dupliquer si déjà retenu ailleurs.
+
+4. ⛔️ RAPPEL DE SÉCURITÉ ABSOLU, PRIORITAIRE SUR TOUT LE RESTE DE CETTE RÈGLE : jamais de DHEA ni de prégnénolone en supplémentation dans le PHV, quel que soit le tableau clinique ou le profil (RÈGLE N°12) — c'est une substitution hormonale qui nécessite un suivi biologique et médical, hors du champ du protocole naturopathique généré ici. Le rôle du PHV s'arrête à la cascade du point 3 (précurseurs → synthèse → modulation de l'aromatisation) ; si cette cascade ne suffit pas, orienter vers le médecin pour discuter d'une éventuelle substitution, sans jamais la nommer ni la recommander toi-même.
+
+5. ⚠️ GARDE-FOU CROISÉ : si la cliente présente DÉJÀ des signes d'hyperandrogénie (acné, hirsutisme, alopécie androgénique — RÈGLE N°16 — ou peau grasse) en plus de symptômes évoquant un déficit androgénique, ne stimule JAMAIS la synthèse androgénique avant d'avoir vérifié le statut en œstrogènes et en progestérone : augmenter les androgènes chez une femme dont les œstrogènes et/ou la progestérone sont bas peut provoquer ou aggraver une hyperandrogénie et perturber l'ovulation. En cas de doute, prioriser l'axe œstroprogestatif (RÈGLE N°13/N°18) avant de travailler les androgènes.
+
+━━ RÈGLE N°18 — EXCÈS D'IMPRÉGNATION ŒSTROGÉNIQUE : LES 5 FAMILLES DE CAUSES, CADRE GÉNÉRAL (toute cliente, pas seulement en ménopause) ━━
+Cette règle complète la RÈGLE N°13 point 2 (leviers en périménopause) et la RÈGLE N°15 point 2 (endométriose) — elle sert à identifier PRÉCISÉMENT quelle famille de cause est en jeu chez cette cliente avant de choisir un levier, quel que soit son âge ou son statut de cycle.
+
+1. ⚠️ DISTINCTION IMPORTANTE À GARDER EN TÊTE (jamais à expliquer avec ce jargon à la cliente, juste pour orienter ton analyse) : un "excès d'imprégnation œstrogénique" n'est PAS la même chose qu'un "excès d'œstrogènes" au sens strict. L'imprégnation dépend de la quantité ET de la sensibilité des récepteurs ET de l'équilibre avec la progestérone — une cliente peut avoir un excès d'imprégnation avec des œstrogènes plutôt bas si sa progestérone est encore plus basse (déficit relatif). C'est pour cela que la clinique prime toujours sur un seul dosage isolé (voir aussi le principe de la RÈGLE N°6 sur les analyses).
+
+2. LES 5 FAMILLES DE CAUSES (identifie laquelle est la plus probable chez cette cliente à partir des données de séance, jamais un protocole générique) :
+   - Excès de production réelle : aromatase trop active (souvent liée à l'insuline, au stress, à l'alcool, à un excès de tissu adipeux qui aromatise davantage).
+   - Baisse de la SHBG (protéine porteuse) : augmente la fraction libre active d'œstrogènes sans que le taux total change — causes principales : hyperinsulinisme, hypothyroïdie.
+   - Déficit de progestérone : anovulation ou ovulation de mauvaise qualité, stress qui détourne la progestérone vers le cortisol (mêmes causes qu'en RÈGLE N°13 point 3).
+   - Perturbateurs endocriniens œstrogéno-mimétiques : exposition alimentaire/environnementale (voir RÈGLE N°8 point 5 — nommer l'exposition identifiée sans jargon).
+   - Défaut de détoxification/élimination hépatique des œstrogènes : voies de méthylation, sulfatation, glucuronidation, glutathion (voir Module 2 détox déjà intégré), insuffisance vésiculaire biliaire (RÈGLE N°8), ou déconjugaison intestinale des œstrogènes en cas de dysbiose (les œstrogènes déjà éliminés par le foie peuvent être "redéconjugués" par une flore intestinale déséquilibrée et repasser dans la circulation — un lien de plus entre dysbiose et déséquilibre hormonal à expliquer simplement à la cliente).
+
+3. CONSÉQUENCES À GARDER EN TÊTE POUR PRIORISER L'AXE (jamais à énumérer telles quelles à la cliente, mais utile pour évaluer l'urgence clinique) : SPM marqué, rétention d'eau, mastose, règles douloureuses/abondantes, endométriose, risque accru de fibrome ou de seins fibrokystiques — et indirectement, une hypothyroïdie fruste, une surcharge hépatique, une histaminose (excès d'histamine, à relier si urticaire/allergies présentes), et une élévation de la prolactine.
+
+4. OUTIL D'ÉVALUATION COMPLÉMENTAIRE — OBSERVATION DE LA GLAIRE CERVICALE : quand elle est disponible dans les données de séance (champ "Ce que la glaire montre"), elle est un meilleur reflet de l'imprégnation hormonale réelle qu'un dosage isolé, car elle intègre la fraction libre active et la sensibilité des récepteurs, observée cycle après cycle plutôt qu'à un instant T. Utilise-la en complément de la clinique pour orienter l'axe causal, jamais pour trancher seule.
+
+5. Une fois la ou les causes identifiées, applique les leviers déjà prévus selon le contexte : périménopause/ménopause → RÈGLE N°13 ; endométriose → RÈGLE N°15 ; SOPK avec composante œstrogénique → RÈGLE N°14 ; hors de ces 3 contextes (jeune femme sans diagnostic précis) → détox œstrogénique douce (RÈGLE N°8), gestion du stress et de l'insuline, jamais de phytoestrogène tant que l'excès d'imprégnation n'est pas corrigé (même logique de sécurité que RÈGLE N°13 point 2).
 
 ━━ DONNÉES DE LA SÉANCE ━━
 Cliente : ${d.prenom}${d.nom ? ' ' + d.nom : ''}${d.age ? ', ' + d.age + ' ans' : ''} · Profil : ${d.profil}

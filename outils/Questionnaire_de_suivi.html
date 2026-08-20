@@ -1233,6 +1233,51 @@ select.fi{height:44px;cursor:pointer}
 <div class="ex-block"><div class="ex-toggle" onclick="toggleEx(this)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg> <svg class="picto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0" aria-hidden="true"><circle cx="12" cy="9" r="5"/><line x1="10" y1="17" x2="14" y2="17"/><line x1="10" y1="20" x2="14" y2="20"/></svg> Voir des exemples de réponses</div><div class="ex-body">Ex. : Depuis l'arrêt de la pilule il y a 6 semaines : retour acné sur le menton et les joues, SPM réapparu brutalement, libido revenue. Depuis le passage au THS patch : moins de bouffées de chaleur mais saignements irréguliers. Depuis le DIU Mirena : spotting pendant 3 mois, cycles disparus, ballonnements augmentés (progestérone synthétique).</div></div>
         </div>
       </div>
+      <div style="margin-top:14px;padding:12px 14px;background:#FFF8F0;border:1px solid #E8D4B8;border-radius:10px">
+        <label class="fl" style="margin-bottom:8px">Statut de sécurité actuel — importé du dossier, à corriger uniquement si ça a changé</label>
+        <div class="g2">
+          <div><label class="fl" style="font-weight:400;text-transform:none;letter-spacing:0;font-size:12px">Grossesse, allaitement, désir de grossesse</label>
+            <select class="fi" id="secu-grossesse">
+              <option value="">— À préciser —</option>
+              <option>Non concernée</option>
+              <option>Enceinte — 1er trimestre</option>
+              <option>Enceinte — 2e trimestre</option>
+              <option>Enceinte — 3e trimestre</option>
+              <option>Allaitement en cours</option>
+              <option>Désir de grossesse en cours</option>
+            </select>
+          </div>
+          <div><label class="fl" style="font-weight:400;text-transform:none;letter-spacing:0;font-size:12px">Antécédent de cancer hormono-dépendant</label>
+            <select class="fi" id="secu-cancer">
+              <option value="">— À préciser —</option>
+              <option>Non</option>
+              <option>Oui — antécédent</option>
+              <option>Oui — en cours de traitement / suivi</option>
+            </select>
+          </div>
+        </div>
+        <div style="margin-top:10px"><label class="fl" style="font-weight:400;text-transform:none;letter-spacing:0;font-size:12px">Traitements en cours nécessitant une vigilance particulière</label>
+          <div class="chip-wrap" id="cons-secu-traitements-group">
+            <button class="chip" onclick="toggleChip(this)"><span class="ck">✓</span> Anticoagulants</button>
+            <button class="chip" onclick="toggleChip(this)"><span class="ck">✓</span> ISRS / antidépresseurs</button>
+            <button class="chip" onclick="toggleChip(this)"><span class="ck">✓</span> Pilule ou THM</button>
+            <button class="chip" onclick="toggleChip(this)"><span class="ck">✓</span> Lévothyrox / thyroïdien</button>
+            <button class="chip" onclick="toggleChip(this)"><span class="ck">✓</span> Aucun de ces traitements</button>
+          </div>
+        </div>
+        <div style="margin-top:10px"><label class="fl" style="font-weight:400;text-transform:none;letter-spacing:0;font-size:12px">Allergies & intolérances alimentaires connues</label>
+          <div class="chip-wrap" id="cons-allergies-group">
+            <button class="chip" onclick="toggleChip(this)"><span class="ck">✓</span> Gluten</button>
+            <button class="chip" onclick="toggleChip(this)"><span class="ck">✓</span> Lactose / caséine</button>
+            <button class="chip" onclick="toggleChip(this)"><span class="ck">✓</span> Fruits à coque</button>
+            <button class="chip" onclick="toggleChip(this)"><span class="ck">✓</span> Œuf</button>
+            <button class="chip" onclick="toggleChip(this)"><span class="ck">✓</span> Soja</button>
+            <button class="chip" onclick="toggleChip(this)"><span class="ck">✓</span> Histamine</button>
+            <button class="chip" onclick="toggleChip(this)"><span class="ck">✓</span> Aucune connue</button>
+          </div>
+        </div>
+        <p style="font-size:11px;color:#8A8378;margin-top:8px;line-height:1.5">Ces champs sont importés automatiquement depuis le dossier précédent (consultation ou dernier suivi) et retransmis au générateur — vous n'avez rien à faire si rien n'a changé.</p>
+      </div>
     </div>
   </div>
 
@@ -2146,18 +2191,48 @@ async function chargerDossierSupabase() {
     if (token) authToken = token;
   }
   try {
-    // Dossier le plus récent rattaché à cette cliente (consultation initiale ou suivi précédent),
-    // identifié par client_id — la colonne réelle, plus fiable qu'un matching sur le format de l'id.
-    const r = await fetch(SUPA_URL+'/rest/v1/questionnaires?client_id=eq.'+encodeURIComponent(key)+'&select=*&order=created_at.desc&limit=1', {
-      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+authToken}
-    });
-    const rows = await r.json();
-    if (!rows||!rows.length) { toast('Aucun dossier trouvé pour cette clé'); return; }
-    afficherBandeauDossier(rows[0]);
+    // ⚠️ Ne jamais se fier uniquement au dernier maillon de la chaîne (dernier suivi en date) :
+    // si un suivi passé a été fait sans charger le dossier précédent, la chaîne se casse
+    // silencieusement et tout ce qui précède devient invisible. On récupère donc TOUJOURS
+    // la consultation initiale (socle garanti : sécurité, diagnostics, allergies) EN PLUS
+    // du dossier le plus récent, puis on fusionne — le plus récent complète/actualise,
+    // la consultation initiale comble les trous s'il y en a.
+    const [rInit, rLast, rAll] = await Promise.all([
+      fetch(SUPA_URL+'/rest/v1/questionnaires?client_id=eq.'+encodeURIComponent(key)+'&type=eq.consultation&select=*&order=created_at.asc&limit=1', {
+        headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+authToken}
+      }),
+      fetch(SUPA_URL+'/rest/v1/questionnaires?client_id=eq.'+encodeURIComponent(key)+'&select=*&order=created_at.desc&limit=1', {
+        headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+authToken}
+      }),
+      fetch(SUPA_URL+'/rest/v1/questionnaires?client_id=eq.'+encodeURIComponent(key)+'&select=id,type,created_at&order=created_at.asc', {
+        headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+authToken}
+      })
+    ]);
+    const rowsInit = await rInit.json();
+    const rowsLast = await rLast.json();
+    const historique = await rAll.json().catch(()=>[]);
+    if ((!rowsInit||!rowsInit.length) && (!rowsLast||!rowsLast.length)) { toast('Aucun dossier trouvé pour cette clé'); return; }
+    const initRow = (rowsInit && rowsInit[0]) || null;
+    const lastRow = (rowsLast && rowsLast[0]) || null;
+    let mergedRow;
+    if (initRow && lastRow && initRow.id !== lastRow.id) {
+      // Fusion : socle = consultation initiale, surchargé par les champs présents dans le dossier le plus récent
+      mergedRow = { ...lastRow, snapshot: { ...(initRow.snapshot||{}), ...(lastRow.snapshot||{}) } };
+      // Champs cumulatifs qu'il ne faut jamais laisser un maillon récent écraser s'ils sont vides dedans :
+      // si le dossier récent n'a pas redéfini un champ de sécurité (ex: laissé vide par erreur),
+      // on retombe sur la valeur connue depuis la consultation initiale plutôt que de perdre l'info.
+      ['secu_grossesse','secu_cancer','traitements_vigilance','allergies_alim','diagnostics_actifs','antecedents_resolus'].forEach(k => {
+        if (!mergedRow.snapshot[k] && initRow.snapshot && initRow.snapshot[k]) mergedRow.snapshot[k] = initRow.snapshot[k];
+      });
+    } else {
+      mergedRow = lastRow || initRow;
+    }
+    if (!mergedRow) { toast('Aucun dossier trouvé pour cette clé'); return; }
+    afficherBandeauDossier(mergedRow, historique);
   } catch(e) { toast('Erreur Supabase — vérifiez la connexion'); }
 }
 
-function afficherBandeauDossier(row) {
+function afficherBandeauDossier(row, historique) {
   dossierCharge = row;
   const snap = row.snapshot||{};
   document.getElementById('pb-loader').style.display='none';
@@ -2167,9 +2242,11 @@ function afficherBandeauDossier(row) {
   document.getElementById('pb-obj').textContent = snap.objectif || snap['objectif-expressed'] || 'Objectif non renseigné';
   if(document.getElementById('prenom') && !document.getElementById('prenom').value) document.getElementById('prenom').value = prenom;
   const grid = document.getElementById('pb-grid');
+  const nbSuivis = Array.isArray(historique) ? historique.filter(h=>h.type==='suivi').length : null;
   const items = [
     {lbl:'Programme', val: snap.programme||snap['programme-actuel']||'—'},
     {lbl:'Consultation initiale', val: snap['date-consultation']||snap['date-initiale']||row.created_at?.split('T')[0]||'—'},
+    {lbl:'Historique', val: nbSuivis!==null ? (nbSuivis+' suivi'+(nbSuivis>1?'s':'')+' déjà enregistré'+(nbSuivis>1?'s':'')) : '—'},
     {lbl:'Motif principal', val: (snap.motifs||snap['chief-complaint']||'—').substring(0,60)},
     {lbl:'Spécialités', val: (snap.specialites||snap['specialite-chips']||'—').substring(0,60)},
     {lbl:'Compléments', val: snap.supplements ? ''+snap.supplements.split('\n').filter(Boolean).length+' prescrits' : '—'},
@@ -2183,13 +2260,31 @@ function afficherBandeauDossier(row) {
   // Pré-cocher les chips de spécialité à partir du dossier initial, pour faire apparaître automatiquement les blocs de suivi spécialisé
   const specText = (snap.specialites||snap['specialite-chips']||'');
   if (specText) {
-    document.querySelectorAll('.chip-wrap .chip').forEach(c => {
+    document.querySelectorAll('#sec-0 .chip-wrap .chip').forEach(c => {
       const txt = c.textContent.replace('✓','').trim();
       if (specText.includes(txt)) c.classList.add('on');
     });
     updateSpecialtyBlocks();
   }
-  toast('Dossier chargé : '+prenom);
+  // Pré-remplir les 4 champs de sécurité (grossesse, cancer, traitements, allergies) — importés du dossier
+  // fusionné (consultation initiale + dernier suivi), jamais écrasés s'ils ont déjà été saisis dans ce formulaire.
+  const sg = document.getElementById('secu-grossesse');
+  if (sg && !sg.value && snap.secu_grossesse) sg.value = snap.secu_grossesse;
+  const sc = document.getElementById('secu-cancer');
+  if (sc && !sc.value && snap.secu_cancer) sc.value = snap.secu_cancer;
+  if (snap.traitements_vigilance) {
+    document.querySelectorAll('#cons-secu-traitements-group .chip').forEach(c => {
+      const txt = c.textContent.replace('✓','').trim();
+      if (snap.traitements_vigilance.includes(txt)) c.classList.add('on');
+    });
+  }
+  if (snap.allergies_alim) {
+    document.querySelectorAll('#cons-allergies-group .chip').forEach(c => {
+      const txt = c.textContent.replace('✓','').trim();
+      if (snap.allergies_alim.includes(txt)) c.classList.add('on');
+    });
+  }
+  toast('Dossier chargé : '+prenom + (nbSuivis!==null ? ' · historique sur '+(nbSuivis+1)+' consultation(s)' : ''));
   formTouched=true;
   chargerProtocoleVivant(document.getElementById('client-key')?.value?.trim());
   // Reconstituer la liste diagnostics/antécédents à partir du dossier précédent (consultation ou suivi antérieur) —
@@ -2492,6 +2587,12 @@ function collectData() {
   // Diagnostics & antécédents (statut actif/résolu) — pour le générateur PHV
   d.diagnosticsActifs = diagnosticsList.filter(x => x.statut === 'actif').map(x => x.nom).join(', ');
   d.antecedentsResolus = diagnosticsList.filter(x => x.statut === 'resolu').map(x => x.nom).join(', ');
+  // Champs de sécurité (grossesse, cancer, traitements, allergies) — importés du dossier précédent,
+  // corrigés si besoin, et retransmis tels quels au générateur + au prochain suivi (chaîne de continuité).
+  d.secuGrossesse = document.getElementById('secu-grossesse')?.value || '';
+  d.secuCancer = document.getElementById('secu-cancer')?.value || '';
+  d.traitementsVigilance = [...document.querySelectorAll('#cons-secu-traitements-group .chip.on')].map(c => c.textContent.replace('✓','').trim()).join(', ');
+  d.allergiesAlim = [...document.querySelectorAll('#cons-allergies-group .chip.on')].map(c => c.textContent.replace('✓','').trim()).join(', ');
   return d;
 }
 
@@ -2741,6 +2842,12 @@ function finalise() {
     // Diagnostics & antécédents (statut actif/résolu) — noms alignés avec le questionnaire de consultation
     diagnostics_actifs: d.diagnosticsActifs,
     antecedents_resolus: d.antecedentsResolus,
+
+    // Champs de sécurité — noms alignés avec le questionnaire de consultation et generateur.html (Règle N°6)
+    secu_grossesse: d.secuGrossesse,
+    secu_cancer: d.secuCancer,
+    traitements_vigilance: d.traitementsVigilance,
+    allergies_alim: d.allergiesAlim,
 
     _autoGenerate: true, // déclenche la génération automatique dès l'ouverture de generateur.html
   };
