@@ -442,6 +442,16 @@ input.fi[readonly]{background:var(--taupe);cursor:default;opacity:.75}
     </select>
     <p class="field-hint">Ce champ déclenche automatiquement le protocole ciblé Complexe Moteur Migrant (Teoliance Motilys + Permealine) quand un typage méthane ou mixte est confirmé.</p>
   </div>
+  <div class="subfield" id="candidose-profil-wrap">
+    <label class="fl">Profil de protocole candidose (si candidose suspectée ou confirmée)</label>
+    <select class="fi" id="candidose-profil">
+      <option value="">Non concernée</option>
+      <option>Standard (adulte, pas de fragilité hépatique)</option>
+      <option>Fragilité hépatique / enfant &gt;12 ans</option>
+      <option>Grossesse / allaitement / jeune enfant</option>
+    </select>
+    <p class="field-hint">Détermine automatiquement quel protocole antifongique proposer (RÈGLE N°21) — huile essentielle d'origan en profil standard, Ergypar en profil fragilité hépatique, EPP seul en profil grossesse/allaitement/enfant.</p>
+  </div>
   <div style="margin-top:16px">
     <label class="fl">Antécédents médicaux résolus (non actifs actuellement)</label>
     <textarea class="fi" id="antecedents-resolus" style="min-height:60px" placeholder="Ex : Papillomavirus (HPV) avec frottis anormal, traité et résolu en 2022 — plus de suivi nécessaire. Mycoses vaginales récidivantes il y a 3 ans, réglées depuis."></textarea>
@@ -1157,6 +1167,7 @@ function buildClientData() {
     // ── Diagnostics confirmés ──
     diagnostics_confirmes: diagnosticsConfirmes,
     sibo_type: gv('sibo-type'),
+    candidose_profil: gv('candidose-profil'),
     antecedents_resolus: gv('antecedents-resolus'),
     // ── Approches déjà testées ──
     approches_testees: gv('approches-testees'),
@@ -1339,7 +1350,7 @@ ${d.bilans_biologiques_resultats || '— Aucun résultat enregistré pour le mom
 
 ━━ DONNÉES DE LA SÉANCE ━━
 Cliente : ${d.prenom}${d.age ? ', ' + d.age + ' ans' : ''} · Profil : ${d.profil}
-Diagnostics médicaux confirmés : ${d.diagnostics_confirmes || 'Aucun renseigné'}${d.sibo_type ? ' · Type de SIBO : ' + d.sibo_type : ''}
+Diagnostics médicaux confirmés : ${d.diagnostics_confirmes || 'Aucun renseigné'}${d.sibo_type ? ' · Type de SIBO : ' + d.sibo_type : ''}${d.candidose_profil ? ' · Profil protocole candidose : ' + d.candidose_profil : ''}
 Antécédents résolus (non actifs) : ${d.antecedents_resolus || '—'}
 Durée des déséquilibres : ${d.duree_symptomes}
 Ressentis & motifs : ${d.motifs}
@@ -1735,7 +1746,14 @@ Exemples concrets à adapter selon les axes prioritaires (choisis-en 2 à 3 maxi
 - Magnésium bisglycinate : Nutergia Ergymag ou Holistica Magnésium Bisglycinate, 300-400mg/j le soir — si stress, fatigue, crampes, insomnie
 - Oméga-3 EPA/DHA : Omégabiane EPA/DHA (Pileje), 2 gél/j au repas — si inflammation, humeur, sécheresse, hormones
 - Probiotiques ciblés Pileje : Lactibiane Référence 5M (côlon irritable), Lactibiane Iki (fermentation/SIBO/ballonnements), Lactibiane Tolérance (hyperperméabilité/SIBO/porosité), Gynophilus (flore vaginale), Feminabiane SPM (SPM) — selon axe digestif/hormonal
-- Antifongique naturel ciblé : Origan compact (gélules d'huile essentielle d'origan), 2 à 3 gél/j au milieu du repas, cure de 10 à 15 jours max — si candidose suspectée (envies de sucre marquées, mycoses ou infections urinaires à répétition ACTUELLES, fatigue qui suit les pics de sucre) — CI : grossesse, allaitement, jamais plus de 3 semaines en continu sans pause
+- Antifongique naturel ciblé : Origan compact/Oléocaps origan (gélules d'huile essentielle d'origan), 2 gél 2x/j, 5 jours/7 pendant 3 semaines puis stop — profil standard candidose sans fragilité hépatique (RÈGLE N°21) — CI absolue : fragilité/insuffisance hépatique (préférer Ergypar dans ce cas), grossesse, allaitement, jamais plus de 3 semaines en continu
+- Ergypar (Nutergia) 10 à 20ml/j dilués dans un demi-verre d'eau, 5 jours/7 pendant 2 mois — antifongique de relais si fragilité hépatique ou enfant >12 ans (RÈGLE N°21 profil b), remplace l'huile essentielle d'origan
+- EPP (Extrait de Pépins de Pamplemousse) 20 gouttes 3x/j — relais antifongique doux en alternance 15j/15j pendant 3 à 6 mois après la phase d'attaque (RÈGLE N°21), ou seul en profil grossesse/allaitement/jeune enfant à dose adaptée au poids (1 goutte pour 2kg de poids/j chez l'enfant) — pas de CI notable, compatible grossesse à dose adaptée
+- Chlorophylle (liquide ou gélules) 1 gél matin + 1 soir, en association à l'EPP pendant 3 à 6 mois (RÈGLE N°21) — pas de CI notable
+- Probiotiques spécifiques anti-candida : souches Lactobacillus helveticus LA-401 et Lactobacillus NCFM, associées à Saccharomyces boulardii — à utiliser en phase d'élimination du pathogène, avant le réensemencement généraliste (RÈGLE N°21/N°22) — Saccharomyces boulardii n'altère pas l'équilibre global du microbiote et accélère le rééquilibrage après une cure d'antibiotiques
+- Réensemencement post-antifongique : Vivomixx (Arkopharma) 1 sachet à jeun pendant 20 jours, ou Lactichoc (Pileje) 2 gél avant le petit-déjeuner pendant 1 mois — au choix selon disponibilité (RÈGLE N°21)
+- Cicatrisation de la muqueuse intestinale : Ultradyn Impact (Bionutrics) ou Perméa+ avec microbiote (Thérascience), sur 3 mois (J1 à J90) — phase finale du protocole candidose/dysbiose (RÈGLE N°21/N°22), à ne démarrer qu'une fois la phase d'élimination terminée
+- Chez le bébé/jeune enfant/femme enceinte ou allaitante avec candidose confirmée : probiotique Lactibiane CND (adulte) ou Lactibiane enfant (1 sachet dans l'eau le matin, 3 mois) — homéopathie en complément possible (Monilia Albicans 15CH, Dulcamara 9CH, Natrum Sulfuricum 15CH, 1 dose de chaque par semaine, minimum 3 mois) — toujours en lien avec le médecin/la sage-femme suivant la grossesse (RÈGLE N°21 profil c)
 - EPS (Extrait Phyto Standard) : Valériane EPS ou Passiflore EPS (Phytostandard Pileje), 1 dose-mesure (5ml) diluée dans un peu d'eau, 1 à 2x/j (soir, ou matin+soir si anxiété diurne) — si sommeil, anxiété
 - Chardon-marie EPS (Phytostandard Pileje), 1 dose-mesure (5ml) diluée dans un peu d'eau, 1 à 2x/j avant les repas — si foie encrassé, difficulté d'élimination de la bile, terrain hépatotoxique (paracétamol, alcool) — CI : en cours de chimiothérapie
 - Fumeterre EPS (Phytostandard Pileje), 1 dose-mesure (5ml) diluée dans un peu d'eau, 1 à 2x/j avant les repas — si suspicion de calcul vésiculaire, spasme du sphincter d'Oddi, digestion des graisses laborieuse — CI : grossesse, calculs vésiculaires connus, cyclosporine
@@ -1958,6 +1976,7 @@ Si un axe SOPK est retenu parmi les axes prioritaires (profil dominant renseign�
 4. HYPERPROLACTINÉMIE (présente dans ~35% des SOPK, seuil clinique retenu > 19 ng/mL) — signes évocateurs : tension mammaire marquée, cycles anovulatoires :
    - Gattilier (Vitex agnus-castus) : effet anti-prolactine, agoniste dopaminergique doux, à démarrer en milieu de phase folliculaire. Peut être associé à la mucuna et/ou à l'huile de bourrache, qui partagent cet effet anti-prolactine. CI absolue : grossesse, allaitement, moins de 18 ans. Interaction médicamenteuse : jamais avec un traitement dopaminergique. Effet secondaire possible à mentionner : peut diminuer la libido chez certaines clientes. Le nom biologique "prolactine" ne doit jamais être annoncé sans dosage confirmé — reste sur "un déséquilibre hormonal impliqué dans l'ovulation" en langage accessible.
    - ⚠️ Si le tableau évoque une hyperprolactinémie franche et persistante, orienter vers un dosage biologique avec le médecin (un adénome hypophysaire, rare, doit être écarté médicalement — hors du champ naturopathique).
+   - Si le stress ressort comme composante associée à l'hyperprolactinémie (le stress chronique stimule directement la prolactine), ajouter en complément une plante GABAergique apaisante (valériane ou passiflore EPS — voir posologies RÈGLE N°5) plutôt que d'empiler un 4e soutien hormonal — cela reste dans le total de 2-3 compléments maximum (RÈGLE N°5) et agit à la fois sur le stress et indirectement sur la prolactine.
 
 5. DÉFICIT DE PROGESTÉRONE (anovulation ou ovulation de mauvaise qualité) — même logique de timing que la RÈGLE N°13 :
    - Gattilier ou alchémille, jamais avant l'ovulation, à démarrer à partir de Pic+2/3 pendant environ 10 jours. Si le jour d'ovulation n'est pas connu, proposer un repère pratique (glaire cervicale, test d'ovulation, ou pragmatiquement 2e partie de cycle).
@@ -2102,9 +2121,37 @@ Cette règle complète la RÈGLE N°13 point 2 (leviers en périménopause) et l
 
 4. RAPPEL DE PRUDENCE SUR L'USAGE DE CES VALEURS : ne jamais les citer à la cliente comme un verdict ("vous êtes en déficit") — les présenter comme un repère parmi d'autres qui vient éclairer et confirmer ce que la clinique montre déjà, jamais l'inverse. Ne jamais suggérer d'examen complémentaire précis par son nom médical à la cliente ; si un axe semble pertinent à explorer biologiquement, orienter vers "en parler à votre médecin" en restant sur la description fonctionnelle, jamais le nom de l'analyse.
 
+━━ RÈGLE N°21 — CANDIDOSE INTESTINALE : 3 PROFILS DE PROTOCOLE, JAMAIS LE MÊME POUR TOUTES ━━
+1. ⚠️ PRINCIPE : la candidose (prolifération du genre Candida, le plus souvent Candida albicans) ne se développe jamais seule — elle s'installe TOUJOURS sur un microbiote déjà dysbiotique, entretenue par une alimentation riche en glucides rapides (sucre, miel, viennoiseries, mais aussi céréales raffinées type pain blanc/riz blanc/pâtes blanches). Explique ce mécanisme en cascade à la cliente plutôt que de présenter la candidose comme un problème isolé : c'est ce qui permet de comprendre pourquoi "juste un antifongique" ne suffit jamais durablement sans corriger le terrain derrière.
+
+2. CONVERGENCE DE SIGNES À RECHERCHER (aucun n'est spécifique isolément — c'est leur association qui oriente, jamais un seul signe pris seul) : fatigue, état dépressif, anxiété, faiblesse immunitaire, allergies/eczéma, troubles digestifs et ballonnements majorés par les aliments à index glycémique élevé, mycoses à répétition (vaginale, pied d'athlète, ongles, muguet), prurit anal, envie de sucre irrépressible, langue blanche ou fissurée, perlèche aux commissures des lèvres. Une confirmation biologique (sérologie anti-Candida albicans, coproculture, ou profil des métabolites organiques urinaires — tartarate, citramalate, D-arabinitol) reste l'idéal quand elle est disponible dans les données de séance, mais n'est jamais un prérequis obligatoire pour agir sur le terrain alimentaire.
+
+3. PEC NUTRITIONNELLE (base commune aux 3 profils, à intégrer dans le PILIER 1) : stop sucres et aliments à charge glycémique élevée (bonbons, gâteaux, farines et céréales raffinées), stop aliments ultra-transformés, féculents en petite quantité en privilégiant légumineuses/céréales complètes/pomme de terre refroidie (amidon résistant), limiter le lactose et le gluten, beaucoup de légumes, aliments naturellement antifongiques à intégrer dans l'assiette (ail, épices, aromates, cannelle, gingembre, thym, mélisse, romarin, huile de coco), mastication soignée. ⚠️ Fausse idée à corriger auprès de la cliente si elle l'évoque : les levures et moisissures alimentaires (pain, vin, fromage) n'ont pas besoin d'être évitées par principe, ce n'est pas ce qui nourrit la candidose — c'est le sucre et les glucides raffinés qui sont en cause, pas la présence de levures dans l'alimentation.
+
+4. LES 3 PROFILS DE PROTOCOLE MICRONUTRITIONNEL (choisir UN SEUL profil selon le terrain de la cliente — jamais mélanger, jamais dépasser le total de 2-3 compléments actifs en même temps de la RÈGLE N°5 ; comme pour le SIBO méthane (RÈGLE N°5bis), ce protocole se structure en plusieurs phases dans le temps plutôt qu'en un empilement simultané) :
+   a) PROFIL STANDARD (adulte ou enfant >14 ans, pas de fragilité hépatique) : phase d'attaque antifongique 3 semaines (Origan compact/Oléocaps origan, 5 jours/7, jamais en continu 7j/7 — CI fragilité hépatique) puis phase de relais en alternance 15 jours/15 jours pendant 3 à 6 mois (EPP + chlorophylle) puis réensemencement (probiotique type Vivomixx ou Lactichoc, 20 jours à 1 mois) puis cicatrisation de la muqueuse intestinale sur 3 mois (voir RÈGLE N°22 point 4 sur la barrière intestinale).
+   b) PROFIL FRAGILITÉ HÉPATIQUE ou enfant >12 ans : ⛔️ jamais d'huile essentielle d'origan (charge hépatique) — remplacer la phase d'attaque par un extrait de pépins de pamplemousse en cure prolongée (Ergypar ou équivalent), 5 jours/7 pendant 2 mois, puis même relais EPP+chlorophylle, réensemencement et cicatrisation que le profil standard.
+   c) PROFIL GROSSESSE / ALLAITEMENT / JEUNE ENFANT : ⛔️ jamais d'huile essentielle d'origan ni de phytothérapie forte dans ces situations — se limiter à l'EPP seul (dose adaptée au poids pour un enfant, jamais la dose adulte) et à un probiotique doux adapté à l'âge, pendant 3 mois. Toute recommandation dans ce contexte reste un COMPLÉMENT à l'avis du médecin/de la sage-femme suivant la grossesse, jamais une alternative — le rappeler explicitement à la cliente si ce profil est concerné.
+
+5. Ce protocole antifongique (quel que soit le profil choisi) compte pour 1 à 2 compléments dans le total de 2-3 maximum de la RÈGLE N°5 selon la phase — jamais ajouté en plus d'un autre protocole spécifique déjà en cours (RÈGLE N°5bis SIBO méthane, RÈGLE N°22 dysbiose) : si les deux terrains coexistent, prioriser celui qui pèse le plus cliniquement et l'annoncer clairement à la cliente plutôt que de tout mélanger en même temps.
+
+━━ RÈGLE N°22 — DYSBIOSE DE FERMENTATION : DISTINGUER DE LA PUTRÉFACTION, PROTOCOLE DÉDIÉ, PRÉBIOTIQUES CONTRE-INDIQUÉS ━━
+1. DIAGNOSTIC DIFFÉRENTIEL (à établir avant tout protocole, jamais un protocole "dysbiose" générique) : la dysbiose de fermentation se reconnaît à des ballonnements marqués et majorés par les fibres/crudités, des gaz non odorants, une alternance diarrhée-constipation, et une sensibilité à la palpation-percussion du côlon ascendant/cæcum — à distinguer de la dysbiose de putréfaction (gaz odorants, plutôt liée à un excès de protéines/graisses mal digérées) qui suit une logique et des leviers différents. Les causes sont plurifactorielles : consommation excessive de glucides simples ET complexes, stress, médicaments (antibiotiques, AINS), défaut de mastication.
+
+2. ⛔️ RÈGLE DE SÉCURITÉ ABSOLUE, NOUVELLE ET IMPORTANTE : jamais de prébiotiques en complément (inuline, FOS, GOS...) tant qu'une dysbiose de fermentation ou un SIBO est suspecté ou confirmé — les prébiotiques nourrissent la fermentation bactérienne et aggravent les ballonnements dans ce contexte précis, alors qu'ils sont normalement bénéfiques (transit, microbiote, immunité) chez une personne sans excès de fermentation. Ne jamais recommander un prébiotique en complément tant que ce terrain n'est pas rééquilibré — les fibres prébiotiques naturellement présentes dans l'alimentation restent à réintroduire progressivement seulement une fois la phase de rééquilibrage terminée, jamais en phase aiguë.
+
+3. PEC EN 3 VOLETS, DANS L'ORDRE (jamais tout attaquer à la fois) :
+   a) PEC nutritionnelle temporaire (1 mois, pas plus) : réduire selon tolérance digestive les aliments fermentescibles (crudités, légumineuses, choux, ail, oignon, topinambour, poireau), privilégier le semi-complet au complet, limiter les sucres raffinés et les aliments à charge glycémique élevée, éviter de manger tard le soir (le péristaltisme intestinal ralentit la nuit) — puis réintroduire progressivement une fois la phase aiguë passée, jamais une restriction permanente.
+   b) Optimisation des fonctions digestives : mastication soignée en première intention (souvent suffisante à elle seule), gestion du stress qui ralentit et perturbe la digestion (cohérence cardiaque, magnésium, corriger un éventuel déficit de sérotonine, manger dans le calme plutôt que sur le pouce ou au travail), éviter les médicaments non indispensables qui aggravent la dysbiose (IPP, AINS, antibiotiques hors nécessité médicale).
+   c) Prise en charge micronutritionnelle, dans l'ordre : éliminer les pathogènes en excès (phytothérapie thym/noyer/mauve, ou aromathérapie huile essentielle origan compact/cannelle/girofle/sarriette des montagnes — mêmes précautions et durées que RÈGLE N°21 point 4) PUIS réensemencer avec des probiotiques ciblés (voir RÈGLE N°5) — jamais l'inverse, réensemencer avant d'avoir réduit l'excès de bactéries fermentaires est inefficace.
+
+4. LIEN AVEC LA BARRIÈRE INTESTINALE : une dysbiose de fermentation non traitée entretient une hyperperméabilité intestinale (candidose RÈGLE N°21, SIBO RÈGLE N°5bis, ou dysbiose de putréfaction peuvent coexister et s'auto-entretenir) — si plusieurs de ces terrains sont présents chez la même cliente, ne jamais les traiter comme des axes séparés dans le PHV : nommer le terrain digestif global comme UN axe prioritaire et expliquer la cascade complète en une seule fois, plutôt que de répéter un protocole pour chaque étiquette.
+
+5. Ce protocole compte dans le total de 2-3 compléments maximum de la RÈGLE N°5 — jamais ajouté en plus d'un autre protocole digestif déjà en cours (RÈGLE N°5bis, RÈGLE N°21).
+
 ━━ DONNÉES DE LA SÉANCE ━━
 Cliente : ${d.prenom}${d.nom ? ' ' + d.nom : ''}${d.age ? ', ' + d.age + ' ans' : ''} · Profil : ${d.profil}
-Diagnostics médicaux confirmés : ${d.diagnostics_confirmes || 'Aucun renseigné — travailler sur les symptômes et axes prioritaires uniquement'}${d.sibo_type ? ' · Type de SIBO : ' + d.sibo_type : ''}
+Diagnostics médicaux confirmés : ${d.diagnostics_confirmes || 'Aucun renseigné — travailler sur les symptômes et axes prioritaires uniquement'}${d.sibo_type ? ' · Type de SIBO : ' + d.sibo_type : ''}${d.candidose_profil ? ' · Profil protocole candidose : ' + d.candidose_profil : ''}
 Antécédents médicaux résolus, NON ACTIFS actuellement (${d.antecedents_resolus ? 'à mentionner seulement si utile au contexte, JAMAIS comme axe de travail actif ni motif de recommandation de complément/soutien ciblé' : 'aucun renseigné'}) : ${d.antecedents_resolus || '—'}
 Approches déjà testées avant cette consultation (ne pas répéter à l'identique sans le dire) : ${d.approches_testees || 'Non renseigné'}
 Objectifs exprimés (par ordre de priorité) :
