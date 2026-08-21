@@ -4365,6 +4365,31 @@ function renderFiche(c){
       ${btn('doc-action',`supprimerDocMedical('${cid}','${d.id}')`,ic('trash'))}
     </div>`).join(''):"<div style='padding:16px;font-size:13px;color:var(--muted);font-style:italic'>Aucun document médical ajouté pour le moment.</div>";
 
+  // ── Valeurs santé de référence (Hormono Pratik — RÈGLE N°20 de generateur.html, 20/08/2026) ──
+  // Distinct des "normes labo" (larges) : ce sont des repères de fonctionnement optimal, jamais un diagnostic.
+  const VALEURS_SANTE_REF=[
+    {noms:['fsh','fsh j3'],min:null,max:7,unite:'mUI/ml',note:'<7 pour fertilité optimale (mais pas effondrée)'},
+    {noms:['œstradiol j3','oestradiol j3','estradiol j3'],min:45,max:65,unite:'pg/ml',note:'phase folliculaire'},
+    {noms:['œstradiol pic+7','oestradiol pic+7','estradiol pic+7'],min:150,max:250,unite:'pg/ml',note:'à interpréter avec SHBG et progestérone'},
+    {noms:['progestérone pic+7','progesterone pic+7'],min:15,max:30,unite:'ng/ml',note:'objectif fertilité : >20 idéal'},
+    {noms:['2ohe/16ohe','2-oh/16-oh','rapport 2/16 oh'],min:1.5,max:null,unite:'',note:'idéalement >2 (détox œstrogénique)'},
+    {noms:['testostérone totale','testosterone totale','testo totale'],min:0.30,max:0.50,unite:'ng/ml',note:'femme'},
+    {noms:['shbg'],min:65,max:75,unite:'nmol/L',note:'femme — à interpréter avec testo et E2'},
+    {noms:['prolactine'],min:null,max:19,unite:'ng/ml',note:'femme'},
+    {noms:['tsh'],min:null,max:2.5,unite:'mUI/L',note:'à interpréter avec T4/T3'},
+    {noms:['t4','t4 libre'],min:13,max:null,unite:'pmol/L'},
+    {noms:['t3','t3 libre'],min:4.5,max:null,unite:'pmol/L',note:'idéalement >5'},
+    {noms:['t3 urinaire 24h','t3 urines 24h'],min:1300,max:null,unite:'pmol/24h'},
+    {noms:['car','cortisol awakening response'],min:50,max:100,unite:'%'},
+    {noms:['cortisol libre urinaire','cortisol libre urine 24h'],min:35,max:null,unite:'µg/24h'},
+    {noms:['s-prégnénolone','s prégnénolone','prégnénolone sérique'],min:90,max:120,unite:'ng/ml'},
+    {noms:['s-dhea','s dhea','dhea sérique'],min:200,max:280,unite:'µg/dl',note:'femme'},
+  ];
+  function matchValeurSante(nomMarqueur){
+    const n=(nomMarqueur||'').trim().toLowerCase();
+    if(!n) return null;
+    return VALEURS_SANTE_REF.find(r=>r.noms.some(alias=>n.includes(alias))) || null;
+  }
   // Bilans biologiques structurés — regroupés par marqueur, avec tendance avant/après
   const bm=bilansMarqueurs[cid]||[];
   const totalInvestiBilans=dm.filter(d=>d.type==='bilan_sanguin' && d.prix!=null).reduce((s,d)=>s+Number(d.prix),0);
@@ -4389,10 +4414,18 @@ function renderFiche(c){
       else trend=`<div style="font-size:11px;color:var(--muted)">→ stable vs ${fmtShort(precedent.date_bilan)}</div>`;
     }
     const valAffiche=dernier.valeur!=null?dernier.valeur:(dernier.valeur_texte||'—');
+    const vs=matchValeurSante(g.nom);
+    let vsHtml='';
+    if(vs && dernier.valeur!=null){
+      const dansSante=(vs.min==null||dernier.valeur>=vs.min)&&(vs.max==null||dernier.valeur<=vs.max);
+      const plage=vs.min!=null&&vs.max!=null?`${vs.min}-${vs.max}`:vs.min!=null?`>${vs.min}`:`<${vs.max}`;
+      vsHtml=`<div style="font-size:10.5px;color:${dansSante?'var(--green)':'var(--ocre)'};margin-top:2px">${dansSante?'✓':'○'} Valeur santé : ${plage} ${vs.unite}${vs.note?' — '+escH(vs.note):''}</div>`;
+    }
     return `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 12px;background:var(--surface);border-radius:9px">
       <div>
         <div style="font-size:13px;font-weight:600;color:var(--ink)">${escH(g.nom)}</div>
         <div style="font-size:11px;color:var(--muted)">${fmtDate(dernier.date_bilan)}${sorted.length>1?' · '+sorted.length+' mesures':''}${dernier.laboratoire?' · '+escH(dernier.laboratoire):''}</div>
+        ${vsHtml}
       </div>
       <div style="text-align:right;flex-shrink:0">
         <div style="font-size:13px;font-weight:700;color:${bmStatutColor[dernier.statut]||'var(--ink)'}">${valAffiche}${dernier.unite?' '+escH(dernier.unite):''}</div>
@@ -4488,7 +4521,7 @@ function renderFiche(c){
           <div class="ic-body"><div class="doc-list">${dmHtml}</div></div>
         </div>
         <div class="info-card">
-          <div class="ic-head"><div class="ic-title">${ic('spark')} Bilans biologiques <span style="font-weight:400;color:var(--muted);font-size:11px">(marqueurs extraits, avant/après)</span></div>${totalInvestiBilans>0?`<span style="font-size:11px;color:var(--muted)">${totalInvestiBilans.toFixed(2)} € investis</span>`:''}</div>
+          <div class="ic-head"><div class="ic-title">${ic('spark')} Bilans biologiques <span style="font-weight:400;color:var(--muted);font-size:11px">(marqueurs extraits, avant/après)</span></div><div style="display:flex;align-items:center;gap:10px">${totalInvestiBilans>0?`<span style="font-size:11px;color:var(--muted)">${totalInvestiBilans.toFixed(2)} € investis</span>`:''}${btn('ic-edit',`openM('m-valeurs-sante')`,'Valeurs santé de référence')}</div></div>
           <div class="ic-body"><div style="display:flex;flex-direction:column;gap:6px;padding:10px 14px">${bmHtml}</div></div>
         </div>
         <div class="info-card">
@@ -6729,6 +6762,58 @@ function ouvrirBilanEntree(clientId, mode){
   </div>
 </div>
 
+<div class="modal-bg" id="m-valeurs-sante">
+  <div class="modal">
+    <div class="mhead"><div class="mtitle"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v5"/><path d="M12 16h.01"/><circle cx="12" cy="12" r="10"/></svg> Valeurs santé de référence</div><button class="mx" onclick="closeM('m-valeurs-sante')">×</button></div>
+    <div class="mbody">
+      <div style="background:var(--surface);border-radius:10px;padding:12px 14px;font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:14px">
+        ⚠️ Ce sont des repères de <strong>fonctionnement optimal</strong> (biologie fonctionnelle), pas les normes labo — plus larges — qui définissent seulement l'absence de pathologie déclarée. Une valeur "dans la norme labo" peut être hors de ces repères et expliquer des symptômes bien réels. À utiliser toujours avec la clinique, jamais seule — jamais un verdict à annoncer à la cliente.
+      </div>
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div>
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ocre);margin-bottom:8px">Axe gonadotrope & gonades (femme)</div>
+          <table style="width:100%;border-collapse:collapse;font-size:12.5px">
+            <tbody>
+              <tr><td style="padding:6px 4px;color:var(--ink)">FSH (J3)</td><td style="padding:6px 4px;text-align:right;font-weight:600">&lt; 7 mUI/ml</td></tr>
+              <tr><td style="padding:6px 4px;color:var(--ink)">LH/FSH (J3)</td><td style="padding:6px 4px;text-align:right;font-weight:600">&lt; 1</td></tr>
+              <tr><td style="padding:6px 4px;color:var(--ink)">Œstradiol J3 (folliculaire)</td><td style="padding:6px 4px;text-align:right;font-weight:600">45-65 pg/ml</td></tr>
+              <tr><td style="padding:6px 4px;color:var(--ink)">Œstradiol Pic+7 (lutéale)</td><td style="padding:6px 4px;text-align:right;font-weight:600">150-250 pg/ml</td></tr>
+              <tr><td style="padding:6px 4px;color:var(--ink)">Progestérone Pic+7</td><td style="padding:6px 4px;text-align:right;font-weight:600">15-30 ng/ml</td></tr>
+              <tr><td style="padding:6px 4px;color:var(--ink)">Rapport 2-OH/16-OH (détox E)</td><td style="padding:6px 4px;text-align:right;font-weight:600">&gt; 1,5 (idéal &gt;2)</td></tr>
+              <tr><td style="padding:6px 4px;color:var(--ink)">Testostérone totale</td><td style="padding:6px 4px;text-align:right;font-weight:600">0,30-0,50 ng/ml</td></tr>
+              <tr><td style="padding:6px 4px;color:var(--ink)">SHBG</td><td style="padding:6px 4px;text-align:right;font-weight:600">65-75 nmol/L</td></tr>
+              <tr><td style="padding:6px 4px;color:var(--ink)">Prolactine</td><td style="padding:6px 4px;text-align:right;font-weight:600">&lt; 19 ng/ml</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ocre);margin-bottom:8px">Axe thyroïdien</div>
+          <table style="width:100%;border-collapse:collapse;font-size:12.5px">
+            <tbody>
+              <tr><td style="padding:6px 4px;color:var(--ink)">TSH</td><td style="padding:6px 4px;text-align:right;font-weight:600">&lt; 2,5 mUI/L</td></tr>
+              <tr><td style="padding:6px 4px;color:var(--ink)">T4 libre</td><td style="padding:6px 4px;text-align:right;font-weight:600">&gt; 13 pmol/L</td></tr>
+              <tr><td style="padding:6px 4px;color:var(--ink)">T3 libre</td><td style="padding:6px 4px;text-align:right;font-weight:600">&gt; 4,5 pmol/L (idéal &gt;5)</td></tr>
+              <tr><td style="padding:6px 4px;color:var(--ink)">T3 reverse</td><td style="padding:6px 4px;text-align:right;font-weight:600">Fourchette basse</td></tr>
+              <tr><td style="padding:6px 4px;color:var(--ink)">T3 urinaire 24h</td><td style="padding:6px 4px;text-align:right;font-weight:600">&gt; 1300 pmol/24h</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ocre);margin-bottom:8px">Axe surrénalien</div>
+          <table style="width:100%;border-collapse:collapse;font-size:12.5px">
+            <tbody>
+              <tr><td style="padding:6px 4px;color:var(--ink)">CAR (Cortisol Awakening Response)</td><td style="padding:6px 4px;text-align:right;font-weight:600">50-100%</td></tr>
+              <tr><td style="padding:6px 4px;color:var(--ink)">Cortisol libre urinaire 24h</td><td style="padding:6px 4px;text-align:right;font-weight:600">&gt; 35 µg/24h</td></tr>
+              <tr><td style="padding:6px 4px;color:var(--ink)">S-Prégnénolone</td><td style="padding:6px 4px;text-align:right;font-weight:600">90-120 ng/ml</td></tr>
+              <tr><td style="padding:6px 4px;color:var(--ink)">S-DHEA (femme)</td><td style="padding:6px 4px;text-align:right;font-weight:600">200-280 µg/dl</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="mfoot"><button class="btn btn-ghost" onclick="closeM('m-valeurs-sante')">Fermer</button></div>
+  </div>
+</div>
 <div class="modal-bg" id="m-doc-medical">
   <div class="modal">
     <div class="mhead"><div class="mtitle"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l3 3v15H6z"/><path d="M15 3v3h3"/></svg> Ajouter un document médical</div><button class="mx" onclick="closeM('m-doc-medical')">×</button></div>
