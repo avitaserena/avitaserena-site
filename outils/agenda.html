@@ -1798,8 +1798,10 @@ function showToast(msg, type) {
    depuis l'agenda — quel que soit le mode de règlement (Stripe, espèces, chèque,
    suivi offert...). Dédoublonnage par email : si la cliente existe déjà, on se
    contente d'ajouter ce RDV à son historique plutôt que de créer un doublon.
-   La date de naissance (ddn) n'étant pas saisie ici, elle pourra être complétée
-   plus tard via le questionnaire de consultation sans casser l'identifiant. ── */
+   Téléphone (tel) et date de naissance (ddn) saisis dans le formulaire de RDV
+   sont désormais reportés sur la fiche cliente (nouvelle fiche : toujours ;
+   fiche existante : uniquement si le champ est encore vide, pour ne jamais
+   écraser une correction manuelle faite depuis le CRM). ── */
 async function syncToCRM(rdv) {
   try {
     if (!rdv.name) return;
@@ -1818,7 +1820,7 @@ async function syncToCRM(rdv) {
     // Cliente déjà connue (recherche par email) : on ajoute le RDV à son historique
     let existing = null;
     if (rdv.email) {
-      const res = await fetch(SUPA_URL + '/rest/v1/clientes?email=eq.' + encodeURIComponent(rdv.email) + '&select=id,timeline', { headers });
+      const res = await fetch(SUPA_URL + '/rest/v1/clientes?email=eq.' + encodeURIComponent(rdv.email) + '&select=id,timeline,tel,ddn', { headers });
       if (res.ok) {
         const rows = await res.json();
         if (rows.length) existing = rows[0];
@@ -1827,9 +1829,14 @@ async function syncToCRM(rdv) {
     if (existing) {
       const timeline = Array.isArray(existing.timeline) ? existing.timeline : [];
       timeline.push(evt);
+      // On ne complète tel/ddn que s'ils sont vides côté fiche cliente, pour ne
+      // jamais écraser une information déjà saisie/corrigée manuellement dans le CRM.
+      const patch = { timeline: timeline, updated_at: new Date().toISOString() };
+      if (rdv.phone && !existing.tel) patch.tel = rdv.phone;
+      if (rdv.ddn && !existing.ddn) patch.ddn = rdv.ddn;
       await fetch(SUPA_URL + '/rest/v1/clientes?id=eq.' + encodeURIComponent(existing.id), {
         method: 'PATCH', headers,
-        body: JSON.stringify({ timeline: timeline, updated_at: new Date().toISOString() })
+        body: JSON.stringify(patch)
       });
       return;
     }
@@ -1849,6 +1856,8 @@ async function syncToCRM(rdv) {
         prenom: prenom,
         nom: nom,
         email: rdv.email || null,
+        tel: rdv.phone || null,
+        ddn: rdv.ddn || null,
         notes: rdv.notes || '',
         programme: rdv.parcours || null,
         date1: rdv.date,
