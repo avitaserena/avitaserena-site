@@ -855,10 +855,14 @@ function updateStats() {
   const moisStart = new Date(today.getFullYear(), today.getMonth(), 1);
   const moisEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
 
-  const attente = state.rdvs.filter(r => r.status === 'attente').length;
-  const confirme = state.rdvs.filter(r => r.status === 'confirme').length;
-  const semaine = state.rdvs.filter(r => { const d=new Date(r.date); return d>=weekStart&&d<=weekEnd&&r.status!=='annule'; }).length;
-  const mois = state.rdvs.filter(r => { const d=new Date(r.date); return d>=moisStart&&d<=moisEnd&&r.status!=='annule'; }).length;
+  // Les événements personnels remontés depuis Google Agenda (pas de cliente rattachée)
+  // ne doivent jamais compter dans les statistiques de consultations — sinon "Courses
+  // à Zonza" ou "Orthodontiste" gonflent artificiellement le nombre de RDV confirmés.
+  const rdvsClients = state.rdvs.filter(r => !isEvenementPerso(r));
+  const attente = rdvsClients.filter(r => r.status === 'attente').length;
+  const confirme = rdvsClients.filter(r => r.status === 'confirme').length;
+  const semaine = rdvsClients.filter(r => { const d=new Date(r.date); return d>=weekStart&&d<=weekEnd&&r.status!=='annule'; }).length;
+  const mois = rdvsClients.filter(r => { const d=new Date(r.date); return d>=moisStart&&d<=moisEnd&&r.status!=='annule'; }).length;
 
   animateNum('statAttente', attente);
   animateNum('statConfirme', confirme);
@@ -1080,9 +1084,10 @@ function renderAgenda() {
     section.className = 'agenda-day';
     section.style.animationDelay = (days.indexOf(dateStr)*0.05)+'s';
 
+    const rdvsClientsJour = rdvs.filter(r => !isEvenementPerso(r)).length;
     let headerHtml = `<div class="agenda-day-header">
       <div class="agenda-day-date">${JOURS_LONG[d.getDay()]} ${d.getDate()} ${MOIS[d.getMonth()]}${dateStr===today?' — Aujourd\'hui':''}</div>
-      ${rdvs.length ? `<span class="agenda-day-count">${rdvs.length} RDV</span>` : ''}
+      ${rdvsClientsJour ? `<span class="agenda-day-count">${rdvsClientsJour} RDV</span>` : ''}
       ${tachesJour.length ? `<span class="agenda-day-count" style="background:rgba(156,95,160,.12);color:#7A4680">${tachesJour.length} tâche${tachesJour.length>1?'s':''}</span>` : ''}
       ${isBlocked ? '<span style="font-size:10px;color:var(--rouge);font-weight:700;padding:2px 8px;background:rgba(209,85,58,.1);border-radius:99px">Bloqué</span>' : ''}
     </div>`;
@@ -1305,6 +1310,14 @@ function renderSemaine() {
       let top=(startMin-DAY_START*60)/60*hourH;
       const height=Math.max(rdvDur(r)/60*hourH, 26);
       top=Math.max(0, Math.min(top, totalH-height));
+      if (isEvenementPerso(r)) {
+        // Événement personnel Google Agenda : rendu neutre et non cliquable, jamais
+        // le style "confirmé" qui laisserait croire à un rendez-vous client (ex. "Courses à Zonza").
+        return '<div class="wk-evt perso" style="top:'+top+'px;height:'+height+'px;background:repeating-linear-gradient(135deg, rgba(107,101,96,.12) 0 8px, rgba(107,101,96,.2) 8px 16px);border-left:3px solid #9C958C;cursor:default" title="Événement personnel — indisponible, pas une cliente">'+
+          '<div class="wk-evt-time" style="color:#6B6560">'+escHtmlWk(r.time||'')+'</div>'+
+          '<div class="wk-evt-name" style="color:#6B6560;font-style:italic">Indispo.</div>'+
+          '</div>';
+      }
       const cls = r.status==='attente'?'attente':'confirme';
       return '<div class="wk-evt '+cls+'" style="top:'+top+'px;height:'+height+'px" onclick="openEditModal('+r.id+')">'+
         '<div class="wk-evt-time">'+escHtmlWk(r.time||'')+'</div>'+
@@ -1410,7 +1423,7 @@ function renderMois() {
     const isToday = dateStr === today;
 
     const items = [
-      ...rdvsJour.map(r => ({ kind:'rdv', time:r.time, label:r.name.split(' ')[0] })),
+      ...rdvsJour.map(r => ({ kind:'rdv', time:r.time, label: isEvenementPerso(r) ? 'Indispo.' : r.name.split(' ')[0], perso: isEvenementPerso(r) })),
       ...tachesJour.map(t => ({ kind:'tache', time:t.time, label:t.titre }))
     ].sort((a,b) => a.time.localeCompare(b.time));
 
@@ -1430,7 +1443,9 @@ function renderMois() {
     </div>`;
 
     html += shown.map(it => it.kind === 'rdv'
-      ? `<div style="background:rgba(193,121,60,.12);border-radius:3px;padding:1px 5px;font-size:9.5px;font-weight:600;color:var(--ardoise);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${it.time} ${it.label}</div>`
+      ? (it.perso
+          ? `<div style="background:rgba(107,101,96,.1);border-radius:3px;padding:1px 5px;font-size:9.5px;font-weight:600;color:#6B6560;font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${it.time} ${it.label}</div>`
+          : `<div style="background:rgba(193,121,60,.12);border-radius:3px;padding:1px 5px;font-size:9.5px;font-weight:600;color:var(--ardoise);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${it.time} ${it.label}</div>`)
       : `<div style="background:rgba(156,95,160,.12);border-radius:3px;padding:1px 5px;font-size:9.5px;font-weight:600;color:#7A4680;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${it.time} ${it.label}</div>`
     ).join('');
 
@@ -1476,6 +1491,13 @@ function openAddModal() {
 function openEditModal(id) {
   const rdv = state.rdvs.find(r => r.id === id);
   if (!rdv) return;
+  if (isEvenementPerso(rdv)) {
+    // Verrou de sécurité : quelle que soit la vue d'où vient le clic (semaine, mois...),
+    // un événement personnel Google Agenda ne doit jamais ouvrir le formulaire de RDV
+    // client — sinon on risque de l'enregistrer avec un type/statut de consultation.
+    showToast('Événement personnel (Google Agenda) — à modifier directement dans Google Agenda, pas ici.', 'error');
+    return;
+  }
   state.editingId = id;
   document.getElementById('rdvModalTitle').textContent = rdv.name;
   document.getElementById('rdvName').value = rdv.name;
