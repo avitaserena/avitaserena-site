@@ -4300,9 +4300,20 @@ function renderFiche(c){
   const qList = questionnairesClient[cid]||[];
   const qConsult = qList.filter(q=>q.type==='consultation');
   const qSuivi = qList.filter(q=>q.type==='suivi');
+  const qVisio = qList.filter(q=>q.type==='visio');
+  // Prochain RDV à venir pour cette cliente — sert à savoir si un envoi automatique
+  // du questionnaire de préparation visio est encore à attendre (envoyé la veille,
+  // voir Edge Function send-auto-emails) ou n'a simplement pas de RDV à couvrir.
+  const prochainRdv = cr.filter(r=>r.status!=='annule' && r.date>=today()).sort((a,b)=>a.date.localeCompare(b.date))[0];
   const docs=[
     {icon:ic('file'),bg:'var(--orange-lt)',name:'Questionnaire de consultation',meta:qConsult.length?'Complété le '+fmtDate(qConsult[0].created_at):'Non rempli',st:qConsult.length?'ok':'missing',stl:qConsult.length?'Complété':'À faire',al:'Ouvrir',ac:qConsult.length?'':'primary',fn:`ouvrirQuestionnaireCliente('${cid}','consultation')`},
     {icon:ic('refresh'),bg:'var(--green-lt)',name:'Questionnaire de suivi',meta:qSuivi.length?qSuivi.length+' suivi(s) enregistré(s) · dernier le '+fmtDate(qSuivi[0].created_at):'Aucun suivi enregistré',st:qSuivi.length?'ok':'missing',stl:qSuivi.length?qSuivi.length+' au total':'Aucun',al:'Nouveau suivi',ac:'',fn:`ouvrirQuestionnaireCliente('${cid}','suivi')`},
+    (()=>{
+      // Envoyé automatiquement par send-auto-emails la veille du RDV (8h-9h, heure de Paris).
+      if(qVisio.length) return {icon:ic('spark'),bg:'var(--violet-lt)',name:'Questionnaire de préparation visio',meta:'Répondu le '+fmtDate(qVisio[0].created_at),st:'ok',stl:'Répondu',al:'Voir les réponses',ac:'',fn:`voirReponsesVisio('${cid}')`};
+      if(prochainRdv) return {icon:ic('spark'),bg:'var(--violet-lt)',name:'Questionnaire de préparation visio',meta:'Envoi automatique prévu la veille du '+fmtDate(prochainRdv.date)+' (pas encore reçu)',st:'missing',stl:'En attente',al:'—',ac:'',fn:''};
+      return {icon:ic('spark'),bg:'var(--violet-lt)',name:'Questionnaire de préparation visio',meta:'Aucun rendez-vous à venir pour cette cliente',st:'missing',stl:'N/A',al:'—',ac:'',fn:''};
+    })(),
     (()=>{
       const sums=consultationSummariesClient[cid]||[];
       if(!qConsult.length) return {icon:ic('spark'),bg:'var(--violet-lt)',name:'Résumé narratif (IA)',meta:'Nécessite un questionnaire de consultation complété',st:'missing',stl:'N/A',al:'—',ac:'',fn:''};
@@ -5795,6 +5806,45 @@ function ouvrirQuestionnaireCliente(clientId, type){
     email: c.email||'', tel: c.tel||''
   });
   window.open(fichier + '?' + params.toString(), '_blank');
+}
+
+// ── Aperçu manuel du questionnaire de préparation visio, pré-rempli et rattaché
+//    au client_id (le même lien que celui envoyé automatiquement la veille du RDV
+//    par l'Edge Function send-auto-emails) — utile pour prévisualiser ou renvoyer
+//    le lien à la main (ex. copier/coller dans un message) ──
+function ouvrirQuestionnairePrepVisio(clientId){
+  const c = db.clients.find(x=>x.id===clientId);
+  if(!c){ toast('Cliente introuvable','err'); return; }
+  const params = new URLSearchParams({
+    client_id: c.id, prenom: c.prenom||'', email: c.email||''
+  });
+  window.open('questionnaire_preparation_visio.html?' + params.toString(), '_blank');
+}
+
+// ── Affiche les réponses enregistrées du questionnaire de préparation visio ──
+function voirReponsesVisio(cid){
+  const qList = (questionnairesClient[cid]||[]).filter(q=>q.type==='visio');
+  if(!qList.length){ toast('Aucune réponse enregistrée','warn'); return; }
+  const c = db.clients.find(x=>x.id===cid);
+  const dernier = qList[0];
+  const s = dernier.snapshot||{};
+  const rows = [
+    ['Âge', s.age], ['Durée des symptômes', s.duree], ['Ce qui pèse', s.motif],
+    ['Énergie du jour', s.scores?.energieGenerale?s.scores.energieGenerale+'/10':''],
+    ['Objectif', s.objectif], ['Message libre', s.libre]
+  ].filter(([,v])=>v).map(([k,v])=>`<div class="ic-row"><div class="ic-key">${escH(k)}</div><div class="ic-val">${escH(String(v))}</div></div>`).join('');
+  const modal=document.createElement('div');
+  modal.className='modal-bg open';
+  modal.id='modal-reponses-visio';
+  modal.innerHTML=`<div class="modal modal-lg">
+    <div style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+      <div style="font-size:16px;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:8px">${ic('spark')} Questionnaire de préparation visio — ${escH(c?.prenom||'')} · ${fmtDate(dernier.created_at)}</div>
+      <button onclick="document.getElementById('modal-reponses-visio').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted)">×</button>
+    </div>
+    <div style="padding:8px 24px 20px;max-height:60vh;overflow:auto">${rows||"<div style='padding:16px;font-size:13px;color:var(--muted);font-style:italic'>Aucune réponse détaillée.</div>"}</div>
+  </div>`;
+  modal.addEventListener('click', e=>{ if(e.target===modal) modal.remove(); });
+  document.body.appendChild(modal);
 }
 
 // ── Lettre d'adressage clinique ──

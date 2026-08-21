@@ -352,6 +352,21 @@ const EMPATHY_DUREE={
 const ENERGY_LABELS=['','Très épuisée','Épuisée','Difficile','Faible','Moyenne','Correcte','Plutôt bien','Bien','Très bien','Excellente'];
 const ENERGY_COLORS=['','#9B3A3A','#A8522A','#A06A22','#9B7230','#7A8A22','#4A8A2A','#3A8A48','#2A7A62','#206080','#1E5A8A'];
 
+/* ── Pré-remplissage & identification depuis le lien envoyé automatiquement
+   la veille du RDV (voir Edge Function send-auto-emails) : le lien porte le
+   client_id + prénom + email de la cliente. Ça permet (1) de lui éviter de
+   ressaisir ce qu'on sait déjà d'elle, et (2) de rattacher fiablement ses
+   réponses à sa fiche cliente — sans client_id, deux clientes prénommées
+   pareil ne pouvaient pas être distinguées côté CRM. ── */
+const urlParamsVisio=new URLSearchParams(location.search);
+const PREFILL_CLIENT_ID=urlParamsVisio.get('client_id')||'';
+const PREFILL_PRENOM=urlParamsVisio.get('prenom')||'';
+const PREFILL_EMAIL=urlParamsVisio.get('email')||'';
+(function prefillFromLink(){
+  if(PREFILL_PRENOM){ const el=document.getElementById('prenom'); if(el) el.value=PREFILL_PRENOM; }
+  if(PREFILL_EMAIL){ const el=document.getElementById('email-cliente'); if(el) el.value=PREFILL_EMAIL; }
+})();
+
 function go(n){
   if(n===current) return;
   if(n===1){
@@ -468,7 +483,9 @@ const SUPA_V_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
 function sauvegarderPourConsultation(prenom,data){
   try{
     const visioAnswers={
+      client_id:PREFILL_CLIENT_ID||null,
       prenom:prenom,
+      email:data['Email']||PREFILL_EMAIL||'',
       age:document.getElementById('age')?.value?.trim()||'',
       duree:data['Durée symptômes']||'',
       motif:data['Ce qui pèse']||'',
@@ -483,6 +500,7 @@ function sauvegarderPourConsultation(prenom,data){
       headers:{'apikey':SUPA_V_KEY,'Authorization':'Bearer '+SUPA_V_KEY,
         'Content-Type':'application/json','Prefer':'return=minimal'},
       body:JSON.stringify({id:'visio_'+Date.now(),type:'visio',prenom,
+        client_id:PREFILL_CLIENT_ID||null,
         snapshot:visioAnswers,created_at:new Date().toISOString(),updated_at:new Date().toISOString()})
     }).catch(e=>console.warn('Supabase visio:',e));
   }catch(e){}
