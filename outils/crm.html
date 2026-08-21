@@ -4390,6 +4390,18 @@ function renderFiche(c){
     if(!n) return null;
     return VALEURS_SANTE_REF.find(r=>r.noms.some(alias=>n.includes(alias))) || null;
   }
+  // Seuils cliniquement notables (au-delà de simplement "hors valeur santé") — sourcés explicitement
+  // des cours reçus, uniquement pour clientèle féminine. À ne montrer que si franchi, jamais en routine.
+  const SEUILS_NOTABLES=[
+    {noms:['fsh','fsh j3'],test:v=>v>80,label:'FSH > 80 mUI/ml — évoque une ménopause confirmée'},
+    {noms:['amh'],test:v=>v<1,label:'AMH < 1 ng/ml — évoque une insuffisance ovarienne'},
+  ];
+  function matchSeuilNotable(nomMarqueur,valeur){
+    if(valeur==null) return null;
+    const n=(nomMarqueur||'').trim().toLowerCase();
+    const s=SEUILS_NOTABLES.find(r=>r.noms.some(alias=>n.includes(alias)));
+    return (s && s.test(valeur)) ? s : null;
+  }
   // Bilans biologiques structurés — regroupés par marqueur, avec tendance avant/après
   const bm=bilansMarqueurs[cid]||[];
   const totalInvestiBilans=dm.filter(d=>d.type==='bilan_sanguin' && d.prix!=null).reduce((s,d)=>s+Number(d.prix),0);
@@ -4403,6 +4415,17 @@ function renderFiche(c){
   const bmStatutColor={normal:'var(--green)',bas:'var(--orange)',eleve:'var(--red)',a_verifier:'var(--muted)'};
   const bmStatutLabel={normal:'Normal',bas:'Bas',eleve:'Élevé',a_verifier:'À vérifier'};
   const bmList=Object.values(bmGroups).sort((a,b)=>(a.nom||'').localeCompare(b.nom||''));
+  const seuilsFranchis=[];
+  bmList.forEach(g=>{
+    const sorted=g.entries.slice().sort((a,b)=>(a.date_bilan||'').localeCompare(b.date_bilan||''));
+    const dernier=sorted[sorted.length-1];
+    const sn=matchSeuilNotable(g.nom,dernier?.valeur);
+    if(sn) seuilsFranchis.push({nom:g.nom,label:sn.label,date:dernier.date_bilan});
+  });
+  const seuilsNotablesHtml=seuilsFranchis.length>0?`<div style="background:#FDEFEC;border:1.5px solid var(--red);border-radius:10px;padding:12px 14px;margin-bottom:10px;display:flex;flex-direction:column;gap:6px">
+    <div style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:#8B3A3A">${ic('warn','ico-xs')} Seuil cliniquement notable — à évoquer avec son médecin</div>
+    ${seuilsFranchis.map(s=>`<div style="font-size:12px;color:#8B3A3A;padding-left:22px">${escH(s.label)} <span style="color:var(--muted)">(${fmtDate(s.date)})</span></div>`).join('')}
+  </div>`:'';
   const bmHtml=bmList.length>0 ? bmList.map(g=>{
     const sorted=g.entries.slice().sort((a,b)=>(a.date_bilan||'').localeCompare(b.date_bilan||''));
     const dernier=sorted[sorted.length-1];
@@ -4522,7 +4545,7 @@ function renderFiche(c){
         </div>
         <div class="info-card">
           <div class="ic-head"><div class="ic-title">${ic('spark')} Bilans biologiques <span style="font-weight:400;color:var(--muted);font-size:11px">(marqueurs extraits, avant/après)</span></div><div style="display:flex;align-items:center;gap:10px">${totalInvestiBilans>0?`<span style="font-size:11px;color:var(--muted)">${totalInvestiBilans.toFixed(2)} € investis</span>`:''}${btn('ic-edit',`openM('m-valeurs-sante')`,'Valeurs santé de référence')}</div></div>
-          <div class="ic-body"><div style="display:flex;flex-direction:column;gap:6px;padding:10px 14px">${bmHtml}</div></div>
+          <div class="ic-body"><div style="display:flex;flex-direction:column;gap:6px;padding:10px 14px">${seuilsNotablesHtml}${bmHtml}</div></div>
         </div>
         <div class="info-card">
           <div class="ic-head"><div class="ic-title">${ic('mail')} Recommandations d'analyses envoyées</div></div>
