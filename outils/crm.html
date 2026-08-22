@@ -1781,6 +1781,16 @@ async function loadRdvs(){
   }
 }
 
+// Événement personnel remonté depuis Google Agenda (pas une cliente) — même logique
+// que isEvenementPerso() dans agenda.html, à garder strictement identique aux deux endroits.
+// Ces événements n'ont RIEN à faire dans le CRM (stats, "Votre journée", "À traiter
+// maintenant", relances email automatiques) : ils doivent être visibles uniquement dans
+// l'agenda. Seule exception volontaire : la vérification anti-chevauchement (findConflictCRM)
+// continue de les inclure, pour qu'un RDV cliente ne puisse jamais être posé par-dessus.
+function isRdvPerso(rdv){
+  return rdv.sync_source === 'google' && !rdv.client_key;
+}
+
 // ── CHECK-INS DU JOUR — état quotidien rempli par les clientes dans leur espace ──
 var checkinsToday=[];
 var checkinAlerts=[];
@@ -1877,7 +1887,7 @@ function getActionsJour(){
   const tomorrowStr = addDays(todayStr, 1);
   const actions = [];
 
-  rdvs.filter(r => r.status !== 'annule').forEach(rdv => {
+  rdvs.filter(r => r.status !== 'annule' && !isRdvPerso(r)).forEach(rdv => {
     const d = diffD(rdv.date);
     const done = rdv.mails_done || {};
     const client = matchClientForRdv(rdv);
@@ -1989,7 +1999,7 @@ function buildDayTimeline(){
   const badgeEl = document.getElementById('htl-badge');
   if(!body) return;
   const tdy = today();
-  const rdvJour = rdvs.filter(r => r.date === tdy && r.status !== 'annule').sort((a,b) => (a.time||'').localeCompare(b.time||''));
+  const rdvJour = rdvs.filter(r => r.date === tdy && r.status !== 'annule' && !isRdvPerso(r)).sort((a,b) => (a.time||'').localeCompare(b.time||''));
   if(badgeEl) badgeEl.textContent = rdvJour.length ? rdvJour.length+' visio'+(rdvJour.length>1?'s':'') : 'Journée libre';
 
   if(!rdvJour.length){
@@ -2103,7 +2113,7 @@ function renderActionsJour(){
   });
 
   // 3) Demandes de réservation en attente
-  rdvs.filter(r=>r.status==='attente').forEach(r=>{
+  rdvs.filter(r=>r.status==='attente' && !isRdvPerso(r)).forEach(r=>{
     const dateStr = r.date ? new Date(r.date+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'}) : '';
     items.push({u:3, html:
       '<div class="feed-item feed-reservation">'+
@@ -3727,7 +3737,7 @@ function renderDashboard(){
   const allAl=db.clients.flatMap(c=>getAlerts(c).map(a=>({client:c,alert:a})));
   const fMois=db.factures.filter(f=>f.statut==='payee'&&f.date&&mk(f.date)===curMk);
   const caM=fMois.reduce((s,f)=>s+(f.montant||0),0);
-  const rdvM=rdvs.filter(r=>r.date&&mk(r.date)===curMk);
+  const rdvM=rdvs.filter(r=>r.date&&mk(r.date)===curMk && !isRdvPerso(r));
   const sils=db.clients.filter(c=>{const l=c.timeline?.[c.timeline.length-1]?.date||c.date1;return l&&diffD(l)>30;});
 
   // ── CA jour / semaine / tendance vs mois précédent ──
