@@ -95,6 +95,8 @@ input.fi[readonly]{background:var(--taupe);cursor:default;opacity:.75}
 .p-toggle{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--r99);font-size:13px;font-weight:500;cursor:pointer;border:1px solid var(--taupe);background:var(--blanc);color:var(--gris);font-family:'Inter',sans-serif;transition:all .15s;user-select:none;line-height:1.3}
 .p-toggle:hover{border-color:rgba(13,166,120,.4);color:var(--ardoise);transform:translateY(-1px)}
 .p-toggle.on{background:var(--or-clair);border-color:var(--ocre);color:var(--ardoise);font-weight:600}
+.p-toggle.suggere:not(.on){box-shadow:0 0 0 2px var(--ocre);position:relative}
+.p-toggle.suggere:not(.on)::after{content:'★ suggéré';position:absolute;top:-9px;right:6px;background:var(--ocre);color:var(--blanc);font-size:8.5px;font-weight:700;padding:1px 7px;border-radius:99px;letter-spacing:.03em}
 .p-toggle-group{display:flex;flex-wrap:wrap;gap:8px;margin-top:2px}
 
 /* Variante alerte (allergies / traitements à vigilance) */
@@ -419,18 +421,84 @@ input.fi[readonly]{background:var(--taupe);cursor:default;opacity:.75}
 </div>
 <div class="field-card">
   <div class="chip-wrap" id="diagnostics-group">
+    <button class="p-toggle" data-val="Aucun diagnostic confirmé — symptômes seuls" onclick="toggleDiagnostic(this)">Aucun diagnostic confirmé</button>
+  </div>
+  <p class="field-hint" style="margin:10px 0 0">Liste complète alignée sur le questionnaire de consultation, groupée par sphère — les diagnostics « actifs » cochés en séance sont pré-sélectionnés automatiquement ci-dessous ; vérifiez, décochez ce qui ne s'applique pas, ajoutez le reste à la main.</p>
+  <div style="margin-top:14px;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ocre)">Endocrinien, métabolique &amp; cardiovasculaire</div>
+  <div class="chip-wrap" id="diagnostics-group-endocrino" style="margin-top:8px">
+    <button class="p-toggle" data-val="Hypothyroïdie" onclick="toggleDiagnostic(this)">Hypothyroïdie</button>
+    <button class="p-toggle" data-val="Hashimoto / hypothyroïdie" onclick="toggleDiagnostic(this)">Hashimoto / hypothyroïdie</button>
+    <button class="p-toggle" data-val="Basedow / hyperthyroïdie" onclick="toggleDiagnostic(this)">Basedow / hyperthyroïdie</button>
+    <button class="p-toggle" data-val="Diabète de type 1" onclick="toggleDiagnostic(this)">Diabète de type 1</button>
+    <button class="p-toggle" data-val="Diabète de type 2 / résistance à l'insuline" onclick="toggleDiagnostic(this)">Diabète T2 / insulinorésistance</button>
+    <button class="p-toggle" data-val="Hypoglycémie réactionnelle" onclick="toggleDiagnostic(this)">Hypoglycémie réactionnelle</button>
+    <button class="p-toggle" data-val="Maladie d'Addison" onclick="toggleDiagnostic(this)">Addison</button>
+    <button class="p-toggle" data-val="Syndrome de Cushing" onclick="toggleDiagnostic(this)">Cushing</button>
+    <button class="p-toggle" data-val="Hémochromatose" onclick="toggleDiagnostic(this)">Hémochromatose</button>
+    <button class="p-toggle" data-val="Fatigue surrénalienne / burn-out" onclick="toggleDiagnostic(this)">Fatigue surrénalienne</button>
+    <button class="p-toggle" data-val="Hypercholestérolémie" onclick="toggleDiagnostic(this)">Hypercholestérolémie</button>
+    <button class="p-toggle" data-val="Hypertension artérielle" onclick="toggleDiagnostic(this)">Hypertension artérielle</button>
+  </div>
+  <div style="margin-top:14px;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ocre)">Digestif &amp; microbiote</div>
+  <div class="chip-wrap" id="diagnostics-group-digestif" style="margin-top:8px">
     <button class="p-toggle" data-val="SIBO" onclick="toggleDiagnostic(this)">SIBO</button>
     <button class="p-toggle" data-val="SII / côlon irritable" onclick="toggleDiagnostic(this)">SII / côlon irritable</button>
+    <button class="p-toggle" data-val="MICI (Crohn / RCH)" onclick="toggleDiagnostic(this)">MICI (Crohn / RCH)</button>
+    <button class="p-toggle" data-val="Maladie cœliaque" onclick="toggleDiagnostic(this)">Maladie cœliaque</button>
+    <button class="p-toggle" data-val="Gastrite" onclick="toggleDiagnostic(this)">Gastrite</button>
+    <button class="p-toggle" data-val="RGO" onclick="toggleDiagnostic(this)">RGO</button>
+    <button class="p-toggle" data-val="Candidose chronique" onclick="toggleDiagnostic(this)">Candidose chronique</button>
+    <button class="p-toggle" data-val="Helicobacter pylori" onclick="toggleDiagnostic(this)">Helicobacter pylori</button>
+    <button class="p-toggle" data-val="Diverticulose" onclick="toggleDiagnostic(this)">Diverticulose</button>
+  </div>
+  <div style="margin-top:14px;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ocre)">Gynécologique &amp; hormonal féminin</div>
+  <div class="chip-wrap" id="diagnostics-group-gyneco" style="margin-top:8px">
     <button class="p-toggle" data-val="Endométriose" onclick="toggleDiagnostic(this)">Endométriose</button>
+    <button class="p-toggle" data-val="Endométriose du côlon" onclick="toggleDiagnostic(this)">Endométriose du côlon</button>
+    <button class="p-toggle" data-val="Adénomyose" onclick="toggleDiagnostic(this)">Adénomyose</button>
     <button class="p-toggle" data-val="SOPK" onclick="toggleDiagnostic(this)">SOPK</button>
-    <button class="p-toggle" data-val="Hashimoto / hypothyroïdie" onclick="toggleDiagnostic(this)">Hashimoto / hypothyroïdie</button>
-    <button class="p-toggle" data-val="Papillomavirus (HPV)" onclick="toggleDiagnostic(this)">Papillomavirus (HPV)</button>
-    <button class="p-toggle" data-val="IST (herpès, chlamydia, gonorrhée…)" onclick="toggleDiagnostic(this)">IST</button>
+    <button class="p-toggle" data-val="Fibrome utérin" onclick="toggleDiagnostic(this)">Fibrome utérin</button>
     <button class="p-toggle" data-val="Mycoses vaginales récidivantes" onclick="toggleDiagnostic(this)">Mycoses vaginales récidivantes</button>
     <button class="p-toggle" data-val="Cystites récidivantes" onclick="toggleDiagnostic(this)">Cystites récidivantes</button>
+    <button class="p-toggle" data-val="Endométrite / vaginose bactérienne" onclick="toggleDiagnostic(this)">Endométrite / vaginose bactérienne</button>
     <button class="p-toggle" data-val="Périménopause" onclick="toggleDiagnostic(this)">Périménopause</button>
     <button class="p-toggle" data-val="Ménopause" onclick="toggleDiagnostic(this)">Ménopause</button>
-    <button class="p-toggle" data-val="Aucun diagnostic confirmé — symptômes seuls" onclick="toggleDiagnostic(this)">Aucun diagnostic confirmé</button>
+    <button class="p-toggle" data-val="Papillomavirus (HPV)" onclick="toggleDiagnostic(this)">Papillomavirus (HPV)</button>
+    <button class="p-toggle" data-val="IST (herpès, chlamydia, gonorrhée…)" onclick="toggleDiagnostic(this)">IST</button>
+  </div>
+  <div style="margin-top:14px;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ocre)">Auto-immune, immunitaire &amp; cutanée</div>
+  <div class="chip-wrap" id="diagnostics-group-autoimmune" style="margin-top:8px">
+    <button class="p-toggle" data-val="Lupus érythémateux disséminé" onclick="toggleDiagnostic(this)">Lupus</button>
+    <button class="p-toggle" data-val="Polyarthrite rhumatoïde" onclick="toggleDiagnostic(this)">Polyarthrite rhumatoïde</button>
+    <button class="p-toggle" data-val="Sclérodermie" onclick="toggleDiagnostic(this)">Sclérodermie</button>
+    <button class="p-toggle" data-val="Spondylarthrite ankylosante" onclick="toggleDiagnostic(this)">Spondylarthrite ankylosante</button>
+    <button class="p-toggle" data-val="Syndrome de Gougerot-Sjögren" onclick="toggleDiagnostic(this)">Gougerot-Sjögren</button>
+    <button class="p-toggle" data-val="Sclérose en plaques" onclick="toggleDiagnostic(this)">Sclérose en plaques</button>
+    <button class="p-toggle" data-val="Myasthénie" onclick="toggleDiagnostic(this)">Myasthénie</button>
+    <button class="p-toggle" data-val="Syndrome de Guillain-Barré" onclick="toggleDiagnostic(this)">Guillain-Barré</button>
+    <button class="p-toggle" data-val="Vitiligo" onclick="toggleDiagnostic(this)">Vitiligo</button>
+    <button class="p-toggle" data-val="Pelade" onclick="toggleDiagnostic(this)">Pelade</button>
+    <button class="p-toggle" data-val="Pemphigoïde bulleuse" onclick="toggleDiagnostic(this)">Pemphigoïde bulleuse</button>
+    <button class="p-toggle" data-val="Psoriasis" onclick="toggleDiagnostic(this)">Psoriasis</button>
+    <button class="p-toggle" data-val="Eczéma / dermatite atopique" onclick="toggleDiagnostic(this)">Eczéma / dermatite atopique</button>
+    <button class="p-toggle" data-val="Maladie de Biermer" onclick="toggleDiagnostic(this)">Biermer</button>
+    <button class="p-toggle" data-val="Cirrhose biliaire primitive" onclick="toggleDiagnostic(this)">Cirrhose biliaire primitive</button>
+    <button class="p-toggle" data-val="Syndrome de Raynaud" onclick="toggleDiagnostic(this)">Raynaud</button>
+    <button class="p-toggle" data-val="Urticaire chronique" onclick="toggleDiagnostic(this)">Urticaire chronique</button>
+    <button class="p-toggle" data-val="Histaminose" onclick="toggleDiagnostic(this)">Histaminose</button>
+    <button class="p-toggle" data-val="Lyme (terrain inflammatoire, à noter sans valider)" onclick="toggleDiagnostic(this)">Lyme</button>
+  </div>
+  <div style="margin-top:14px;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ocre)">Neuropsychiatrique</div>
+  <div class="chip-wrap" id="diagnostics-group-neuropsy" style="margin-top:8px">
+    <button class="p-toggle" data-val="Dépression / anxiété diagnostiquée" onclick="toggleDiagnostic(this)">Dépression / anxiété diagnostiquée</button>
+    <button class="p-toggle" data-val="Anxiété généralisée" onclick="toggleDiagnostic(this)">Anxiété généralisée</button>
+    <button class="p-toggle" data-val="TOC" onclick="toggleDiagnostic(this)">TOC</button>
+    <button class="p-toggle" data-val="Bipolarité" onclick="toggleDiagnostic(this)">Bipolarité</button>
+    <button class="p-toggle" data-val="TDAH" onclick="toggleDiagnostic(this)">TDAH</button>
+    <button class="p-toggle" data-val="Fibromyalgie" onclick="toggleDiagnostic(this)">Fibromyalgie</button>
+    <button class="p-toggle" data-val="Migraines chroniques" onclick="toggleDiagnostic(this)">Migraines chroniques</button>
+    <button class="p-toggle" data-val="Burn-out diagnostiqué" onclick="toggleDiagnostic(this)">Burn-out diagnostiqué</button>
+    <button class="p-toggle" data-val="Trouble des conduites alimentaires" onclick="toggleDiagnostic(this)">TCA</button>
   </div>
   <div class="subfield" id="sibo-type-wrap">
     <label class="fl">Type de SIBO confirmé</label>
@@ -1039,7 +1107,7 @@ function prefillParams() {
   // (module "Diagnostics & antécédents" du questionnaire de consultation/suivi)
   if (sessionData.diagnostics_actifs) {
     const actifs = sessionData.diagnostics_actifs.split(',').map(s => s.trim()).filter(Boolean);
-    document.querySelectorAll('#diagnostics-group .p-toggle').forEach(btn => {
+    document.querySelectorAll('[id^="diagnostics-group"] .p-toggle').forEach(btn => {
       if (actifs.includes(btn.dataset.val)) toggleDiagnostic(btn);
     });
   }
@@ -1056,13 +1124,50 @@ function prefillParams() {
   const sc = document.getElementById('secu-cancer');
   if (sc && !sc.value && sessionData.secu_cancer) sc.value = sessionData.secu_cancer;
   if (sessionData.traitements_vigilance) {
+    const valeurs = sessionData.traitements_vigilance.split(',').map(s => s.trim()).filter(Boolean);
     document.querySelectorAll('#secu-traitements-group .p-toggle').forEach(btn => {
-      if (!btn.classList.contains('on') && sessionData.traitements_vigilance.includes(btn.dataset.val)) btn.classList.add('on');
+      const dv = btn.dataset.val;
+      if (!btn.classList.contains('on') && valeurs.some(v => v && (dv.includes(v) || v.includes(dv)))) btn.classList.add('on');
     });
   }
   if (sessionData.allergies_alim) {
+    const valeurs = sessionData.allergies_alim.split(',').map(s => s.trim()).filter(Boolean);
     document.querySelectorAll('#allergies-group .p-toggle').forEach(btn => {
-      if (!btn.classList.contains('on') && sessionData.allergies_alim.includes(btn.dataset.val)) btn.classList.add('on');
+      const dv = btn.dataset.val;
+      if (!btn.classList.contains('on') && valeurs.some(v => v && (dv.includes(v) || v.includes(dv)))) btn.classList.add('on');
+    });
+  }
+
+  // ── Objectifs exprimés — suggestion (surbrillance) à partir de l'objectif à 6 mois formulé
+  // en séance et des motifs/mots-clés. L'ordre de priorité (1er/2e/3e clic) reste un choix
+  // clinique de la praticienne : on ne clique jamais à sa place, on présélectionne juste
+  // visuellement les objectifs les plus probables pour lui éviter de parcourir les 23 boutons. ──
+  const texteObjectifs = [sessionData.objectif_6mois, sessionData.motifs, sessionData.mots_cles, sessionData.chips_coches].filter(Boolean).join(' ');
+  if (texteObjectifs) {
+    const OBJ_KEYWORDS = {
+      "Retrouver de l'énergie durablement": /énergie|fatigue|épuis/i,
+      "Sortir du burn-out / reconstruction": /burn.?out/i,
+      "Améliorer ma concentration & clarté mentale": /concentration|brouillard mental|clarté mentale/i,
+      "Apaiser ma digestion": /digestion|digestif/i,
+      "Réduire mes ballonnements & intolérances": /ballonnem|intoléranc/i,
+      "Rééquilibrer mes hormones": /hormon/i,
+      "Projet de grossesse / fertilité": /grossesse|fertilité/i,
+      "Traverser la périménopause en douceur": /périménopause/i,
+      "Traverser ma ménopause en pleine vitalité": /ménopause(?!.*péri)/i,
+      "Réduire mes douleurs chroniques (règles, articulations, dos)": /douleurs? (chroniques|articulaires)|règles douloureuses|dysménorrhée/i,
+      "Soutenir ma thyroïde (Hashimoto, hypothyroïdie)": /thyroïde|hashimoto|hypothyroïdie/i,
+      "Rééquilibrer ma glycémie": /glycémie|insuline|fringale/i,
+      "Réduire l'inflammation chronique": /inflammation/i,
+      "Mieux dormir et récupérer": /sommeil|insomnie|réveil nocturne/i,
+      "Gérer mon stress & charge mentale": /stress|anxiété|charge mentale/i,
+      "Perdre du poids durablement": /perdre du poids|surpoids/i,
+      "Réduire ma dépendance au sucre / compulsions": /sucre|compulsion/i,
+      "Améliorer ma peau (acné, eczéma, psoriasis)": /acné|eczéma|psoriasis|peau/i,
+      "Renforcer mon immunité": /immunité|infections? récidivantes?/i,
+    };
+    document.querySelectorAll('.obj-toggle').forEach(btn => {
+      const re = OBJ_KEYWORDS[btn.dataset.val];
+      btn.classList.toggle('suggere', !!(re && re.test(texteObjectifs)));
     });
   }
 }
@@ -1092,7 +1197,7 @@ function buildClientData() {
   const gestesAlim = [...gestesBtns].map(b => b.dataset.val).filter(Boolean).join(', ') || '';
 
   // Collecter les diagnostics confirmés
-  const diagBtns = document.querySelectorAll('#diagnostics-group .p-toggle.on');
+  const diagBtns = document.querySelectorAll('[id^="diagnostics-group"] .p-toggle.on');
   const diagnosticsConfirmes = [...diagBtns].map(b => b.dataset.val).join(', ') || '';
 
   // Collecter traitements à vigilance & allergies alimentaires (sécurité)
