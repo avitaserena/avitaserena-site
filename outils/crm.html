@@ -808,6 +808,47 @@ body {
   border-color: rgba(193,121,60,.25);
   font-weight: 600;
 }
+.fv2-brief {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  max-width: 640px;
+}
+.fv2-brief-txt {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ink);
+}
+.fv2-brief-pending .fv2-brief-txt {
+  color: var(--muted);
+  font-style: italic;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.fv2-brief-foot {
+  margin-top: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 10.5px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.fv2-brief-refresh {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  border-radius: 6px;
+}
+.fv2-brief-refresh:hover { color: var(--ink); background: var(--border); }
 .fv2-actions {
   display: flex;
   gap: 6px;
@@ -1645,6 +1686,7 @@ let protocolesClient={}; // { clientId: row de la table protocoles_client (proto
 let protocolesHistory={}; // { clientId: [ {id, created_at}, ... ] } — tous les protocoles jamais générés, jamais écrasés
 let questionnairesClient={}; // { clientId: [ {id, type, prenom, snapshot, created_at}, ... ] }
 let consultationSummariesClient={}; // { clientId: [ {id, plan_type, plan_label, date_consultation, resume_md, created_at}, ... ] }
+let ficheBriefsClient={}; // { clientId: [ {id, brief_md, source_signature, created_at}, ... ] } — pense-bête auto généré par IA, affiché en haut de fiche
 let journalEntriesClient={}; // { clientId: [ {date, energie, transit, ballonnements, humeur, note}, ... ] }
 
 // COLORS palette - vibrant Monday-style
@@ -4158,6 +4200,17 @@ async function loadConsultationSummaries(cid){
   }
 }
 
+// Pense-bête de fiche (généré par IA, contexte de vie + dernière séance + à voir la prochaine fois) — table fiche_briefs
+async function loadFicheBrief(cid){
+  try{
+    const r=await sb('fiche_briefs?client_key=eq.'+encodeURIComponent(cid)+'&order=created_at.desc&limit=1&select=id,brief_md,source_signature,created_at');
+    ficheBriefsClient[cid]=r;
+  }catch(e){
+    console.error('[CRM] ✗ Pense-bête fiche:', e.message);
+    ficheBriefsClient[cid]=ficheBriefsClient[cid]||[];
+  }
+}
+
 async function loadJournalEntries(cid){
   try{
     const r=await sb('journal_entries?client_key=eq.'+encodeURIComponent(cid)+'&select=date,energie,transit,ballonnements,humeur,note,created_at&order=date.desc&limit=30');
@@ -4173,7 +4226,7 @@ async function openFiche(id){
   if(!c)return;
   nav('fiche',null);
   renderFiche(c); // affichage immédiat
-  await Promise.allSettled([loadMemoAlerts(), loadDocsMedicaux(id), loadBilansMarqueurs(id), loadRecommandationsAnalyses(id), loadQuestionnaires(id), loadConsultationSummaries(id), loadJournalEntries(id), loadProtocoleClient(id), loadProtocolesHistory(id)]); // rechargement frais depuis Supabase
+  await Promise.allSettled([loadMemoAlerts(), loadDocsMedicaux(id), loadBilansMarqueurs(id), loadRecommandationsAnalyses(id), loadQuestionnaires(id), loadConsultationSummaries(id), loadJournalEntries(id), loadProtocoleClient(id), loadProtocolesHistory(id), loadFicheBrief(id)]); // rechargement frais depuis Supabase
   if(!c.dateProtocole){
     const fallback=protoDateFor(c);
     if(fallback){
@@ -4182,6 +4235,9 @@ async function openFiche(id){
     }
   }
   renderFiche(c); // re-render avec données à jour
+  // Pense-bête auto : si absent ou périmé (nouvelle donnée source depuis la dernière génération),
+  // on régénère en silence en tâche de fond, sans bloquer l'affichage de la fiche.
+  if(ficheBriefEstPerime(id)) genererBriefFicheIA(id,{silencieux:true});
 }
 
 function renderFiche(c){
@@ -4525,6 +4581,25 @@ function renderFiche(c){
   if(c.programme) tagHtml+=`<span class="fv2-tag prog">${pLbl(c.programme)}</span>`;
   if(c.motifs) c.motifs.split(/[,·]/).slice(0,4).forEach(m=>{if(m.trim())tagHtml+=`<span class="fv2-tag">${escH(m.trim())}</span>`;});
 
+  // Pense-bête auto (contexte de vie + dernière séance + à voir cette fois) — généré par IA,
+  // affiché tel quel, régénéré tout seul en tâche de fond dès qu'une donnée source change.
+  const dernierBrief=(ficheBriefsClient[cid]||[])[0];
+  const briefPerime=ficheBriefEstPerime(cid);
+  let briefHtml;
+  if(dernierBrief){
+    briefHtml=`<div class="fv2-brief">
+      <div class="fv2-brief-txt">${escH(dernierBrief.brief_md)}</div>
+      <div class="fv2-brief-foot">
+        <span>${briefPerime?'Actualisation en cours…':'Pense-bête auto · '+fmtDate(dernierBrief.created_at)}</span>
+        <button class="fv2-brief-refresh" title="Régénérer maintenant" onclick="genererBriefFicheIA('${cid}')">${ic('refresh')}</button>
+      </div>
+    </div>`;
+  } else {
+    briefHtml=`<div class="fv2-brief fv2-brief-pending">
+      <div class="fv2-brief-txt">${ic('spark')} Génération du pense-bête en cours…</div>
+    </div>`;
+  }
+
   // Rendu final
   el.innerHTML=`
     <div class="fv2-header">
@@ -4540,6 +4615,7 @@ function renderFiche(c){
             ${c.tel?`<span>${escH(c.tel)}</span>`:''}
           </div>
           <div class="fv2-tags">${tagHtml}</div>
+          ${briefHtml}
         </div>
         <div class="fv2-actions">
           ${btn('fv2-btn',`emailHeroBtn(this); this.dataset.id='${cid}'`,ic('mail')+' Email')}
@@ -5701,6 +5777,128 @@ function texteDonneesQuestionnaire(snap){
   return Object.entries(snap||{})
     .filter(([k,v])=>v!==null&&v!==undefined&&String(v).trim()!==''&&!k.startsWith('_'))
     .map(([k,v])=>`${k} : ${typeof v==='object'?JSON.stringify(v):v}`).join('\n');
+}
+
+// ── Pense-bête de fiche (auto, silencieux) ──────────────────────────────────
+// Signature de fraîcheur : concatène les horodatages des sources qui doivent déclencher
+// une régénération si elles changent (nouveau questionnaire, nouveau mémo/protocole,
+// nouvelle prochaine étape). Comparée à la signature stockée avec le dernier brief —
+// si elle diffère, le pense-bête est considéré périmé et régénéré tout seul à l'ouverture.
+function ficheBriefSignature(cid){
+  const c=db.clients.find(x=>x.id===cid);
+  if(!c) return '';
+  const qList=(questionnairesClient[cid]||[]).filter(q=>q.type==='consultation');
+  const dernierQ=qList[0]?.created_at||'';
+  const clientMemos=memoHistoryAll.filter(m=>(m.prenom||'').toLowerCase()===(c.prenom||'').toLowerCase()&&(m.nom||'').toLowerCase()===(c.nom||'').toLowerCase()).sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||''));
+  const dernierMemo=clientMemos[0]?.created_at||'';
+  const wf=buildWF(c);
+  const nextWF=wf.find(s=>!s.done);
+  return [dernierQ,dernierMemo,c.notes||'',c.motifs||'',c.axes||'',nextWF?.label||''].join('|');
+}
+
+function ficheBriefEstPerime(cid){
+  const dernier=(ficheBriefsClient[cid]||[])[0];
+  if(!dernier) return true; // jamais généré
+  return dernier.source_signature!==ficheBriefSignature(cid);
+}
+
+// Rassemble, en texte brut, tout ce qu'on sait déjà de la cliente pour nourrir le prompt —
+// aucune ressaisie manuelle, uniquement des données déjà présentes dans le CRM.
+function texteContexteBrief(cid){
+  const c=db.clients.find(x=>x.id===cid);
+  if(!c) return '';
+  const blocs=[];
+
+  blocs.push(`Prénom : ${c.prenom||''}${c.axes?` — Axes de travail suivis : ${c.axes}`:''}`);
+  if(c.motifs) blocs.push(`Motif principal renseigné en fiche : ${c.motifs}`);
+  if(c.notes) blocs.push(`Notes cliniques libres (Sabrina) : ${c.notes}`);
+
+  // Contexte de vie éventuellement renseigné dans le questionnaire de consultation
+  const qList=(questionnairesClient[cid]||[]).filter(q=>q.type==='consultation');
+  if(qList[0]){
+    blocs.push(`── Réponses du questionnaire de consultation (le plus récent, du ${fmtDate(qList[0].created_at)}) ──\n${texteDonneesQuestionnaire(qList[0].snapshot)}`);
+  }
+
+  // Dernier protocole PHV — ce qui a été mis en place, accepté, refusé
+  const clientMemos=memoHistoryAll.filter(m=>(m.prenom||'').toLowerCase()===(c.prenom||'').toLowerCase()&&(m.nom||'').toLowerCase()===(c.nom||'').toLowerCase()).sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||''));
+  if(clientMemos[0]){
+    const m=clientMemos[0];
+    const nbOk=m.stats?.ok||0, nbTotal=m.stats?.total||0;
+    const refusTxt=(m.refuses||[]).map(r=>`- [${r.aDejaReponse?'répondu':'en attente de réponse'}] ${r.pilier||''} : ${r.texte||''}`).join('\n');
+    blocs.push(`── Dernier protocole PHV envoyé (le ${fmtDate(m.created_at)}) ──\n${nbOk}/${nbTotal} recommandations acceptées.${refusTxt?'\nRecommandations refusées ou en discussion :\n'+refusTxt:'\nAucun refus — protocole accepté en totalité.'}`);
+  }
+
+  // Prochaine étape attendue (workflow)
+  const wf=buildWF(c);
+  const nextWF=wf.find(s=>!s.done);
+  if(nextWF) blocs.push(`Prochaine étape prévue dans le suivi : ${nextWF.label}${nextWF.tgt?' (prévue le '+fmtDate(nextWF.tgt)+')':''}`);
+
+  return blocs.join('\n\n');
+}
+
+async function genererBriefFicheIA(cid,{silencieux=false}={}){
+  const c=db.clients.find(x=>x.id===cid);
+  if(!c) return;
+  const apiKey=getAnthropicKey();
+  if(!apiKey){ if(!silencieux) toast('Clé API requise pour générer le pense-bête','err'); return; }
+
+  const contexte=texteContexteBrief(cid);
+  const prenom=c.prenom||'la cliente';
+
+  const prompt=`Tu es l'assistant de Sabrina Castelli, naturopathe fonctionnelle (A VITA SERENA, Porto-Vecchio, Corse). Tu rédiges un pense-bête ultra-court, à usage strictement interne, que Sabrina lit en quelques secondes juste avant d'ouvrir une visio avec ${escH(prenom)}, pour reprendre le contexte instantanément.
+
+━━ RÈGLES ABSOLUES ━━
+1. 3 à 4 phrases MAXIMUM au total. Pas de liste à puces, pas de titre — un petit paragraphe fluide, dense, écrit pour être lu en 5 secondes.
+2. Contenu attendu, dans cet ordre si l'information existe : (a) contexte de vie utile à connaître (situation familiale, enfants, profession, ce qu'elle vit et qui éclaire son état — UNIQUEMENT si explicitement renseigné dans les données fournies, jamais déduit ni supposé), (b) ce qui a été mis en place lors du dernier échange (protocole, recommandations), (c) ce qu'il faut vérifier ou aborder à cette prochaine séance.
+3. N'invente RIEN. Si une des trois dimensions n'a rien de renseigné dans les données, saute-la simplement sans le signaler.
+4. Troisième personne, écriture interne factuelle ("Contexte : ...", "A mis en place ...", "À voir cette fois : ..." ou en prose continue — au choix, tant que c'est court).
+5. Vocabulaire naturopathique courant, pas de jargon biologique lourd.
+6. Jamais de diagnostic médical de ta part — tu restitues ce qui a été dit/noté, tu n'interprètes pas.
+
+━━ FORMAT DE SORTIE ━━
+Réponds UNIQUEMENT avec le texte du pense-bête, sans JSON, sans guillemets, sans markdown, sans texte avant/après.
+
+━━ DONNÉES DISPONIBLES ━━
+${contexte}`;
+
+  try{
+    if(!silencieux) toast('Génération du pense-bête en cours…','ok');
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'x-api-key':apiKey,
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-direct-browser-access':'true'
+      },
+      body:JSON.stringify({
+        model:'claude-haiku-4-5-20251001',
+        max_tokens:400,
+        messages:[{role:'user',content:prompt}]
+      })
+    });
+    const data=await res.json();
+    if(data.error) throw new Error(data.error.message);
+    const briefTxt=(data.content?.[0]?.text||'').trim();
+    if(!briefTxt) throw new Error('Réponse vide');
+
+    await sb('fiche_briefs',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify({
+      id:'brief_'+cid+'_'+Date.now(),
+      client_key:cid,
+      prenom:c.prenom||null,
+      nom:c.nom||null,
+      brief_md:briefTxt,
+      source_signature:ficheBriefSignature(cid),
+      created_at:new Date().toISOString()
+    })});
+
+    await loadFicheBrief(cid);
+    if(!silencieux) toast('Pense-bête actualisé','ok');
+    renderFiche(c);
+  }catch(e){
+    console.error('[CRM] ✗ Pense-bête IA:', e.message);
+    if(!silencieux) toast('Erreur de génération : '+e.message,'err');
+  }
 }
 
 async function genererResumeNarratifIA(cid){
