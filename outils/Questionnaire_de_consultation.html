@@ -1909,6 +1909,17 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
         </div>
       </div>
 
+      <div style="margin-top:14px"><label class="fl">Fréquence de consommation de sources d'oméga-3 (poissons gras, graines de lin/chia moulues, noix, huile de colza ou de lin)</label>
+        <select class="fi" id="freq-omega3">
+          <option value="">— —</option>
+          <option>Quasiment jamais</option>
+          <option>1 fois par semaine ou moins</option>
+          <option>2-3 fois par semaine</option>
+          <option>Presque tous les jours</option>
+        </select>
+        <div style="font-size:11px;color:var(--gris);margin-top:5px;font-style:italic">Le corps ne fabrique pas ces acides gras essentiels — ils viennent uniquement de l'alimentation. Un apport faible ou très irrégulier oriente vers un terrain carencé en AGPI, à recouper avec la peau, les cheveux et les ongles (section Observation clinique).</div>
+      </div>
+
       <div class="g2" style="margin-top:14px">
         <div><label class="fl">Hydratation quotidienne (eau, hors café/thé)</label>
           <select class="fi">
@@ -4166,6 +4177,10 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
           <div class="trig-check">
             <div class="trig-top"><div class="tcb">✓</div><div class="trig-q">Peau très sèche, squameuse ou à tendance kératosique ?</div></div>
             <div class="trig-hint">La vitamine A et les acides gras essentiels, indispensables à une peau souple, ont tous deux besoin de la bile pour être absorbés — une peau très sèche peut donc être le signe visible d'un manque de bile encore silencieux par ailleurs.</div>
+          </div>
+          <div class="trig-check">
+            <div class="trig-top"><div class="tcb">✓</div><div class="trig-q">Cheveux secs et cassants, ongles striés ou cassants, ou pellicules importantes, sans autre cause déjà identifiée (thyroïde, fer) ?</div></div>
+            <div class="trig-hint">Les acides gras essentiels entrent directement dans la structure de la fibre capillaire, de l'ongle et du film hydrolipidique du cuir chevelu — quand ils manquent, ce sont souvent les tissus à renouvellement rapide comme ceux-ci qui le montrent en premier.</div>
           </div>
           <div class="trig-check">
             <div class="trig-top"><div class="tcb">✓</div><div class="trig-q">Sourcils clairsemés au niveau de la queue du sourcil ?</div></div>
@@ -6462,10 +6477,10 @@ const SOPK_CAUSE_KEYWORDS = {
    automatique) les terrains dont la signature clinique est déjà présente.
    La qualification finale d'un terrain CHANBIO reste un jugement clinique —
    ces correspondances sont un premier repérage à valider ou corriger, pas
-   une conclusion automatique. « Carencé en AGPI » n'a pour l'instant aucun
-   signal dédié fiable dans le questionnaire : il reste toujours à cocher
-   manuellement tant qu'aucune question spécifique (peau/cheveux/ongles secs,
-   par ex.) n'aura été ajoutée. ──
+   une conclusion automatique. « Carencé en AGPI » s'appuie sur des signaux
+   moins spécifiques que les autres terrains (peau/cheveux/ongles secs ont
+   de multiples causes) — à recouper avec encore plus de vigilance que les
+   autres suggestions avant de le retenir. ──
 ══════════════════════════════════════════════════════ */
 const CHANBIO_LABEL_MATCH = {
   hypoglycemique: 'Hypoglycémique',
@@ -6474,12 +6489,14 @@ const CHANBIO_LABEL_MATCH = {
   intoxique: 'Intoxiqué',
   oxyde_denature: 'Oxydé-dénaturé',
   acide_demineralise: 'Acide déminéralisé',
+  carence_agpi: 'Carencé en AGPI',
 };
 const CHANBIO_KEYWORDS = {
   hypoglycemique: [/Envies de sucre intenses en fin d.après-midi/i, /Coup de barre après le déjeuner, somnolence/i, /Tremblements, irritabilité si repas retardé ou sauté/i, /Fringales incontrôlables/i],
   acide_demineralise: [/crampes nocturnes — jambes, pieds, mollets/i, /tendinites ou des douleurs ligamentaires récidivantes/i, /douleurs musculaires diffuses \(myalgies\)/i],
   intoxique: [/profession exposée aux métaux lourds/i, /plusieurs amalgames dentaires/i, /majoritairement non biologique/i, /gros poissons.*pêchés localement/i],
   oxyde_denature: [/Ultra-transformés \(pizzas/i, /Fumez-vous/i],
+  carence_agpi: [/Peau très sèche, squameuse ou à tendance kératosique/i, /Cheveux secs et cassants, ongles striés ou cassants/i],
 };
 
 function detecterTerrainsChanbio(suggestionsSpecialites) {
@@ -6493,6 +6510,8 @@ function detecterTerrainsChanbio(suggestionsSpecialites) {
   document.querySelectorAll('.chip.on').forEach(c => {
     if (/Ultra-transformés \(pizzas/i.test(c.textContent)) terrains.add('oxyde_denature');
   });
+  const freqOmega3 = document.getElementById('freq-omega3')?.value || '';
+  if (freqOmega3 === 'Quasiment jamais' || freqOmega3 === '1 fois par semaine ou moins') terrains.add('carence_agpi');
   // Recoupements avec les 7 spécialités déjà détectées : un terrain surrénalien ou
   // digestif suggéré ailleurs dans la séance renforce logiquement certains terrains CHANBIO.
   if (suggestionsSpecialites?.has('surr')) terrains.add('neurodystonique');
