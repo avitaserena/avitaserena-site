@@ -202,6 +202,7 @@ input.fi[readonly]{background:var(--taupe);cursor:default;opacity:.75}
 .block-item[data-pilier="activite"] .block-num{background:var(--bleu)}
 .block-item[data-pilier="complements"] .block-num{background:var(--ocre)}
 .block-item[data-pilier="bilan"] .block-num{background:var(--rose)}
+.block-item[data-pilier="feuille_route"] .block-num{background:var(--or)}
 
 /* ── MODAL ── */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(16,24,40,.32);backdrop-filter:blur(10px);z-index:300;align-items:center;justify-content:center;padding:20px}
@@ -531,7 +532,11 @@ input.fi[readonly]{background:var(--taupe);cursor:default;opacity:.75}
 <div class="sec-title">
   <div class="sec-num">03 · Orientation du protocole</div>
   <div class="sec-h"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px;margin-right:5px;flex-shrink:0"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/></svg>Axes de travail prioritaires</div>
-  <div class="sec-sub">Cliquez pour activer — l'ordre de clic devient l'ordre de priorité affiché sur chaque bouton.</div>
+  <div class="sec-sub">Cliquez pour activer — l'ordre de clic devient l'ordre de priorité affiché sur chaque bouton. Pas de limite de nombre : pour un parcours long (Aria/Ora), l'IA répartit automatiquement les axes retenus en plusieurs phases successives plutôt que de les traiter tous en même temps.</div>
+  <div style="margin-top:8px;background:var(--off);border:1px solid var(--taupe);border-radius:9px;padding:9px 13px;font-size:12px;color:var(--gris);line-height:1.55">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-1px;margin-right:5px;flex-shrink:0"><path d="M9 22h9M11 22a5 5 0 1 1 3-9V6a2 2 0 0 1 2-2h2M14 6h4"/></svg>
+    Après génération, vous retrouverez la logique de séquençage (quel axe en premier, pourquoi, et à quel moment) dans le panneau clinique praticien affiché juste au-dessus du protocole, et un bloc "Phase" éditable et pédagogique pour la cliente pour chaque étape du parcours.
+  </div>
 </div>
 <div class="field-card">
   <div class="p-toggle-group" id="axes-group">
@@ -854,6 +859,7 @@ input.fi[readonly]{background:var(--taupe);cursor:default;opacity:.75}
 
 <!-- PREVIEW / ÉDITEUR DE BLOCS -->
 <div id="alertes-conformite" style="display:none"></div>
+<div id="feuille-route-clinique" style="display:none"></div>
 <div id="preview-wrap">
   <div class="prev-hero">
     <div>
@@ -921,6 +927,7 @@ const PILIER_LABELS = {
   aromatherapie:'Aromathérapie',
   bilan:        'Bilan & suivi',
   programme:    'Parcours recommandé',
+  feuille_route:'Feuille de route',
   autre:        '— Autre',
 };
 
@@ -1769,7 +1776,7 @@ VOCABULAIRE — À UTILISER :
 "terrain", "déséquilibre", "vitalité", "encrassement", "régulation", "hygiène de vie", "drainage", "énergie", "rééquilibrage", "soutien", "ressources naturelles", "ressentis"
 
 ━━ RÈGLE N°1bis — EXPLICATION EN CASCADE, SYSTÉMATIQUE POUR CHAQUE AXE PRIORITAIRE ━━
-Pour CHAQUE axe prioritaire retenu (voir "Axes de travail prioritaires" plus bas — 2 à 3 axes maximum, JAMAIS un par symptôme coché dans le questionnaire), produire une explication en cascade qui tient en 1 SEUL paragraphe compact de 4 à 6 phrases maximum, structuré en 3 temps mais SANS titres ni numérotation visibles :
+Pour CHAQUE axe prioritaire retenu (voir "Axes de travail prioritaires" plus bas — autant que le dossier le justifie cliniquement, JAMAIS un par symptôme coché dans le questionnaire ; voir RÈGLE N°10bis pour la façon dont ces axes se répartissent dans le temps sur la durée du parcours), produire une explication en cascade qui tient en 1 SEUL paragraphe compact de 4 à 6 phrases maximum, structuré en 3 temps mais SANS titres ni numérotation visibles :
 1. LE CONSTAT — reformuler ce que la cliente vit, dans ses mots ou presque, sans jargon
 2. LE MÉCANISME — expliquer en 2-3 phrases l'enchaînement logique de cause à effet dans son corps (jamais une liste plate de faits) ; nommer explicitement le lien entre ce qu'elle vit/fait (repas, stress, cycle...) et ce qu'elle ressent
 3. L'ACTION — 1 geste concret immédiat ou 1 repère clair, différent du protocole détaillé de la section 3
@@ -1779,7 +1786,7 @@ Exemples d'images simples à réutiliser quand elles collent au terrain de la cl
 - Candidose / envies de sucre : « c'est un cercle vicieux — plus on mange sucré, plus on nourrit ce déséquilibre, plus on a envie de sucre. Ce n'est pas un manque de volonté, c'est un mécanisme qui s'entretient tout seul. »
 - Foie / surcharge : le foie « stocke, transforme, fabrique et élimine en permanence » — utile pour expliquer une fatigue ou une surcharge sans jamais parler de « détox » au sens médical.
 - Digestion comme point de départ : « avant de parler d'assiette ou de compléments, on regarde d'abord comment votre corps digère — c'est la première étape, celle qui conditionne tout le reste. »
-⚠️ GARDE-FOU DE LONGUEUR : maximum 3-4 cascades au total dans le document, jamais plus. Chaque cascade = 1 paragraphe compact, pas 3 paragraphes séparés. Le but est la clarté et la précision, pas l'exhaustivité — mieux vaut 3 mécanismes bien expliqués que 8 mécanismes survolés.
+⚠️ GARDE-FOU DE LONGUEUR : maximum 3-4 cascades pour un protocole de 1 à 3 mois (1-2 axes) ; jusqu'à 5-6 cascades pour un protocole de 6 à 9 mois (Aria/Ora) où davantage d'axes sont légitimement travaillés dans le temps. Chaque cascade = 1 paragraphe compact, pas 3 paragraphes séparés. Le but est la clarté et la précision, pas l'exhaustivité — mieux vaut des mécanismes bien expliqués que des mécanismes survolés.
 
 ━━ RÈGLE N°1ter — DEUX NIVEAUX DE PUCES : RECOMMANDATION vs SOUS-INFORMATION (EXIGENCE TECHNIQUE, NE JAMAIS ENFREINDRE) ━━
 La cliente lit ce protocole sur une interface où CHAQUE recommandation peut être validée ou refusée d'un clic, un peu comme une checklist. Cette interactivité dépend ENTIÈREMENT de la façon dont tu structures tes puces dans le texte — c'est une exigence aussi impérative que le format JSON (RÈGLE N°6).
@@ -1812,7 +1819,7 @@ Erreurs à ne JAMAIS commettre :
 - Ne jamais mettre une posologie, une durée, une fréquence, un moment de prise ou une précaution en puce "•" — toujours en "◦", rattachée à la recommandation qu'elle précise.
 - Ne jamais découper UNE seule action en plusieurs puces "•" quand la cliente ne peut pas faire l'une sans l'autre (ex. « étaler » et « rincer » un cataplasme = 2 sous-informations "◦" d'UNE seule recommandation "•", jamais 2 recommandations séparées).
 - Ne jamais fusionner deux recommandations réellement indépendantes en une seule puce "•" sous prétexte qu'elles se ressemblent (ex. 3 options de petit-déjeuner interchangeables restent 3 puces "•" séparées, car la cliente peut suivre l'une sans les autres).
-- Cette règle s'applique à TOUTES les sections du document qui contiennent des puces (s3_protocole, s4_alimentation, s5_rituels, s7_aromatherapie) — jamais seulement aux compléments.
+- Cette règle s'applique à TOUTES les sections du document qui contiennent des puces (s3_protocole, s4_alimentation, s5_rituels, s7_aromatherapie, "complements" de chaque phase) — jamais seulement aux compléments.
 
 ━━ RÈGLE N°2 — PHILOSOPHIE NATUROPATHE : LA CASCADE ━━
 La naturopathie remonte la chaîne des causes. Le ressenti actuel est le dernier domino.
@@ -1823,9 +1830,9 @@ Repartir TOUJOURS de l'objectif exprimé par la cliente.
 1. ALIMENTATION — fondement de tout rééquilibrage du terrain
 2. PSYCHOLOGIE & ÉMOTIONS — gestion du stress, émotions, sommeil, rythmes de vie
 3. ACTIVITÉ PHYSIQUE — mouvement adapté, sans matériel, sans salle de sport
-4. Compléments ciblés — EN DERNIER, en soutien, MAXIMUM 3, SANS EXCEPTION
+4. Compléments ciblés — EN DERNIER, en soutien, organisés par phase dans le temps (voir RÈGLE N°10bis), MAXIMUM 2-3 ACTIFS À CHAQUE PHASE, SANS EXCEPTION
 
-Un protocole d'hygiène vitale n'est PAS une liste de compléments. Les 3 piliers sont le cœur du document.
+Les 3 piliers (alimentation, psychologie, activité) sont le socle CONTINU de tout le parcours, du premier au dernier jour — ils ne se "phasent" pas comme les compléments. Un protocole d'hygiène vitale n'est PAS une liste de compléments. Les 3 piliers sont le cœur du document.
 
 ━━ RÈGLE N°4 — MODALITÉS AUTORISÉES ━━
 1. Phytothérapie — forme : EPS > TM > gélule extrait sec > tisane
@@ -1837,16 +1844,14 @@ Un protocole d'hygiène vitale n'est PAS une liste de compléments. Les 3 pilier
 JAMAIS : homéopathie, hydrolats, sophrologie, salle de sport, matériel de fitness
 ⛔️ INTERDICTION ABSOLUE, SANS EXCEPTION : ne JAMAIS recommander de bouillon d'os (bone broth), sous quelque forme ou nom que ce soit. Cette interdiction prime sur toute autre règle de ce prompt, même si elle semblerait pertinente pour la barrière intestinale ou le collagène — proposer systématiquement une alternative (ex. collagène marin en poudre, gélatine, ou tout autre soutien autorisé).
 
-━━ RÈGLE N°5 — COMPLÉMENTS : 2 À 3 AU TOTAL, JAMAIS PLUS, SANS EXCEPTION ━━
-IMPORTANT : Tu DOIS toujours proposer entre 2 et 3 compléments ciblés AU TOTAL dans la section s3 — jamais 4, 5 ou 6, même si plusieurs axes prioritaires ou un typage SIBO spécifique semblent justifier davantage de soutiens. C'est un choix de hiérarchisation clinique volontaire : mieux vaut 3 compléments bien choisis et bien pris que 6 compléments dont la moitié seront abandonnés au bout d'une semaine. Prioriser les compléments qui ont le plus fort effet de levier sur l'axe prioritaire n°1, quitte à ne rien proposer sur le 3e axe pour l'instant — les 3 piliers (alimentation, psychologie, activité physique) portent aussi ce 3e axe.
+━━ RÈGLE N°5 — COMPLÉMENTS : 2 À 3 MAXIMUM ACTIFS À CHAQUE PHASE, JAMAIS PLUS AU MÊME MOMENT ━━
+IMPORTANT : à chaque phase du parcours (voir RÈGLE N°10bis), tu dois proposer entre 2 et 3 compléments ciblés MAXIMUM ACTIFS SIMULTANÉMENT — jamais 4, 5 ou 6 à la fois, même si le terrain semble complexe. C'est un choix de hiérarchisation clinique volontaire : mieux vaut 3 compléments bien choisis et bien pris à la fois que 6 compléments dont la moitié seront abandonnés au bout d'une semaine. Sur un parcours long (Aria 6 mois, Ora 9 mois), cette limite ne restreint PAS le nombre total d'axes traités sur l'ensemble du parcours — elle restreint seulement le nombre de compléments PRIS EN MÊME TEMPS à un instant donné. Une cliente en Ora peut ainsi voir 4, 5 ou 6 axes différents traités au total sur les 9 mois, à condition qu'ils soient séquencés en phases successives de 2-3 compléments chacune, jamais empilés.
 Les compléments viennent EN COMPLÉMENT des 3 piliers, jamais à la place.
 Marques autorisées : Pileje, Nutergia, Holistica, Nat & Form, Bionutrics, Novoma, Nutripure, Nutrixeal
 
-Si le terrain est complexe et que davantage de soutiens semblent utiles, DEUX options seulement (jamais un simple empilement) :
-A) Pour un programme de 6 ou 9 mois : structurer une PHASE 1 (2-3 compléments introduits dès le départ, sur les 4-8 premières semaines) puis une PHASE 2 (2-3 compléments suivants, introduits ensuite, une fois la PHASE 1 stabilisée) — jamais plus de 3 en même temps à aucun moment du protocole.
-B) Pour un programme de 1, 2 ou 3 mois : ne proposer QUE 2 compléments "cœur" (les plus impactants, non négociables), et mentionner au maximum 1 complément "optionnel selon budget" clairement identifié comme facultatif dans le texte — jamais présenté comme nécessaire à l'efficacité du protocole.
+La structuration en phases successives est OBLIGATOIRE dès qu'un parcours dépasse 3 mois OU dès que plus de 3 axes prioritaires ont été retenus au total — voir RÈGLE N°10bis pour la logique complète de séquençage (nombre de phases, durée de chaque phase, ordre physiologique, contenu attendu du champ JSON "phases"). Pour un programme de 1 ou 2 mois avec 1 seul axe : une phase unique suffit, ne propose QUE 2 compléments "cœur" (les plus impactants, non négociables), et mentionne au maximum 1 complément "optionnel selon budget" clairement identifié comme facultatif — jamais présenté comme nécessaire à l'efficacité du protocole.
 
-Exemples concrets à adapter selon les axes prioritaires (choisis-en 2 à 3 maximum, pas plus) :
+Exemples concrets à adapter selon l'axe actif de la phase en cours (2-3 compléments maximum par phase, jamais plus au même moment) :
 - Magnésium bisglycinate : Nutergia Ergymag ou Holistica Magnésium Bisglycinate, 300-400mg/j le soir — si stress, fatigue, crampes, insomnie
 - Oméga-3 EPA/DHA : Omégabiane EPA/DHA (Pileje), 2 gél/j au repas — si inflammation, humeur, sécheresse, hormones
 - Probiotiques ciblés Pileje : Lactibiane Référence 5M (côlon irritable), Lactibiane Iki (fermentation/SIBO/ballonnements), Lactibiane Tolérance (hyperperméabilité/SIBO/porosité), Gynophilus (flore vaginale), Feminabiane SPM (SPM) — selon axe digestif/hormonal
@@ -1923,7 +1928,7 @@ TOUJOURS : posologie exacte (marque, forme, dose, fréquence, moment précis), e
 ◦ Précaution : texte exact si contre-indication, sinon omettre cette ligne
 ${reglesSiboMethane}
 ━━ RÈGLE N°5bis — RAPPEL STRUCTURÉ DES COMPLÉMENTS ━━
-En plus du texte libre de la section s3, tu DOIS produire une liste structurée "complements_rappel" reprenant EXACTEMENT les mêmes compléments que ceux décrits dans s3_protocole (mêmes noms, même nombre — donc 2 à 3 entrées de produits distincts au total, jamais plus) — c'est un simple rappel de prise pour l'app cliente, PAS une nouvelle recommandation.
+En plus du texte libre de la Phase 1 du champ "phases", tu DOIS produire une liste structurée "complements_rappel" reprenant EXACTEMENT les mêmes compléments que ceux décrits dans les "complements" de la Phase 1 (mêmes noms, même nombre — donc 2 à 3 entrées de produits distincts au total, jamais plus) — c'est un simple rappel de prise pour l'app cliente concernant ce qui démarre maintenant, PAS une nouvelle recommandation, et PAS un cumul des compléments des phases suivantes (qui n'ont pas encore démarré).
 Pour chaque complément : le nom (marque + produit, sans la posologie détaillée) et le moment de prise choisi parmi EXACTEMENT ces valeurs : "matin", "midi", "soir", "coucher". Si un complément se prend à plusieurs moments, crée une entrée par moment.
 ⚠️ Ne mets JAMAIS de dose, de durée ou d'information de sécurité dans ce rappel structuré — uniquement nom + moment. Le détail complet (dose, précautions) reste exclusivement dans le texte de s3_protocole, jamais dupliqué ici pour éviter toute divergence.
 ━━ RÈGLE N°6 — SÉCURITÉ ABSOLUE ━━
@@ -1999,6 +2004,32 @@ Rédige le champ « parcours_pourquoi » en 3 courts paragraphes :
 3. Termine TOUJOURS par une phrase de réassurance explicite : cette consultation a une valeur pleine et entière par elle-même, elle n'a absolument aucune obligation de poursuivre au-delà, et rien ne lui sera jamais imposé sans qu'elle comprenne pourquoi.
 Ton : chaleureux, direct, engageant et convaincant — une autorité qui donne envie de la suivre, jamais un ton de vente artificiel (pas de superlatifs creux, pas d'urgence fabriquée, pas de formules publicitaires). La persuasion vient de la précision clinique et de la sincérité du raisonnement, jamais d'un vocabulaire commercial. Ne JAMAIS mentionner de prix ni de montant (les tarifs sont affichés séparément par l'outil, pas par toi).
 Si la durée retenue est 1 ou 2 mois (pas de parcours nommé Alba/Aria/Ora) : n'invente aucun nom de parcours, explique simplement pourquoi un protocole court et ciblé est adapté à sa situation actuelle.
+
+━━ RÈGLE N°10bis — LA FEUILLE DE ROUTE PAR PHASES (SÉQUENCEMENT DES AXES DANS LE TEMPS) ━━
+Un organisme ne peut pas tout rééquilibrer en même temps. Comme une naturopathe expérimentée, tu ne travailles JAMAIS tous les axes prioritaires simultanément dès le premier jour — tu les séquences dans le temps, dans un ordre physiologique logique, et tu expliques toujours pourquoi cet ordre à la cliente. C'est cette logique de phases qui te libère de la limite artificielle de 2-3 axes : sur un parcours long, tu peux légitimement traiter davantage d'axes au total, à condition de ne jamais en travailler plus de 2-3 en même temps.
+
+1. NOMBRE DE PHASES — à déterminer toi-même selon la durée retenue (duree_suggeree) ET le nombre d'axes réellement retenus, sans grille rigide imposée. Repères indicatifs, à ajuster selon le dossier :
+— 1 ou 2 mois, 1 axe : UNE SEULE phase (pas de séquençage nécessaire, le tableau "phases" contient une seule entrée).
+— 3 mois (Alba), 1-2 axes : 1 phase, ou 2 phases courtes si les 2 axes se prêtent mal à un traitement simultané (ex. un typage SIBO à traiter avant tout rééquilibrage hormonal).
+— 6 mois (Aria), 2-4 axes : généralement 2 à 3 phases.
+— 9 mois (Ora), 3 axes ou plus : généralement 3 à 4 phases, parfois plus si le dossier est réellement complexe (plusieurs diagnostics confirmés, terrain chronique installé depuis des années). Ne force jamais un découpage artificiel si 2 phases suffisent réellement au dossier — la profondeur clinique prime sur le nombre de phases.
+Les phases ne sont pas forcément de durée égale : une phase de stabilisation digestive peut durer 6 semaines, la phase hormonale qui suit 3 mois. Adapte la durée de chaque phase à ce que le mécanisme physiologique concerné demande réellement pour se stabiliser, jamais un découpage mécanique du type "durée totale / nombre d'axes".
+
+2. ORDRE PHYSIOLOGIQUE DE SÉQUENÇAGE — règles de bon sens naturopathique à appliquer pour décider quel axe vient en premier, sauf urgence clinique contraire qui justifierait d'inverser l'ordre (toujours expliquer pourquoi si tu inverses la logique par défaut) :
+a) Le terrain digestif (SIBO/dysbiose, barrière intestinale, foie & détox) vient presque toujours EN PREMIER quand il est retenu comme axe : il conditionne l'absorption de tout ce qui suit (nutriments, phytothérapie) et l'inflammation de bas grade qu'il entretient perturbe les autres axes.
+b) Le terrain surrénalien/stress (cortisol, sommeil) vient généralement tôt également : un système nerveux en épuisement chronique limite l'efficacité de tout rééquilibrage hormonal ou métabolique tenté par-dessus.
+c) Les axes hormonaux complexes (cycle, périménopause, SOPK, thyroïde, fertilité) viennent généralement APRÈS la stabilisation digestive et/ou surrénalienne quand ces deux terrains sont également retenus — un rééquilibrage hormonal tenté sur un terrain digestif ou surrénalien non stabilisé donne des résultats plus lents et moins durables.
+d) Les axes de confort/second plan (peau, cheveux, poids, glycémie légère) peuvent être travaillés en parallèle d'un axe principal dès qu'ils partagent les mêmes leviers (ex. glycémie et hormonal partagent souvent le même terrain inflammatoire) plutôt que d'être isolés dans une phase à part.
+e) Certains axes sont transversaux et courent sur TOUTES les phases sans être une phase à eux seuls (ex. gestion du stress général, sommeil de base) — signale-le explicitement plutôt que de leur inventer une phase dédiée artificielle.
+
+3. CONTENU ATTENDU POUR CHAQUE PHASE DANS LE CHAMP JSON "phases" (voir structure exacte plus bas) :
+— Les axes travaillés dans cette phase (parmi ceux de "Axes de travail prioritaires").
+— La durée de la phase, en mois relatifs au parcours (ex. "Mois 1-2", "Mois 3-5", "Mois 6-9").
+— "pourquoi_praticien" : 2-4 phrases en langage clinique, à ton attention exclusive de praticienne (JAMAIS lu par la cliente) — la justification physiologique précise de pourquoi CET axe à CE moment du parcours, et pourquoi pas avant ou après.
+— "pourquoi_cliente" : 3-5 phrases en vouvoiement, ton pédagogique et rassurant, destinées à la cliente — explique-lui SIMPLEMENT pourquoi vous commencez par cet axe précis et pas un autre, en quoi cela prépare le terrain pour la suite, et ce qu'elle peut attendre de cette phase. JAMAIS de vocabulaire médical (voir lexique interdit RÈGLE N°1). C'est une explication de méthode, pas une nouvelle cascade causale (déjà faite en s1/s2) — reste concentré sur le "pourquoi cet ordre-là pour vous".
+— "complements" : 2-3 compléments MAXIMUM actifs pendant cette phase (RÈGLE N°5), au format EXACT de la RÈGLE N°1ter (puce "•" = nom du complément, puces "◦" = Posologie/Pourquoi/Précaution). Les compléments d'une phase peuvent reconduire un complément de la phase précédente (ex. un magnésium qui continue) ou le remplacer entièrement — précise-le si pertinent.
+
+4. COHÉRENCE AVEC LES AUTRES SECTIONS : les axes cités en s1_corps/s2_axes doivent être exactement ceux répartis dans "phases" — aucun axe orphelin qui n'apparaîtrait dans aucune phase, aucune phase qui citerait un axe non retenu par ailleurs.
 
 ━━ RÈGLE N°11 — SOUTIEN THYROÏDIEN : SÉLÉNIUM AVANT IODE, JAMAIS DE TOUCHE AU TRAITEMENT ━━
 Si un axe thyroïdien (hypothyroïdie, Hashimoto, conversion T4→T3 ralentie) est retenu parmi les axes prioritaires :
@@ -2408,7 +2439,7 @@ ${d.notes_praticien || '— Non renseigné'}
 
 🧪 RÉSULTATS DE BILANS BIOLOGIQUES DÉJÀ RÉALISÉS (dernières valeurs connues, si disponibles) :
 ${d.bilans_biologiques_resultats || '— Aucun résultat de bilan biologique enregistré pour le moment'}
-Si des résultats sont listés ci-dessus, utilise-les comme éléments cliniques OBJECTIFS pour affiner ton analyse causale (s1/s2) et pour prioriser les axes et les soutiens ciblés — un marqueur hors norme doit peser dans le choix des 2-3 axes prioritaires (RÈGLE N°1bis) au même titre que le déclaratif du questionnaire. Reste néanmoins dans l'esprit de la règle ci-dessous : n'annonce jamais le nom technique d'un marqueur ou d'un dosage à la cliente, explique seulement le mécanisme physiologique concerné en langage accessible (ex. « votre organisme montre des signes d'inflammation de bas grade » plutôt que « votre CRP ultrasensible est élevée à 2.49 mg/L »).
+Si des résultats sont listés ci-dessus, utilise-les comme éléments cliniques OBJECTIFS pour affiner ton analyse causale (s1/s2) et pour prioriser les axes et les soutiens ciblés — un marqueur hors norme doit peser dans le choix des axes prioritaires (RÈGLE N°1bis) au même titre que le déclaratif du questionnaire. Reste néanmoins dans l'esprit de la règle ci-dessous : n'annonce jamais le nom technique d'un marqueur ou d'un dosage à la cliente, explique seulement le mécanisme physiologique concerné en langage accessible (ex. « votre organisme montre des signes d'inflammation de bas grade » plutôt que « votre CRP ultrasensible est élevée à 2.49 mg/L »).
 
 ⚠️ BILANS BIOLOGIQUES — NE JAMAIS NOMMER UN EXAMEN DANS CE DOCUMENT
 La suggestion de NOUVEAUX bilans à faire prescrire est gérée séparément par la praticienne, en dehors de ce protocole (analyse IA dédiée, usage interne uniquement). Tu ne dois JAMAIS nommer un examen biologique précis (nom de dosage, marqueur, analyse de laboratoire) ni suggérer à la cliente de demander un bilan à son médecin dans les sections s1 à s7 — que ce soit pour recommander un nouvel examen ou pour citer un résultat déjà obtenu (voir reformulation en langage accessible ci-dessus). Si un manque nutritionnel est évoqué dans la cascade explicative (s1/s2), reste au niveau du mécanisme et du geste concret (alimentation, complément) — jamais "faites doser votre X" ni "votre X est à 2.49 mg/L".
@@ -2427,11 +2458,23 @@ Réponds UNIQUEMENT avec le JSON pur, sans markdown, sans backticks.
   "prenom": "${d.prenom}",
   "sous_titre": "Protocole d'Hygiène Vitale · [reprendre ici EXACTEMENT la valeur retenue pour duree_suggeree — voir RÈGLE N°10 — jamais une autre formulation]",
 
-  "s1_corps": "COMMENCER par 1-2 phrases repartant de l'objectif exprimé par la cliente. Puis, pour CHAQUE axe prioritaire retenu (2-3 maximum, jamais plus — voir RÈGLE N°1bis), produire 1 paragraphe compact de cascade (constat → mécanisme → action), en utilisant la ligne de vie et l'analyse causale pour expliquer POURQUOI ce déséquilibre est apparu. Langage accessible et rigoureux, SANS vocabulaire médical. Terminer par 1 phrase d'élan vers ce qui est possible. Total de la section : ne pas dépasser 3-4 cascades et rester dans l'esprit '6-8 pages A4 max' du document entier (RÈGLE N°1).",
+  "s1_corps": "COMMENCER par 1-2 phrases repartant de l'objectif exprimé par la cliente. Puis, pour CHAQUE axe prioritaire retenu (autant que le dossier le justifie, jamais plus — voir RÈGLE N°1bis), produire 1 paragraphe compact de cascade (constat → mécanisme → action), en utilisant la ligne de vie et l'analyse causale pour expliquer POURQUOI ce déséquilibre est apparu. Langage accessible et rigoureux, SANS vocabulaire médical. Terminer par 1 phrase d'élan vers ce qui est possible. Total de la section : voir le garde-fou de longueur de la RÈGLE N°1bis (3-4 cascades pour un protocole court, jusqu'à 5-6 pour Aria/Ora) et rester dans l'esprit '6-8 pages A4 max' du document entier (RÈGLE N°1).",
 
-  "s2_axes": "Présente les 2-3 axes en expliquant l'ORDRE de priorisation physiologique. Pour chaque axe : 1/ son titre, 2/ pourquoi on commence par là (mécanisme), 3/ ce qu'on va faire concrètement (sans les posologies — c'est la section 3). Paragraphes fluides, personnel, prescriptif. JAMAIS de vocabulaire médical.",
+  "s2_axes": "Présente TOUS les axes prioritaires retenus, en expliquant l'ORDRE PHYSIOLOGIQUE de priorisation qui sous-tend la feuille de route détaillée en 'phases' plus bas (voir RÈGLE N°10bis) — sans entrer dans le détail phase par phase ici, c'est une vue d'ensemble. Pour chaque axe : 1/ son titre, 2/ pourquoi il est retenu (mécanisme), 3/ sa place dans le séquençage global (tout de suite, ou plus tard une fois un autre terrain stabilisé — sans donner de dates précises, c'est le rôle de 'phases'). Paragraphes fluides, personnel, prescriptif. JAMAIS de vocabulaire médical.",
 
-  "s3_protocole": "⚠️ Respecter partout la convention de puces de la RÈGLE N°1ter (puce \"•\" = recommandation cochable, puce \"◦\" = sous-information non cochable : posologie, durée, étape, précaution).\\n[PILIER 1 — ALIMENTATION]\\nDes gestes simples, concrets, adaptés au profil et au niveau de changement. Ce qu'on ajoute (aliments fonctionnels — par exemple, en cas de digestion lente, ballonnements ou SIBO/dysbiose, 2 infusions de gingembre par jour entre les repas, un geste simple qui soutient le nettoyage naturel de l'intestin entre les repas). Ce qu'on adapte (ordre des aliments, fenêtre alimentaire, petit-déjeuner protéiné). Ce qu'on réduit si pertinent. PAS de régime, PAS de comptage.\\n⚠️ RÉALISME ALIMENTAIRE OBLIGATOIRE : avant de proposer un aliment ou une recette, vérifier ses habitudes réelles (consommation de légumes, consommation de viande/protéines animales, rapport à la cuisine, qui cuisine au quotidien — voir données de séance). Si elle mange peu ou pas de légumes, ne pas construire une recommandation qui suppose qu'elle en mange déjà — proposer un point de départ minimal et progressif. Si elle ne mange pas de viande, ne jamais en recommander. Si elle déteste cuisiner ou ne cuisine pas elle-même, ne proposer que des gestes ultra-simples (aucune recette élaborée, rien qui demande plus de 5 minutes ou plusieurs étapes) — jamais une recommandation qui suppose du plaisir ou du temps passé en cuisine.\\n\\n[PILIER 2 — PSYCHOLOGIE & ÉMOTIONS]\\n2 à 4 pratiques réalistes pour ce profil : cohérence cardiaque (protocole précis — fréquence, durée, moment de la journée), gestion du stress, rituels de décompression, qualité du sommeil. Pour l'outil de pratique guidée, orienter systématiquement vers « l'espace Bien-être de votre espace cliente » — JAMAIS vers une application tierce (type RespiRelax+, Kardia, Petit Bambou ou équivalent). Deux outils y sont déjà intégrés et interactifs : la cohérence cardiaque guidée (5-5, 5 min, 3x/jour), et l'exercice de « Respiration abdominale profonde » (3 minutes, à utiliser dès qu'une tension monte). Cite l'un ou l'autre par son nom exact selon ce qui convient le mieux au profil (respiration abdominale pour un stress ponctuel/digestif, cohérence cardiaque pour une régulation quotidienne du cortisol).\\n\\n[PILIER 3 — ACTIVITÉ PHYSIQUE]\\nMouvement adapté SANS matériel. Marche, yoga doux, étirements, respiration. Fréquence et durée précises. Si des vidéos guidées de yoga doux ou d'étirements sont pertinentes pour ce profil, orienter systématiquement vers « l'espace Bien-être de votre espace cliente » — qui contient déjà des vidéos courtes et guidées prêtes à suivre — JAMAIS vers YouTube ou une source externe.\\n\\n[SOUTIENS CIBLÉS — 2 À 3 COMPLÉMENTS MAXIMUM, JAMAIS PLUS]\\nTu DOIS proposer entre 2 et 3 compléments AU TOTAL (voir RÈGLE N°5), même si les données sont partielles. Choisis selon l'axe prioritaire n°1 en premier lieu. Pour chacun : applique EXACTEMENT le format de la RÈGLE N°5 : puce \"•\" pour le nom du complément, puces \"◦\" pour Posologie/Pourquoi/Précaution — jamais l’inverse. Signaler les précautions si médicaments détectés.",
+  "s3_protocole": "⚠️ Respecter partout la convention de puces de la RÈGLE N°1ter (puce \"•\" = recommandation cochable, puce \"◦\" = sous-information non cochable : posologie, durée, étape, précaution).\\nCes 3 piliers sont CONTINUS sur tout le parcours (voir RÈGLE N°3) — contrairement aux soutiens ciblés (compléments), qui sont détaillés phase par phase dans le champ 'phases' plus bas, pas ici.\\n[PILIER 1 — ALIMENTATION]\\nDes gestes simples, concrets, adaptés au profil et au niveau de changement. Ce qu'on ajoute (aliments fonctionnels — par exemple, en cas de digestion lente, ballonnements ou SIBO/dysbiose, 2 infusions de gingembre par jour entre les repas, un geste simple qui soutient le nettoyage naturel de l'intestin entre les repas). Ce qu'on adapte (ordre des aliments, fenêtre alimentaire, petit-déjeuner protéiné). Ce qu'on réduit si pertinent. PAS de régime, PAS de comptage.\\n⚠️ RÉALISME ALIMENTAIRE OBLIGATOIRE : avant de proposer un aliment ou une recette, vérifier ses habitudes réelles (consommation de légumes, consommation de viande/protéines animales, rapport à la cuisine, qui cuisine au quotidien — voir données de séance). Si elle mange peu ou pas de légumes, ne pas construire une recommandation qui suppose qu'elle en mange déjà — proposer un point de départ minimal et progressif. Si elle ne mange pas de viande, ne jamais en recommander. Si elle déteste cuisiner ou ne cuisine pas elle-même, ne proposer que des gestes ultra-simples (aucune recette élaborée, rien qui demande plus de 5 minutes ou plusieurs étapes) — jamais une recommandation qui suppose du plaisir ou du temps passé en cuisine.\\n\\n[PILIER 2 — PSYCHOLOGIE & ÉMOTIONS]\\n2 à 4 pratiques réalistes pour ce profil : cohérence cardiaque (protocole précis — fréquence, durée, moment de la journée), gestion du stress, rituels de décompression, qualité du sommeil. Pour l'outil de pratique guidée, orienter systématiquement vers « l'espace Bien-être de votre espace cliente » — JAMAIS vers une application tierce (type RespiRelax+, Kardia, Petit Bambou ou équivalent). Deux outils y sont déjà intégrés et interactifs : la cohérence cardiaque guidée (5-5, 5 min, 3x/jour), et l'exercice de « Respiration abdominale profonde » (3 minutes, à utiliser dès qu'une tension monte). Cite l'un ou l'autre par son nom exact selon ce qui convient le mieux au profil (respiration abdominale pour un stress ponctuel/digestif, cohérence cardiaque pour une régulation quotidienne du cortisol).\\n\\n[PILIER 3 — ACTIVITÉ PHYSIQUE]\\nMouvement adapté SANS matériel. Marche, yoga doux, étirements, respiration. Fréquence et durée précises. Si des vidéos guidées de yoga doux ou d'étirements sont pertinentes pour ce profil, orienter systématiquement vers « l'espace Bien-être de votre espace cliente » — qui contient déjà des vidéos courtes et guidées prêtes à suivre — JAMAIS vers YouTube ou une source externe.",
+
+  "phases": [
+    {
+      "numero": 1,
+      "duree_mois": "Ex. : 'Mois 1-2' — voir RÈGLE N°10bis pour déterminer le nombre et la durée des phases selon duree_suggeree et le nombre d'axes retenus",
+      "axes": ["Reprendre EXACTEMENT le(s) libellé(s) d'axe(s) travaillé(s) dans cette phase, identiques à 'Axes de travail prioritaires'"],
+      "objectif_phase": "1 phrase : ce que cette phase doit accomplir avant de passer à la suivante (ou 'phase unique, pas de suite' si une seule phase)",
+      "pourquoi_praticien": "Voir RÈGLE N°10bis point 3 — langage clinique, à ton attention exclusive, jamais lu par la cliente",
+      "pourquoi_cliente": "Voir RÈGLE N°10bis point 3 — vouvoiement, ton pédagogique, jamais de vocabulaire médical",
+      "complements": "⚠️ Convention de puces RÈGLE N°1ter obligatoire ici aussi. 2-3 compléments MAXIMUM actifs pendant cette phase (RÈGLE N°5)."
+    }
+  ],
 
   "complements_rappel": [
     { "nom": "Nom marque + produit exact, identique à s3_protocole", "moment": "matin" }
@@ -2453,14 +2496,15 @@ Réponds UNIQUEMENT avec le JSON pur, sans markdown, sans backticks.
 
 RÈGLES IMPÉRATIVES :
 1. JAMAIS de vocabulaire médical ni de récapitulatif de séance dans le document
-2. Les 3 PILIERS sont le cœur du document — les compléments viennent après, en nombre limité
+2. Les 3 PILIERS sont le cœur du document et sont continus sur tout le parcours — les compléments ciblés viennent après, organisés par phase, jamais plus de 2-3 actifs en même temps
 3. Repartir de l'objectif exprimé dès la section 1
 4. Posologies TOUJOURS complètes (marque, forme, dose, fréquence, moment)
 5. Vérifier les contre-indications selon médicaments déclarés
 6. Ton chaleureux mais direct — la cliente doit se sentir comprise et guidée
 7. Longueur totale : 6-8 pages A4 équivalent
-8. "complements_rappel" doit correspondre EXACTEMENT aux compléments cités dans s3_protocole — mêmes noms, aucun ajout, aucune dose
-9. Section s1 : maximum 3-4 cascades compactes (1 paragraphe chacune), jamais une par symptôme coché — voir RÈGLE N°1bis`;
+8. "complements_rappel" doit correspondre EXACTEMENT aux compléments cités dans la Phase 1 du champ "phases" — mêmes noms, aucun ajout, aucune dose
+9. Section s1 : voir garde-fou de longueur RÈGLE N°1bis, jamais une cascade par symptôme coché
+10. Le champ "phases" doit toujours contenir au moins 1 entrée (jamais vide) et couvrir la totalité des axes retenus, sans doublon ni oubli — voir RÈGLE N°10bis`;
 }
 
 // ── Génération ──
@@ -2506,20 +2550,34 @@ async function generate() {
     generatedData._client = d;
     generatedData.programme_cle = programmeCleFromDuree(generatedData.duree_suggeree || d.duree_prog);
 
-    // Convertir les 6 sections en blocs éditables
+    // Convertir les sections en blocs éditables
     blocks = [
       { id:'s1', title:'Ce qui se passe dans votre organisme', pilier:'bilan',         content: stripMd(generatedData.s1_corps || '') },
       { id:'s2', title:'Vos axes prioritaires & pourquoi',     pilier:'bilan',         content: stripMd(generatedData.s2_axes || '') },
-      { id:'s3', title:'Vos 3 piliers & soutiens ciblés',      pilier:'complements',   content: stripMd(generatedData.s3_protocole || '') },
+    ];
+    // ── Feuille de route par phases (22/08/2026) : un bloc client par phase, contenu pédagogique
+    // (pourquoi_cliente + compléments de la phase). Le raisonnement clinique (pourquoi_praticien)
+    // n'est PAS mis dans un bloc client — il est affiché séparément dans le panneau praticien
+    // ci-dessous (afficherFeuilleRouteClinique), jamais envoyé à la cliente. ──
+    const phases = Array.isArray(generatedData.phases) ? generatedData.phases : [];
+    phases.forEach((ph, i) => {
+      const axesTxt = Array.isArray(ph.axes) ? ph.axes.join(' + ') : (ph.axes || '');
+      const titre = `Phase ${ph.numero || (i + 1)} — ${ph.duree_mois || ''}${axesTxt ? ' : ' + axesTxt : ''}`;
+      const contenu = [stripMd(ph.pourquoi_cliente || ''), stripMd(ph.complements || '')].filter(Boolean).join('\n\n');
+      blocks.push({ id: 'ph' + (ph.numero || (i + 1)), title: titre, pilier: 'feuille_route', content: contenu });
+    });
+    blocks.push({ id:'s3', title:'Vos 3 piliers du quotidien', pilier:'complements', content: stripMd(generatedData.s3_protocole || '') });
+    blocks.push(
       { id:'s4', title:'Votre alimentation au quotidien',       pilier:'alimentation',  content: stripMd(generatedData.s4_alimentation || '') },
       { id:'s5', title:'Votre semaine type & rituels',          pilier:'activite',      content: stripMd(generatedData.s5_rituels || '') },
       { id:'s6', title:'Ce que vous allez ressentir',           pilier:'bilan',         content: stripMd(generatedData.s6_signaux || '') },
-    ];
+    );
     if ((generatedData.s7_aromatherapie || '').trim()) {
       blocks.push({ id:'s7', title:'Votre synergie aromathérapie', pilier:'aromatherapie', content: stripMd(generatedData.s7_aromatherapie) });
     }
     blocks.push({ id:'sP', title:'Le parcours que je vous recommande', pilier:'programme', content: stripMd(generatedData.parcours_pourquoi || '') });
     afficherAlertesConformite(blocks);
+    afficherFeuilleRouteClinique(phases);
     renderPreview(generatedData, d);
 
   } catch (err) {
@@ -2620,14 +2678,16 @@ function afficherAlertesConformite(blocksArr) {
     alertes.push("Renvoi vers une application ou plateforme externe détecté — doit toujours rediriger vers l'espace Bien-être de l'espace cliente.");
   }
 
-  // Comptage des compléments proposés (puce "•" dans le bloc soutiens ciblés, s3) — doit être 2 ou 3.
-  const blocSoutiens = blocksArr.find(b => b.id === 's3');
-  if (blocSoutiens) {
-    const nbPuces = (blocSoutiens.content.match(/^•\s/gm) || []).length;
+  // Comptage des compléments proposés (puce "•" dans le champ "complements" de CHAQUE phase,
+  // maintenant que les soutiens ciblés sont organisés par phase et non plus dans un bloc s3 unique)
+  // — doit être 2 ou 3 par phase, jamais plus au même moment (RÈGLE N°5/N°10bis).
+  const phasesArr = Array.isArray(generatedData?.phases) ? generatedData.phases : [];
+  phasesArr.forEach((ph, i) => {
+    const nbPuces = ((ph.complements || '').match(/^•\s/gm) || []).length;
     if (nbPuces > 0 && (nbPuces < 2 || nbPuces > 3)) {
-      alertes.push(`${nbPuces} complément(s) détecté(s) dans "Vos 3 piliers & soutiens ciblés" — la règle impose 2 à 3 maximum. Vérifiez le bloc avant envoi.`);
+      alertes.push(`${nbPuces} complément(s) détecté(s) dans la Phase ${ph.numero || (i + 1)} — la règle impose 2 à 3 maximum par phase. Vérifiez avant envoi.`);
     }
-  }
+  });
 
   if (alertes.length === 0) { zone.style.display = 'none'; zone.innerHTML = ''; return; }
 
@@ -2643,6 +2703,39 @@ function afficherAlertesConformite(blocksArr) {
       </ul>
     </div>`;
   zone.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ── Panneau clinique praticien — Feuille de route par phases (22/08/2026) ──────────────────
+// Affiche le raisonnement clinique complet (pourquoi_praticien) de chaque phase, réservé à
+// Sabrina : ce texte n'est JAMAIS inclus dans les blocs éditables envoyés à la cliente (voir
+// "phases" dans generate()). Sert d'aide-mémoire pour expliquer le séquençage en consultation
+// et pour vérifier la cohérence clinique du parcours avant validation. Non éditable, purement
+// informatif — contrairement aux blocs "Phase X" (client) qui eux sont éditables et exportés.
+function afficherFeuilleRouteClinique(phasesArr) {
+  const zone = document.getElementById('feuille-route-clinique');
+  if (!zone) return;
+  if (!Array.isArray(phasesArr) || phasesArr.length === 0) { zone.style.display = 'none'; zone.innerHTML = ''; return; }
+
+  const lignes = phasesArr.map((ph, i) => {
+    const axesTxt = Array.isArray(ph.axes) ? ph.axes.join(' + ') : (ph.axes || '—');
+    return `
+      <div style="padding:12px 0;${i > 0 ? 'border-top:1px solid rgba(180,144,106,.25)' : ''}">
+        <div style="font-weight:700;color:var(--ardoise);font-size:13.5px;margin-bottom:4px">Phase ${ph.numero || (i + 1)} — ${escH(ph.duree_mois || '')} · ${escH(axesTxt)}</div>
+        ${ph.objectif_phase ? `<div style="font-size:12px;color:var(--gris);font-style:italic;margin-bottom:6px">Objectif : ${escH(ph.objectif_phase)}</div>` : ''}
+        <div style="font-size:13px;color:#5c4530;line-height:1.65;white-space:pre-wrap">${escH(ph.pourquoi_praticien || '— non renseigné')}</div>
+      </div>`;
+  }).join('');
+
+  zone.style.display = 'block';
+  zone.innerHTML = `
+    <div style="background:#F3E7D8;border:1.5px solid var(--ocre);border-radius:12px;padding:16px 18px;margin-bottom:18px">
+      <div style="font-weight:700;color:var(--ardoise);margin-bottom:2px;display:flex;align-items:center;gap:8px">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 22h9M11 22a5 5 0 1 1 3-9V6a2 2 0 0 1 2-2h2M14 6h4"/></svg>
+        Feuille de route clinique — usage praticien uniquement
+      </div>
+      <div style="font-size:11.5px;color:var(--gris);margin-bottom:10px">Ce raisonnement n'apparaît jamais dans le document envoyé à la cliente — seul le texte pédagogique de chaque bloc "Phase" ci-dessous lui est destiné.</div>
+      ${lignes}
+    </div>`;
 }
 
 // Permet de corriger la durée retenue après génération (ex. : la cliente a déjà dit que c'était cher,
@@ -2844,6 +2937,10 @@ function resetAll() {
   document.getElementById('axes-selectionnes').value = '';
   document.getElementById('objectifs-selectionnes').value = '';
   document.getElementById('blocks-container').innerHTML = '';
+  document.getElementById('alertes-conformite').style.display = 'none';
+  document.getElementById('alertes-conformite').innerHTML = '';
+  document.getElementById('feuille-route-clinique').style.display = 'none';
+  document.getElementById('feuille-route-clinique').innerHTML = '';
   document.getElementById('preview-wrap').style.display = 'none';
   document.getElementById('gen-btn').disabled = false;
   window.scrollTo({ top: 0, behavior: 'smooth' });
