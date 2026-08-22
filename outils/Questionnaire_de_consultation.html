@@ -664,12 +664,19 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
             <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Séparée / divorcée</button>
             <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Veuve</button>
           </div>
-          <label class="fl" style="margin-top:12px">Enfants</label>
-          <div class="g2" style="margin-top:6px">
-            <input class="fi" type="text" placeholder="Saisissez…">
-<div class="ex-block"><div class="ex-toggle" onclick="toggleEx(this)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg> <svg class="picto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0" aria-hidden="true"><circle cx="12" cy="9" r="5"/><line x1="10" y1="17" x2="14" y2="17"/><line x1="10" y1="20" x2="14" y2="20"/></svg> Voir des exemples de réponses</div><div class="ex-body">Ex. : 2 enfants, 4 et 7 ans. Garde alternée (semaine/semaine). Enfant avec besoins particuliers (TSA, maladie chronique). Adolescent en crise → charge mentale élevée.</div></div>
-            <textarea class="fi" style="min-height:44px" placeholder="Saisissez vos notes…"></textarea>
-<div class="ex-block"><div class="ex-toggle" onclick="toggleEx(this)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg> <svg class="picto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0" aria-hidden="true"><circle cx="12" cy="9" r="5"/><line x1="10" y1="17" x2="14" y2="17"/><line x1="10" y1="20" x2="14" y2="20"/></svg> Voir des exemples de réponses</div><div class="ex-body">Ex. : Seule avec 2 enfants en bas âge, pas de famille proche → isolement + charge constante. Conjoint peu présent ou non aidant → noter l'impact sur la gestion de son protocole. Aidante d'un parent malade en parallèle → épuisement en couches. Famille unie et soutien fort → facteur protecteur.</div></div>
+          <label class="fl" style="margin-top:12px">Avez-vous des enfants ?</label>
+          <div class="chip-wrap" id="enfants-oui-non" style="margin-top:6px">
+            <button type="button" class="chip" onclick="toggleEnfantsOuiNon(this,true)">Oui</button>
+            <button type="button" class="chip" onclick="toggleEnfantsOuiNon(this,false)">Non</button>
+          </div>
+          <div id="enfants-wrap" style="display:none;margin-top:10px">
+            <div id="enfants-list"></div>
+            <button type="button" class="btn" style="font-size:12px;padding:6px 14px" onclick="ajouterEnfant()">+ Ajouter un enfant</button>
+            <div style="font-size:11px;color:var(--gris);margin-top:6px;font-style:italic">Le mode d'accouchement de chaque enfant remonte automatiquement dans la Ligne de vie (section 11) — inutile de le ressaisir là-bas.</div>
+          </div>
+          <div class="g2" style="margin-top:10px">
+            <textarea class="fi" style="min-height:44px;grid-column:1 / -1" placeholder="Notes libres — garde alternée, enfant avec besoins particuliers, charge mentale liée aux enfants… (le détail charge mentale est repris plus loin, section Mode de vie)"></textarea>
+<div class="ex-block" style="grid-column:1 / -1"><div class="ex-toggle" onclick="toggleEx(this)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg> <svg class="picto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0" aria-hidden="true"><circle cx="12" cy="9" r="5"/><line x1="10" y1="17" x2="14" y2="17"/><line x1="10" y1="20" x2="14" y2="20"/></svg> Voir des exemples de réponses</div><div class="ex-body">Ex. : Garde alternée (semaine/semaine). Enfant avec besoins particuliers (TSA, maladie chronique) → charge mentale élevée, à recouper avec le bloc « Aidante d'un proche » plus loin. Seule avec 2 enfants en bas âge, pas de famille proche → isolement + charge constante. Adolescent en crise → charge mentale élevée.</div></div>
           </div>
         </div>
         <div>
@@ -5182,6 +5189,42 @@ function goSectionLV() {
    LIGNE DE VIE — construction automatique à partir de ce qui a déjà été répondu
    ailleurs dans le questionnaire (aucune ressaisie manuelle nécessaire)
 ══════════════════════════════════════════════════════ */
+function toggleEnfantsOuiNon(btn, oui) {
+  document.querySelectorAll('#enfants-oui-non .chip').forEach(c => c.classList.remove('on'));
+  btn.classList.add('on');
+  const wrap = document.getElementById('enfants-wrap');
+  if (oui) {
+    wrap.style.display = 'block';
+    if (!document.querySelector('.enfant-row')) ajouterEnfant();
+  } else {
+    wrap.style.display = 'none';
+    document.getElementById('enfants-list').innerHTML = '';
+  }
+  updateCounter();
+}
+function ajouterEnfant() {
+  const div = document.createElement('div');
+  div.className = 'enfant-row';
+  div.style.cssText = 'background:var(--grege);border-radius:10px;padding:12px 14px;margin-bottom:8px';
+  div.innerHTML = `
+    <div class="g3">
+      <div><label class="fl">Sexe</label><select class="fi enfant-sexe"><option value="">— —</option><option>Fille</option><option>Garçon</option></select></div>
+      <div><label class="fl">Année de naissance</label><input class="fi enfant-annee" type="number" min="1960" max="2030" placeholder="ex. 2013"></div>
+      <div><label class="fl">Mode d'accouchement</label>
+        <select class="fi enfant-mode">
+          <option value="">— —</option>
+          <option>Voie basse spontanée</option>
+          <option>Voie basse instrumentale (forceps/ventouse)</option>
+          <option>Césarienne programmée</option>
+          <option>Césarienne en urgence</option>
+        </select>
+      </div>
+    </div>
+    <button type="button" onclick="this.closest('.enfant-row').remove(); updateCounter(); if(typeof construireLigneDeVie==='function') construireLigneDeVie();" style="margin-top:6px;background:none;border:none;color:#A05050;font-size:11px;cursor:pointer;padding:2px">✕ Retirer cet enfant</button>`;
+  document.getElementById('enfants-list').appendChild(div);
+  updateCounter();
+}
+
 function construireLigneDeVie() {
   const auto = [];
 
@@ -5216,6 +5259,18 @@ function construireLigneDeVie() {
       const extrait = el.value.slice(debut, m.index + 15).trim();
       auto.push({ annee, event: (debut > 0 ? '…' : '') + extrait, type: 'medical', source: 'auto' });
     });
+  });
+
+  // 4) Accouchements — un événement par enfant renseigné dans le bloc "Enfants" (Contexte de vie)
+  document.querySelectorAll('.enfant-row').forEach((row, idx) => {
+    const annee = parseInt(row.querySelector('.enfant-annee')?.value);
+    if (!annee) return;
+    const mode = row.querySelector('.enfant-mode')?.value || '';
+    const sexe = row.querySelector('.enfant-sexe')?.value || '';
+    let label = 'Accouchement';
+    if (sexe) label += ' (' + sexe.toLowerCase() + ')';
+    if (mode) label += ' — ' + mode;
+    auto.push({ annee, event: label, type: 'vie', source: 'auto' });
   });
 
   // Fusionner : on garde tous les événements ajoutés manuellement, et on remplace entièrement
@@ -5386,6 +5441,16 @@ function captureSnapshot() {
   // Explications IA générées en direct (panneau AIPanel)
   try { snap['ai_panel'] = JSON.stringify(window.AIPanel ? window.AIPanel.getEntries() : []); } catch (e) {}
   // Diagnostics & antécédents (statut actif/résolu)
+  // Enfants — lignes créées dynamiquement, capturées à part (le scan générique par
+  // index ne peut pas les restaurer puisqu'elles n'existent pas encore au chargement)
+  const enfantsOui = document.getElementById('enfants-oui-non')?.querySelector('.chip.on')?.textContent?.trim() || '';
+  const enfantsData = [...document.querySelectorAll('.enfant-row')].map(row => ({
+    sexe: row.querySelector('.enfant-sexe')?.value || '',
+    annee: row.querySelector('.enfant-annee')?.value || '',
+    mode: row.querySelector('.enfant-mode')?.value || ''
+  }));
+  snap['enfants_oui_non'] = enfantsOui;
+  snap['enfants_data'] = JSON.stringify(enfantsData);
   snap['diagnostics_list'] = JSON.stringify(diagnosticsList);
   return snap;
 }
@@ -5432,6 +5497,24 @@ function restoreSnapshot(snap) {
       window.AIPanel.attachButtons();
     }
   } catch (e) {}
+  // Enfants — recréer les lignes dynamiques avant de réinjecter leurs valeurs
+  try {
+    if (snap['enfants_oui_non'] === 'Oui') {
+      const btnOui = document.querySelector('#enfants-oui-non .chip');
+      if (btnOui) toggleEnfantsOuiNon(btnOui, true);
+      document.getElementById('enfants-list').innerHTML = '';
+      const enfantsData = JSON.parse(snap['enfants_data'] || '[]');
+      enfantsData.forEach(e => {
+        ajouterEnfant();
+        const row = document.querySelector('.enfant-row:last-child');
+        if (row) {
+          if (e.sexe) row.querySelector('.enfant-sexe').value = e.sexe;
+          if (e.annee) row.querySelector('.enfant-annee').value = e.annee;
+          if (e.mode) row.querySelector('.enfant-mode').value = e.mode;
+        }
+      });
+    }
+  } catch(e) {}
   // Diagnostics & antécédents (statut actif/résolu)
   try { diagnosticsList = JSON.parse(snap['diagnostics_list'] || '[]'); } catch(e) { diagnosticsList = []; }
   renderDiagnosticsList();
