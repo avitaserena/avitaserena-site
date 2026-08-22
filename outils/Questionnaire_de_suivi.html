@@ -157,6 +157,12 @@ select.fi{height:44px;cursor:pointer}
 
 /* ── CHIPS ── */
 .chip-wrap{display:flex;flex-wrap:wrap;gap:7px;margin-top:8px}
+.acc-box{border:1px solid var(--taupe);border-radius:12px;margin-bottom:8px;overflow:hidden}
+.acc-hdr{padding:12px 18px;cursor:default;display:flex;justify-content:space-between;align-items:center;background:var(--off);font-size:14px;font-weight:600;color:var(--ardoise);user-select:none}
+.acc-hdr .chevron{display:none}
+.acc-body{display:block;padding:14px 18px;background:var(--blanc);font-size:14px;line-height:1.65}
+.chevron{font-size:10px;transition:transform .2s;color:var(--gris)}
+.acc-hdr.open .chevron{transform:rotate(180deg)}
 .chip{display:inline-flex;align-items:center;gap:4px;padding:7px 15px;border-radius:var(--r99);font-size:12.5px;cursor:pointer;border:1px solid var(--taupe);background:var(--blanc);color:var(--gris);font-family:inherit;transition:all .13s;user-select:none}
 .chip:hover{border-color:rgba(180,144,106,.4);color:var(--ardoise);transform:translateY(-1px)}
 .chip.on{background:var(--acc-l);border-color:var(--ocre);color:var(--ardoise);font-weight:600}
@@ -1255,29 +1261,142 @@ select.fi{height:44px;cursor:pointer}
       </div>
     </div>
     <div class="qinput">
-      <label class="fl">Ajout rapide</label>
-      <div class="chip-wrap" id="diag-quickadd" style="display:flex;flex-wrap:wrap;gap:8px">
-        <button class="chip" type="button" onclick="quickAddDiagnostic('SIBO')">SIBO</button>
-        <button class="chip" type="button" onclick="quickAddDiagnostic('SII / côlon irritable')">SII / côlon irritable</button>
-        <button class="chip" type="button" onclick="quickAddDiagnostic('Endométriose')">Endométriose</button>
-        <button class="chip" type="button" onclick="quickAddDiagnostic('SOPK')">SOPK</button>
-        <button class="chip" type="button" onclick="quickAddDiagnostic('Hashimoto / hypothyroïdie')">Hashimoto / hypothyroïdie</button>
-        <button class="chip" type="button" onclick="quickAddDiagnostic('Papillomavirus (HPV)')">Papillomavirus (HPV)</button>
-        <button class="chip" type="button" onclick="quickAddDiagnostic('IST (herpès, chlamydia, gonorrhée…)')">IST</button>
-        <button class="chip" type="button" onclick="quickAddDiagnostic('Mycoses vaginales récidivantes')">Mycoses vaginales récidivantes</button>
-        <button class="chip" type="button" onclick="quickAddDiagnostic('Cystites récidivantes')">Cystites récidivantes</button>
-        <button class="chip" type="button" onclick="quickAddDiagnostic('Périménopause')">Périménopause</button>
-        <button class="chip" type="button" onclick="quickAddDiagnostic('Ménopause')">Ménopause</button>
+      <div style="font-size:11.5px;color:var(--gris);font-style:italic;margin-bottom:12px">Même liste et même texte exact que le questionnaire de consultation, pour que tout reste cohérent d'une séance à l'autre — cliquez sur ce qui s'applique dans la sphère concernée, puis précisez le statut.</div>
+
+      <div class="acc-box"><div class="acc-hdr" onclick="accT(this)">Endocrinien, métabolique &amp; cardiovasculaire <span class="chevron">▼</span></div>
+        <div class="acc-body">
+          <div class="chip-wrap">
+            <button class="chip" type="button" onclick="quickAddDiagnostic('Hypothyroïdie','endocrino')">Hypothyroïdie</button>
+            <button class="chip" type="button" onclick="quickAddDiagnostic('Hashimoto / hypothyroïdie','endocrino')">Hashimoto</button>
+            <button class="chip" type="button" onclick="quickAddDiagnostic('Basedow / hyperthyroïdie','endocrino')">Basedow / hyperthyroïdie</button>
+            <button class="chip" type="button" onclick="quickAddDiagnostic('Diabète de type 1','endocrino')">Diabète de type 1</button>
+            <button class="chip" type="button" onclick="quickAddDiagnostic('Diabète de type 2 / résistance à l\'insuline','endocrino')">Diabète T2 / insulinorésistance</button>
+            <button class="chip" type="button" onclick="quickAddDiagnostic('Hypoglycémie réactionnelle','endocrino')">Hypoglycémie réactionnelle</button>
+            <button class="chip" type="button" onclick="quickAddDiagnostic('Maladie d\'Addison','endocrino')">Addison</button>
+            <button class="chip" type="button" onclick="quickAddDiagnostic('Syndrome de Cushing','endocrino')">Cushing</button>
+            <button class="chip" type="button" onclick="quickAddDiagnostic('Hémochromatose','endocrino')">Hémochromatose</button>
+            <button class="chip" type="button" onclick="quickAddDiagnostic('Fatigue surrénalienne / burn-out','endocrino')">Fatigue surrénalienne</button>
+            <button class="chip" type="button" onclick="quickAddDiagnostic('Hypercholestérolémie','endocrino')">Hypercholestérolémie</button>
+            <button class="chip" type="button" onclick="quickAddDiagnostic('Hypertension artérielle','endocrino')">Hypertension artérielle</button>
+          </div>
+          <div class="g2" style="margin-top:10px">
+            <input class="fi" type="text" id="diag-manual-endocrino" placeholder="Autre pathologie endocrinienne / métabolique…" onkeydown="if(event.key==='Enter'){event.preventDefault();addManualDiagnostic('endocrino','diag-manual-endocrino');}">
+            <button class="btn" type="button" onclick="addManualDiagnostic('endocrino','diag-manual-endocrino')">+ Ajouter</button>
+          </div>
+          <div class="diag-list-render" data-sphere="endocrino" style="margin-top:12px;display:flex;flex-direction:column;gap:8px"></div>
+        </div>
       </div>
-      <div class="g2" style="margin-top:12px">
-        <div><label class="fl">Autre pathologie / antécédent</label>
-          <input class="fi" type="text" id="diag-manual-input" placeholder="Ex : Fibrome utérin" onkeydown="if(event.key==='Enter'){event.preventDefault();addManualDiagnostic();}">
+
+      <div class="acc-box"><div class="acc-hdr" onclick="accT(this)">Digestif &amp; microbiote <span class="chevron">▼</span></div>
+        <div class="acc-body">
+          <div class="chip-wrap">
+            <button class="chip" type="button" onclick="quickAddDiagnostic('SIBO','digestif')">SIBO</button>
+            <button class="chip" type="button" onclick="quickAddDiagnostic('SII / côlon irritable','digestif')">SII / côlon irritable</button>
+            <button class="chip" type="button" onclick="quickAddDiagnostic('MICI (Crohn / RCH)','digestif')">MICI (Crohn / RCH)</button>
+            <button class="chip" type="button" onclick="quickAddDiagnostic('Maladie cœliaque','digestif')">Maladie cœliaque</button>
+            <button class="chip" type="button" onclick="quickAddDiagnostic('Gastrite','digestif')">Gastrite</button>
+            <button class="chip" type="button" onclick="quickAddDiagnostic('RGO','digestif')">RGO</button>
+            <button class="chip" type="button" onclick="quickAddDiagnostic('Candidose chronique','digestif')">Candidose chronique</button>
+            <button class="chip" type="button" onclick="quickAddDiagnostic('Helicobacter pylori','digestif')">Helicobacter pylori</button>
+            <button class="chip" type="button" onclick="quickAddDiagnostic('Diverticulose','digestif')">Diverticulose</button>
+          </div>
+          <div class="g2" style="margin-top:10px">
+            <input class="fi" type="text" id="diag-manual-digestif" placeholder="Autre pathologie digestive…" onkeydown="if(event.key==='Enter'){event.preventDefault();addManualDiagnostic('digestif','diag-manual-digestif');}">
+            <button class="btn" type="button" onclick="addManualDiagnostic('digestif','diag-manual-digestif')">+ Ajouter</button>
+          </div>
+          <div class="diag-list-render" data-sphere="digestif" style="margin-top:12px;display:flex;flex-direction:column;gap:8px"></div>
+        </div>
+      </div>
+
+      <div class="acc-box"><div class="acc-hdr" onclick="accT(this)">Gynécologique &amp; hormonal féminin <span class="chevron">▼</span></div>
+        <div class="acc-body">
+          <div class="chip-wrap">
+            <button class="chip" type="button" onclick="quickAddDiagnostic('Endométriose','gyneco')">Endométriose</button>
+            <button class="chip" type="button" onclick="quickAddDiagnostic('Endométriose du côlon','gyneco')">Endométriose du côlon</button>
+            <button class="chip" type="button" onclick="quickAddDiagnostic('Adénomyose','gyneco')">Adénomyose</button>
+            <button class="chip" type="button" onclick="quickAddDiagnostic('SOPK','gyneco')">SOPK</button>
+            <button class="chip" type="button" onclick="quickAddDiagnostic('Fibrome utérin','gyneco')">Fibrome utérin</button>
+            <button class="chip" type="button" onclick="quickAddDiagnostic('Mycoses vaginales récidivantes','gyneco')">Mycoses vaginales récidivantes</button>
+            <button class="chip" type="button" onclick="quickAddDiagnostic('Cystites récidivantes','gyneco')">Cystites récidivantes</button>
+            <button class="chip" type="button" onclick="quickAddDiagnostic('Endométrite / vaginose bactérienne','gyneco')">Endométrite / vaginose bactérienne</button>
+            <button class="chip" type="button" onclick="quickAddDiagnostic('Périménopause','gyneco')">Périménopause</button>
+            <button class="chip" type="button" onclick="quickAddDiagnostic('Ménopause','gyneco')">Ménopause</button>
+            <button class="chip" type="button" onclick="quickAddDiagnostic('Papillomavirus (HPV)','gyneco')">Papillomavirus (HPV)</button>
+            <button class="chip" type="button" onclick="quickAddDiagnostic('IST (herpès, chlamydia, gonorrhée…)','gyneco')">IST</button>
+          </div>
+          <div class="g2" style="margin-top:10px">
+            <input class="fi" type="text" id="diag-manual-gyneco" placeholder="Autre pathologie gynécologique / hormonale…" onkeydown="if(event.key==='Enter'){event.preventDefault();addManualDiagnostic('gyneco','diag-manual-gyneco');}">
+            <button class="btn" type="button" onclick="addManualDiagnostic('gyneco','diag-manual-gyneco')">+ Ajouter</button>
+          </div>
+          <div class="diag-list-render" data-sphere="gyneco" style="margin-top:12px;display:flex;flex-direction:column;gap:8px"></div>
+        </div>
+      </div>
+
+      <div class="acc-box"><div class="acc-hdr" onclick="accT(this)">Auto-immune, immunitaire &amp; cutanée <span class="chevron">▼</span></div>
+        <div class="acc-body">
+          <div class="chip-wrap">
+            <button class="chip" type="button" onclick="quickAddDiagnostic('Lupus érythémateux disséminé','autoimmune')">Lupus</button>
+            <button class="chip" type="button" onclick="quickAddDiagnostic('Polyarthrite rhumatoïde','autoimmune')">Polyarthrite rhumatoïde</button>
+            <button class="chip" type="button" onclick="quickAddDiagnostic('Sclérodermie','autoimmune')">Sclérodermie</button>
+            <button class="chip" type="button" onclick="quickAddDiagnostic('Spondylarthrite ankylosante','autoimmune')">Spondylarthrite ankylosante</button>
+            <button class="chip" type="button" onclick="quickAddDiagnostic('Syndrome de Gougerot-Sjögren','autoimmune')">Gougerot-Sjögren</button>
+            <button class="chip" type="button" onclick="quickAddDiagnostic('Sclérose en plaques','autoimmune')">Sclérose en plaques</button>
+            <button class="chip" type="button" onclick="quickAddDiagnostic('Myasthénie','autoimmune')">Myasthénie</button>
+            <button class="chip" type="button" onclick="quickAddDiagnostic('Syndrome de Guillain-Barré','autoimmune')">Guillain-Barré</button>
+            <button class="chip" type="button" onclick="quickAddDiagnostic('Vitiligo','autoimmune')">Vitiligo</button>
+            <button class="chip" type="button" onclick="quickAddDiagnostic('Pelade','autoimmune')">Pelade</button>
+            <button class="chip" type="button" onclick="quickAddDiagnostic('Pemphigoïde bulleuse','autoimmune')">Pemphigoïde bulleuse</button>
+            <button class="chip" type="button" onclick="quickAddDiagnostic('Psoriasis','autoimmune')">Psoriasis</button>
+            <button class="chip" type="button" onclick="quickAddDiagnostic('Eczéma / dermatite atopique','autoimmune')">Eczéma / dermatite atopique</button>
+            <button class="chip" type="button" onclick="quickAddDiagnostic('Maladie de Biermer','autoimmune')">Biermer</button>
+            <button class="chip" type="button" onclick="quickAddDiagnostic('Cirrhose biliaire primitive','autoimmune')">Cirrhose biliaire primitive</button>
+            <button class="chip" type="button" onclick="quickAddDiagnostic('Syndrome de Raynaud','autoimmune')">Raynaud</button>
+            <button class="chip" type="button" onclick="quickAddDiagnostic('Urticaire chronique','autoimmune')">Urticaire chronique</button>
+            <button class="chip" type="button" onclick="quickAddDiagnostic('Histaminose','autoimmune')">Histaminose</button>
+            <button class="chip" type="button" onclick="quickAddDiagnostic('Lyme (terrain inflammatoire, à noter sans valider)','autoimmune')">Lyme</button>
+          </div>
+          <div class="g2" style="margin-top:10px">
+            <input class="fi" type="text" id="diag-manual-autoimmune" placeholder="Autre pathologie auto-immune / cutanée…" onkeydown="if(event.key==='Enter'){event.preventDefault();addManualDiagnostic('autoimmune','diag-manual-autoimmune');}">
+            <button class="btn" type="button" onclick="addManualDiagnostic('autoimmune','diag-manual-autoimmune')">+ Ajouter</button>
+          </div>
+          <div class="diag-list-render" data-sphere="autoimmune" style="margin-top:12px;display:flex;flex-direction:column;gap:8px"></div>
+        </div>
+      </div>
+
+      <div class="acc-box"><div class="acc-hdr" onclick="accT(this)">Neuropsychiatrique <span class="chevron">▼</span></div>
+        <div class="acc-body">
+          <div class="chip-wrap">
+            <button class="chip" type="button" onclick="quickAddDiagnostic('Dépression / anxiété diagnostiquée','neuropsy')">Dépression / anxiété diagnostiquée</button>
+            <button class="chip" type="button" onclick="quickAddDiagnostic('Anxiété généralisée','neuropsy')">Anxiété généralisée</button>
+            <button class="chip" type="button" onclick="quickAddDiagnostic('TOC','neuropsy')">TOC</button>
+            <button class="chip" type="button" onclick="quickAddDiagnostic('Bipolarité','neuropsy')">Bipolarité</button>
+            <button class="chip" type="button" onclick="quickAddDiagnostic('TDAH','neuropsy')">TDAH</button>
+            <button class="chip" type="button" onclick="quickAddDiagnostic('Fibromyalgie','neuropsy')">Fibromyalgie</button>
+            <button class="chip" type="button" onclick="quickAddDiagnostic('Migraines chroniques','neuropsy')">Migraines chroniques</button>
+            <button class="chip" type="button" onclick="quickAddDiagnostic('Burn-out diagnostiqué','neuropsy')">Burn-out diagnostiqué</button>
+            <button class="chip" type="button" onclick="quickAddDiagnostic('Trouble des conduites alimentaires','neuropsy')">TCA</button>
+          </div>
+          <div class="g2" style="margin-top:10px">
+            <input class="fi" type="text" id="diag-manual-neuropsy" placeholder="Autre pathologie neuropsychiatrique…" onkeydown="if(event.key==='Enter'){event.preventDefault();addManualDiagnostic('neuropsy','diag-manual-neuropsy');}">
+            <button class="btn" type="button" onclick="addManualDiagnostic('neuropsy','diag-manual-neuropsy')">+ Ajouter</button>
+          </div>
+          <div class="diag-list-render" data-sphere="neuropsy" style="margin-top:12px;display:flex;flex-direction:column;gap:8px"></div>
+        </div>
+      </div>
+
+      <div class="g2" style="margin-top:14px">
+        <div><label class="fl">Pathologie hors des sphères ci-dessus</label>
+          <input class="fi" type="text" id="diag-manual-input" placeholder="Ex : pathologie rare, non classée" onkeydown="if(event.key==='Enter'){event.preventDefault();addManualDiagnostic('autre','diag-manual-input');}">
         </div>
         <div style="display:flex;align-items:flex-end">
-          <button class="btn" type="button" style="width:100%" onclick="addManualDiagnostic()">+ Ajouter à la liste</button>
+          <button class="btn" type="button" style="width:100%" onclick="addManualDiagnostic('autre','diag-manual-input')">+ Ajouter à la liste</button>
         </div>
       </div>
-      <div id="diagnostics-list" style="margin-top:16px;display:flex;flex-direction:column;gap:8px"></div>
+
+      <div style="margin-top:18px;padding-top:16px;border-top:1px dashed var(--taupe)">
+        <label class="fl" style="color:var(--ocre)">Vue d'ensemble — tout ce qui a été ajouté, toutes sphères confondues</label>
+        <div class="diag-list-render" data-sphere="all" id="diagnostics-list-recap" style="margin-top:10px;display:flex;flex-direction:column;gap:8px"></div>
+      </div>
       <p class="fl" style="text-transform:none;font-weight:400;font-size:11.5px;letter-spacing:0;margin-top:8px">Pour chaque élément ajouté, choisissez son statut. Un élément sans statut choisi n'est transmis nulle part.</p>
     </div>
   </div>
@@ -1925,6 +2044,12 @@ function goSection(n) {
 /* ══════════════════════════════════════════════════════
    CHIPS & CHECKS
 ══════════════════════════════════════════════════════ */
+function toggleEx(toggle) {
+  toggle.classList.toggle('open');
+  const body = toggle.nextElementSibling;
+  if (body) body.classList.toggle('open');
+}
+
 function toggleChip(el) {
   el.classList.toggle('on');
   updateCounter(); formTouched=true;
@@ -2484,15 +2609,39 @@ function afficherBandeauDossier(row, historique) {
   importerDiagnosticsDepuisSnapshot(snap);
 }
 
+const SPHERE_PAR_DIAGNOSTIC = {
+  'Hypothyroïdie':'endocrino', 'Hashimoto / hypothyroïdie':'endocrino', 'Basedow / hyperthyroïdie':'endocrino',
+  'Diabète de type 1':'endocrino', "Diabète de type 2 / résistance à l'insuline":'endocrino', 'Hypoglycémie réactionnelle':'endocrino',
+  "Maladie d'Addison":'endocrino', 'Syndrome de Cushing':'endocrino', 'Hémochromatose':'endocrino',
+  'Fatigue surrénalienne / burn-out':'endocrino', 'Hypercholestérolémie':'endocrino', 'Hypertension artérielle':'endocrino',
+  'SIBO':'digestif', 'SII / côlon irritable':'digestif', 'MICI (Crohn / RCH)':'digestif', 'Maladie cœliaque':'digestif',
+  'Gastrite':'digestif', 'RGO':'digestif', 'Candidose chronique':'digestif', 'Helicobacter pylori':'digestif', 'Diverticulose':'digestif',
+  'Endométriose':'gyneco', 'Endométriose du côlon':'gyneco', 'Adénomyose':'gyneco', 'SOPK':'gyneco', 'Fibrome utérin':'gyneco',
+  'Mycoses vaginales récidivantes':'gyneco', 'Cystites récidivantes':'gyneco', 'Endométrite / vaginose bactérienne':'gyneco',
+  'Périménopause':'gyneco', 'Ménopause':'gyneco', 'Papillomavirus (HPV)':'gyneco', 'IST (herpès, chlamydia, gonorrhée…)':'gyneco',
+  'Lupus érythémateux disséminé':'autoimmune', 'Polyarthrite rhumatoïde':'autoimmune', 'Sclérodermie':'autoimmune',
+  'Spondylarthrite ankylosante':'autoimmune', 'Syndrome de Gougerot-Sjögren':'autoimmune', 'Sclérose en plaques':'autoimmune',
+  'Myasthénie':'autoimmune', 'Syndrome de Guillain-Barré':'autoimmune', 'Vitiligo':'autoimmune', 'Pelade':'autoimmune',
+  'Pemphigoïde bulleuse':'autoimmune', 'Psoriasis':'autoimmune', 'Eczéma / dermatite atopique':'autoimmune',
+  'Maladie de Biermer':'autoimmune', 'Cirrhose biliaire primitive':'autoimmune', 'Syndrome de Raynaud':'autoimmune',
+  'Urticaire chronique':'autoimmune', 'Histaminose':'autoimmune', 'Lyme (terrain inflammatoire, à noter sans valider)':'autoimmune',
+  'Dépression / anxiété diagnostiquée':'neuropsy', 'Anxiété généralisée':'neuropsy', 'TOC':'neuropsy', 'Bipolarité':'neuropsy',
+  'TDAH':'neuropsy', 'Fibromyalgie':'neuropsy', 'Migraines chroniques':'neuropsy', 'Burn-out diagnostiqué':'neuropsy',
+  'Trouble des conduites alimentaires':'neuropsy',
+};
 function importerDiagnosticsDepuisSnapshot(snap) {
   const actifs = (snap.diagnostics_actifs || '').split(',').map(s => s.trim()).filter(Boolean);
   const resolus = (snap.antecedents_resolus || '').split(',').map(s => s.trim()).filter(Boolean);
   let ajoutes = 0;
   actifs.forEach(nom => {
-    if (!diagnosticsList.some(d => d.nom.toLowerCase() === nom.toLowerCase())) { diagnosticsList.push({ nom, statut: 'actif' }); ajoutes++; }
+    if (!diagnosticsList.some(d => d.nom.toLowerCase() === nom.toLowerCase())) { diagnosticsList.push({ nom, sphere: SPHERE_PAR_DIAGNOSTIC[nom] || 'autre', statut: 'actif' }); ajoutes++; }
   });
   resolus.forEach(nom => {
-    if (!diagnosticsList.some(d => d.nom.toLowerCase() === nom.toLowerCase())) { diagnosticsList.push({ nom, statut: 'resolu' }); ajoutes++; }
+    if (!diagnosticsList.some(d => d.nom.toLowerCase() === nom.toLowerCase())) {
+      const nomSansAnnee = nom.replace(/\s*\(\d{4}\)\s*$/, '');
+      diagnosticsList.push({ nom, sphere: SPHERE_PAR_DIAGNOSTIC[nom] || SPHERE_PAR_DIAGNOSTIC[nomSansAnnee] || 'autre', statut: 'resolu' });
+      ajoutes++;
+    }
   });
   if (ajoutes) {
     renderDiagnosticsList();
@@ -2664,21 +2813,31 @@ function toast(msg, dur=2800) {
    DIAGNOSTICS & ANTÉCÉDENTS — statut actif / résolu
    Transmis directement dans la session au générateur PHV.
 ══════════════════════════════════════════════════════ */
-let diagnosticsList = []; // [{ nom, statut: 'actif' | 'resolu' | null }]
+let diagnosticsList = []; // [{ nom, sphere, statut: 'actif' | 'resolu' | null }]
 
-function quickAddDiagnostic(nom) {
+function accT(el) {
+  el.classList.toggle('open');
+  el.nextElementSibling.classList.toggle('open');
+}
+
+const ICO_ACTIF = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="vertical-align:-1.5px"><circle cx="12" cy="12" r="6"/></svg>';
+const ICO_RESOLU = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="vertical-align:-1.5px"><path d="M5 13l4 4L19 7"/></svg>';
+
+function quickAddDiagnostic(nom, sphere) {
+  sphere = sphere || 'autre';
   if (diagnosticsList.some(d => d.nom.toLowerCase() === nom.toLowerCase())) { toast('Déjà ajouté : ' + nom); return; }
-  diagnosticsList.push({ nom, statut: null });
+  diagnosticsList.push({ nom, sphere, statut: null });
   renderDiagnosticsList();
   formTouched = true;
 }
 
-function addManualDiagnostic() {
-  const el = document.getElementById('diag-manual-input');
+function addManualDiagnostic(sphere, inputId) {
+  sphere = sphere || 'autre';
+  const el = document.getElementById(inputId || 'diag-manual-input');
   const nom = (el?.value || '').trim();
   if (!nom) return;
   if (diagnosticsList.some(d => d.nom.toLowerCase() === nom.toLowerCase())) { toast('Déjà ajouté : ' + nom); return; }
-  diagnosticsList.push({ nom, statut: null });
+  diagnosticsList.push({ nom, sphere, statut: null });
   el.value = '';
   renderDiagnosticsList();
   formTouched = true;
@@ -2698,20 +2857,28 @@ function removeDiagnostic(idx) {
 }
 
 function renderDiagnosticsList() {
-  const wrap = document.getElementById('diagnostics-list');
-  if (!wrap) return;
-  if (!diagnosticsList.length) {
-    wrap.innerHTML = '<p style="font-size:13px;color:var(--gris);font-style:italic">Aucun diagnostic ajouté pour l\'instant.</p>';
-    return;
-  }
-  wrap.innerHTML = diagnosticsList.map((d, i) => `
-    <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border:1px solid var(--taupe);border-radius:14px;background:var(--blanc);flex-wrap:wrap">
-      <span style="flex:1;min-width:140px;font-size:14px;color:var(--ardoise);font-weight:500">${d.nom}</span>
-      <button type="button" onclick="setDiagnosticStatut(${i},'actif')" style="padding:7px 14px;border-radius:999px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;border:1.5px solid ${d.statut==='actif'?'var(--rouge)':'var(--taupe)'};background:${d.statut==='actif'?'var(--rouge-l)':'var(--blanc)'};color:${d.statut==='actif'?'var(--rouge)':'var(--gris)'}">🔴 Actif actuellement</button>
-      <button type="button" onclick="setDiagnosticStatut(${i},'resolu')" style="padding:7px 14px;border-radius:999px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;border:1.5px solid ${d.statut==='resolu'?'var(--ocre)':'var(--taupe)'};background:${d.statut==='resolu'?'var(--or-clair)':'var(--blanc)'};color:${d.statut==='resolu'?'var(--or)':'var(--gris)'}">⚪ Antécédent résolu</button>
-      <button type="button" onclick="removeDiagnostic(${i})" style="background:transparent;border:none;cursor:pointer;color:var(--gris);font-size:15px;padding:4px 6px" title="Supprimer">✕</button>
-    </div>
-  `).join('');
+  // Rend la liste dans CHAQUE conteneur .diag-list-render présent sur la page : les 5 conteneurs
+  // par sphère (juste sous leurs puces respectives), plus data-sphere="all" pour la vue d'ensemble.
+  document.querySelectorAll('.diag-list-render').forEach(wrap => {
+    const sphereFilter = wrap.dataset.sphere;
+    const items = diagnosticsList
+      .map((d, i) => ({ d, i }))
+      .filter(({ d }) => sphereFilter === 'all' || d.sphere === sphereFilter);
+    if (!items.length) {
+      wrap.innerHTML = sphereFilter === 'all'
+        ? '<p style="font-size:13px;color:var(--gris);font-style:italic">Aucun diagnostic ajouté pour l\'instant.</p>'
+        : '';
+      return;
+    }
+    wrap.innerHTML = items.map(({ d, i }) => `
+      <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border:1px solid var(--taupe);border-radius:14px;background:var(--blanc);flex-wrap:wrap">
+        <span style="flex:1;min-width:140px;font-size:14px;color:var(--ardoise);font-weight:500">${d.nom}</span>
+        <button type="button" onclick="setDiagnosticStatut(${i},'actif')" style="padding:7px 14px;border-radius:999px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;border:1.5px solid ${d.statut==='actif'?'var(--rouge)':'var(--taupe)'};background:${d.statut==='actif'?'var(--rouge-l)':'var(--blanc)'};color:${d.statut==='actif'?'var(--rouge)':'var(--gris)'}">${ICO_ACTIF} Actif actuellement</button>
+        <button type="button" onclick="setDiagnosticStatut(${i},'resolu')" style="padding:7px 14px;border-radius:999px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;border:1.5px solid ${d.statut==='resolu'?'var(--ocre)':'var(--taupe)'};background:${d.statut==='resolu'?'var(--or-clair)':'var(--blanc)'};color:${d.statut==='resolu'?'var(--or)':'var(--gris)'}">${ICO_RESOLU} Antécédent résolu</button>
+        <button type="button" onclick="removeDiagnostic(${i})" style="background:transparent;border:none;cursor:pointer;color:var(--gris);font-size:15px;padding:4px 6px" title="Supprimer">✕</button>
+      </div>
+    `).join('');
+  });
 }
 
 /* ══════════════════════════════════════════════════════
