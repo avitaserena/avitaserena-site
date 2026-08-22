@@ -6326,7 +6326,7 @@ async function bridgeCRM_questionnaire(d) {
       if (d.age) patch.age = String(d.age);
       if (!client.motifs && d.motifs) patch.motifs = d.motifs;
       const timeline = Array.isArray(client.timeline) ? client.timeline : [];
-      timeline.push({ type:'questionnaire', title:'📋 Questionnaire de consultation complété', icon:'📋', date:new Date().toISOString().slice(0,10), desc:`Motifs : ${d.motifs||'—'} · Durée : ${d.duree_symptomes||'—'}` });
+      timeline.push({ type:'questionnaire', title:'Questionnaire de consultation complété', icon:'·', date:new Date().toISOString().slice(0,10), desc:`Motifs : ${d.motifs||'—'} · Durée : ${d.duree_symptomes||'—'}` });
       patch.timeline = timeline;
       await sbFetch('clientes?id=eq.'+encodeURIComponent(finalId), { method:'PATCH', body:JSON.stringify(patch), prefer:'return=minimal' });
     } else {
@@ -6337,7 +6337,7 @@ async function bridgeCRM_questionnaire(d) {
         body: JSON.stringify({
           id: finalId, prenom: prenomQ, nom: nomQ || null, ddn: ddnQ || null,
           age: d.age ? String(d.age) : null, motifs: d.motifs || null,
-          timeline: [{ type:'questionnaire', title:'📋 Questionnaire de consultation complété', icon:'📋', date:new Date().toISOString().slice(0,10), desc:`Motifs : ${d.motifs||'—'} · Durée : ${d.duree_symptomes||'—'}` }],
+          timeline: [{ type:'questionnaire', title:'Questionnaire de consultation complété', icon:'·', date:new Date().toISOString().slice(0,10), desc:`Motifs : ${d.motifs||'—'} · Durée : ${d.duree_symptomes||'—'}` }],
           workflow_done: {}, created_at: new Date().toISOString()
         })
       });
@@ -6449,7 +6449,6 @@ ${donnees}`;
 
 async function finalise() {
   const d = collectAllData();
-  d._autoGenerate = true; // déclenche la génération automatique dès l'ouverture de generateur.html
   d._resume_sections = construireSectionsSynthese(d); // résumé structuré par thème, réutilisé tel quel dans la fiche cliente du CRM
   try {
     localStorage.setItem('avita_session', JSON.stringify(d));

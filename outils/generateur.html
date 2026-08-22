@@ -94,7 +94,7 @@ input.fi[readonly]{background:var(--taupe);cursor:default;opacity:.75}
 .chip-note{font-size:11px;color:var(--gris);margin-bottom:8px;font-style:italic}
 .p-toggle{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--r99);font-size:13px;font-weight:500;cursor:pointer;border:1px solid var(--taupe);background:var(--blanc);color:var(--gris);font-family:'Inter',sans-serif;transition:all .15s;user-select:none;line-height:1.3}
 .p-toggle:hover{border-color:rgba(13,166,120,.4);color:var(--ardoise);transform:translateY(-1px)}
-.p-toggle.on{background:var(--or-clair);border-color:var(--ocre);color:var(--ardoise);font-weight:600}
+.p-toggle.on{background:linear-gradient(135deg,var(--or-clair),#EFDFC8);border-color:var(--ocre);color:var(--ardoise);font-weight:600;box-shadow:0 2px 8px rgba(180,144,106,.18)}
 .p-toggle.suggere:not(.on){box-shadow:0 0 0 2px var(--ocre);position:relative}
 .p-toggle.suggere:not(.on)::after{content:'★ suggéré';position:absolute;top:-9px;right:6px;background:var(--ocre);color:var(--blanc);font-size:8.5px;font-weight:700;padding:1px 7px;border-radius:99px;letter-spacing:.03em}
 .p-toggle-group{display:flex;flex-wrap:wrap;gap:8px;margin-top:2px}
@@ -1035,16 +1035,15 @@ function loadSession() {
       sessionData = JSON.parse(raw);
       renderSessionCard();
       prefillParams();
-      // ── Génération automatique : dès que la cliente vient d'un questionnaire fraîchement
-      // finalisé (flag posé par Questionnaire_de_consultation.html / Questionnaire_de_suivi.html),
-      // on lance la génération sans attendre un clic. Le flag est retiré aussitôt du localStorage
-      // pour qu'une réouverture manuelle ultérieure de cet outil ne re-déclenche pas tout seul.
+      // ── Auto-génération SUPPRIMÉE (22/08/2026) : le protocole ne doit jamais partir tout seul,
+      // même si le questionnaire d'origine a posé le flag _autoGenerate. Les axes prioritaires,
+      // objectifs, niveau de sport, motivation alimentaire et terrain global sont des choix
+      // cliniques qui doivent toujours être revus/validés manuellement avant de cliquer sur
+      // "Générer le Protocole d'Hygiène Vitale". On neutralise juste le flag pour ne pas laisser
+      // de résidu inutile dans la session, sans jamais déclencher generate() automatiquement.
       if (sessionData._autoGenerate) {
         sessionData._autoGenerate = false;
         localStorage.setItem('avita_session', JSON.stringify(sessionData));
-        if (AIClient.hasKey()) {
-          setTimeout(() => { generate(); }, 300);
-        }
       }
     } else {
       document.getElementById('session-display').innerHTML = '<p class="session-empty">Aucune donnée importée. Utilisez le formulaire manuel ci-dessous ou lancez depuis le questionnaire.</p>';
