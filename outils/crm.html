@@ -4248,13 +4248,40 @@ function renderFiche(c){
     ['1ère consultation', fmtDate(c.date1)],
   ].filter(Boolean).map(([k,v])=>`<div class="ic-row"><div class="ic-key">${k}</div><div class="ic-val">${v}</div></div>`).join('');
 
+  // Pastilles de suivi d'envoi — un point vert = mail effectivement envoyé (avec date
+  // au survol), un point gris creux = pas encore envoyé (normal si la date d'envoi
+  // n'est pas encore atteinte). Reflète mails_done sur le RDV, rempli par les triggers
+  // DB / le cron send-auto-emails — jamais coché manuellement.
+  function mailPastilles(r){
+    if(r.status==='annule') return '';
+    const done=r.mails_done||{};
+    const defs=[
+      {key:'m1',lbl:'Confirmation'},
+      ...(r.type==='initial'?[{key:'prepvisio',lbl:'Prép. visio'}]:[]),
+      {key:'m2',lbl:'Rappel J-1'},
+      {key:'mh1',lbl:'H-1'},
+      {key:'m3',lbl:'Clôture'},
+      {key:'m4',lbl:'Suivi J+7'},
+    ];
+    const chips=defs.map(d=>{
+      const sent=done[d.key];
+      const dotStyle=sent
+        ?'background:var(--green);border:1.5px solid var(--green)'
+        :'background:transparent;border:1.5px solid var(--border)';
+      const title=sent&&sent.sentAt?`${d.lbl} envoyé le ${fmtDate(sent.sentAt.slice(0,10))}`:`${d.lbl} — pas encore envoyé`;
+      return `<span title="${escH(title)}" style="display:inline-flex;align-items:center;gap:4px;font-size:10px;color:var(--ink3)">`+
+        `<span style="width:7px;height:7px;border-radius:50%;${dotStyle}"></span>${escH(d.lbl)}</span>`;
+    }).join('');
+    return `<div style="display:flex;flex-wrap:wrap;gap:10px;padding:6px 0 2px;width:100%">${chips}</div>`;
+  }
+
   const rdvHtml=cr.length>0
     ?cr.slice(0,5).map(r=>{
         const isAnnule=r.status==='annule';
         const statusCls=isAnnule?'annule':(r.status==='confirmed'?'confirmed':'pending');
         const statusLbl=isAnnule?'Annulé':(r.status==='confirmed'?'Confirmé':'En attente');
         const cancelBtn=isAnnule?'':`<button class="rdv2-cancel" onclick="annulerRdv(${r.id},'${cid}')" title="Annuler ce rendez-vous">× Annuler</button>`;
-        return `<div class="rdv2-item"><div class="rdv2-date">${fmtDate(r.date)}</div><div class="rdv2-type">${escH(r.type||'Consultation')}</div><span class="rdv2-status ${statusCls}">${statusLbl}</span>${cancelBtn}</div>`;
+        return `<div class="rdv2-item" style="flex-wrap:wrap"><div class="rdv2-date">${fmtDate(r.date)}</div><div class="rdv2-type">${escH(r.type||'Consultation')}</div><span class="rdv2-status ${statusCls}">${statusLbl}</span>${cancelBtn}${mailPastilles(r)}</div>`;
       }).join('')
     :"<div style='padding:16px;font-size:13px;color:var(--muted);font-style:italic'>Aucun RDV enregistré.</div>";
 
