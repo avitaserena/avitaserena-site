@@ -392,11 +392,22 @@ input.fi[readonly]{background:var(--taupe);cursor:default;opacity:.75}
   <div style="margin-top:16px">
     <label class="fl">Traitements en cours nécessitant une vigilance particulière</label>
     <div class="chip-wrap alerte" id="secu-traitements-group">
-      <button class="p-toggle" data-val="Anticoagulants" onclick="this.classList.toggle('on')">Anticoagulants</button>
+      <button class="p-toggle" data-val="Anticoagulants" onclick="toggleAnticoagulant(this)">Anticoagulants</button>
       <button class="p-toggle" data-val="ISRS / antidépresseurs" onclick="this.classList.toggle('on')">ISRS / antidépresseurs</button>
       <button class="p-toggle" data-val="Pilule ou THM (traitement hormonal)" onclick="this.classList.toggle('on')">Pilule ou THM</button>
       <button class="p-toggle" data-val="Lévothyrox / thyroïdien" onclick="this.classList.toggle('on')">Lévothyrox / thyroïdien</button>
       <button class="p-toggle" data-val="Aucun de ces traitements" onclick="this.classList.toggle('on')">Aucun de ces traitements</button>
+    </div>
+    <div class="subfield" id="anticoag-type-wrap">
+      <label class="fl">Type d'anticoagulant précis</label>
+      <select class="fi" id="anticoag-type">
+        <option value="">Non précisé / à vérifier</option>
+        <option>AVK (Previscan, Coumadine, Sintrom)</option>
+        <option>DOAC / AOD (Xarelto, Eliquis, Pradaxa, Lixiana)</option>
+        <option>Antiagrégant (Aspirine, Plavix/Clopidogrel)</option>
+        <option>Autre / ne sait pas</option>
+      </select>
+      <p class="field-hint">Distinction indispensable pour la Vitamine K2 (RÈGLE N°9) : contre-indication absolue uniquement avec les AVK — pas avec les DOAC/antiagrégants, où le mécanisme n'interfère pas avec la vitamine K. Un champ laissé sur "Non précisé" est traité par prudence comme un AVK potentiel.</p>
     </div>
   </div>
 
@@ -520,6 +531,16 @@ input.fi[readonly]{background:var(--taupe);cursor:default;opacity:.75}
       <option>Grossesse / allaitement / jeune enfant</option>
     </select>
     <p class="field-hint">Détermine automatiquement quel protocole antifongique proposer (RÈGLE N°21) — huile essentielle d'origan en profil standard, Ergypar en profil fragilité hépatique, EPP seul en profil grossesse/allaitement/enfant.</p>
+  </div>
+  <div class="subfield" id="selenium-statut-wrap">
+    <label class="fl">Statut sélénium (axe thyroïdien)</label>
+    <select class="fi" id="selenium-statut">
+      <option value="">Non vérifié / jamais dosé</option>
+      <option>Vérifié et optimisé (dosage récent correct)</option>
+      <option>Vérifié — carence confirmée, non encore corrigée</option>
+      <option>Basedow / hyperthyroïdie confirmée (jamais d'iode, quel que soit le statut sélénium)</option>
+    </select>
+    <p class="field-hint">Garde-fou RÈGLE N°11 : une complémentation en iode ne doit jamais être proposée tant que le statut sélénium n'est pas vérifié et optimisé — "Non vérifié" reste le choix le plus prudent par défaut.</p>
   </div>
   <div style="margin-top:16px">
     <label class="fl">Antécédents médicaux résolus (non actifs actuellement)</label>
@@ -1013,6 +1034,19 @@ function toggleDiagnostic(btn) {
   if (btn.dataset.val === 'SIBO') {
     document.getElementById('sibo-type-wrap').classList.toggle('open', btn.classList.contains('on'));
   }
+  if (btn.dataset.val === 'Candidose chronique') {
+    document.getElementById('candidose-profil-wrap').classList.toggle('open', btn.classList.contains('on'));
+  }
+  if (btn.dataset.val === 'Hashimoto / hypothyroïdie' || btn.dataset.val === 'Hypothyroïdie') {
+    const seleniumOn = document.querySelector('#diagnostics-group-endocrino .p-toggle[data-val="Hashimoto / hypothyroïdie"]').classList.contains('on')
+      || document.querySelector('#diagnostics-group-endocrino .p-toggle[data-val="Hypothyroïdie"]').classList.contains('on');
+    document.getElementById('selenium-statut-wrap').classList.toggle('open', seleniumOn);
+  }
+}
+
+function toggleAnticoagulant(btn) {
+  btn.classList.toggle('on');
+  document.getElementById('anticoag-type-wrap').classList.toggle('open', btn.classList.contains('on'));
 }
 
 // ── Clé API (partagée via AIClient / localStorage entre tous les outils) ──
@@ -1273,11 +1307,13 @@ function buildClientData() {
       } catch(e) { console.warn('Filtre aromathérapie indisponible:', e); return ''; }
     })(),
     traitements_vigilance: traitementsVigilance,
+    anticoag_type: gv('anticoag-type'),
     allergies_alim: allergiesAlim,
     // ── Diagnostics confirmés ──
     diagnostics_confirmes: diagnosticsConfirmes,
     sibo_type: gv('sibo-type'),
     candidose_profil: gv('candidose-profil'),
+    selenium_statut: gv('selenium-statut'),
     antecedents_resolus: gv('antecedents-resolus'),
     // ── Approches déjà testées ──
     approches_testees: gv('approches-testees'),
@@ -1890,6 +1926,7 @@ Exemples concrets à adapter selon l'axe actif de la phase en cours (2-3 complé
 - Radis noir EPS (Phytostandard Pileje), 1 dose-mesure (5ml) diluée dans un peu d'eau, 1 à 2x/j avant les repas — si terrain lithiasique biliaire ou urinaire à prévenir — CI : obstruction des voies biliaires, ulcère, gastrite, pathologie thyroïdienne
 - Adaptogène calmant (rhodiole EPS/extrait sec, ou ashwagandha extrait titré 5% withanolides) — UNIQUEMENT si excès de cortisol retenu comme axe (voir RÈGLE N°12) — JAMAIS si déficit de cortisol/fatigue surrénalienne retenu — CI ashwagandha : grossesse, interaction digoxine ; CI rhodiole : grossesse, troubles bipolaires, anticoagulants/antihypertenseurs
 - Réglisse (EPS ou extrait, forme glycyrrhizinée) — UNIQUEMENT si déficit de cortisol/fatigue surrénalienne retenu (voir RÈGLE N°12) — JAMAIS si excès de cortisol ou HTA — CI : HTA, cancer hormonodépendant, insuffisance rénale sévère, grossesse, allaitement — ne jamais dépasser 4 à 6 semaines en continu
+- Cordyceps sinensis extrait titré en polysaccharides, 1 à 3g/j (poudre) ou selon dosage du fabricant en extrait sec — UNIQUEMENT si déficit de cortisol/fatigue surrénalienne retenu (voir RÈGLE N°12), soutien de l'énergie mitochondriale et de la production surrénalienne — JAMAIS si excès de cortisol — CI : grossesse, allaitement, trouble auto-immun (stimulant immunitaire), anticoagulants (prudence, effet fluidifiant léger)
 - Feminabiane Ménopause (Pileje) — houblon + sauge + valériane, si profil hypo-œstrogénique en ménopause confirmée (RÈGLE N°13) — CI absolue : cancer hormono-dépendant, mastoses, grossesse, allaitement
 - Houblon EPS ou Sauge officinale EPS (Phytostandard Pileje) — au choix selon la plante la mieux tolérée, 4 à 5 jours/7 — mêmes CI que ci-dessus
 - Actée à grappes noires extrait sec titré, éventuellement associé au Griffonia (extrait titré 5-HTP, 50-100mg 1 à 3x/j selon tolérance, jamais en fin de journée si effet stimulant léger rapporté) — pour les bouffées de chaleur chez une cliente avec antécédent de cancer hormono-dépendant (voir garde-fou RÈGLE N°6, exception documentée) ou en simple alternative sans phytoestrogène — CI Griffonia : jamais avec un traitement antidépresseur/ISRS (risque de syndrome sérotoninergique), grossesse, allaitement
@@ -1935,6 +1972,20 @@ Exemples concrets à adapter selon l'axe actif de la phase en cours (2-3 complé
 - Phytothérapie douce affamer/réguler (Thym EPS, Noyer EPS, ou Mauve infusion 1 c. à soupe/tasse, 2-3 tasses/j) — alternative plus douce à l'huile essentielle d'origan pour la dysbiose de putréfaction (RÈGLE N°23), notamment si la cliente refuse les huiles essentielles en gélules ou en cas de terrain hépatique fragile
 - Glutamine (Permealine Pileje ou équivalent, L-Glutamine) 3g le soir à distance des repas — cicatrisation de la muqueuse du grêle en cas d'hyperperméabilité intestinale confirmée ou fortement suspectée (RÈGLE N°25), même produit que le protocole SIBO méthane (RÈGLE N°5bis) — pas de CI notable
 - Zinc bisglycinate (Nutripure Zinc) 15mg/j (davantage si déficit confirmé au bilan) — cicatrisation de la muqueuse intestinale et cofacteur de la fonction barrière en hyperperméabilité (RÈGLE N°25), même produit que pour l'acné/Hashimoto/ménopause androgénique — pas de CI notable
+━━ Branche Neurotransmetteurs (RÈGLE N°28) — dopamine / sérotonine / mélatonine ━━
+- L-Tyrosine 1g au lever à jeun, OU Mucuna pruriens EPS de graines (30-60mg de L-Dopa pour 5ml) ou extrait sec titré 15% L-Dopa 300-1200mg — précurseurs de la dopamine, si profil dopamine retenu (RÈGLE N°28) — exiger la qualité du fournisseur pour le Mucuna (risque de dégradation de la L-Dopa à l'extraction) — CI : grossesse, allaitement, jamais avec un traitement dopaminergique/antipsychotique/IMAO, prudence si trouble cardiovasculaire, hépatique ou psychiatrique (schizophrénie)
+- L-Tryptophane 400mg au goûter (à distance des repas protéinés du soir), OU 5-HTP (Griffonia extrait titré) 50-100mg 1 à 3x/j selon tolérance jamais en fin de journée si effet stimulant léger rapporté — précurseurs de la sérotonine, si profil sérotonine retenu (RÈGLE N°28) — ⛔️ CI ABSOLUE : jamais avec un traitement antidépresseur/ISRS (risque de syndrome sérotoninergique), grossesse, allaitement
+- Mélatonine LP (libération prolongée) 1,9mg au coucher — UNIQUEMENT si l'optimisation de la sérotonine (précurseur) n'a pas suffi à améliorer le sommeil après plusieurs semaines (RÈGLE N°28) — jamais en première intention, jamais si le cortisol du soir est encore élevé (voir RÈGLE N°12, la mélatonine ne peut pas monter tant que le cortisol reste haut)
+- Magnésium bisglycinate (Nutergia Ergymag ou Holistica) 400mg/j le soir — cofacteur commun à la synthèse de dopamine et sérotonine, même produit que le magnésium anti-stress déjà cité (RÈGLE N°5/N°12) — pas de CI notable
+- Oméga-3 EPA/DHA (Omégabiane Pileje) 2 gél/j au repas, ou 300g/semaine de petits poissons gras — fluidité des membranes neuronales nécessaire à la bonne fixation des neurotransmetteurs sur leurs récepteurs, soutien de fond dopamine ET sérotonine (RÈGLE N°28) — pas de CI notable
+━━ Branche Métabolique — Insulino-résistance & dysfonction mitochondriale (RÈGLE N°29) ━━
+- Magnésium bisglycinate 300mg/j — cofacteur du récepteur à l'insuline, phase 1 systématique (RÈGLE N°29) — même produit que le magnésium anti-stress déjà cité, ne pas dupliquer si déjà retenu ailleurs
+- Zinc bisglycinate (Nutripure Zinc) 15mg 1 matin + 1 soir avant repas pendant 3 mois puis recontrôler — cofacteur du récepteur à l'insuline, phase 2 après bilan si déficit confirmé (RÈGLE N°29), même produit que pour l'acné/Hashimoto/hyperperméabilité — pas de CI notable
+- Chrome (picolinate ou équivalent), dosage à respecter selon la notice du fabricant (dose non précisée dans le cours source — à confirmer sur la fiche produit avant premier usage) — cofacteur de la voie de signalisation de l'insuline, à proposer seulement si déficit confirmé au bilan (RÈGLE N°29) — pas de CI notable à dose physiologique
+- Berbérine environ 1g/j en 2-3 prises, ou 500mg 1 matin + 1 soir — soutien glycémique direct, même actif que la branche digestif avancé et la branche SOPK (RÈGLE N°29) — CI : grossesse (contrairement à l'inositol qui peut être poursuivi)
+- Acide R-alpha-lipoïque 300mg/j — antioxydant mitochondrial, phase 2 après échec ou plateau de la phase 1 (RÈGLE N°29) — pas de CI notable à cette dose
+- CoQ10 (ubiquinone) 200mg/j pendant 2 semaines puis 100mg/j pendant 2 mois, puis recontrôler — cofacteur mitochondrial, à réserver aux cas où un déficit est orienté par la clinique (fatigue marquée, stagnation malgré les changements alimentaires) ou confirmé au bilan (RÈGLE N°29) — pas de CI notable
+- Oméga-3 EPA/DHA 500mg/j pendant 1 mois puis 500mg d'entretien (jusqu'à 1000mg/j pendant 1 mois si carence confirmée au bilan acides gras) — fluidité membranaire et sensibilité du récepteur à l'insuline (RÈGLE N°29) — pas de CI notable
 TOUJOURS : posologie exacte (marque, forme, dose, fréquence, moment précis), et 1-2 phrases expliquant pourquoi CE choix pour ELLE.
 ⚠️ FORMAT OBLIGATOIRE (voir RÈGLE N°1ter) : le nom du complément est une puce "•" (une recommandation cochable), TOUJOURS suivie de ses détails en puces "◦" (jamais "•") : "◦ Posologie : ...", "◦ Pourquoi : ...", et "◦ Précaution : ..." si contre-indication. Exemple exact à imiter pour chaque complément :
 • Nom du complément (marque) — usage en une courte formule
@@ -1960,11 +2011,12 @@ Cancer hormonodépendant OU SOPK → JAMAIS orienter vers une supplémentation e
 🚩 STATUT DE SÉCURITÉ CONFIRMÉ POUR CETTE CLIENTE (à appliquer concrètement, pas juste en théorie) :
 - Grossesse / allaitement / désir de grossesse : ${d.secu_grossesse || 'Non renseigné — considérer comme non écarté et rester prudente sur les HE et plantes emménagogues'}
 - Antécédent de cancer hormono-dépendant : ${d.secu_cancer || 'Non renseigné'}
-- Traitements en cours nécessitant vigilance : ${d.traitements_vigilance || 'Non renseigné'}
+- Traitements en cours nécessitant vigilance : ${d.traitements_vigilance || 'Non renseigné'}${d.traitements_vigilance.includes('Anticoagulants') ? ' · Type d\'anticoagulant précis : ' + (d.anticoag_type || 'non précisé — traiter par prudence comme un AVK potentiel') : ''}
 - Allergies / intolérances alimentaires connues : ${d.allergies_alim || 'Non renseigné'}
 ${(d.secu_grossesse && d.secu_grossesse !== 'Non concernée') ? '⛔️ Cette cliente est concernée par une grossesse, un allaitement ou un désir de grossesse : AUCUNE huile essentielle par voie interne, vérifier CHAQUE plante et complément proposé pour sa compatibilité, écarter les phytoestrogènes.' : ''}
 ${(d.secu_cancer && d.secu_cancer.startsWith('Oui')) ? '⛔️ Antécédent de cancer hormono-dépendant confirmé : JAMAIS de Feminabiane Ménopause ni de phytoestrogènes (soja, houblon, sauge), quelle que soit la pertinence apparente pour l\'axe hormonal.' : ''}
 ${d.allergies_alim && !/aucune/i.test(d.allergies_alim) ? '⛔️ Ne JAMAIS recommander un aliment, une recette ou un complément contenant : ' + d.allergies_alim + '.' : ''}
+${d.traitements_vigilance.includes('Anticoagulants') ? (!d.anticoag_type || d.anticoag_type === '' || d.anticoag_type.startsWith('AVK') || d.anticoag_type === 'Autre / ne sait pas' ? '⛔️ Anticoagulant de type AVK (ou non précisé, donc traité par prudence comme un AVK) : Vitamine K2 INTERDITE (voir RÈGLE N°9), proposer une Vitamine D3 seule si un soutien vitamine D est retenu.' : '✅ Anticoagulant de type ' + d.anticoag_type + ' — la contre-indication à la Vitamine K2 (RÈGLE N°9) ne s\'applique qu\'aux AVK, donc D3+K2 reste envisageable ici si aucune autre CI ; rester prudente sur les autres points de vigilance anticoagulants (oméga-3 >2g/j, millepertuis, gingko, RÈGLE N°6).') : ''}
 
 ━━ RÈGLE N°7 — AROMATHÉRAPIE (huiles essentielles, huiles végétales, hydrolats) ━━
 La liste ci-dessous ("HUILES COMPATIBLES") a déjà été filtrée automatiquement par le code (pas par toi) selon le profil de sécurité de la cliente (grossesse/allaitement, âge, cancer hormono-dépendant, épilepsie, asthme, anticoagulants, insuffisance rénale/hépatique, allergie aux HE). Tu ne dois JAMAIS proposer une huile qui n'apparaît pas dans cette liste, même si elle te semble pertinente.
@@ -1994,7 +2046,7 @@ Si un axe hépatique/détox est retenu parmi les axes prioritaires, respecter ce
 ━━ RÈGLE N°9 — VITAMINE D & SES SYNERGIES (Mg / Vit A / Vit K2) ━━
 Si un axe immunitaire, inflammatoire, osseux ou de fatigue de fond est retenu parmi les axes prioritaires, ou si une supplémentation en vitamine D est déjà en cours ou pertinente :
 1. NE JAMAIS recommander de vitamine D isolée sans mentionner son partenaire indispensable : le magnésium. Explique en langage accessible que la vitamine D a besoin du magnésium pour s'activer dans le corps et pour bien se réguler — sans lui, une supplémentation « ne prend pas » vraiment. Si un magnésium est déjà proposé par ailleurs dans le protocole (RÈGLE N°5), fais explicitement le lien entre les deux plutôt que de les présenter comme deux soutiens séparés.
-2. Privilégier une forme combinée D3+K2 (ex. Pileje D3K2) plutôt que de la vitamine D seule, sauf contre-indication : la vitamine K2 aide le calcium mobilisé par la vitamine D à se fixer sur l'os plutôt qu'à se déposer ailleurs. ⚠️ CONTRE-INDICATION ABSOLUE si la cliente est sous anticoagulants de type AVK (Coumadine, Previscan, Sintrom — vérifier RÈGLE N°6) : dans ce cas, proposer une vitamine D3 seule, sans K2, et le signaler explicitement.
+2. Privilégier une forme combinée D3+K2 (ex. Pileje D3K2) plutôt que de la vitamine D seule, sauf contre-indication : la vitamine K2 aide le calcium mobilisé par la vitamine D à se fixer sur l'os plutôt qu'à se déposer ailleurs. ⚠️ CONTRE-INDICATION ABSOLUE si la cliente est sous anticoagulants de type AVK (Coumadine, Previscan, Sintrom — vérifier RÈGLE N°6 et le champ "Type d'anticoagulant précis" du statut de sécurité ci-dessus) : dans ce cas, proposer une vitamine D3 seule, sans K2, et le signaler explicitement. Cette CI ne s'applique PAS aux anticoagulants DOAC/AOD (Xarelto, Eliquis, Pradaxa, Lixiana) ni aux antiagrégants (Aspirine, Plavix) — la Vitamine K2 reste envisageable pour ces profils. Si le type d'anticoagulant n'est pas précisé dans les données, traite-le par prudence comme un AVK et exclus la K2.
 3. NE JAMAIS recommander de complément de vitamine A isolé ou en mégadose dans ce protocole — elle est indispensable en théorie à l'action de la vitamine D, mais son dosage precis dépasse le cadre d'une supplémentation naturopathique à l'aveugle, et un excès est risqué (a fortiori en cas de désir de grossesse). Si le terrain le justifie, orienter simplement vers des aliments sources de bêta-carotène (carotte, patate douce, épinards) dans le PILIER 1, jamais vers un complément isolé.
 4. Rappelle si pertinent, dans le PILIER 1 ou le PILIER 3, un geste d'exposition solaire raisonnable et adapté à la saison (quelques minutes de peau exposée sans crème, plusieurs fois par semaine entre avril et octobre) — utile en complément, jamais en remplacement de la supplémentation si un déficit est suspecté ou connu.
 5. Cette vitamine D (± K2) compte dans le total de 2-3 compléments maximum (RÈGLE N°5) — ne jamais l'ajouter en plus des autres soutiens déjà choisis.
@@ -2048,7 +2100,8 @@ e) Certains axes sont transversaux et courent sur TOUTES les phases sans être u
 
 ━━ RÈGLE N°11 — SOUTIEN THYROÏDIEN : SÉLÉNIUM AVANT IODE, JAMAIS DE TOUCHE AU TRAITEMENT ━━
 Si un axe thyroïdien (hypothyroïdie, Hashimoto, conversion T4→T3 ralentie) est retenu parmi les axes prioritaires :
-1. ORDRE DE SÉCURITÉ NON NÉGOCIABLE : ne JAMAIS recommander une complémentation riche en iode (algues type kelp/fucus/spiruline en dose concentrée, ou complément d'iode isolé) sans avoir d'abord vérifié et optimisé le statut en sélénium. Un excès d'iode chez une personne carencée en sélénium peut aggraver la réaction auto-immune dans Hashimoto — c'est un risque clinique réel, pas une simple prudence théorique. En cas de doute sur le statut en sélénium, ne propose PAS d'iode du tout : reste sur le sélénium seul.
+🚩 Statut sélénium renseigné pour cette cliente : ${d.selenium_statut || 'Non vérifié / jamais dosé'}
+1. ORDRE DE SÉCURITÉ NON NÉGOCIABLE : ne JAMAIS recommander une complémentation riche en iode (algues type kelp/fucus/spiruline en dose concentrée, ou complément d'iode isolé) sans avoir d'abord vérifié et optimisé le statut en sélénium. Un excès d'iode chez une personne carencée en sélénium peut aggraver la réaction auto-immune dans Hashimoto — c'est un risque clinique réel, pas une simple prudence théorique. Base-toi sur le statut sélénium ci-dessus : si "Vérifié et optimisé" → l'iode devient envisageable si une carence est par ailleurs confirmée à l'iodurie ; pour toute autre valeur ("Non vérifié", "carence confirmée non corrigée", ou Basedow) → ne propose PAS d'iode du tout, reste sur le sélénium seul.
 2. Le sélénium (et le zinc) sont les cofacteurs de l'enzyme qui convertit l'hormone thyroïdienne de réserve (T4) vers sa forme active (T3) — c'est le levier naturopathique principal à expliquer à la cliente en langage accessible (jamais le nom de l'enzyme ni de marqueur biologique, voir règle sur les bilans biologiques plus bas).
 3. ⚠️ INTERDICTION ABSOLUE de suggérer, même implicitement, un ajustement (augmentation, diminution ou arrêt) d'un traitement thyroïdien prescrit (Lévothyrox, Euthyrox, Cynomel, thyroïde desséchée). Si la cliente évoque une fatigue ou des symptômes persistants malgré son traitement, orienter explicitement vers un échange avec son médecin ou son endocrinologue pour un ajustement ou un bilan complémentaire — jamais vers une décision qu'elle prendrait seule sur son traitement.
 4. Si un excès d'œstrogènes (pilule, dominance œstrogénique) a été identifié comme axe par ailleurs, fais le lien explicitement en langage accessible : les œstrogènes en excès freinent la conversion de l'hormone thyroïdienne active et favorisent sa forme "frein" — un rééquilibrage œstroprogestatif soutient donc indirectement la fonction thyroïdienne.
@@ -2061,7 +2114,7 @@ Si un axe surrénalien/cortisol est retenu parmi les axes prioritaires (profil "
 
 1. ⚠️ DISTINCTION ABSOLUE, NE JAMAIS INVERSER : le déficit de cortisol (fatigue surrénalienne) est le plus souvent la conséquence, après plusieurs mois ou années, d'un excès chronique qui a fini par épuiser les surrénales — mais les deux situations demandent des stratégies phytothérapiques STRICTEMENT OPPOSÉES.
    - EXCÈS de cortisol → calmer : adaptogènes calmants (rhodiole, ashwagandha), cohérence cardiaque, magnésium. Ces plantes/pratiques ne font baisser le cortisol QUE lorsqu'il est en excès.
-   - DÉFICIT de cortisol → soutenir la synthèse : réglisse (forme glycyrrhizinée), cordyceps, bourgeons de cassis, magnésium, vitamine C.
+   - DÉFICIT de cortisol → soutenir la synthèse : réglisse (forme glycyrrhizinée), cordyceps, bourgeons de cassis (Gemmo Cassis, 15 gouttes le matin à jeun, cure de 3 semaines/mois), magnésium, vitamine C.
    - ⛔️ JAMAIS de plante "boostante" (réglisse, cordyceps, cassis) si le profil est "Excès de cortisol" ou si aucun profil n'est déterminé avec certitude — cela aggraverait un excès déjà présent.
    - ⛔️ JAMAIS d'adaptogène calmant (rhodiole, ashwagandha) présenté comme solution principale si le profil est "Déficit de cortisol" — ces plantes n'ont pas d'effet utile dans ce cas et retardent une prise en charge adaptée.
    - Si le profil est incertain ou en "alternance/phase de bascule", reste sur les leviers communs et sans risque aux deux situations : magnésium, cohérence cardiaque, vitamine C, chronobiologie (coucher/lever à heure fixe), soutien des neurotransmetteurs (dopamine/sérotonine) — et n'introduis pas de plante spécifique tant que le profil n'est pas plus clair.
@@ -2078,6 +2131,8 @@ Si un axe surrénalien/cortisol est retenu parmi les axes prioritaires (profil "
 5. Vitamine C 2g/j en prises fractionnées : soutien pertinent et sans risque particulier en cas de déficit de cortisol (surconsommée en situation de stress chronique) — compte dans le total de 2-3 compléments maximum (RÈGLE N°5) si retenue.
 
 6. Ces soutiens (réglisse OU adaptogène calmant, magnésium, vitamine C) comptent dans le total de 2-3 compléments maximum (RÈGLE N°5) — ne jamais les ajouter en plus des autres soutiens déjà choisis. En cas de terrain surrénalien marqué associé à un autre axe fort (thyroïdien, digestif), prioriser le magnésium comme soutien commun aux deux axes plutôt que d'empiler des compléments distincts.
+
+7. CHRONOBIOLOGIE — levier de fond systématique en cas de déficit de cortisol installé, à mentionner même s'il ne compte pas dans le total de compléments (RÈGLE N°5, c'est un conseil de mode de vie, pas un produit) : se lever à heure fixe et s'exposer à la lumière naturelle dans les 30 minutes suivant le réveil (ou luminothérapie si absence de lumière naturelle disponible, notamment en hiver), répéter éventuellement l'exposition en tout début d'après-midi, et caler les repas à heure fixe (chronobiologie alimentaire) — ces repères de régularité aident l'axe cortisol à retrouver un rythme veille-sommeil normal, un ressort souvent plus puissant qu'un complément à ce stade. Si un déficit des neurotransmetteurs (dopamine/sérotonine/mélatonine) est identifié en parallèle (motivation en berne, irritabilité, sommeil non réparateur) — situation fréquente car les deux terrains s'épuisent souvent ensemble — voir RÈGLE N°28 pour le protocole dédié, à intégrer comme axe distinct plutôt que de tout ramener au seul cortisol.
 
 ━━ RÈGLE N°13 — PÉRIMÉNOPAUSE / MÉNOPAUSE : DÉSÉQUILIBRE ŒSTROPROGESTATIF vs CARENCE, TIMING DES PHYTO-PROGESTATIVES ━━
 Si un axe périménopause/ménopause est retenu parmi les axes prioritaires :
@@ -2321,11 +2376,12 @@ Cette règle complète la RÈGLE N°13 point 2 (leviers en périménopause) et l
 
 ━━ RÈGLE N°23 — DYSBIOSE DE PUTRÉFACTION : PROTOCOLE PROPRE, LOGIQUE ALIMENTAIRE INVERSE DE LA FERMENTATION ━━
 1. DIAGNOSTIC DIFFÉRENTIEL (à ne jamais confondre avec la dysbiose de fermentation RÈGLE N°22 — les deux logiques nutritionnelles sont opposées) : gaz odorants, selles et haleine malodorantes, altération du transit, fatigue hépatique, inflammation de bas grade, irritabilité, douleur à la palpation-percussion du côlon descendant/sigmoïde. Causes à rechercher : consommation excessive de protéines et graisses animales, ET/OU insuffisance de digestion de ces mêmes protéines/graisses (mastication insuffisante, stress, hypochlorhydrie gastrique, insuffisance d'excrétion biliaire et/ou pancréatique), ET/OU pH intestinal trop alcalin (hypochlorhydrie, excès de bicarbonate). Explique toujours à la cliente POURQUOI : les bactéries dites "de putréfaction" se nourrissent de protéines mal digérées et produisent en les dégradant des substances odorantes et irritantes pour l'intestin (ammoniac, phénols) — d'où les gaz et selles malodorants, signal clinique fiable à lui expliquer simplement.
+   ⚠️ CAUSE RACINE SOUVENT NÉGLIGÉE — excès orthosympathique chronique (stress non maîtrisé, respiration superficielle installée) : quand le système nerveux reste en état d'alerte, le nerf vague — qui commande normalement les sécrétions digestives (acide gastrique, bile) et le relâchement des sphincters — n'a plus assez de place pour agir, ce qui installe l'hypochlorhydrie et entretient la putréfaction en amont même chez une cliente qui mange bien. Si des signes évocateurs sont présents (bouche sèche en mangeant, difficulté à revenir au calme après un stress, reflux/éructations liés au stress, voir bloc "Stress et digestion" du questionnaire), nommer explicitement ce terrain à la cliente et voir point 2d ci-dessous pour les leviers de stimulation vagale.
 2. PEC EN 4 VOLETS, DANS L'ORDRE (jamais tout attaquer à la fois — logique inverse de la RÈGLE N°22) :
    a) Affamer les bactéries de putréfaction : réduire la quantité de viande/protéines animales sur la période de rééquilibrage (jamais une éviction totale ni permanente), mastication renforcée, manger dans le calme plutôt que sur le pouce.
    b) Nourrir les bactéries compétitrices (eubiotiques) : ⚠️ ICI, à l'inverse de la dysbiose de fermentation/du SIBO (RÈGLE N°22/N°24), les fibres et prébiotiques sont un LEVIER FAVORABLE et non contre-indiqué — augmenter progressivement les fibres alimentaires, prébiotiques si besoin (sauf si une dysbiose de fermentation ou un SIBO coexistent chez la même cliente, auquel cas la contre-indication de la RÈGLE N°22 point 2 prévaut et doit être expliquée en priorité).
    c) Éliminer les pathogènes en excès : épices/aromates dans l'assiette, ou phytothérapie/aromathérapie ciblée (voir banque de compléments Branche Digestif avancé) — mêmes précautions/durées que la RÈGLE N°21.
-   d) Traiter la cause sous-jacente : si insuffisance biliaire suspectée → soutenir avec fumeterre/curcuma/bétaïne (voir RÈGLE N°5) ; si hypochlorhydrie suspectée → rechercher sa cause (stress, hypothyroïdie, IPP, âge) et substituer si besoin avec HCl bétaïne (voir banque de compléments) — jamais sans avoir écarté une contre-indication (ulcère, œsophagite, IPP en cours).
+   d) Traiter la cause sous-jacente : si insuffisance biliaire suspectée → soutenir avec fumeterre/curcuma/bétaïne (voir RÈGLE N°5) ; si hypochlorhydrie suspectée → rechercher sa cause (stress, hypothyroïdie, IPP, âge) et substituer si besoin avec HCl bétaïne (voir banque de compléments) — jamais sans avoir écarté une contre-indication (ulcère, œsophagite, IPP en cours) ; si la cause est un excès orthosympathique/tonus vagal insuffisant (voir point 1 ci-dessus) → stimuler le nerf vague au quotidien : cohérence cardiaque (365, quelques minutes plusieurs fois par jour), gargarisme matinal (stimule directement le nerf vague par les muscles du pharynx), plante parasympathicotonique douce (mélange à parts égales gentiane et mélisse en EPS ou infusion) — ces gestes simples soutiennent la digestion en amont, avant même d'ajouter un complément, et sont particulièrement pertinents si un sevrage progressif d'IPP est engagé avec la cliente (jamais suggérer l'arrêt d'un traitement prescrit, voir garde-fou RÈGLE N°6 — se limiter à accompagner un sevrage déjà décidé avec son médecin).
 3. LIEN AVEC LES AUTRES TERRAINS DIGESTIFS : la dysbiose de putréfaction peut coexister avec une candidose (RÈGLE N°21), une dysbiose de fermentation (RÈGLE N°22), un SIBO (RÈGLE N°24) ou une hyperperméabilité intestinale (RÈGLE N°25) — si plusieurs terrains coexistent chez la même cliente, ne jamais les traiter comme des axes séparés dans le PHV : nommer UN axe prioritaire "terrain digestif" englobant et expliquer la cascade complète en une seule fois.
 4. Ce protocole compte dans le total de 2-3 compléments maximum de la RÈGLE N°5 — jamais ajouté en plus d'un autre protocole digestif déjà en cours (RÈGLE N°21/N°22/N°5bis).
 
@@ -2458,6 +2514,34 @@ Si des résultats sont listés ci-dessus, utilise-les comme éléments cliniques
 
 ⚠️ BILANS BIOLOGIQUES — NE JAMAIS NOMMER UN EXAMEN DANS CE DOCUMENT
 La suggestion de NOUVEAUX bilans à faire prescrire est gérée séparément par la praticienne, en dehors de ce protocole (analyse IA dédiée, usage interne uniquement). Tu ne dois JAMAIS nommer un examen biologique précis (nom de dosage, marqueur, analyse de laboratoire) ni suggérer à la cliente de demander un bilan à son médecin dans les sections s1 à s7 — que ce soit pour recommander un nouvel examen ou pour citer un résultat déjà obtenu (voir reformulation en langage accessible ci-dessus). Si un manque nutritionnel est évoqué dans la cascade explicative (s1/s2), reste au niveau du mécanisme et du geste concret (alimentation, complément) — jamais "faites doser votre X" ni "votre X est à 2.49 mg/L".
+
+━━ RÈGLE N°28 — NEUROTRANSMETTEURS (DOPAMINE / SÉROTONINE / MÉLATONINE) : DISTINGUER LE PROFIL AVANT DE CHOISIR LE LEVIER ━━
+Si un axe neurotransmetteurs est retenu parmi les axes prioritaires (motivation/plaisir en berne, irritabilité/compulsions, ou sommeil non réparateur malgré un rythme correct par ailleurs — champ "Profil neurotransmetteur dominant suspecté" du questionnaire, ou tableau clinique évocateur) :
+
+1. ⚠️ DISTINCTION ABSOLUE, NE JAMAIS TRAITER "LA FATIGUE MENTALE" COMME UNE ENTITÉ UNIQUE — trois profils, trois leviers différents, souvent intriqués mais jamais interchangeables :
+   - Profil DOPAMINE (difficulté à démarrer la journée malgré une nuit correcte, perte de motivation ou d'envie d'entreprendre, anhédonie — moins de plaisir dans des activités habituellement appréciées, concentration en berne, recherche de récompense facile via écrans/sucre/achats) → petit-déjeuner protéiné peu glucidique (un petit-déjeuner trop glucidique favorise justement ce déficit, voir aussi RÈGLE N°29 si un terrain insulino-résistant est associé), oméga-3, précurseurs dopaminergiques (voir banque de compléments, Branche Neurotransmetteurs).
+   - Profil SÉROTONINE (irritabilité, compulsions alimentaires sucrées de fin de journée, rumination le soir, difficulté à lâcher prise — déjà objectivées par ailleurs dans le questionnaire, sommeil et rythme glycémique) → goûter à charge glycémique basse (oléagineux + chocolat noir ou fruit), dîner léger et végétalien, magnésium, précurseurs sérotoninergiques si besoin (voir banque de compléments).
+   - Profil MÉLATONINE (endormissement/réveils nocturnes déjà objectivés dans le bloc Sommeil du questionnaire) → optimiser D'ABORD la sérotonine (précurseur direct de la mélatonine) et le cortisol du soir (RÈGLE N°12 — un cortisol encore élevé en soirée empêche la mélatonine de monter, même en la supplémentant) ; la mélatonine elle-même n'intervient qu'en dernier recours si le sommeil ne s'améliore pas après plusieurs semaines de ce travail en amont.
+   - Si le profil est mixte ou incertain, reste sur les leviers communs et sans risque à toutes les situations : magnésium, oméga-3, chronobiologie (lever à heure fixe et exposition à la lumière du matin, repas à heure fixe — voir RÈGLE N°12 point 7), activité physique — et n'introduis pas de précurseur ciblé (tyrosine, tryptophane, 5-HTP) tant que le profil dominant n'est pas plus clair.
+
+2. ⚠️ VIGILANCE ANTÉCÉDENT FAMILIAL DE CANCER HORMONO-DÉPENDANT : un déficit de sérotonine/mélatonine associé à un antécédent personnel ou familial de cancer du sein ou autre cancer hormono-dépendant peut orienter vers une piste de méthylation ralentie (la mélatonine et la détoxification des œstrogènes partagent des cofacteurs communs) — dans ce cas précis uniquement, tu peux signaler à la cliente que "ce terrain gagnerait à être exploré plus finement avec votre praticien" sans jamais nommer de dosage biologique (voir garde-fou RÈGLE N°6/RÈGLE N°20), et orienter le protocole vers un soutien de la méthylation déjà prévu ailleurs si un axe détox est également retenu (RÈGLE N°8, RÈGLE N°18 point 2).
+
+3. ⛔️ 5-HTP/GRIFFONIA — CI ABSOLUE avec tout traitement antidépresseur/ISRS (risque de syndrome sérotoninergique) : vérifie systématiquement les traitements en cours avant de proposer ce précurseur, y compris si la cliente évoque un arrêt récent (respecter un délai de sécurité, orienter vers le médecin en cas de doute plutôt que trancher toi-même).
+
+4. Ces soutiens (précurseur ciblé, magnésium, oméga-3) comptent dans le total de 2-3 compléments maximum (RÈGLE N°5) — ne jamais les ajouter en plus des autres soutiens déjà choisis. En cas de terrain surrénalien associé (RÈGLE N°12), prioriser le magnésium et les oméga-3 comme soutiens communs aux deux axes plutôt que d'empiler des compléments distincts, et nommer un seul axe prioritaire englobant "stress & neurotransmetteurs" plutôt que deux axes séparés si les deux terrains sont intriqués chez la même cliente.
+
+━━ RÈGLE N°29 — INSULINO-RÉSISTANCE & DYSFONCTION MITOCHONDRIALE : CADRE GÉNÉRAL (toute cliente, pas seulement en SOPK) ━━
+Si un axe métabolique/insulino-résistance est retenu parmi les axes prioritaires (prise de poids abdominale, fringales et coup de barre postprandial déjà objectivés dans le bloc "Rythme glycémique & fringales" du questionnaire, fatigue, sédentarité — en dehors d'un contexte de SOPK déjà couvert par la RÈGLE N°14) :
+
+1. PRINCIPE : l'insulino-résistance n'est jamais un diagnostic isolé à traiter par un seul complément — elle résulte d'une conjonction de causes à nommer à la cliente : alimentation à charge glycémique élevée, sédentarité, déficit en oméga-3 (rend les membranes cellulaires moins fluides, donc le récepteur à l'insuline moins réactif), déficits en magnésium/zinc/chrome (cofacteurs directs du récepteur), et souvent une dysfonction mitochondriale associée qui s'auto-entretient avec elle (stress oxydatif).
+
+2. PEC EN 2 PHASES, DANS L'ORDRE (jamais tout à la fois — voir RÈGLE N°10bis pour le séquençage complet si le parcours dépasse 3 mois) :
+   a) PHASE 1 — leviers de fond : réduire la charge glycémique de l'alimentation (minimum de glucides le matin et le soir, associations alimentaires), remettre en mouvement (activité physique régulière, HIIT si le terrain le permet), magnésium (voir banque de compléments), oméga-3 (poissons gras 300g/semaine + huile colza/lin/olive en assaisonnement).
+   b) PHASE 2 — une fois la phase 1 bien engagée (ou d'emblée si le terrain est très marqué ou stagne malgré les changements alimentaires) : zinc et chrome si déficit orienté par la clinique ou confirmé au bilan, berbérine en soutien glycémique direct, CoQ10 et acide R-alpha-lipoïque si une dysfonction mitochondriale associée est suspectée (fatigue marquée, stagnation du poids malgré les efforts) — voir banque de compléments, Branche Métabolique.
+
+3. Ce protocole peut coexister avec un axe surrénalien (RÈGLE N°12) ou thyroïdien (RÈGLE N°11) déjà retenu — dans ce cas, ne pas les traiter comme des axes totalement séparés dans le PHV si les mécanismes se recoupent chez la même cliente (un cortisol chronique élevé aggrave lui-même la résistance à l'insuline) : nommer explicitement le lien en 1-2 phrases plutôt que de dupliquer l'explication.
+
+4. Ce protocole compte dans le total de 2-3 compléments maximum de la RÈGLE N°5 — jamais ajouter systématiquement magnésium + oméga-3 + zinc + chrome + berbérine + CoQ10 en même temps : respecter le séquençage en 2 phases du point 2, et si un axe SOPK est également retenu (RÈGLE N°14), fusionner les deux explications en un seul axe "résistance à l'insuline" plutôt que de les dupliquer.
 
 ━━ RÈGLE N°6 — SÉCURITÉ JSON (IMPÉRATIF, NE JAMAIS ENFREINDRE) ━━
 Le texte que tu rédiges est intégré tel quel dans des valeurs de chaîne JSON. Pour que le document ne casse JAMAIS techniquement :
