@@ -260,6 +260,15 @@ select.fi{height:44px;cursor:pointer}
 .check-item{flex-direction:column;align-items:flex-start}
 .check-item .ci-top{display:flex;align-items:center;gap:12px;width:100%}
 
+/* ── Moteur entonnoire : question de rebond révélée dynamiquement suite à une réponse ── */
+.funnel-followup{display:none;margin:10px 0 4px 26px;padding:14px 16px;border-left:3px solid var(--ocre);background:var(--or-clair);border-radius:0 12px 12px 0}
+.funnel-followup.funnel-visible{display:block;animation:funnelIn .28s ease}
+@keyframes funnelIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+.funnel-followup .funnel-tag{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ocre);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.funnel-followup .funnel-tag svg{flex-shrink:0}
+.funnel-followup .funnel-q{font-size:14px;font-weight:600;color:var(--ardoise);margin-bottom:8px;line-height:1.4}
+.funnel-followup .funnel-why{font-size:13px;color:var(--ardoise);line-height:1.55;opacity:.85;margin-bottom:10px}
+
 /* ── HIGHLIGHT ── */
 .hl{background:var(--off);border-radius:12px;padding:12px 16px;font-size:13px;color:var(--gris);margin:10px 0;line-height:1.7;border:1px solid var(--taupe)}
 .hl strong{color:var(--ardoise);font-weight:600}
@@ -2530,12 +2539,18 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
         <div class="qinput">
           <div class="g2">
             <div><label class="fl">Statut diagnostic</label>
-              <select class="fi"><option>Confirmé — test respiratoire H2</option><option>Confirmé — test respiratoire CH4 (IMO)</option><option>Suspicion clinique non testée</option><option>Test en attente</option><option>Déjà traité — rechute</option></select>
+              <select class="fi" data-funnel-select><option>Confirmé — test respiratoire H2</option><option data-funnel="sibo-ch4-confirme">Confirmé — test respiratoire CH4 (IMO)</option><option>Suspicion clinique non testée</option><option>Test en attente</option><option>Déjà traité — rechute</option></select>
             </div>
             <div><label class="fl">Traitements déjà tentés</label>
               <input class="fi" type="text" placeholder="Saisissez…">
 <div class="ex-block"><div class="ex-toggle" onclick="toggleEx(this)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg> <svg class="picto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0" aria-hidden="true"><circle cx="12" cy="9" r="5"/><line x1="10" y1="17" x2="14" y2="17"/><line x1="10" y1="20" x2="14" y2="20"/></svg> Voir des exemples de réponses</div><div class="ex-body">Ex. : Rifaximine 550 mg x3/j pendant 14j (2022) → amélioration 70% ballonnements pendant 3 mois, puis rechute → cause racine non traitée (motilité ?). Protocole herbes : origan + allicine pendant 6 semaines (2023) → tolérance difficile, arrêt à J10. Régime FODMAP strict 8 semaines → amélioration symptômes mais pas de guérison. Aucun traitement à ce jour → jamais proposé par le médecin malgré test positif. → Rechute systématique : explorer MMC défaillant, hypochlorhydrie, adhérences chirurgicales comme cause racine.</div></div>
             </div>
+          </div>
+          <div class="funnel-followup" data-funnel-show="sibo-ch4-confirme">
+            <div class="funnel-tag"><svg class="picto" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12l7 7 7-7"/></svg> Puisque c'est un SIBO méthane (IMO)</div>
+            <div class="funnel-q">Constipation depuis combien de temps, et à quel point résiste-t-elle aux laxatifs classiques ?</div>
+            <div class="funnel-why">Je vous pose cette question précisément parce que le méthane produit par ce type de bactéries ralentit directement le mouvement de l'intestin — plus la constipation est ancienne et résistante, plus ça confirme que ce ralentissement moteur (pas juste un manque de fibres ou d'hydratation) est la cause principale, et plus le protocole doit cibler la relance de la motilité en priorité, avant même l'éradication bactérienne.</div>
+            <input class="fi" type="text" placeholder="Ex : constipation depuis 3 ans, <1 selle/semaine sans laxatif osmotique quotidien">
           </div>
           <div class="check-list" style="margin-top:10px">
             <div class="check-item"><div class="ci-top"><div class="cb">✓</div> <span>Ballonnements majeurs 60-90 min après le repas</span></div><span class="ci-why">Ce délai précis de 60 à 90 minutes correspond au moment où les aliments arrivent dans la partie de l'intestin grêle où les bactéries en excès se mettent à fermenter — un timing très évocateur d'un SIBO.</span></div>
@@ -2572,10 +2587,16 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
             <div class="pourquoi-txt"> Je vous demande si les gaz sont odorants ou non, parce que ça m'oriente vers un mécanisme différent — une fermentation des sucres, ou une dégradation des protéines mal digérées — et l'approche n'est pas la même.</div></div>
           </div>
           <div class="check-list">
-            <div class="check-item"><div class="ci-top"><div class="cb">✓</div> <span>Gaz odorants (soufre, œuf pourri)</span></div><span class="ci-why">Des gaz qui sentent fort, façon œuf pourri, signent une fermentation des protéines mal digérées plutôt que des sucres — un mécanisme différent, à traiter différemment.</span></div>
+            <div class="check-item" data-funnel="gaz-odorants"><div class="ci-top"><div class="cb">✓</div> <span>Gaz odorants (soufre, œuf pourri)</span></div><span class="ci-why">Des gaz qui sentent fort, façon œuf pourri, signent une fermentation des protéines mal digérées plutôt que des sucres — un mécanisme différent, à traiter différemment.</span></div>
             <div class="check-item"><div class="ci-top"><div class="cb">✓</div> <span>Selles odorantes et/ou haleine putride</span></div><span class="ci-why">Certaines toxines issues de cette fermentation protéique repassent dans le sang et s'éliminent en partie par l'haleine — souvent associé à un manque d'acidité gastrique en amont.</span></div>
             <div class="check-item"><div class="ci-top"><div class="cb">✓</div> <span>Douleurs et gaz à la palpation du colon descendant / sigmoïde (fosse iliaque gauche)</span></div><span class="ci-why">Cette douleur précise à la palpation, côté gauche du ventre en bas, est l'emplacement typique où se produit ce type de fermentation.</span></div>
             <div class="check-item"><div class="ci-top"><div class="cb">✓</div> <span>Consommation d'eau gazeuse ou riche en bicarbonates au cours des repas</span></div><span class="ci-why">L'eau gazeuse riche en bicarbonates neutralise l'acidité nécessaire à la digestion des protéines — un intestin trop alcalin favorise justement ce type de fermentation protéique.</span></div>
+          </div>
+          <div class="funnel-followup" data-funnel-show="gaz-odorants">
+            <div class="funnel-tag"><svg class="picto" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12l7 7 7-7"/></svg> Puisque les gaz sont odorants (piste putréfaction)</div>
+            <div class="funnel-q">Consommation de viande rouge/charcuterie : quelle fréquence ? Et prenez-vous (ou avez-vous pris récemment) un IPP ou un anti-acide ?</div>
+            <div class="funnel-why">Je croise ces deux informations parce qu'une viande rouge fréquente apporte davantage de protéines à mal digérer, et qu'un IPP réduit l'acidité gastrique qui sert justement à les digérer correctement — les deux ensemble entretiennent directement cette fermentation protéique, et connaître leur poids respectif chez vous m'oriente vers l'ordre exact du protocole (alimentaire d'abord, ou sevrage IPP en priorité).</div>
+            <input class="fi" type="text" placeholder="Ex : viande rouge 4x/semaine, oméprazole 20mg/j depuis 8 mois">
           </div>
         </div>
       </div>
@@ -2593,7 +2614,13 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
         <div class="qinput">
           <div class="check-list">
             <div class="check-item"><div class="ci-top"><div class="cb">✓</div> <span>Antécédent de gastro-entérite grave ou intoxication alimentaire (déclencheur fréquent)</span></div><span class="ci-why">Une gastro sévère peut détruire les cellules qui font office de « chef d'orchestre » du grand nettoyage nocturne de l'intestin — sans lui, les bactéries s'accumulent librement dans le grêle.</span></div>
-            <div class="check-item"><div class="ci-top"><div class="cb">✓</div> <span>IPP longue durée (oméprazole, pantoprazole >3 mois)</span></div><span class="ci-why">Les IPP suppriment l'acidité de l'estomac qui sert normalement de première barrière contre les bactéries — sans elle, davantage de bactéries passent vivantes dans l'intestin grêle.</span></div>
+            <div class="check-item" data-funnel="ipp-longue-duree"><div class="ci-top"><div class="cb">✓</div> <span>IPP longue durée (oméprazole, pantoprazole >3 mois)</span></div><span class="ci-why">Les IPP suppriment l'acidité de l'estomac qui sert normalement de première barrière contre les bactéries — sans elle, davantage de bactéries passent vivantes dans l'intestin grêle.</span></div>
+            <div class="funnel-followup" data-funnel-show="ipp-longue-duree">
+              <div class="funnel-tag"><svg class="picto" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12l7 7 7-7"/></svg> Puisqu'un IPP est pris depuis longtemps</div>
+              <div class="funnel-q">Un sevrage est-il envisagé ou déjà en cours ? Avec l'accord et le suivi de quel médecin ?</div>
+              <div class="funnel-why">Cette question conditionne l'ordre de tout le protocole : un sevrage d'IPP mal accompagné peut réactiver un reflux plus fort qu'avant (effet rebond), donc je ne propose jamais de démarrer l'éradication du SIBO avant de savoir où en est ce sevrage — et je ne le déclenche jamais moi-même, toujours en lien avec le médecin prescripteur.</div>
+              <input class="fi" type="text" placeholder="Ex : sevrage progressif débuté il y a 3 semaines avec le médecin traitant, palier 2/4">
+            </div>
             <div class="check-item"><div class="ci-top"><div class="cb">✓</div> <span>Nombreuses cures antibiotiques (3+ fois)</span></div><span class="ci-why">Chaque cure d'antibiotiques élimine aussi des bactéries protectrices qui limitaient la concurrence — la recolonisation qui suit se fait dans le désordre, ce qui favorise justement ce type de prolifération.</span></div>
             <div class="check-item"><div class="ci-top"><div class="cb">✓</div> <span>Hypothyroïdie (ralentit péristaltisme)</span></div><span class="ci-why">La thyroïde régule directement le mouvement de l'intestin — même légèrement ralentie, elle laisse le grand nettoyage nocturne moins efficace, ce qui permet aux bactéries de s'accumuler.</span></div>
             <div class="check-item"><div class="ci-top"><div class="cb">✓</div> <span>Chirurgie abdominale (appendicite, césarienne, adhérences)</span></div><span class="ci-why">Les adhérences laissées par une chirurgie abdominale modifient la forme de l'intestin et créent des zones où le contenu stagne au lieu d'avancer, un terrain propice à la prolifération bactérienne.</span></div>
@@ -5418,6 +5445,39 @@ function updateCounter() {
 
 document.addEventListener('input', updateCounter);
 document.addEventListener('change', updateCounter);
+
+/* ══════════════════════════════════════
+   MOTEUR ENTONNOIRE — révélation dynamique de questions de rebond
+   Principe : n'importe quel déclencheur (check-item coché, trig-check coché, chip activé,
+   option de select choisie) porte un attribut data-funnel="cle1 cle2 …". Dès qu'une clé
+   devient active, tous les blocs .funnel-followup portant data-funnel-show="cle" apparaissent
+   avec leur question de rebond + leur "pourquoi" ; ils se referment automatiquement si la
+   réponse qui les a déclenchés est décochée / changée.
+   Pour ajouter une nouvelle branche ailleurs dans le questionnaire, il suffit de :
+   1) poser data-funnel="ma-cle" sur le déclencheur (check-item / trig-check / chip / <option>)
+   2) créer un <div class="funnel-followup" data-funnel-show="ma-cle">…</div> juste après
+   Aucune autre modification de code n'est nécessaire — refreshFunnel() gère tout automatiquement.
+══════════════════════════════════════ */
+function refreshFunnel() {
+  const active = new Set();
+  document.querySelectorAll('.check-item.checked[data-funnel], .trig-check.checked[data-funnel], .chip.on[data-funnel]').forEach(el => {
+    el.dataset.funnel.split(' ').forEach(k => active.add(k));
+  });
+  document.querySelectorAll('select[data-funnel-select]').forEach(sel => {
+    const opt = sel.options[sel.selectedIndex];
+    if (opt && opt.dataset.funnel) opt.dataset.funnel.split(' ').forEach(k => active.add(k));
+  });
+  document.querySelectorAll('.funnel-followup[data-funnel-show]').forEach(block => {
+    const keys = block.dataset.funnelShow.split(' ');
+    const should = keys.some(k => active.has(k));
+    const isVisible = block.classList.contains('funnel-visible');
+    if (should && !isVisible) block.classList.add('funnel-visible');
+    else if (!should && isVisible) block.classList.remove('funnel-visible');
+  });
+}
+document.addEventListener('click', refreshFunnel);
+document.addEventListener('change', refreshFunnel);
+document.addEventListener('DOMContentLoaded', refreshFunnel);
 
 document.addEventListener('click', function(e) {
   // Check-items (toutes sections, y compris questionnaires thématiques)
