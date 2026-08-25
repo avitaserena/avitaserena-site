@@ -482,7 +482,10 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 </script>
 <script src="auth-guard.js"></script>
 <script src="ai-client.js"></script>
-<script src="ai-explain-panel.js"></script>
+<!-- ai-explain-panel.js retiré (25/08/2026) : le bouton flottant "💬 Explications" faisait
+     doublon avec le moteur entonnoire (questions de rebond + "pourquoi" affichés en direct
+     dans le questionnaire) et le panneau "Pistes en direct". Les appels à window.AIPanel
+     restants dans ce fichier sont déjà protégés (if (window.AIPanel)), donc rien ne casse. -->
 </head>
 <body>
 <div id="float-susp">
@@ -783,30 +786,6 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
       <div><label class="fl">Objectif à 6 mois — comment voulez-vous vous sentir ?</label>
         <textarea class="fi" placeholder="Saisissez vos notes…"></textarea>
 <div class="ex-block"><div class="ex-toggle" onclick="toggleEx(this)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg> <svg class="picto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0" aria-hidden="true"><circle cx="12" cy="9" r="5"/><line x1="10" y1="17" x2="14" y2="17"/><line x1="10" y1="20" x2="14" y2="20"/></svg> Voir des exemples de réponses</div><div class="ex-body">Ex. : « Ne plus avoir le ventre gonflé tous les soirs — j'en peux plus de me coucher comme enceinte de 6 mois. » Ou : « Retrouver l'énergie que j'avais avant — je me lève déjà épuisée. » Ou : « Pouvoir manger normalement en société sans stresser. » Ou : « Me reconnaître dans mon corps. » Ou : « Arrêter d'être irascible avec mes enfants J-5 avant mes règles. » → Ces mots sont précieux : ce sont eux qui constituent l'objectif du PHV.</div></div>
-      </div>
-      <div><label class="fl">Motifs fréquents — étiquettes pour votre dossier (jamais lues à la cliente, servent à classer et filtrer vos consultations)</label>
-        <div class="chip-wrap" id="motifs-chips">
-          <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> SIBO</button>
-          <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> SII / Côlon irritable</button>
-          <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Endométriose</button>
-          <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> SOPK</button>
-          <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Ménopause / périménopause</button>
-          <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Hashimoto / Thyroïde</button>
-          <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Fatigue surrénalienne / Cortisol</button>
-          <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Aménorrhée centrale</button>
-          <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Fatigue chronique</button>
-          <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Troubles du sommeil</button>
-          <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Stress & anxiété</button>
-          <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Troubles digestifs (autre)</button>
-          <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> SPM intense</button>
-          <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Prise de poids</button>
-          <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Migraines</button>
-          <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Burn-out</button>
-          <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Immunité faible</button>
-          <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Chute de cheveux</button>
-          <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Désir de grossesse</button>
-          <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Bilan préventif</button>
-        </div>
       </div>
       <div><label class="fl">Motif détaillé libre</label>
         <textarea class="fi" id="motif" style="min-height:80px" placeholder="Saisissez vos notes…"></textarea>
@@ -2552,7 +2531,7 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
         <div class="qinput">
           <div class="g2">
             <div><label class="fl">Statut diagnostic</label>
-              <select class="fi" data-funnel-select><option data-funnel="sibo-h2-confirme">Confirmé — test respiratoire H2</option><option data-funnel="sibo-ch4-confirme">Confirmé — test respiratoire CH4 (IMO)</option><option>Suspicion clinique non testée</option><option>Test en attente</option><option>Déjà traité — rechute</option></select>
+              <select class="fi" data-funnel-select><option value="">— —</option><option data-funnel="sibo-h2-confirme">Confirmé — test respiratoire H2</option><option data-funnel="sibo-ch4-confirme">Confirmé — test respiratoire CH4 (IMO)</option><option>Suspicion clinique non testée</option><option>Test en attente</option><option>Déjà traité — rechute</option></select>
             </div>
             <div><label class="fl">Traitements déjà tentés</label>
               <input class="fi" type="text" placeholder="Saisissez…">
@@ -2658,7 +2637,7 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
         <div class="qinput">
           <div class="g2">
             <div><label class="fl">Profil dominant</label>
-              <select class="fi" data-funnel-select><option data-funnel="sii-profil-c">SII-C (constipation)</option><option data-funnel="sii-profil-d">SII-D (diarrhée)</option><option data-funnel="sii-profil-m">SII-M (mixte alternant)</option><option>SII non classifié</option></select>
+              <select class="fi" data-funnel-select><option value="">— —</option><option data-funnel="sii-profil-c">SII-C (constipation)</option><option data-funnel="sii-profil-d">SII-D (diarrhée)</option><option data-funnel="sii-profil-m">SII-M (mixte alternant)</option><option>SII non classifié</option></select>
             </div>
             <div><label class="fl">Impact du stress sur les symptômes</label>
               <select class="fi"><option>Très fort — les crises coïncident</option><option>Modéré</option><option>Peu lié au stress apparent</option></select>
@@ -3352,7 +3331,7 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
         <div class="qinput">
           <div class="g2">
             <div><label class="fl">Statut diagnostique</label>
-              <select class="fi" data-funnel-select><option data-funnel="hashi-confirme">Hashimoto confirmé (anti-TPO élevés)</option><option>Hypothyroïdie sans Hashimoto</option><option>TSH normale mais symptomatique</option><option data-funnel="basedow-suspecte">Hyperthyroïdie / Basedow (anti-TRAK)</option><option>Suspicion non confirmée</option></select>
+              <select class="fi" data-funnel-select><option value="">— —</option><option data-funnel="hashi-confirme">Hashimoto confirmé (anti-TPO élevés)</option><option>Hypothyroïdie sans Hashimoto</option><option>TSH normale mais symptomatique</option><option data-funnel="basedow-suspecte">Hyperthyroïdie / Basedow (anti-TRAK)</option><option>Suspicion non confirmée</option></select>
               <div class="field-hint">Si Basedow est évoqué ou suspecté : demander si les anti-TRAK ont été dosés — c'est ce marqueur, et non les anti-TPO/anti-TG, qui confirme Basedow et change complètement l'approche (jamais d'iode, orientation médicale prioritaire).<div class="funnel-followup" data-funnel-show="hashi-confirme"><div class="funnel-tag"><svg class="picto" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12l7 7 7-7"/></svg> Puisque Hashimoto est confirmé</div><div class="funnel-q">Ces anticorps ont-ils déjà été redosés une deuxième fois ?</div><div class="funnel-why">Voir s'ils augmentent ou se stabilisent m'aide à évaluer l'activité réelle de la maladie. C'est une donnée que je regarde toujours avec attention.</div><div class="funnel-choices"><button class="fchip" type="button" onclick="selectFunnelChoice(this)">Un seul dosage, jamais redosé</button><button class="fchip" type="button" onclick="selectFunnelChoice(this)">Redosé, stable</button><button class="fchip" type="button" onclick="selectFunnelChoice(this)">Redosé, en augmentation</button><button class="fchip" type="button" onclick="selectFunnelChoice(this)">Je ne sais pas</button></div></div><div class="funnel-followup" data-funnel-show="basedow-suspecte"><div class="funnel-tag"><svg class="picto" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12l7 7 7-7"/></svg> Puisqu'un Basedow est évoqué</div><div class="funnel-q">Les anti-TRAK ont-ils déjà été dosés pour confirmer ce diagnostic précis ?</div><div class="funnel-why">C'est ce marqueur précis, et lui seul, qui confirme un Basedow. Sans lui, je reste prudente avant d'orienter quoi que ce soit, c'est une question de sécurité.</div><div class="funnel-choices"><button class="fchip" type="button" onclick="selectFunnelChoice(this)">Oui, anti-TRAK positifs confirmés</button><button class="fchip" type="button" onclick="selectFunnelChoice(this)">Non, seulement anti-TPO dosés</button><button class="fchip" type="button" onclick="selectFunnelChoice(this)">Je ne sais pas</button></div></div></div>
             </div>
             <div><label class="fl">Traitement en cours</label>
@@ -3404,7 +3383,7 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
         <div class="qinput">
           <div class="g2">
             <div><label class="fl">Profil dominant</label>
-              <select class="fi" data-funnel-select><option data-funnel="surr-exces">Excès de cortisol (hyperactivée, hypertendue)</option><option data-funnel="surr-deficit">Déficit de cortisol (fatigue surrénalienne installée)</option><option>Alternance / phase de bascule</option><option>Non déterminé</option></select>
+              <select class="fi" data-funnel-select><option value="">— —</option><option data-funnel="surr-exces">Excès de cortisol (hyperactivée, hypertendue)</option><option data-funnel="surr-deficit">Déficit de cortisol (fatigue surrénalienne installée)</option><option>Alternance / phase de bascule</option><option>Non déterminé</option></select>
             </div>
             <div><label class="fl">Ancienneté du stress chronique</label>
               <input class="fi" type="text" placeholder="ex : stress professionnel intense depuis 3 ans…">
@@ -3545,6 +3524,7 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
         </div>
         <div><label class="fl">Contraception actuelle</label>
           <select class="fi" data-funnel-select>
+            <option value="">— —</option>
             <option data-funnel="pilule-aucune">Aucune</option><option>Pilule oestroprogestative</option>
             <option>Pilule microprogestative</option><option>DIU hormonal (Mirena)</option>
             <option>DIU cuivre</option><option>Implant</option><option>Autre</option>
@@ -4410,7 +4390,44 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
     <div class="sec-sub">Les bilans biologiques que vous recommandez à votre cliente, à faire prescrire par son médecin. Cochez ceux qui correspondent au tableau clinique identifié pendant la séance.</div>
   </div>
 
-  
+  <!-- Motifs fréquents — déplacé depuis la section 1 (25/08/2026) : ce sont des étiquettes
+       de classement administratif pour le dossier, jamais lues à la cliente ni utilisées
+       pendant l'entretien — leur place naturelle est ici, au moment où vous classez le
+       dossier, pas pendant que vous parlez avec elle. -->
+  <div class="qcard">
+    <div class="qcard-top">
+      <div class="qnum">21b</div>
+      <div class="qcontent">
+        <div class="qtext">Motifs fréquents — étiquettes pour votre dossier</div>
+        <div class="qtags"><span class="qtag opt">Jamais lues à la cliente — classement uniquement</span></div>
+      </div>
+    </div>
+    <div class="qinput">
+      <div class="chip-wrap" id="motifs-chips">
+        <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> SIBO</button>
+        <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> SII / Côlon irritable</button>
+        <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Endométriose</button>
+        <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> SOPK</button>
+        <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Ménopause / périménopause</button>
+        <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Hashimoto / Thyroïde</button>
+        <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Fatigue surrénalienne / Cortisol</button>
+        <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Aménorrhée centrale</button>
+        <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Fatigue chronique</button>
+        <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Troubles du sommeil</button>
+        <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Stress & anxiété</button>
+        <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Troubles digestifs (autre)</button>
+        <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> SPM intense</button>
+        <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Prise de poids</button>
+        <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Migraines</button>
+        <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Burn-out</button>
+        <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Immunité faible</button>
+        <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Chute de cheveux</button>
+        <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Désir de grossesse</button>
+        <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Bilan préventif</button>
+      </div>
+    </div>
+  </div>
+
   <!-- TERRAINS BIOLOGIQUES CHANBIO — Dr Claude Lagarde / Nutergia -->
   <div class="qcard">
     <div class="qcard-top">
@@ -5300,18 +5317,18 @@ function ajouterEnfant() {
   div.className = 'enfant-row';
   div.style.cssText = 'background:var(--grege);border-radius:10px;padding:12px 14px;margin-bottom:8px';
   div.innerHTML = `
-    <div class="g3">
+    <div class="g2">
       <div><label class="fl">Sexe</label><select class="fi enfant-sexe"><option value="">— —</option><option>Fille</option><option>Garçon</option></select></div>
       <div><label class="fl">Année de naissance</label><input class="fi enfant-annee" type="number" min="1960" max="2030" placeholder="ex. 2013"></div>
-      <div><label class="fl">Mode d'accouchement</label>
-        <select class="fi enfant-mode">
-          <option value="">— —</option>
-          <option>Voie basse spontanée</option>
-          <option>Voie basse instrumentale (forceps/ventouse)</option>
-          <option>Césarienne programmée</option>
-          <option>Césarienne en urgence</option>
-        </select>
-      </div>
+    </div>
+    <div style="margin-top:10px"><label class="fl">Mode d'accouchement</label>
+      <select class="fi enfant-mode">
+        <option value="">— —</option>
+        <option>Voie basse spontanée</option>
+        <option>Voie basse instrumentale (forceps/ventouse)</option>
+        <option>Césarienne programmée</option>
+        <option>Césarienne en urgence</option>
+      </select>
     </div>
     <button type="button" onclick="this.closest('.enfant-row').remove(); updateCounter(); if(typeof construireLigneDeVie==='function') construireLigneDeVie();" style="margin-top:6px;background:none;border:none;color:#A05050;font-size:11px;cursor:pointer;padding:2px">✕ Retirer cet enfant</button>`;
   document.getElementById('enfants-list').appendChild(div);
