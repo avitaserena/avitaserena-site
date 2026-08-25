@@ -1227,6 +1227,40 @@ function buildClientData() {
   const hasManual = Object.values(manual).some(v => v.length > 1);
   const s = sessionData || {};
 
+  // ── FAILLE CORRIGÉE (25/08/2026) : une session issue du questionnaire de SUIVI (pas la
+  // consultation initiale) a une forme de données complètement différente — scores_evolution,
+  // symptomes_evolution, observance_detail, proto_maintien/ajout/arret/modif, message_cle,
+  // axe_principal, etc. Aucun de ces champs n'était jamais lu ci-dessous : générer un protocole
+  // après une séance de suivi perdait silencieusement toute l'évolution clinique tout juste
+  // saisie. On la réinjecte ici dans les champs déjà exploités par le reste de la fonction,
+  // sans dupliquer la logique de buildPrompt(). ──
+  if (s._type_consultation === 'suivi') {
+    const entete = `── SÉANCE DE SUIVI N°${s._num_suivi || '?'} (pas une première consultation — protocole à ajuster, pas à recréer de zéro) ──`;
+    s.symptomes_coches = [entete, s.symptomes_coches, s.symptomes_evolution, s.observance_detail].filter(Boolean).join('\n');
+    s.scores = [s.scores_evolution, s.scores].filter(Boolean).join('\n') || s.scores;
+    s.synthese_praticien = [
+      s.message_cle && `Message clé de la praticienne : ${s.message_cle}`,
+      s.axe_principal && `Axe principal retenu : ${s.axe_principal}`,
+      s.axe_secondaire && `Axe secondaire : ${s.axe_secondaire}`,
+      s.phase && `Phase du programme : ${s.phase}`,
+      s.intuition_clinique,
+      s.notes_libres,
+    ].filter(Boolean).join('\n');
+    s.textes_libres = [
+      s.textes_libres,
+      s.proto_maintien && `Protocole précédent à MAINTENIR : ${s.proto_maintien}`,
+      s.proto_arret && `Protocole précédent à ARRÊTER : ${s.proto_arret}`,
+      s.proto_ajout && `À AJOUTER par rapport au protocole précédent : ${s.proto_ajout}`,
+      s.proto_modif && `Modification par rapport au protocole précédent : ${s.proto_modif}`,
+      s.alim_maintien && `Alimentation — maintien : ${s.alim_maintien}`,
+      s.alim_ajout && `Alimentation — ajout : ${s.alim_ajout}`,
+      s.alim_modif && `Alimentation — modification : ${s.alim_modif}`,
+      s.bilans_a_venir && `Bilans à venir déjà prévus : ${s.bilans_a_venir}`,
+      s.objectif_actuel && `Objectif actuel de la cliente : ${s.objectif_actuel}`,
+      s.questions_prochaine && `À vérifier à la prochaine séance : ${s.questions_prochaine}`,
+    ].filter(Boolean).join('\n');
+  }
+
   // Collecter les axes sélectionnés
   const axesBtns = document.querySelectorAll('#axes-group .p-toggle.on');
   const axesSelectionnes = [...axesBtns].map(b => b.dataset.val).join(', ') || 'Non précisé';
