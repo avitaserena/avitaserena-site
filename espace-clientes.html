@@ -3757,13 +3757,21 @@ async function saveCheckinRapide(){
 
   try {
     var token = await Auth.getValidAccessToken();
-    await fetch(SUPA_URL + '/rest/v1/journal_entries', {
+    // ⚠️ BUG CORRIGÉ (26/08/2026) : il existe une contrainte unique (client_key, date) sur
+    // journal_entries — un simple POST échoue donc SILENCIEUSEMENT (conflit, jamais remonté
+    // en exception JS puisque fetch() ne rejette pas sur un statut HTTP non-2xx) dès qu'une
+    // entrée existe déjà pour aujourd'hui (2e check-in dans la même journée, resaisie après
+    // erreur, autre appareil déjà utilisé...). Le code continuait alors comme si tout avait
+    // été enregistré (champs réinitialisés, courbe rafraîchie) alors que rien n'avait été
+    // écrit. On passe en upsert (même pattern que l'autre point d'enregistrement du journal,
+    // plus bas dans ce fichier) et on vérifie réellement la réponse.
+    var res = await fetch(SUPA_URL + '/rest/v1/journal_entries?on_conflict=client_key,date', {
       method: 'POST',
       headers: {
         'apikey': SUPA_KEY,
         'Authorization': 'Bearer ' + (token || SUPA_KEY),
         'Content-Type': 'application/json',
-        'Prefer': 'return=minimal'
+        'Prefer': 'resolution=merge-duplicates,return=minimal'
       },
       body: JSON.stringify({
         client_key: session.key,
@@ -3775,6 +3783,7 @@ async function saveCheckinRapide(){
         note: noteVal
       })
     });
+    if (!res.ok) throw new Error('Supabase ' + res.status);
     checkinEnergieVal = null; checkinTransitVal = null; checkinBallonnementsVal = null; checkinHumeurVal = null;
     renderCheckinRapide();
     loadJalons();
@@ -3782,7 +3791,15 @@ async function saveCheckinRapide(){
     if(typeof loadJournalHistory === 'function') loadJournalHistory();
   } catch(e){
     console.warn('Check-in rapide non enregistré :', e);
-    if(btn){ btn.disabled=false; btn.textContent='Enregistrer →'; }
+    if(btn){ btn.disabled=false; btn.textContent='Réessayer →'; }
+    var msgEl = document.getElementById('checkinErrMsg');
+    if(!msgEl){
+      msgEl = document.createElement('div');
+      msgEl.id = 'checkinErrMsg';
+      msgEl.style.cssText = 'color:var(--rouge,#B5533A);font-size:12px;margin-top:8px;text-align:center';
+      if(btn && btn.parentNode) btn.parentNode.appendChild(msgEl);
+    }
+    msgEl.textContent = '⚠ Échec de l\'enregistrement — vos réponses n\'ont pas encore été sauvegardées, réessayez.';
   }
 }
 

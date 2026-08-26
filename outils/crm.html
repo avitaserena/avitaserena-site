@@ -4786,6 +4786,22 @@ function buildJournalCard(c){
     return `<div class='card' style="margin-top:14px"><div class='card-head'><div class='card-title'><div class='card-dot' style='background:#2C9C8A'></div>Journal & humeur</div></div>
       <div class='card-body'><div style="padding:16px 0;font-size:13px;color:var(--muted);font-style:italic">Aucune entrée de journal enregistrée pour le moment.</div></div></div>`;
   }
+  // ── Courbe d'énergie (26/08/2026) — seule donnée du check-in quotidien réellement
+  // numérique (2/4/6/8/10, paliers Épuisée→Excellente) ; sommeil/transit/ballonnements/humeur
+  // restent des libellés catégoriels non chartables sous forme de courbe. Ordre chronologique
+  // croissant (entries arrive triée desc), un seul point ignoré (une courbe à 1 point n'a pas
+  // de sens) — dans ce cas la liste ci-dessous reste seule affichée.
+  const entriesChrono=entries.slice().reverse();
+  const energiePts=entriesChrono.map(e=>({date:e.date, val:parseInt(e.energie,10)})).filter(p=>!isNaN(p.val));
+  let chartHtml='';
+  if(energiePts.length>=2){
+    const values=energiePts.map(p=>p.val);
+    const labels=energiePts.map(p=>{const d=new Date(p.date);return isNaN(d)?'':(d.getDate()+'/'+(d.getMonth()+1));});
+    chartHtml=`<div style="margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Énergie — ${energiePts.length} derniers jours renseignés</div>
+      ${svgAreaChart(values,labels,'#2C9C8A',120)}
+    </div>`;
+  }
   const rows=entries.map(e=>{
     const alerte=HUMEUR_ALERTE.includes(e.humeur||'');
     const pills=[
@@ -4803,7 +4819,7 @@ function buildJournalCard(c){
   }).join('');
   return `<div class='card' style="margin-top:14px"><div class='card-head'><div class='card-title'><div class='card-dot' style='background:#2C9C8A'></div>Journal & humeur</div>
     <span style='font-size:11px;color:var(--muted)'>${entries.length} entrée(s) · 30 derniers jours</span></div>
-    <div class='card-body'>${rows}</div></div>`;
+    <div class='card-body'>${chartHtml}${rows}</div></div>`;
 }
 
 function toggleObsProto(id){
