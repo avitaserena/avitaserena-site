@@ -373,6 +373,11 @@ select.fi{height:44px;cursor:pointer}
      protégés (if (window.AIPanel)), donc rien ne casse. -->
 </head>
 <body>
+<div id="alerte-cle-ia" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9998;background:var(--ardoise);color:#fff;padding:12px 20px;font-size:13px;font-family:'Inter',sans-serif;align-items:center;justify-content:center;gap:14px;box-shadow:0 2px 10px rgba(0,0,0,.15)">
+  <span>⚠ Le résumé narratif IA n'a pas pu être généré pour ce suivi. <strong>Vos réponses sont bien enregistrées</strong>, seul ce résumé automatique manque dans la fiche — cause la plus fréquente : clé API absente ou invalide.</span>
+  <button onclick="configurerCleAPI()" style="background:var(--sable);color:var(--ardoise);border:none;padding:7px 14px;border-radius:99px;font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap">Vérifier la clé →</button>
+  <button onclick="document.getElementById('alerte-cle-ia').style.display='none'" style="background:none;border:none;color:rgba(255,255,255,.65);font-size:18px;cursor:pointer;padding:0 4px" title="Fermer">×</button>
+</div>
 <div id="float-susp">
   <div class="float-susp-hdr" onclick="document.getElementById('float-susp').classList.toggle('minimized')">
     <div class="float-susp-hdr-left">
@@ -405,6 +410,7 @@ select.fi{height:44px;cursor:pointer}
     <div class="pulse-dot" title="Sauvegarde auto"></div>
     <div class="hdr-counter" id="hdr-counter">0 note</div>
     <div class="hdr-badge" id="hdr-badge">Consultation de suivi</div>
+    <button onclick="configurerCleAPI()" title="Configurer la clé API Anthropic (nécessaire pour le résumé narratif automatique en fiche cliente)" style="background:none;border:1px solid var(--taupe,#c9bdae);color:var(--gris,#7A6F62);border-radius:99px;padding:6px 12px;font-size:11px;cursor:pointer;font-family:'Inter',sans-serif;display:flex;align-items:center;gap:5px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7.5" cy="15.5" r="5.5"/><path d="M21 2l-9.6 9.6M15.5 7.5l3 3L22 7l-3-3"/></svg> Clé API</button>
     <button class="btn-sm" onclick="genererSynthese()"><svg class="picto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><rect x="9" y="2" width="6" height="4" rx="1"/><line x1="8" y1="11" x2="16" y2="11"/><line x1="8" y1="15" x2="16" y2="15"/></svg> Synthèse</button>
     <button class="btn-sm" onclick="ouvrirPause()">⏸</button>
   </div>
@@ -2810,13 +2816,165 @@ async function sauvegarderSupabase(snapshot) {
     if (token) authToken = token;
   }
   try {
-    await fetch(SUPA_URL+'/rest/v1/questionnaires', {
+    // ⚠️ BUG CORRIGÉ (26/08/2026) : l'id de ce suivi est déterministe (suivi_<numéro>_<clé cliente>),
+    // pas horodaté comme pour la consultation initiale. Un simple POST échouait donc SILENCIEUSEMENT
+    // (conflit de clé primaire côté Supabase, jamais remonté en exception JS) dès qu'on ré-enregistrait
+    // le même suivi une 2e fois (ex: "Pause" puis "Générer le PHV de suivi") — la version la plus
+    // complète, celle de fin de séance, pouvait donc silencieusement ne jamais être écrite. On passe
+    // en upsert (merge-duplicates) et on vérifie réellement la réponse au lieu de la supposer réussie.
+    const res = await fetch(SUPA_URL+'/rest/v1/questionnaires', {
       method:'POST',
-      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+authToken,'Content-Type':'application/json','Prefer':'return=minimal'},
+      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+authToken,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
       body:JSON.stringify({id, client_id: clientKey || null, type:'suivi', prenom, snapshot, created_at:new Date().toISOString(), updated_at:new Date().toISOString()})
     });
-  } catch(e){ console.warn('Supabase save failed', e); }
+    if (!res.ok) {
+      const detail = await res.text().catch(()=>'');
+      console.warn('Supabase save failed', res.status, detail);
+      toast('⚠ Échec de sauvegarde Supabase — réessayez ou vérifiez la connexion', 4500);
+      return false;
+    }
+    return true;
+  } catch(e){
+    console.warn('Supabase save failed', e);
+    toast('⚠ Échec de sauvegarde Supabase — réessayez ou vérifiez la connexion', 4500);
+    return false;
+  }
 }
+
+// ── Clé API Anthropic (26/08/2026) — partagée en localStorage (clé 'avs_akey') avec
+//    crm.html et Questionnaire_de_consultation.html. ──
+function configurerCleAPI() {
+  const actuelle = localStorage.getItem('avs_akey') || '';
+  const k = prompt('Clé API Anthropic (sk-ant-…) :', actuelle) || '';
+  if (k.startsWith('sk-ant')) {
+    localStorage.setItem('avs_akey', k);
+    document.getElementById('alerte-cle-ia').style.display = 'none';
+    toast('✓ Clé API enregistrée');
+  } else if (k) {
+    toast('⚠ Format de clé invalide (doit commencer par sk-ant)');
+  }
+}
+function afficherAlerteCleManquante() {
+  const el = document.getElementById('alerte-cle-ia');
+  if (el) el.style.display = 'flex';
+}
+
+// ── Résumé narratif IA (26/08/2026) — même mécanisme que Questionnaire_de_consultation.html :
+//    génère en tâche de fond, à la finalisation, un résumé en prose de CE suivi (évolution,
+//    observance, ajustements), enregistré dans la même table consultation_summaries que la
+//    consultation initiale — la fiche cliente du CRM les affiche déjà toutes ensemble, triées
+//    par date, sans distinction de code à faire côté CRM. ──
+async function genererResumeNarratifAuto(suiviSession, clientId) {
+  try {
+    const apiKey = localStorage.getItem('avs_akey') || sessionStorage.getItem('avs_akey') || '';
+    if (!apiKey || !apiKey.startsWith('sk-ant') || !clientId) {
+      console.log('[Résumé IA suivi] Clé API non disponible — résumé narratif non généré automatiquement.');
+      afficherAlerteCleManquante();
+      return;
+    }
+    const prenom = suiviSession.prenom || 'la cliente';
+    const numSuivi = suiviSession._num_suivi || '?';
+
+    const donnees = [
+      suiviSession.objectif_actuel && `Objectif actuel : ${suiviSession.objectif_actuel}`,
+      suiviSession.ressenti_global && `Ressenti global : ${suiviSession.ressenti_global}`,
+      suiviSession.scores_evolution && `Évolution des scores :\n${suiviSession.scores_evolution}`,
+      suiviSession.symptomes_evolution && `Évolution des symptômes :\n${suiviSession.symptomes_evolution}`,
+      suiviSession.observance_detail && `Observance du protocole :\n${suiviSession.observance_detail}`,
+      suiviSession.proto_maintien && `Protocole maintenu : ${suiviSession.proto_maintien}`,
+      suiviSession.proto_arret && `Protocole arrêté : ${suiviSession.proto_arret}`,
+      suiviSession.proto_ajout && `Protocole ajouté : ${suiviSession.proto_ajout}`,
+      suiviSession.proto_modif && `Protocole modifié : ${suiviSession.proto_modif}`,
+      suiviSession.axe_principal && `Axe principal retenu : ${suiviSession.axe_principal}`,
+      suiviSession.axe_secondaire && `Axe secondaire : ${suiviSession.axe_secondaire}`,
+      suiviSession.message_cle && `Message clé de la praticienne : ${suiviSession.message_cle}`,
+      suiviSession.notes_libres && `Notes libres : ${suiviSession.notes_libres}`,
+      suiviSession.intuition_clinique && `Intuition clinique : ${suiviSession.intuition_clinique}`,
+      suiviSession.questions_prochaine && `Questions à approfondir la prochaine fois : ${suiviSession.questions_prochaine}`,
+    ].filter(Boolean).join('\n\n');
+
+    const prompt = `Tu es l'assistant de Sabrina Castelli, naturopathe diplômée (A VITA SERENA, Porto-Vecchio, Corse), spécialisée en santé digestive et équilibre hormonal féminin. Tu rédiges, à usage strictement interne pour Sabrina, un résumé synthétique en prose d'une SÉANCE DE SUIVI n°${numSuivi} (pas une première consultation — il s'agit d'ajustement et d'évolution, pas de diagnostic initial) — pour qu'elle puisse s'y référer rapidement avant la prochaine séance, sans avoir à relire toutes les réponses brutes.
+
+━━ RÈGLES ABSOLUES ━━
+1. Ce résumé documente CE QUI A ÉTÉ RENSEIGNÉ DANS LE QUESTIONNAIRE DE SUIVI — ce n'est ni un diagnostic, ni un protocole, ni une analyse clinique de ta part. Formulations du type « la cliente rapporte… », « renseigné dans le questionnaire… ».
+2. Priorise l'ÉVOLUTION depuis la dernière séance : ce qui s'améliore, ce qui stagne, ce qui s'aggrave, l'observance réelle du protocole précédent, et les ajustements décidés par Sabrina pour la suite.
+3. Reste synthétique : chaque section 2 à 5 phrases ou puces courtes, jamais une reformulation exhaustive de chaque champ.
+4. Vocabulaire naturopathique — pas de terme médical diagnostique, sauf s'il s'agit d'un terme déjà employé tel quel par la cliente ou la praticienne.
+5. N'invente jamais de contenu absent des données fournies. Si une thématique n'a rien de renseigné, ne crée pas de section pour elle.
+6. Document interne, à la troisième personne (le vouvoiement ne s'applique pas ici, ce n'est pas destiné à la cliente).
+
+━━ FORMAT DE SORTIE ━━
+Réponds UNIQUEMENT en JSON valide, sans texte avant ou après, sans balises markdown :
+{
+  "titre": "Résumé de suivi n°${numSuivi} — ${prenom.replace(/"/g,'')}",
+  "sections": [
+    { "label": "Titre de section pertinent", "contenu": "Texte de synthèse" }
+  ]
+}
+Choisis toi-même les libellés de section les plus pertinents au vu des données (ex. « Évolution depuis la dernière séance », « Observance du protocole », « Ajustements décidés », « Points de vigilance », « À explorer la prochaine fois »...). N'en crée pas plus de 5-6. Le champ "contenu" peut utiliser des puces "- élément" séparées par \\n, ou un paragraphe court.
+
+━━ DONNÉES DU QUESTIONNAIRE DE SUIVI ━━
+${donnees}`;
+
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1500,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+    const raw = (data.content?.[0]?.text || '').replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(raw);
+    const resumeMd = (parsed.sections || []).map(s => `## ${s.label}\n\n${s.contenu}`).join('\n\n');
+
+    await sbFetchSuivi('consultation_summaries', {
+      method: 'POST', prefer: 'return=minimal',
+      body: JSON.stringify({
+        id: 'resume_suivi' + numSuivi + '_' + clientId + '_' + Date.now(),
+        client_key: clientId,
+        prenom: suiviSession.prenom || null,
+        nom: null,
+        ddn: null,
+        plan_type: 'questionnaire_suivi',
+        plan_label: 'Synthèse automatique — Suivi n°' + numSuivi,
+        date_consultation: new Date().toISOString().slice(0, 10),
+        resume_md: resumeMd,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+    });
+    console.log('[Résumé IA suivi] Résumé narratif généré et enregistré automatiquement pour', prenom);
+    toast('✓ Résumé narratif IA généré et enregistré dans la fiche cliente');
+  } catch (e) {
+    console.warn('[Résumé IA suivi] Génération automatique échouée :', e);
+    afficherAlerteCleManquante();
+  }
+}
+
+// Petit helper local (Questionnaire_de_consultation.html a sbFetch, absent ici) — même
+// signature minimale, pour ne pas dupliquer la logique d'auth dans genererResumeNarratifAuto.
+async function sbFetchSuivi(path, opts={}) {
+  let authToken = SUPA_KEY;
+  if (typeof Auth !== 'undefined') {
+    const token = await Auth.getValidAccessToken();
+    if (token) authToken = token;
+  }
+  const headers = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' };
+  if (opts.method && opts.method !== 'GET' && opts.method !== 'DELETE') headers['Prefer'] = opts.prefer || 'return=representation';
+  const r = await fetch(SUPA_URL + '/rest/v1/' + path, { ...opts, headers });
+  if (!r.ok) throw new Error('Supabase ' + r.status + ' : ' + (await r.text().catch(()=> '')));
+  return r.status === 204 ? null : r.json().catch(()=>null);
+}
+
 
 /* ══════════════════════════════════════════════════════
    AUTOSAVE
@@ -3363,6 +3521,10 @@ function finalise() {
   // (contrairement à la consultation initiale, qui y ajoute une entrée) — la fiche cliente peut
   // alors sembler "en silence" depuis des mois alors que des suivis récents existent bel et bien.
   majTimelineClient(suivi_session.client_id, d);
+
+  // Résumé narratif IA (26/08/2026) — même logique que la consultation initiale : en tâche de
+  // fond, ne bloque jamais la redirection vers le générateur.
+  if (suivi_session.client_id) genererResumeNarratifAuto(suivi_session, suivi_session.client_id);
 
   toast('Données exportées → redirection vers le générateur PHV…');
   setTimeout(()=>{ window.location.href = '../outils/generateur.html'; }, 1600);
