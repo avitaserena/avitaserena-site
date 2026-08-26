@@ -5071,8 +5071,16 @@ async function marquerPropositionAnnulee(cid){
 // Interrupteur manuel de l'option chat (fiche cliente) — sert à la fois de test
 // pour la praticienne et de geste commercial ponctuel. Distinct d'un abonnement Stripe :
 // chat_addon_source reste 'manuel', donc ces activations ne comptent jamais dans le CA récurrent.
+// RÈGLE VERROUILLÉE (26/08/2026) : A Luma n'est jamais un achat/activation autonome — elle
+// suppose toujours un parcours actif (Alba/Aria/Ora). Bloqué ici pour éviter une incohérence
+// créée manuellement dans le CRM, y compris pour un test ponctuel.
+const PARCOURS_ALUMA_OK = ['alba','aria','ora'];
 async function toggleChatAddon(cid, actif){
   const c=db.clients.find(x=>x.id===cid); if(!c) return;
+  if (actif && !PARCOURS_ALUMA_OK.includes(String(c.programme||'').toLowerCase())){
+    toast('Impossible : A Luma nécessite un parcours actif (Alba, Aria ou Ora) — cette cliente n\'y est pas.', 'warn');
+    return;
+  }
   const patch = actif
     ? { chat_addon_actif:true, chat_addon_source:'manuel', chat_addon_debut: c.chat_addon_debut||today(), chat_addon_renouvellement: (function(){ const d=new Date(); d.setMonth(d.getMonth()+1); return d.toISOString().split('T')[0]; })() }
     : { chat_addon_actif:false };

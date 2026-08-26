@@ -1700,8 +1700,13 @@ a,button{-webkit-tap-highlight-color:transparent}
             <div style="font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.65);font-weight:700;margin-bottom:12px">Exemples de capsules qui vous attendent</div>
             <div id="capsulePreviewList"></div>
           </div>
-          <button onclick="souscrireALuma()" style="background:var(--ocre);color:#fff;border:none;padding:14px 34px;border-radius:99px;font-size:14px;font-weight:700;letter-spacing:.03em;cursor:pointer;font-family:'Be Vietnam Pro',sans-serif">S’abonner à A Luma →</button>
-          <p style="font-size:11.5px;color:rgba(255,255,255,.65);margin-top:12px">45€/mois · résiliable en un clic</p>
+          <button id="capsuleSubscribeBtn" onclick="souscrireALuma()" style="background:var(--ocre);color:#fff;border:none;padding:14px 34px;border-radius:99px;font-size:14px;font-weight:700;letter-spacing:.03em;cursor:pointer;font-family:'Be Vietnam Pro',sans-serif">S’abonner à A Luma →</button>
+          <p id="capsulePriceNote" style="font-size:11.5px;color:rgba(255,255,255,.65);margin-top:12px">45€/mois · résiliable en un clic</p>
+          <!-- A Luma est une option de parcours (Alba/Aria/Ora) -- jamais un achat autonome. -->
+          <div id="capsuleNoParcoursMsg" style="display:none;max-width:380px;margin:0 auto">
+            <p style="font-size:13px;color:rgba(255,255,255,.72);line-height:1.7;margin:0 0 16px">A Luma est disponible en option pendant un parcours d'accompagnement (Alba, Aria ou Ora) — elle n'est pas proposée seule.</p>
+            <a href="parcours.html" style="display:inline-block;background:none;border:1px solid rgba(196,169,125,.5);color:var(--sable);padding:12px 26px;border-radius:99px;font-size:13.5px;font-weight:600;text-decoration:none">Découvrir les parcours →</a>
+          </div>
         </div>
       </div>
 
@@ -1758,7 +1763,13 @@ a,button{-webkit-tap-highlight-color:transparent}
           <div style="text-align:center">
             <div style="font-family:'Cormorant Garamond',serif;font-size:32px;color:#fff;margin-bottom:2px">45€<span style="font-size:15px;color:rgba(255,255,255,.65);font-family:'Be Vietnam Pro',sans-serif">/mois</span></div>
             <button id="lumaSubscribeBtn" onclick="souscrireALuma()" style="background:var(--ocre);color:#fff;border:none;padding:14px 34px;border-radius:99px;font-size:14px;font-weight:700;letter-spacing:.03em;cursor:pointer;margin-top:10px">S'abonner à A Luma →</button>
-            <p style="font-size:11.5px;color:rgba(255,255,255,.65);margin:14px 0 0">Paiement sécurisé par Stripe · résiliable à tout moment</p>
+            <p id="lumaPriceNote" style="font-size:11.5px;color:rgba(255,255,255,.65);margin:14px 0 0">Paiement sécurisé par Stripe · résiliable à tout moment</p>
+            <!-- A Luma est une option de parcours (Alba/Aria/Ora) — jamais un achat autonome.
+                 Affiché à la place du bouton d'abonnement si la cliente n'est pas en parcours. -->
+            <div id="lumaNoParcoursMsg" style="display:none;max-width:380px;margin:16px auto 0">
+              <p style="font-size:13px;color:rgba(255,255,255,.72);line-height:1.7;margin:0 0 16px">A Luma est disponible en option pendant un parcours d'accompagnement (Alba, Aria ou Ora) — elle n'est pas proposée seule.</p>
+              <a href="parcours.html" style="display:inline-block;background:none;border:1px solid rgba(196,169,125,.5);color:var(--sable);padding:12px 26px;border-radius:99px;font-size:13.5px;font-weight:600;text-decoration:none">Découvrir les parcours →</a>
+            </div>
           </div>
         </div>
       </div>
@@ -2123,15 +2134,24 @@ async function DB_getOwnClientRow() {
 }
 
 /* ── La reprogrammation de RDV est réservée aux clientes en parcours (Alba/Aria/Ora).
-   A Luma, elle, est une option payante à part entière, indépendante du parcours : seul un
-   abonnement actif (chat_addon_actif) y donne accès, jamais le fait d'être en parcours. ── */
+   A Luma (26/08/2026, règle verrouillée) : n'est JAMAIS un achat autonome — elle n'est
+   disponible qu'en add-on d'un parcours actif (Alba/Aria/Ora). Un Bilan ou un Suivi seul
+   ne donne jamais accès au bouton d'abonnement, même si la cliente a déjà une relation
+   clinique avec Sabrina. ── */
 var PARCOURS_AVEC_SERENA = ['alba', 'aria', 'ora'];
 // Crée une session de paiement Stripe pour l'abonnement A Luma (45€/mois) et
 // redirige la cliente vers la page de paiement hébergée par Stripe. L'accès
 // n'est activé qu'au retour du webhook stripe-webhook (checkout.session.completed),
 // une fois le paiement réellement confirmé — jamais côté client.
+// Garde-fou client (défense en profondeur — la vraie vérification est côté
+// Edge Function create-luma-checkout, qui doit refuser si programme n'est pas
+// alba/aria/ora) : on ne déclenche même pas l'appel si la cliente n'est pas en parcours.
 async function souscrireALuma(){
-  var btn = document.getElementById('lumaSubscribeBtn');
+  if (!window._clientEnParcours){
+    toastSimple("A Luma est disponible uniquement en option pendant un parcours (Alba, Aria ou Ora).");
+    return;
+  }
+  var btn = document.getElementById('lumaSubscribeBtn') || document.getElementById('capsuleSubscribeBtn');
   if (btn){ btn.textContent = 'Redirection…'; btn.disabled = true; }
   try{
     var token = await Auth.getValidAccessToken();
@@ -2174,16 +2194,26 @@ function verifierRetourLuma(){
 
 function appliquerAccesSerena(programme, chatAddonActif) {
   const enParcours = programme && PARCOURS_AVEC_SERENA.indexOf(String(programme).toLowerCase()) > -1;
-  // A Luma est toujours une option payante distincte, indépendante du parcours — l'accès ne
-  // dépend que de l'abonnement actif, jamais du fait d'être en parcours Alba/Aria/Ora.
   const aAccesChat = !!chatAddonActif;
+  window._clientEnParcours = !!enParcours; // lu par souscrireALuma() comme garde-fou
 
   // L'onglet A Luma reste toujours visible — les clientes sans accès voient
-  // un état "verrouillé" qui les invite à s'abonner, plutôt que de disparaître.
+  // un état "verrouillé", plutôt que de disparaître.
   const lockedBlock = document.getElementById('serenaLocked');
   const unlockedBlock = document.getElementById('serenaUnlocked');
   if (lockedBlock) lockedBlock.style.display = aAccesChat ? 'none' : 'block';
   if (unlockedBlock) unlockedBlock.style.display = aAccesChat ? 'block' : 'none';
+
+  // Dans l'état verrouillé : bouton d'abonnement uniquement si la cliente est en
+  // parcours (Alba/Aria/Ora). Hors parcours (Bilan seul, Suivi seul, ou pas d'acte
+  // du tout), A Luma n'est pas achetable — on affiche le message de redirection
+  // vers les parcours à la place. Règle verrouillée le 26/08/2026.
+  const lumaBtn = document.getElementById('lumaSubscribeBtn');
+  const lumaPriceNote = document.getElementById('lumaPriceNote');
+  const lumaNoParcoursMsg = document.getElementById('lumaNoParcoursMsg');
+  if (lumaBtn) lumaBtn.style.display = enParcours ? '' : 'none';
+  if (lumaPriceNote) lumaPriceNote.style.display = enParcours ? '' : 'none';
+  if (lumaNoParcoursMsg) lumaNoParcoursMsg.style.display = enParcours ? 'none' : 'block';
 
   const ongletRdv = document.querySelector('.tab-btn[onclick*="\'rdv\'"]');
   const contenuRdv = document.getElementById('tab-rdv');
@@ -4129,6 +4159,15 @@ function initCapsules(){
   document.getElementById('capsuleLocked').style.display   = hasAccess?'none':'block';
   document.getElementById('capsuleUnlocked').style.display = hasAccess?'block':'none';
   if(!hasAccess){
+    // A Luma n'est achetable qu'en add-on d'un parcours actif (Alba/Aria/Ora) — cf.
+    // appliquerAccesSerena(). Même règle appliquée ici pour le bouton d'abonnement capsules.
+    var enParcours = !!window._clientEnParcours;
+    var cBtn = document.getElementById('capsuleSubscribeBtn');
+    var cNote = document.getElementById('capsulePriceNote');
+    var cMsg = document.getElementById('capsuleNoParcoursMsg');
+    if (cBtn) cBtn.style.display = enParcours ? '' : 'none';
+    if (cNote) cNote.style.display = enParcours ? '' : 'none';
+    if (cMsg) cMsg.style.display = enParcours ? 'none' : 'block';
     var prev = document.getElementById('capsulePreviewList');
     if(prev) prev.innerHTML = CAPSULES_CATALOGUE.slice(0,3).map(function(c){
       return '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.08)">'+

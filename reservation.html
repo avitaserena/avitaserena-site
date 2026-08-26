@@ -1050,8 +1050,12 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       </div>
     </div>
 
-    <!-- A LUMA — proposée en dernier, avant paiement, jamais imposée -->
-    <div id="bloc-luma" style="margin-bottom:24px;background:var(--ardoise);border-radius:16px;overflow:hidden">
+    <!-- A LUMA (26/08/2026, règle verrouillée) : n'est plus jamais proposée dans ce parcours de
+         réservation "libre" (étape 4), car il ne réserve que Bilan ou Suivi — jamais un parcours
+         Alba/Aria/Ora. A Luma est un add-on de parcours uniquement, donc masqué ici par défaut.
+         La seule offre légitime d'A Luma reste cv-aluma, dans confirmerParcoursVerrouille(),
+         réservée à la confirmation d'un parcours via lien verrouillé. -->
+    <div id="bloc-luma" style="display:none;margin-bottom:24px;background:var(--ardoise);border-radius:16px;overflow:hidden">
       <!-- EN-TÊTE -->
       <div style="padding:18px 20px 14px;border-bottom:1px solid rgba(255,255,255,.08)">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
@@ -1269,8 +1273,10 @@ function selectionnerPresta(id) {
   var card = document.getElementById('pcard-'+id);
   if(card) card.classList.add('selected');
   state.prestaId = id;
-  // A Luma reste une option payante à part entière, jamais cochée par défaut, proposée
-  // à l'étape 4 (paiement) — quelle que soit la prestation choisie ici (bilan ou suivi).
+  // A Luma (26/08/2026) : ce flux de réservation libre ne propose jamais Alba/Aria/Ora
+  // (voir appliquerTarif ci-dessous) — uniquement Bilan ou Suivi. A Luma étant réservée
+  // aux parcours actifs, le bloc #bloc-luma est masqué par défaut à l'étape 4, quelle
+  // que soit la prestation choisie ici.
   appliquerTarif();
   btnEl.disabled = false;
 }
