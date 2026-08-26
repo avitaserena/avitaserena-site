@@ -63,7 +63,7 @@ body{min-height:100vh}
 .login-hint{font-size:12.5px;color:rgba(255,255,255,.7);margin-top:20px;line-height:1.6}
 
 /* ── HEADER ── */
-.site-header{background:var(--ardoise);padding:0 8vw;height:64px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;border-bottom:1px solid rgba(255,255,255,.07)}
+.site-header{background:var(--ardoise);padding:env(safe-area-inset-top) 8vw 0;height:calc(64px + env(safe-area-inset-top));box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;border-bottom:1px solid rgba(255,255,255,.07)}
 .header-logo{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:22px;color:#fff;text-decoration:none;letter-spacing:.02em}
 .header-badge{font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:rgba(196,169,125,.6);background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);padding:5px 14px;border-radius:99px}
 .header-right{display:flex;align-items:center;gap:16px}
@@ -282,7 +282,7 @@ body{min-height:100vh}
 
 /* ── RESPONSIVE ── */
 @media(max-width:768px){
-  .site-header{padding:0 16px;height:56px}
+  .site-header{padding:env(safe-area-inset-top) 16px 0;height:calc(56px + env(safe-area-inset-top))}
   .header-badge{display:none}
   .signaler-btn{font-size:10.5px;padding:5px 10px}
   .logout-btn{font-size:11px}
@@ -507,7 +507,7 @@ body{-webkit-font-smoothing:antialiased}
 /* Header + hero un peu plus compacts sur mobile pour laisser plus
    de place à l'écran, comme une app plutôt qu'une page qui défile */
 @media(max-width:768px){
-  .site-header{height:52px}
+  .site-header{height:calc(52px + env(safe-area-inset-top))}
   .tabs-nav{display:none}
   .space-main{padding-bottom:100px}
 }
@@ -1013,6 +1013,10 @@ a,button{-webkit-tap-highlight-color:transparent}
     <button class="bn2-item active" data-tab="dashboard" onclick="switchTabApp('dashboard',this)">
       <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
       Tableau de bord
+    </button>
+    <button class="bn2-item" data-tab="protocole" onclick="switchTabApp('protocole',this)">
+      <svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>
+      Protocole
     </button>
     <button class="bn2-plus" onclick="ouvrirDrawerSymptomes()">
       <div class="bn2-plus-circle">
@@ -1779,10 +1783,14 @@ a,button{-webkit-tap-highlight-color:transparent}
       <div class="luma-panel">
         <div class="luma-head">
           <div class="luma-avatar"><svg viewBox="0 0 24 24"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18"/></svg></div>
-          <div>
+          <div style="flex:1">
             <div class="luma-head-name">A Luma</div>
             <div class="luma-head-sub">Message direct à Sabrina · réponse sous 24h</div>
           </div>
+          <!-- Gestion/résiliation de l'abonnement (obligation légale "résiliation en 3 clics",
+               décret n°2023-417 du 31/05/2023) — portail Stripe hébergé, accessible directement
+               depuis l'interface, sans avoir à écrire à Sabrina pour demander l'arrêt. -->
+          <button id="lumaGererBtn" onclick="gererAbonnementLuma()" style="background:none;border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.68);font-size:11px;padding:7px 13px;border-radius:99px;cursor:pointer;font-family:'Be Vietnam Pro',sans-serif;white-space:nowrap;flex-shrink:0">Gérer l'abonnement</button>
         </div>
 
         <div id="serenaMessages" class="luma-body">
@@ -2146,6 +2154,39 @@ var PARCOURS_AVEC_SERENA = ['alba', 'aria', 'ora'];
 // Garde-fou client (défense en profondeur — la vraie vérification est côté
 // Edge Function create-luma-checkout, qui doit refuser si programme n'est pas
 // alba/aria/ora) : on ne déclenche même pas l'appel si la cliente n'est pas en parcours.
+// Ouvre le portail de facturation Stripe hébergé, où la cliente peut voir ses factures
+// A Luma et RÉSILIER elle-même en quelques clics — obligation légale française depuis le
+// 1er septembre 2023 (résiliation "en 3 clics", décret n°2023-417). Avant cet ajout
+// (26/08/2026), aucun bouton de résiliation n'existait alors que le texte promettait
+// partout "résiliable en un clic" — corrigé ici.
+async function gererAbonnementLuma(){
+  var btn = document.getElementById('lumaGererBtn');
+  var label = btn ? btn.textContent : '';
+  if (btn){ btn.textContent = 'Ouverture…'; btn.disabled = true; }
+  try{
+    var token = await Auth.getValidAccessToken();
+    var res = await fetch(SUPA_URL + '/functions/v1/create-luma-portal-session', {
+      method: 'POST',
+      headers: {
+        'apikey': SUPA_KEY,
+        'Authorization': 'Bearer ' + token,
+        'Content-Type': 'application/json'
+      }
+    });
+    var data = await res.json();
+    if (!res.ok || data.error){
+      toastSimple(data.error || "Une erreur est survenue, réessayez dans un instant.");
+      if (btn){ btn.textContent = label; btn.disabled = false; }
+      return;
+    }
+    window.location.href = data.url;
+  }catch(e){
+    console.error('Erreur ouverture portail A Luma :', e);
+    toastSimple("Une erreur est survenue, réessayez dans un instant.");
+    if (btn){ btn.textContent = label; btn.disabled = false; }
+  }
+}
+
 async function souscrireALuma(){
   if (!window._clientEnParcours){
     toastSimple("A Luma est disponible uniquement en option pendant un parcours (Alba, Aria ou Ora).");
