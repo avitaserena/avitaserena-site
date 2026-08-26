@@ -1897,7 +1897,7 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
           </select>
         </div>
         <div><label class="fl">Consommation de viande / protéines animales</label>
-          <select class="fi" data-funnel-select>
+          <select class="fi" id="regime-viande-consult" data-funnel-select>
             <option value="">— —</option>
             <option data-funnel="regime-sans-viande">Aucune (végétarienne/végétalienne)</option>
             <option>Rarement (quelques fois/semaine)</option>
@@ -2019,7 +2019,7 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
       </div>
 
       <div style="margin-top:14px"><label class="fl">Tabac</label>
-        <select class="fi" onchange="handleTabac(this)">
+        <select class="fi" id="tabac-consult" onchange="handleTabac(this)">
           <option>Non-fumeur·se</option>
           <option>Ex-fumeur·se (arrêt depuis...)</option>
           <option>Fumeur·se occasionnel·le / festif·ve</option>
@@ -3523,7 +3523,7 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
           </select>
         </div>
         <div><label class="fl">Contraception actuelle</label>
-          <select class="fi" data-funnel-select>
+          <select class="fi" id="contraception-consult" data-funnel-select>
             <option value="">— —</option>
             <option data-funnel="pilule-aucune">Aucune</option><option>Pilule oestroprogestative</option>
             <option>Pilule microprogestative</option><option>DIU hormonal (Mirena)</option>
@@ -5706,6 +5706,12 @@ function collectAllData() {
   // Champs de sécurité — transmis tels quels au générateur (Règle N°6), jamais à ressaisir
   d.secu_grossesse = document.getElementById('secu-grossesse')?.value || '';
   d.secu_cancer = document.getElementById('secu-cancer')?.value || '';
+  // Tabac — capturé explicitement par id (26/08/2026) pour le pré-remplissage fiable de la
+  // puce "Ne fume pas" du questionnaire de suivi ; ne pas dépendre du balayage générique
+  // ci-dessous (risque de mauvais étiquetage si un autre label précède dans le même bloc).
+  d.tabac_fumeuse = document.getElementById('tabac-consult')?.value || '';
+  d.regime_viande = document.getElementById('regime-viande-consult')?.value || '';
+  d.contraception_actuelle = document.getElementById('contraception-consult')?.value || '';
   d.traitements_vigilance = [...document.querySelectorAll('#cons-secu-traitements-group .chip.on')].map(c => c.textContent.replace('✓','').trim()).join(', ');
   d.allergies_alim = [...document.querySelectorAll('#cons-allergies-group .chip.on')].map(c => c.textContent.replace('✓','').trim()).join(', ');
   const obj6mois = document.querySelector('textarea.fi[placeholder*="6 mois"]') || document.querySelector('textarea.fi[placeholder*="Décrivez"]');

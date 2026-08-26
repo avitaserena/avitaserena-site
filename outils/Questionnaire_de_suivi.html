@@ -350,6 +350,9 @@ select.fi{height:44px;cursor:pointer}
 .funnel-collapse-toggle{margin:6px 0 12px;font-size:12px;font-weight:600;color:var(--ocre);cursor:pointer;text-decoration:underline;text-underline-offset:2px;display:inline-flex;align-items:center;gap:6px}
 .contexte-rapide{display:flex;flex-wrap:wrap;gap:8px;padding:14px 18px;background:var(--or-clair);border:1px solid rgba(180,144,106,.25);border-radius:14px;margin-bottom:18px}
 .contexte-rapide .cr-label{width:100%;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--or);margin-bottom:2px}
+.contexte-rapide .chip{position:relative}
+.contexte-rapide .cr-source{display:none;font-size:9px;font-weight:600;letter-spacing:.03em;color:var(--gris);opacity:.75;margin-left:6px;font-style:italic}
+.contexte-rapide .chip[data-prefilled="1"] .cr-source{display:inline}
 .funnel-followup{display:none;margin:8px 0 4px;padding:14px 16px;border-left:3px solid var(--ocre);background:var(--or-clair);border-radius:0 12px 12px 0}
 .funnel-followup.funnel-visible{display:block;animation:funnelIn .28s ease}
 @keyframes funnelIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
@@ -446,9 +449,9 @@ select.fi{height:44px;cursor:pointer}
 
   <div class="contexte-rapide">
     <div class="cr-label">Contexte rapide — à confirmer en 3 clics à chaque séance, ça n'est jamais figé</div>
-    <button class="chip" data-funnel="ctx-vegetarienne" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Végétarienne / végétalienne</button>
-    <button class="chip" data-funnel="ctx-non-fumeuse" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Ne fume pas</button>
-    <button class="chip" data-funnel="ctx-pas-pilule" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Pas de contraception hormonale actuellement</button>
+    <button class="chip" id="chip-ctx-vegetarienne" data-funnel="ctx-vegetarienne" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Végétarienne / végétalienne <span class="cr-source">· consult. initiale</span></button>
+    <button class="chip" id="chip-ctx-non-fumeuse" data-funnel="ctx-non-fumeuse" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Ne fume pas <span class="cr-source">· consult. initiale</span></button>
+    <button class="chip" id="chip-ctx-pas-pilule" data-funnel="ctx-pas-pilule" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Pas de contraception hormonale actuellement <span class="cr-source">· consult. initiale</span></button>
   </div>
 
   <div class="sec-wrap">
@@ -2712,6 +2715,21 @@ function afficherBandeauDossier(row, historique) {
       if (snap.allergies_alim.includes(txt)) c.classList.add('on');
     });
   }
+  // Pré-remplir le panneau "Contexte rapide" (tabac, régime, contraception) à partir des
+  // champs explicitement capturés en consultation initiale (26/08/2026) — la cliente n'a
+  // pas à répéter ces infos, Sabrina n'a qu'à cliquer si la situation a changé depuis.
+  // Ne s'applique QUE si la donnée source existe (valeur non vide) ; sinon la puce reste
+  // vierge et sans badge, comme avant.
+  const prefillCtx = (chipId, valeurSource, estVraiSiEgal) => {
+    const chip = document.getElementById(chipId);
+    if (!chip || !valeurSource) return;
+    chip.classList.toggle('on', valeurSource === estVraiSiEgal);
+    chip.dataset.prefilled = '1';
+  };
+  prefillCtx('chip-ctx-non-fumeuse', snap.tabac_fumeuse, 'Non-fumeur·se');
+  prefillCtx('chip-ctx-vegetarienne', snap.regime_viande, 'Aucune (végétarienne/végétalienne)');
+  prefillCtx('chip-ctx-pas-pilule', snap.contraception_actuelle, 'Aucune');
+
   toast('Dossier chargé : '+prenom + (nbSuivis!==null ? ' · historique sur '+(nbSuivis+1)+' consultation(s)' : ''));
   formTouched=true;
   chargerProtocoleVivant(document.getElementById('client-key')?.value?.trim());
