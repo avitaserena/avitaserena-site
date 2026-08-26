@@ -1573,6 +1573,7 @@ body {
 .fst { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: var(--r99) }
 .fst.ok { background: var(--green-lt); color: var(--green) }
 .fst.pend { background: var(--orange-lt); color: var(--orange) }
+.fst.refund { background: var(--red-lt); color: var(--red) }
 
 /* Silence */
 .sil-item { display: flex; align-items: center; gap: 10px; padding: 10px 11px; border-radius: var(--r12); border: 1px solid var(--border); margin-bottom: 6px; cursor: pointer; transition: var(--t) }
@@ -1793,7 +1794,7 @@ async function loadClients(){
 async function loadFactures(){
   try{
     const r=await sb('factures?order=date.desc&limit=500');
-    db.factures=r.map(f=>({id:f.id,num:f.num,clientId:f.client_id,date:f.date,prestation:f.prestation,prestationLabel:f.prestation_label,montant:parseFloat(f.montant)||0,paiement:f.paiement,paiementLabel:f.paiement_label,statut:f.statut,deuxFois:f.deux_fois}));
+    db.factures=r.map(f=>({id:f.id,num:f.num,clientId:f.client_id,date:f.date,prestation:f.prestation,prestationLabel:f.prestation_label,montant:parseFloat(f.montant)||0,paiement:f.paiement,paiementLabel:f.paiement_label,statut:f.statut,deuxFois:f.deux_fois,montantRembourse:f.montant_rembourse!=null?parseFloat(f.montant_rembourse):0,rembourseLe:f.rembourse_le||null}));
     console.log('[CRM] ✓ Factures:', db.factures.length);
   }catch(e){
     console.error('[CRM] ✗ Factures:', e.message);
@@ -4702,7 +4703,7 @@ function renderFiche(c){
               ? facturesDeCetteCliente.map(f=>`
                 <div class="doc-item">
                   <div class="doc-icon" style="background:var(--surface)">${ic('cash')}</div>
-                  <div class="doc-body"><div class="doc-name">Facture N° ${escH(f.num)} — ${escH(f.prestationLabel||f.prestation||'')}</div><div class="doc-meta">${fmtDate(f.date)} · ${f.montant.toFixed(2)} € · ${f.statut==='payee'?'Payée':'En attente'}${(f.id||'').includes('_pi_')?' · auto-générée':''}</div></div>
+                  <div class="doc-body"><div class="doc-name">Facture N° ${escH(f.num)} — ${escH(f.prestationLabel||f.prestation||'')}</div><div class="doc-meta">${fmtDate(f.date)} · ${f.montant.toFixed(2)} € · ${f.statut==='remboursee'?('Remboursée'+(f.montantRembourse&&f.montantRembourse<f.montant?' (partiel, '+f.montantRembourse.toFixed(2)+' €)':'')):(f.statut==='payee'?'Payée':'En attente')}${(f.id||'').includes('_pi_')?' · auto-générée':''}</div></div>
                   ${btn('doc-action',`printF('${f.id}')`,ic('printer'))}
                 </div>`).join('')
               : "<div style='padding:16px;font-size:13px;color:var(--muted);font-style:italic'>Aucune facture pour le moment.</div>"
@@ -5204,7 +5205,9 @@ function renderFactures(){
   if(!facs.length){list.innerHTML='<div class="empty"><div class="eicon">'+ic('file')+'</div><div class="etitle">Aucune facture</div><div class="esub">Créez votre première facture.</div></div>';return;}
   list.innerHTML=facs.map(f=>{
     const c=db.clients.find(x=>x.id===f.clientId);
-    return "<div class='fr'><span class='fnum'>N° "+escH(f.num||'')+"</span><div style='flex:1'><div class='fcl'>"+(c?escH(c.prenom+' '+(c.nom||'')):"<span style='color:var(--muted)'>—</span>")+"</div><div class='fpre'>"+escH(f.prestationLabel||f.prestation||'')+"</div></div><span class='fdat'>"+fmtShort(f.date)+"</span><span class='famt'>"+(f.montant||0).toFixed(0)+" €</span><span class='fst "+(f.statut==='payee'?'ok':'pend')+"'>"+(f.statut==='payee'?'Payée':'En attente')+"</span><button class='btn btn-ghost btn-xs' onclick=\"printF('"+f.id+"')\">"+ic('printer')+"</button></div>";
+    const fstCls=f.statut==='remboursee'?'refund':(f.statut==='payee'?'ok':'pend');
+    const fstLbl=f.statut==='remboursee'?('Remboursée'+(f.montantRembourse&&f.montantRembourse<f.montant?' (partiel)':'')):(f.statut==='payee'?'Payée':'En attente');
+    return "<div class='fr'><span class='fnum'>N° "+escH(f.num||'')+"</span><div style='flex:1'><div class='fcl'>"+(c?escH(c.prenom+' '+(c.nom||'')):"<span style='color:var(--muted)'>—</span>")+"</div><div class='fpre'>"+escH(f.prestationLabel||f.prestation||'')+"</div></div><span class='fdat'>"+fmtShort(f.date)+"</span><span class='famt'>"+(f.montant||0).toFixed(0)+" €</span><span class='fst "+fstCls+"'>"+fstLbl+"</span><button class='btn btn-ghost btn-xs' onclick=\"printF('"+f.id+"')\">"+ic('printer')+"</button></div>";
   }).join('');
 }
 
@@ -7091,7 +7094,7 @@ function ouvrirBilanEntree(clientId, mode){
           </select>
         </div>
         <div class="fg"><label class="fl">Statut</label>
-          <select class="fi fs" id="nf-statut"><option value="payee">Payée</option><option value="attente">En attente</option></select>
+          <select class="fi fs" id="nf-statut"><option value="payee">Payée</option><option value="attente">En attente</option><option value="remboursee">Remboursée</option></select>
         </div>
       </div>
     </div>
