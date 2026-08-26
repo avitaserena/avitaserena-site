@@ -422,7 +422,7 @@ select.fi{height:44px;cursor:pointer}
 
 /* ── PRINT ── */
 @media print{
-  .nav,.nav-footer,.hdr-tag,#dark-btn,.hdr-counter,button.chip,button.btn,#toast{display:none !important}
+  .nav,.nav-footer,.hdr-tag,#dark-btn,.hdr-counter,button.chip,button.btn,#toast,#alerte-cle-ia{display:none !important}
   .layout{display:block !important;max-width:none !important}
   .main-col{width:100% !important}
   .section{display:block !important}
@@ -488,6 +488,11 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
      restants dans ce fichier sont déjà protégés (if (window.AIPanel)), donc rien ne casse. -->
 </head>
 <body>
+<div id="alerte-cle-ia" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9998;background:var(--ardoise);color:#fff;padding:12px 20px;font-size:13px;font-family:'Inter',sans-serif;align-items:center;justify-content:center;gap:14px;box-shadow:0 2px 10px rgba(0,0,0,.15)">
+  <span>⚠ Le résumé narratif IA n'a pas pu être généré pour cette cliente. <strong>Vos réponses sont bien enregistrées</strong>, seul ce résumé automatique manque dans la fiche — cause la plus fréquente : clé API absente ou invalide.</span>
+  <button onclick="configurerCleAPI()" style="background:var(--sable);color:var(--ardoise);border:none;padding:7px 14px;border-radius:99px;font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap">Vérifier la clé →</button>
+  <button onclick="document.getElementById('alerte-cle-ia').style.display='none'" style="background:none;border:none;color:rgba(255,255,255,.65);font-size:18px;cursor:pointer;padding:0 4px" title="Fermer">×</button>
+</div>
 <div id="float-susp">
   <div class="float-susp-hdr" onclick="document.getElementById('float-susp').classList.toggle('minimized')">
     <div class="float-susp-hdr-left">
@@ -527,6 +532,7 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
     <button class="btn-pause" onclick="nouvelleCliente()" title="Effacer et démarrer un nouveau questionnaire" style="background:var(--rouge-clair);border-color:var(--rouge);color:var(--rouge);font-weight:700">✦ Nouvelle cliente</button>
     <button class="btn-pause" onclick="ouvrirPause()" title="Mettre en pause et reprendre plus tard">⏸ Pause</button>
     <div class="hdr-counter" id="hdr-counter" title="Champs remplis">0 notes</div>
+    <button onclick="configurerCleAPI()" title="Configurer la clé API Anthropic (nécessaire pour le résumé narratif automatique en fiche cliente)" style="background:none;border:1px solid var(--taupe);color:var(--gris);border-radius:99px;padding:6px 12px;font-size:11px;cursor:pointer;font-family:'Inter',sans-serif;display:flex;align-items:center;gap:5px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7.5" cy="15.5" r="5.5"/><path d="M21 2l-9.6 9.6M15.5 7.5l3 3L22 7l-3-3"/></svg> Clé API</button>
     <div id="spec-alert" title="Ce repérage précoce s'appuie uniquement sur les réponses déjà données — le détail apparaîtra en encadré, plus loin, dans la section thématique concernée." style="display:none;font-size:11px;font-weight:700;background:var(--ocre);color:var(--blanc);padding:5px 13px;border-radius:99px;animation:pulseAlert 2s infinite"></div>
   </div>
 </div>
@@ -6571,11 +6577,31 @@ async function bridgeCRM_questionnaire(d) {
    partagée en localStorage avec crm.html (clé 'avs_akey') — une fois saisie
    une fois dans n'importe quel outil, elle est disponible partout.
 ══════════════════════════════════════ */
+// ── Clé API Anthropic (26/08/2026) — configurable directement depuis ce fichier, sans
+//    dépendre d'être déjà passée par crm.html sur le même navigateur au préalable.
+//    Partagée en localStorage (clé 'avs_akey') avec crm.html. ──
+function configurerCleAPI() {
+  const actuelle = localStorage.getItem('avs_akey') || '';
+  const k = prompt('Clé API Anthropic (sk-ant-…) :', actuelle) || '';
+  if (k.startsWith('sk-ant')) {
+    localStorage.setItem('avs_akey', k);
+    document.getElementById('alerte-cle-ia').style.display = 'none';
+    showToast('✓ Clé API enregistrée');
+  } else if (k) {
+    showToast('⚠ Format de clé invalide (doit commencer par sk-ant)');
+  }
+}
+function afficherAlerteCleManquante() {
+  const el = document.getElementById('alerte-cle-ia');
+  if (el) el.style.display = 'flex';
+}
+
 async function genererResumeNarratifAuto(d, clientId) {
   try {
     const apiKey = localStorage.getItem('avs_akey') || sessionStorage.getItem('avs_akey') || '';
     if (!apiKey || !apiKey.startsWith('sk-ant') || !clientId) {
       console.log('[Résumé IA] Clé API non disponible — résumé narratif non généré automatiquement (génération manuelle possible depuis la fiche cliente).');
+      afficherAlerteCleManquante();
       return;
     }
 
@@ -6642,8 +6668,10 @@ ${donnees}`;
       })
     });
     console.log('[Résumé IA] Résumé narratif généré et enregistré automatiquement pour', prenom);
+    showToast('✓ Résumé narratif IA généré et enregistré dans la fiche cliente');
   } catch (e) {
-    console.warn('[Résumé IA] Génération automatique échouée (silencieuse, sans impact sur la suite) :', e);
+    console.warn('[Résumé IA] Génération automatique échouée :', e);
+    afficherAlerteCleManquante(); // même bannière : la cliente/praticienne doit savoir que le résumé manque, quelle que soit la cause (clé invalide, erreur réseau, quota…)
   }
 }
 
