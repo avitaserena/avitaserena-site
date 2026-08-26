@@ -3200,6 +3200,17 @@ function chkBox(active,title){
   '</svg>';
 }
 
+// AJOUTÉ (26/08/2026) : case A Luma directement cochable depuis la liste des clientes, sans
+// devoir ouvrir la fiche. La vérification "parcours actif requis" reste centralisée dans
+// toggleChatAddon() (RÈGLE VERROUILLÉE du 26/08/2026) — cliquer ici sur une cliente hors
+// parcours affiche le même message de refus, ça ne contourne rien.
+function lumaListToggle(c){
+  const actif = !!c.chat_addon_actif;
+  return '<label style="display:inline-flex;cursor:pointer" title="'+(actif?'Option A Luma active — cliquer pour désactiver':'Cliquer pour activer A Luma (nécessite un parcours actif)')+'">'+
+    '<input type="checkbox" '+(actif?'checked':'')+' onchange="toggleChatAddon(\''+c.id+'\',this.checked,this)" style="width:18px;height:18px;accent-color:#9C5FA0;cursor:pointer">'+
+  '</label>';
+}
+
 function escH(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
 function nav(name,el){
@@ -4128,7 +4139,7 @@ function renderClients(){
       "<td>"+(c.email?escH(c.email):'—')+"</td>"+
       "<td>"+(c.tel?escH(c.tel):'—')+"</td>"+
       "<td>"+progH+"</td>"+
-      "<td style='text-align:center'>"+chkBox(!!c.chat_addon_actif,c.chat_addon_actif?'Option A Luma active':'Option A Luma non prise')+"</td>"+
+      "<td style='text-align:center' onclick=\"event.stopPropagation()\">"+lumaListToggle(c)+"</td>"+
       "<td><span class='stag "+status.cl+"'>"+status.label+"</span>"+(alertCount?"<span class='ctr-alert' title='"+alertCount+" alerte(s)'><svg width='12' height='12' viewBox='0 0 24 24' fill='none'><path d='M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0' stroke='currentColor' stroke-width='2.5'/></svg></span>":'')+"</td>"+
       "<td>"+fmtDMY(firstDate)+"</td>"+
       "<td>"+fmtDMY(lastDate)+"</td>"+
@@ -4305,7 +4316,7 @@ function renderFiche(c){
   const chatAddonHtml = enParcoursChat
     ? `<span style="color:var(--muted)">Inclus — parcours ${pLbl(c.programme)}</span>`
     : `<label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer">
-        <input type="checkbox" ${chatActif?'checked':''} onchange="toggleChatAddon('${cid}',this.checked)">
+        <input type="checkbox" ${chatActif?'checked':''} onchange="toggleChatAddon('${cid}',this.checked,this)">
         <span>${chatActif?'Active'+chatSourceLbl:'Inactive'}</span>
       </label>${chatActif&&chatRenouv?`<span style="color:var(--muted);font-size:12px;margin-left:8px">Renouvellement le ${chatRenouv}</span>`:''}${chatAnnulationPrevue}`;
 
@@ -5083,10 +5094,11 @@ async function marquerPropositionAnnulee(cid){
 // suppose toujours un parcours actif (Alba/Aria/Ora). Bloqué ici pour éviter une incohérence
 // créée manuellement dans le CRM, y compris pour un test ponctuel.
 const PARCOURS_ALUMA_OK = ['alba','aria','ora'];
-async function toggleChatAddon(cid, actif){
+async function toggleChatAddon(cid, actif, el){
   const c=db.clients.find(x=>x.id===cid); if(!c) return;
   if (actif && !PARCOURS_ALUMA_OK.includes(String(c.programme||'').toLowerCase())){
     toast('Impossible : A Luma nécessite un parcours actif (Alba, Aria ou Ora) — cette cliente n\'y est pas.', 'warn');
+    if(el) el.checked = !actif; // la case native se coche avant l'onchange — on annule visuellement le refus
     return;
   }
   const patch = actif
@@ -5097,7 +5109,7 @@ async function toggleChatAddon(cid, actif){
     Object.assign(c, patch);
     renderFiche(c);
     toast(actif?'Option chat activée (test manuel)':'Option chat désactivée','ok');
-  }catch(e){ toast('Erreur : '+e.message,'err'); }
+  }catch(e){ toast('Erreur : '+e.message,'err'); if(el) el.checked = !actif; }
 }
 
 function showNewClientModal(){
