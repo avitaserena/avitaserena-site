@@ -4294,12 +4294,20 @@ function renderFiche(c){
   const chatActif = !!c.chat_addon_actif;
   const chatRenouv = c.chat_addon_renouvellement ? fmtDate(c.chat_addon_renouvellement) : '';
   const chatSourceLbl = c.chat_addon_source==='stripe' ? ' · payant (Stripe)' : c.chat_addon_source==='manuel' ? ' · activé manuellement' : '';
+  // AJOUT (26/08/2026) : badge "résiliation programmée" — alimenté par stripe-webhook sur
+  // customer.subscription.updated (cancel_at_period_end). La cliente garde A Luma jusqu'à
+  // cette date (réglage Stripe portal "annuler à la fin de la période de facturation"), donc
+  // on ne la traite pas comme "inactive" avant cette date — juste signalée différemment pour
+  // que Sabrina la distingue d'une cliente durablement active.
+  const chatAnnulationPrevue = c.chat_addon_annulation_prevue_le
+    ? `<span style="color:var(--red);font-size:12px;margin-left:8px;font-weight:600">Résiliation programmée le ${fmtDate(c.chat_addon_annulation_prevue_le)}</span>`
+    : '';
   const chatAddonHtml = enParcoursChat
     ? `<span style="color:var(--muted)">Inclus — parcours ${pLbl(c.programme)}</span>`
     : `<label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer">
         <input type="checkbox" ${chatActif?'checked':''} onchange="toggleChatAddon('${cid}',this.checked)">
         <span>${chatActif?'Active'+chatSourceLbl:'Inactive'}</span>
-      </label>${chatActif&&chatRenouv?`<span style="color:var(--muted);font-size:12px;margin-left:8px">Renouvellement le ${chatRenouv}</span>`:''}`;
+      </label>${chatActif&&chatRenouv?`<span style="color:var(--muted);font-size:12px;margin-left:8px">Renouvellement le ${chatRenouv}</span>`:''}${chatAnnulationPrevue}`;
 
   // Infos
   const infoRows=[

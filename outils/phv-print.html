@@ -81,6 +81,17 @@ body{font-family:'Be Vietnam Pro',sans-serif;color:var(--ardoise);background:var
 /* ═══ BLOC CONTENU ═══ */
 .sec-content{flex-direction:column;text-align:left}
 .sec-inner{max-width:680px;width:100%}
+/* AJOUTÉ (26/08/2026) : petit logo répété en haut de CHAQUE page de contenu à l'impression/PDF
+   — auparavant seule la page de couverture affichait le logo (.topnav est masqué à l'impression
+   et n'existe que pour la navigation à l'écran), donc un document de plusieurs pages n'avait le
+   logo que sur la première. Invisible à l'écran (où le header .topnav suffit déjà). */
+.sec-page-logo{display:none}
+@media print{
+  .sec-page-logo{display:block;position:absolute;top:24px;right:32px;height:13px;width:auto;color:var(--gris-clair)}
+  .sec-page-logo svg{height:100%;width:auto;display:block}
+}
+body.pdf-export-mode .sec-page-logo{display:block!important;position:absolute;top:24px;right:32px;height:13px;width:auto;color:var(--gris-clair)}
+body.pdf-export-mode .sec-page-logo svg{height:100%;width:auto;display:block}
 .sec-eyebrow{font-size:14px;letter-spacing:.16em;text-transform:uppercase;font-weight:800;margin-bottom:16px;display:flex;align-items:center;gap:9px}
 .eyebrow-ico{color:var(--ocre);display:inline-flex;flex-shrink:0}
 .eyebrow-ico svg{width:17px;height:17px;display:block}
@@ -455,7 +466,7 @@ function parseContent(raw, accentColor, pilier) {
     } else {
       const itemId = 'reco' + (recoCounter++);
       recoState[itemId] = { pilier: pilier, texte: card.title, etat: null, raison: '' };
-      head = `<div class="reco-card-head" id="li-${itemId}"><div class="reco-card-title" style="color:${bulletCol}">${escH(card.title)}</div><span class="reco-controls"><button type="button" class="reco-btn" id="${itemId}-ok" onclick="recoDecider('${itemId}','oui')" title="Je suis ce conseil">✓</button><button type="button" class="reco-btn" id="${itemId}-non" onclick="recoDecider('${itemId}','non')" title="Je ne suis pas ce conseil">✗</button></span></div>`;
+      head = `<div class="reco-card-head" id="li-${itemId}"><div class="reco-card-title" style="color:${bulletCol}">${escH(card.title)}</div><span class="reco-controls"><button type="button" class="reco-btn reco-btn-refuser" id="${itemId}-non" onclick="recoDecider('${itemId}')" title="Refuser cette recommandation">Refuser</button></span></div>`;
     }
     html += `<div class="reco-card">${head}${introBlock}${itemsBlock}</div>`;
     card = null;
@@ -502,7 +513,7 @@ function parseContent(raw, accentColor, pilier) {
           card.hasBulletDetail = true;
           const itemId = 'reco' + (recoCounter++);
           recoState[itemId] = { pilier: pilier, texte: texte, etat: null, raison: '' };
-          card.itemsHtml += `<div class="reco-subcheck" id="li-${itemId}"><span class="txt">${escH(texte)}</span><span class="reco-controls"><button type="button" class="reco-btn" id="${itemId}-ok" onclick="recoDecider('${itemId}','oui')" title="Je suis ce conseil">✓</button><button type="button" class="reco-btn" id="${itemId}-non" onclick="recoDecider('${itemId}','non')" title="Je ne suis pas ce conseil">✗</button></span></div>`;
+          card.itemsHtml += `<div class="reco-subcheck" id="li-${itemId}"><span class="txt">${escH(texte)}</span><span class="reco-controls"><button type="button" class="reco-btn reco-btn-refuser" id="${itemId}-non" onclick="recoDecider('${itemId}')" title="Refuser cette recommandation">Refuser</button></span></div>`;
         } else if (c.kind === 'step') {
           openList(card);
           card.stepNum++;
@@ -520,7 +531,7 @@ function parseContent(raw, accentColor, pilier) {
         // puce isolée, sans titre au-dessus : elle est elle-même une recommandation à part entière
         const itemId = 'reco' + (recoCounter++);
         recoState[itemId] = { pilier: pilier, texte: texte, etat: null, raison: '' };
-        html += `<div class="reco-chip" id="li-${itemId}"><span class="reco-chip-txt">${escH(texte)}</span><span class="reco-controls"><button type="button" class="reco-btn" id="${itemId}-ok" onclick="recoDecider('${itemId}','oui')" title="Je suis ce conseil">✓</button><button type="button" class="reco-btn" id="${itemId}-non" onclick="recoDecider('${itemId}','non')" title="Je ne suis pas ce conseil">✗</button></span></div>`;
+        html += `<div class="reco-chip" id="li-${itemId}"><span class="reco-chip-txt">${escH(texte)}</span><span class="reco-controls"><button type="button" class="reco-btn reco-btn-refuser" id="${itemId}-non" onclick="recoDecider('${itemId}')" title="Refuser cette recommandation">Refuser</button></span></div>`;
       }
       continue;
     }
@@ -578,26 +589,27 @@ function parseContent(raw, accentColor, pilier) {
    VALIDER / REFUSER UNE RECOMMANDATION
    → écrit dans phv_memos, lu par le CRM (carte Observance PHV)
 ══════════════════════════════════════ */
-function recoDecider(itemId, etat){
+// RÈGLE (26/08/2026) : plus de bouton "Valider" — une recommandation non refusée est
+// considérée comme suivie (silence = acceptation). La cliente ne peut que la REFUSER, avec un
+// motif obligatoire (pour que Sabrina puisse proposer une alternative pertinente). Cliquer à
+// nouveau sur "Refuser" quand c'est déjà refusé permet d'annuler le refus (retour à l'état
+// "suivi" par défaut).
+function recoDecider(itemId){
   const state = recoState[itemId];
   if(!state) return;
   const li = document.getElementById('li-'+itemId);
-  const btnOk = document.getElementById(itemId+'-ok');
-  const btnNon = document.getElementById(itemId+'-non');
 
-  if(etat === 'oui'){
-    state.etat = 'oui'; state.raison = '';
-    if(li){ li.classList.remove('is-non'); li.classList.add('is-oui'); }
-    if(btnOk) btnOk.classList.add('active-ok');
-    if(btnNon) btnNon.classList.remove('active-non');
+  if(state.etat === 'non'){
+    // déjà refusée -> on annule le refus, retour à l'état "suivi" par défaut
+    state.etat = null; state.raison = '';
+    if(li){ li.classList.remove('is-non'); }
+    const btnNon = document.getElementById(itemId+'-non');
+    if(btnNon){ btnNon.classList.remove('active-non'); btnNon.textContent = 'Refuser'; }
     fermerRaisonBox(itemId);
     majBarreReco();
     return;
   }
 
-  if(li){ li.classList.remove('is-oui'); }
-  if(btnOk) btnOk.classList.remove('active-ok');
-  if(btnNon) btnNon.classList.add('active-non');
   ouvrirRaisonBox(itemId, li, state.raison || '');
 }
 
@@ -605,7 +617,7 @@ function ouvrirRaisonBox(itemId, li, raisonActuelle){
   if(!li) return;
   let box = document.getElementById('raison-'+itemId);
   if(box){ const ta=box.querySelector('textarea'); if(ta) ta.focus(); return; }
-  li.insertAdjacentHTML('beforeend', `<div class="reco-raison" id="raison-${itemId}"><textarea placeholder="Pourquoi ? (facultatif — ça aide Sabrina à ajuster)">${escH(raisonActuelle)}</textarea><div class="reco-raison-actions"><button type="button" class="reco-raison-btn" onclick="confirmerRefus('${itemId}')">Confirmer</button></div></div>`);
+  li.insertAdjacentHTML('beforeend', `<div class="reco-raison" id="raison-${itemId}"><textarea placeholder="Pourquoi refusez-vous cette recommandation ? (obligatoire — ça permet à Sabrina de vous proposer une alternative)">${escH(raisonActuelle)}</textarea><div class="reco-raison-actions"><span class="reco-raison-err" id="err-${itemId}" style="display:none;color:#B8323A;font-size:11.5px;margin-right:auto">Merci de préciser un motif.</span><button type="button" class="reco-raison-btn" onclick="confirmerRefus('${itemId}')">Confirmer le refus</button></div></div>`);
   const ta = document.getElementById('raison-'+itemId).querySelector('textarea');
   if(ta) ta.focus();
 }
@@ -619,27 +631,33 @@ function confirmerRefus(itemId){
   const box = document.getElementById('raison-'+itemId);
   const ta = box ? box.querySelector('textarea') : null;
   const raison = ta ? ta.value.trim() : '';
+  if(!raison){
+    const err = document.getElementById('err-'+itemId);
+    if(err) err.style.display = 'inline';
+    if(ta) ta.focus();
+    return;
+  }
   const state = recoState[itemId];
   if(!state) return;
   state.etat = 'non'; state.raison = raison;
   const li = document.getElementById('li-'+itemId);
   if(li) li.classList.add('is-non');
+  const btnNon = document.getElementById(itemId+'-non');
+  if(btnNon){ btnNon.classList.add('active-non'); btnNon.textContent = 'Refusé — modifier'; }
   fermerRaisonBox(itemId);
   majBarreReco();
 }
 
 function majBarreReco(){
-  const decisions = Object.values(recoState).filter(s => s.etat);
+  const refus = Object.values(recoState).filter(s => s.etat === 'non');
   let bar = document.getElementById('recoBar');
-  if(!decisions.length){ if(bar) bar.classList.remove('show'); return; }
+  if(!refus.length){ if(bar) bar.classList.remove('show'); return; }
   if(!bar){
     document.body.insertAdjacentHTML('beforeend', `<div class="reco-bar" id="recoBar"><span class="reco-bar-txt" id="recoBarTxt"></span><button type="button" class="reco-bar-btn" id="recoBarBtn" onclick="envoyerReponsesReco()">Envoyer à Sabrina →</button></div>`);
     bar = document.getElementById('recoBar');
   }
-  const nbOui = decisions.filter(d=>d.etat==='oui').length;
-  const nbNon = decisions.filter(d=>d.etat==='non').length;
   const txtEl = document.getElementById('recoBarTxt');
-  if(txtEl) txtEl.textContent = decisions.length+' réponse'+(decisions.length>1?'s':'')+' · '+nbOui+' suivie(s) · '+nbNon+' à ajuster';
+  if(txtEl) txtEl.textContent = refus.length+' recommandation'+(refus.length>1?'s':'')+' refusée'+(refus.length>1?'s':'')+' avec motif';
   const btn = document.getElementById('recoBarBtn');
   if(btn){
     if(currentClientKey){ btn.disabled=false; btn.textContent='Envoyer à Sabrina →'; }
@@ -670,17 +688,15 @@ async function envoyerReponsesReco(){
   if(btn){ btn.disabled=true; btn.textContent='Envoi…'; }
   try{
     const token = await Auth.getValidAccessToken();
-    const decided = Object.values(recoState).filter(s => s.etat);
+    // Seuls les refus sont envoyés — les recommandations non refusées sont considérées comme
+    // suivies par défaut (26/08/2026), donc rien à signaler à leur sujet.
+    const refuses = Object.values(recoState).filter(s => s.etat === 'non');
     const details = {};
-    decided.forEach(s => {
+    refuses.forEach(s => {
       if(!details[s.pilier]) details[s.pilier] = [];
       details[s.pilier].push({ texte: s.texte, etat: s.etat, raison: s.raison || '' });
     });
-    const stats = {
-      ok: decided.filter(s=>s.etat==='oui').length,
-      non: decided.filter(s=>s.etat==='non').length,
-      total: decided.length
-    };
+    const stats = { ok: 0, non: refuses.length, total: refuses.length };
     const genId = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : ('memo-'+Date.now()+'-'+Math.random().toString(36).slice(2));
     await fetch(SUPA_URL + '/rest/v1/phv_memos', {
       method: 'POST',
@@ -698,6 +714,10 @@ async function envoyerReponsesReco(){
         ddn: clientIdentity.ddn,
         stats: stats,
         details: details,
+        // AJOUTÉ (26/08/2026) : priorité "urgente" dès qu'il y a au moins un refus, pour que le
+        // CRM affiche une alerte visible — Sabrina doit pouvoir proposer une alternative vite.
+        priorite: refuses.length ? 'urgente' : 'normale',
+        traite: false,
         created_at: new Date().toISOString()
       })
     });
@@ -862,6 +882,7 @@ function buildImmersive() {
 
     html += `
   <section class="sec sec-content" id="sec-${i+1}">
+    <div class="sec-page-logo"><svg viewBox="0 0 402.52 116.56" xmlns="http://www.w3.org/2000/svg" fill="currentColor"><path d="M162.95,72.57l3.25-4.84,9.58.03c.78,3.69,3.67,5.27,7.1,4.22.97-.3,2.42-1.88,2.53-2.84s-1.28-2.97-2.28-3.23l-8.34-2.11c-4.91-1.24-8.06-4.75-8.47-9.24-.44-4.81,1.6-9.22,6.5-11.26,5-2.08,11.05-2.11,15.88.45,3.68,1.95,6.1,4.92,6.23,9.84l-10.51.07c-.76-2.47-1.97-3.74-3.8-4.03-1.71-.27-4.44.97-4.65,2.56-.86,6.57,11.83,2.59,18.58,11.21.11-7.57,1.63-13.97,7.28-18.15,6.72-4.98,17.13-4.76,23.14,1.18,4.79,4.73,5.31,11.39,4.95,17.87h-24.66c-.01,3.74,2.16,6.58,4.86,7.3,3.86,1.04,7.16-.25,9.01-3.73l10.55.08c-1.97,8.22-8.98,12.8-17.18,12.72-7.82-.07-14.07-4.26-16.92-12.24-.16,4.57-2.35,8.46-6.78,10.44-9.31,4.18-20.95.92-23.22-8.57l-2.64,2.24ZM219.57,57.17c-.25-5.88-3.7-7.48-7.43-7.39s-6.62,2.7-6.49,7.48l13.92-.09Z"/></svg></div>
     <div class="sec-inner">
       <div class="sec-eyebrow" style="color:${color}"><span class="eyebrow-ico">${icon}</span>${escH(eyebrow)}</div>
       <div class="sec-title">${escH(b.title || '')}</div>
