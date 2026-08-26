@@ -915,15 +915,27 @@ function buildImmersive() {
 ══════════════════════════════════════ */
 /* ══════════════════════════════════════
    DÉLAI D'ACCÈS — 24h après la consultation
-   AJOUTÉ le 26/08/2026 : même généré quelques minutes après le RDV, le protocole ne
-   doit jamais être visible instantanément par la cliente — le "sous 24h" annoncé
-   partout (emails, espace cliente) doit rester vrai, sinon la cliente peut se demander
-   comment un protocole aussi complet a pu être écrit en 5 minutes.
-   Ancrage retenu : clientes.date_protocole (date de la consultation), + jusqu'au lendemain
-   00h00 heure du navigateur (Europe/Paris pour la quasi-totalité des clientes) — c'est une
-   approximation volontairement simple, sans granularité horaire précise du RDV, qui garantit
-   toujours au moins 24h et jamais un accès le jour même.
+   AJOUTÉ le 26/08/2026, PRÉCISÉ le 26/08/2026 : ancré sur l'heure réelle du dernier
+   rendez-vous passé (table rendez_vous, colonnes date+time), plus fiable que la seule
+   date_protocole (qui n'a pas d'heure). Garantit que la cliente ne reçoit jamais son
+   protocole plus de 24h après sa consultation, ni avant.
+   Repli sur date_protocole (minuit le lendemain) si aucun rendez-vous n'est retrouvé
+   pour cette cliente — ne bloque jamais l'accès si les données sont incomplètes.
    ══════════════════════════════════════ */
+async function getDerniereConsultation(clientKey) {
+  try {
+    const now = new Date();
+    const todayLocal = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
+    const res = await fetch(SUPA_URL + '/rest/v1/rendez_vous?client_key=eq.' + encodeURIComponent(clientKey) +
+      '&status=neq.annule&date=lte.' + todayLocal + '&order=date.desc,time.desc&limit=1&select=date,time', {
+      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY }
+    });
+    if (!res.ok) return null;
+    const rows = await res.json();
+    return (rows && rows[0] && rows[0].date) ? rows[0] : null;
+  } catch (e) { console.error('Erreur lecture rendez_vous:', e); return null; }
+}
+
 async function getDateProtocole(clientKey) {
   try {
     const res = await fetch(SUPA_URL + '/rest/v1/clientes?id=eq.' + encodeURIComponent(clientKey) + '&select=date_protocole', {
@@ -935,11 +947,22 @@ async function getDateProtocole(clientKey) {
   } catch (e) { console.error('Erreur lecture date_protocole:', e); return null; }
 }
 
-function protocoleVisibleDepuis(dateProtocole) {
-  if (!dateProtocole) return null; // pas de date connue -> ne bloque pas (comportement historique)
-  const debut = new Date(dateProtocole + 'T00:00:00');
-  debut.setDate(debut.getDate() + 1); // accessible à partir du lendemain de la consultation
-  return debut;
+async function calculerVisibleDepuis(clientKey) {
+  const rdv = await getDerniereConsultation(clientKey);
+  if (rdv) {
+    const heure = (rdv.time || '09:00').slice(0, 5);
+    const debut = new Date(rdv.date + 'T' + heure + ':00');
+    if (!isNaN(debut.getTime())) {
+      debut.setHours(debut.getHours() + 24);
+      return debut;
+    }
+  }
+  // Repli : pas de RDV retrouvé — on se cale sur date_protocole (minuit le lendemain).
+  const dateProtocole = await getDateProtocole(clientKey);
+  if (!dateProtocole) return null; // aucune donnée -> ne bloque pas (comportement historique)
+  const debutFallback = new Date(dateProtocole + 'T00:00:00');
+  debutFallback.setDate(debutFallback.getDate() + 1);
+  return debutFallback;
 }
 
 function afficherEnAttente(visibleFrom) {
@@ -958,8 +981,7 @@ async function chargerProtocoleCliente(clientKey) {
   try {
     currentClientKey = clientKey;
 
-    const dateProtocole = await getDateProtocole(clientKey);
-    const visibleFrom = protocoleVisibleDepuis(dateProtocole);
+    const visibleFrom = await calculerVisibleDepuis(clientKey);
     if (visibleFrom && new Date() < visibleFrom) {
       afficherEnAttente(visibleFrom);
       return;
