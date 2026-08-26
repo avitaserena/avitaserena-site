@@ -913,9 +913,58 @@ function buildImmersive() {
 /* ══════════════════════════════════════
    CHARGEMENT DES DONNÉES
 ══════════════════════════════════════ */
+/* ══════════════════════════════════════
+   DÉLAI D'ACCÈS — 24h après la consultation
+   AJOUTÉ le 26/08/2026 : même généré quelques minutes après le RDV, le protocole ne
+   doit jamais être visible instantanément par la cliente — le "sous 24h" annoncé
+   partout (emails, espace cliente) doit rester vrai, sinon la cliente peut se demander
+   comment un protocole aussi complet a pu être écrit en 5 minutes.
+   Ancrage retenu : clientes.date_protocole (date de la consultation), + jusqu'au lendemain
+   00h00 heure du navigateur (Europe/Paris pour la quasi-totalité des clientes) — c'est une
+   approximation volontairement simple, sans granularité horaire précise du RDV, qui garantit
+   toujours au moins 24h et jamais un accès le jour même.
+   ══════════════════════════════════════ */
+async function getDateProtocole(clientKey) {
+  try {
+    const res = await fetch(SUPA_URL + '/rest/v1/clientes?id=eq.' + encodeURIComponent(clientKey) + '&select=date_protocole', {
+      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY }
+    });
+    if (!res.ok) return null;
+    const rows = await res.json();
+    return rows && rows[0] ? rows[0].date_protocole : null;
+  } catch (e) { console.error('Erreur lecture date_protocole:', e); return null; }
+}
+
+function protocoleVisibleDepuis(dateProtocole) {
+  if (!dateProtocole) return null; // pas de date connue -> ne bloque pas (comportement historique)
+  const debut = new Date(dateProtocole + 'T00:00:00');
+  debut.setDate(debut.getDate() + 1); // accessible à partir du lendemain de la consultation
+  return debut;
+}
+
+function afficherEnAttente(visibleFrom) {
+  const heureTxt = visibleFrom.toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long' }) +
+    ' à partir de ' + visibleFrom.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' });
+  document.getElementById('loading').innerHTML = `
+    <div style="text-align:center;color:var(--sable);max-width:420px;padding:24px">
+      <div style="margin-bottom:16px"><svg viewBox="0 0 20 20" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7.5"/><path d="M10 6v4l2.5 2"/></svg></div>
+      <p style="font-size:18px;margin-bottom:10px;font-family:'Cormorant Garamond',serif">Votre protocole prend forme.</p>
+      <p style="font-size:13.5px;color:rgba(255,255,255,.78);line-height:1.7">Sabrina finalise chaque recommandation avec soin après votre séance. Il sera disponible ici <strong style="color:#fff">${heureTxt}</strong>.</p>
+    </div>`;
+  document.getElementById('loading').classList.add('done');
+}
+
 async function chargerProtocoleCliente(clientKey) {
   try {
     currentClientKey = clientKey;
+
+    const dateProtocole = await getDateProtocole(clientKey);
+    const visibleFrom = protocoleVisibleDepuis(dateProtocole);
+    if (visibleFrom && new Date() < visibleFrom) {
+      afficherEnAttente(visibleFrom);
+      return;
+    }
+
     const row = await DB.getProtocoleClient(clientKey);
     const pd = row?.data?.protocolData;
     const bl = row?.data?.blocks;
