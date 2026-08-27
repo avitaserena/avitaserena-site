@@ -3756,6 +3756,108 @@ function updateMarqueurChamp(idx, champ, val){
   }
 }
 
+// ── Interprétation IA des marqueurs (usage interne — même logique de sécurité que
+// l'outil dédié de generateur.html) : jamais de norme supposée, uniquement celle
+// extraite/validée pour CE bilan précis. Réutilisée ici juste avant l'enregistrement,
+// pour que le "pourquoi" de chaque valeur soit déjà présent dans la fiche cliente sans
+// ressaisie manuelle. RÈGLE DE SÉCURITÉ : les normes de laboratoire ne sont jamais
+// comparables d'un labo à l'autre — on ne raisonne que sur ref_min/ref_max de la ligne.
+function buildPromptInterpretationMarqueurs(marqueurs, laboratoire, c){
+  const lignesTxt=marqueurs.map(m=>{
+    const val=m.valeur!=null?m.valeur:(m.valeur_texte||'?');
+    const norme=(m.ref_min!=null||m.ref_max!=null)?`(norme de CE bilan : ${m.ref_min!=null?m.ref_min:'?'} - ${m.ref_max!=null?m.ref_max:'?'})`:'(norme non renseignée — le dire explicitement, ne pas en supposer une)';
+    return `- ${m.nom||m.marqueur} : ${val}${m.unite?' '+m.unite:''} ${norme}`;
+  }).join('\n');
+  return `Tu es l'assistante clinique interne de Sabrina Castelli, naturopathe diplômée (A VITA SERENA, Porto-Vecchio), spécialisée en SIBO/SII, endométriose, ménopause/périménopause, SOPK et thyroïde/Hashimoto, formée en micronutrition fonctionnelle (DFM Duo Pratik, Hormono Pratik). Ce que tu produis ici n'est JAMAIS lu par la cliente — c'est une aide de travail strictement interne pour que Sabrina comprenne elle-même ce que révèlent ces valeurs avant de préparer son explication à la cliente.
+
+━━ RÈGLE DE SÉCURITÉ ABSOLUE ━━
+Les normes de laboratoire NE SONT JAMAIS comparables d'un laboratoire à l'autre (méthodes de dosage, populations de référence, rendu en % absolu ou relatif selon les cas). Base-toi UNIQUEMENT sur la norme fournie pour chaque ligne ci-dessous (celle de CE bilan précis) — n'invente et ne suppose JAMAIS une norme différente. Si aucune norme n'est renseignée pour une ligne, dis-le explicitement plutôt que d'en inventer une.
+
+━━ TA MISSION ━━
+Pour chaque marqueur listé, explique en 2 à 4 phrases maximum : (1) ce qu'il reflète physiologiquement, (2) sa position par rapport à LA NORME FOURNIE pour cette ligne, (3) les hypothèses cliniques plausibles si hors norme (apport alimentaire vs synthèse endogène, carence d'apport vs mauvaise conversion, etc. — jamais un diagnostic), (4) si pertinent, un marqueur témoin du même bilan qui permettrait de trancher entre plusieurs hypothèses.
+Ajoute une synthèse globale (3 à 5 phrases) reliant les marqueurs entre eux si plusieurs orientent vers une même piste clinique.
+
+━━ RÈGLES ━━
+1. Reste strictement descriptive et mécanistique — jamais de diagnostic, jamais de nom de pathologie affirmé.
+2. Utilise le contexte clinique ci-dessous pour éclairer si pertinent, sans jamais réinventer l'historique de la cliente.
+3. Si une valeur est incohérente ou une norme manquante empêche toute interprétation fiable, dis-le honnêtement.
+4. Réponds UNIQUEMENT en JSON valide, sans texte avant ni après, sans balises markdown :
+{"synthese_globale":"3 à 5 phrases, ou une phrase honnête si rien de reliable","marqueurs":[{"nom":"nom exact tel que fourni","explication":"2 à 4 phrases"}]}
+
+━━ LABORATOIRE (informatif uniquement — jamais utilisé pour déduire une norme non fournie) ━━
+${laboratoire||'Non renseigné'}
+
+━━ VALEURS À INTERPRÉTER ━━
+${lignesTxt}
+
+━━ CONTEXTE CLINIQUE DE LA CLIENTE (pour éclairer, jamais pour halluciner) ━━
+Cliente : ${c?.prenom||'Non renseignée'}${c?.age?', '+c.age+' ans':''}
+Motifs & axes de travail : ${c?.motifs||'—'} · ${c?.axes||'—'}
+Notes praticienne : ${c?.notes||'—'}`;
+}
+
+async function interpreterMarqueursAvantEnregistrement(retenus, laboratoire, cid){
+  const apiKey=getAnthropicKey();
+  if(!apiKey) return null; // pas bloquant : l'enregistrement continue sans interprétation
+  const c=db.clients.find(x=>x.id===cid) || null;
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'x-api-key':apiKey, 'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' },
+      body:JSON.stringify({
+        model:'claude-sonnet-4-6', max_tokens:3000,
+        messages:[{ role:'user', content:buildPromptInterpretationMarqueurs(retenus, laboratoire, c) }]
+      })
+    });
+    const data=await res.json();
+    if(data.error) throw new Error(data.error.message);
+    const raw=data.content?.[0]?.text || '';
+    return parseJSONMarqueurs(raw);
+  }catch(e){
+    console.warn('[CRM] ⚠ Interprétation IA échouée (non bloquant) :', e.message);
+    toast('Marqueurs enregistrés, mais l\'interprétation IA a échoué : '+e.message,'warn');
+    return null;
+  }
+}
+
+function toggleMarqueurCommentaire(idx){
+  const el=document.getElementById('bm-comment-'+idx);
+  if(el) el.style.display = el.style.display==='none' ? 'block' : 'none';
+}
+
+// Interprétation rétroactive d'un bilan déjà enregistré (extrait avant l'ajout de cette
+// fonctionnalité, ou dont l'interprétation avait échoué à l'enregistrement). Réutilise
+// exactement la même logique/prompt que l'interprétation à la volée — mêmes garde-fous.
+async function interpreterBilanExistant(cid, bilanId){
+  if(!getAnthropicKey()){ toast('Clé API requise pour l\'interprétation','err'); return; }
+  const marqueurs=(bilansMarqueurs[cid]||[]).filter(m=>m.bilan_id===bilanId);
+  if(!marqueurs.length){ toast('Aucun marqueur associé à ce bilan','warn'); return; }
+  toast('Interprétation IA en cours…','ok');
+  const laboratoire=marqueurs[0]?.laboratoire||null;
+  const retenusFormat=marqueurs.map(m=>({ nom:m.marqueur, valeur:m.valeur, valeur_texte:m.valeur_texte, unite:m.unite, ref_min:m.ref_min, ref_max:m.ref_max }));
+  const interp=await interpreterMarqueursAvantEnregistrement(retenusFormat, laboratoire, cid);
+  if(!interp){ toast('Interprétation impossible','err'); return; }
+  try{
+    const commentaires={};
+    (interp.marqueurs||[]).forEach(m=>{ commentaires[(m.nom||'').trim().toLowerCase()]=m.explication; });
+    await Promise.all(marqueurs.map(m=>{
+      const com=commentaires[(m.marqueur||'').trim().toLowerCase()];
+      if(!com) return Promise.resolve();
+      return sb('bilans_marqueurs?id=eq.'+encodeURIComponent(m.id), { method:'PATCH', prefer:'return=minimal', body:JSON.stringify({commentaire:com}) });
+    }));
+    if(interp.synthese_globale){
+      await sb('bilans_biologiques?id=eq.'+encodeURIComponent(bilanId), { method:'PATCH', prefer:'return=minimal', body:JSON.stringify({synthese_ia:interp.synthese_globale}) });
+    }
+    toast('Interprétation enregistrée','ok');
+    await loadBilansMarqueurs(cid);
+    await loadDocsMedicaux(cid);
+    const c=db.clients.find(x=>x.id===cid);
+    if(c) renderFiche(c);
+  }catch(e){
+    toast('Erreur enregistrement interprétation : '+e.message,'err');
+  }
+}
+
 async function enregistrerMarqueursExtraits(){
   if(!extractionCtx) return;
   const {cid, bilanId, dateExamen, laboratoire}=extractionCtx;
@@ -3764,14 +3866,28 @@ async function enregistrerMarqueursExtraits(){
   const btn=document.getElementById('eb-save-btn');
   btn.disabled=true; btn.textContent='Enregistrement…';
   try{
+    let commentaires={}, syntheseGlobale=null;
+    if(document.getElementById('eb-interpreter')?.checked){
+      btn.textContent='Interprétation IA en cours…';
+      const interp=await interpreterMarqueursAvantEnregistrement(retenus, laboratoire, cid);
+      if(interp){
+        syntheseGlobale=interp.synthese_globale||null;
+        (interp.marqueurs||[]).forEach(m=>{ commentaires[(m.nom||'').trim().toLowerCase()]=m.explication; });
+      }
+      btn.textContent='Enregistrement…';
+    }
     const rows=retenus.map(m=>({
       bilan_id:bilanId, client_id:cid, client_key:cid,
       marqueur:(m.nom||'').trim(), valeur:m.valeur!=null?m.valeur:null, valeur_texte:m.valeur_texte||null,
       unite:m.unite||null, ref_min:m.ref_min!=null?m.ref_min:null, ref_max:m.ref_max!=null?m.ref_max:null,
-      statut:m.statut||'a_verifier', date_bilan:dateExamen, laboratoire:laboratoire||null
+      statut:m.statut||'a_verifier', date_bilan:dateExamen, laboratoire:laboratoire||null,
+      commentaire:commentaires[(m.nom||'').trim().toLowerCase()]||null
     }));
     await sb('bilans_marqueurs', { method:'POST', body:JSON.stringify(rows) });
-    toast(retenus.length+' marqueur(s) enregistré(s)','ok');
+    if(syntheseGlobale){
+      await sb('bilans_biologiques?id=eq.'+encodeURIComponent(bilanId), { method:'PATCH', prefer:'return=minimal', body:JSON.stringify({synthese_ia:syntheseGlobale}) });
+    }
+    toast(retenus.length+' marqueur(s) enregistré(s)'+(syntheseGlobale?' avec interprétation IA':''),'ok');
     closeM('m-extraction-bilan');
     await loadBilansMarqueurs(cid);
     const c=db.clients.find(x=>x.id===cid);
@@ -4482,11 +4598,14 @@ function renderFiche(c){
   const dmTypeLabels={bilan_sanguin:'Bilan sanguin',imagerie:'Radio / Imagerie',compte_rendu:'Compte-rendu médical',ordonnance:'Ordonnance',autre:'Document'};
   const dmIcons={bilan_sanguin:ic('drop'),imagerie:ic('scan'),compte_rendu:ic('file'),ordonnance:ic('pill'),autre:ic('paperclip')};
   const dmHtml=dm.length>0?dm.map(d=>`
-    <div class="doc-item">
+    <div class="doc-item" style="flex-wrap:wrap">
       <div class="doc-icon" style="background:var(--blue-lt)">${dmIcons[d.type]||ic('paperclip')}</div>
-      <div class="doc-body"><div class="doc-name">${escH(d.nom_fichier||'Document')}</div><div class="doc-meta">${escH(dmTypeLabels[d.type]||'Document')} · Examen du ${fmtDate(d.date_bilan)}${d.laboratoire?' · '+escH(d.laboratoire):''}${d.prix!=null?' · '+Number(d.prix).toFixed(2)+' €':''}</div></div>
+      <div class="doc-body"><div class="doc-name">${escH(d.nom_fichier||'Document')}</div><div class="doc-meta">${escH(dmTypeLabels[d.type]||'Document')} · Examen du ${fmtDate(d.date_bilan)}${d.laboratoire?' · '+escH(d.laboratoire):''}${d.prix!=null?' · '+Number(d.prix).toFixed(2)+' €':''}</div>
+        ${d.synthese_ia?`<div style="font-size:11.5px;color:var(--ink);font-style:italic;background:var(--surface);border-radius:8px;padding:8px 10px;margin-top:6px;line-height:1.5">💡 ${escH(d.synthese_ia)}</div>`:''}
+      </div>
       <span class="doc-status ok">Disponible</span>
       ${btn('doc-action',`window.open('${escH(d.storage_path)}','_blank')`,'Voir')}
+      ${d.type==='bilan_sanguin' && !d.synthese_ia ? btn('doc-action',`interpreterBilanExistant('${cid}','${d.id}')`,"Interpréter avec l'IA") : ''}
       ${btn('doc-action',`supprimerDocMedical('${cid}','${d.id}')`,ic('trash'))}
     </div>`).join(''):"<div style='padding:16px;font-size:13px;color:var(--muted);font-style:italic'>Aucun document médical ajouté pour le moment.</div>";
 
@@ -4551,7 +4670,7 @@ function renderFiche(c){
     <div style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:#8B3A3A">${ic('warn','ico-xs')} Seuil cliniquement notable — à évoquer avec son médecin</div>
     ${seuilsFranchis.map(s=>`<div style="font-size:12px;color:#8B3A3A;padding-left:22px">${escH(s.label)} <span style="color:var(--muted)">(${fmtDate(s.date)})</span></div>`).join('')}
   </div>`:'';
-  const bmHtml=bmList.length>0 ? bmList.map(g=>{
+  const bmHtml=bmList.length>0 ? bmList.map((g,gi)=>{
     const sorted=g.entries.slice().sort((a,b)=>(a.date_bilan||'').localeCompare(b.date_bilan||''));
     const dernier=sorted[sorted.length-1];
     const precedent=sorted.length>1?sorted[sorted.length-2]:null;
@@ -4569,17 +4688,20 @@ function renderFiche(c){
       const plage=vs.min!=null&&vs.max!=null?`${vs.min}-${vs.max}`:vs.min!=null?`>${vs.min}`:`<${vs.max}`;
       vsHtml=`<div style="font-size:10.5px;color:${dansSante?'var(--green)':'var(--ocre)'};margin-top:2px">${dansSante?'✓':'○'} Valeur santé : ${plage} ${vs.unite}${vs.note?' — '+escH(vs.note):''}</div>`;
     }
-    return `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 12px;background:var(--surface);border-radius:9px">
-      <div>
-        <div style="font-size:13px;font-weight:600;color:var(--ink)">${escH(g.nom)}</div>
-        <div style="font-size:11px;color:var(--muted)">${fmtDate(dernier.date_bilan)}${sorted.length>1?' · '+sorted.length+' mesures':''}${dernier.laboratoire?' · '+escH(dernier.laboratoire):''}</div>
-        ${vsHtml}
+    return `<div style="background:var(--surface);border-radius:9px;padding:9px 12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;${dernier.commentaire?'cursor:pointer':''}" ${dernier.commentaire?`onclick="toggleMarqueurCommentaire(${gi})"`:''}>
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--ink)">${escH(g.nom)}${dernier.commentaire?' <span style="font-weight:400;color:var(--muted);font-size:11px">— voir l\'explication</span>':''}</div>
+          <div style="font-size:11px;color:var(--muted)">${fmtDate(dernier.date_bilan)}${sorted.length>1?' · '+sorted.length+' mesures':''}${dernier.laboratoire?' · '+escH(dernier.laboratoire):''}</div>
+          ${vsHtml}
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:13px;font-weight:700;color:${bmStatutColor[dernier.statut]||'var(--ink)'}">${valAffiche}${dernier.unite?' '+escH(dernier.unite):''}</div>
+          <div style="font-size:10px;color:${bmStatutColor[dernier.statut]||'var(--muted)'};text-transform:uppercase;letter-spacing:.04em">${bmStatutLabel[dernier.statut]||''}</div>
+          ${trend}
+        </div>
       </div>
-      <div style="text-align:right;flex-shrink:0">
-        <div style="font-size:13px;font-weight:700;color:${bmStatutColor[dernier.statut]||'var(--ink)'}">${valAffiche}${dernier.unite?' '+escH(dernier.unite):''}</div>
-        <div style="font-size:10px;color:${bmStatutColor[dernier.statut]||'var(--muted)'};text-transform:uppercase;letter-spacing:.04em">${bmStatutLabel[dernier.statut]||''}</div>
-        ${trend}
-      </div>
+      ${dernier.commentaire?`<div id="bm-comment-${gi}" style="display:none;font-size:11.5px;color:var(--ink);font-style:italic;background:var(--off);border-radius:8px;padding:8px 10px;margin-top:8px;line-height:1.5">${escH(dernier.commentaire)}</div>`:''}
     </div>`;
   }).join('') : "<div style='padding:16px;font-size:13px;color:var(--muted);font-style:italic'>Aucun marqueur biologique enregistré pour le moment — ajoutez un bilan sanguin ci-dessus pour lancer l'extraction automatique.</div>";
 
@@ -7304,7 +7426,8 @@ function ouvrirBilanEntree(clientId, mode){
       <div style="padding:30px 10px;text-align:center;font-size:13px;color:var(--muted);font-style:italic" id="eb-loading">Lecture du document en cours…</div>
       <div id="eb-content" style="display:none"></div>
     </div>
-    <div class="mfoot">
+    <div class="mfoot" style="flex-wrap:wrap;gap:10px">
+      <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink);width:100%;order:-1;padding:0 2px 4px"><input type="checkbox" id="eb-interpreter" checked style="width:15px;height:15px;flex-shrink:0"> Interpréter avec l'IA avant d'enregistrer <span style="color:var(--muted);font-weight:400">(explique ce que chaque valeur peut signifier — usage interne, jamais montré à la cliente)</span></label>
       <button class="btn btn-ghost" onclick="closeM('m-extraction-bilan')">Fermer sans enregistrer</button>
       <button class="btn btn-primary" id="eb-save-btn" onclick="enregistrerMarqueursExtraits()" style="display:none">Enregistrer les marqueurs retenus</button>
     </div>

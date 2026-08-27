@@ -813,6 +813,35 @@ input.fi[readonly]{background:var(--taupe);cursor:default;opacity:.75}
   <div id="bilans-result" style="display:none;margin-top:16px"></div>
 </div>
 
+<!-- ═══ INTERPRÉTATION D'UN BILAN REÇU — SAISIE LIGNE PAR LIGNE (USAGE INTERNE) ═══ -->
+<div class="sec-title">
+  <div class="sec-num">09bis · Analyse IA</div>
+  <div class="sec-h"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px;margin-right:5px;flex-shrink:0"><path d="M9 17v-6M12 17v-3M15 17v-9M4 4h16v16H4z"/></svg>Interpréter un bilan reçu — usage interne</div>
+  <div class="sec-sub">Saisissez ligne par ligne les valeurs d'un bilan que votre cliente vous a transmis, avec <strong>la norme telle qu'imprimée sur CE bilan précis</strong> — les normes ne sont jamais comparables d'un laboratoire à l'autre (méthodes de dosage, populations de référence, % absolu ou relatif selon le cas), donc n'utilisez jamais une norme mémorisée d'un autre bilan. L'IA vous explique ce que chaque valeur peut signifier physiologiquement, pour comprendre vous-même avant d'expliquer à la cliente. <strong>Ceci n'est ni un diagnostic ni un texte destiné à la cliente.</strong></div>
+</div>
+<div class="field-card">
+  <div class="g3" style="grid-template-columns:2fr 1fr;gap:12px;margin-bottom:14px">
+    <div>
+      <label class="fl">Cliente concernée</label>
+      <div id="interpret-client-label" style="font-size:12.5px;color:var(--gris);padding:9px 0">Session en cours — voir données de séance ci-dessus</div>
+    </div>
+    <div>
+      <label class="fl">Laboratoire (informatif — jamais utilisé pour déduire une norme non saisie)</label>
+      <input class="fi" id="interpret-labo" placeholder="Ex : Synlab, Barbier, Lims…">
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr auto;gap:8px;margin-bottom:6px;font-size:10.5px;color:var(--gris);text-transform:uppercase;letter-spacing:.04em;font-weight:600">
+    <div>Marqueur</div><div>Valeur</div><div>Unité</div><div>Norme min</div><div>Norme max</div><div></div>
+  </div>
+  <div id="interpret-lignes"></div>
+  <button class="btn" type="button" onclick="ajouterLigneInterpretation()">+ Ajouter une ligne</button>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">
+    <button class="btn primary" id="interpret-btn" type="button" onclick="interpreterBilanValeurs()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px;margin-right:5px"><path d="M9 22h9M11 22a5 5 0 1 1 3-9V6a2 2 0 0 1 2-2h2M14 6h4"/></svg>Interpréter ces valeurs</button>
+  </div>
+  <div id="interpret-loading" style="display:none;margin-top:14px;font-size:13px;color:var(--gris);font-style:italic">Analyse des valeurs en cours…</div>
+  <div id="interpret-result" style="display:none;margin-top:16px"></div>
+</div>
+
 <!-- ═══ APPROCHES DÉJÀ TESTÉES ═══ -->
 <div class="sec-title">
   <div class="sec-num">10 · Ne pas répéter ce qui n'a pas marché</div>
@@ -1074,6 +1103,10 @@ function loadSession() {
       sessionData = JSON.parse(raw);
       renderSessionCard();
       prefillParams();
+      if (sessionData.prenom) {
+        const lbl = document.getElementById('interpret-client-label');
+        if (lbl) lbl.textContent = [sessionData.prenom, sessionData.nom].filter(Boolean).join(' ') + (sessionData.client_id ? '' : ' (⚠ pas de client_id — enregistrement dans la fiche impossible tant que le générateur n\'est pas ouvert depuis le CRM/questionnaire)');
+      }
       // ── Auto-génération SUPPRIMÉE (22/08/2026) : le protocole ne doit jamais partir tout seul,
       // même si le questionnaire d'origine a posé le flag _autoGenerate. Les axes prioritaires,
       // objectifs, niveau de sport, motivation alimentaire et terrain global sont des choix
@@ -1409,6 +1442,9 @@ const BILANS_REFERENCE = [
   'Zonuline / LBP (perméabilité intestinale)',
   'Calprotectine fécale',
   'Indican / DMI (dysbiose de putréfaction)',
+  'Rapport Adiponectine/Leptine (tissu adipeux inflammatoire, risque métabolique)',
+  'Béta-2-défensine fécale (si signe d\'infection à bactérie gram négatif ou mycose associée à la dysbiose)',
+  'Bilan des acides gras érythrocytaires — AGE (terrain inflammatoire de bas grade résistant, risque cardiovasculaire, contexte neuro-inflammatoire, douleur chronique/tendinopathies diffuses, terrain allergique résistant au GLA, avant/après supplémentation oméga-3)',
 ].join('\n- ');
 
 // ── Laboratoires partenaires ─────────────────────────────────────────────
@@ -1449,6 +1485,7 @@ const TARIFS_BILANS = [
   { motCle: 'hormonal', prix: 195 },
   { motCle: 'métaux lourds', prix: 145 },
   { motCle: 'glyphosate', prix: 128 },
+  { motCle: 'acides gras érythrocytaires', prix: 200 },
 ];
 
 // Cherche une estimation de prix par correspondance de mot-clé dans le nom du bilan.
@@ -1793,6 +1830,229 @@ function copierRecommandationTexte(evt) {
     const btn = evt?.target;
     if (btn) { const old = btn.textContent; btn.textContent = '✓ Copié'; setTimeout(() => btn.textContent = old, 1800); }
   }).catch(() => alert('Impossible de copier automatiquement — voici le texte :\n\n' + texte));
+}
+
+// ── Interprétation d'un bilan reçu, saisi ligne par ligne (usage interne) ──────────
+// Outil GÉNÉRIQUE (pas spécifique à un type de bilan) : chaque ligne porte sa PROPRE
+// norme, telle que saisie par Sabrina depuis le bilan papier/PDF reçu. On ne mémorise
+// et on ne suppose JAMAIS de norme de laboratoire en interne — la comparabilité entre
+// laboratoires n'existe pas (cf. Module 4 DFM Duo Pratik, bilan AGE : Barbier/Synlab/
+// Lims rendent des normes et parfois des % de nature différente pour un même marqueur).
+// Se nourrit soit d'une saisie manuelle rapide, soit — plus tard — d'une ligne extraite
+// automatiquement par crm.html depuis un PDF envoyé par la cliente (même format de ligne,
+// mêmes colonnes : marqueur/valeur/unité/norme min/norme max).
+let lignesInterpretation = [];
+let dernierResultatInterpretation = null;
+
+function ajouterLigneInterpretation() {
+  lignesInterpretation.push({ marqueur: '', valeur: '', unite: '', ref_min: '', ref_max: '' });
+  renderLignesInterpretation();
+}
+function supprimerLigneInterpretation(idx) {
+  lignesInterpretation.splice(idx, 1);
+  if (!lignesInterpretation.length) ajouterLigneInterpretation();
+  else renderLignesInterpretation();
+}
+function updateLigneInterpretation(idx, field, val) {
+  if (!lignesInterpretation[idx]) return;
+  lignesInterpretation[idx][field] = val;
+}
+function renderLignesInterpretation() {
+  const wrap = document.getElementById('interpret-lignes');
+  wrap.innerHTML = lignesInterpretation.map((l, i) => `
+    <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr auto;gap:8px;margin-bottom:8px;align-items:center">
+      <input class="fi" placeholder="Ex : Acide palmitique" value="${escH(l.marqueur)}" oninput="updateLigneInterpretation(${i},'marqueur',this.value)">
+      <input class="fi" placeholder="Valeur" value="${escH(l.valeur)}" oninput="updateLigneInterpretation(${i},'valeur',this.value)">
+      <input class="fi" placeholder="%, mg/L…" value="${escH(l.unite)}" oninput="updateLigneInterpretation(${i},'unite',this.value)">
+      <input class="fi" placeholder="Min" value="${escH(l.ref_min)}" oninput="updateLigneInterpretation(${i},'ref_min',this.value)">
+      <input class="fi" placeholder="Max" value="${escH(l.ref_max)}" oninput="updateLigneInterpretation(${i},'ref_max',this.value)">
+      <button type="button" onclick="supprimerLigneInterpretation(${i})" title="Supprimer la ligne" style="background:none;border:none;cursor:pointer;color:var(--gris);font-size:15px;padding:4px 6px">✕</button>
+    </div>`).join('');
+}
+
+// Compare valeur/normes quand c'est numériquement possible — calcul LOCAL, jamais confié
+// à l'IA (fiabilité arithmétique), à partir UNIQUEMENT des normes saisies pour cette ligne.
+function statutLigneInterpretation(l) {
+  const v = parseFloat(String(l.valeur).replace(',', '.'));
+  const min = l.ref_min !== '' ? parseFloat(String(l.ref_min).replace(',', '.')) : null;
+  const max = l.ref_max !== '' ? parseFloat(String(l.ref_max).replace(',', '.')) : null;
+  if (isNaN(v) || (min === null && max === null) || (min !== null && isNaN(min)) || (max !== null && isNaN(max))) {
+    return { label: 'non évaluable', couleur: 'var(--gris)' };
+  }
+  if (min !== null && v < min) return { label: 'bas', couleur: '#2E6DA4' };
+  if (max !== null && v > max) return { label: 'haut', couleur: '#C0392B' };
+  return { label: 'dans la norme', couleur: 'var(--vert)' };
+}
+
+function buildPromptInterpretationBilan(lignes, labo, d) {
+  const lignesTxt = lignes.map(l =>
+    `- ${l.marqueur} : ${l.valeur}${l.unite ? ' ' + l.unite : ''}${(l.ref_min !== '' || l.ref_max !== '') ? ` (norme de CE bilan : ${l.ref_min !== '' ? l.ref_min : '?'} - ${l.ref_max !== '' ? l.ref_max : '?'})` : ' (norme non renseignée — le dire explicitement, ne pas en supposer une)'}`
+  ).join('\n');
+  return `Tu es l'assistante clinique interne de Sabrina Castelli, naturopathe diplômée (A VITA SERENA, Porto-Vecchio), spécialisée en SIBO/SII, endométriose, ménopause/périménopause, SOPK et thyroïde/Hashimoto, formée en micronutrition fonctionnelle (DFM Duo Pratik, Hormono Pratik). Ce que tu produis ici n'est JAMAIS lu par la cliente — c'est une aide de travail strictement interne pour que Sabrina comprenne elle-même ce que révèlent des valeurs de bilan reçues, avant de préparer son explication à la cliente.
+
+━━ RÈGLE DE SÉCURITÉ ABSOLUE ━━
+Les normes de laboratoire NE SONT JAMAIS comparables d'un laboratoire à l'autre (méthodes de dosage, populations de référence, rendu en % absolu ou relatif selon les cas). Base-toi UNIQUEMENT sur la norme fournie pour chaque ligne ci-dessous (celle imprimée sur CE bilan précis) — n'invente et ne suppose JAMAIS une norme différente, même si tu "sais" qu'un autre laboratoire utilise une plage différente pour ce marqueur. Si aucune norme n'est renseignée pour une ligne, dis-le explicitement plutôt que d'en inventer une.
+
+━━ TA MISSION ━━
+Pour chaque marqueur listé, explique en 2 à 4 phrases maximum :
+1. Ce que ce marqueur reflète physiologiquement (mécanisme, ce qui le fait monter ou descendre).
+2. Si la valeur est haute, basse ou dans la norme PAR RAPPORT À LA NORME FOURNIE pour cette ligne (jamais une norme que tu aurais en mémoire).
+3. Les hypothèses cliniques plausibles si la valeur sort de la norme (ex : apport alimentaire élevé vs synthèse endogène liée à une insulino-résistance, carence d'apport vs mauvaise conversion métabolique) — reste factuelle, jamais un diagnostic.
+4. Si pertinent, un marqueur "témoin" ou complémentaire du même bilan qui permettrait de trancher entre plusieurs hypothèses.
+
+Ajoute une synthèse globale (3 à 5 phrases) qui relie les marqueurs entre eux si plusieurs orientent vers une même piste clinique.
+
+━━ RÈGLES ━━
+1. Reste strictement descriptive et mécanistique — jamais de diagnostic, jamais de nom de pathologie affirmé (tu peux évoquer une piste "évocateur de", "à recouper avec").
+2. Utilise le contexte clinique de la cliente ci-dessous pour éclairer l'interprétation si pertinent, sans jamais réinventer son historique.
+3. Si une valeur semble incohérente ou une norme manquante empêche toute interprétation fiable, dis-le honnêtement plutôt que d'improviser.
+4. Réponds UNIQUEMENT en JSON valide, sans texte avant ni après, sans balises markdown, selon ce format exact :
+{"synthese_globale": "3 à 5 phrases reliant les marqueurs entre eux si pertinent, sinon une phrase le disant honnêtement", "marqueurs": [{"marqueur": "nom exact tel que saisi", "explication": "2 à 4 phrases : mécanisme + hypothèses + éventuel marqueur témoin"}]}
+
+━━ LABORATOIRE (informatif uniquement — ne sert JAMAIS à déduire une norme non fournie) ━━
+${labo || 'Non renseigné'}
+
+━━ VALEURS À INTERPRÉTER ━━
+${lignesTxt}
+
+━━ CONTEXTE CLINIQUE DE LA CLIENTE (pour éclairer, jamais pour halluciner) ━━
+Cliente : ${d?.prenom || 'Non renseignée'}${d?.age ? ', ' + d.age + ' ans' : ''}
+Diagnostics confirmés : ${d?.diagnostics_confirmes || '—'}
+Motifs & symptômes : ${d?.motifs || '—'} · ${d?.symptomes_coches || '—'}
+Alimentation & mode de vie : ${d?.alimentation || '—'}`;
+}
+
+async function interpreterBilanValeurs() {
+  if (!AIClient.hasKey()) { alert('Veuillez d\'abord entrer votre clé API Anthropic.'); return; }
+  const lignes = lignesInterpretation.filter(l => (l.marqueur || '').trim() && (l.valeur || '').toString().trim() !== '');
+  if (!lignes.length) { alert('Ajoutez au moins une ligne avec un marqueur et une valeur.'); return; }
+  const labo = document.getElementById('interpret-labo').value.trim();
+  const d = buildClientData();
+
+  document.getElementById('interpret-btn').disabled = true;
+  document.getElementById('interpret-loading').style.display = 'block';
+  document.getElementById('interpret-result').style.display = 'none';
+
+  try {
+    const raw = (await AIClient.generate(buildPromptInterpretationBilan(lignes, labo, d), { maxTokens: 3000 })).replace(/```json|```/g, '').trim();
+    const parsed = parseJSONRobuste(raw);
+    dernierResultatInterpretation = { data: parsed, lignes, labo };
+    renderInterpretationResult(parsed, lignes, labo, d);
+  } catch (err) {
+    document.getElementById('interpret-result').style.display = 'block';
+    document.getElementById('interpret-result').innerHTML = `
+      <div style="background:#FBEAEA;border:1.5px solid #C0392B;border-radius:12px;padding:16px 18px;font-size:13px;color:#8B3A3A">
+        ⚠ L'analyse a échoué (${err.message}). <button class="btn" style="margin-left:8px" onclick="interpreterBilanValeurs()">↻ Réessayer</button>
+      </div>`;
+  } finally {
+    document.getElementById('interpret-loading').style.display = 'none';
+    document.getElementById('interpret-btn').disabled = false;
+  }
+}
+
+function renderInterpretationResult(data, lignes, labo, d) {
+  const wrap = document.getElementById('interpret-result');
+  const explicationsParMarqueur = {};
+  (data.marqueurs || []).forEach(m => { explicationsParMarqueur[(m.marqueur || '').trim().toLowerCase()] = m.explication; });
+
+  wrap.innerHTML = `
+    <div style="background:#FFF7EC;border:1px solid #D4860A;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:11px;color:#5A3A00;font-weight:600;letter-spacing:.04em;text-transform:uppercase"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-1px;margin-right:5px"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>Usage interne — ni diagnostic, ni texte destiné à la cliente</div>
+    ${data.synthese_globale ? `<div style="font-size:13px;color:var(--ardoise);font-style:italic;margin-bottom:16px;line-height:1.6;background:var(--off);border-radius:10px;padding:12px 14px">${data.synthese_globale}</div>` : ''}
+    <div style="display:flex;flex-direction:column;gap:10px">
+      ${lignes.map(l => {
+        const statut = statutLigneInterpretation(l);
+        const explication = explicationsParMarqueur[(l.marqueur || '').trim().toLowerCase()] || '';
+        return `
+        <div style="background:var(--blanc);border:1px solid var(--taupe);border-radius:10px;padding:12px 16px">
+          <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline;flex-wrap:wrap">
+            <div style="font-weight:700;font-size:13px;color:var(--ardoise)">${l.marqueur}${l.valeur ? ' — ' + l.valeur + (l.unite ? ' ' + l.unite : '') : ''}</div>
+            <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:${statut.couleur}">${statut.label}${(l.ref_min !== '' || l.ref_max !== '') ? ` · norme ${l.ref_min || '?'}-${l.ref_max || '?'}` : ''}</div>
+          </div>
+          ${explication ? `<div style="font-size:12.5px;color:var(--gris);line-height:1.6;margin-top:6px">${explication}</div>` : ''}
+        </div>`;
+      }).join('')}
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">
+      <button class="btn" type="button" onclick="enregistrerInterpretationDansFiche(event)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px;margin-right:5px"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>Enregistrer dans la fiche cliente</button>
+    </div>`;
+  wrap.style.display = 'block';
+  wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// Enregistre le bilan (ligne parent bilans_biologiques + une ligne bilans_marqueurs par
+// marqueur, avec la norme SAISIE — jamais recalculée — et l'explication IA en commentaire).
+// Alimente automatiquement fetchDerniersMarqueurs() : la prochaine suggestion de bilans
+// (section 09) verra ce résultat et ne le re-suggérera pas sans raison de contrôle.
+async function enregistrerInterpretationDansFiche(evt) {
+  if (!dernierResultatInterpretation) return;
+  const d = buildClientData();
+  const clientId = d.client_id;
+  if (!clientId) {
+    alert("Impossible d'identifier la cliente (pas de client_id dans la session) — ouvrez le générateur depuis sa fiche CRM ou son questionnaire pour que son identifiant soit transmis. Vous pouvez tout de même noter cette interprétation manuellement en attendant.");
+    return;
+  }
+  const { data, lignes, labo } = dernierResultatInterpretation;
+  const explicationsParMarqueur = {};
+  (data.marqueurs || []).forEach(m => { explicationsParMarqueur[(m.marqueur || '').trim().toLowerCase()] = m.explication; });
+
+  const btn = evt?.target?.closest('button');
+  const oldLabel = btn?.innerHTML;
+  if (btn) { btn.disabled = true; btn.textContent = 'Enregistrement…'; }
+
+  const SB_URL = 'https://bqhkdndwldwqacrrbbig.supabase.co';
+  const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxaGtkbmR3bGR3cWFjcnJiYmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MzAyNTIsImV4cCI6MjA5NjMwNjI1Mn0.nH2UktMAVKYwng4L3SvW5F0fluV_sObGV0f3Mk1dnOY';
+  let authToken = SB_KEY;
+  if (typeof Auth !== 'undefined') {
+    const token = await Auth.getValidAccessToken();
+    if (token) authToken = token;
+  }
+  const headers = { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' };
+  const aujourdhui = new Date().toISOString().slice(0, 10);
+
+  try {
+    // 1) Ligne parente bilans_biologiques (regroupe les marqueurs de cette saisie)
+    const bilanRes = await fetch(SB_URL + '/rest/v1/bilans_biologiques', {
+      method: 'POST',
+      headers: { ...headers, 'Prefer': 'return=representation' },
+      body: JSON.stringify({
+        client_id: clientId, client_key: clientId,
+        nom_fichier: 'Saisie manuelle — ' + aujourdhui,
+        date_bilan: aujourdhui, type: 'saisie_manuelle', laboratoire: labo || null
+      })
+    });
+    if (!bilanRes.ok) throw new Error(await bilanRes.text());
+    const bilanRow = (await bilanRes.json())[0];
+
+    // 2) Une ligne bilans_marqueurs par marqueur, norme telle que saisie, commentaire = explication IA
+    const rows = lignes.map(l => {
+      const valeurNum = parseFloat(String(l.valeur).replace(',', '.'));
+      const minNum = l.ref_min !== '' ? parseFloat(String(l.ref_min).replace(',', '.')) : null;
+      const maxNum = l.ref_max !== '' ? parseFloat(String(l.ref_max).replace(',', '.')) : null;
+      const statut = statutLigneInterpretation(l).label;
+      return {
+        bilan_id: bilanRow?.id || null, client_id: clientId, client_key: clientId,
+        marqueur: l.marqueur,
+        valeur: isNaN(valeurNum) ? null : valeurNum,
+        valeur_texte: isNaN(valeurNum) ? String(l.valeur) : null,
+        unite: l.unite || null,
+        ref_min: (minNum !== null && !isNaN(minNum)) ? minNum : null,
+        ref_max: (maxNum !== null && !isNaN(maxNum)) ? maxNum : null,
+        statut,
+        date_bilan: aujourdhui,
+        laboratoire: labo || null,
+        commentaire: explicationsParMarqueur[(l.marqueur || '').trim().toLowerCase()] || null
+      };
+    });
+    const marqueursRes = await fetch(SB_URL + '/rest/v1/bilans_marqueurs', {
+      method: 'POST', headers: { ...headers, 'Prefer': 'return=minimal' }, body: JSON.stringify(rows)
+    });
+    if (!marqueursRes.ok) throw new Error(await marqueursRes.text());
+
+    if (btn) { btn.disabled = false; btn.textContent = '✓ Enregistré dans sa fiche'; }
+  } catch (e) {
+    alert("Échec de l'enregistrement dans la fiche cliente : " + e.message);
+    if (btn) { btn.disabled = false; btn.innerHTML = oldLabel; }
+  }
 }
 
 // ── Détection SIBO méthane (IMO) avéré ──
@@ -2662,6 +2922,24 @@ Si le chip "Histamine (intolérance)" est coché, ou qu'un tableau évocateur es
 6. ⛔️ RAPPEL DE SÉCURITÉ : jamais de suggestion d'arrêter un antihistaminique de synthèse ou une pilule contraceptive en cours — orienter vers le médecin traitant en cas de question sur ces traitements. Le régime pauvre en histamine reste toujours provisoire et accompagné d'un travail de fond sur les causes, jamais une éviction alimentaire présentée comme la solution en elle-même.
 7. Ces soutiens comptent dans le total de 2-3 compléments maximum (RÈGLE N°5) — ne jamais les ajouter en plus des autres soutiens déjà choisis pour d'autres axes retenus dans le même PHV.
 
+━━ RÈGLE N°39 — LECTURE DU BILAN DES ACIDES GRAS ÉRYTHROCYTAIRES (AGE) : COMMENT INTERPRÉTER UN RÉSULTAT REÇU, JAMAIS COMMENT TRAITER LE TERRAIN INFLAMMATOIRE (LEVIERS = RÈGLE N°30/N°29/N°31) ━━
+Cette RÈGLE porte uniquement sur LA LECTURE de ce bilan quand la cliente en rapporte un résultat — les leviers cliniques (alimentation, compléments) restent ceux déjà définis en RÈGLE N°29 (métabolisme/insuline), N°30 (terrain inflammatoire de bas grade) et N°31 (terrain allergique) : ne les duplique jamais ici, croise-les.
+
+1. ⚠️ CE QUE MESURE CE BILAN, ET SA LIMITE DE SÉCURITÉ ABSOLUE : il dose la composition en acides gras de la membrane des globules rouges — reflet de l'alimentation en gras/sucres des ~3 derniers mois (durée de vie d'un globule rouge). ⛔️ RÈGLE DE SÉCURITÉ NON NÉGOCIABLE : les normes de ce bilan précis NE SONT JAMAIS comparables d'un laboratoire à l'autre (Barbier, Synlab, Lims-MBnext, Biomnis rendent des plages différentes pour un même marqueur, et certains labos rendent un % ABSOLU — rapporté à l'ensemble des acides gras de la membrane — quand d'autres rendent un % RELATIF — rapporté aux seuls acides gras sélectionnés dans leur bilan). N'interprète JAMAIS une valeur de ce bilan par rapport à une norme mémorisée d'un autre bilan ou d'un autre laboratoire — utilise UNIQUEMENT la norme imprimée sur CE bilan précis (cohérent avec l'outil d'interprétation dédié de la fiche cliente).
+2. QUAND LE PROPOSER (voir BILANS_REFERENCE pour la suggestion automatique) : terrain inflammatoire de bas grade qui résiste aux premiers leviers alimentaires (RÈGLE N°30), risque cardiovasculaire, contexte neuro-inflammatoire ou neurodégénératif, douleur chronique/tendinopathies diffuses, terrain allergique qui ne s'améliore pas malgré une supplémentation en GLA (permet de vérifier si la conversion a réellement eu lieu), avant/après une supplémentation en oméga-3 pour objectiver son efficacité, humeur/dépression résistante quand une piste inflammatoire est suspectée (RÈGLE N°28).
+3. LES RAPPORTS DU BILAN, PAR ORDRE D'IMPORTANCE CLINIQUE :
+   a) Indice Oméga 3 : cible >8% (objectif cardiovasculaire/humeur/longévité), <4% = risque élevé. Si bas : reprend les leviers déjà définis en RÈGLE N°30 (poisson gras, huile mix maison, huile de poisson) — jamais un nouveau protocole séparé.
+   b) Rapport AA/EPA : LE marqueur le plus parlant du terrain pro/anti-inflammatoire, cible <3 en contexte pathologique inflammatoire (moyenne en France : 15-20 — à ne jamais présenter comme alarmante en soi à la cliente, c'est une moyenne de population, pas un couperet).
+   c) Rapport LN/DGLA (reflet indirect de l'activité de l'enzyme delta-6-désaturase) : peu consensuel entre laboratoires (norme à toujours lire sur CE bilan). S'il reste défavorable malgré un bon apport alimentaire en oméga-3, pense aux freins déjà identifiés en RÈGLE N°30 (cofacteurs zinc/fer/magnésium/B6, excès d'insuline RÈGLE N°29, stress chronique RÈGLE N°12) plutôt qu'à un simple manque d'apport — ne duplique jamais cette explication, renvoie-y.
+   d) Rapport Oméga6/Oméga3 : ⛔️ ce rapport est un repère nutritionnel général de l'assiette (pédagogie alimentaire), PAS un outil diagnostique pour CE bilan précis — ne t'en sers jamais pour interpréter un résultat d'AGE, les 3 rapports ci-dessus sont les seuls cliniquement pertinents ici.
+4. LECTURE FAMILLE PAR FAMILLE (affine l'hypothèse causale — jamais un marqueur ou une valeur nommés à la cliente, garde-fou RÈGLE N°6/N°20) :
+   a) Triangulation des saturés (myristique/palmitique/stéarique) : myristique ET palmitique élevés mais stéarique NORMAL → oriente vers une synthèse hépatique ENDOGÈNE (sucre, insulino-résistance — croise avec RÈGLE N°29), pas un excès d'apport alimentaire de graisses saturées. Les 3 élevés ensemble → apport alimentaire réellement trop riche en graisses saturées. Myristique et palmitique bas → repère de terrain non insulino-résistant.
+   b) ETA (acide eïcosatriènoïque) élevé : marqueur de carence en acides gras essentiels oméga (le corps compense en élongant l'oméga-9 faute d'oméga suffisants) — oriente vers un besoin réel de correction diététique/supplémentation, cohérent avec un Indice Oméga 3 bas.
+   c) Acide nervonique (recherché spécifiquement chez le laboratoire Barbier) : marqueur de myélinisation, pertinent en contexte neurodégénératif — source alimentaire huile de cameline, déjà citée en RÈGLE N°29 et N°30 comme repère alimentaire global : ne pas dupliquer, relier explicitement si ce contexte neuro est présent chez la cliente.
+   d) Trans : distinguer TOUJOURS les trans naturels (CLA/acide ruminique, T-Vac — issus des produits laitiers, bénéfiques, protecteurs du syndrome métabolique) des trans de synthèse (acide élaïdique — cuisson à haute température des huiles, industriel/low-cost, délétère). Si l'élaïdique est élevé, le levier est la température de cuisson des corps gras (jamais un aliment à éviter en soi, mais une façon de le cuisiner) — cohérent avec la cuisson douce déjà recommandée en RÈGLE N°29, à relier explicitement si les deux sont pertinents.
+   e) GLA : marqueur sensible à la supplémentation en bourrache/onagre (RÈGLE N°30/N°31) — utile pour objectiver l'observance si un contrôle est fait en cours de protocole.
+5. Ces lectures restent des hypothèses cliniques, jamais un diagnostic — reste toujours au niveau du mécanisme accessible pour la cliente (garde-fou RÈGLE N°6/N°20), et ne nomme jamais de valeur chiffrée ni de nom de marqueur dans le texte qui lui est destiné.
+
 ━━ DONNÉES DE LA SÉANCE ━━
 Cliente : ${d.prenom}${d.nom ? ' ' + d.nom : ''}${d.age ? ', ' + d.age + ' ans' : ''} · Profil : ${d.profil}
 Diagnostics médicaux confirmés : ${d.diagnostics_confirmes || 'Aucun renseigné — travailler sur les symptômes et axes prioritaires uniquement'}${d.sibo_type ? ' · Type de SIBO : ' + d.sibo_type : ''}${d.candidose_profil ? ' · Profil protocole candidose : ' + d.candidose_profil : ''}
@@ -2796,6 +3074,13 @@ Si un axe métabolique/insulino-résistance est retenu parmi les axes prioritair
 13. PRISE EN CHARGE DE LA GLYCATION AU QUOTIDIEN (levier alimentaire concret, à associer à la chronobiologie du point 5 et aux stratégies du point 7 — gestes de mode de vie, ne comptent pas dans le total de la RÈGLE N°5) : deux leviers complémentaires à expliquer avec le "pourquoi" — a) L'ASSIETTE ANTIOXYDANTE : une assiette colorée, associant légumes crus et cuits, de saison, avec une cuillère à soupe d'huile riche en oméga-3 (colza/lin/cameline) et une d'huile d'olive à chaque repas, et des épices/aromates — ces antioxydants neutralisent les radicaux libres produits par la réaction de glycation elle-même (cohérent avec le point 10). b) LA CUISSON DOUCE : éviter la consommation régulière d'aliments fortement dorés/brunis à la cuisson (croûte de pain très cuite, viande très grillée, caramel, crème brûlée) — plus la température et le temps de cuisson sont élevés, plus la glycation "externe" de l'aliment est importante ; privilégier les cuissons vapeur douce, à l'étouffée ou pochées. Si un soutien ciblé de la glycation est justifié (terrain de fatigue avec dysfonction mitochondriale confirmée et glycation cliniquement suspectée), la NAC déjà citée en soutien hépatique (RÈGLE N°8/N°23 point 3ter-d, voir banque de compléments) participe aussi à la dégradation du méthylglyoxal issu de la glycation — même produit, ne jamais compter deux fois dans le total si déjà proposée pour un autre axe chez la même cliente.
 
 14. POURQUOI L'INSULINO-RÉSISTANCE ENTRETIENT ELLE-MÊME L'INFLAMMATION (mécanisme à relier explicitement si un terrain inflammatoire de bas grade, RÈGLE N°30, coexiste avec l'axe métabolique) : l'excès chronique d'insuline active directement une voie inflammatoire cellulaire (au même titre que l'excès d'acide arachidonique de la RÈGLE N°30) — ce qui, en retour, bloque encore davantage le récepteur à l'insuline et aggrave la résistance : un cercle vicieux où l'inflammation nourrit l'insulino-résistance et l'insulino-résistance nourrit l'inflammation. La glycation (point 13) participe au même cercle en activant la même voie. Le tissu adipeux abdominal n'est lui-même jamais un simple stock de graisse inerte : c'est un tissu qui sécrète ses propres substances inflammatoires, ce qui explique pourquoi une cliente en tour de taille élevé reste inflammatoire même sans autre cause identifiée. Conséquence pratique : si les deux axes coexistent (fréquent), ne jamais les traiter comme deux protocoles séparés — les leviers communs (réduction de la charge glycémique, oméga-3, gestion du stress) travaillent les deux fronts à la fois, à expliquer en une seule fois à la cliente plutôt que de dupliquer l'explication.
+
+15. LE RAPPORT ADIPONECTINE/LEPTINE : MARQUEUR CONCRET DU TISSU ADIPEUX INFLAMMATOIRE ÉVOQUÉ AU POINT 14 (Module 4 DFM Duo Pratik) — à mobiliser pour objectiver et affiner le raisonnement du point 14, jamais comme un axe séparé :
+   a) MÉCANISME (pour \"pourquoi_praticien\" ET \"pourquoi_cliente\" en langage accessible, sans jamais nommer le mot \"adipokine\") : le tissu adipeux sécrète en permanence deux substances aux effets opposés — une qui protège (favorise la sensibilité à l'insuline, calme l'inflammation) et une qui régule l'appétit mais devient elle-même pro-inflammatoire en excès. Chez un tissu adipeux qui va bien, la première domine largement ; quand ce tissu devient inflammatoire (souvent bien avant que le poids ou l'IMC ne le montre), la balance s'inverse — la substance protectrice diminue, l'autre augmente et perd son efficacité (le corps y devient moins sensible, un peu comme pour l'insuline). C'est cette bascule que mesure leur rapport.
+   b) GRILLE DE LECTURE INTERNE, POUR \"pourquoi_praticien\" UNIQUEMENT (jamais de valeur chiffrée ni le nom des deux substances dans le texte destiné à la cliente — même garde-fou que RÈGLE N°6/N°20, se limiter à \"votre tissu adipeux montre des signes de terrain inflammatoire\" si le résultat le justifie) : rapport ≈1 = terrain favorable ; entre 0,5 et 1 = risque modéré ; en dessous de 0,5 = risque élevé. C'est un marqueur plus sensible de la résistance à l'insuline que la seule glycémie ou le HOMA (cohérent avec le point 6), et il reste pertinent même chez une cliente au poids/IMC normal (cohérent avec le point 9 sur le tour de taille) — ne l'écarte jamais sur ce seul critère.
+   c) QUAND L'ÉVOQUER EN PRIORITÉ DANS LE CHOIX DES BILANS (voir BILANS_REFERENCE) : tour de taille élevé quel que soit l'IMC (voir champ dédié du questionnaire), antécédents familiaux cardiovasculaires/diabète/cancer hormono-dépendant déjà rapportés dans le dossier, terrain inflammatoire de bas grade (RÈGLE N°30) associé à une stagnation métabolique, ou ménopause avec prise de poids (RÈGLE N°13) — jamais proposé de façon systématique à toute cliente, seulement quand le tableau clinique l'oriente.
+   d) LEVIERS SI LE RAPPORT EST DÉFAVORABLE (ne créent jamais un protocole distinct — recoupent et enrichissent les leviers déjà comptés en RÈGLE N°29/N°30, à choisir selon ce qui manque chez cette cliente précise plutôt qu'à tout proposer) : les leviers oméga-3 et réduction de la charge glycémique déjà prévus aux points 2 et 5-7 restent le socle ; en complément, privilégier l'huile d'olive (acide oléique) en assaisonnement quotidien, et des polyphénols d'origine alimentaire plutôt qu'en complément isolé — oignon rouge, ail, raisin/vin rouge avec modération (même famille que la quercétine déjà citée RÈGLE N°5/N°31/N°38, ne jamais dupliquer si déjà proposée pour un autre axe) ; côté mode de vie (gestes, ne comptent jamais dans le total RÈGLE N°5) : repas réguliers sans grignotage, sommeil de qualité (cohérent avec RÈGLE N°32), et piments/épices relevées si bien tolérées par la cliente (capsaïcine, geste alimentaire simple, jamais en complément dédié).
+   e) VIGILANCE SUR LE DISCOURS À LA CLIENTE : ce marqueur est corrélé dans la littérature à des risques (cardiovasculaire, certains cancers hormono-dépendants) totalement indépendants du chiffre sur la balance — un point utile pour désamorcer une lecture uniquement esthétique du poids, mais à formuler uniquement comme \"un terrain à optimiser\", jamais comme une inquiétude ou un pronostic (garde-fou général RÈGLE N°6, aucune alerte médicale ne doit être formulée par la naturopathie).
 
 ━━ RÈGLE N°32 — CHRONOTYPES & SYNCHRONISATION DES BIORYTHMES : DISTINCT DE LA RÈGLE N°28, C'EST LA MÉTHODE DE RECALAGE, PAS LE PROFIL NEUROTRANSMETTEUR ━━
 Si un désalignement des biorythmes est identifié (décalage entre le rythme social et le rythme biologique de la cliente, travail posté/de nuit, jet-lag fréquent, changement d'heure mal toléré, adolescent en retard de phase, sommeil qui ne redevient pas réparateur malgré le travail sur la sérotonine et le cortisol du soir déjà fait via RÈGLE N°12/N°28) :
@@ -3340,7 +3625,7 @@ function resetAll() {
 }
 
 // ── Init ──
-showAuthGate('praticienne', () => { removeAuthGate(); loadSession(); prefillKeyStatus(); });
+showAuthGate('praticienne', () => { removeAuthGate(); loadSession(); prefillKeyStatus(); ajouterLigneInterpretation(); ajouterLigneInterpretation(); ajouterLigneInterpretation(); });
 </script>
 </body>
 </html>
