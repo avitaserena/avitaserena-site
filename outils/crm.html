@@ -4408,7 +4408,6 @@ function renderFiche(c){
     let naFn='',naLbl='';
     if(nextWF.action==='bilan'){naFn=`ouvrirBilanEntree('${cid}','depart')`;naLbl=ic('file')+' Ouvrir';}
     else if(nextWF.action==='phv'){naFn=`ouvrirPHVCliente('${cid}')`;naLbl=ic('spark')+' Générer';}
-    else if(nextWF.action==='lettre'){naFn=`ouvrirLettreSeance('${cid}')`;naLbl=ic('mail')+' Rédiger';}
     else if(nextWF.action==='checkin'){naFn=`envoyerCheckinBrevoTpl('${cid}')`;naLbl=ic('chart')+' Envoyer';}
     else if(nextWF.tpl){naFn=`ouvrirMailModal('${cid}','${nextWF.tpl}')`;naLbl=ic('mail')+' Email';}
     const naB=naFn?`<button class="na-btn" style="background:var(--violet);color:white" onclick="${naFn}">${naLbl}</button>`:'';
@@ -4512,7 +4511,6 @@ function renderFiche(c){
     if(!s.done){
       if(s.action==='bilan') aBtn=btnSm('tool',`ouvrirBilanEntree('${cid}','depart')`,ic('file')+' Bilan');
       else if(s.action==='phv') aBtn=btnSm('tool',`ouvrirPHVCliente('${cid}')`,ic('spark')+' PHV');
-      else if(s.action==='lettre') aBtn=btnSm('tool',`ouvrirLettreSeance('${cid}')`,ic('mail')+' Lettre');
       else if(s.action==='checkin') aBtn=btnSm('tool',`envoyerCheckinBrevoTpl('${cid}')`,ic('chart')+' Lien');
       else if(s.action==='cloture') aBtn=btnSm('tool',`ouvrirBilanEntree('${cid}','cloture')`,ic('trophy')+' Clôture');
       else if(s.tpl) aBtn=btnSm('email',`ouvrirMailModal('${cid}','${s.tpl}')`,ic('mail')+' Email');
@@ -4562,7 +4560,7 @@ function renderFiche(c){
       return {icon:ic('spark'),bg:'var(--violet-lt)',name:'Protocole PHV',meta:'Non généré',st:'missing',stl:'À générer',al:'Générer',ac:'primary',fn:`ouvrirPHVCliente('${cid}')`};
     })(),
     ...(c.phv_pdf_url ? [{icon:ic('download'),bg:'var(--violet-lt)',name:'PDF du protocole',meta:'Fichier PDF téléchargeable, enregistré durablement',st:'ok',stl:'Disponible',al:'Télécharger',ac:'',fn:`window.open('${escH(c.phv_pdf_url)}','_blank')`}] : []),
-    {icon:ic('mail'),bg:'var(--blue-lt)',name:'Lettre clinique',meta:c.timeline?.find(t=>t.title?.includes('Lettre'))?'Envoyée':'Non rédigée',st:c.timeline?.find(t=>t.title?.includes('Lettre'))?'ok':'missing',stl:c.timeline?.find(t=>t.title?.includes('Lettre'))?'Envoyée':'Non rédigée',al:'Rédiger',ac:'primary',fn:`ouvrirLettreSeance('${cid}')`},
+    {icon:ic('mail'),bg:'var(--blue-lt)',name:"Lettre d'adressage",meta:'Courrier ponctuel vers un professionnel de santé (gastro, gynéco...)',st:'',stl:'Sur demande',al:'Rédiger',ac:'',fn:`ouvrirLettreClinique('${cid}')`},
     {icon:ic('spark'),bg:'var(--green-lt)',name:'Rapport de progression (IA)',meta:'Brouillon généré à partir du suivi — toujours relu avant envoi',st:'pending',stl:'Sur demande',al:'Générer',ac:'primary',fn:`genererRapportProgressionIA('${cid}')`},
     {icon:ic('file'),bg:'var(--orange-lt)',name:"Bilan d'entrée",meta:c.timeline?.find(t=>t.title?.includes('Bilan'))?'Complété':'Non rempli',st:c.timeline?.find(t=>t.title?.includes('Bilan'))?'ok':c.programme?'pending':'missing',stl:c.timeline?.find(t=>t.title?.includes('Bilan'))?'Complété':c.programme?'À compléter':'N/A',al:'Ouvrir',ac:c.programme?'primary':'',fn:`ouvrirBilanEntree('${cid}','depart')`},
     {icon:ic('chart'),bg:'var(--green-lt)',name:'Check-in hebdo',meta:c.timeline?.find(t=>t.title?.includes('check-in'))?'Lien envoyé':'Non activé',st:c.timeline?.find(t=>t.title?.includes('check-in'))?'ok':'missing',stl:c.timeline?.find(t=>t.title?.includes('check-in'))?'Actif':'Non activé',al:'Envoyer le lien',ac:c.programme?'primary':'',fn:`envoyerCheckinBrevoTpl('${cid}')`},
@@ -6261,7 +6259,7 @@ function voirReponsesVisio(cid){
   document.body.appendChild(modal);
 }
 
-// ── Lettre d'adressage clinique ──
+// ── Lettre d'adressage clinique (vers un professionnel de santé — jamais vers la cliente) ──
 function ouvrirLettreClinique(clientId){
   const c = db.clients.find(x => x.id === clientId);
   if(!c){ toast('Cliente introuvable','err'); return; }
@@ -6274,23 +6272,7 @@ function ouvrirLettreClinique(clientId){
   };
   sessionStorage.setItem('lc_cliente', JSON.stringify(data));
   localStorage.setItem('lc_cliente', JSON.stringify(data));
-  window.open('lettre-clinique.html', '_blank');
-}
-
-// ── Lettre d'adressage clinique ──
-function ouvrirLettreClinique(clientId){
-  const c = db.clients.find(x => x.id === clientId);
-  if(!c){ toast('Cliente introuvable','err'); return; }
-  const data = {
-    prenom: c.prenom||'', nom: c.nom||'', ddn: c.ddn||'',
-    email: c.email||'', tel: c.tel||'',
-    motifs: c.motifs||'', axes: c.axes||'',
-    programme: c.programme||'', date1: c.date1||'',
-    notes: c.notes||''
-  };
-  sessionStorage.setItem('lc_cliente', JSON.stringify(data));
-  localStorage.setItem('lc_cliente', JSON.stringify(data));
-  window.open('lettre-clinique.html', '_blank');
+  window.open('lettre-adressage.html', '_blank');
 }
 
 // ── Clé API Anthropic (saisie une fois par session) ──
@@ -6736,18 +6718,6 @@ async function envoyerRapportProgression(clientId, lettreId){
   }catch(e){
     toast('Erreur : '+e.message,'err');
   }
-}
-
-function ouvrirLettreSeance(clientId){
-  const c = db.clients.find(x => x.id === clientId);
-  if(!c){ toast('Cliente introuvable','err'); return; }
-  localStorage.setItem('avita_lettre_ctx', JSON.stringify({
-    prenom: c.prenom || '',
-    email: c.email || '',
-    motif: c.motifs ? c.motifs.split(/[,·]/)[0].trim() : '',
-    client_id: c.id
-  }));
-  window.open('lettre-clinique.html', '_blank');
 }
 
 function ouvrirBilanEntree(clientId, mode){
