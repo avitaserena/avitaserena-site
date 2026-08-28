@@ -899,6 +899,9 @@ input.fi[readonly]{background:var(--taupe);cursor:default;opacity:.75}
 </div>
 
 
+<!-- Signaux d'alarme — hors champ naturopathique, orientation médicale (26/08/2026) -->
+<div id="signaux-alarme" style="display:none"></div>
+
 <button class="gen-btn" id="gen-btn" onclick="generate()">✦ Générer le Protocole d'Hygiène Vitale</button>
 
 <!-- LOADING -->
@@ -2349,6 +2352,13 @@ ${(d.secu_cancer && d.secu_cancer.startsWith('Oui')) ? '⛔️ Antécédent de c
 ${d.allergies_alim && !/aucune/i.test(d.allergies_alim) ? '⛔️ Ne JAMAIS recommander un aliment, une recette ou un complément contenant : ' + d.allergies_alim + '.' : ''}
 ${d.traitements_vigilance.includes('Anticoagulants') ? (!d.anticoag_type || d.anticoag_type === '' || d.anticoag_type.startsWith('AVK') || d.anticoag_type === 'Autre / ne sait pas' ? '⛔️ Anticoagulant de type AVK (ou non précisé, donc traité par prudence comme un AVK) : Vitamine K2 INTERDITE (voir RÈGLE N°9), proposer une Vitamine D3 seule si un soutien vitamine D est retenu.' : '✅ Anticoagulant de type ' + d.anticoag_type + ' — la contre-indication à la Vitamine K2 (RÈGLE N°9) ne s\'applique qu\'aux AVK, donc D3+K2 reste envisageable ici si aucune autre CI ; rester prudente sur les autres points de vigilance anticoagulants (oméga-3 >2g/j, millepertuis, gingko, RÈGLE N°6).') : ''}
 
+━━ RÈGLE N°6bis — CONFLITS CROISÉS ENTRE AXES (à vérifier UNIQUEMENT quand PLUSIEURS axes se déclenchent ensemble chez la même cliente — chaque actif pris isolément est déjà sécurisé par sa propre RÈGLE, ce qui suit couvre les combinaisons qui n'apparaissent que lorsque deux axes se superposent) ━━
+1. SÉROTONINERGIQUES CUMULÉS SOUS ISRS/ANTIDÉPRESSEUR : si la cliente est sous ISRS/antidépresseur (voir statut ci-dessus), l'interdiction ne se limite pas au millepertuis (RÈGLE N°6) — elle couvre TOUT précurseur sérotoninergique proposé par n'importe quelle branche : Griffonia/5-HTP (Branche Neurotransmetteurs RÈGLE N°28, Branche Actée-Griffonia ménopause RÈGLE N°13/27, Branche CMM digestif RÈGLE N°24 si Safran+Griffonia combinés), L-Tryptophane (RÈGLE N°28). Si deux branches différentes proposent chacune un précurseur sérotoninergique pour deux axes distincts (ex. ménopause ET sommeil), c'est un cumul, pas deux recommandations indépendantes — l'interdiction s'applique aux deux à la fois.
+2. DOPAMINERGIQUES CUMULÉS SOUS TRAITEMENT DOPAMINERGIQUE/ANTIPSYCHOTIQUE/IMAO : Mucuna pruriens (L-Dopa) et L-Tyrosine sont proposés dans plusieurs branches (Neurotransmetteurs RÈGLE N°28, Gonades/hyperprolactinémie RÈGLE N°14) — même vigilance qu'au point 1 : si la cliente est sous traitement dopaminergique, antipsychotique ou IMAO, exclure ces précurseurs quel que soit l'axe qui les a fait apparaître.
+3. FLUIDIFIANTS LÉGERS CUMULÉS SOUS ANTICOAGULANT : au-delà d'oméga-3 >2g/j, millepertuis et gingko déjà cités en RÈGLE N°6, le Cordyceps (branche Surrénales RÈGLE N°12) a un effet fluidifiant léger rapporté — vérifier qu'il n'est pas combiné à un autre actif à effet fluidifiant chez une cliente déjà sous anticoagulant.
+4. UN MÊME ACTIF PROPOSÉ PAR PLUSIEURS AXES = UNE SEULE ENTRÉE, JAMAIS DEUX : plusieurs actifs de la banque RÈGLE N°5 reviennent sous plusieurs branches différentes pour des raisons physiologiques différentes (magnésium bisglycinate : stress/thyroïde/méthylation/insuline ; zinc bisglycinate : thyroïde/hyperandrogénie/hyperperméabilité/insuline ; NAC : hépatoprotection/SOPK ; safran : CMM digestif/excès cortisol). Si plusieurs axes retenus chez la même cliente pointent vers le même actif, ne le compte QU'UNE SEULE FOIS dans le total de 2-3 compléments de la phase (RÈGLE N°5) — jamais comme deux produits distincts, même si les justifications diffèrent. Dans ce cas, la posologie retenue est celle du besoin le plus élevé parmi les axes concernés, jamais un cumul des doses.
+5. VIGILANCE DOSE CUMULÉE MAGNÉSIUM : le magnésium bisglycinate revient dans de nombreuses branches à des doses différentes (300mg base, jusqu'à 600-800mg si excès de cortisol marqué) — appliquer le point 4 ci-dessus (une seule entrée, dose du besoin le plus élevé) et respecter la vigilance taurine/B6 déjà prévue dans la banque RÈGLE N°5 si la dose retenue dépasse 400-500mg/j.
+
 ━━ RÈGLE N°7 — AROMATHÉRAPIE (huiles essentielles, huiles végétales, hydrolats) ━━
 La liste ci-dessous ("HUILES COMPATIBLES") a déjà été filtrée automatiquement par le code (pas par toi) selon le profil de sécurité de la cliente (grossesse/allaitement, âge, cancer hormono-dépendant, épilepsie, asthme, anticoagulants, insuffisance rénale/hépatique, allergie aux HE). Tu ne dois JAMAIS proposer une huile qui n'apparaît pas dans cette liste, même si elle te semble pertinente.
 Si la liste est vide ou ne contient rien de pertinent pour les axes prioritaires de la cliente, ne force RIEN : n'inclus simplement pas la section s7_aromatherapie (renvoie une chaîne vide), ou limite-toi à recommander un hydrolat doux (aucune contre-indication connue) si un seul semble pertinent.
@@ -3188,11 +3198,67 @@ function programmeCleFromDuree(dureeProg) {
   return null; // 1 ou 2 mois : protocole court, pas de parcours nommé
 }
 
+// ── Détection de signaux d'alarme hors champ naturopathique (26/08/2026) ────────────────────
+// Liste volontairement non exhaustive de formulations qui, si elles apparaissent dans les
+// données de séance (symptômes cochés, textes libres, notes praticien...), signalent un tableau
+// clinique qui dépasse le champ de la naturopathie et nécessite une orientation médicale — pas un
+// protocole naturopathique en première intention. Ceci s'exécute AVANT tout appel à l'IA, sur les
+// données brutes du questionnaire, pas sur le texte généré : le but est de vous alerter, VOUS, la
+// praticienne, avant même de lancer la génération — pas de rattraper l'IA après coup.
+// Volontairement un filtre large et peu spécifique (mieux vaut un faux positif qu'un signal
+// manqué) : à vous de juger en un coup d'œil si le contexte est bénin ou non, ce n'est jamais
+// un blocage définitif, seulement une confirmation explicite à donner avant de continuer.
+const SIGNAUX_ALARME = [
+  { re: /fi[eè]vre[^.\n]{0,60}(frissons|dos|lombaire|rein)|frissons[^.\n]{0,60}(fi[eè]vre|dos|lombaire)/i, label: 'Fièvre + frissons + douleur dos/lombaire — risque pyélonéphrite/infection rénale' },
+  { re: /douleur[^.\n]{0,40}(thora|poitrine)|oppression\s+thoracique/i, label: 'Douleur ou oppression thoracique' },
+  { re: /sang\s+dans\s+les\s+selles|selles\s+noires|m[ée]l[ée]na|rectorragie|vomi(t|ssement)s?\s+de\s+sang/i, label: 'Saignement digestif (sang dans les selles, selles noires, vomissement de sang)' },
+  { re: /perte\s+de\s+poids[^.\n]{0,40}(inexpliqu|sans\s+raison|rapide|soudaine)/i, label: 'Perte de poids rapide et inexpliquée' },
+  { re: /pire\s+mal\s+de\s+t[eê]te|c[ée]phal[ée]e[^.\n]{0,40}(brutale|soudaine|intense|inhabituelle)/i, label: 'Céphalée brutale, intense ou inhabituelle' },
+  { re: /essoufflement\s+soudain|difficult[ée]s?\s+(à|a)\s+respirer|dyspn[ée]e/i, label: 'Difficulté respiratoire soudaine' },
+  { re: /id[ée]es?\s+suicidaires|envie\s+de\s+mourir|envie\s+de\s+ne\s+plus\s+(être|vivre)|passage\s+à\s+l.?acte/i, label: 'Idées suicidaires ou détresse psychologique aiguë' },
+  { re: /jaunisse|peau\s+jaune|yeux\s+jaunes|ict[eè]re/i, label: 'Jaunisse / ictère' },
+  { re: /douleur\s+abdominale[^.\n]{0,40}(intense|brutale|soudaine|insupportable)/i, label: 'Douleur abdominale intense et soudaine' },
+  { re: /gonflement[^.\n]{0,40}(gorge|visage|l[eè]vres)|urticaire\s+g[ée]n[ée]ralis[ée]e/i, label: "Signes évocateurs d'anaphylaxie (gonflement gorge/visage, urticaire généralisée)" },
+  { re: /saignement[^.\n]{0,40}(grossesse|enceinte)|grossesse[^.\n]{0,40}(saignement|douleur\s+abdominale)/i, label: 'Saignement ou douleur abdominale en cours de grossesse' },
+];
+
+function detecterSignauxAlarme(d) {
+  const texteComplet = [d.symptomes_coches, d.textes_libres, d.chips, d.selects_complets, d.notes_praticien, d.motifs, d.scores]
+    .filter(Boolean).join(' \n ');
+  return SIGNAUX_ALARME.filter(s => s.re.test(texteComplet)).map(s => s.label);
+}
+
+function afficherSignauxAlarme(signaux) {
+  const zone = document.getElementById('signaux-alarme');
+  if (!zone) return;
+  if (!signaux.length) { zone.style.display = 'none'; zone.innerHTML = ''; return; }
+  zone.style.display = 'block';
+  zone.innerHTML = `
+    <div style="background:#FBEAEA;border:1.5px solid #C0392B;border-radius:14px;padding:18px 20px;margin-bottom:16px">
+      <div style="font-weight:700;color:#8B3A3A;margin-bottom:8px;display:flex;align-items:center;gap:8px">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+        Signal(aux) hors champ naturopathique détecté(s) dans le dossier
+      </div>
+      <ul style="margin:0 0 10px;padding-left:20px;font-size:13.5px;color:#6B5555;line-height:1.7">
+        ${signaux.map(s => `<li>${escH(s)}</li>`).join('')}
+      </ul>
+      <div style="font-size:12.5px;color:#6B5555;line-height:1.6">Ceci n'est jamais un diagnostic — juste une détection de mots-clés dans le dossier. Avant de générer un protocole naturopathique sur ce dossier, vérifiez que ce point a bien été écarté ou déjà orienté vers un médecin.</div>
+    </div>`;
+  zone.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
 async function generate() {
   if (!AIClient.hasKey()) { alert('Veuillez d\'abord entrer votre clé API Anthropic.'); return; }
   const d = buildClientData();
   if (!d.prenom || d.prenom === 'Cliente') {
     if (!confirm('Aucun prénom détecté. Continuer quand même ?')) return;
+  }
+  const signauxDetectes = detecterSignauxAlarme(d);
+  afficherSignauxAlarme(signauxDetectes);
+  if (signauxDetectes.length > 0) {
+    const confirmMsg = 'Signal détecté hors champ naturopathique :\n\n— ' + signauxDetectes.join('\n— ') +
+      '\n\nConfirmez-vous que ce point a été écarté ou déjà orienté vers un médecin, et que vous souhaitez générer le protocole malgré tout ?';
+    if (!confirm(confirmMsg)) return;
   }
   d.bilans_biologiques_resultats = await fetchDerniersMarqueurs(d.client_id);
 
@@ -3339,6 +3405,50 @@ function afficherAlertesConformite(blocksArr) {
   }
   if (/respirelax|petit\s*bambou|kardia|youtube|headspace|calm\b/i.test(texteLower)) {
     alertes.push("Renvoi vers une application ou plateforme externe détecté — doit toujours rediriger vers l'espace Bien-être de l'espace cliente.");
+  }
+
+  // ── Croisement avec le statut de sécurité RÉEL de cette cliente (26/08/2026) ──────────────
+  // Les alertes ci-dessus sont des interdits globaux (valables pour toutes les clientes).
+  // Celles-ci sont propres au dossier de LA cliente en cours (grossesse, cancer hormono-dépendant,
+  // anticoagulants, allergies) — c'est le code qui revérifie le texte généré contre les données
+  // de séance, indépendamment de ce que l'IA a cru comprendre du prompt (RÈGLE N°6).
+  const dSec = generatedData?._client || {};
+
+  if (dSec.secu_cancer && /^oui/i.test(dSec.secu_cancer)) {
+    // Exception documentée RÈGLE N°6 : l'actée à grappes noires (Cimicifuga) n'est PAS un phytoestrogène,
+    // on ne la flag donc jamais ici même si elle apparaît à côté du mot "cancer".
+    if (/feminabiane\s*m[ée]nopause|phytostandard\s*m[ée]nopause|\bhoublon\b|\bsauge\b(?!\s*officinale\s*\(hors)|tr[èe]fle\s*rouge|phytoestrog[èe]ne/i.test(texte)) {
+      alertes.push('Antécédent de cancer hormono-dépendant renseigné : un phytoestrogène (houblon/sauge/trèfle rouge/Feminabiane) semble présent dans le texte — à vérifier en priorité, interdit sauf erreur de lecture.');
+    }
+  }
+
+  if (dSec.secu_grossesse && dSec.secu_grossesse !== 'Non concernée') {
+    if (/huile\s+essentielle/i.test(texte) && !/\bhydrolat\b/i.test(texte.split(/huile\s+essentielle/i)[0].slice(-40))) {
+      alertes.push('Grossesse/allaitement/désir de grossesse renseigné : une huile essentielle est mentionnée — vérifier qu\'elle n\'est jamais proposée par voie interne et que la compatibilité grossesse est bien vérifiée.');
+    }
+  }
+
+  if (dSec.traitements_vigilance && dSec.traitements_vigilance.includes('Anticoagulants')) {
+    const estAVK = !dSec.anticoag_type || dSec.anticoag_type === '' || dSec.anticoag_type.startsWith('AVK') || dSec.anticoag_type === 'Autre / ne sait pas';
+    if (estAVK && /vitamine\s*k2|\bK2\b/i.test(texte)) {
+      alertes.push('Anticoagulant AVK (ou non précisé) : "K2" apparaît dans le texte — la Vitamine K2 est contre-indiquée, vérifier qu\'une D3 seule est bien proposée à la place.');
+    }
+    if (/millepertuis/i.test(texte)) {
+      alertes.push('Anticoagulant en cours : "millepertuis" détecté — interaction dangereuse, à vérifier immédiatement.');
+    }
+    if (/gingko|ginkgo/i.test(texte)) {
+      alertes.push('Anticoagulant en cours : "gingko" détecté — interaction à vérifier immédiatement.');
+    }
+  }
+
+  if (dSec.allergies_alim && !/aucune/i.test(dSec.allergies_alim)) {
+    const allergenes = dSec.allergies_alim.split(/[,;]/).map(a => a.trim()).filter(a => a.length > 2);
+    allergenes.forEach(allergene => {
+      const re = new RegExp('\\b' + allergene.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i');
+      if (re.test(texte)) {
+        alertes.push(`Allergie/intolérance déclarée à "${allergene}" : ce terme apparaît dans le protocole généré — vérifier qu'il ne s'agit pas d'une recommandation contenant cet allergène.`);
+      }
+    });
   }
 
   // Comptage des compléments proposés (puce "•" dans le champ "complements" de CHAQUE phase,
