@@ -3687,17 +3687,28 @@ async function ouvrirProtocole() {
         const clRows = clRes.ok ? await clRes.json() : [];
         const cl = clRows[0];
         if (cl && cl.email) {
-          const emailRes = await fetch(PHV_SUPA_URL + '/functions/v1/send-phv-protocole', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              to_email: cl.email,
-              to_name: [cl.prenom, cl.nom].filter(Boolean).join(' ') || clientInfo.prenom || '',
-              is_update: isUpdate
-            })
-          });
-          if (emailRes.ok) console.log('✓ Email de notification envoyé à', cl.email);
-          else console.warn('⚠ Envoi email échoué :', await emailRes.text());
+          // ── Verrou de validation humaine (26/08/2026) : ce bouton ("Ouvrir le protocole")
+          // servait aussi, en arrière-plan, à notifier automatiquement la cliente par email —
+          // sans repasser par la case de relecture ajoutée dans le CRM (envoyerProtocole). On
+          // ferme ce deuxième chemin ici : la sauvegarde/l'archivage restent automatiques (pour
+          // que Sabrina puisse toujours ouvrir/relire le protocole), seule la notification
+          // EMAIL à la cliente demande une confirmation explicite avant de partir.
+          const confirmerEnvoi = confirm('Confirmez-vous avoir relu et validé ce protocole avant d\'en notifier ' + (cl.prenom || 'la cliente') + ' par email ?\n\n(Le protocole reste enregistré et consultable dans tous les cas — seule la notification email est concernée par cette confirmation.)');
+          if (confirmerEnvoi) {
+            const emailRes = await fetch(PHV_SUPA_URL + '/functions/v1/send-phv-protocole', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                to_email: cl.email,
+                to_name: [cl.prenom, cl.nom].filter(Boolean).join(' ') || clientInfo.prenom || '',
+                is_update: isUpdate
+              })
+            });
+            if (emailRes.ok) console.log('✓ Email de notification envoyé à', cl.email);
+            else console.warn('⚠ Envoi email échoué :', await emailRes.text());
+          } else {
+            console.log('ℹ Notification email non envoyée (validation non confirmée) — le protocole reste enregistré, vous pourrez le renvoyer depuis le CRM une fois relu.');
+          }
         } else {
           console.warn('⚠ Pas d\'email enregistré pour cette cliente — notification non envoyée. Complétez la fiche dans le CRM.');
         }
