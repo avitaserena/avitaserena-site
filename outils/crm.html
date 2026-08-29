@@ -1753,6 +1753,7 @@ async function init(){
     loadMemoAlerts(),
     loadClientMessages(),
     loadErreurs(),
+    loadSettingsFromSupabase(),
     loadPilotage(),
     loadCheckinsToday()
   ]);
@@ -5339,8 +5340,37 @@ function printF(fid){
 }
 
 function defSettings(){return{nom:'Sabrina Castelli',titre:'Naturopathe',adresse:'Porto-Vecchio, Corse',email:'sabrina@avitaserena.com',tel:'',siret:'',adeli:''};}
+// Source de vérité = Supabase (table settings, id='praticien', colonne data jsonb).
+// Le localStorage ne sert plus que de cache d'affichage instantané pendant le chargement réseau —
+// jamais de donnée définitive écrite uniquement là, pour ne plus jamais perdre une saisie en silence.
+async function loadSettingsFromSupabase(){
+  try{
+    const rows=await sb('settings?id=eq.praticien&select=data');
+    if(rows && rows[0] && rows[0].data){
+      db.settings={...defSettings(),...rows[0].data};
+      const l=loadL();l.settings=db.settings;saveL(l); // cache local pour affichage rapide au prochain chargement
+    }
+  }catch(e){
+    console.error('Chargement Mon cabinet (Supabase) échoué, utilisation du cache local', e);
+  }
+}
 function loadSettings(){const s=db.settings||defSettings();['nom','titre','adresse','email','tel','siret','adeli'].forEach(k=>{const el=document.getElementById('s-'+k);if(el)el.value=s[k]||'';});}
-function saveSettings(){db.settings={nom:document.getElementById('s-nom')?.value||'',titre:document.getElementById('s-titre')?.value||'',adresse:document.getElementById('s-adresse')?.value||'',email:document.getElementById('s-email')?.value||'',tel:document.getElementById('s-tel')?.value||'',siret:document.getElementById('s-siret')?.value||'',adeli:document.getElementById('s-adeli')?.value||''};const l=loadL();l.settings=db.settings;saveL(l);toast('Enregistré','ok');}
+async function saveSettings(){
+  const data={nom:document.getElementById('s-nom')?.value||'',titre:document.getElementById('s-titre')?.value||'',adresse:document.getElementById('s-adresse')?.value||'',email:document.getElementById('s-email')?.value||'',tel:document.getElementById('s-tel')?.value||'',siret:document.getElementById('s-siret')?.value||'',adeli:document.getElementById('s-adeli')?.value||''};
+  const btn=document.querySelector('#page-settings button[onclick="saveSettings()"]');
+  if(btn){btn.disabled=true;btn.textContent='Enregistrement…';}
+  try{
+    await sb('settings?id=eq.praticien',{method:'PATCH',body:JSON.stringify({data,updated_at:new Date().toISOString()}),prefer:'return=minimal'});
+    db.settings=data;
+    const l=loadL();l.settings=data;saveL(l);
+    toast('Enregistré','ok');
+  }catch(e){
+    console.error('Sauvegarde Mon cabinet (Supabase) échouée', e);
+    toast('Échec de l\'enregistrement — réessayez, vos données ne sont pas encore sauvegardées','error');
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='Enregistrer';}
+  }
+}
 
 async function migrate(){
   const loc=loadL();if(!loc.clients?.length){toast('Aucune donnée à migrer','warn');return;}
