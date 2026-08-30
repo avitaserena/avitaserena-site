@@ -1266,7 +1266,7 @@ a,button{-webkit-tap-highlight-color:transparent}
       </div>
       <div class="drawer-body">
         <div class="drawer-date" id="drawerDate"></div>
-        <p class="drawer-intro">Quatre gestes, dix secondes — Sabrina suit votre progression sur ces bilans, semaine après semaine.</p>
+        <p class="drawer-intro" id="drawerIntro">Quatre gestes, dix secondes — Sabrina suit votre progression sur ces bilans, semaine après semaine.</p>
 
         <div class="chip-category">
           <div class="chip-cat-title">Énergie</div>
@@ -1276,13 +1276,21 @@ a,button{-webkit-tap-highlight-color:transparent}
           <div class="chip-cat-title">Sommeil</div>
           <div class="chips-row" id="pills-sommeil"></div>
         </div>
-        <div class="chip-category">
+        <div class="chip-category" id="rowTransit">
           <div class="chip-cat-title">Transit</div>
           <div class="chips-row" id="pills-transit"></div>
         </div>
-        <div class="chip-category">
+        <div class="chip-category" id="rowBallonnements">
           <div class="chip-cat-title">Ballonnements</div>
           <div class="chips-row" id="pills-ballonnements"></div>
+        </div>
+        <div class="chip-category" id="rowDouleur" style="display:none">
+          <div class="chip-cat-title">Douleurs (cycle)</div>
+          <div class="chips-row" id="pills-douleur"></div>
+        </div>
+        <div class="chip-category" id="rowSaignement" style="display:none">
+          <div class="chip-cat-title">Saignement aujourd'hui</div>
+          <div class="chips-row" id="pills-saignement"></div>
         </div>
         <div class="chip-category">
           <div class="chip-cat-title">Humeur</div>
@@ -3747,15 +3755,52 @@ function toggleRappelComplement(idx, checked, todayKey){
 
 /* ─── VOS JALONS (dashboard) ─── */
 /* ─── CHECK-IN RAPIDE (accueil) — un seul geste, tous les jours ─── */
-var checkinEnergieVal = null;
-var checkinTransitVal = null;
-var checkinBallonnementsVal = null;
-var checkinHumeurVal = null;
+var checkinVals = {};
 var CHECKIN_ENERGIE_OPTS = [ {v:'2 — Épuisée', l:'Épuisée'}, {v:'4', l:'Faible'}, {v:'6', l:'Correcte'}, {v:'8', l:'Bonne'}, {v:'10 — Excellente', l:'Excellente'} ];
 var CHECKIN_SOMMEIL_OPTS = ['Réparateur','Correct','Agité','Réveil nocturne','Peu dormi'];
 var CHECKIN_TRANSIT_OPTS = ['Constipée','Normal','Diarrhée','Alterné','Pas de selle'];
 var CHECKIN_BALLONNEMENTS_OPTS = ['Absents','Légers','Modérés','Importants','Très importants'];
 var CHECKIN_HUMEUR_OPTS = ['Très bien','Bien','Neutre','Irritable','Anxieuse','Fatiguée mentalement'];
+var CHECKIN_DOULEUR_OPTS = ['Absentes','Légères','Modérées','Fortes','Invalidantes'];
+var CHECKIN_SAIGNEMENT_OPTS = ['Aucun','Spotting','Léger','Modéré','Abondant'];
+
+/* ── SUIVI PERSONNALISÉ PAR SPÉCIALITÉ (30/08/2026) ──────────────────────
+   Les 4 questions quotidiennes ne sont plus figées : elles s'adaptent à ce
+   qui a été identifié en consultation par Sabrina (champs "axes"/"motifs"
+   sur la fiche cliente). Endométriose/SOPK → cycle & douleurs. SIBO/dysbiose
+   → transit & ballonnements. Aucun signal clair → suivi digestif par défaut
+   (le plus généralement utile). Aucune nouvelle colonne Supabase créée : les
+   questions "cycle" s'enregistrent dans le champ JSON déjà existant
+   "reponses" (clé douleur_cycle/saignement), au même titre que les puces
+   optionnelles du questionnaire "Aujourd'hui". */
+var CHECKIN_PROFILE_KEYWORDS = {
+  cycle: ['endometriose','sopk','ovaire polykystique','ovaires polykystiques','syndrome premenstruel','spm','dysmenorrh','regles douloureuses','dominance oestrogenique'],
+  digestif: ['sibo','dysbiose','sii','colon irritable','intestin','microbiote','ballonnement']
+};
+function getCheckinProfile(){
+  var session = avsGetSession();
+  var profil = _normText((session.axes||'') + ' ' + (session.motifs||''));
+  var scoreCycle = CHECKIN_PROFILE_KEYWORDS.cycle.filter(function(k){ return profil.indexOf(k)>-1; }).length;
+  var scoreDig = CHECKIN_PROFILE_KEYWORDS.digestif.filter(function(k){ return profil.indexOf(k)>-1; }).length;
+  return (scoreCycle>0 && scoreCycle>=scoreDig) ? 'cycle' : 'digestif';
+}
+// Chaque dimension : libellé + options + soit une colonne Supabase directe
+// (column), soit une clé dans le champ JSON "reponses" (jsonKey).
+var CHECKIN_DIMENSIONS = {
+  energie:       { label:'Énergie',              options: CHECKIN_ENERGIE_OPTS,        column:'energie' },
+  transit:       { label:'Transit',               options: CHECKIN_TRANSIT_OPTS,        column:'transit' },
+  ballonnements: { label:'Ballonnements',         options: CHECKIN_BALLONNEMENTS_OPTS,  column:'ballonnements' },
+  douleur:       { label:'Douleurs (cycle)',      options: CHECKIN_DOULEUR_OPTS,         jsonKey:'douleur_cycle' },
+  saignement:    { label:'Saignement aujourd\'hui', options: CHECKIN_SAIGNEMENT_OPTS,    jsonKey:'saignement' },
+  humeur:        { label:'Humeur',                options: CHECKIN_HUMEUR_OPTS,         column:'humeur' }
+};
+var CHECKIN_PROFILE_DIMS = {
+  digestif: ['energie','transit','ballonnements','humeur'],
+  cycle:    ['energie','douleur','saignement','humeur']
+};
+function getCheckinActiveDims(){
+  return CHECKIN_PROFILE_DIMS[getCheckinProfile()] || CHECKIN_PROFILE_DIMS.digestif;
+}
 
 function getCheckinStreak(){
   var entries = getJournalEntries();
@@ -3864,10 +3909,13 @@ async function renderCheckinRapide(){
   checkinNoteExpanded = false;
   if(checkinAutoSaveTimer){ clearTimeout(checkinAutoSaveTimer); checkinAutoSaveTimer=null; }
 
+  var profile = getCheckinProfile();
+  var dims = CHECKIN_PROFILE_DIMS[profile];
+
   try {
     var token = await Auth.getValidAccessToken();
     var today = localISO();
-    var res = await fetch(SUPA_URL + '/rest/v1/journal_entries?client_key=eq.' + encodeURIComponent(session.key) + '&date=eq.' + today + '&select=energie,humeur,transit,ballonnements,note&order=created_at.desc&limit=1', {
+    var res = await fetch(SUPA_URL + '/rest/v1/journal_entries?client_key=eq.' + encodeURIComponent(session.key) + '&date=eq.' + today + '&select=energie,humeur,transit,ballonnements,reponses,note&order=created_at.desc&limit=1', {
       headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (token || SUPA_KEY) }
     });
     var rows = res.ok ? await res.json() : [];
@@ -3875,7 +3923,12 @@ async function renderCheckinRapide(){
     if(rows.length){
       var st = getCheckinStreak();
       var isMilestone = CHECKIN_MILESTONES.indexOf(st.streak) !== -1;
-      var doneSub = [rows[0].humeur, rows[0].energie ? 'Énergie : '+rows[0].energie : '', rows[0].transit, rows[0].ballonnements].filter(Boolean).map(escHtml).join(' · ');
+      var reponsesRow = rows[0].reponses || {};
+      var doneSub = dims.map(function(d){
+        var dim = CHECKIN_DIMENSIONS[d];
+        var val = dim.column ? rows[0][dim.column] : reponsesRow[dim.jsonKey];
+        return val ? (d==='energie' ? 'Énergie : '+val : val) : '';
+      }).filter(Boolean).map(escHtml).join(' · ');
       var doneTitle = isMilestone ? st.streak+' jours de suite — c\'est remarquable !' : 'Merci, c\'est noté pour aujourd\'hui';
       box.innerHTML = '<div class="checkin-card'+(isMilestone?' milestone':'')+'">' + renderStreakRow() + renderBadgesStrip(st) + '<div class="checkin-done">' +
         '<div class="checkin-done-ic"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>' +
@@ -3888,30 +3941,29 @@ async function renderCheckinRapide(){
     }
 
     renderVitalityRing();
+    var introSub = profile === 'cycle'
+      ? '4 gestes, 10 secondes — pensés pour votre suivi du cycle.'
+      : '4 gestes, 10 secondes, ça s\'enregistre tout seul.';
+    var pillsHtml = dims.map(function(d){
+      var dim = CHECKIN_DIMENSIONS[d];
+      var opts = dim.options.map(function(o){
+        var val = (typeof o === 'object') ? o.v : o;
+        var label = (typeof o === 'object') ? o.l : o;
+        var valEsc = String(val).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+        return '<div class="checkin-pill" onclick="selectCheckin(\''+d+'\',\''+valEsc+'\',this)">'+label+'</div>';
+      }).join('');
+      return '<div class="checkin-label">'+dim.label+'</div><div class="checkin-pills" id="checkinPills_'+d+'">'+opts+'</div>';
+    }).join('');
+
     box.innerHTML =
       '<div class="checkin-card">' +
         renderStreakRow() +
         renderBadgesStrip(getCheckinStreak()) +
         '<div class="checkin-head">' +
           '<div class="checkin-ic"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div>' +
-          '<div><div class="checkin-title">Comment vous sentez-vous aujourd\'hui ?</div><div class="checkin-sub">4 gestes, 10 secondes, ça s\'enregistre tout seul.</div></div>' +
+          '<div><div class="checkin-title">Comment vous sentez-vous aujourd\'hui ?</div><div class="checkin-sub">'+introSub+'</div></div>' +
         '</div>' +
-        '<div class="checkin-label">Énergie</div>' +
-        '<div class="checkin-pills" id="checkinEnergiePills">' +
-          CHECKIN_ENERGIE_OPTS.map(function(o){ return '<div class="checkin-pill" onclick="selectCheckin(\'energie\',\''+o.v.replace(/'/g,"\\'")+'\',this)">'+o.l+'</div>'; }).join('') +
-        '</div>' +
-        '<div class="checkin-label">Transit</div>' +
-        '<div class="checkin-pills" id="checkinTransitPills">' +
-          CHECKIN_TRANSIT_OPTS.map(function(t){ return '<div class="checkin-pill" onclick="selectCheckin(\'transit\',\''+t+'\',this)">'+t+'</div>'; }).join('') +
-        '</div>' +
-        '<div class="checkin-label">Ballonnements</div>' +
-        '<div class="checkin-pills" id="checkinBallonnementsPills">' +
-          CHECKIN_BALLONNEMENTS_OPTS.map(function(b){ return '<div class="checkin-pill" onclick="selectCheckin(\'ballonnements\',\''+b+'\',this)">'+b+'</div>'; }).join('') +
-        '</div>' +
-        '<div class="checkin-label">Humeur</div>' +
-        '<div class="checkin-pills" id="checkinHumeurPills">' +
-          CHECKIN_HUMEUR_OPTS.map(function(h){ return '<div class="checkin-pill" onclick="selectCheckin(\'humeur\',\''+h+'\',this)">'+h+'</div>'; }).join('') +
-        '</div>' +
+        pillsHtml +
         '<div id="checkinNoteToggle" class="checkin-note-toggle" onclick="toggleCheckinNote()">+ Ajouter une remarque (facultatif)</div>' +
         '<div class="journal-field full checkin-note-wrap" id="checkinNoteWrap" style="display:none">' +
           '<label>Ce que j\'ai remarqué</label>' +
@@ -3940,11 +3992,9 @@ function selectCheckin(type, val, btn){
   var container = btn.parentElement;
   container.querySelectorAll('.checkin-pill').forEach(function(p){ p.classList.remove('on'); });
   btn.classList.add('on');
-  if(type==='energie') checkinEnergieVal = val;
-  if(type==='transit') checkinTransitVal = val;
-  if(type==='ballonnements') checkinBallonnementsVal = val;
-  if(type==='humeur') checkinHumeurVal = val;
-  var allFilled = !!(checkinEnergieVal && checkinTransitVal && checkinBallonnementsVal && checkinHumeurVal);
+  checkinVals[type] = val;
+  var dims = getCheckinActiveDims();
+  var allFilled = dims.every(function(d){ return !!checkinVals[d]; });
   var saveBtn = document.getElementById('checkinSaveBtn');
   if(saveBtn) saveBtn.disabled = !allFilled;
   if(checkinAutoSaveTimer){ clearTimeout(checkinAutoSaveTimer); checkinAutoSaveTimer=null; }
@@ -3956,7 +4006,9 @@ function selectCheckin(type, val, btn){
 
 async function saveCheckinRapide(){
   var session = avsGetSession();
-  if(!session.key || !checkinEnergieVal || !checkinTransitVal || !checkinBallonnementsVal || !checkinHumeurVal) return;
+  var dims = getCheckinActiveDims();
+  var allFilled = dims.every(function(d){ return !!checkinVals[d]; });
+  if(!session.key || !allFilled) return;
   if(checkinAutoSaveTimer){ clearTimeout(checkinAutoSaveTimer); checkinAutoSaveTimer=null; }
   var btn = document.getElementById('checkinSaveBtn');
   if(btn){ btn.disabled=true; btn.textContent='…'; }
@@ -3964,19 +4016,41 @@ async function saveCheckinRapide(){
   noteVal = noteVal.trim();
   var todayISO = localISO();
 
+  // Répartir les réponses : colonnes Supabase directes (energie/transit/
+  // ballonnements/humeur) vs. clés du champ JSON "reponses" (douleur_cycle,
+  // saignement — pas de nouvelle colonne créée pour le suivi cycle).
+  var colVals = {};
+  var jsonVals = {};
+  dims.forEach(function(d){
+    var dim = CHECKIN_DIMENSIONS[d];
+    if(!dim) return;
+    if(dim.column) colVals[dim.column] = checkinVals[d];
+    else if(dim.jsonKey) jsonVals[dim.jsonKey] = checkinVals[d];
+  });
+
   // Cache local — alimente l'historique et la courbe de progression même hors-ligne
   var cacheKey = 'avs_journal_' + todayISO;
-  localStorage.setItem(cacheKey, JSON.stringify({
-    date: new Date().toISOString(),
-    energie: checkinEnergieVal,
-    transit: checkinTransitVal,
-    ballonnements: checkinBallonnementsVal,
-    humeur: checkinHumeurVal,
-    note: noteVal
-  }));
+  var cacheEntry = Object.assign({ date: new Date().toISOString(), note: noteVal }, colVals);
+  if(Object.keys(jsonVals).length) cacheEntry.reponses = jsonVals;
+  localStorage.setItem(cacheKey, JSON.stringify(cacheEntry));
 
   try {
     var token = await Auth.getValidAccessToken();
+    var headers = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (token || SUPA_KEY) };
+
+    // Si des réponses "cycle" doivent rejoindre le champ JSON "reponses", on
+    // récupère d'abord les puces déjà enregistrées aujourd'hui (questionnaire
+    // "Aujourd'hui" côté mobile) pour ne jamais les écraser.
+    var reponsesFinal = jsonVals;
+    if(Object.keys(jsonVals).length){
+      try {
+        var prevRes = await fetch(SUPA_URL + '/rest/v1/journal_entries?client_key=eq.' + encodeURIComponent(session.key) + '&date=eq.' + todayISO + '&select=reponses&limit=1', { headers: headers });
+        var prevRows = prevRes.ok ? await prevRes.json() : [];
+        var prevReponses = (prevRows[0] && prevRows[0].reponses) || {};
+        reponsesFinal = Object.assign({}, prevReponses, jsonVals);
+      } catch(e2){ /* on garde jsonVals seul si la lecture échoue */ }
+    }
+
     // ⚠️ BUG CORRIGÉ (26/08/2026) : il existe une contrainte unique (client_key, date) sur
     // journal_entries — un simple POST échoue donc SILENCIEUSEMENT (conflit, jamais remonté
     // en exception JS puisque fetch() ne rejette pas sur un statut HTTP non-2xx) dès qu'une
@@ -3985,26 +4059,16 @@ async function saveCheckinRapide(){
     // été enregistré (champs réinitialisés, courbe rafraîchie) alors que rien n'avait été
     // écrit. On passe en upsert (même pattern que l'autre point d'enregistrement du journal,
     // plus bas dans ce fichier) et on vérifie réellement la réponse.
+    var body = Object.assign({ client_key: session.key, date: todayISO, note: noteVal }, colVals);
+    if(Object.keys(jsonVals).length) body.reponses = reponsesFinal;
+
     var res = await fetch(SUPA_URL + '/rest/v1/journal_entries?on_conflict=client_key,date', {
       method: 'POST',
-      headers: {
-        'apikey': SUPA_KEY,
-        'Authorization': 'Bearer ' + (token || SUPA_KEY),
-        'Content-Type': 'application/json',
-        'Prefer': 'resolution=merge-duplicates,return=minimal'
-      },
-      body: JSON.stringify({
-        client_key: session.key,
-        date: todayISO,
-        energie: checkinEnergieVal,
-        transit: checkinTransitVal,
-        ballonnements: checkinBallonnementsVal,
-        humeur: checkinHumeurVal,
-        note: noteVal
-      })
+      headers: Object.assign({ 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal' }, headers),
+      body: JSON.stringify(body)
     });
     if (!res.ok) throw new Error('Supabase ' + res.status);
-    checkinEnergieVal = null; checkinTransitVal = null; checkinBallonnementsVal = null; checkinHumeurVal = null;
+    checkinVals = {};
     renderCheckinRapide();
     loadJalons();
     initProgressChart();
@@ -4022,6 +4086,7 @@ async function saveCheckinRapide(){
     msgEl.textContent = '⚠ Échec de l\'enregistrement — vos réponses n\'ont pas encore été sauvegardées, réessayez.';
   }
 }
+
 
 
 async function loadJalons(){
@@ -4687,6 +4752,7 @@ function ouvrirDrawerSymptomes() {
   // Précharge l'entrée du jour si déjà remplie (cache local, source commune avec le journal desktop)
   var todayEntry = {};
   try { todayEntry = JSON.parse(localStorage.getItem('avs_journal_'+today) || '{}'); } catch(e){}
+  var todayReponses = todayEntry.reponses || {};
 
   var savedChips = JSON.parse(localStorage.getItem('avs_symptomes_'+today) || '{}');
   _selectedChips = savedChips.chips || {};
@@ -4696,13 +4762,30 @@ function ouvrirDrawerSymptomes() {
     sommeil: todayEntry.sommeil || null,
     transit: todayEntry.transit || null,
     ballonnements: todayEntry.ballonnements || null,
+    douleur: todayReponses.douleur_cycle || null,
+    saignement: todayReponses.saignement || null,
     humeur: todayEntry.humeur || null
   };
+
+  // ── Suivi personnalisé : SIBO/dysbiose → transit & ballonnements ;
+  // endométriose/SOPK → douleurs & saignement. Cf. renderCheckinRapide().
+  var profile = getCheckinProfile();
+  var showTransit = profile !== 'cycle';
+  document.getElementById('rowTransit').style.display = showTransit ? '' : 'none';
+  document.getElementById('rowBallonnements').style.display = showTransit ? '' : 'none';
+  document.getElementById('rowDouleur').style.display = showTransit ? 'none' : '';
+  document.getElementById('rowSaignement').style.display = showTransit ? 'none' : '';
+  var introEl = document.getElementById('drawerIntro');
+  if(introEl) introEl.textContent = profile === 'cycle'
+    ? 'Quatre gestes, dix secondes — pensés pour votre suivi du cycle, semaine après semaine.'
+    : 'Quatre gestes, dix secondes — Sabrina suit votre progression sur ces bilans, semaine après semaine.';
 
   _renderDrawerPillRow('pills-energie', 'energie', CHECKIN_ENERGIE_OPTS, _drawerPills.energie);
   _renderDrawerPillRow('pills-sommeil', 'sommeil', CHECKIN_SOMMEIL_OPTS, _drawerPills.sommeil);
   _renderDrawerPillRow('pills-transit', 'transit', CHECKIN_TRANSIT_OPTS, _drawerPills.transit);
   _renderDrawerPillRow('pills-ballonnements', 'ballonnements', CHECKIN_BALLONNEMENTS_OPTS, _drawerPills.ballonnements);
+  _renderDrawerPillRow('pills-douleur', 'douleur', CHECKIN_DOULEUR_OPTS, _drawerPills.douleur);
+  _renderDrawerPillRow('pills-saignement', 'saignement', CHECKIN_SAIGNEMENT_OPTS, _drawerPills.saignement);
   _renderDrawerPillRow('pills-humeur', 'humeur', CHECKIN_HUMEUR_OPTS, _drawerPills.humeur);
 
   // Chips de précision (optionnelles)
@@ -4753,9 +4836,15 @@ async function sauvegarderSymptomes() {
   var note = (document.getElementById('drawerNote')||{}).value || '';
   note = note.trim();
 
-  // Chips actifs (précisions optionnelles)
+  // Chips actifs (précisions optionnelles) — restent des booléens purs, comme avant.
   var actifs = {};
   Object.keys(_selectedChips).forEach(function(k){ if(_selectedChips[k]) actifs[k]=true; });
+
+  // Réponses "cycle" (suivi personnalisé endométriose/SOPK) — mêmes clés que le
+  // check-in rapide desktop, fusionnées dans le même champ JSON "reponses".
+  var reponsesFinal = Object.assign({}, actifs);
+  if(_drawerPills.douleur) reponsesFinal.douleur_cycle = _drawerPills.douleur;
+  if(_drawerPills.saignement) reponsesFinal.saignement = _drawerPills.saignement;
 
   // Cycle — enregistré seulement s'il a été renseigné
   var cycleInput = document.getElementById('cycleStartInput');
@@ -4770,7 +4859,7 @@ async function sauvegarderSymptomes() {
     ballonnements: _drawerPills.ballonnements || null,
     humeur: _drawerPills.humeur || null,
     note: note,
-    reponses: actifs
+    reponses: reponsesFinal
   };
 
   // Cache local — alimente l'historique, la mini-courbe et le bilan même hors-ligne,
@@ -4809,7 +4898,7 @@ async function sauvegarderSymptomes() {
         ballonnements: entry.ballonnements,
         humeur: entry.humeur,
         note: entry.note,
-        reponses: actifs
+        reponses: reponsesFinal
       })
     });
   } catch(e){
