@@ -1958,6 +1958,21 @@ Séparation en cours. Charge mentale très élevée. Explorer ashwagandha pour l
     </div>
   </div>
 
+  <!-- ESPACE CLIENTE — quelles questions quotidiennes la cliente verra dans son espace personnel -->
+  <div class="qcard" style="border-color:var(--sable);background:var(--or-clair)">
+    <div class="qcard-top">
+      <div class="qnum" style="background:var(--sable);color:white"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="2"/><line x1="11" y1="18" x2="13" y2="18"/></svg></div>
+      <div class="qcontent">
+        <div class="qtitle">Espace cliente — suivi quotidien à activer</div>
+        <div class="guide-block"><div class="guide-toggle" onclick="toggleGuide(this)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg> Pourquoi ce choix</div><div class="guide-body"><p>Le questionnaire quotidien de l'espace cliente s'adapte à ce que vous cochez ici : Transit &amp; Ballonnements pour un SIBO/dysbiose, Douleurs &amp; Saignement pour une endométriose/SOPK. Cochez les deux si les deux terrains sont concernés — la cliente verra alors l'ensemble des questions pertinentes, mieux vaut quelques questions de plus qu'un signal manqué. Sans coche, elle garde un suivi général (énergie, sommeil, stress, humeur).</p><p>Pré-coché d'après le dernier dossier chargé — décochez ou cochez si le tableau clinique a évolué depuis.</p></div></div>
+        <div class="chip-wrap" id="espace-client-chips" style="margin-top:10px">
+          <button type="button" class="chip" data-key="digestif" onclick="this.classList.toggle('on')"><span class="ck">✓</span> SIBO / Dysbiose / SII — Transit &amp; Ballonnements</button>
+          <button type="button" class="chip" data-key="cycle" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Endométriose / SOPK / SPM — Douleurs &amp; Cycle</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="nav-footer">
     <button class="btn" onclick="goSection(8)">← Retour</button>
     <div class="nav-footer-right">
@@ -2703,6 +2718,14 @@ function afficherBandeauDossier(row, historique) {
     });
     updateSpecialtyBlocks();
   }
+  // Pré-cocher "Espace cliente" (suivi quotidien) à partir du dossier — préserve le choix
+  // fait en consultation ou au suivi précédent tant qu'il n'est pas explicitement changé ici.
+  const suiviSpecKeys = (snap.suivi_specialites || '').split(',').map(s => s.trim()).filter(Boolean);
+  if (suiviSpecKeys.length) {
+    document.querySelectorAll('#espace-client-chips .chip').forEach(c => {
+      if (suiviSpecKeys.includes(c.dataset.key)) c.classList.add('on');
+    });
+  }
   // Pré-remplir les 4 champs de sécurité (grossesse, cancer, traitements, allergies) — importés du dossier
   // fusionné (consultation initiale + dernier suivi), jamais écrasés s'ils ont déjà été saisis dans ce formulaire.
   const sg = document.getElementById('secu-grossesse');
@@ -3184,6 +3207,11 @@ function collectData() {
   d.phraseOuverture = document.getElementById('phrase-ouverture')?.value||'';
   d.globalVal = document.getElementById('global-val')?.textContent||'5';
   d.specialites = [...document.querySelectorAll('#specialite-chips .chip.on')].map(c=>c.textContent.replace('✓','').trim()).join(', ');
+  // Espace cliente (30/08/2026) : choix explicite de Sabrina sur les spécialités à suivre au
+  // quotidien dans l'espace personnel — pré-coché depuis le dossier au chargement (cf.
+  // afficherBandeauDossier), donc toujours sûr à réécrire même si cette section n'a pas été
+  // retouchée pendant CE suivi (préserve le choix précédent au lieu de le vider par défaut).
+  d.suivi_specialites = [...document.querySelectorAll('#espace-client-chips .chip.on')].map(c => c.dataset.key).join(',');
 
   // Scores
   d.scores = AXES.map(a=>({
@@ -3463,6 +3491,7 @@ function finalise() {
     programme: d.programme,
     date_suivi: d.dateSuivi,
     specialites: d.specialites,
+    suivi_specialites: d.suivi_specialites,
 
     // Contexte
     motifs_initiaux: d.motifsInitiaux,
@@ -3555,9 +3584,13 @@ async function majTimelineClient(clientId, d) {
       date: new Date().toISOString().slice(0,10),
       desc: `Objectif : ${(d.objectifNouveau||d.objectifInitial||'—')} · Ressenti global : ${d.globalVal||'—'}/10`
     });
+    const patchBody = { timeline };
+    // Toujours écrit : reflète l'état actuel des cases "Espace cliente" (pré-cochées depuis
+    // le dossier au chargement), donc préserve le choix précédent si non retouché ce suivi.
+    if (typeof d.suivi_specialites === 'string') patchBody.suivi_specialites = d.suivi_specialites;
     await fetch(SUPA_URL+'/rest/v1/clientes?id=eq.'+encodeURIComponent(clientId), {
       method: 'PATCH', headers: {...headers, 'Prefer':'return=minimal'},
-      body: JSON.stringify({ timeline })
+      body: JSON.stringify(patchBody)
     });
   } catch(e) { console.warn('[Timeline suivi] Échec de mise à jour', e); }
 }

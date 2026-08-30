@@ -4410,6 +4410,27 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
     </div>
   </div>
 
+  <!-- ESPACE CLIENTE — quelles questions quotidiennes la cliente verra dans son espace personnel -->
+  <div class="qcard" style="border-color:var(--sable);background:var(--or-clair)">
+    <div class="qcard-top">
+      <div class="qnum" style="background:var(--sable);color:white"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="2"/><line x1="11" y1="18" x2="13" y2="18"/></svg></div>
+      <div class="qcontent">
+        <div class="qtext" style="color:var(--or)">Espace cliente — suivi quotidien à activer</div>
+        <div class="qtags"><span class="qtag cle">Décide des questions posées chaque jour à la cliente, si elle a un espace personnel</span></div>
+        <div class="info-boxes">
+          <div class="info-box pourquoi">
+            <div class="box-lbl"><svg class="picto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0" aria-hidden="true"><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/><line x1="4.9" y1="4.9" x2="7" y2="7"/><line x1="17" y1="17" x2="19.1" y2="19.1"/><line x1="4.9" y1="19.1" x2="7" y2="17"/><line x1="17" y1="7" x2="19.1" y2="4.9"/></svg> Pourquoi ce choix</div>
+            <div class="pourquoi-txt">Le questionnaire quotidien de l'espace cliente s'adapte à ce que vous cochez ici : Transit &amp; Ballonnements pour un SIBO/dysbiose, Douleurs &amp; Saignement pour une endométriose/SOPK. Cochez les deux si les deux terrains sont concernés — la cliente verra alors l'ensemble des questions pertinentes, mieux vaut quelques questions de plus qu'un signal manqué. Sans coche, elle garde un suivi général (énergie, sommeil, stress, humeur).</div>
+          </div>
+        </div>
+        <div class="chip-wrap" id="espace-client-chips" style="margin-top:10px">
+          <button type="button" class="chip" data-key="digestif" onclick="this.classList.toggle('on')"><span class="ck">✓</span> SIBO / Dysbiose / SII — Transit &amp; Ballonnements</button>
+          <button type="button" class="chip" data-key="cycle" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Endométriose / SOPK / SPM — Douleurs &amp; Cycle</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="nav-footer">
     <button class="btn" onclick="goSection(10)">← Retour</button>
     <div style="display:flex;gap:10px">
@@ -7438,6 +7459,12 @@ function collectAllData() {
   d.objectif_6mois = obj6mois?.value?.trim() || '';
   const motifsCochs = [...document.querySelectorAll('#motifs-chips .chip.on')].map(c=>c.textContent.replace('✓','').trim());
   d.motifs = motifsCochs.join(', ');
+  // Espace cliente (30/08/2026) : choix EXPLICITE de Sabrina sur les spécialités à suivre
+  // au quotidien dans l'espace personnel — remplace la déduction par mots-clés dans
+  // motifs/axes, plus fiable. Chaîne vide = "revu, aucune spécialité, suivi général"
+  // (distinct de null/absent = "jamais revu", pour que l'espace cliente sache s'il peut
+  // faire confiance à ce champ ou doit encore deviner).
+  d.suivi_specialites = [...document.querySelectorAll('#espace-client-chips .chip.on')].map(c => c.dataset.key).join(',');
   const scoreIds = ['rv-e','rv-s','rv-st','rv-d','rv-em','rv-v','rv-doul','rv-alim'];
   const scoreLbls = ['Énergie','Sommeil','Stress','Digestion','Émotions','Satisfaction de vie','Douleurs','Qualité alimentation perçue'];
   d.scores = scoreIds.map((id,i) => `${scoreLbls[i]}: ${document.getElementById(id)?.textContent || '5'}/10`).join(' | ');
@@ -8271,6 +8298,9 @@ async function bridgeCRM_questionnaire(d) {
       if (nomQ && !client.nom) patch.nom = nomQ;
       if (d.age) patch.age = String(d.age);
       if (!client.motifs && d.motifs) patch.motifs = d.motifs;
+      // Toujours écrit (même vide) : reflète le choix explicite de Sabrina à CE dépôt du
+      // questionnaire, contrairement à motifs qui ne se pose qu'une fois.
+      patch.suivi_specialites = d.suivi_specialites;
       const timeline = Array.isArray(client.timeline) ? client.timeline : [];
       timeline.push({ type:'questionnaire', title:'Questionnaire de consultation complété', icon:'·', date:new Date().toISOString().slice(0,10), desc:`Motifs : ${d.motifs||'—'} · Durée : ${d.duree_symptomes||'—'}` });
       patch.timeline = timeline;
@@ -8283,6 +8313,7 @@ async function bridgeCRM_questionnaire(d) {
         body: JSON.stringify({
           id: finalId, prenom: prenomQ, nom: nomQ || null, ddn: ddnQ || null,
           age: d.age ? String(d.age) : null, motifs: d.motifs || null,
+          suivi_specialites: d.suivi_specialites || '',
           timeline: [{ type:'questionnaire', title:'Questionnaire de consultation complété', icon:'·', date:new Date().toISOString().slice(0,10), desc:`Motifs : ${d.motifs||'—'} · Durée : ${d.duree_symptomes||'—'}` }],
           workflow_done: {}, created_at: new Date().toISOString()
         })
