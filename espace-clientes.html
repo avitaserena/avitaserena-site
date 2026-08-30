@@ -1284,7 +1284,7 @@ a,button{-webkit-tap-highlight-color:transparent}
           <div class="chip-cat-title">Énergie</div>
           <div class="chips-row" id="pills-energie"></div>
         </div>
-        <div class="chip-category">
+        <div class="chip-category" id="rowSommeil">
           <div class="chip-cat-title">Sommeil</div>
           <div class="chips-row" id="pills-sommeil"></div>
         </div>
@@ -2216,7 +2216,7 @@ async function tryAutoLogin() {
     const rows = await DB_getOwnClientRow();
     if (rows && rows.length > 0) {
       const c = rows[0];
-      localStorage.setItem('avs_client', JSON.stringify({ prenom: c.prenom, nom: c.nom, email: c.email, ok: true, key: c.id, programme: c.programme || '', chatAddonActif: !!c.chat_addon_actif, chatAddonDebut: c.chat_addon_debut || null, axes: c.axes || '', motifs: c.motifs || '', dateProtocole: c.date_protocole || null, date1: c.date1 || null }));
+      localStorage.setItem('avs_client', JSON.stringify({ prenom: c.prenom, nom: c.nom, email: c.email, ok: true, key: c.id, programme: c.programme || '', chatAddonActif: !!c.chat_addon_actif, chatAddonDebut: c.chat_addon_debut || null, axes: c.axes || '', motifs: c.motifs || '', suiviSpecialites: (typeof c.suivi_specialites === 'string') ? c.suivi_specialites : null, dateProtocole: c.date_protocole || null, date1: c.date1 || null }));
       openSpace(c.prenom, c.programme, c.chat_addon_actif);
       return true;
     } else {
@@ -2232,7 +2232,7 @@ async function tryAutoLogin() {
 
 async function DB_getOwnClientRow() {
   const token = await Auth.getValidAccessToken();
-  const res = await fetch(SUPA_URL + '/rest/v1/clientes?select=id,prenom,nom,email,programme,chat_addon_actif,chat_addon_renouvellement,chat_addon_debut,axes,motifs,date_protocole,date1', {
+  const res = await fetch(SUPA_URL + '/rest/v1/clientes?select=id,prenom,nom,email,programme,chat_addon_actif,chat_addon_renouvellement,chat_addon_debut,axes,motifs,suivi_specialites,date_protocole,date1', {
     headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + token }
   });
   if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -3781,30 +3781,42 @@ var CHECKIN_DOULEUR_OPTS = ['Absentes','Légères','Modérées','Fortes','Invali
 var CHECKIN_SAIGNEMENT_OPTS = ['Aucun','Spotting','Léger','Modéré','Abondant'];
 var CHECKIN_STRESS_OPTS = ['Calme','Un peu tendue','Tendue','Très tendue','Débordée'];
 
-/* ── SUIVI PERSONNALISÉ PAR SPÉCIALITÉ (30/08/2026) ──────────────────────
-   Les 4 questions quotidiennes ne sont plus figées : elles s'adaptent à ce
-   qui a été identifié en consultation par Sabrina (champs "axes"/"motifs"
-   sur la fiche cliente). Endométriose/SOPK → cycle & douleurs. SIBO/dysbiose
-   → transit & ballonnements. Aucun signal clair → suivi "général" (énergie,
-   sommeil, stress, humeur — les 4 piliers de base, pertinents pour tout le
-   monde, plutôt que de présumer un problème digestif par défaut). Aucune
-   nouvelle colonne Supabase créée : les questions "cycle" et "stress"
-   s'enregistrent dans le champ JSON déjà existant "reponses" (clés
-   douleur_cycle/saignement/stress_tension), au même titre que les puces
-   optionnelles du questionnaire "Aujourd'hui". "Sommeil" utilise la colonne
-   Supabase déjà existante (déjà écrite par le questionnaire "Aujourd'hui"). */
+/* ── SUIVI PERSONNALISÉ PAR SPÉCIALITÉ (30/08/2026, révisé) ───────────────
+   Source de vérité : les cases à cocher "Espace cliente" en fin de
+   Questionnaire_de_consultation.html / Questionnaire_de_suivi.html
+   (colonne Supabase clientes.suivi_specialites, ex. "digestif,cycle").
+   Si les deux sont cochées, la cliente voit TOUTES les questions pertinentes
+   (union), sans priorité de l'une sur l'autre — sur la demande explicite de
+   Sabrina : mieux vaut quelques questions de plus qu'un signal manqué.
+   Si Sabrina n'a jamais coché rien du tout pour cette cliente (colonne encore
+   NULL — jamais soumise), on retombe sur l'ancienne devinette par mots-clés
+   dans axes/motifs, pour ne pas laisser les clientes déjà en cours sans
+   suivi adapté en attendant qu'un prochain questionnaire soit rempli.
+   Aucune nouvelle colonne Supabase créée pour les questions elles-mêmes :
+   "cycle" et "stress" s'enregistrent dans le champ JSON déjà existant
+   "reponses" (clés douleur_cycle/saignement/stress_tension), au même titre
+   que les puces optionnelles du questionnaire "Aujourd'hui". "Sommeil"
+   utilise la colonne Supabase déjà existante. */
 var CHECKIN_PROFILE_KEYWORDS = {
   cycle: ['endometriose','sopk','ovaire polykystique','ovaires polykystiques','syndrome premenstruel','spm','dysmenorrh','regles douloureuses','dominance oestrogenique'],
   digestif: ['sibo','dysbiose','sii','colon irritable','intestin','microbiote','ballonnement']
 };
-function getCheckinProfile(){
+// Renvoie un TABLEAU de profils actifs (un ou plusieurs), jamais une seule valeur.
+function getCheckinProfileKeys(){
   var session = avsGetSession();
+  if (typeof session.suiviSpecialites === 'string') {
+    // Champ explicitement revu par Sabrina (même vide) → source de vérité, plus de devinette.
+    var explicit = session.suiviSpecialites.split(',').map(function(s){ return s.trim(); }).filter(Boolean);
+    return explicit.length ? explicit : ['general'];
+  }
+  // Jamais revu (colonne NULL) → devinette par mots-clés dans axes/motifs, en secours.
   var profil = _normText((session.axes||'') + ' ' + (session.motifs||''));
   var scoreCycle = CHECKIN_PROFILE_KEYWORDS.cycle.filter(function(k){ return profil.indexOf(k)>-1; }).length;
   var scoreDig = CHECKIN_PROFILE_KEYWORDS.digestif.filter(function(k){ return profil.indexOf(k)>-1; }).length;
-  if(scoreCycle>0 && scoreCycle>=scoreDig) return 'cycle';
-  if(scoreDig>0) return 'digestif';
-  return 'general';
+  var keys = [];
+  if (scoreDig>0) keys.push('digestif');
+  if (scoreCycle>0) keys.push('cycle');
+  return keys.length ? keys : ['general'];
 }
 // Chaque dimension : libellé + options + soit une colonne Supabase directe
 // (column), soit une clé dans le champ JSON "reponses" (jsonKey).
@@ -3818,13 +3830,25 @@ var CHECKIN_DIMENSIONS = {
   stress:        { label:'Stress / tension',      options: CHECKIN_STRESS_OPTS,          jsonKey:'stress_tension' },
   humeur:        { label:'Humeur',                options: CHECKIN_HUMEUR_OPTS,         column:'humeur' }
 };
+// Dimensions propres à chaque profil, hors piliers communs (énergie/humeur, ajoutés une
+// seule fois quel que soit le nombre de profils actifs pour ne jamais les dupliquer).
 var CHECKIN_PROFILE_DIMS = {
-  digestif: ['energie','transit','ballonnements','humeur'],
-  cycle:    ['energie','douleur','saignement','humeur'],
-  general:  ['energie','sommeil','stress','humeur']
+  digestif: ['transit','ballonnements'],
+  cycle:    ['douleur','saignement'],
+  general:  ['sommeil','stress']
 };
+// Construit l'union des dimensions pour TOUS les profils actifs de la cliente, dans un
+// ordre stable : Énergie d'abord, piliers spécifiques ensuite (digestif puis cycle puis
+// général, sans doublon), Humeur toujours en dernier.
 function getCheckinActiveDims(){
-  return CHECKIN_PROFILE_DIMS[getCheckinProfile()] || CHECKIN_PROFILE_DIMS.general;
+  var profiles = getCheckinProfileKeys();
+  var dims = ['energie'];
+  ['digestif','cycle','general'].forEach(function(p){
+    if (profiles.indexOf(p) === -1) return;
+    (CHECKIN_PROFILE_DIMS[p]||[]).forEach(function(d){ if (dims.indexOf(d)===-1) dims.push(d); });
+  });
+  dims.push('humeur');
+  return dims;
 }
 
 function getCheckinStreak(){
@@ -3940,8 +3964,8 @@ async function renderCheckinRapide(){
   checkinNoteExpanded = false;
   if(checkinAutoSaveTimer){ clearTimeout(checkinAutoSaveTimer); checkinAutoSaveTimer=null; }
 
-  var profile = getCheckinProfile();
-  var dims = CHECKIN_PROFILE_DIMS[profile];
+  var profiles = getCheckinProfileKeys();
+  var dims = getCheckinActiveDims();
 
   try {
     var token = await Auth.getValidAccessToken();
@@ -3972,11 +3996,14 @@ async function renderCheckinRapide(){
     }
 
     renderVitalityRing();
-    var introSub = profile === 'cycle'
-      ? '4 gestes, 10 secondes — pensés pour votre suivi du cycle.'
-      : profile === 'general'
-      ? '4 gestes, 10 secondes — vos 4 piliers du jour.'
-      : '4 gestes, 10 secondes, ça s\'enregistre tout seul.';
+    var hasCycle = profiles.indexOf('cycle') > -1;
+    var hasDig = profiles.indexOf('digestif') > -1;
+    var introSub = dims.length + ' gestes, quelques secondes' + (
+      hasCycle && hasDig ? ' — pensés pour votre double suivi.' :
+      hasCycle ? ' — pensés pour votre suivi du cycle.' :
+      hasDig ? ', ça s\'enregistre tout seul.' :
+      ' — vos piliers du jour.'
+    );
     var pillsHtml = dims.map(function(d){
       var dim = CHECKIN_DIMENSIONS[d];
       var opts = dim.options.map(function(o){
@@ -4802,19 +4829,26 @@ function ouvrirDrawerSymptomes() {
   };
 
   // ── Suivi personnalisé : SIBO/dysbiose → transit & ballonnements ;
-  // endométriose/SOPK → douleurs & saignement ; sinon → stress. Cf. renderCheckinRapide().
-  var profile = getCheckinProfile();
-  document.getElementById('rowTransit').style.display = profile === 'digestif' ? '' : 'none';
-  document.getElementById('rowBallonnements').style.display = profile === 'digestif' ? '' : 'none';
-  document.getElementById('rowDouleur').style.display = profile === 'cycle' ? '' : 'none';
-  document.getElementById('rowSaignement').style.display = profile === 'cycle' ? '' : 'none';
-  document.getElementById('rowStress').style.display = profile === 'general' ? '' : 'none';
+  // endométriose/SOPK → douleurs & saignement ; sinon (ou en plus) → sommeil & stress.
+  // Les deux premiers ne s'excluent pas : si les deux sont cochés, la cliente voit tout.
+  var profiles = getCheckinProfileKeys();
+  var hasDig = profiles.indexOf('digestif') > -1;
+  var hasCycle = profiles.indexOf('cycle') > -1;
+  var hasGeneral = profiles.indexOf('general') > -1;
+  document.getElementById('rowTransit').style.display = hasDig ? '' : 'none';
+  document.getElementById('rowBallonnements').style.display = hasDig ? '' : 'none';
+  document.getElementById('rowDouleur').style.display = hasCycle ? '' : 'none';
+  document.getElementById('rowSaignement').style.display = hasCycle ? '' : 'none';
+  document.getElementById('rowSommeil').style.display = hasGeneral ? '' : 'none';
+  document.getElementById('rowStress').style.display = hasGeneral ? '' : 'none';
   var introEl = document.getElementById('drawerIntro');
-  if(introEl) introEl.textContent = profile === 'cycle'
-    ? 'Quatre gestes, dix secondes — pensés pour votre suivi du cycle, semaine après semaine.'
-    : profile === 'general'
-    ? 'Quatre gestes, dix secondes — vos piliers du jour, semaine après semaine.'
-    : 'Quatre gestes, dix secondes — Sabrina suit votre progression sur ces bilans, semaine après semaine.';
+  if(introEl) introEl.textContent = hasDig && hasCycle
+    ? 'Quelques gestes, dix secondes — pensés pour votre double suivi, semaine après semaine.'
+    : hasCycle
+    ? 'Quelques gestes, dix secondes — pensés pour votre suivi du cycle, semaine après semaine.'
+    : hasGeneral
+    ? 'Quelques gestes, dix secondes — vos piliers du jour, semaine après semaine.'
+    : 'Quelques gestes, dix secondes — Sabrina suit votre progression sur ces bilans, semaine après semaine.';
 
   _renderDrawerPillRow('pills-energie', 'energie', CHECKIN_ENERGIE_OPTS, _drawerPills.energie);
   _renderDrawerPillRow('pills-sommeil', 'sommeil', CHECKIN_SOMMEIL_OPTS, _drawerPills.sommeil);
