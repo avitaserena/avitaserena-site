@@ -78,6 +78,18 @@ body{min-height:100vh}
 .vitality-desc{font-size:12.5px;color:rgba(255,255,255,.72);line-height:1.55;max-width:168px}
 @media(max-width:640px){.vitality-wrap{width:100%;padding:14px 16px}.vitality-desc{max-width:none}}
 
+/* ── Cercle de vitalité, version mobile compacte (carte "Aujourd'hui") ── */
+.today-card-top{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:12px}
+.today-card-text{flex:1;min-width:0}
+.today-card-top .today-eyebrow{margin-bottom:6px}
+.today-card-top .today-title{margin-bottom:0}
+.vitality-mini{position:relative;width:58px;height:58px;flex-shrink:0}
+.vitality-mini svg{width:100%;height:100%;transform:rotate(-90deg);overflow:visible}
+.vitality-mini .vitality-track{fill:none;stroke:rgba(30,30,28,.09);stroke-width:5}
+.vitality-mini .vitality-fill{fill:none;stroke:url(#vitalityGrad);stroke-width:5;stroke-linecap:round;transition:stroke-dashoffset 1.4s cubic-bezier(.16,1,.3,1)}
+.vitality-mini-center{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+.vitality-mini .vitality-num{font-family:'Cormorant Garamond',serif;font-size:18px;color:var(--ardoise);font-weight:600;line-height:1}
+
 /* ── Fiches & cartes : relief, lisière lumineuse au survol ── */
 .db-card,.fiche-card{will-change:transform}
 .db-card:hover,.fiche-card:hover{box-shadow:0 18px 44px rgba(30,30,28,.11)}
@@ -999,7 +1011,7 @@ a,button{-webkit-tap-highlight-color:transparent}
       </div>
 
       <!-- CERCLE DE VITALITÉ — reflète votre régularité de suivi, en un regard -->
-      <div class="vitality-wrap" id="vitalityWrap" title="Se nourrit de votre régularité au fil des jours">
+      <div class="vitality-wrap vitality-instance" id="vitalityWrap" data-r="45" title="Se nourrit de votre régularité au fil des jours">
         <div class="vitality-ring-box">
           <svg viewBox="0 0 100 100">
             <defs>
@@ -1009,16 +1021,16 @@ a,button{-webkit-tap-highlight-color:transparent}
               </linearGradient>
             </defs>
             <circle class="vitality-track" cx="50" cy="50" r="45"/>
-            <circle class="vitality-fill" id="vitalityFillCircle" cx="50" cy="50" r="45"/>
+            <circle class="vitality-fill" cx="50" cy="50" r="45"/>
           </svg>
           <div class="vitality-center">
-            <div class="vitality-num" id="vitalityNum">—</div>
+            <div class="vitality-num">—</div>
             <div class="vitality-pct">/ 100</div>
           </div>
         </div>
         <div>
           <div class="vitality-label">Cercle de vitalité</div>
-          <div class="vitality-desc" id="vitalityDesc">Votre premier geste du jour l'allumera.</div>
+          <div class="vitality-desc">Votre premier geste du jour l'allumera.</div>
         </div>
       </div>
     </div>
@@ -1291,6 +1303,10 @@ a,button{-webkit-tap-highlight-color:transparent}
         <div class="chip-category" id="rowSaignement" style="display:none">
           <div class="chip-cat-title">Saignement aujourd'hui</div>
           <div class="chips-row" id="pills-saignement"></div>
+        </div>
+        <div class="chip-category" id="rowStress" style="display:none">
+          <div class="chip-cat-title">Stress / tension</div>
+          <div class="chips-row" id="pills-stress"></div>
         </div>
         <div class="chip-category">
           <div class="chip-cat-title">Humeur</div>
@@ -3763,16 +3779,20 @@ var CHECKIN_BALLONNEMENTS_OPTS = ['Absents','Légers','Modérés','Importants','
 var CHECKIN_HUMEUR_OPTS = ['Très bien','Bien','Neutre','Irritable','Anxieuse','Fatiguée mentalement'];
 var CHECKIN_DOULEUR_OPTS = ['Absentes','Légères','Modérées','Fortes','Invalidantes'];
 var CHECKIN_SAIGNEMENT_OPTS = ['Aucun','Spotting','Léger','Modéré','Abondant'];
+var CHECKIN_STRESS_OPTS = ['Calme','Un peu tendue','Tendue','Très tendue','Débordée'];
 
 /* ── SUIVI PERSONNALISÉ PAR SPÉCIALITÉ (30/08/2026) ──────────────────────
    Les 4 questions quotidiennes ne sont plus figées : elles s'adaptent à ce
    qui a été identifié en consultation par Sabrina (champs "axes"/"motifs"
    sur la fiche cliente). Endométriose/SOPK → cycle & douleurs. SIBO/dysbiose
-   → transit & ballonnements. Aucun signal clair → suivi digestif par défaut
-   (le plus généralement utile). Aucune nouvelle colonne Supabase créée : les
-   questions "cycle" s'enregistrent dans le champ JSON déjà existant
-   "reponses" (clé douleur_cycle/saignement), au même titre que les puces
-   optionnelles du questionnaire "Aujourd'hui". */
+   → transit & ballonnements. Aucun signal clair → suivi "général" (énergie,
+   sommeil, stress, humeur — les 4 piliers de base, pertinents pour tout le
+   monde, plutôt que de présumer un problème digestif par défaut). Aucune
+   nouvelle colonne Supabase créée : les questions "cycle" et "stress"
+   s'enregistrent dans le champ JSON déjà existant "reponses" (clés
+   douleur_cycle/saignement/stress_tension), au même titre que les puces
+   optionnelles du questionnaire "Aujourd'hui". "Sommeil" utilise la colonne
+   Supabase déjà existante (déjà écrite par le questionnaire "Aujourd'hui"). */
 var CHECKIN_PROFILE_KEYWORDS = {
   cycle: ['endometriose','sopk','ovaire polykystique','ovaires polykystiques','syndrome premenstruel','spm','dysmenorrh','regles douloureuses','dominance oestrogenique'],
   digestif: ['sibo','dysbiose','sii','colon irritable','intestin','microbiote','ballonnement']
@@ -3782,24 +3802,29 @@ function getCheckinProfile(){
   var profil = _normText((session.axes||'') + ' ' + (session.motifs||''));
   var scoreCycle = CHECKIN_PROFILE_KEYWORDS.cycle.filter(function(k){ return profil.indexOf(k)>-1; }).length;
   var scoreDig = CHECKIN_PROFILE_KEYWORDS.digestif.filter(function(k){ return profil.indexOf(k)>-1; }).length;
-  return (scoreCycle>0 && scoreCycle>=scoreDig) ? 'cycle' : 'digestif';
+  if(scoreCycle>0 && scoreCycle>=scoreDig) return 'cycle';
+  if(scoreDig>0) return 'digestif';
+  return 'general';
 }
 // Chaque dimension : libellé + options + soit une colonne Supabase directe
 // (column), soit une clé dans le champ JSON "reponses" (jsonKey).
 var CHECKIN_DIMENSIONS = {
   energie:       { label:'Énergie',              options: CHECKIN_ENERGIE_OPTS,        column:'energie' },
+  sommeil:       { label:'Sommeil',               options: CHECKIN_SOMMEIL_OPTS,        column:'sommeil' },
   transit:       { label:'Transit',               options: CHECKIN_TRANSIT_OPTS,        column:'transit' },
   ballonnements: { label:'Ballonnements',         options: CHECKIN_BALLONNEMENTS_OPTS,  column:'ballonnements' },
   douleur:       { label:'Douleurs (cycle)',      options: CHECKIN_DOULEUR_OPTS,         jsonKey:'douleur_cycle' },
   saignement:    { label:'Saignement aujourd\'hui', options: CHECKIN_SAIGNEMENT_OPTS,    jsonKey:'saignement' },
+  stress:        { label:'Stress / tension',      options: CHECKIN_STRESS_OPTS,          jsonKey:'stress_tension' },
   humeur:        { label:'Humeur',                options: CHECKIN_HUMEUR_OPTS,         column:'humeur' }
 };
 var CHECKIN_PROFILE_DIMS = {
   digestif: ['energie','transit','ballonnements','humeur'],
-  cycle:    ['energie','douleur','saignement','humeur']
+  cycle:    ['energie','douleur','saignement','humeur'],
+  general:  ['energie','sommeil','stress','humeur']
 };
 function getCheckinActiveDims(){
-  return CHECKIN_PROFILE_DIMS[getCheckinProfile()] || CHECKIN_PROFILE_DIMS.digestif;
+  return CHECKIN_PROFILE_DIMS[getCheckinProfile()] || CHECKIN_PROFILE_DIMS.general;
 }
 
 function getCheckinStreak(){
@@ -3855,30 +3880,36 @@ function renderBadgesStrip(st){
 // ── CERCLE DE VITALITÉ — score de régularité, visible d'un regard ──
 // Se nourrit de la série de check-in (jusqu'à 70 pts) et du geste du jour (30 pts) :
 // un score qui grandit avec la constance, pas avec un seul "bon jour".
+// Met à jour TOUTES les instances présentes dans la page (desktop ET mobile),
+// chacune identifiée par .vitality-instance + son propre data-r (rayon du cercle).
 function renderVitalityRing(){
-  var box = document.getElementById('vitalityWrap');
-  if(!box) return;
+  var wraps = document.querySelectorAll('.vitality-instance');
+  if(!wraps.length) return;
   var st = getCheckinStreak();
   var streakScore = Math.min(70, Math.round(Math.log(st.streak+1)/Math.log(31)*70)); // courbe douce, 30j ≈ plein
   var todayScore = st.doneToday ? 30 : 0;
   var score = Math.max(st.streak>0||st.doneToday?6:0, streakScore + todayScore);
-
-  var circle = document.getElementById('vitalityFillCircle');
-  var numEl = document.getElementById('vitalityNum');
-  var descEl = document.getElementById('vitalityDesc');
-  if(!circle||!numEl||!descEl) return;
-
-  var circumference = 2*Math.PI*45; // r=45
-  var offset = circumference - (score/100)*circumference;
-  requestAnimationFrame(function(){ circle.style.strokeDashoffset = offset; });
-  numEl.textContent = score;
 
   var desc;
   if(score===0) desc = "Votre premier geste du jour l'allumera.";
   else if(st.streak>=30) desc = st.streak+' jours de constance — votre corps s\'en souvient.';
   else if(st.doneToday) desc = 'Aujourd\'hui, c\'est fait. Revenez demain pour le faire grandir.';
   else desc = 'Il vous manque le geste du jour pour le faire grandir.';
-  descEl.textContent = desc;
+
+  wraps.forEach(function(wrap){
+    var r = parseFloat(wrap.dataset.r) || 45;
+    var circle = wrap.querySelector('.vitality-fill');
+    var numEl = wrap.querySelector('.vitality-num');
+    var descEl = wrap.querySelector('.vitality-desc');
+    if(circle){
+      var circumference = 2*Math.PI*r;
+      circle.style.strokeDasharray = circumference;
+      var offset = circumference - (score/100)*circumference;
+      requestAnimationFrame(function(){ circle.style.strokeDashoffset = offset; });
+    }
+    if(numEl) numEl.textContent = score;
+    if(descEl) descEl.textContent = desc;
+  });
 }
 
 // ── RÉVÉLATION DOUCE AU SCROLL — les cartes apparaissent au fil de la lecture ──
@@ -3943,6 +3974,8 @@ async function renderCheckinRapide(){
     renderVitalityRing();
     var introSub = profile === 'cycle'
       ? '4 gestes, 10 secondes — pensés pour votre suivi du cycle.'
+      : profile === 'general'
+      ? '4 gestes, 10 secondes — vos 4 piliers du jour.'
       : '4 gestes, 10 secondes, ça s\'enregistre tout seul.';
     var pillsHtml = dims.map(function(d){
       var dim = CHECKIN_DIMENSIONS[d];
@@ -4764,20 +4797,23 @@ function ouvrirDrawerSymptomes() {
     ballonnements: todayEntry.ballonnements || null,
     douleur: todayReponses.douleur_cycle || null,
     saignement: todayReponses.saignement || null,
+    stress: todayReponses.stress_tension || null,
     humeur: todayEntry.humeur || null
   };
 
   // ── Suivi personnalisé : SIBO/dysbiose → transit & ballonnements ;
-  // endométriose/SOPK → douleurs & saignement. Cf. renderCheckinRapide().
+  // endométriose/SOPK → douleurs & saignement ; sinon → stress. Cf. renderCheckinRapide().
   var profile = getCheckinProfile();
-  var showTransit = profile !== 'cycle';
-  document.getElementById('rowTransit').style.display = showTransit ? '' : 'none';
-  document.getElementById('rowBallonnements').style.display = showTransit ? '' : 'none';
-  document.getElementById('rowDouleur').style.display = showTransit ? 'none' : '';
-  document.getElementById('rowSaignement').style.display = showTransit ? 'none' : '';
+  document.getElementById('rowTransit').style.display = profile === 'digestif' ? '' : 'none';
+  document.getElementById('rowBallonnements').style.display = profile === 'digestif' ? '' : 'none';
+  document.getElementById('rowDouleur').style.display = profile === 'cycle' ? '' : 'none';
+  document.getElementById('rowSaignement').style.display = profile === 'cycle' ? '' : 'none';
+  document.getElementById('rowStress').style.display = profile === 'general' ? '' : 'none';
   var introEl = document.getElementById('drawerIntro');
   if(introEl) introEl.textContent = profile === 'cycle'
     ? 'Quatre gestes, dix secondes — pensés pour votre suivi du cycle, semaine après semaine.'
+    : profile === 'general'
+    ? 'Quatre gestes, dix secondes — vos piliers du jour, semaine après semaine.'
     : 'Quatre gestes, dix secondes — Sabrina suit votre progression sur ces bilans, semaine après semaine.';
 
   _renderDrawerPillRow('pills-energie', 'energie', CHECKIN_ENERGIE_OPTS, _drawerPills.energie);
@@ -4786,6 +4822,7 @@ function ouvrirDrawerSymptomes() {
   _renderDrawerPillRow('pills-ballonnements', 'ballonnements', CHECKIN_BALLONNEMENTS_OPTS, _drawerPills.ballonnements);
   _renderDrawerPillRow('pills-douleur', 'douleur', CHECKIN_DOULEUR_OPTS, _drawerPills.douleur);
   _renderDrawerPillRow('pills-saignement', 'saignement', CHECKIN_SAIGNEMENT_OPTS, _drawerPills.saignement);
+  _renderDrawerPillRow('pills-stress', 'stress', CHECKIN_STRESS_OPTS, _drawerPills.stress);
   _renderDrawerPillRow('pills-humeur', 'humeur', CHECKIN_HUMEUR_OPTS, _drawerPills.humeur);
 
   // Chips de précision (optionnelles)
@@ -4840,11 +4877,12 @@ async function sauvegarderSymptomes() {
   var actifs = {};
   Object.keys(_selectedChips).forEach(function(k){ if(_selectedChips[k]) actifs[k]=true; });
 
-  // Réponses "cycle" (suivi personnalisé endométriose/SOPK) — mêmes clés que le
+  // Réponses "cycle"/"stress" (suivi personnalisé) — mêmes clés que le
   // check-in rapide desktop, fusionnées dans le même champ JSON "reponses".
   var reponsesFinal = Object.assign({}, actifs);
   if(_drawerPills.douleur) reponsesFinal.douleur_cycle = _drawerPills.douleur;
   if(_drawerPills.saignement) reponsesFinal.saignement = _drawerPills.saignement;
+  if(_drawerPills.stress) reponsesFinal.stress_tension = _drawerPills.stress;
 
   // Cycle — enregistré seulement s'il a été renseigné
   var cycleInput = document.getElementById('cycleStartInput');
@@ -4947,10 +4985,14 @@ function renderTodayCard(){
   try { entry = JSON.parse(localStorage.getItem('avs_journal_'+today) || '{}'); } catch(e){}
   var rempli = !!(entry.energie || entry.transit || entry.humeur || entry.sommeil || entry.ballonnements);
 
+  var ring = '<div class="vitality-instance vitality-mini" data-r="24" aria-hidden="true">' +
+      '<svg viewBox="0 0 56 56"><circle class="vitality-track" cx="28" cy="28" r="24"/><circle class="vitality-fill" cx="28" cy="28" r="24"/></svg>' +
+      '<div class="vitality-mini-center"><div class="vitality-num">—</div></div></div>';
+
   if(rempli){
     var parts = [entry.humeur, entry.energie, entry.transit, entry.sommeil].filter(Boolean);
     card.innerHTML =
-      '<div class="today-eyebrow">Aujourd\'hui</div>' +
+      '<div class="today-card-top"><div class="today-card-text"><div class="today-eyebrow">Aujourd\'hui</div></div>' + ring + '</div>' +
       '<div class="today-done">' +
         '<div class="today-done-ic"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>' +
         '<div class="today-done-txt"><b>Merci, c\'est noté pour aujourd\'hui</b>' + escHtml(parts.join(' · ')) + '</div>' +
@@ -4958,11 +5000,11 @@ function renderTodayCard(){
       '<button class="today-cta" style="margin-top:14px;background:transparent;color:var(--ardoise);border:1.5px solid var(--taupe)" onclick="ouvrirDrawerSymptomes()">Modifier mes réponses</button>';
   } else {
     card.innerHTML =
-      '<div class="today-eyebrow">Aujourd\'hui</div>' +
-      '<div class="today-title">Comment vous sentez-vous ?</div>' +
+      '<div class="today-card-top"><div class="today-card-text"><div class="today-eyebrow">Aujourd\'hui</div><div class="today-title">Comment vous sentez-vous ?</div></div>' + ring + '</div>' +
       '<div class="today-sub">Énergie, sommeil, digestion, humeur — quatre gestes, dix secondes.</div>' +
       '<button class="today-cta" onclick="ouvrirDrawerSymptomes()">Remplir mon questionnaire →</button>';
   }
+  renderVitalityRing();
 }
 
 // ── CONFETTIS ─────────────────────────────────────────────
