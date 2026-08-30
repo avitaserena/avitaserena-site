@@ -102,8 +102,8 @@ body.is-embed .app{min-height:100vh}
 /* ── MAIN ── */
 .main{padding:24px 32px 40px;overflow-y:auto;animation:fadeUp .3s cubic-bezier(.16,1,.3,1)}
 .main-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px}
-.main-title{font-family:'Inter',sans-serif;font-size:24px;font-weight:700;letter-spacing:-.03em}
-.main-title span{color:var(--ocre);font-style:normal;font-weight:700}
+.main-title{font-family:var(--serif);font-style:italic;font-weight:600;font-size:28px;letter-spacing:-.01em;color:var(--ardoise)}
+.main-title span{color:var(--ocre);font-style:normal;font-weight:600}
 .view-tabs{display:flex;gap:3px;background:var(--off);border:1px solid var(--taupe);border-radius:var(--r99);padding:3px}
 .view-tab{padding:7px 16px;border-radius:var(--r99);font-size:12px;font-weight:500;letter-spacing:0;cursor:pointer;border:none;background:none;color:var(--gris);font-family:inherit;transition:var(--t)}
 .view-tab.active{background:var(--blanc);color:var(--ardoise);font-weight:600;box-shadow:0 1px 4px rgba(74,58,32,.08)}
@@ -172,6 +172,23 @@ body.is-embed .app{min-height:100vh}
 .wk-hourlabel{position:absolute;right:6px;font-size:10px;color:var(--gris);font-family:'DM Mono',monospace;transform:translateY(-50%)}
 .wk-daycol{position:relative;border-left:1px solid var(--taupe)}
 .wk-daycol.blocked{background:repeating-linear-gradient(135deg,rgba(209,85,58,.05),rgba(209,85,58,.05) 6px,transparent 6px,transparent 12px)}
+
+/* VUE JOUR — cartes détaillées, même grille que la vue semaine mais 1 seule colonne */
+.jr-daycol{position:relative;border-left:1px solid var(--taupe)}
+.jr-daycol.blocked{background:repeating-linear-gradient(135deg,rgba(209,85,58,.05),rgba(209,85,58,.05) 6px,transparent 6px,transparent 12px)}
+.jr-evt{position:absolute;left:6px;right:6px;border-radius:8px;padding:6px 10px;overflow:hidden;cursor:pointer;transition:var(--t);display:flex;flex-direction:column;gap:2px;box-shadow:var(--sh1)}
+.jr-evt:hover{box-shadow:var(--sh2)}
+.jr-evt.type-initial{background:linear-gradient(90deg,rgba(193,121,60,.16),rgba(193,121,60,.05));border-left:4px solid var(--ocre)}
+.jr-evt.type-suivi{background:linear-gradient(90deg,rgba(76,139,92,.16),rgba(76,139,92,.05));border-left:4px solid var(--vert)}
+.jr-evt.attente{background:repeating-linear-gradient(135deg, rgba(156,95,160,.14) 0 7px, rgba(156,95,160,.06) 7px 14px);border-left:4px dashed #9C5FA0}
+.jr-evt.perso{background:repeating-linear-gradient(135deg, rgba(107,101,96,.1) 0 8px, rgba(107,101,96,.18) 8px 16px);border-left:4px solid #9C958C;cursor:default;box-shadow:none}
+.jr-evt.tache{background:rgba(156,95,160,.1);border-left:4px solid #9C5FA0;box-shadow:none}
+.jr-evt-time{font-size:10.5px;font-weight:700;color:var(--ardoise);font-family:'DM Mono',monospace}
+.jr-evt-name{font-size:13px;font-weight:700;color:var(--ardoise);display:flex;align-items:center;gap:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.jr-evt-name svg{flex-shrink:0}
+.jr-evt-tag{font-size:9px;font-weight:700;padding:1px 7px;border-radius:99px;margin-left:auto;flex-shrink:0}
+.jr-evt-meta{font-size:10.5px;font-weight:600;color:var(--gris)}
+.jr-evt-detail{font-size:10.5px;color:var(--gris);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .wk-hourline{position:absolute;left:0;right:0;height:1px;background:var(--taupe)}
 .wk-now{position:absolute;left:0;right:0;height:2px;background:var(--rouge);z-index:3}
 .wk-now::before{content:'';position:absolute;left:-3px;top:-3px;width:8px;height:8px;border-radius:50%;background:var(--rouge)}
@@ -372,6 +389,7 @@ body.is-embed .app{min-height:100vh}
         <button onclick="openAddModal()" style="background:var(--ocre);color:#fff;border:none;padding:9px 20px;border-radius:99px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .3s">+ Ajouter un RDV</button>
         <div class="view-tabs">
           <button class="view-tab active" onclick="switchMainView('agenda',this)">Agenda</button>
+          <button class="view-tab" onclick="switchMainView('jour',this)">Jour</button>
           <button class="view-tab" onclick="switchMainView('semaine',this)">Semaine</button>
           <button class="view-tab" onclick="switchMainView('mois',this)">Mois</button>
         </div>
@@ -381,6 +399,11 @@ body.is-embed .app{min-height:100vh}
     <!-- VUE AGENDA -->
     <div id="agendaView">
       <div id="agendaBody"></div>
+    </div>
+
+    <!-- VUE JOUR -->
+    <div id="jourView" style="display:none">
+      <div id="jourBody"></div>
     </div>
 
     <!-- VUE SEMAINE -->
@@ -450,13 +473,16 @@ body.is-embed .app{min-height:100vh}
           <option value="alba">Parcours Alba (3 mois)</option>
           <option value="aria">Parcours Aria (6 mois)</option>
           <option value="ora">Parcours Ora (9 mois)</option>
-          <option value="bilan">Consultation bilan seule</option>
         </select>
       </div>
     </div>
     <div id="emailPreviewSection" style="display:none">
       <div style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gris);margin-bottom:6px">Aperçu email de confirmation</div>
       <div class="email-preview" id="emailPreview"></div>
+    </div>
+    <div id="mailsSuiviSection" style="display:none;margin-top:14px">
+      <div style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gris);margin-bottom:8px">Suivi automatique de cette cliente</div>
+      <div id="mailsSuiviBody" style="display:flex;flex-wrap:wrap;gap:6px"></div>
     </div>
     <div class="modal-actions">
       <button class="btn-primary" onclick="saveRdv()">Enregistrer</button>
@@ -733,7 +759,7 @@ async function syncRdvsDepuisSupabase() {
   if (rdvsDistants === null) return; // échec réseau : on garde le cache local affiché
   state.rdvs = rdvsDistants;
   save();
-  updateStats(); renderAgenda(); renderSemaine(); renderMiniCal(); renderMois();
+  updateStats(); renderAgenda(); renderJour(); renderSemaine(); renderMiniCal(); renderMois();
 }
 
 /* ── Charge les tâches clientes qui ont une heure renseignée (donc destinées
@@ -770,7 +796,7 @@ async function chargerTachesDepuisSupabase() {
   const tachesDistantes = await supaLoadTachesAgenda();
   if (tachesDistantes === null) return;
   state.taches = tachesDistantes;
-  renderAgenda(); renderSemaine(); renderMois();
+  renderAgenda(); renderJour(); renderSemaine(); renderMois();
 }
 
 /* ── Marque une tâche comme terminée directement depuis l'agenda ── */
@@ -793,7 +819,7 @@ async function marquerTacheFaiteDepuisAgenda(id, ev) {
       body: JSON.stringify({ statut: 'done' })
     });
     state.taches = state.taches.filter(t => t.id !== id);
-    renderAgenda(); renderSemaine(); renderMois();
+    renderAgenda(); renderJour(); renderSemaine(); renderMois();
   } catch(e) { console.warn('Erreur mise à jour tâche:', e); }
 }
 
@@ -906,6 +932,7 @@ function selectDate(dateStr) {
     JOURS_LONG[d.getDay()] + ' ' + d.getDate() + ' ' + MOIS[d.getMonth()];
   renderMiniCal();
   renderAgenda();
+  renderJour();
   renderSemaine();
 }
 
@@ -1156,6 +1183,29 @@ function renderAgenda() {
 // ════════════════════════════════
 function escHtmlWk(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
+/* ── Charge de travail de la semaine affichée : minutes disponibles (d'après les
+   plages actives et les jours non bloqués) vs minutes déjà réservées (hors
+   événements personnels et RDV annulés), pour un taux de remplissage en un
+   coup d'oeil et repérer les trous encore libres. ── */
+function calculerChargeSemaine(days) {
+  let dispoMin = 0, reserveMin = 0;
+  days.forEach(dateStr => {
+    if (isDateBlocked(dateStr)) return;
+    const jsDay = new Date(dateStr + 'T12:00:00').getDay();
+    const slot = state.slots.find(s => s.day === jsDay && s.on);
+    if (slot) {
+      const [fh, fm] = slot.from.split(':').map(Number);
+      const [th, tm] = slot.to.split(':').map(Number);
+      dispoMin += Math.max(0, (th * 60 + tm) - (fh * 60 + fm));
+    }
+    state.rdvs
+      .filter(r => r.date === dateStr && r.status !== 'annule' && !isEvenementPerso(r))
+      .forEach(r => { reserveMin += dureeParType(r.type); });
+  });
+  const tauxPct = dispoMin > 0 ? Math.round((reserveMin / dispoMin) * 100) : 0;
+  return { dispoMin, reserveMin, tauxPct, libreMin: Math.max(0, dispoMin - reserveMin) };
+}
+
 function weekNav(dir) {
   if (dir === 0) {
     selectDate(new Date().toISOString().slice(0,10));
@@ -1252,14 +1302,30 @@ function renderSemaine() {
     return '<div class="wk-daycol'+(isBlocked?' blocked':'')+'" style="height:'+totalH+'px" ondblclick="wkSlotDblClick(event, \''+dateStr+'\')">'+hourlines+nowLine+evts+taskEvts+'</div>';
   }).join('');
 
-  body.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:10px">
+  const charge = calculerChargeSemaine(days);
+  const chargeColor = charge.tauxPct >= 85 ? 'var(--rouge)' : (charge.tauxPct >= 55 ? 'var(--ocre)' : 'var(--vert)');
+  const libreLabel = charge.libreMin >= 60 ? (Math.round(charge.libreMin/60*10)/10)+'h libres' : charge.libreMin+' min libres';
+  const chargeWidget = charge.dispoMin > 0
+    ? `<div style="display:flex;align-items:center;gap:10px;font-size:11px;color:var(--gris);font-weight:600">
+        <div style="width:70px;height:6px;border-radius:99px;background:var(--taupe);overflow:hidden">
+          <div style="width:${Math.min(100,charge.tauxPct)}%;height:100%;background:${chargeColor};border-radius:99px"></div>
+        </div>
+        <span style="color:${chargeColor}">${charge.tauxPct}% rempli</span>
+        <span>·&nbsp;${libreLabel} cette semaine</span>
+      </div>`
+    : '';
+
+  body.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:6px">
     <div style="font-size:14px;font-weight:600;color:var(--gris)">
       Semaine du ${s.getDate()} ${MOIS[s.getMonth()]} au ${e.getDate()} ${MOIS[e.getMonth()]} ${e.getFullYear()}
     </div>
-    <div style="display:flex;align-items:center;gap:8px">
-      <button class="wk-nav-btn" onclick="weekNav(-1)" aria-label="Semaine précédente">‹</button>
-      <button class="wk-nav-today" onclick="weekNav(0)">Aujourd'hui</button>
-      <button class="wk-nav-btn" onclick="weekNav(1)" aria-label="Semaine suivante">›</button>
+    <div style="display:flex;align-items:center;gap:16px">
+      ${chargeWidget}
+      <div style="display:flex;align-items:center;gap:8px">
+        <button class="wk-nav-btn" onclick="weekNav(-1)" aria-label="Semaine précédente">‹</button>
+        <button class="wk-nav-today" onclick="weekNav(0)">Aujourd'hui</button>
+        <button class="wk-nav-btn" onclick="weekNav(1)" aria-label="Semaine suivante">›</button>
+      </div>
     </div>
   </div>
   <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:12px;font-size:10.5px;color:var(--gris);font-weight:600">
@@ -1296,6 +1362,121 @@ function wkSlotDblClick(e, dateStr) {
   openAddModal();
   document.getElementById('rdvDate').value = dateStr;
   document.getElementById('rdvTime').value = timeStr;
+}
+
+// ════════════════════════════════
+// VUE JOUR — planning détaillé d'une seule journée : nom complet, contact,
+// type, parcours et aperçu des notes visibles directement sur la carte.
+// ════════════════════════════════
+function jourNav(dir) {
+  if (dir === 0) { selectDate(new Date().toISOString().slice(0,10)); return; }
+  const d = new Date(state.selectedDate + 'T12:00:00');
+  d.setDate(d.getDate() + dir);
+  selectDate(d.toISOString().slice(0,10));
+}
+
+function jrSlotDblClick(e, dateStr) {
+  if (e.target.closest('.jr-evt')) return;
+  const DAY_START = 8, hourH = 72;
+  const daycol = e.currentTarget;
+  const rect = daycol.getBoundingClientRect();
+  const offsetY = e.clientY - rect.top;
+  let totalMinutes = DAY_START * 60 + (offsetY / hourH) * 60;
+  totalMinutes = Math.max(DAY_START * 60, Math.round(totalMinutes / 15) * 15);
+  const h = Math.floor(totalMinutes / 60);
+  const mn = totalMinutes % 60;
+  const timeStr = String(h).padStart(2,'0') + ':' + String(mn).padStart(2,'0');
+  openAddModal();
+  document.getElementById('rdvDate').value = dateStr;
+  document.getElementById('rdvTime').value = timeStr;
+}
+
+function renderJour() {
+  const body = document.getElementById('jourBody');
+  if (!body) return;
+  const dateStr = state.selectedDate;
+  const d = new Date(dateStr + 'T12:00:00');
+  const todayStr = new Date().toISOString().slice(0,10);
+  const isToday = dateStr === todayStr;
+  const isBlocked = isDateBlocked(dateStr);
+  const DAY_START = 8, DAY_END = 20, hourH = 72;
+  const totalH = (DAY_END - DAY_START) * hourH;
+  function minutesOf(t){ if(!t) return DAY_START*60; const p=t.split(':').map(Number); return (p[0]||0)*60+(p[1]||0); }
+
+  let hourLabelsHtml = '', hourlines = '';
+  for (let h = DAY_START; h <= DAY_END; h++) {
+    hourLabelsHtml += '<div class="wk-hourlabel" style="top:'+((h-DAY_START)*hourH)+'px">'+h+'h</div>';
+    hourlines += '<div class="wk-hourline" style="top:'+((h-DAY_START)*hourH)+'px"></div>';
+  }
+  let nowLine = '';
+  if (isToday) {
+    const now = new Date();
+    if (now.getHours() >= DAY_START && now.getHours() < DAY_END) {
+      const top = ((now.getHours()*60+now.getMinutes())-DAY_START*60)/60*hourH;
+      nowLine = '<div class="wk-now" style="top:'+top+'px"></div>';
+    }
+  }
+
+  const rdvsJour = state.rdvs.filter(r => r.date===dateStr && r.status!=='annule').sort((a,b)=>(a.time||'').localeCompare(b.time||''));
+  const tachesJour = (state.taches||[]).filter(t => t.date===dateStr);
+  const iconInitial = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l2.6 6.9L22 12l-7.4 3.1L12 22l-2.6-6.9L2 12l7.4-3.1z"/></svg>';
+  const iconSuivi = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2v6h-6M3 22v-6h6M3.5 8.5A8.5 8.5 0 0 1 20 8.5M20.5 15.5A8.5 8.5 0 0 1 4 15.5"/></svg>';
+
+  const evts = rdvsJour.map(r => {
+    const startMin = minutesOf(r.time);
+    const dur = isEvenementPerso(r) ? 60 : dureeParType(r.type);
+    let top = (startMin-DAY_START*60)/60*hourH;
+    const height = Math.max(dur/60*hourH, 34);
+    top = Math.max(0, Math.min(top, totalH-height));
+
+    if (isEvenementPerso(r)) {
+      return '<div class="jr-evt perso" style="top:'+top+'px;height:'+height+'px" title="'+escHtmlWk(r.name||'Événement personnel')+' — événement personnel Google Agenda">'
+        + '<div class="jr-evt-time">'+escHtmlWk(r.time||'')+'</div>'
+        + '<div class="jr-evt-name" style="font-style:italic;color:#6B6560">'+escHtmlWk(r.name||'Événement personnel')+'</div>'
+        + '</div>';
+    }
+
+    const isSuivi = r.type === 'suivi';
+    const cls = r.status==='attente' ? 'attente' : (isSuivi ? 'type-suivi' : 'type-initial');
+    const parcoursBadge = getParcoursBadge(r.parcours);
+    const detailLine = [r.email, r.phone].filter(Boolean).join(' · ');
+    return '<div class="jr-evt '+cls+'" style="top:'+top+'px;height:'+height+'px" onclick="openEditModal('+r.id+')">'
+      + '<div class="jr-evt-time">'+escHtmlWk(r.time)+' – '+escHtmlWk(getEndTime(r.time, r.type, 0))+'</div>'
+      + '<div class="jr-evt-name">'+(r.status!=='attente'?(isSuivi?iconSuivi:iconInitial):'')+'<span>'+escHtmlWk(r.name||'')+'</span>'+(r.status==='attente'?'<span class="jr-evt-tag" style="background:rgba(156,95,160,.16);color:#7A4680">En attente</span>':'')+'</div>'
+      + '<div class="jr-evt-meta">'+escHtmlWk(getTypeLabelShort(r.type))+(parcoursBadge?'<span class="wk-evt-parcours">'+escHtmlWk(parcoursBadge)+'</span>':'')+'</div>'
+      + (height>=64 && detailLine ? '<div class="jr-evt-detail">'+escHtmlWk(detailLine)+'</div>' : '')
+      + (height>=84 && r.notes ? '<div class="jr-evt-detail" style="font-style:italic">'+escHtmlWk(r.notes.slice(0,90))+(r.notes.length>90?'…':'')+'</div>' : '')
+      + '</div>';
+  }).join('');
+
+  const taskEvts = tachesJour.map(t => {
+    const startMin = minutesOf(t.time);
+    const top = Math.max(0, Math.min((startMin-DAY_START*60)/60*hourH, totalH-28));
+    return '<div class="jr-evt tache" style="top:'+top+'px;height:28px" title="'+escHtmlWk(t.titre||'')+'"><div class="jr-evt-name" style="color:#7A4680">'+escHtmlWk(t.titre||'')+'</div></div>';
+  }).join('');
+
+  const charge = calculerChargeSemaine([dateStr]);
+  const chargeColor = charge.tauxPct >= 85 ? 'var(--rouge)' : (charge.tauxPct >= 55 ? 'var(--ocre)' : 'var(--vert)');
+
+  body.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:10px">
+    <div style="font-size:18px;font-weight:600;font-style:italic;color:var(--ardoise);font-family:var(--serif)">
+      ${JOURS_LONG[d.getDay()]} ${d.getDate()} ${MOIS[d.getMonth()]}${isToday?' <span style="color:var(--ocre);font-size:12px;font-weight:700;font-style:normal;font-family:Inter,sans-serif">— Aujourd\'hui</span>':''}
+    </div>
+    <div style="display:flex;align-items:center;gap:16px">
+      ${charge.dispoMin>0?`<span style="font-size:11px;font-weight:600;color:${chargeColor}">${charge.tauxPct}% rempli aujourd'hui</span>`:''}
+      <div style="display:flex;align-items:center;gap:8px">
+        <button class="wk-nav-btn" onclick="jourNav(-1)" aria-label="Jour précédent">‹</button>
+        <button class="wk-nav-today" onclick="jourNav(0)">Aujourd'hui</button>
+        <button class="wk-nav-btn" onclick="jourNav(1)" aria-label="Jour suivant">›</button>
+      </div>
+    </div>
+  </div>
+  <div class="wk-grid-wrap">
+    <div class="wk-body" style="grid-template-columns:52px 1fr">
+      <div class="wk-hours" style="height:${totalH}px">${hourLabelsHtml}</div>
+      <div class="jr-daycol${isBlocked?' blocked':''}" style="height:${totalH}px" ondblclick="jrSlotDblClick(event,'${dateStr}')">${hourlines}${nowLine}${evts}${taskEvts}</div>
+    </div>
+  </div>`;
 }
 
 // ════════════════════════════════
@@ -1430,6 +1611,7 @@ function openAddModal() {
   document.getElementById('rdvParcours').value = '';
   document.getElementById('deleteRdvBtn').style.display = 'none';
   document.getElementById('emailPreviewSection').style.display = 'none';
+  document.getElementById('mailsSuiviSection').style.display = 'none';
   document.getElementById('rdvModal').classList.add('open');
 }
 
@@ -1476,6 +1658,35 @@ En cas d'empêchement, merci de me prévenir au moins 48h à l'avance.
 Sabrina Castelli — A VITA SERENA
 avitaserena.com`;
   document.getElementById('emailPreviewSection').style.display = 'block';
+
+  // Suivi automatique — reflète le champ mails_done rempli côté Supabase par
+  // l'edge function "send-auto-emails". Les clés ci-dessous sont ma meilleure
+  // hypothèse d'après les mails automatiques déjà connus (Rappel J-1, H-1,
+  // Clôture J+1, Suivi J+7, Avis Google, questionnaire de préparation visio) —
+  // si les libellés affichés ne correspondent pas aux vraies clés stockées,
+  // donnez-moi les noms exacts et je corrige la table de correspondance.
+  const MAILS_LABELS = {
+    j1: 'Rappel J-1', rappel_j1: 'Rappel J-1',
+    h1: 'Rappel H-1', rappel_h1: 'Rappel H-1',
+    prepvisio: 'Prép. visio',
+    cloture: 'Clôture J+1', cloture_j1: 'Clôture J+1',
+    suivi7: 'Suivi J+7', suivi_j7: 'Suivi J+7',
+    avis: 'Avis Google', avis_google: 'Avis Google',
+  };
+  const mailsSuiviBody = document.getElementById('mailsSuiviBody');
+  const mailsDone = rdv.mails_done || {};
+  const clesAffichees = [...new Set([...Object.keys(MAILS_LABELS), ...Object.keys(mailsDone)])];
+  const chips = clesAffichees
+    .filter(k => MAILS_LABELS[k]) // n'affiche que les clés qu'on sait libeller, pour éviter le bruit de clés inconnues
+    .map(k => {
+      const envoye = !!mailsDone[k];
+      return '<span style="font-size:10px;font-weight:600;padding:4px 10px;border-radius:99px;'
+        + (envoye ? 'background:rgba(76,139,92,.14);color:var(--vert)' : 'background:var(--off);color:var(--gris);border:1px solid var(--taupe)')
+        + '">' + (envoye ? '✓ ' : '— ') + MAILS_LABELS[k] + '</span>';
+    }).join('');
+  mailsSuiviBody.innerHTML = chips || '<span style="font-size:11px;color:var(--gris);font-style:italic">Aucune information de suivi pour ce RDV.</span>';
+  document.getElementById('mailsSuiviSection').style.display = 'block';
+
   document.getElementById('rdvModal').classList.add('open');
 }
 
@@ -1534,6 +1745,10 @@ function saveRdv() {
     }
   }
 
+  // Statut avant modification (pour détecter un passage "En attente → Confirmé", ex-fonction
+  // du bouton "Confirmer" de l'ancienne Liste d'attente, retirée le 30/08/2026).
+  const ancienStatus = state.editingId ? ((state.rdvs.find(r => r.id === state.editingId) || {}).status) : null;
+
   if (state.editingId) {
     const i = state.rdvs.findIndex(r => r.id === state.editingId);
     if (i > -1) state.rdvs[i] = {...state.rdvs[i], ...rdv};
@@ -1541,18 +1756,28 @@ function saveRdv() {
     rdv.id = Date.now();
     state.rdvs.push(rdv);
   }
-  save(); updateStats(); renderAgenda(); renderSemaine(); renderMiniCal();
-  supaUpsertRdv({...rdv, id: state.editingId || rdv.id});
+  save(); updateStats(); renderAgenda(); renderJour(); renderSemaine(); renderMiniCal();
+  const upsert = supaUpsertRdv({...rdv, id: state.editingId || rdv.id});
 
-  // Notification email (simulée — à connecter à EmailJS ou Netlify Forms)
+  // Notification email — ATTENTION : ceci alerte toujours Sabrina elle-même
+  // (sabrina@avitaserena.com), ce n'est jamais l'email envoyé à la cliente.
   if (!state.editingId) {
-    showEmailNotif(rdv);
+    sendEmailNotif(rdv, rdv.status === 'confirme' ? 'confirmed' : 'new');
     syncToCRM(rdv);
+  } else if (ancienStatus !== rdv.status) {
+    if (rdv.status === 'confirme') sendEmailNotif(rdv, 'confirmed');
+    else if (rdv.status === 'annule') sendEmailNotif(rdv, 'cancelled');
   }
 
-  // Rappel automatique : si ce RDV fait partie d'un parcours, créer une tâche
-  // pour ne pas oublier de programmer la séance suivante.
-  if (rdv.parcours) {
+  // Dès qu'un RDV devient "Confirmé" (création directe en confirmé, ou passage
+  // manuel En attente → Confirmé), on déclenche immédiatement l'edge function
+  // d'envoi automatique plutôt que d'attendre le prochain passage du cron horaire.
+  const devientConfirme = rdv.status === 'confirme' && ancienStatus !== 'confirme';
+  if (devientConfirme) upsert.then(declencherEmailsAutomatiques);
+
+  // Rappel automatique : uniquement pour un vrai parcours (Alba/Aria/Ora) — un
+  // bilan seul n'a pas de "séance suivante" à programmer.
+  if (['alba','aria','ora'].includes(rdv.parcours)) {
     creerTacheRappelProchaineSeance(rdv);
   }
 
@@ -1722,10 +1947,6 @@ function sendEmailNotif(rdv, action) {
   });
 }
 
-function showEmailNotif(rdv) {
-  sendEmailNotif(rdv, 'new');
-}
-
 function showToast(msg, type) {
   var colors = {success:'#4C8B5C', error:'#D1553A', warning:'#D98C2B'};
   var notif = document.createElement('div');
@@ -1856,7 +2077,7 @@ function deleteRdv() {
   const id = state.editingId;
   const rdv = state.rdvs.find(r => r.id === id);
   state.rdvs = state.rdvs.filter(r => r.id !== id);
-  save(); updateStats(); renderAgenda(); renderSemaine(); renderMiniCal();
+  save(); updateStats(); renderAgenda(); renderJour(); renderSemaine(); renderMiniCal();
   supaDeleteRdv(id);
   if (rdv) removeRdvFromCRM(rdv);
   closeModalDirect('rdvModal');
@@ -1870,8 +2091,10 @@ function switchMainView(view, btn) {
   document.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
   if(btn) btn.classList.add('active');
   document.getElementById('agendaView').style.display = view==='agenda'?'block':'none';
+  document.getElementById('jourView').style.display = view==='jour'?'block':'none';
   document.getElementById('semaineView').style.display = view==='semaine'?'block':'none';
   document.getElementById('moisView').style.display = view==='mois'?'block':'none';
+  if (view==='jour') renderJour();
   if (view==='semaine') renderSemaine();
   if (view==='mois') renderMois();
 }
