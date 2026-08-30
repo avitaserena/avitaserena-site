@@ -254,7 +254,7 @@ body.is-embed .app{min-height:100vh}
     <div>
       <div class="sidebar-section-title">Vue d'ensemble</div>
       <div class="stats-mini">
-        <div class="stat-mini alert"><div class="stat-mini-num" id="statAttente">0</div><div class="stat-mini-label">En attente</div></div>
+        <div class="stat-mini alert" style="cursor:pointer" onclick="switchMainView('agenda', document.querySelector('.view-tab'))" title="Voir les RDV en attente de confirmation"><div class="stat-mini-num" id="statAttente">0</div><div class="stat-mini-label">En attente</div></div>
         <div class="stat-mini"><div class="stat-mini-num" id="statConfirme">0</div><div class="stat-mini-label">Confirmés</div></div>
         <div class="stat-mini"><div class="stat-mini-num" id="statSemaine">0</div><div class="stat-mini-label">Cette semaine</div></div>
         <div class="stat-mini"><div class="stat-mini-num" id="statMois">0</div><div class="stat-mini-label">Ce mois</div></div>
@@ -398,6 +398,7 @@ body.is-embed .app{min-height:100vh}
 
     <!-- VUE AGENDA -->
     <div id="agendaView">
+      <div id="attenteAlertBox" style="display:none;margin-bottom:16px"></div>
       <div id="agendaBody"></div>
     </div>
 
@@ -825,7 +826,12 @@ async function marquerTacheFaiteDepuisAgenda(id, ev) {
 
 async function declencherEmailsAutomatiques() {
   try {
-    await fetch(SUPA_URL + '/functions/v1/super-api', {
+    // Corrigé le 30/08/2026 : appelait '/functions/v1/super-api', qui ne correspond à
+    // aucune fonction Supabase connue. Le fichier send-auto-emails.ts partagé par Sabrina
+    // le même jour confirme que c'est CETTE fonction qui gère les mails automatiques —
+    // on l'appelle donc directement ici. Si "super-api" était un routeur générique voulu
+    // (qui redirige en interne vers send-auto-emails), me le signaler pour revenir en arrière.
+    await fetch(SUPA_URL + '/functions/v1/send-auto-emails', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1054,9 +1060,60 @@ function getParcoursLabel(p) { return {alba:'Parcours Alba',aria:'Parcours Aria'
 function getParcoursBadge(p) { return {alba:'Alba · 3 mois',aria:'Aria · 6 mois',ora:'Ora · 9 mois',bilan:'Bilan seul'}[p] || null; }
 function getTypeLabelShort(t) { return t === 'suivi' ? 'Suivi' : 'Initiale'; }
 
+/* ── Bandeau d'alerte, en haut de la vue Agenda : liste tous les RDV encore
+   "En attente" à venir, avec confirmation en un clic. Important depuis que les
+   relances automatiques (J-1, H-1, Clôture, Suivi J+7) ne partent que pour les
+   RDV confirmés (30/08/2026) — un RDV oublié en attente ne recevra RIEN. ── */
+function renderAlertesAttente() {
+  const box = document.getElementById('attenteAlertBox');
+  if (!box) return;
+  const todayStr = new Date().toISOString().slice(0,10);
+  const enAttente = state.rdvs
+    .filter(r => r.status === 'attente' && r.date >= todayStr && !isEvenementPerso(r))
+    .sort((a,b) => (a.date+a.time).localeCompare(b.date+b.time));
+
+  if (enAttente.length === 0) { box.style.display = 'none'; box.innerHTML = ''; return; }
+
+  box.style.display = 'block';
+  box.innerHTML = `<div style="background:repeating-linear-gradient(135deg, rgba(156,95,160,.07) 0 8px, rgba(156,95,160,.02) 8px 16px);border:1.5px dashed #9C5FA0;border-radius:14px;padding:16px 18px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7A4680" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 7v5l3 3"/></svg>
+      <span style="font-size:12.5px;font-weight:700;color:#7A4680">${enAttente.length} rendez-vous en attente de confirmation</span>
+      <span style="font-size:10.5px;color:var(--gris);font-weight:600">— tant qu'ils ne sont pas confirmés, aucune relance automatique ne part vers la cliente</span>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      ${enAttente.map(r => {
+        const d = new Date(r.date+'T12:00:00');
+        return `<div style="display:flex;align-items:center;gap:10px;background:var(--blanc);border:1px solid var(--taupe);border-radius:10px;padding:8px 12px;flex-wrap:wrap">
+          <span style="font-size:11px;font-weight:700;color:var(--ardoise);font-family:'DM Mono',monospace;min-width:88px">${JOURS[d.getDay()]} ${d.getDate()} ${MOIS[d.getMonth()].slice(0,4)}</span>
+          <span style="font-size:11px;color:var(--gris);min-width:40px">${escHtmlWk(r.time||'')}</span>
+          <span style="font-size:12.5px;font-weight:600;color:var(--ardoise);flex:1;min-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtmlWk(r.name||'')}</span>
+          <button onclick="confirmerRdvRapide(${r.id})" style="background:var(--vert);color:#fff;border:none;padding:6px 14px;border-radius:99px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">✓ Confirmer</button>
+          <button onclick="openEditModal(${r.id})" style="background:none;border:1px solid var(--taupe);color:var(--gris);padding:6px 12px;border-radius:99px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">Voir</button>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
+}
+
+/* ── Confirmation en un clic depuis le bandeau d'alerte — équivalent de
+   changer le statut à "Confirmé" dans le formulaire, mais sans l'ouvrir.
+   Déclenche la même notification interne + accélérateur que saveRdv(). ── */
+function confirmerRdvRapide(id) {
+  const rdv = state.rdvs.find(r => r.id === id);
+  if (!rdv || rdv.status === 'confirme') return;
+  rdv.status = 'confirme';
+  save(); updateStats(); renderAgenda(); renderJour(); renderSemaine(); renderMiniCal(); renderMois();
+  const upsert = supaUpsertRdv(rdv);
+  sendEmailNotif(rdv, 'confirmed'); // notification interne à Sabrina uniquement
+  upsert.then(declencherEmailsAutomatiques);
+  showToast('RDV confirmé — ' + rdv.name, 'success');
+}
+
 function renderAgenda() {
   const body = document.getElementById('agendaBody');
   body.innerHTML = '';
+  renderAlertesAttente();
 
   // Afficher les 7 prochains jours depuis la date sélectionnée
   const startDate = new Date(state.selectedDate + 'T12:00:00');
@@ -1549,13 +1606,14 @@ function renderMois() {
     const isToday = dateStr === today;
 
     const items = [
-      ...rdvsJour.map(r => ({ kind:'rdv', time:r.time, label: isEvenementPerso(r) ? (r.name || 'Événement personnel').split(' ').slice(0,3).join(' ') : r.name.split(' ')[0], perso: isEvenementPerso(r) })),
+      ...rdvsJour.map(r => ({ kind:'rdv', time:r.time, label: isEvenementPerso(r) ? (r.name || 'Événement personnel').split(' ').slice(0,3).join(' ') : r.name.split(' ')[0], perso: isEvenementPerso(r), attente: !isEvenementPerso(r) && r.status==='attente' })),
       ...tachesJour.map(t => ({ kind:'tache', time:t.time, label:t.titre }))
     ].sort((a,b) => a.time.localeCompare(b.time));
 
     const maxShow = 3;
     const shown = items.slice(0, maxShow);
     const rest = items.length - shown.length;
+    const nbAttente = rdvsJour.filter(r => !isEvenementPerso(r) && r.status==='attente').length;
 
     const cell = document.createElement('div');
     cell.style.cssText = cellBase + (isToday ? ';border-color:var(--ocre);border-width:2px' : '') + (isBlocked ? ';background:rgba(209,85,58,.04)' : '');
@@ -1563,15 +1621,20 @@ function renderMois() {
     cell.onmouseleave = () => cell.style.borderColor = isToday ? 'var(--ocre)' : 'var(--taupe)';
     cell.onclick = () => moisJourClick(dateStr);
 
-    let html = `<div style="display:flex;align-items:center;justify-content:space-between">
+    let html = `<div style="display:flex;align-items:center;justify-content:space-between;gap:4px">
       <span style="font-size:12px;font-weight:700;color:${isToday?'var(--ocre)':'var(--ardoise)'}">${d}</span>
-      ${isBlocked ? '<span style="font-size:9px;font-weight:700">Bloqué</span>' : ''}
+      <span style="display:flex;gap:3px">
+        ${isBlocked ? '<span style="font-size:9px;font-weight:700">Bloqué</span>' : ''}
+        ${nbAttente ? `<span style="font-size:8.5px;font-weight:700;color:#7A4680;background:rgba(156,95,160,.16);border-radius:99px;padding:1px 6px">${nbAttente} en attente</span>` : ''}
+      </span>
     </div>`;
 
     html += shown.map(it => it.kind === 'rdv'
       ? (it.perso
           ? `<div style="background:rgba(107,101,96,.1);border-radius:3px;padding:1px 5px;font-size:9.5px;font-weight:600;color:#6B6560;font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${it.time} ${it.label}</div>`
-          : `<div style="background:rgba(193,121,60,.12);border-radius:3px;padding:1px 5px;font-size:9.5px;font-weight:600;color:var(--ardoise);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${it.time} ${it.label}</div>`)
+          : (it.attente
+              ? `<div style="background:repeating-linear-gradient(135deg, rgba(156,95,160,.16) 0 5px, rgba(156,95,160,.06) 5px 10px);border-left:2px dashed #9C5FA0;border-radius:3px;padding:1px 5px 1px 4px;font-size:9.5px;font-weight:700;color:#7A4680;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${it.time} ${it.label}</div>`
+              : `<div style="background:rgba(193,121,60,.12);border-radius:3px;padding:1px 5px;font-size:9.5px;font-weight:600;color:var(--ardoise);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${it.time} ${it.label}</div>`))
       : `<div style="background:rgba(156,95,160,.12);border-radius:3px;padding:1px 5px;font-size:9.5px;font-weight:600;color:#7A4680;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${it.time} ${it.label}</div>`
     ).join('');
 
@@ -1659,19 +1722,18 @@ Sabrina Castelli — A VITA SERENA
 avitaserena.com`;
   document.getElementById('emailPreviewSection').style.display = 'block';
 
-  // Suivi automatique — reflète le champ mails_done rempli côté Supabase par
-  // l'edge function "send-auto-emails". Les clés ci-dessous sont ma meilleure
-  // hypothèse d'après les mails automatiques déjà connus (Rappel J-1, H-1,
-  // Clôture J+1, Suivi J+7, Avis Google, questionnaire de préparation visio) —
-  // si les libellés affichés ne correspondent pas aux vraies clés stockées,
-  // donnez-moi les noms exacts et je corrige la table de correspondance.
+  // Suivi automatique — reflète le champ mails_done rempli par l'edge function
+  // send-auto-emails (code confirmé par Sabrina le 30/08/2026). Clés réelles :
+  // prepvisio, m2 (Rappel J-1), mh1 (Rappel H-1), m3 (Clôture J+1 + lien facture),
+  // m4 (Suivi J+7). L'avis Google (fin de parcours) n'est PAS stocké ici : il vit
+  // dans clientes.workflow_done.avis_google, au niveau de la fiche cliente et non
+  // du RDV — donc volontairement absent de ce widget.
   const MAILS_LABELS = {
-    j1: 'Rappel J-1', rappel_j1: 'Rappel J-1',
-    h1: 'Rappel H-1', rappel_h1: 'Rappel H-1',
-    prepvisio: 'Prép. visio',
-    cloture: 'Clôture J+1', cloture_j1: 'Clôture J+1',
-    suivi7: 'Suivi J+7', suivi_j7: 'Suivi J+7',
-    avis: 'Avis Google', avis_google: 'Avis Google',
+    prepvisio: 'Questionnaire prép. visio',
+    m2: 'Rappel J-1',
+    mh1: 'Rappel H-1',
+    m3: 'Clôture J+1 (+ facture)',
+    m4: 'Suivi J+7',
   };
   const mailsSuiviBody = document.getElementById('mailsSuiviBody');
   const mailsDone = rdv.mails_done || {};
