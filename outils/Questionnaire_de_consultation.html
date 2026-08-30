@@ -1656,6 +1656,17 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
     <div class="sec-sub">Zone critique — une interaction médicamenteuse non détectée peut être dangereuse. Chaque traitement est un contexte biochimique à intégrer, pas une contre-indication automatique.</div>
   </div>
 
+  <div class="qcard" id="antecedents-recap-card" style="display:none;border:1.5px solid var(--sable);background:var(--or-clair)">
+    <div class="qcard-top" style="padding-bottom:6px">
+      <div class="qcontent">
+        <div class="qtext" style="font-size:14px"><svg class="picto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0" aria-hidden="true"><path d="M9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> Déjà connu depuis les Antécédents — pas besoin de reposer la question</div>
+      </div>
+    </div>
+    <div class="qinput" style="padding-top:0">
+      <div id="antecedents-recap-body" style="font-size:13px;line-height:1.7;color:var(--ardoise)"></div>
+    </div>
+  </div>
+
   <div class="global-alert">
     <svg class="picto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0" aria-hidden="true"><path d="M12 3 L22 20 L2 20 Z"/><line x1="12" y1="9" x2="12" y2="14"/><line x1="12" y1="17" x2="12" y2="17.1"/></svg> <strong>Rappel praticien :</strong> Anticoagulants (Xarelto, Eliquis, Coumadine) → CI absolue de nombreuses plantes, consulter le médecin avant toute prescription. ISRS (Prozac, Zoloft, Deroxat) → millepertuis absolument exclu. Relevez systématiquement chaque médicament <em>avant</em> de proposer quoi que ce soit.
   </div>
@@ -1708,6 +1719,7 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
         </div>
       <div class="g2">
         <div><label class="fl">Thyroïde, hormones & contraceptifs</label>
+          <div style="font-size:11px;color:var(--or);margin-bottom:5px;font-style:italic">Déjà précisé en Antécédents (voir encadré en haut de cette section) ? Inutile de le retaper — complétez seulement ce qui manque.</div>
           <textarea class="fi" placeholder="Saisissez vos notes…"></textarea>
 <div class="ex-block"><div class="ex-toggle" onclick="toggleEx(this)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg> <svg class="picto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0" aria-hidden="true"><circle cx="12" cy="9" r="5"/><line x1="10" y1="17" x2="14" y2="17"/><line x1="10" y1="20" x2="14" y2="20"/></svg> Voir des exemples de réponses</div><div class="ex-body">Ex. : Lévothyrox 75 µg/j (à jeun le matin, depuis 2019). Pilule Jasmine (œstroprogestatif, 3e génération, depuis 8 ans). THS patch Climara 50 µg œstradiol + Utrogestan 100 mg progestérone (depuis 2023). DIU hormonal Mirena (posé 2022). Estriol local (atrophie vaginale). Vitamine D prescrite (2000 UI/j).</div></div>
         </div>
@@ -5849,6 +5861,11 @@ const SAVE_KEY = 'avita_consultation_autosave';
    traite jamais activement une pathologie déjà réglée (ex : HPV traité).
 ══════════════════════════════════════ */
 let diagnosticsList = []; // [{ nom, sphere, statut: 'actif' | 'resolu' | null, annee: '' }]
+// FAILLE ÉVITÉE (30/08/2026) : la popup "En bref" réécrit son contenu à chaque nouveau
+// diagnostic ouvert — sans cette sauvegarde à part, cocher un traitement pour une maladie
+// puis ouvrir la popup d'une autre maladie effaçait silencieusement la première saisie.
+let diagTxState = {}; // { 'Nom du diagnostic': [{ label, on, values: [...] }] }
+let currentDiagPopup = null; // nom du diagnostic actuellement affiché dans la popup
 
 // Popup "En bref" sur les antécédents (30/08/2026) : réutilise telle quelle la carte déjà
 // écrite dans le guide spécialisé correspondant (une seule source de texte, jamais de
@@ -6424,6 +6441,8 @@ const DIAG_DB = {
 };
 
 function renderDiagDbPopup(nom, info) {
+  saveDiagPopupState();
+  currentDiagPopup = nom;
   document.getElementById('brief-modal-title').textContent = nom;
   const txRows = (info.traitements || []).map(t => tItemHtml(t)).join('');
   const opRows = (info.operations || []).map(o => tItemHtml(o, true)).join('');
@@ -6441,6 +6460,7 @@ function renderDiagDbPopup(nom, info) {
     html += `<label class="fl" style="margin-top:14px;display:block">Intervention(s) / opération(s)</label><div class="tx-wrap">${opRows}</div>`;
   }
   document.getElementById('brief-modal-body').innerHTML = html;
+  restoreDiagPopupState(nom);
   document.getElementById('brief-overlay').classList.add('open');
 }
 
@@ -6475,6 +6495,8 @@ const DIAG_TO_SPEC = {
 };
 
 function showBriefPopup(specKey) {
+  saveDiagPopupState();
+  currentDiagPopup = null; // carte en lecture seule, aucune case à cocher à conserver ici
   const card = document.querySelector('.tblock.' + specKey + ' .brief-card');
   const titleEl = document.querySelector('.tblock-hdr[data-spec="' + specKey + '"] .tblock-title');
   if (!card || !titleEl) return;
@@ -6483,7 +6505,33 @@ function showBriefPopup(specKey) {
   document.getElementById('brief-overlay').classList.add('open');
 }
 
+function saveDiagPopupState() {
+  if (!currentDiagPopup) return;
+  const items = [...document.querySelectorAll('#brief-modal-body .tx-item')];
+  if (!items.length) return;
+  diagTxState[currentDiagPopup] = items.map(item => {
+    const detail = item.nextElementSibling;
+    const inputs = [...detail.querySelectorAll('input.fi, select.fi')];
+    return { label: item.querySelector('span').textContent, on: item.classList.contains('on'), values: inputs.map(i => i.value) };
+  });
+}
+
+function restoreDiagPopupState(nom) {
+  const state = diagTxState[nom];
+  if (!state) return;
+  document.querySelectorAll('#brief-modal-body .tx-item').forEach(item => {
+    const label = item.querySelector('span').textContent;
+    const saved = state.find(s => s.label === label);
+    if (!saved) return;
+    const detail = item.nextElementSibling;
+    if (saved.on) { item.classList.add('on'); detail.classList.add('open'); }
+    const inputs = [...detail.querySelectorAll('input.fi, select.fi')];
+    inputs.forEach((inp, i) => { if (saved.values[i]) inp.value = saved.values[i]; });
+  });
+}
+
 function fermerBriefPopup() {
+  saveDiagPopupState();
   document.getElementById('brief-overlay').classList.remove('open');
 }
 
@@ -6935,6 +6983,25 @@ function construireLigneDeVie() {
   const compteur = document.getElementById('tl-auto-compteur');
   if (compteur) compteur.textContent = auto.length + ' événement' + (auto.length>1?'s':'') + ' détecté' + (auto.length>1?'s':'') + ' automatiquement à partir de vos réponses';
 }
+// Récapitulatif "déjà connu" en tête de Traitements & allergies (30/08/2026) : évite de
+// reposer une question déjà répondue en Antécédents (ex. Lévothyrox pour une hypothyroïdie
+// déjà cochée juste avant) — lecture seule, construite à partir de diagnosticsList/diagTxState.
+function renderAntecedentsRecap() {
+  const card = document.getElementById('antecedents-recap-card');
+  const body = document.getElementById('antecedents-recap-body');
+  if (!card || !body) return;
+  const actifs = diagnosticsList.filter(d => d.statut === 'actif');
+  if (!actifs.length) { card.style.display = 'none'; return; }
+  const lignes = actifs.map(d => {
+    const tx = (diagTxState[d.nom] || []).filter(t => t.on);
+    if (!tx.length) return `<div style="margin-bottom:6px"><strong>${d.nom}</strong> — aucun traitement précisé en antécédents</div>`;
+    const detail = tx.map(t => t.label + (t.values.filter(Boolean).length ? ' (' + t.values.filter(Boolean).join(' · ') + ')' : '')).join(' ; ');
+    return `<div style="margin-bottom:6px"><strong>${d.nom}</strong> — ${detail}</div>`;
+  });
+  body.innerHTML = lignes.join('');
+  card.style.display = '';
+}
+
 function goSection(n) {
   // Forcer la suppression immédiate de toutes les sections avant d'afficher la nouvelle
   document.querySelectorAll('.section').forEach((s, i) => {
@@ -6961,6 +7028,7 @@ function goSection(n) {
   document.body.scrollTop = 0;
   updateCounter();
   if (n === 10 && typeof construireLigneDeVie === 'function') construireLigneDeVie();
+  if (n === 3) renderAntecedentsRecap();
 }
 
 /* ══════════════════════════════════════
@@ -7218,6 +7286,8 @@ function captureSnapshot() {
   snap['enfants_oui_non'] = enfantsOui;
   snap['enfants_data'] = JSON.stringify(enfantsData);
   snap['diagnostics_list'] = JSON.stringify(diagnosticsList);
+  saveDiagPopupState(); // fige l'état de la popup en cours avant l'instantané, si elle est ouverte
+  snap['diag_tx_state'] = JSON.stringify(diagTxState);
   return snap;
 }
 
@@ -7294,6 +7364,7 @@ function restoreSnapshot(snap) {
   } catch(e) {}
   // Diagnostics & antécédents (statut actif/résolu)
   try { diagnosticsList = JSON.parse(snap['diagnostics_list'] || '[]'); } catch(e) { diagnosticsList = []; }
+  try { diagTxState = JSON.parse(snap['diag_tx_state'] || '{}'); } catch(e) { diagTxState = {}; }
   renderDiagnosticsList();
   if (typeof calcIMC === 'function') calcIMC();
   updateCounter();
@@ -7496,6 +7567,22 @@ function collectAllData() {
   // Diagnostics & antécédents (statut actif/résolu) — pour le générateur PHV
   d.diagnostics_actifs = diagnosticsList.filter(x => x.statut === 'actif').map(x => x.nom).join(', ');
   d.antecedents_resolus = diagnosticsList.filter(x => x.statut === 'resolu').map(x => x.nom + (x.annee ? ' (' + x.annee + ')' : '')).join(', ');
+  // FAILLE ÉVITÉE (30/08/2026) : sans ce bloc, les traitements cochés dans la popup "En bref"
+  // des antécédents (date, statut, effets) n'étaient captés que si cette popup précise restait
+  // ouverte au moment de collectAllData() — désormais lus depuis diagTxState, qui persiste
+  // indépendamment de l'ouverture/fermeture de la popup (voir saveDiagPopupState).
+  const diagTxLines = [];
+  Object.keys(diagTxState).forEach(nom => {
+    (diagTxState[nom] || []).filter(t => t.on).forEach(t => {
+      const details = t.values.filter(Boolean).join(' · ');
+      diagTxLines.push(`${nom} — ${t.label}` + (details ? ` (${details})` : ''));
+    });
+  });
+  d.diag_traitements = diagTxLines.join('\n');
+  if (diagTxLines.length) {
+    if (!d.parSection['sec-1']) d.parSection['sec-1'] = [];
+    d.parSection['sec-1'].push(...diagTxLines);
+  }
 
   // ── Sommeil (carte unique, Mode de vie) — capturé explicitement en plus du
   // sweep générique des selects, pour que le générateur détecte fiablement les
