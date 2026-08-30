@@ -347,6 +347,32 @@ select.fi{height:44px;cursor:pointer}
 .chip.suggere{box-shadow:0 0 0 2px var(--ocre);position:relative}
 .chip.suggere::after{content:'★ suggéré';position:absolute;top:-9px;right:6px;background:var(--ocre);color:var(--blanc);font-size:8.5px;font-weight:700;padding:1px 7px;border-radius:99px;letter-spacing:.03em}
 
+/* ── Checklist "traitements/interventions courants" avec détail date/statut/effets ── */
+.tx-wrap{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.tx-item{display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--taupe);border-radius:12px;cursor:pointer;background:var(--blanc);transition:all .15s;user-select:none}
+.tx-item:hover{border-color:var(--sable)}
+.tx-item.on{border-color:var(--ocre);background:var(--or-clair)}
+.tx-check{width:18px;height:18px;border:1px solid var(--taupe);border-radius:5px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:transparent;background:var(--blanc)}
+.tx-item.on .tx-check{background:var(--ocre);border-color:var(--ocre);color:var(--blanc)}
+.tx-detail{display:none;padding:12px 14px 6px;margin:-4px 0 6px 10px;border-left:2px solid var(--ocre)}
+.tx-detail.open{display:block}
+
+/* ── Système de "portes" par thème (30/08/2026) — hiérarchisation essentielle/socle/clé/complémentaire.
+   Une porte filtre uniquement le niveau "complémentaire" d'un thème : si la cliente indique que
+   le thème ne la concerne pas, ce niveau reste fermé (0 question posée en plus). Les niveaux
+   essentielle et clé restent toujours visibles au-dessus de la porte, jamais masqués. ── */
+.porte-card{background:var(--off);border:1px dashed var(--sable);border-radius:16px;padding:16px 20px;margin-bottom:14px}
+.porte-q{font-size:13.5px;font-weight:600;color:var(--ardoise);margin-bottom:10px}
+.porte-opts{display:flex;gap:8px;flex-wrap:wrap}
+.porte-opt{padding:8px 16px;border-radius:var(--r99);border:1.5px solid var(--taupe);background:var(--blanc);font-size:12.5px;font-weight:600;color:var(--gris);cursor:pointer;transition:all .18s}
+.porte-opt:hover{border-color:var(--sable)}
+.porte-opt.sel{border-color:var(--ocre);background:linear-gradient(135deg,var(--or-clair),#EFDFC8);color:var(--ardoise)}
+.porte-opt.sel.non{border-color:#7C9473;background:#EEF3EC;color:#3d5537}
+.porte-reveal{max-height:0;overflow:hidden;transition:max-height .35s cubic-bezier(.4,0,.2,1)}
+.porte-reveal.open{max-height:4000px}
+.porte-closed-msg{display:none;align-items:center;gap:8px;padding:2px 4px 4px;font-size:12px;color:#3d5537;font-weight:600}
+.porte-closed-msg.show{display:flex}
+
 .tblock-body{display:none}
 .tblock-body.open{display:block;animation:fadeIn .3s ease;padding-top:20px}
 
@@ -940,6 +966,16 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
         <svg class="picto" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
         Montrer l'horloge des organes à la cliente
       </button>
+      <div class="porte-card" style="margin-top:12px">
+        <div class="porte-q">Au-delà de ça, le sommeil est-il un souci pour elle en ce moment ?</div>
+        <div class="porte-opts">
+          <button type="button" class="porte-opt non" onclick="setPorte('sommeil','non',this)">Non, ça va</button>
+          <button type="button" class="porte-opt" onclick="setPorte('sommeil','peu',this)">Un peu</button>
+          <button type="button" class="porte-opt" onclick="setPorte('sommeil','oui',this)">Oui, nettement</button>
+        </div>
+        <div class="porte-closed-msg" id="porte-closed-sommeil"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg> Signaux complémentaires non détaillés — thème refermé.</div>
+      </div>
+      <div class="porte-reveal" id="porte-reveal-sommeil">
       <div class="g2" style="margin-top:12px">
         <div>
           <label class="fl">Signaux complémentaires</label>
@@ -951,6 +987,7 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
             <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Aucun rituel du soir (canapé → lit directement)</button>
           </div>
         </div>
+      </div>
       </div>
       <div style="margin-top:12px"><label class="fl">Notes libres — sommeil</label>
         <textarea class="fi" placeholder="Saisissez vos notes…"></textarea>
@@ -2581,22 +2618,77 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
           </div>
         </div></div>
         <div class="qinput">
-          <div class="g3">
+          <div class="g2">
             <div><label class="fl">Statut diagnostic</label>
               <select class="fi" data-funnel-select><option value="">— —</option><option data-funnel="sibo-h2-confirme">Confirmé — test respiratoire H2</option><option data-funnel="sibo-ch4-confirme">Confirmé — test respiratoire CH4 (IMO)</option><option>Suspicion clinique non testée</option><option>Test en attente</option><option>Déjà traité — rechute</option></select>
             </div>
             <div><label class="fl">Année du test respiratoire</label>
               <input class="fi" type="number" min="1970" max="2030" placeholder="ex : 2024">
             </div>
-            <div><label class="fl">Traitement actuel</label>
-              <select class="fi"><option value="">— —</option><option>En cours actuellement</option><option>Arrêté — rechute</option><option>Arrêté — amélioré</option><option>Jamais traité médicalement</option></select>
-            </div>
           </div>
-          <div style="margin-top:10px">
-            <label class="fl">Traitements déjà tentés (dates, durée, résultat)</label>
-              <input class="fi" type="text" placeholder="Saisissez…">
-<div class="ex-block"><div class="ex-toggle" onclick="toggleEx(this)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg> <svg class="picto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0" aria-hidden="true"><circle cx="12" cy="9" r="5"/><line x1="10" y1="17" x2="14" y2="17"/><line x1="10" y1="20" x2="14" y2="20"/></svg> Voir des exemples de réponses</div><div class="ex-body">Ex. : Rifaximine 550 mg x3/j pendant 14j (2022) → amélioration 70% ballonnements pendant 3 mois, puis rechute → cause racine non traitée (motilité ?). Protocole herbes : origan + allicine pendant 6 semaines (2023) → tolérance difficile, arrêt à J10. Régime FODMAP strict 8 semaines → amélioration symptômes mais pas de guérison. Aucun traitement à ce jour → jamais proposé par le médecin malgré test positif. → Rechute systématique : explorer MMC défaillant, hypochlorhydrie, adhérences chirurgicales comme cause racine.</div></div>
+          <label class="fl" style="margin-top:10px">Traitements / interventions déjà tentés — cochez, précisez la date, le statut et l'effet ressenti</label>
+        <div class="tx-wrap">
+        <div class="tx-item" onclick="toggleTx(this)"><div class="tx-check">✓</div><span>Rifaximine (antibiotique ciblé)</span></div>
+        <div class="tx-detail">
+          <div class="g3">
+            <div><label class="fl">Début (mois/année)</label><input class="fi" type="text" placeholder="ex : mars 2022"></div>
+            <div><label class="fl">Statut</label><select class="fi"><option value="">—</option><option>Toujours en cours</option><option>Arrêté</option></select></div>
+            <div><label class="fl">Si arrêté, depuis quand</label><input class="fi" type="text" placeholder="ex : janvier 2024"></div>
           </div>
+          <label class="fl" style="margin-top:6px">Effets ressentis</label>
+          <input class="fi" type="text" placeholder="ex : bien toléré, amélioration nette / effets secondaires, peu efficace...">
+        </div>
+        <div class="tx-item" onclick="toggleTx(this)"><div class="tx-check">✓</div><span>Autre antibiotique (Néomycine, Métronidazole...)</span></div>
+        <div class="tx-detail">
+          <div class="g3">
+            <div><label class="fl">Début (mois/année)</label><input class="fi" type="text" placeholder="ex : mars 2022"></div>
+            <div><label class="fl">Statut</label><select class="fi"><option value="">—</option><option>Toujours en cours</option><option>Arrêté</option></select></div>
+            <div><label class="fl">Si arrêté, depuis quand</label><input class="fi" type="text" placeholder="ex : janvier 2024"></div>
+          </div>
+          <label class="fl" style="margin-top:6px">Effets ressentis</label>
+          <input class="fi" type="text" placeholder="ex : bien toléré, amélioration nette / effets secondaires, peu efficace...">
+        </div>
+        <div class="tx-item" onclick="toggleTx(this)"><div class="tx-check">✓</div><span>Protocole herbes antimicrobiennes (origan, allicine, berbérine...)</span></div>
+        <div class="tx-detail">
+          <div class="g3">
+            <div><label class="fl">Début (mois/année)</label><input class="fi" type="text" placeholder="ex : mars 2022"></div>
+            <div><label class="fl">Statut</label><select class="fi"><option value="">—</option><option>Toujours en cours</option><option>Arrêté</option></select></div>
+            <div><label class="fl">Si arrêté, depuis quand</label><input class="fi" type="text" placeholder="ex : janvier 2024"></div>
+          </div>
+          <label class="fl" style="margin-top:6px">Effets ressentis</label>
+          <input class="fi" type="text" placeholder="ex : bien toléré, amélioration nette / effets secondaires, peu efficace...">
+        </div>
+        <div class="tx-item" onclick="toggleTx(this)"><div class="tx-check">✓</div><span>Prokinétique post-traitement (Érythromycine, Motilium, 5-HTP)</span></div>
+        <div class="tx-detail">
+          <div class="g3">
+            <div><label class="fl">Début (mois/année)</label><input class="fi" type="text" placeholder="ex : mars 2022"></div>
+            <div><label class="fl">Statut</label><select class="fi"><option value="">—</option><option>Toujours en cours</option><option>Arrêté</option></select></div>
+            <div><label class="fl">Si arrêté, depuis quand</label><input class="fi" type="text" placeholder="ex : janvier 2024"></div>
+          </div>
+          <label class="fl" style="margin-top:6px">Effets ressentis</label>
+          <input class="fi" type="text" placeholder="ex : bien toléré, amélioration nette / effets secondaires, peu efficace...">
+        </div>
+        <div class="tx-item" onclick="toggleTx(this)"><div class="tx-check">✓</div><span>Probiotiques spécifiques testés</span></div>
+        <div class="tx-detail">
+          <div class="g3">
+            <div><label class="fl">Début (mois/année)</label><input class="fi" type="text" placeholder="ex : mars 2022"></div>
+            <div><label class="fl">Statut</label><select class="fi"><option value="">—</option><option>Toujours en cours</option><option>Arrêté</option></select></div>
+            <div><label class="fl">Si arrêté, depuis quand</label><input class="fi" type="text" placeholder="ex : janvier 2024"></div>
+          </div>
+          <label class="fl" style="margin-top:6px">Effets ressentis</label>
+          <input class="fi" type="text" placeholder="ex : bien toléré, amélioration nette / effets secondaires, peu efficace...">
+        </div>
+        <div class="tx-item" onclick="toggleTx(this)"><div class="tx-check">✓</div><span>Chirurgie (adhérences, résection intestinale)</span></div>
+        <div class="tx-detail">
+          <div class="g3">
+            <div><label class="fl">Début (mois/année)</label><input class="fi" type="text" placeholder="ex : mars 2022"></div>
+            <div><label class="fl">Statut</label><select class="fi"><option value="">—</option><option>Toujours en cours</option><option>Arrêté</option></select></div>
+            <div><label class="fl">Si arrêté, depuis quand</label><input class="fi" type="text" placeholder="ex : janvier 2024"></div>
+          </div>
+          <label class="fl" style="margin-top:6px">Effets ressentis</label>
+          <input class="fi" type="text" placeholder="ex : bien toléré, amélioration nette / effets secondaires, peu efficace...">
+        </div>
+      </div>
           <div class="funnel-followup" data-funnel-show="sibo-ch4-confirme"><div class="funnel-tag"><svg class="picto" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12l7 7 7-7"/></svg> Puisque c'est un SIBO méthane</div><div class="funnel-q">Depuis combien de temps la constipation est-elle installée, et résiste-t-elle aux laxatifs classiques ?</div><div class="funnel-why">Le méthane ralentit directement votre transit. Je cible d'abord cette relance avant l'éradication, c'est ce qui fait la différence sur la durée.</div><div class="funnel-choices"><button class="fchip" type="button" onclick="selectFunnelChoice(this)">Moins de 3 mois</button><button class="fchip" type="button" onclick="selectFunnelChoice(this)">3 mois à 1 an</button><button class="fchip" type="button" onclick="selectFunnelChoice(this)">Plus d'1 an, résiste aux laxatifs</button><button class="fchip" type="button" onclick="selectFunnelChoice(this)">Plus d'1 an, laxatifs encore efficaces</button></div></div><div class="funnel-followup funnel-alert" data-funnel-show="sibo-ch4-suspecte"><div class="funnel-tag">⚠ Sans test respiratoire confirmé</div><div class="funnel-why">Je vous propose un test respiratoire SIBO pour confirmer ce profil avant d'exclure complètement l'hydrogène. C'est ce qui me permet de cibler le bon protocole du premier coup.</div></div><div class="funnel-collapse-toggle" onclick="toggleCollapseGroup('sibo-ch4-confirme')">↺ Afficher quand même les questions liées à l'hydrogène (SIBO-H2)</div>
           <div class="check-list" style="margin-top:10px">
             <div class="check-item" data-funnel="sibo-ballon-6090"><div class="ci-top"><div class="cb">✓</div> <span>Ballonnements majeurs 60-90 min après le repas</span></div><span class="ci-why">Ce délai précis de 60 à 90 minutes correspond au moment où les aliments arrivent dans la partie de l'intestin grêle où les bactéries en excès se mettent à fermenter — un timing très évocateur d'un SIBO.</span></div><div class="funnel-followup" data-funnel-show="sibo-ballon-6090"><div class="funnel-tag"><svg class="picto" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12l7 7 7-7"/></svg> Puisque ce timing est très précis</div><div class="funnel-q">Ce ballonnement arrive-t-il plutôt après le pain et les féculents, ou après une viande ?</div><div class="funnel-why">Cette précision m'indique tout de suite quel type de fermentation corriger chez vous. C'est ce genre de détail qui change tout dans le protocole.</div><div class="funnel-choices"><button class="fchip" type="button" onclick="selectFunnelChoice(this)">Surtout féculents/sucres</button><button class="fchip" type="button" onclick="selectFunnelChoice(this)">Surtout viande/protéines</button><button class="fchip" type="button" onclick="selectFunnelChoice(this)">Les deux de façon équivalente</button></div></div>
@@ -2713,15 +2805,70 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
           </div>
           <label class="fl" style="margin-top:10px">Épisode déclencheur identifié — gastro, stress, antibio…</label>
           <textarea class="fi" style="min-height:60px" placeholder="Date, contexte, évolution depuis…"></textarea>
-          <div class="g2" style="margin-top:10px">
-            <div><label class="fl">Traitement médical reçu (antispasmodique, IPP, laxatif...)</label>
-              <input class="fi" type="text" placeholder="ex : Spasfon en cas de crise, Colopleon">
-            </div>
-            <div><label class="fl">Statut du traitement</label>
-              <select class="fi"><option value="">— —</option><option>En cours actuellement</option><option>Arrêté</option><option>Jamais traité médicalement</option></select>
-            </div>
+          <label class="fl" style="margin-top:10px">Traitements déjà tentés — cochez, précisez la date, le statut et l'effet ressenti</label>
+        <div class="tx-wrap">
+        <div class="tx-item" onclick="toggleTx(this)"><div class="tx-check">✓</div><span>Antispasmodique (Spasfon, Débridat, Météoxane...)</span></div>
+        <div class="tx-detail">
+          <div class="g3">
+            <div><label class="fl">Début (mois/année)</label><input class="fi" type="text" placeholder="ex : mars 2022"></div>
+            <div><label class="fl">Statut</label><select class="fi"><option value="">—</option><option>Toujours en cours</option><option>Arrêté</option></select></div>
+            <div><label class="fl">Si arrêté, depuis quand</label><input class="fi" type="text" placeholder="ex : janvier 2024"></div>
           </div>
-          <label class="fl">Impact sur la vie sociale et professionnelle</label>
+          <label class="fl" style="margin-top:6px">Effets ressentis</label>
+          <input class="fi" type="text" placeholder="ex : bien toléré, amélioration nette / effets secondaires, peu efficace...">
+        </div>
+        <div class="tx-item" onclick="toggleTx(this)"><div class="tx-check">✓</div><span>IPP (inhibiteur pompe à protons)</span></div>
+        <div class="tx-detail">
+          <div class="g3">
+            <div><label class="fl">Début (mois/année)</label><input class="fi" type="text" placeholder="ex : mars 2022"></div>
+            <div><label class="fl">Statut</label><select class="fi"><option value="">—</option><option>Toujours en cours</option><option>Arrêté</option></select></div>
+            <div><label class="fl">Si arrêté, depuis quand</label><input class="fi" type="text" placeholder="ex : janvier 2024"></div>
+          </div>
+          <label class="fl" style="margin-top:6px">Effets ressentis</label>
+          <input class="fi" type="text" placeholder="ex : bien toléré, amélioration nette / effets secondaires, peu efficace...">
+        </div>
+        <div class="tx-item" onclick="toggleTx(this)"><div class="tx-check">✓</div><span>Laxatif ou ralentisseur de transit</span></div>
+        <div class="tx-detail">
+          <div class="g3">
+            <div><label class="fl">Début (mois/année)</label><input class="fi" type="text" placeholder="ex : mars 2022"></div>
+            <div><label class="fl">Statut</label><select class="fi"><option value="">—</option><option>Toujours en cours</option><option>Arrêté</option></select></div>
+            <div><label class="fl">Si arrêté, depuis quand</label><input class="fi" type="text" placeholder="ex : janvier 2024"></div>
+          </div>
+          <label class="fl" style="margin-top:6px">Effets ressentis</label>
+          <input class="fi" type="text" placeholder="ex : bien toléré, amélioration nette / effets secondaires, peu efficace...">
+        </div>
+        <div class="tx-item" onclick="toggleTx(this)"><div class="tx-check">✓</div><span>Probiotiques ciblés SII</span></div>
+        <div class="tx-detail">
+          <div class="g3">
+            <div><label class="fl">Début (mois/année)</label><input class="fi" type="text" placeholder="ex : mars 2022"></div>
+            <div><label class="fl">Statut</label><select class="fi"><option value="">—</option><option>Toujours en cours</option><option>Arrêté</option></select></div>
+            <div><label class="fl">Si arrêté, depuis quand</label><input class="fi" type="text" placeholder="ex : janvier 2024"></div>
+          </div>
+          <label class="fl" style="margin-top:6px">Effets ressentis</label>
+          <input class="fi" type="text" placeholder="ex : bien toléré, amélioration nette / effets secondaires, peu efficace...">
+        </div>
+        <div class="tx-item" onclick="toggleTx(this)"><div class="tx-check">✓</div><span>Suivi psy / TCC / hypnothérapie</span></div>
+        <div class="tx-detail">
+          <div class="g3">
+            <div><label class="fl">Début (mois/année)</label><input class="fi" type="text" placeholder="ex : mars 2022"></div>
+            <div><label class="fl">Statut</label><select class="fi"><option value="">—</option><option>Toujours en cours</option><option>Arrêté</option></select></div>
+            <div><label class="fl">Si arrêté, depuis quand</label><input class="fi" type="text" placeholder="ex : janvier 2024"></div>
+          </div>
+          <label class="fl" style="margin-top:6px">Effets ressentis</label>
+          <input class="fi" type="text" placeholder="ex : bien toléré, amélioration nette / effets secondaires, peu efficace...">
+        </div>
+        <div class="tx-item" onclick="toggleTx(this)"><div class="tx-check">✓</div><span>Régime pauvre en FODMAP encadré</span></div>
+        <div class="tx-detail">
+          <div class="g3">
+            <div><label class="fl">Début (mois/année)</label><input class="fi" type="text" placeholder="ex : mars 2022"></div>
+            <div><label class="fl">Statut</label><select class="fi"><option value="">—</option><option>Toujours en cours</option><option>Arrêté</option></select></div>
+            <div><label class="fl">Si arrêté, depuis quand</label><input class="fi" type="text" placeholder="ex : janvier 2024"></div>
+          </div>
+          <label class="fl" style="margin-top:6px">Effets ressentis</label>
+          <input class="fi" type="text" placeholder="ex : bien toléré, amélioration nette / effets secondaires, peu efficace...">
+        </div>
+      </div>
+          <label class="fl" style="margin-top:10px">Impact sur la vie sociale et professionnelle</label>
           <textarea class="fi" style="min-height:60px" placeholder="Évitement de sorties, restaurants, trajets? Arrêts de travail?"></textarea>
         </div>
       </div>
@@ -3407,18 +3554,63 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
             <div><label class="fl">Année du diagnostic</label>
               <input class="fi" type="number" min="1970" max="2030" placeholder="ex : 2019">
             </div>
-            <div><label class="fl">Traitement en cours</label>
-              <select class="fi"><option>Lévothyrox (T4 seule)</option><option>Euthyrox</option><option>T3+T4 (Cynomel + Lévothyrox)</option><option>Thyroïde desséchée (NDT)</option><option>Aucun traitement</option></select>
-            </div>
-          </div>
-          <div class="g2" style="margin-top:10px">
-            <div><label class="fl">Dose actuelle et depuis quand stable</label>
-              <input class="fi" type="text" placeholder="ex : 75µg, stable depuis janvier 2024">
-            </div>
             <div><label class="fl">Date du dernier bilan thyroïdien</label>
               <input class="fi" type="text" placeholder="ex : juin 2026">
             </div>
           </div>
+          <label class="fl" style="margin-top:10px">Traitement(s) reçu(s) — cochez, précisez la date, le statut et l'effet ressenti</label>
+        <div class="tx-wrap">
+        <div class="tx-item" onclick="toggleTx(this)"><div class="tx-check">✓</div><span>Lévothyrox / Euthyrox (T4 seule)</span></div>
+        <div class="tx-detail">
+          <div class="g3">
+            <div><label class="fl">Début (mois/année)</label><input class="fi" type="text" placeholder="ex : mars 2022"></div>
+            <div><label class="fl">Statut</label><select class="fi"><option value="">—</option><option>Toujours en cours</option><option>Arrêté</option></select></div>
+            <div><label class="fl">Si arrêté, depuis quand</label><input class="fi" type="text" placeholder="ex : janvier 2024"></div>
+          </div>
+          <label class="fl" style="margin-top:6px">Effets ressentis</label>
+          <input class="fi" type="text" placeholder="ex : bien toléré, amélioration nette / effets secondaires, peu efficace...">
+        </div>
+        <div class="tx-item" onclick="toggleTx(this)"><div class="tx-check">✓</div><span>T3+T4 combiné (Cynomel + Lévothyrox)</span></div>
+        <div class="tx-detail">
+          <div class="g3">
+            <div><label class="fl">Début (mois/année)</label><input class="fi" type="text" placeholder="ex : mars 2022"></div>
+            <div><label class="fl">Statut</label><select class="fi"><option value="">—</option><option>Toujours en cours</option><option>Arrêté</option></select></div>
+            <div><label class="fl">Si arrêté, depuis quand</label><input class="fi" type="text" placeholder="ex : janvier 2024"></div>
+          </div>
+          <label class="fl" style="margin-top:6px">Effets ressentis</label>
+          <input class="fi" type="text" placeholder="ex : bien toléré, amélioration nette / effets secondaires, peu efficace...">
+        </div>
+        <div class="tx-item" onclick="toggleTx(this)"><div class="tx-check">✓</div><span>Thyroïde desséchée (NDT)</span></div>
+        <div class="tx-detail">
+          <div class="g3">
+            <div><label class="fl">Début (mois/année)</label><input class="fi" type="text" placeholder="ex : mars 2022"></div>
+            <div><label class="fl">Statut</label><select class="fi"><option value="">—</option><option>Toujours en cours</option><option>Arrêté</option></select></div>
+            <div><label class="fl">Si arrêté, depuis quand</label><input class="fi" type="text" placeholder="ex : janvier 2024"></div>
+          </div>
+          <label class="fl" style="margin-top:6px">Effets ressentis</label>
+          <input class="fi" type="text" placeholder="ex : bien toléré, amélioration nette / effets secondaires, peu efficace...">
+        </div>
+        <div class="tx-item" onclick="toggleTx(this)"><div class="tx-check">✓</div><span>Sélénium prescrit par le médecin</span></div>
+        <div class="tx-detail">
+          <div class="g3">
+            <div><label class="fl">Début (mois/année)</label><input class="fi" type="text" placeholder="ex : mars 2022"></div>
+            <div><label class="fl">Statut</label><select class="fi"><option value="">—</option><option>Toujours en cours</option><option>Arrêté</option></select></div>
+            <div><label class="fl">Si arrêté, depuis quand</label><input class="fi" type="text" placeholder="ex : janvier 2024"></div>
+          </div>
+          <label class="fl" style="margin-top:6px">Effets ressentis</label>
+          <input class="fi" type="text" placeholder="ex : bien toléré, amélioration nette / effets secondaires, peu efficace...">
+        </div>
+        <div class="tx-item" onclick="toggleTx(this)"><div class="tx-check">✓</div><span>Chirurgie thyroïdienne (thyroïdectomie)</span></div>
+        <div class="tx-detail">
+          <div class="g3">
+            <div><label class="fl">Début (mois/année)</label><input class="fi" type="text" placeholder="ex : mars 2022"></div>
+            <div><label class="fl">Statut</label><select class="fi"><option value="">—</option><option>Toujours en cours</option><option>Arrêté</option></select></div>
+            <div><label class="fl">Si arrêté, depuis quand</label><input class="fi" type="text" placeholder="ex : janvier 2024"></div>
+          </div>
+          <label class="fl" style="margin-top:6px">Effets ressentis</label>
+          <input class="fi" type="text" placeholder="ex : bien toléré, amélioration nette / effets secondaires, peu efficace...">
+        </div>
+      </div>
           <label class="fl" style="margin-top:10px">Derniers résultats biologiques</label>
           <textarea class="fi" style="min-height:60px" placeholder="TSH · T3 libre · T4 libre · Anti-TPO · Anti-Thyroglobuline · Ferritine · Vitamine D…"></textarea>
           <div class="check-list" style="margin-top:10px">
@@ -3493,17 +3685,67 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
           </div>
           <div class="funnel-collapse-toggle" onclick="toggleCollapseGroup('surr-deficit')">↺ Afficher quand même les signes d'excès (profil mixte possible)</div><div class="funnel-collapse-toggle" onclick="toggleCollapseGroup('surr-exces')">↺ Afficher quand même les signes de déficit (profil mixte possible)</div><label class="fl" style="margin-top:10px">Bilans connus (cortisol salivaire 4 points, DHEA-S, ferritine, TSH…)</label>
           <textarea class="fi" style="min-height:56px" placeholder="ex : Cortisol salivaire 8h très bas, 22h normal → profil d'épuisement matinal. DHEA-S : 850 µg/L (basse pour son âge). Ou : bilan jamais fait malgré le tableau clinique évocateur."></textarea>
-          <div class="g3" style="margin-top:10px">
+          <div class="g2" style="margin-top:10px">
             <div><label class="fl">Diagnostic médical de burn-out / épuisement posé</label>
               <select class="fi"><option>Non</option><option>Oui — par un médecin généraliste</option><option>Oui — par un psychiatre</option><option>Suspicion, jamais formalisé</option></select>
             </div>
             <div><label class="fl">Année du diagnostic / de l'arrêt de travail</label>
               <input class="fi" type="number" min="1970" max="2030" placeholder="ex : 2023">
             </div>
-            <div><label class="fl">Traitement reçu (anxiolytique, antidépresseur…)</label>
-              <input class="fi" type="text" placeholder="ex : en cours, ou arrêté depuis 2024">
-            </div>
           </div>
+          <label class="fl" style="margin-top:10px">Traitement(s) reçu(s) — cochez, précisez la date, le statut et l'effet ressenti</label>
+        <div class="tx-wrap">
+        <div class="tx-item" onclick="toggleTx(this)"><div class="tx-check">✓</div><span>Anxiolytique</span></div>
+        <div class="tx-detail">
+          <div class="g3">
+            <div><label class="fl">Début (mois/année)</label><input class="fi" type="text" placeholder="ex : mars 2022"></div>
+            <div><label class="fl">Statut</label><select class="fi"><option value="">—</option><option>Toujours en cours</option><option>Arrêté</option></select></div>
+            <div><label class="fl">Si arrêté, depuis quand</label><input class="fi" type="text" placeholder="ex : janvier 2024"></div>
+          </div>
+          <label class="fl" style="margin-top:6px">Effets ressentis</label>
+          <input class="fi" type="text" placeholder="ex : bien toléré, amélioration nette / effets secondaires, peu efficace...">
+        </div>
+        <div class="tx-item" onclick="toggleTx(this)"><div class="tx-check">✓</div><span>Antidépresseur</span></div>
+        <div class="tx-detail">
+          <div class="g3">
+            <div><label class="fl">Début (mois/année)</label><input class="fi" type="text" placeholder="ex : mars 2022"></div>
+            <div><label class="fl">Statut</label><select class="fi"><option value="">—</option><option>Toujours en cours</option><option>Arrêté</option></select></div>
+            <div><label class="fl">Si arrêté, depuis quand</label><input class="fi" type="text" placeholder="ex : janvier 2024"></div>
+          </div>
+          <label class="fl" style="margin-top:6px">Effets ressentis</label>
+          <input class="fi" type="text" placeholder="ex : bien toléré, amélioration nette / effets secondaires, peu efficace...">
+        </div>
+        <div class="tx-item" onclick="toggleTx(this)"><div class="tx-check">✓</div><span>Arrêt de travail</span></div>
+        <div class="tx-detail">
+          <div class="g3">
+            <div><label class="fl">Début (mois/année)</label><input class="fi" type="text" placeholder="ex : mars 2022"></div>
+            <div><label class="fl">Statut</label><select class="fi"><option value="">—</option><option>Toujours en cours</option><option>Arrêté</option></select></div>
+            <div><label class="fl">Si arrêté, depuis quand</label><input class="fi" type="text" placeholder="ex : janvier 2024"></div>
+          </div>
+          <label class="fl" style="margin-top:6px">Effets ressentis</label>
+          <input class="fi" type="text" placeholder="ex : bien toléré, amélioration nette / effets secondaires, peu efficace...">
+        </div>
+        <div class="tx-item" onclick="toggleTx(this)"><div class="tx-check">✓</div><span>Suivi psychologique / psychiatrique</span></div>
+        <div class="tx-detail">
+          <div class="g3">
+            <div><label class="fl">Début (mois/année)</label><input class="fi" type="text" placeholder="ex : mars 2022"></div>
+            <div><label class="fl">Statut</label><select class="fi"><option value="">—</option><option>Toujours en cours</option><option>Arrêté</option></select></div>
+            <div><label class="fl">Si arrêté, depuis quand</label><input class="fi" type="text" placeholder="ex : janvier 2024"></div>
+          </div>
+          <label class="fl" style="margin-top:6px">Effets ressentis</label>
+          <input class="fi" type="text" placeholder="ex : bien toléré, amélioration nette / effets secondaires, peu efficace...">
+        </div>
+        <div class="tx-item" onclick="toggleTx(this)"><div class="tx-check">✓</div><span>Hydrocortisone (insuffisance surrénalienne confirmée)</span></div>
+        <div class="tx-detail">
+          <div class="g3">
+            <div><label class="fl">Début (mois/année)</label><input class="fi" type="text" placeholder="ex : mars 2022"></div>
+            <div><label class="fl">Statut</label><select class="fi"><option value="">—</option><option>Toujours en cours</option><option>Arrêté</option></select></div>
+            <div><label class="fl">Si arrêté, depuis quand</label><input class="fi" type="text" placeholder="ex : janvier 2024"></div>
+          </div>
+          <label class="fl" style="margin-top:6px">Effets ressentis</label>
+          <input class="fi" type="text" placeholder="ex : bien toléré, amélioration nette / effets secondaires, peu efficace...">
+        </div>
+      </div>
           <div class="info-boxes" style="margin-top:10px">
             <div class="info-box pourquoi"><div class="box-lbl"><svg class="picto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0" aria-hidden="true"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/></svg> Pourquoi je ne devine jamais pour cette hormone</div>
             <div class="pourquoi-txt"> Pour cette hormone précise, je ne me fie jamais aux seuls signes cliniques — je préfère toujours m'appuyer sur un dosage sanguin avant de vous proposer quoi que ce soit, c'est trop sensible pour être deviné.</div></div>
@@ -3814,29 +4056,80 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
               </div>
             </div>
           </div>
-          <div class="g3" style="margin-top:10px">
+          <div class="g2" style="margin-top:10px">
             <div><label class="fl">Douleur règles (/10)</label>
               <input class="fi" type="number" min="0" max="10" placeholder="ex : 8">
             </div>
-            <div><label class="fl">Traitement hormonal en cours</label>
-              <select class="fi"><option>Pilule en continu</option><option>DIU Mirena</option><option>Agonistes GnRH</option><option>Progestatifs seuls</option><option>Aucun</option></select>
-            </div>
-            <div><label class="fl">Depuis quand (ou arrêté depuis quand)</label>
-              <input class="fi" type="text" placeholder="ex : depuis 2022 / arrêté en 2023">
-            </div>
           </div>
           <div class="info-boxes" style="margin-top:12px"><div class="info-box pourquoi"><div class="box-lbl"><svg class="picto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0" aria-hidden="true"><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/><line x1="4.9" y1="4.9" x2="7" y2="7"/><line x1="17" y1="17" x2="19.1" y2="19.1"/><line x1="4.9" y1="19.1" x2="7" y2="17"/><line x1="17" y1="7" x2="19.1" y2="4.9"/></svg> Pourquoi je vous demande votre protection menstruelle et vos antécédents de chirurgie</div><div class="pourquoi-txt"> Les tampons et les cups empêchent le flux menstruel de s'évacuer librement, ce qui favorise le reflux de sang vers l'intérieur du bassin — un des mécanismes qui entretient l'endométriose. Les tampons contiennent en plus, selon les analyses de l'agence de sécurité sanitaire, des résidus de perturbateurs endocriniens (dioxines, phtalates) directement au contact d'une muqueuse riche en récepteurs aux œstrogènes — ce n'est pas anodin sur des années d'utilisation. La cup pose un problème différent : bien réutilisable, elle est souvent portée trop longtemps (toute une journée ou la nuit), ce qui expose au même risque de syndrome du choc toxique que le tampon, sans compter une possible libération de microparticules de silicone/plastique. Les protections externes (serviettes ou culottes lavables) restent le choix le plus favorable pour laisser le flux s'évacuer librement. Et une chirurgie du petit bassin, même nécessaire pour retirer des lésions, peut favoriser l'apparition de nouveaux foyers si les autres facteurs (inflammation, excès d'œstrogènes) ne sont pas bien contrôlés en parallèle — c'est pour ça que je veux les connaître tous les deux.</div></div></div>
-          <div class="g3" style="margin-top:10px">
+          <div class="g2" style="margin-top:10px">
             <div><label class="fl">Protection menstruelle utilisée</label>
               <select class="fi"><option>Protections externes (serviettes, culottes lavables)</option><option>Tampons</option><option>Cup menstruelle</option><option>Mixte</option></select>
             </div>
-            <div><label class="fl">Antécédent de chirurgie pelvienne (cœlioscopie)</label>
-              <select class="fi"><option>Non</option><option>Oui — une fois</option><option>Oui — plusieurs fois</option></select>
-            </div>
-            <div><label class="fl">Type d'intervention(s) et année(s)</label>
-              <input class="fi" type="text" placeholder="ex : cœlioscopie exérèse lésions, 2022">
-            </div>
           </div>
+          <label class="fl" style="margin-top:10px">Traitements / interventions déjà reçus — cochez, précisez la date, le statut et l'effet ressenti</label>
+        <div class="tx-wrap">
+        <div class="tx-item" onclick="toggleTx(this)"><div class="tx-check">✓</div><span>Pilule en continu</span></div>
+        <div class="tx-detail">
+          <div class="g3">
+            <div><label class="fl">Début (mois/année)</label><input class="fi" type="text" placeholder="ex : mars 2022"></div>
+            <div><label class="fl">Statut</label><select class="fi"><option value="">—</option><option>Toujours en cours</option><option>Arrêté</option></select></div>
+            <div><label class="fl">Si arrêté, depuis quand</label><input class="fi" type="text" placeholder="ex : janvier 2024"></div>
+          </div>
+          <label class="fl" style="margin-top:6px">Effets ressentis</label>
+          <input class="fi" type="text" placeholder="ex : bien toléré, amélioration nette / effets secondaires, peu efficace...">
+        </div>
+        <div class="tx-item" onclick="toggleTx(this)"><div class="tx-check">✓</div><span>DIU Mirena</span></div>
+        <div class="tx-detail">
+          <div class="g3">
+            <div><label class="fl">Début (mois/année)</label><input class="fi" type="text" placeholder="ex : mars 2022"></div>
+            <div><label class="fl">Statut</label><select class="fi"><option value="">—</option><option>Toujours en cours</option><option>Arrêté</option></select></div>
+            <div><label class="fl">Si arrêté, depuis quand</label><input class="fi" type="text" placeholder="ex : janvier 2024"></div>
+          </div>
+          <label class="fl" style="margin-top:6px">Effets ressentis</label>
+          <input class="fi" type="text" placeholder="ex : bien toléré, amélioration nette / effets secondaires, peu efficace...">
+        </div>
+        <div class="tx-item" onclick="toggleTx(this)"><div class="tx-check">✓</div><span>Agonistes GnRH</span></div>
+        <div class="tx-detail">
+          <div class="g3">
+            <div><label class="fl">Début (mois/année)</label><input class="fi" type="text" placeholder="ex : mars 2022"></div>
+            <div><label class="fl">Statut</label><select class="fi"><option value="">—</option><option>Toujours en cours</option><option>Arrêté</option></select></div>
+            <div><label class="fl">Si arrêté, depuis quand</label><input class="fi" type="text" placeholder="ex : janvier 2024"></div>
+          </div>
+          <label class="fl" style="margin-top:6px">Effets ressentis</label>
+          <input class="fi" type="text" placeholder="ex : bien toléré, amélioration nette / effets secondaires, peu efficace...">
+        </div>
+        <div class="tx-item" onclick="toggleTx(this)"><div class="tx-check">✓</div><span>Progestatifs seuls</span></div>
+        <div class="tx-detail">
+          <div class="g3">
+            <div><label class="fl">Début (mois/année)</label><input class="fi" type="text" placeholder="ex : mars 2022"></div>
+            <div><label class="fl">Statut</label><select class="fi"><option value="">—</option><option>Toujours en cours</option><option>Arrêté</option></select></div>
+            <div><label class="fl">Si arrêté, depuis quand</label><input class="fi" type="text" placeholder="ex : janvier 2024"></div>
+          </div>
+          <label class="fl" style="margin-top:6px">Effets ressentis</label>
+          <input class="fi" type="text" placeholder="ex : bien toléré, amélioration nette / effets secondaires, peu efficace...">
+        </div>
+        <div class="tx-item" onclick="toggleTx(this)"><div class="tx-check">✓</div><span>Chirurgie cœlioscopie (exérèse de lésions)</span></div>
+        <div class="tx-detail">
+          <div class="g3">
+            <div><label class="fl">Début (mois/année)</label><input class="fi" type="text" placeholder="ex : mars 2022"></div>
+            <div><label class="fl">Statut</label><select class="fi"><option value="">—</option><option>Toujours en cours</option><option>Arrêté</option></select></div>
+            <div><label class="fl">Si arrêté, depuis quand</label><input class="fi" type="text" placeholder="ex : janvier 2024"></div>
+          </div>
+          <label class="fl" style="margin-top:6px">Effets ressentis</label>
+          <input class="fi" type="text" placeholder="ex : bien toléré, amélioration nette / effets secondaires, peu efficace...">
+        </div>
+        <div class="tx-item" onclick="toggleTx(this)"><div class="tx-check">✓</div><span>Antalgiques / AINS au long cours</span></div>
+        <div class="tx-detail">
+          <div class="g3">
+            <div><label class="fl">Début (mois/année)</label><input class="fi" type="text" placeholder="ex : mars 2022"></div>
+            <div><label class="fl">Statut</label><select class="fi"><option value="">—</option><option>Toujours en cours</option><option>Arrêté</option></select></div>
+            <div><label class="fl">Si arrêté, depuis quand</label><input class="fi" type="text" placeholder="ex : janvier 2024"></div>
+          </div>
+          <label class="fl" style="margin-top:6px">Effets ressentis</label>
+          <input class="fi" type="text" placeholder="ex : bien toléré, amélioration nette / effets secondaires, peu efficace...">
+        </div>
+      </div>
           <label class="fl" style="margin-top:10px">Impact sur la vie professionnelle et sociale</label>
           <textarea class="fi" style="min-height:60px" placeholder="Arrêts de travail, sorties évitées pendant les règles, aménagements nécessaires…"></textarea>
           <div class="ex-block" style="margin-top:14px"><div class="ex-toggle" onclick="toggleEx(this)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg> <svg class="picto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0" aria-hidden="true"><path d="M3 3 C3 3 8 5 8 12 C8 17 3 19 3 19"/><path d="M12 3 C12 3 17 5 17 12 C17 17 12 19 12 19"/><path d="M21 3 C21 3 21 5 21 12"/></svg> Outil rapide — infusions pour règles douloureuses / abondantes</div><div class="ex-body">Utile en première approche, notamment pour les plus jeunes qui ne souhaitent pas d'emblée un bilan poussé — à coupler idéalement une plante antispasmodique avec une plante hémostatique si les règles sont aussi abondantes.<br><br><strong>Antispasmodiques</strong> (soulagent les crampes) : Camomille romaine (2-3g/150ml, 10 min), Camomille allemande (3g/150ml, 10 min), Mélisse officinale feuille (1,5 à 4g/150ml, 10 min), Achillée millefeuille (2-4g/150ml, 10 min, 2-3x/j — CI grossesse/allaitement).<br><br><strong>Hémostatiques</strong> (limitent l'abondance) : Achillée millefeuille (même préparation — ⚠️ peut parfois avoir l'effet inverse sur l'abondance, à observer), Alchémille parties aériennes fleuries (2g/150ml, 10 min, 2-3x/j), Curcuma racine en décoction (1 cas/tasse, 10-15 min/j — fait aussi légèrement baisser la prostaglandine responsable des crampes).</div></div>
@@ -3924,14 +4217,59 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
               <input class="fi" type="number" min="1970" max="2030" placeholder="ex : 2020">
             </div>
           </div>
-          <div class="g2" style="margin-top:10px">
-            <div><label class="fl">Traitement médical reçu pour le SOPK</label>
-              <input class="fi" type="text" placeholder="ex : Metformine 1000mg/j, pilule Diane 35…">
-            </div>
-            <div><label class="fl">Statut du traitement</label>
-              <select class="fi"><option value="">— —</option><option>En cours actuellement</option><option>Arrêté</option><option>Jamais traité médicalement</option></select>
-            </div>
+          <label class="fl" style="margin-top:10px">Traitement(s) reçu(s) — cochez, précisez la date, le statut et l'effet ressenti</label>
+        <div class="tx-wrap">
+        <div class="tx-item" onclick="toggleTx(this)"><div class="tx-check">✓</div><span>Metformine</span></div>
+        <div class="tx-detail">
+          <div class="g3">
+            <div><label class="fl">Début (mois/année)</label><input class="fi" type="text" placeholder="ex : mars 2022"></div>
+            <div><label class="fl">Statut</label><select class="fi"><option value="">—</option><option>Toujours en cours</option><option>Arrêté</option></select></div>
+            <div><label class="fl">Si arrêté, depuis quand</label><input class="fi" type="text" placeholder="ex : janvier 2024"></div>
           </div>
+          <label class="fl" style="margin-top:6px">Effets ressentis</label>
+          <input class="fi" type="text" placeholder="ex : bien toléré, amélioration nette / effets secondaires, peu efficace...">
+        </div>
+        <div class="tx-item" onclick="toggleTx(this)"><div class="tx-check">✓</div><span>Pilule contraceptive (Diane 35 ou autre)</span></div>
+        <div class="tx-detail">
+          <div class="g3">
+            <div><label class="fl">Début (mois/année)</label><input class="fi" type="text" placeholder="ex : mars 2022"></div>
+            <div><label class="fl">Statut</label><select class="fi"><option value="">—</option><option>Toujours en cours</option><option>Arrêté</option></select></div>
+            <div><label class="fl">Si arrêté, depuis quand</label><input class="fi" type="text" placeholder="ex : janvier 2024"></div>
+          </div>
+          <label class="fl" style="margin-top:6px">Effets ressentis</label>
+          <input class="fi" type="text" placeholder="ex : bien toléré, amélioration nette / effets secondaires, peu efficace...">
+        </div>
+        <div class="tx-item" onclick="toggleTx(this)"><div class="tx-check">✓</div><span>Inositol prescrit par le médecin</span></div>
+        <div class="tx-detail">
+          <div class="g3">
+            <div><label class="fl">Début (mois/année)</label><input class="fi" type="text" placeholder="ex : mars 2022"></div>
+            <div><label class="fl">Statut</label><select class="fi"><option value="">—</option><option>Toujours en cours</option><option>Arrêté</option></select></div>
+            <div><label class="fl">Si arrêté, depuis quand</label><input class="fi" type="text" placeholder="ex : janvier 2024"></div>
+          </div>
+          <label class="fl" style="margin-top:6px">Effets ressentis</label>
+          <input class="fi" type="text" placeholder="ex : bien toléré, amélioration nette / effets secondaires, peu efficace...">
+        </div>
+        <div class="tx-item" onclick="toggleTx(this)"><div class="tx-check">✓</div><span>Traitement d'induction de l'ovulation (Clomid...)</span></div>
+        <div class="tx-detail">
+          <div class="g3">
+            <div><label class="fl">Début (mois/année)</label><input class="fi" type="text" placeholder="ex : mars 2022"></div>
+            <div><label class="fl">Statut</label><select class="fi"><option value="">—</option><option>Toujours en cours</option><option>Arrêté</option></select></div>
+            <div><label class="fl">Si arrêté, depuis quand</label><input class="fi" type="text" placeholder="ex : janvier 2024"></div>
+          </div>
+          <label class="fl" style="margin-top:6px">Effets ressentis</label>
+          <input class="fi" type="text" placeholder="ex : bien toléré, amélioration nette / effets secondaires, peu efficace...">
+        </div>
+        <div class="tx-item" onclick="toggleTx(this)"><div class="tx-check">✓</div><span>Chirurgie ovarienne (drilling — rare)</span></div>
+        <div class="tx-detail">
+          <div class="g3">
+            <div><label class="fl">Début (mois/année)</label><input class="fi" type="text" placeholder="ex : mars 2022"></div>
+            <div><label class="fl">Statut</label><select class="fi"><option value="">—</option><option>Toujours en cours</option><option>Arrêté</option></select></div>
+            <div><label class="fl">Si arrêté, depuis quand</label><input class="fi" type="text" placeholder="ex : janvier 2024"></div>
+          </div>
+          <label class="fl" style="margin-top:6px">Effets ressentis</label>
+          <input class="fi" type="text" placeholder="ex : bien toléré, amélioration nette / effets secondaires, peu efficace...">
+        </div>
+      </div>
           <label class="fl" style="margin-top:10px">Bilans hormonaux connus</label>
           <textarea class="fi" style="min-height:60px" placeholder="Testostérone libre/totale · SHBG · AMH · LH/FSH ratio · Insuline à jeun · HOMA-IR · DHEA-S · Prolactine…"></textarea>
           <div class="check-list" style="margin-top:10px">
@@ -4088,14 +4426,59 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
               <select class="fi"><option>Aucune</option><option>Moins de 3/jour</option><option>3-7/jour</option><option>Plus de 7/jour — invalidant</option></select>
             </div>
           </div>
-          <div class="g2" style="margin-top:10px">
-            <div><label class="fl">Traitement hormonal substitutif (THS)</label>
-              <select class="fi"><option>Aucun</option><option>En cours actuellement</option><option>Arrêté</option><option>Envisagé, pas encore débuté</option></select>
-            </div>
-            <div><label class="fl">Depuis quand (ou arrêté depuis quand)</label>
-              <input class="fi" type="text" placeholder="ex : depuis 2024 / arrêté en 2025">
-            </div>
+          <label class="fl" style="margin-top:10px">Traitement(s) reçu(s) — cochez, précisez la date, le statut et l'effet ressenti</label>
+        <div class="tx-wrap">
+        <div class="tx-item" onclick="toggleTx(this)"><div class="tx-check">✓</div><span>THS — voie orale</span></div>
+        <div class="tx-detail">
+          <div class="g3">
+            <div><label class="fl">Début (mois/année)</label><input class="fi" type="text" placeholder="ex : mars 2022"></div>
+            <div><label class="fl">Statut</label><select class="fi"><option value="">—</option><option>Toujours en cours</option><option>Arrêté</option></select></div>
+            <div><label class="fl">Si arrêté, depuis quand</label><input class="fi" type="text" placeholder="ex : janvier 2024"></div>
           </div>
+          <label class="fl" style="margin-top:6px">Effets ressentis</label>
+          <input class="fi" type="text" placeholder="ex : bien toléré, amélioration nette / effets secondaires, peu efficace...">
+        </div>
+        <div class="tx-item" onclick="toggleTx(this)"><div class="tx-check">✓</div><span>THS — patch ou gel transdermique</span></div>
+        <div class="tx-detail">
+          <div class="g3">
+            <div><label class="fl">Début (mois/année)</label><input class="fi" type="text" placeholder="ex : mars 2022"></div>
+            <div><label class="fl">Statut</label><select class="fi"><option value="">—</option><option>Toujours en cours</option><option>Arrêté</option></select></div>
+            <div><label class="fl">Si arrêté, depuis quand</label><input class="fi" type="text" placeholder="ex : janvier 2024"></div>
+          </div>
+          <label class="fl" style="margin-top:6px">Effets ressentis</label>
+          <input class="fi" type="text" placeholder="ex : bien toléré, amélioration nette / effets secondaires, peu efficace...">
+        </div>
+        <div class="tx-item" onclick="toggleTx(this)"><div class="tx-check">✓</div><span>Traitement local sécheresse vaginale</span></div>
+        <div class="tx-detail">
+          <div class="g3">
+            <div><label class="fl">Début (mois/année)</label><input class="fi" type="text" placeholder="ex : mars 2022"></div>
+            <div><label class="fl">Statut</label><select class="fi"><option value="">—</option><option>Toujours en cours</option><option>Arrêté</option></select></div>
+            <div><label class="fl">Si arrêté, depuis quand</label><input class="fi" type="text" placeholder="ex : janvier 2024"></div>
+          </div>
+          <label class="fl" style="margin-top:6px">Effets ressentis</label>
+          <input class="fi" type="text" placeholder="ex : bien toléré, amélioration nette / effets secondaires, peu efficace...">
+        </div>
+        <div class="tx-item" onclick="toggleTx(this)"><div class="tx-check">✓</div><span>Bisphosphonates (ostéoporose)</span></div>
+        <div class="tx-detail">
+          <div class="g3">
+            <div><label class="fl">Début (mois/année)</label><input class="fi" type="text" placeholder="ex : mars 2022"></div>
+            <div><label class="fl">Statut</label><select class="fi"><option value="">—</option><option>Toujours en cours</option><option>Arrêté</option></select></div>
+            <div><label class="fl">Si arrêté, depuis quand</label><input class="fi" type="text" placeholder="ex : janvier 2024"></div>
+          </div>
+          <label class="fl" style="margin-top:6px">Effets ressentis</label>
+          <input class="fi" type="text" placeholder="ex : bien toléré, amélioration nette / effets secondaires, peu efficace...">
+        </div>
+        <div class="tx-item" onclick="toggleTx(this)"><div class="tx-check">✓</div><span>Phytoestrogènes prescrits par le médecin</span></div>
+        <div class="tx-detail">
+          <div class="g3">
+            <div><label class="fl">Début (mois/année)</label><input class="fi" type="text" placeholder="ex : mars 2022"></div>
+            <div><label class="fl">Statut</label><select class="fi"><option value="">—</option><option>Toujours en cours</option><option>Arrêté</option></select></div>
+            <div><label class="fl">Si arrêté, depuis quand</label><input class="fi" type="text" placeholder="ex : janvier 2024"></div>
+          </div>
+          <label class="fl" style="margin-top:6px">Effets ressentis</label>
+          <input class="fi" type="text" placeholder="ex : bien toléré, amélioration nette / effets secondaires, peu efficace...">
+        </div>
+      </div>
           <div class="check-list" style="margin-top:10px">
             <div class="check-item"><div class="ci-top"><div class="cb">✓</div> <span>Sueurs nocturnes perturbant le sommeil</span></div><span class="ci-why">Les bouffées de chaleur nocturnes fragmentent le sommeil profond en activant brièvement le système d'alerte du corps, ce qui empêche ensuite de se rendormir facilement.</span></div>
             <div class="check-item" data-autocheck-if="surr-reveil-3h"><div class="ci-top"><div class="cb">✓</div> <span>Insomnie — réveils 3-4h du matin</span></div><span class="ci-why">La baisse des œstrogènes perturbe la régulation de la température du corps et réduit la sérotonine — ces réveils précoces peuvent aussi signaler une chute de glycémie pendant la nuit.</span></div><div class="funnel-followup funnel-info" data-funnel-show="surr-reveil-3h"><div class="funnel-tag">↳ Auto-coché d'après la section Surrénales</div><div class="funnel-why">Des réveils vers 3h du matin ont déjà été signalés plus haut — je le reporte ici automatiquement, la glycémie nocturne et la baisse hormonale se chevauchent souvent à cet âge. Décochez si ce n'est pas pertinent ici.</div></div>
@@ -4288,6 +4671,34 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
               <select class="fi"><option value="">— —</option><option>Oui, par un gynécologue</option><option>Oui, par un endocrinologue</option><option>Non, jamais consulté pour ça</option><option>Consultation prévue</option></select>
             </div>
           </div>
+          <label class="fl" style="margin-top:10px">Traitement(s) déjà proposé(s) — cochez, précisez la date, le statut et l'effet ressenti</label>
+        <div class="tx-wrap">
+        <div class="tx-item" onclick="toggleTx(this)"><div class="tx-check">✓</div><span>Pilule pour provoquer un retour de règles</span></div>
+        <div class="tx-detail">
+          <div class="g3">
+            <div><label class="fl">Début (mois/année)</label><input class="fi" type="text" placeholder="ex : mars 2022"></div>
+            <div><label class="fl">Statut</label><select class="fi"><option value="">—</option><option>Toujours en cours</option><option>Arrêté</option></select></div>
+            <div><label class="fl">Si arrêté, depuis quand</label><input class="fi" type="text" placeholder="ex : janvier 2024"></div>
+          </div>
+          <label class="fl" style="margin-top:6px">Effets ressentis</label>
+          <input class="fi" type="text" placeholder="ex : bien toléré, amélioration nette / effets secondaires, peu efficace...">
+        </div>
+        <div class="tx-item" onclick="toggleTx(this)"><div class="tx-check">✓</div><span>Suivi psychologique / nutritionniste</span></div>
+        <div class="tx-detail">
+          <div class="g3">
+            <div><label class="fl">Début (mois/année)</label><input class="fi" type="text" placeholder="ex : mars 2022"></div>
+            <div><label class="fl">Statut</label><select class="fi"><option value="">—</option><option>Toujours en cours</option><option>Arrêté</option></select></div>
+            <div><label class="fl">Si arrêté, depuis quand</label><input class="fi" type="text" placeholder="ex : janvier 2024"></div>
+          </div>
+          <label class="fl" style="margin-top:6px">Effets ressentis</label>
+          <input class="fi" type="text" placeholder="ex : bien toléré, amélioration nette / effets secondaires, peu efficace...">
+        </div>
+        <div class="tx-item" onclick="toggleTx(this)"><div class="tx-check">✓</div><span>Aucun traitement médical proposé à ce jour</span></div>
+        <div class="tx-detail">
+          <label class="fl" style="margin-top:6px">Précisions</label>
+          <input class="fi" type="text" placeholder="ex : jamais orientée malgré 8 mois d'aménorrhée">
+        </div>
+      </div>
           <div class="check-list">
             <div class="check-item"><div class="ci-top"><div class="cb">✓</div> <span>Absence de règles depuis plus de 6 mois, sans grossesse ni ménopause</span></div><span class="ci-why">Le critère de durée avant de retenir cet axe — après avoir exclu les autres causes classiques (grossesse, allaitement, dysthyroïdie, hyperprolactinémie, SOPK, contraception hormonale).</span></div>
             <div class="check-item" data-funnel="amen-stress" data-autocheck-if="surr-deficit surr-exces"><div class="ci-top"><div class="cb">✓</div> <span>Stress marqué ou prolongé, quelle que soit sa nature (professionnel, affectif, perfectionnisme, besoin de contrôle)</span></div><span class="ci-why">Le stress chronique élève le cortisol, qui freine directement l'hormone (LH) responsable de l'ovulation — le corps réagit à une menace perçue, pas forcément à un danger réel.</span></div><div class="funnel-followup" data-funnel-show="amen-stress"><div class="funnel-tag"><svg class="picto" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12l7 7 7-7"/></svg> Puisque ce stress est marqué</div><div class="funnel-q">Ce stress est-il apparu avant ou après l'arrêt des règles ?</div><div class="funnel-why">L'ordre d'apparition me dit si le stress est le déclencheur principal ou un facteur qui s'ajoute. Je cible le protocole différemment selon cette précision.</div><div class="funnel-choices"><button class="fchip" type="button" onclick="selectFunnelChoice(this)">Avant l'arrêt des règles</button><button class="fchip" type="button" onclick="selectFunnelChoice(this)">Après, ou en même temps</button><button class="fchip" type="button" onclick="selectFunnelChoice(this)">Difficile à situer dans le temps</button></div></div><div class="funnel-followup funnel-info" data-funnel-show="surr-deficit surr-exces"><div class="funnel-tag">↳ Auto-coché d'après la section Surrénales</div><div class="funnel-why">Un déséquilibre du cortisol a déjà été identifié plus haut — je le reporte ici automatiquement, les deux axes sont directement liés. Décochez si le stress n'est pas un facteur pertinent pour cette cliente.</div></div>
@@ -5581,6 +5992,35 @@ function clinT(el) {
 // 1) synchronise l'étiquette jumelle du classement dossier en fin de questionnaire (#motifs-chips)
 // 2) pré-ouvre le guide d'entretien spécialisé (.tblock) correspondant, s'il existe, pour que
 //    Sabrina n'ait pas à le dérouler manuellement en plein rendez-vous.
+// Checklist "traitements/interventions courants" (30/08/2026) : cocher un traitement révèle
+// 3 champs (date de début, statut en cours/arrêté, effets ressentis) — mêmes champs .fi que
+// partout ailleurs, donc captés automatiquement par collectAllData() sans code supplémentaire.
+// Système de portes par thème (30/08/2026) : la réponse "non" referme le niveau complémentaire
+// du thème (0 question de plus posée) — le niveau essentiel/clé au-dessus de la porte reste
+// toujours visible, jamais concerné par ce mécanisme.
+function setPorte(id, val, btn) {
+  const group = btn.closest('.porte-opts');
+  group.querySelectorAll('.porte-opt').forEach(b => b.classList.remove('sel'));
+  btn.classList.add('sel');
+  const reveal = document.getElementById('porte-reveal-' + id);
+  const closedMsg = document.getElementById('porte-closed-' + id);
+  if (val === 'non') {
+    if (reveal) reveal.classList.remove('open');
+    if (closedMsg) closedMsg.classList.add('show');
+  } else {
+    if (reveal) reveal.classList.add('open');
+    if (closedMsg) closedMsg.classList.remove('show');
+  }
+}
+
+function toggleTx(el) {
+  el.classList.toggle('on');
+  const detail = el.nextElementSibling;
+  if (detail && detail.classList.contains('tx-detail')) {
+    detail.classList.toggle('open', el.classList.contains('on'));
+  }
+}
+
 function toggleSpecialite(el) {
   el.classList.toggle('on');
   const isOn = el.classList.contains('on');
