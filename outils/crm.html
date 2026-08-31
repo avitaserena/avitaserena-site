@@ -3148,7 +3148,7 @@ async function deleteRecette(id){
   }catch(e){ toast('Erreur : '+e.message,'err'); }
 }
 
-function mapC(r){return{id:r.id,prenom:r.prenom,nom:r.nom,email:r.email,tel:r.tel,age:r.age,ddn:r.ddn,motifs:r.motifs,axes:r.axes,notes:r.notes,programme:r.programme,dureeTtt:r.duree_ttt,date1:r.date1,dateProtocole:r.date_protocole,phv_url:r.phv_url||'',timeline:r.timeline||[],workflowDone:r.workflow_done||{},createdAt:r.created_at,chat_addon_actif:!!r.chat_addon_actif,chat_addon_prix:r.chat_addon_prix||45,chat_addon_debut:r.chat_addon_debut||'',chat_addon_renouvellement:r.chat_addon_renouvellement||'',chat_addon_source:r.chat_addon_source||'',propositionParcoursEnvoyeeLe:r.proposition_parcours_envoyee_le||null,propositionParcoursProgramme:r.proposition_parcours_programme||null};}
+function mapC(r){return{id:r.id,prenom:r.prenom,nom:r.nom,email:r.email,tel:r.tel,age:r.age,ddn:r.ddn,motifs:r.motifs,axes:r.axes,notes:r.notes,programme:r.programme,dureeTtt:r.duree_ttt,date1:r.date1,dateProtocole:r.date_protocole,phv_url:r.phv_url||'',timeline:r.timeline||[],workflowDone:r.workflow_done||{},createdAt:r.created_at,chat_addon_actif:!!r.chat_addon_actif,chat_addon_prix:r.chat_addon_prix||45,chat_addon_debut:r.chat_addon_debut||'',chat_addon_renouvellement:r.chat_addon_renouvellement||'',chat_addon_source:r.chat_addon_source||'',propositionParcoursEnvoyeeLe:r.proposition_parcours_envoyee_le||null,propositionParcoursProgramme:r.proposition_parcours_programme||null,suiviSpecialites:(typeof r.suivi_specialites==='string')?r.suivi_specialites:null};}
 
 function today(){return new Date().toISOString().split('T')[0];}
 function addD(d,n){if(!d)return null;const dt=new Date(d);dt.setDate(dt.getDate()+n);return dt.toISOString().split('T')[0];}
@@ -5164,6 +5164,7 @@ async function voirCommeElle(cid){
 
 async function saveClient(c){
   const p={prenom:c.prenom,nom:c.nom,email:c.email,tel:c.tel,age:c.age,ddn:c.ddn,motifs:c.motifs,axes:c.axes,notes:c.notes,programme:c.programme,duree_ttt:c.dureeTtt,date1:c.date1,date_protocole:c.dateProtocole,phv_url:c.phv_url||null,timeline:c.timeline,workflow_done:c.workflowDone,updated_at:new Date().toISOString()};
+  if(typeof c.suiviSpecialites==='string') p.suivi_specialites=c.suiviSpecialites;
   try{await sb('clientes?id=eq.'+c.id,{method:'PATCH',body:JSON.stringify(p)});}catch(e){console.error(e);}
 }
 
@@ -5763,6 +5764,15 @@ function ouvrirEditionCliente(clientId){
       <div class="fg"><label class="fl">Motifs</label><input id="ec-motifs" class="fi" value="${escH(c.motifs||'')}" placeholder="SIBO, SPM, fatigue…"></div>
       <div class="fg"><label class="fl">Axes</label><input id="ec-axes" class="fi" value="${escH(c.axes||'')}" placeholder="Digestif · Hormonal…"></div>
       <div class="fg"><label class="fl">Notes cliniques</label><textarea id="ec-notes" class="fi ft">${escH(c.notes||'')}</textarea></div>
+      <div class="fsep">Suivi spécialisé — espace cliente</div>
+      <div style="font-size:11.5px;color:var(--ink3);line-height:1.6;margin-bottom:4px">Détermine les questions du check-in quotidien affichées à la cliente. Plusieurs cases possibles (union, jamais exclusif). Non coché = devinette automatique par mots-clés dans Axes/Motifs.</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px 18px">
+        ${['digestif::Dysbiose / SIBO','endometriose::Endométriose','sopk::SOPK','menopause::Ménopause / périménopause','thyroide::Thyroïde / Hashimoto','surrenales::Surrénales / cortisol','general::Classique (aucun axe spécifique)'].map(function(pair){
+          var parts=pair.split('::'), val=parts[0], lbl=parts[1];
+          var checked=(c.suiviSpecialites||'').split(',').map(function(s){return s.trim();}).indexOf(val)>-1;
+          return '<label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--ink);cursor:pointer"><input type="checkbox" class="ec-specialite" value="'+val+'" '+(checked?'checked':'')+' style="width:16px;height:16px;accent-color:var(--gold-dk)">'+lbl+'</label>';
+        }).join('')}
+      </div>
     </div>
     <div style="padding:14px 22px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;background:var(--surface)">
       <button onclick="document.getElementById('modal-edit-cliente').remove()" class="btn btn-ghost">Annuler</button>
@@ -5789,6 +5799,8 @@ async function sauvegarderEditionCliente(clientId){
   c.motifs=document.getElementById('ec-motifs')?.value?.trim()||'';
   c.axes=document.getElementById('ec-axes')?.value?.trim()||'';
   c.notes=document.getElementById('ec-notes')?.value?.trim()||'';
+  const specCochees=Array.from(document.querySelectorAll('.ec-specialite:checked')).map(el=>el.value);
+  c.suiviSpecialites=specCochees.join(',');
   c.age=String(ageFrom(ddn)||'');
   try{
     // Fiche créée sans DDN (ex: depuis l'agenda) qui vient d'en recevoir une :

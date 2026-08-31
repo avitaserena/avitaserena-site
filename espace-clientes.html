@@ -486,6 +486,11 @@ body{-webkit-font-smoothing:antialiased}
 .checkin-pill{background:var(--blanc);border:1.5px solid var(--taupe);border-radius:99px;padding:9px 18px;font-size:13px;font-weight:500;color:var(--ardoise);cursor:pointer;transition:all .18s;font-family:'Be Vietnam Pro',sans-serif}
 .checkin-pill:hover{border-color:var(--ocre)}
 .checkin-pill.on{background:var(--ocre);border-color:var(--ocre);color:#fff}
+.checkin-slider-wrap{padding:6px 4px 2px}
+.checkin-slider{-webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:99px;background:var(--taupe);outline:none;margin:10px 0 6px}
+.checkin-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:22px;height:22px;border-radius:50%;background:var(--ocre);border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.25);cursor:pointer}
+.checkin-slider::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:var(--ocre);border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.25);cursor:pointer;border:none}
+.checkin-slider-lbls{display:flex;justify-content:space-between;font-size:10.5px;color:var(--gris);font-weight:600;letter-spacing:.02em}
 .checkin-save{background:var(--ardoise);color:#fff;border:none;border-radius:99px;padding:12px 26px;font-size:13px;font-weight:600;cursor:pointer;margin-top:18px;transition:opacity .2s;font-family:'Be Vietnam Pro',sans-serif}
 .checkin-save:hover{opacity:.88}
 .checkin-save:disabled{opacity:.4;cursor:not-allowed}
@@ -1296,6 +1301,37 @@ a,button{-webkit-tap-highlight-color:transparent}
         <div class="chip-category">
           <div class="chip-cat-title">Énergie</div>
           <div class="chips-row" id="pills-energie"></div>
+        </div>
+        <div class="chip-category">
+          <div class="chip-cat-title">Par rapport à hier</div>
+          <div class="checkin-slider-wrap">
+            <input type="range" class="checkin-slider" id="drawerSliderMieuxHier" min="-3" max="3" step="1" value="0" oninput="_drawerPills.mieux_hier=this.value">
+            <div class="checkin-slider-lbls"><span>Moins bien</span><span>Pareil</span><span>Mieux</span></div>
+          </div>
+        </div>
+        <div class="chip-category" id="rowDouleurAbdo" style="display:none">
+          <div class="chip-cat-title">Douleurs abdominales</div>
+          <div class="chips-row" id="pills-douleur_abdo"></div>
+        </div>
+        <div class="chip-category" id="rowAntalgiques" style="display:none">
+          <div class="chip-cat-title">Antalgiques pris</div>
+          <div class="chips-row" id="pills-antalgiques"></div>
+        </div>
+        <div class="chip-category" id="rowFringales" style="display:none">
+          <div class="chip-cat-title">Fringales sucrées</div>
+          <div class="chips-row" id="pills-fringales"></div>
+        </div>
+        <div class="chip-category" id="rowBouffees" style="display:none">
+          <div class="chip-cat-title">Bouffées de chaleur</div>
+          <div class="chips-row" id="pills-bouffees"></div>
+        </div>
+        <div class="chip-category" id="rowFrilosite" style="display:none">
+          <div class="chip-cat-title">Frilosité</div>
+          <div class="chips-row" id="pills-frilosite"></div>
+        </div>
+        <div class="chip-category" id="rowCoupDeBarre" style="display:none">
+          <div class="chip-cat-title">Coup de barre</div>
+          <div class="chips-row" id="pills-coupdebarre"></div>
         </div>
         <div class="chip-category" id="rowSommeil">
           <div class="chip-cat-title">Sommeil</div>
@@ -3836,6 +3872,12 @@ var CHECKIN_HUMEUR_OPTS = ['Très bien','Bien','Neutre','Irritable','Anxieuse','
 var CHECKIN_DOULEUR_OPTS = ['Absentes','Légères','Modérées','Fortes','Invalidantes'];
 var CHECKIN_SAIGNEMENT_OPTS = ['Aucun','Spotting','Léger','Modéré','Abondant'];
 var CHECKIN_STRESS_OPTS = ['Calme','Un peu tendue','Tendue','Très tendue','Débordée'];
+var CHECKIN_DOULEURABDO_OPTS = ['Absentes','Légères','Modérées','Fortes','Invalidantes'];
+var CHECKIN_ANTALGIQUES_OPTS = ['Non','Oui, ponctuel','Oui, plusieurs prises'];
+var CHECKIN_FRINGALES_OPTS = ['Aucune','Légères','Modérées','Fortes','Incontrôlables'];
+var CHECKIN_BOUFFEES_OPTS = ['Aucune','1 à 2','3 à 5','Plus de 5','En continu'];
+var CHECKIN_FRILOSITE_OPTS = ['Non','Un peu','Modérée','Marquée','Je ne me réchauffe pas'];
+var CHECKIN_COUPDEBARRE_OPTS = ['Non','Léger','Net vers 15-16h','Net dès le matin','Toute la journée'];
 
 /* ── SUIVI PERSONNALISÉ PAR SPÉCIALITÉ (30/08/2026, révisé) ───────────────
    Source de vérité : les cases à cocher "Espace cliente" en fin de
@@ -3854,8 +3896,12 @@ var CHECKIN_STRESS_OPTS = ['Calme','Un peu tendue','Tendue','Très tendue','Déb
    que les puces optionnelles du questionnaire "Aujourd'hui". "Sommeil"
    utilise la colonne Supabase déjà existante. */
 var CHECKIN_PROFILE_KEYWORDS = {
-  cycle: ['endometriose','sopk','ovaire polykystique','ovaires polykystiques','syndrome premenstruel','spm','dysmenorrh','regles douloureuses','dominance oestrogenique'],
-  digestif: ['sibo','dysbiose','sii','colon irritable','intestin','microbiote','ballonnement']
+  digestif: ['sibo','dysbiose','sii','colon irritable','intestin','microbiote','ballonnement'],
+  endometriose: ['endometriose','endometriosique','dysmenorrh','regles douloureuses'],
+  sopk: ['sopk','ovaire polykystique','ovaires polykystiques','dominance oestrogenique','syndrome premenstruel','spm'],
+  menopause: ['menopause','perimenopause','pre-menopause','climatere','bouffee de chaleur','bouffees de chaleur'],
+  thyroide: ['thyroide','thyroidite','hashimoto','hypothyroidie','hyperthyroidie'],
+  surrenales: ['surrenales','surrenalien','cortisol','burn-out','burnout','epuisement surrenalien','fatigue chronique','dhea']
 };
 // Renvoie un TABLEAU de profils actifs (un ou plusieurs), jamais une seule valeur.
 function getCheckinProfileKeys(){
@@ -3867,39 +3913,48 @@ function getCheckinProfileKeys(){
   }
   // Jamais revu (colonne NULL) → devinette par mots-clés dans axes/motifs, en secours.
   var profil = _normText((session.axes||'') + ' ' + (session.motifs||''));
-  var scoreCycle = CHECKIN_PROFILE_KEYWORDS.cycle.filter(function(k){ return profil.indexOf(k)>-1; }).length;
-  var scoreDig = CHECKIN_PROFILE_KEYWORDS.digestif.filter(function(k){ return profil.indexOf(k)>-1; }).length;
-  var keys = [];
-  if (scoreDig>0) keys.push('digestif');
-  if (scoreCycle>0) keys.push('cycle');
+  var keys = Object.keys(CHECKIN_PROFILE_KEYWORDS).filter(function(p){
+    return CHECKIN_PROFILE_KEYWORDS[p].filter(function(k){ return profil.indexOf(k)>-1; }).length > 0;
+  });
   return keys.length ? keys : ['general'];
 }
 // Chaque dimension : libellé + options + soit une colonne Supabase directe
 // (column), soit une clé dans le champ JSON "reponses" (jsonKey).
 var CHECKIN_DIMENSIONS = {
   energie:       { label:'Énergie',              options: CHECKIN_ENERGIE_OPTS,        column:'energie' },
+  mieux_hier:    { label:'Par rapport à hier',   type:'slider', min:-3, max:3, labels:['Moins bien','','','Pareil','','','Mieux'], column:'mieux_hier' },
   sommeil:       { label:'Sommeil',               options: CHECKIN_SOMMEIL_OPTS,        column:'sommeil' },
   transit:       { label:'Transit',               options: CHECKIN_TRANSIT_OPTS,        column:'transit' },
   ballonnements: { label:'Ballonnements',         options: CHECKIN_BALLONNEMENTS_OPTS,  column:'ballonnements' },
   douleur:       { label:'Douleurs (cycle)',      options: CHECKIN_DOULEUR_OPTS,         jsonKey:'douleur_cycle' },
   saignement:    { label:'Saignement aujourd\'hui', options: CHECKIN_SAIGNEMENT_OPTS,    jsonKey:'saignement' },
   stress:        { label:'Stress / tension',      options: CHECKIN_STRESS_OPTS,          jsonKey:'stress_tension' },
+  douleur_abdo:  { label:'Douleurs abdominales',  options: CHECKIN_DOULEURABDO_OPTS,     jsonKey:'douleur_abdo' },
+  antalgiques:   { label:'Antalgiques pris',      options: CHECKIN_ANTALGIQUES_OPTS,     jsonKey:'antalgiques' },
+  fringales:     { label:'Fringales sucrées',     options: CHECKIN_FRINGALES_OPTS,       jsonKey:'fringales_sucre' },
+  bouffees:      { label:'Bouffées de chaleur',   options: CHECKIN_BOUFFEES_OPTS,        jsonKey:'bouffees_chaleur' },
+  frilosite:     { label:'Frilosité',             options: CHECKIN_FRILOSITE_OPTS,       jsonKey:'frilosite' },
+  coupdebarre:   { label:'Coup de barre',         options: CHECKIN_COUPDEBARRE_OPTS,     jsonKey:'coup_de_barre' },
   humeur:        { label:'Humeur',                options: CHECKIN_HUMEUR_OPTS,         column:'humeur' }
 };
-// Dimensions propres à chaque profil, hors piliers communs (énergie/humeur, ajoutés une
-// seule fois quel que soit le nombre de profils actifs pour ne jamais les dupliquer).
+// Dimensions propres à chaque profil, hors piliers communs (énergie/mieux hier/humeur,
+// ajoutés une seule fois quel que soit le nombre de profils actifs pour ne jamais les dupliquer).
 var CHECKIN_PROFILE_DIMS = {
-  digestif: ['transit','ballonnements'],
-  cycle:    ['douleur','saignement'],
-  general:  ['sommeil','stress']
+  digestif:     ['transit','ballonnements','douleur_abdo'],
+  endometriose: ['douleur','saignement','antalgiques'],
+  sopk:         ['douleur','saignement','fringales'],
+  menopause:    ['bouffees'],
+  thyroide:     ['frilosite'],
+  surrenales:   ['coupdebarre'],
+  general:      ['sommeil','stress']
 };
 // Construit l'union des dimensions pour TOUS les profils actifs de la cliente, dans un
-// ordre stable : Énergie d'abord, piliers spécifiques ensuite (digestif puis cycle puis
-// général, sans doublon), Humeur toujours en dernier.
+// ordre stable : Énergie + curseur d'abord, piliers spécifiques ensuite (dans l'ordre des
+// profils déclarés, sans doublon), Humeur toujours en dernier.
 function getCheckinActiveDims(){
   var profiles = getCheckinProfileKeys();
-  var dims = ['energie'];
-  ['digestif','cycle','general'].forEach(function(p){
+  var dims = ['energie','mieux_hier'];
+  Object.keys(CHECKIN_PROFILE_DIMS).forEach(function(p){
     if (profiles.indexOf(p) === -1) return;
     (CHECKIN_PROFILE_DIMS[p]||[]).forEach(function(d){ if (dims.indexOf(d)===-1) dims.push(d); });
   });
@@ -4062,6 +4117,13 @@ async function renderCheckinRapide(){
     );
     var pillsHtml = dims.map(function(d){
       var dim = CHECKIN_DIMENSIONS[d];
+      if(dim.type === 'slider'){
+        return '<div class="checkin-label">'+dim.label+'</div><div class="checkin-slider-wrap">' +
+          '<input type="range" class="checkin-slider" min="'+dim.min+'" max="'+dim.max+'" step="1" value="0" ' +
+          'oninput="selectCheckinSlider(\''+d+'\',this.value,this)">' +
+          '<div class="checkin-slider-lbls"><span>Moins bien</span><span>Pareil</span><span>Mieux</span></div>' +
+          '</div>';
+      }
       var opts = dim.options.map(function(o){
         var val = (typeof o === 'object') ? o.v : o;
         var label = (typeof o === 'object') ? o.l : o;
@@ -4070,6 +4132,9 @@ async function renderCheckinRapide(){
       }).join('');
       return '<div class="checkin-label">'+dim.label+'</div><div class="checkin-pills" id="checkinPills_'+d+'">'+opts+'</div>';
     }).join('');
+    // Le curseur "par rapport à hier" a une valeur neutre par défaut (0 = pareil) :
+    // on la pré-remplit pour ne pas bloquer l'enregistrement si la cliente ne le touche pas.
+    if(dims.indexOf('mieux_hier') > -1 && checkinVals.mieux_hier === undefined) checkinVals.mieux_hier = '0';
 
     box.innerHTML =
       '<div class="checkin-card">' +
@@ -4120,6 +4185,19 @@ function selectCheckin(type, val, btn){
   }
 }
 
+function selectCheckinSlider(type, val, input){
+  checkinVals[type] = String(val); // chaîne non vide, y compris "0" — garde la valeur "remplie" au sens de allFilled
+  var dims = getCheckinActiveDims();
+  var allFilled = dims.every(function(d){ return !!checkinVals[d]; });
+  var saveBtn = document.getElementById('checkinSaveBtn');
+  if(saveBtn) saveBtn.disabled = !allFilled;
+  if(checkinAutoSaveTimer){ clearTimeout(checkinAutoSaveTimer); checkinAutoSaveTimer=null; }
+  if(allFilled && !checkinNoteExpanded){
+    if(saveBtn) saveBtn.textContent = 'Enregistrement…';
+    checkinAutoSaveTimer = setTimeout(function(){ saveCheckinRapide(); }, 900);
+  }
+}
+
 async function saveCheckinRapide(){
   var session = avsGetSession();
   var dims = getCheckinActiveDims();
@@ -4140,7 +4218,7 @@ async function saveCheckinRapide(){
   dims.forEach(function(d){
     var dim = CHECKIN_DIMENSIONS[d];
     if(!dim) return;
-    if(dim.column) colVals[dim.column] = checkinVals[d];
+    if(dim.column) colVals[dim.column] = (dim.type === 'slider') ? parseInt(checkinVals[d], 10) : checkinVals[d];
     else if(dim.jsonKey) jsonVals[dim.jsonKey] = checkinVals[d];
   });
 
@@ -4881,37 +4959,61 @@ function ouvrirDrawerSymptomes() {
     douleur: todayReponses.douleur_cycle || null,
     saignement: todayReponses.saignement || null,
     stress: todayReponses.stress_tension || null,
+    douleur_abdo: todayReponses.douleur_abdo || null,
+    antalgiques: todayReponses.antalgiques || null,
+    fringales: todayReponses.fringales_sucre || null,
+    bouffees: todayReponses.bouffees_chaleur || null,
+    frilosite: todayReponses.frilosite || null,
+    coupdebarre: todayReponses.coup_de_barre || null,
+    mieux_hier: (todayEntry.mieux_hier !== undefined && todayEntry.mieux_hier !== null) ? String(todayEntry.mieux_hier) : null,
     humeur: todayEntry.humeur || null
   };
 
-  // ── Suivi personnalisé : SIBO/dysbiose → transit & ballonnements ;
-  // endométriose/SOPK → douleurs & saignement ; sinon (ou en plus) → sommeil & stress.
-  // Les deux premiers ne s'excluent pas : si les deux sont cochés, la cliente voit tout.
+  // ── Suivi personnalisé, une ligne par profil actif (union, jamais exclusif) ──
   var profiles = getCheckinProfileKeys();
   var hasDig = profiles.indexOf('digestif') > -1;
-  var hasCycle = profiles.indexOf('cycle') > -1;
+  var hasEndo = profiles.indexOf('endometriose') > -1;
+  var hasSopk = profiles.indexOf('sopk') > -1;
+  var hasCycle = hasEndo || hasSopk;
+  var hasMeno = profiles.indexOf('menopause') > -1;
+  var hasThyroide = profiles.indexOf('thyroide') > -1;
+  var hasSurrenales = profiles.indexOf('surrenales') > -1;
   var hasGeneral = profiles.indexOf('general') > -1;
   document.getElementById('rowTransit').style.display = hasDig ? '' : 'none';
   document.getElementById('rowBallonnements').style.display = hasDig ? '' : 'none';
+  document.getElementById('rowDouleurAbdo').style.display = hasDig ? '' : 'none';
   document.getElementById('rowDouleur').style.display = hasCycle ? '' : 'none';
   document.getElementById('rowSaignement').style.display = hasCycle ? '' : 'none';
+  document.getElementById('rowAntalgiques').style.display = hasEndo ? '' : 'none';
+  document.getElementById('rowFringales').style.display = hasSopk ? '' : 'none';
+  document.getElementById('rowBouffees').style.display = hasMeno ? '' : 'none';
+  document.getElementById('rowFrilosite').style.display = hasThyroide ? '' : 'none';
+  document.getElementById('rowCoupDeBarre').style.display = hasSurrenales ? '' : 'none';
   document.getElementById('rowSommeil').style.display = hasGeneral ? '' : 'none';
   document.getElementById('rowStress').style.display = hasGeneral ? '' : 'none';
   var introEl = document.getElementById('drawerIntro');
-  if(introEl) introEl.textContent = hasDig && hasCycle
-    ? 'Quelques gestes, dix secondes — pensés pour votre double suivi, semaine après semaine.'
-    : hasCycle
-    ? 'Quelques gestes, dix secondes — pensés pour votre suivi du cycle, semaine après semaine.'
+  if(introEl) introEl.textContent = profiles.length > 1
+    ? 'Quelques gestes, dix secondes — pensés pour votre suivi, semaine après semaine.'
     : hasGeneral
     ? 'Quelques gestes, dix secondes — vos piliers du jour, semaine après semaine.'
     : 'Quelques gestes, dix secondes — Sabrina suit votre progression sur ces bilans, semaine après semaine.';
+
+  var sliderMH = document.getElementById('drawerSliderMieuxHier');
+  if(sliderMH) sliderMH.value = _drawerPills.mieux_hier || '0';
+  if(_drawerPills.mieux_hier === null || _drawerPills.mieux_hier === undefined) _drawerPills.mieux_hier = '0';
 
   _renderDrawerPillRow('pills-energie', 'energie', CHECKIN_ENERGIE_OPTS, _drawerPills.energie);
   _renderDrawerPillRow('pills-sommeil', 'sommeil', CHECKIN_SOMMEIL_OPTS, _drawerPills.sommeil);
   _renderDrawerPillRow('pills-transit', 'transit', CHECKIN_TRANSIT_OPTS, _drawerPills.transit);
   _renderDrawerPillRow('pills-ballonnements', 'ballonnements', CHECKIN_BALLONNEMENTS_OPTS, _drawerPills.ballonnements);
+  _renderDrawerPillRow('pills-douleur_abdo', 'douleur_abdo', CHECKIN_DOULEURABDO_OPTS, _drawerPills.douleur_abdo);
   _renderDrawerPillRow('pills-douleur', 'douleur', CHECKIN_DOULEUR_OPTS, _drawerPills.douleur);
   _renderDrawerPillRow('pills-saignement', 'saignement', CHECKIN_SAIGNEMENT_OPTS, _drawerPills.saignement);
+  _renderDrawerPillRow('pills-antalgiques', 'antalgiques', CHECKIN_ANTALGIQUES_OPTS, _drawerPills.antalgiques);
+  _renderDrawerPillRow('pills-fringales', 'fringales', CHECKIN_FRINGALES_OPTS, _drawerPills.fringales);
+  _renderDrawerPillRow('pills-bouffees', 'bouffees', CHECKIN_BOUFFEES_OPTS, _drawerPills.bouffees);
+  _renderDrawerPillRow('pills-frilosite', 'frilosite', CHECKIN_FRILOSITE_OPTS, _drawerPills.frilosite);
+  _renderDrawerPillRow('pills-coupdebarre', 'coupdebarre', CHECKIN_COUPDEBARRE_OPTS, _drawerPills.coupdebarre);
   _renderDrawerPillRow('pills-stress', 'stress', CHECKIN_STRESS_OPTS, _drawerPills.stress);
   _renderDrawerPillRow('pills-humeur', 'humeur', CHECKIN_HUMEUR_OPTS, _drawerPills.humeur);
 
@@ -4973,11 +5075,19 @@ async function sauvegarderSymptomes() {
   if(_drawerPills.douleur) reponsesFinal.douleur_cycle = _drawerPills.douleur;
   if(_drawerPills.saignement) reponsesFinal.saignement = _drawerPills.saignement;
   if(_drawerPills.stress) reponsesFinal.stress_tension = _drawerPills.stress;
+  if(_drawerPills.douleur_abdo) reponsesFinal.douleur_abdo = _drawerPills.douleur_abdo;
+  if(_drawerPills.antalgiques) reponsesFinal.antalgiques = _drawerPills.antalgiques;
+  if(_drawerPills.fringales) reponsesFinal.fringales_sucre = _drawerPills.fringales;
+  if(_drawerPills.bouffees) reponsesFinal.bouffees_chaleur = _drawerPills.bouffees;
+  if(_drawerPills.frilosite) reponsesFinal.frilosite = _drawerPills.frilosite;
+  if(_drawerPills.coupdebarre) reponsesFinal.coup_de_barre = _drawerPills.coupdebarre;
 
   // Cycle — enregistré seulement s'il a été renseigné
   var cycleInput = document.getElementById('cycleStartInput');
   var cycleVal = cycleInput ? cycleInput.value : '';
   if(cycleVal) localStorage.setItem('avs_cycle_debut', cycleVal);
+
+  var mieuxHierVal = (_drawerPills.mieux_hier !== undefined && _drawerPills.mieux_hier !== null) ? parseInt(_drawerPills.mieux_hier, 10) : 0;
 
   var entry = {
     date: new Date().toISOString(),
@@ -4986,6 +5096,7 @@ async function sauvegarderSymptomes() {
     transit: _drawerPills.transit || null,
     ballonnements: _drawerPills.ballonnements || null,
     humeur: _drawerPills.humeur || null,
+    mieux_hier: mieuxHierVal,
     note: note,
     reponses: reponsesFinal
   };
@@ -5025,6 +5136,7 @@ async function sauvegarderSymptomes() {
         transit: entry.transit,
         ballonnements: entry.ballonnements,
         humeur: entry.humeur,
+        mieux_hier: entry.mieux_hier,
         note: entry.note,
         reponses: reponsesFinal
       })
