@@ -919,7 +919,20 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       </div>
 
       <div id="creneaux-vide" style="display:none;text-align:center;font-size:13px;color:var(--gris);padding:20px 0">
-        Aucun créneau disponible sur cette période — essayez une autre semaine, ou contactez Sabrina directement à <a href="mailto:sabrina@avitaserena.com" style="color:var(--ocre)">sabrina@avitaserena.com</a>.
+        <div id="creneaux-vide-loading">Recherche de votre prochain créneau disponible…</div>
+        <div id="creneaux-vide-found" style="display:none">
+          <p style="margin-bottom:12px">Ces jours sont complets. Votre prochain créneau disponible :</p>
+          <button class="btn-nav primary" id="btn-prochain-creneau" onclick="allerAuProchainCreneau()" style="margin-bottom:14px"></button>
+          <p style="font-size:12px;color:var(--gris)">Un créneau plus tôt se libère parfois d'ici là — <a href="#" onclick="ouvrirAlerteCreneauPlusTot();return false" style="color:var(--ocre)">soyez prévenue si c'est le cas</a>, ou écrivez directement à <a href="mailto:sabrina@avitaserena.com" style="color:var(--ocre)">sabrina@avitaserena.com</a>.</p>
+        </div>
+        <div id="creneaux-vide-aucun" style="display:none">
+          Aucun créneau visible dans les prochaines semaines — écrivez directement à <a href="mailto:sabrina@avitaserena.com" style="color:var(--ocre)">sabrina@avitaserena.com</a>, ou <a href="#" onclick="ouvrirAlerteCreneauPlusTot();return false" style="color:var(--ocre)">laissez votre email pour être prévenue</a> dès qu'une place s'ouvre.
+        </div>
+        <div id="alerte-creneau-form" style="display:none;max-width:340px;margin:16px auto 0;text-align:left">
+          <input class="fi" type="email" id="alerte-email" placeholder="Votre email" style="margin-bottom:8px">
+          <button class="btn-nav primary" style="width:100%" onclick="envoyerAlerteCreneauPlusTot()">Me prévenir</button>
+          <p id="alerte-msg" style="font-size:11.5px;color:var(--gris);margin-top:8px;display:none"></p>
+        </div>
       </div>
     </div>
 
@@ -1473,6 +1486,90 @@ function renderSlotStrip() {
 
   wrap.innerHTML = html;
   document.getElementById('creneaux-vide').style.display = auMoinsUnCreneau ? 'none' : 'block';
+  if (!auMoinsUnCreneau) {
+    rechercherProchainCreneau();
+  } else {
+    document.getElementById('alerte-creneau-form').style.display = 'none';
+  }
+}
+
+// Quand la fenêtre visible (4 jours) est vide, on cherche automatiquement plus loin plutôt que
+// de laisser la cliente cliquer "suivant" à l'aveugle — c'est ce cul-de-sac qui fait fuir vers
+// un autre praticien, pas l'attente en elle-même (décision du 31/08/2026).
+var prochainCreneauTrouve = null; // { date: 'YYYY-MM-DD', heure: 'HH:MM' }
+
+async function rechercherProchainCreneau() {
+  document.getElementById('creneaux-vide-loading').style.display = 'block';
+  document.getElementById('creneaux-vide-found').style.display = 'none';
+  document.getElementById('creneaux-vide-aucun').style.display = 'none';
+  prochainCreneauTrouve = null;
+
+  var duree = state.prestaId === 'suivi' ? 45 : 90;
+  var debut = new Date(slotStripStart);
+  var fin = new Date(slotStripStart); fin.setDate(fin.getDate() + 90); // recherche jusqu'à 90 jours plus loin
+
+  try {
+    var res = await fetch(SUPA_URL_PUBLIC + '/functions/v1/get-available-slots', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY_PUBLIC, 'Authorization': 'Bearer ' + SUPA_KEY_PUBLIC },
+      body: JSON.stringify({ from: toLocalYMD(debut), to: toLocalYMD(fin), durationMinutes: duree })
+    });
+    var data = await res.json();
+    var slots = data.slots || {};
+    var dates = Object.keys(slots).filter(function(d){ return (slots[d]||[]).length > 0; }).sort();
+    document.getElementById('creneaux-vide-loading').style.display = 'none';
+    if (dates.length) {
+      var d0 = dates[0];
+      prochainCreneauTrouve = { date: d0, heure: slots[d0][0] };
+      var dObj = new Date(d0 + 'T12:00:00');
+      var label = dObj.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }) + ' à ' + slots[d0][0];
+      document.getElementById('btn-prochain-creneau').textContent = label.charAt(0).toUpperCase() + label.slice(1) + ' →';
+      document.getElementById('creneaux-vide-found').style.display = 'block';
+    } else {
+      document.getElementById('creneaux-vide-aucun').style.display = 'block';
+    }
+  } catch(e) {
+    console.error('Erreur recherche prochain créneau:', e);
+    document.getElementById('creneaux-vide-loading').style.display = 'none';
+    document.getElementById('creneaux-vide-aucun').style.display = 'block';
+  }
+}
+
+function allerAuProchainCreneau() {
+  if (!prochainCreneauTrouve) return;
+  var d = new Date(prochainCreneauTrouve.date + 'T12:00:00');
+  d.setDate(d.getDate() - d.getDay() + 1); // recale sur le début de la semaine (lundi) pour donner du contexte
+  var today = new Date(); today.setHours(0,0,0,0);
+  slotStripStart = d < today ? today : d;
+  chargerCreneauxFenetre().then(function(){
+    selectionnerHeure(prochainCreneauTrouve.date, prochainCreneauTrouve.heure);
+  });
+}
+
+function ouvrirAlerteCreneauPlusTot() {
+  document.getElementById('alerte-creneau-form').style.display = 'block';
+}
+
+async function envoyerAlerteCreneauPlusTot() {
+  var email = (document.getElementById('alerte-email').value || '').trim();
+  var msg = document.getElementById('alerte-msg');
+  if (!email) return;
+  try {
+    var res = await fetch(SUPA_URL_PUBLIC + '/rest/v1/liste_attente_ouverture', {
+      method: 'POST',
+      headers: { 'apikey': SUPA_KEY_PUBLIC, 'Authorization': 'Bearer ' + SUPA_KEY_PUBLIC, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ email: email, source: 'reservation_creneau_plus_tot' })
+    });
+    msg.style.display = 'block';
+    if (res.ok || res.status === 409) {
+      msg.textContent = 'Noté — vous serez prévenue si un créneau se libère plus tôt.';
+    } else {
+      msg.textContent = "Un souci technique — écrivez directement à sabrina@avitaserena.com.";
+    }
+  } catch(e) {
+    msg.style.display = 'block';
+    msg.textContent = "Un souci technique — écrivez directement à sabrina@avitaserena.com.";
+  }
 }
 
 function deplierJour(dStr) {
