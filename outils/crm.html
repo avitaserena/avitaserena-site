@@ -1689,6 +1689,8 @@ let questionnairesClient={}; // { clientId: [ {id, type, prenom, snapshot, creat
 let consultationSummariesClient={}; // { clientId: [ {id, plan_type, plan_label, date_consultation, resume_md, created_at}, ... ] }
 let ficheBriefsClient={}; // { clientId: [ {id, brief_md, source_signature, created_at}, ... ] } — pense-bête auto généré par IA, affiché en haut de fiche
 let journalEntriesClient={}; // { clientId: [ {date, energie, transit, ballonnements, humeur, note}, ... ] }
+let synthesesClient={}; // { clientId: [ {semaine_iso, contenu, created_at}, ... ] } — A Settimana
+let rapportProgressionClient={}; // { clientId: {sent_at} } — dernier rapport trimestriel envoyé, pour les échéances J+90/180/270
 
 // COLORS palette - vibrant Monday-style
 const COLORS=['#C1793C','#9C5FA0','#D1553A','#4177A0','#D98C2B','#0E9384','#D4537E','#5F6BE0'];
@@ -4355,7 +4357,7 @@ async function openFiche(id){
   if(!c)return;
   nav('fiche',null);
   renderFiche(c); // affichage immédiat
-  await Promise.allSettled([loadMemoAlerts(), loadDocsMedicaux(id), loadBilansMarqueurs(id), loadRecommandationsAnalyses(id), loadQuestionnaires(id), loadConsultationSummaries(id), loadJournalEntries(id), loadProtocoleClient(id), loadProtocolesHistory(id), loadFicheBrief(id)]); // rechargement frais depuis Supabase
+  await Promise.allSettled([loadMemoAlerts(), loadDocsMedicaux(id), loadBilansMarqueurs(id), loadRecommandationsAnalyses(id), loadQuestionnaires(id), loadConsultationSummaries(id), loadJournalEntries(id), loadSyntheses(id), loadRapportProgression(id), loadProtocoleClient(id), loadProtocolesHistory(id), loadFicheBrief(id)]); // rechargement frais depuis Supabase
   if(!c.dateProtocole){
     const fallback=protoDateFor(c);
     if(fallback){
@@ -4562,7 +4564,16 @@ function renderFiche(c){
     })(),
     ...(c.phv_pdf_url ? [{icon:ic('download'),bg:'var(--violet-lt)',name:'PDF du protocole',meta:'Fichier PDF téléchargeable, enregistré durablement',st:'ok',stl:'Disponible',al:'Télécharger',ac:'',fn:`window.open('${escH(c.phv_pdf_url)}','_blank')`}] : []),
     {icon:ic('mail'),bg:'var(--blue-lt)',name:"Lettre d'adressage",meta:'Courrier ponctuel vers un professionnel de santé (gastro, gynéco...)',st:'',stl:'Sur demande',al:'Rédiger',ac:'',fn:`ouvrirLettreClinique('${cid}')`},
-    {icon:ic('spark'),bg:'var(--green-lt)',name:'Rapport de progression (IA)',meta:'Brouillon généré à partir du suivi — toujours relu avant envoi',st:'pending',stl:'Sur demande',al:'Générer',ac:'primary',fn:`genererRapportProgressionIA('${cid}')`},
+    (()=>{
+      const lastSent=rapportProgressionClient[cid]?.sent_at||null;
+      const baseDate=lastSent||started;
+      const joursDepuis=baseDate?Math.round(diffD(baseDate)):null;
+      const seuils=[90,180,270];
+      const seuilAtteint=joursDepuis!==null?seuils.filter(s=>joursDepuis>=s).pop():null;
+      const due=c.programme && joursDepuis!==null && seuilAtteint && (!lastSent || joursDepuis>=90);
+      if(due) return {icon:ic('spark'),bg:'var(--orange-lt)',name:'Rapport de progression (IA)',meta:`Échéance J+${seuilAtteint} atteinte${lastSent?' depuis le dernier envoi':' depuis le début du parcours'} — brouillon à relire`,st:'missing',stl:`J+${seuilAtteint} atteint`,al:'Générer',ac:'primary',fn:`genererRapportProgressionIA('${cid}')`};
+      return {icon:ic('spark'),bg:'var(--green-lt)',name:'Rapport de progression (IA)',meta:lastSent?'Dernier envoi le '+fmtDate(lastSent):'Brouillon généré à partir du suivi — toujours relu avant envoi',st:'pending',stl:'Sur demande',al:'Générer',ac:'primary',fn:`genererRapportProgressionIA('${cid}')`};
+    })(),
     {icon:ic('file'),bg:'var(--orange-lt)',name:"Bilan d'entrée",meta:c.timeline?.find(t=>t.title?.includes('Bilan'))?'Complété':'Non rempli',st:c.timeline?.find(t=>t.title?.includes('Bilan'))?'ok':c.programme?'pending':'missing',stl:c.timeline?.find(t=>t.title?.includes('Bilan'))?'Complété':c.programme?'À compléter':'N/A',al:'Ouvrir',ac:c.programme?'primary':'',fn:`ouvrirBilanEntree('${cid}','depart')`},
     {icon:ic('chart'),bg:'var(--green-lt)',name:'Check-in hebdo',meta:c.timeline?.find(t=>t.title?.includes('check-in'))?'Lien envoyé':'Non activé',st:c.timeline?.find(t=>t.title?.includes('check-in'))?'ok':'missing',stl:c.timeline?.find(t=>t.title?.includes('check-in'))?'Actif':'Non activé',al:'Envoyer le lien',ac:c.programme?'primary':'',fn:`envoyerCheckinBrevoTpl('${cid}')`},
   ];
@@ -4835,6 +4846,7 @@ function renderFiche(c){
           <div class="ic-body"><div class="doc-list">${qHistHtml}</div></div>
         </div>
         ${buildJournalCard(c)}
+        ${buildSettimanaCard(c)}
       </div>
     </div>`;
 }
@@ -4919,6 +4931,132 @@ function buildMemoBlock(c){
 }
 
 const HUMEUR_ALERTE=['Irritable','Anxieuse','Fatiguée mentalement'];
+
+function _isoWeekNow(){
+  const d=new Date();
+  const date=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));
+  const dayNum=date.getUTCDay()||7;
+  date.setUTCDate(date.getUTCDate()+4-dayNum);
+  const yearStart=new Date(Date.UTC(date.getUTCFullYear(),0,1));
+  const weekNo=Math.ceil((((date.getTime()-yearStart.getTime())/86400000)+1)/7);
+  return `${date.getUTCFullYear()}-W${String(weekNo).padStart(2,'0')}`;
+}
+
+function buildSettimanaCard(c){
+  const cid=c.id;
+  const enParcours=c.programme && ['alba','aria','ora'].includes(String(c.programme).toLowerCase());
+  if(!enParcours){
+    return `<div class='card' style="margin-top:14px"><div class='card-head'><div class='card-title'><div class='card-dot' style='background:#B4906A'></div>A Settimana</div></div>
+      <div class='card-body'><div style="padding:16px 0;font-size:13px;color:var(--muted);font-style:italic">Inclus uniquement pour les clientes en parcours (Alba / Aria / Ora).</div></div></div>`;
+  }
+  const semaine=_isoWeekNow();
+  const historique=(synthesesClient[cid]||[]).slice().sort((a,b)=>(b.semaine_iso||'').localeCompare(a.semaine_iso||''));
+  const dejaEnvoyee=historique.find(s=>s.semaine_iso===semaine);
+
+  let semaineEnCoursHtml='';
+  if(dejaEnvoyee){
+    semaineEnCoursHtml=`<div style="padding:12px 14px;background:var(--surface);border-radius:10px;margin-bottom:12px">
+      <div style="font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px">${ic('check')} Semaine en cours — déjà envoyée</div>
+      <div style="font-size:13px;color:var(--ink);line-height:1.6">${escH(dejaEnvoyee.contenu||'')}</div>
+    </div>`;
+  } else {
+    semaineEnCoursHtml=`<div style="padding:12px 14px;background:var(--surface);border-radius:10px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:10px">
+      <div style="font-size:12.5px;color:var(--ink3)">Semaine en cours — pas encore de note</div>
+      <button class="doc-action primary" onclick="genererSyntheseHebdoIA('${cid}')">${ic('spark')} Générer</button>
+    </div>`;
+  }
+
+  const histHtml=historique.filter(s=>s.semaine_iso!==semaine).slice(0,6).map(s=>`
+    <div style="padding:8px 0;border-bottom:1px solid var(--border)">
+      <div style="font-size:10.5px;color:var(--muted);font-weight:700;margin-bottom:3px">${escH(s.semaine_iso||'')}</div>
+      <div style="font-size:12.5px;color:var(--ink);line-height:1.6">${escH(s.contenu||'')}</div>
+    </div>`).join('');
+
+  return `<div class='card' style="margin-top:14px"><div class='card-head'><div class='card-title'><div class='card-dot' style='background:#B4906A'></div>A Settimana</div>
+    <span style='font-size:11px;color:var(--muted)'>${historique.length} synthèse(s) envoyée(s)</span></div>
+    <div class='card-body'>${semaineEnCoursHtml}${histHtml||"<div style='padding:8px 0;font-size:12.5px;color:var(--muted);font-style:italic'>Pas d'historique antérieur.</div>"}</div></div>`;
+}
+
+async function genererSyntheseHebdoIA(clientId){
+  const c=db.clients.find(x=>x.id===clientId);
+  if(!c){ toast('Cliente introuvable','err'); return; }
+  toast('Génération de la note en cours…','ok');
+  try{
+    let authToken=KEY;
+    if(typeof Auth!=='undefined'){ const token=await Auth.getValidAccessToken(); if(token) authToken=token; }
+    const res=await fetch(SB+'/functions/v1/generate-synthese-hebdo',{
+      method:'POST',
+      headers:{ 'apikey':KEY, 'Authorization':'Bearer '+authToken, 'Content-Type':'application/json' },
+      body: JSON.stringify({ client_key: clientId })
+    });
+    const data=await res.json();
+    if(!res.ok || data.error){ toast('Erreur : '+(data.error||'génération impossible'),'err'); return; }
+    ouvrirModalSyntheseHebdo(clientId, data.note||'', data.ancrage_utilise||'', data.semaine_iso||_isoWeekNow(), !!data.donnees_insuffisantes);
+  }catch(e){ toast('Erreur : '+e.message,'err'); }
+}
+
+function ouvrirModalSyntheseHebdo(clientId, note, ancrage, semaineIso, donneesInsuffisantes){
+  const c=db.clients.find(x=>x.id===clientId);
+  document.getElementById('modal-synthese-hebdo')?.remove();
+  const modal=document.createElement('div');
+  modal.className='modal-bg open';
+  modal.id='modal-synthese-hebdo';
+  modal.innerHTML=`<div class="modal">
+    <div style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+      <div style="font-size:16px;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:8px">${ic('spark')} A Settimana — ${escH(c?.prenom||'')}</div>
+      <button onclick="document.getElementById('modal-synthese-hebdo').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted)">×</button>
+    </div>
+    <div style="padding:16px 24px 4px">
+      ${donneesInsuffisantes?`<div style="font-size:11.5px;color:#B8323A;margin-bottom:10px;line-height:1.5">${ic('warn','ico-xs')} L'IA n'a pas trouvé de détail personnel exploitable cette semaine — la note reste générique, à vous de l'enrichir ou de l'envoyer telle quelle.</div>`:''}
+      ${ancrage?`<div style="font-size:11px;color:var(--muted);margin-bottom:10px;font-style:italic">Ancrage utilisé : ${escH(ancrage)}</div>`:''}
+      <textarea id="synthese-hebdo-txt" style="width:100%;min-height:110px;padding:14px;border:1px solid var(--border);border-radius:10px;font-family:inherit;font-size:13.5px;line-height:1.7;color:var(--ink);resize:vertical">${escH(note)}</textarea>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px">Visible uniquement dans l'espace cliente, aux côtés du graphique de la semaine — jamais envoyée par email en clair.</div>
+    </div>
+    <div style="padding:14px 24px 20px;border-top:1px solid var(--border);display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn-dark" style="padding:9px 16px;border-radius:8px;border:none;background:var(--ink);color:#fff;font-size:12.5px;cursor:pointer" onclick="document.getElementById('modal-synthese-hebdo').remove();genererSyntheseHebdoIA('${clientId}')">Régénérer</button>
+      <button class="btn-dark" style="padding:9px 16px;border-radius:8px;border:none;background:var(--violet);color:#fff;font-size:12.5px;cursor:pointer" onclick="envoyerSyntheseHebdo('${clientId}','${semaineIso}')">Envoyer telle quelle →</button>
+    </div>
+  </div>`;
+  modal.addEventListener('click', e=>{ if(e.target===modal) modal.remove(); });
+  document.body.appendChild(modal);
+}
+
+async function envoyerSyntheseHebdo(clientId, semaineIso){
+  const c=db.clients.find(x=>x.id===clientId);
+  const contenu=(document.getElementById('synthese-hebdo-txt')?.value||'').trim();
+  if(!contenu){ toast('La note est vide','err'); return; }
+  try{
+    await sb('caminu_syntheses?on_conflict=client_key,semaine_iso',{
+      method:'POST',
+      prefer:'resolution=merge-duplicates,return=minimal',
+      body: JSON.stringify({ client_key: clientId, semaine_iso: semaineIso, titre:'A Settimana', contenu })
+    });
+    document.getElementById('modal-synthese-hebdo')?.remove();
+    toast('Synthèse envoyée à '+(c?.prenom||'la cliente'),'ok');
+    await loadSyntheses(clientId);
+    renderFiche(c);
+  }catch(e){ toast('Erreur : '+e.message,'err'); }
+}
+
+async function loadSyntheses(cid){
+  try{
+    const r=await sb('caminu_syntheses?client_key=eq.'+encodeURIComponent(cid)+'&select=semaine_iso,contenu,created_at&order=semaine_iso.desc&limit=20');
+    synthesesClient[cid]=r;
+  }catch(e){
+    console.error('[CRM] ✗ A Settimana:', e.message);
+    synthesesClient[cid]=synthesesClient[cid]||[];
+  }
+}
+
+async function loadRapportProgression(cid){
+  try{
+    const r=await sb('lettres_cliniques?client_key=eq.'+encodeURIComponent(cid)+'&type_seance=eq.rapport_progression&statut=eq.envoyee&select=sent_at&order=sent_at.desc&limit=1');
+    rapportProgressionClient[cid]=r?.[0]||null;
+  }catch(e){
+    console.error('[CRM] ✗ Rapport de progression:', e.message);
+    rapportProgressionClient[cid]=rapportProgressionClient[cid]||null;
+  }
+}
 
 function buildJournalCard(c){
   const cid=c.id;
