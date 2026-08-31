@@ -181,6 +181,19 @@ body{min-height:100vh}
 .fiche-action{font-size:12.5px;font-weight:600;color:var(--ocre);letter-spacing:.04em;display:flex;align-items:center;gap:5px}
 .badge-exclu{font-size:11px;font-weight:600;padding:2px 8px;background:rgba(196,169,125,.12);color:var(--ocre);border:1px solid rgba(196,169,125,.25);border-radius:99px}
 
+/* ── Niveau "Découverte" (Bilan seul / Suivi à la carte hors parcours) : certains
+   onglets restent visibles mais le contenu réel est estompé sous un voile, avec une
+   carte qui explique ce que l'accompagnement en parcours (Alba/Aria/Ora) débloque —
+   décision du 31/08/2026. Le contenu original n'est jamais supprimé du DOM : juste
+   flouté et neutralisé (pointer-events:none) tant que la cliente n'est pas en parcours. */
+.tab-content.locked-decouverte{position:relative}
+.tab-content.locked-decouverte > *:not(.decouverte-overlay){filter:blur(6px);pointer-events:none;user-select:none}
+.decouverte-overlay{position:absolute;inset:0;z-index:50;display:flex;align-items:flex-start;justify-content:center;padding:15vh 20px 40px;background:rgba(247,246,244,.72);backdrop-filter:blur(1px)}
+.decouverte-card{max-width:380px;width:100%;background:var(--blanc);border:1px solid var(--taupe);border-radius:18px;padding:30px 28px;text-align:center;box-shadow:0 24px 60px rgba(30,30,28,.14)}
+.decouverte-card .dc-eyebrow{font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--or);margin-bottom:12px}
+.decouverte-card h3{font-family:'Cormorant Garamond',serif;font-weight:500;font-size:23px;line-height:1.3;color:var(--ardoise);margin-bottom:12px}
+.decouverte-card p{font-size:13.5px;line-height:1.75;color:var(--gris);margin-bottom:20px}
+
 /* ── A LUMA — CHAT ── */
 .luma-panel{background:#1a1815;border-radius:20px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.18);max-width:640px;display:flex;flex-direction:column}
 .luma-head{display:flex;align-items:center;gap:11px;padding:16px 20px;border-bottom:1px solid rgba(255,255,255,.07);flex-shrink:0}
@@ -2331,10 +2344,53 @@ function verifierRetourLuma(){
   }
 }
 
+// ── Niveau "Découverte" (31/08/2026) : onglets réservés aux clientes en parcours actif
+// (Alba/Aria/Ora). Une cliente en Bilan seul ou Suivi à la carte hors parcours voit ces
+// onglets dans la navigation (jamais masqués — elle doit savoir qu'ils existent), mais
+// leur contenu est flouté sous une carte qui explique ce que rejoindre un parcours
+// débloque. "Mon protocole" (le PHV) et le tableau de bord restent toujours accessibles :
+// c'est le livrable du Bilan, pas un argument de vente. "Recettes" reste ouvert aussi,
+// comme aperçu gratuit de la valeur de l'accompagnement — à reconsidérer si besoin.
+const TABS_DECOUVERTE_VERROUILLES = {
+  journal:   { titre: 'Votre journal, au fil du parcours.', texte: "Le suivi quotidien fait partie de l'accompagnement Alba, Aria et Ora — il permet à Sabrina d'ajuster votre protocole entre les séances. Parlez-en avec elle pour savoir quel parcours correspond à votre situation." },
+  digestion: { titre: 'Votre suivi digestif détaillé.', texte: "Le suivi fin de votre digestion (transit, ballonnements, tolérances) se construit dans la durée, au fil d'un parcours. C'est l'un des outils inclus dans Alba, Aria et Ora." },
+  hormones:  { titre: 'Votre suivi hormonal détaillé.', texte: "Le suivi de votre cycle et de votre équilibre hormonal se construit dans la durée, au fil d'un parcours. C'est l'un des outils inclus dans Alba, Aria et Ora." },
+  bienetre:  { titre: 'Vos outils de bien-être guidés.', texte: "La cohérence cardiaque guidée, la respiration abdominale et les vidéos de mouvement doux font partie de l'accompagnement en parcours — pensés pour vous suivre au quotidien, pas juste après une consultation." },
+  capsules:  { titre: 'Les capsules audio de Sabrina.', texte: "Les capsules audio approfondissent, semaine après semaine, les sujets propres à votre terrain — elles font partie de l'accompagnement Alba, Aria et Ora." },
+};
+
+function appliquerNiveauDecouverte(enParcours) {
+  Object.keys(TABS_DECOUVERTE_VERROUILLES).forEach(function (id) {
+    const tab = document.getElementById('tab-' + id);
+    if (!tab) return;
+    let overlay = tab.querySelector('.decouverte-overlay');
+    if (enParcours) {
+      tab.classList.remove('locked-decouverte');
+      if (overlay) overlay.style.display = 'none';
+      return;
+    }
+    tab.classList.add('locked-decouverte');
+    if (!overlay) {
+      const info = TABS_DECOUVERTE_VERROUILLES[id];
+      overlay = document.createElement('div');
+      overlay.className = 'decouverte-overlay';
+      overlay.innerHTML = '<div class="decouverte-card">' +
+        '<div class="dc-eyebrow">Réservé aux parcours</div>' +
+        '<h3>' + info.titre + '</h3>' +
+        '<p>' + info.texte + '</p>' +
+        '<a href="/reservation.html" class="rdv-btn">Réserver un échange avec Sabrina →</a>' +
+        '</div>';
+      tab.appendChild(overlay);
+    }
+    overlay.style.display = 'flex';
+  });
+}
+
 function appliquerAccesSerena(programme, chatAddonActif) {
   const enParcours = programme && PARCOURS_AVEC_SERENA.indexOf(String(programme).toLowerCase()) > -1;
   const aAccesChat = !!chatAddonActif;
   window._clientEnParcours = !!enParcours; // lu par souscrireALuma() comme garde-fou
+  appliquerNiveauDecouverte(enParcours);
 
   // L'onglet A Luma reste toujours visible — les clientes sans accès voient
   // un état "verrouillé", plutôt que de disparaître.

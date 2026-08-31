@@ -3867,12 +3867,7 @@ async function ouvrirProtocole() {
         }
         const headers = { 'apikey': PHV_SUPA_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' };
 
-        // 1) Combien de protocoles déjà archivés pour cette cliente ? (détermine "nouveau" vs "mise à jour")
-        const histRes = await fetch(PHV_SUPA_URL + '/rest/v1/protocoles_history?client_id=eq.' + encodeURIComponent(clientKey) + '&select=id', { headers });
-        const histRows = histRes.ok ? await histRes.json() : [];
-        const isUpdate = histRows.length > 0;
-
-        // 2) Archiver cette version dans l'historique (jamais écrasé, contrairement à protocoles_client)
+        // 1) Archiver cette version dans l'historique (jamais écrasé, contrairement à protocoles_client)
         await fetch(PHV_SUPA_URL + '/rest/v1/protocoles_history', {
           method: 'POST',
           headers: { ...headers, 'Prefer': 'return=minimal' },
@@ -3884,40 +3879,9 @@ async function ouvrirProtocole() {
             blocks: blocks
           })
         });
-        console.log('✓ Protocole archivé dans l\'historique');
-
-        // 3) Récupérer l'email de la cliente pour la notification Brevo
-        const clRes = await fetch(PHV_SUPA_URL + '/rest/v1/clientes?id=eq.' + encodeURIComponent(clientKey) + '&select=email,prenom,nom', { headers });
-        const clRows = clRes.ok ? await clRes.json() : [];
-        const cl = clRows[0];
-        if (cl && cl.email) {
-          // ── Verrou de validation humaine (26/08/2026) : ce bouton ("Ouvrir le protocole")
-          // servait aussi, en arrière-plan, à notifier automatiquement la cliente par email —
-          // sans repasser par la case de relecture ajoutée dans le CRM (envoyerProtocole). On
-          // ferme ce deuxième chemin ici : la sauvegarde/l'archivage restent automatiques (pour
-          // que Sabrina puisse toujours ouvrir/relire le protocole), seule la notification
-          // EMAIL à la cliente demande une confirmation explicite avant de partir.
-          const confirmerEnvoi = confirm('Confirmez-vous avoir relu et validé ce protocole avant d\'en notifier ' + (cl.prenom || 'la cliente') + ' par email ?\n\n(Le protocole reste enregistré et consultable dans tous les cas — seule la notification email est concernée par cette confirmation.)');
-          if (confirmerEnvoi) {
-            const emailRes = await fetch(PHV_SUPA_URL + '/functions/v1/send-phv-protocole', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                to_email: cl.email,
-                to_name: [cl.prenom, cl.nom].filter(Boolean).join(' ') || clientInfo.prenom || '',
-                is_update: isUpdate
-              })
-            });
-            if (emailRes.ok) console.log('✓ Email de notification envoyé à', cl.email);
-            else console.warn('⚠ Envoi email échoué :', await emailRes.text());
-          } else {
-            console.log('ℹ Notification email non envoyée (validation non confirmée) — le protocole reste enregistré, vous pourrez le renvoyer depuis le CRM une fois relu.');
-          }
-        } else {
-          console.warn('⚠ Pas d\'email enregistré pour cette cliente — notification non envoyée. Complétez la fiche dans le CRM.');
-        }
+        console.log('✓ Protocole archivé dans l\'historique — utilisez "Envoyer le protocole" depuis sa fiche CRM pour notifier la cliente (relecture + template Brevo #17).');
       } catch (e) {
-        console.warn('⚠ Historique/notification protocole — erreur non bloquante :', e);
+        console.warn('⚠ Historique protocole — erreur non bloquante :', e);
       }
     })();
   } else {
