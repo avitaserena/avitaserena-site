@@ -1477,6 +1477,71 @@ select.fi{height:44px;cursor:pointer}
     </div>
   </div>
 
+  <!-- ANTÉCÉDENTS CHIRURGICAUX — évolutif d'une séance à l'autre (01/09/2026) -->
+  <div class="qcard" id="chirurgies-card">
+    <div class="qcard-top">
+      <div class="qnum"><svg class="picto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="8" y1="14" x2="10" y2="14"/></svg></div>
+      <div class="qcontent">
+        <div class="qtitle">Nouvel antécédent chirurgical</div>
+        <div class="edu-box science">
+          <div class="edu-lbl"><svg class="picto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0" aria-hidden="true"><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/><line x1="4.9" y1="4.9" x2="7" y2="7"/><line x1="17" y1="17" x2="19.1" y2="19.1"/><line x1="4.9" y1="19.1" x2="7" y2="17"/><line x1="17" y1="7" x2="19.1" y2="4.9"/></svg> Pourquoi ce champ existe</div>
+          <p>Une cliente peut se faire opérer entre deux séances (ex : ligature des trompes non prévue à la première consultation). Une chirurgie récente change presque toujours l'interprétation du terrain (anesthésie, antibiotiques post-opératoires, immobilisation) — elle doit être visible dans le dossier et transmise au générateur, pas seulement mentionnée à l'oral.</p>
+        </div>
+      </div>
+    </div>
+    <div class="qinput">
+      <div class="g3" style="grid-template-columns:2fr 1fr 1fr;gap:10px">
+        <div>
+          <label class="fl">Type d'intervention</label>
+          <select class="fi" id="chir-type" onchange="document.getElementById('chir-autre-wrap').style.display = this.value==='__autre__' ? 'block' : 'none'">
+            <option value="">—</option>
+            <option>Cœlioscopie diagnostique</option>
+            <option>Cœlioscopie — exérèse de lésions d'endométriose</option>
+            <option>Kystectomie ovarienne</option>
+            <option>Hystérectomie (totale)</option>
+            <option>Hystérectomie (subtotale)</option>
+            <option>Myomectomie</option>
+            <option>Curetage</option>
+            <option>Ablation de polype utérin</option>
+            <option>Conisation (col utérin)</option>
+            <option>Ligature des trompes</option>
+            <option>Pose/ablation de DIU (geste chirurgical)</option>
+            <option>Thyroïdectomie</option>
+            <option>Appendicectomie</option>
+            <option>Cholécystectomie (ablation vésicule biliaire)</option>
+            <option>Chirurgie bariatrique</option>
+            <option>Autre chirurgie abdominale</option>
+            <option value="__autre__">Autre — préciser</option>
+          </select>
+        </div>
+        <div>
+          <label class="fl">Mois</label>
+          <select class="fi" id="chir-mois">
+            <option value="">—</option>
+            <option>Janvier</option><option>Février</option><option>Mars</option><option>Avril</option>
+            <option>Mai</option><option>Juin</option><option>Juillet</option><option>Août</option>
+            <option>Septembre</option><option>Octobre</option><option>Novembre</option><option>Décembre</option>
+          </select>
+        </div>
+        <div>
+          <label class="fl">Année</label>
+          <input class="fi" type="number" id="chir-annee" min="1960" max="2030" placeholder="ex. 2026">
+        </div>
+      </div>
+      <div id="chir-autre-wrap" style="display:none;margin-top:10px">
+        <label class="fl">Préciser l'intervention</label>
+        <input class="fi" type="text" id="chir-autre-precision" placeholder="Ex : ablation d'un fibrome par voie vaginale">
+      </div>
+      <div style="margin-top:10px">
+        <label class="fl">Ressenti / évolution depuis l'intervention</label>
+        <textarea class="fi" id="chir-ressenti" style="min-height:56px" placeholder="Ex : bien vécue, récupération rapide / douleurs résiduelles / fatigue marquée depuis / amélioration nette des symptômes qui ont motivé l'opération…"></textarea>
+      </div>
+      <button class="btn" type="button" style="margin-top:10px" onclick="ajouterChirurgie()">+ Ajouter cet antécédent</button>
+      <div id="chirurgies-list-render" style="margin-top:14px;display:flex;flex-direction:column;gap:8px"></div>
+      <p class="fl" style="text-transform:none;font-weight:400;font-size:11.5px;letter-spacing:0;margin-top:8px">Les antécédents déjà notés lors d'une séance précédente apparaissent automatiquement ici — ajoutez uniquement ce qui est nouveau depuis la dernière fois.</p>
+    </div>
+  </div>
+
   <div class="qcard">
     <div class="qcard-top">
       <div class="qnum">14</div>
@@ -2140,6 +2205,7 @@ document.addEventListener('DOMContentLoaded', () => {
     buildObservanceTable();
     setDefaultDate();
     renderDiagnosticsList();
+    renderChirurgiesList();
     // Arrivée depuis le CRM : on charge le dossier de la cliente plutôt qu'un brouillon
     // sans rapport qui traînerait dans ce navigateur.
     const arriveeDepuisCRM = prefillFromCRM();
@@ -2765,6 +2831,9 @@ function afficherBandeauDossier(row, historique) {
   // Reconstituer la liste diagnostics/antécédents à partir du dossier précédent (consultation ou suivi antérieur) —
   // permet de revoir et de mettre à jour un statut (ex : HPV actif → résolu) sans repartir de zéro.
   importerDiagnosticsDepuisSnapshot(snap);
+  // Reconstituer les antécédents chirurgicaux déjà notés précédemment (01/09/2026) — la cliente
+  // garde son historique complet visible, on n'ajoute ici que ce qui est vraiment nouveau.
+  importerChirurgiesDepuisSnapshot(snap);
 }
 
 const SPHERE_PAR_DIAGNOSTIC = {
@@ -3029,6 +3098,7 @@ function captureSnapshot() {
   snap._section=currentSection;
   try { snap._ai_panel = JSON.stringify(window.AIPanel ? window.AIPanel.getEntries() : []); } catch (e) {}
   snap._diagnostics_list = JSON.stringify(diagnosticsList);
+  snap._chirurgies_list = JSON.stringify(chirurgiesList);
   return snap;
 }
 
@@ -3047,6 +3117,7 @@ function restaurerDraft() {
     if(snap._chips) try{ const chips=JSON.parse(snap._chips); document.querySelectorAll('.chip').forEach(c=>{ if(chips.includes(c.textContent.replace('✓','').trim())) c.classList.add('on'); }); }catch(e){}
     if(snap._checks) try{ const checks=JSON.parse(snap._checks); document.querySelectorAll('.check-item').forEach((c,i)=>{ if(checks.includes(i)) c.classList.add('checked'); }); }catch(e){}
     if(snap._diagnostics_list) try{ diagnosticsList = JSON.parse(snap._diagnostics_list); renderDiagnosticsList(); }catch(e){}
+    if(snap._chirurgies_list) try{ chirurgiesList = JSON.parse(snap._chirurgies_list); renderChirurgiesList(); }catch(e){}
     updateSpecialtyBlocks();
     if(snap._section) goSection(parseInt(snap._section)||0);
     try {
@@ -3124,6 +3195,70 @@ function toast(msg, dur=2800) {
    Transmis directement dans la session au générateur PHV.
 ══════════════════════════════════════════════════════ */
 let diagnosticsList = []; // [{ nom, sphere, statut: 'actif' | 'resolu' | null }]
+let chirurgiesList = []; // [{ type, moisAnnee, ressenti }] — évolutif d'une séance à l'autre (01/09/2026)
+
+function ajouterChirurgie() {
+  const selType = document.getElementById('chir-type');
+  const typeVal = selType?.value || '';
+  if (!typeVal) { toast('Choisissez le type d\'intervention'); return; }
+  const type = typeVal === '__autre__'
+    ? (document.getElementById('chir-autre-precision')?.value || '').trim()
+    : typeVal;
+  if (!type) { toast('Précisez l\'intervention'); return; }
+  const mois = document.getElementById('chir-mois')?.value || '';
+  const annee = document.getElementById('chir-annee')?.value || '';
+  const moisAnnee = [mois, annee].filter(Boolean).join(' ') || 'Date non précisée';
+  const ressenti = (document.getElementById('chir-ressenti')?.value || '').trim();
+  chirurgiesList.push({ type, moisAnnee, ressenti });
+  renderChirurgiesList();
+  formTouched = true;
+  toast('Antécédent chirurgical ajouté');
+  selType.value = '';
+  document.getElementById('chir-autre-wrap').style.display = 'none';
+  document.getElementById('chir-autre-precision').value = '';
+  document.getElementById('chir-mois').value = '';
+  document.getElementById('chir-annee').value = '';
+  document.getElementById('chir-ressenti').value = '';
+}
+
+function removeChirurgie(idx) {
+  chirurgiesList.splice(idx, 1);
+  renderChirurgiesList();
+  formTouched = true;
+}
+
+function renderChirurgiesList() {
+  const wrap = document.getElementById('chirurgies-list-render');
+  if (!wrap) return;
+  if (!chirurgiesList.length) {
+    wrap.innerHTML = '<p style="font-size:13px;color:var(--gris);font-style:italic">Aucun antécédent chirurgical enregistré pour l\'instant.</p>';
+    return;
+  }
+  wrap.innerHTML = chirurgiesList.map((c, i) => `
+    <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border:1px solid var(--taupe);border-radius:14px;background:var(--blanc)">
+      <div style="flex:1;min-width:140px">
+        <div style="font-size:14px;color:var(--ardoise);font-weight:600">${c.type} <span style="font-weight:400;color:var(--gris);font-size:12.5px">— ${c.moisAnnee}</span></div>
+        ${c.ressenti ? `<div style="font-size:12.5px;color:var(--gris);margin-top:3px">${c.ressenti}</div>` : ''}
+      </div>
+      <button type="button" onclick="removeChirurgie(${i})" style="background:transparent;border:none;cursor:pointer;color:var(--gris);font-size:15px;padding:4px 6px" title="Supprimer">✕</button>
+    </div>
+  `).join('');
+}
+
+// Reconstitue les antécédents chirurgicaux déjà notés lors d'une séance précédente (consultation
+// ou suivi antérieur), pour qu'ils restent visibles sans avoir à les ressaisir — seul le nouveau,
+// s'il y en a un, doit être ajouté manuellement via le formulaire ci-dessus.
+function importerChirurgiesDepuisSnapshot(snap) {
+  const anterieures = Array.isArray(snap.chirurgies) ? snap.chirurgies : [];
+  let ajoutees = 0;
+  anterieures.forEach(c => {
+    if (c && c.type && !chirurgiesList.some(x => x.type === c.type && x.moisAnnee === c.moisAnnee)) {
+      chirurgiesList.push(c);
+      ajoutees++;
+    }
+  });
+  if (ajoutees) renderChirurgiesList();
+}
 
 function accT(el) {
   el.classList.toggle('open');
@@ -3279,6 +3414,9 @@ function collectData() {
   // Diagnostics & antécédents (statut actif/résolu) — pour le générateur PHV
   d.diagnosticsActifs = diagnosticsList.filter(x => x.statut === 'actif').map(x => x.nom).join(', ');
   d.antecedentsResolus = diagnosticsList.filter(x => x.statut === 'resolu').map(x => x.nom).join(', ');
+  // Antécédents chirurgicaux — liste complète (anciens + nouveau du jour), pour le générateur PHV
+  // et pour l'import automatique à la séance de suivi suivante.
+  d.chirurgies = chirurgiesList;
   // Champs de sécurité (grossesse, cancer, traitements, allergies) — importés du dossier précédent,
   // corrigés si besoin, et retransmis tels quels au générateur + au prochain suivi (chaîne de continuité).
   d.secuGrossesse = document.getElementById('secu-grossesse')?.value || '';
@@ -3535,6 +3673,9 @@ function finalise() {
     // Diagnostics & antécédents (statut actif/résolu) — noms alignés avec le questionnaire de consultation
     diagnostics_actifs: d.diagnosticsActifs,
     antecedents_resolus: d.antecedentsResolus,
+    // Antécédents chirurgicaux — évolutif d'une séance à l'autre (01/09/2026), importé automatiquement
+    // à la séance suivante via importerChirurgiesDepuisSnapshot()
+    chirurgies: d.chirurgies,
 
     // Champs de sécurité — noms alignés avec le questionnaire de consultation et generateur.html (Règle N°6)
     secu_grossesse: d.secuGrossesse,
