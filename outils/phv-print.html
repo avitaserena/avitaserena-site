@@ -212,6 +212,13 @@ body.pdf-export-mode .sec-page-logo svg{height:100%;width:auto;display:block}
 .pgm-reco-aluma{font-size:13.5px;line-height:1.7;color:rgba(255,255,255,.8);background:rgba(108,71,255,.14);border:1px solid rgba(108,71,255,.3);border-radius:12px;padding:14px 18px;margin-bottom:16px;text-align:left}
 .pgm-reco-aluma strong{color:#fff}
 .pgm-reco-noobligation{font-size:13px;color:rgba(255,255,255,.75);font-style:italic}
+.pgm-pay-row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin:18px 0}
+.pgm-pay-btn{display:inline-flex;align-items:center;justify-content:center;padding:13px 26px;border-radius:99px;font-family:'Be Vietnam Pro',sans-serif;font-size:14px;font-weight:600;text-decoration:none;transition:all .2s;cursor:pointer}
+.pgm-pay-btn-primary{background:var(--sable);color:var(--ardoise);border:1.5px solid var(--sable)}
+.pgm-pay-btn-primary:hover{background:var(--or);border-color:var(--or)}
+.pgm-pay-btn-outline{background:transparent;color:#fff;border:1.5px solid rgba(255,255,255,.4)}
+.pgm-pay-btn-outline:hover{border-color:var(--sable);color:var(--sable)}
+.pgm-pay-note{font-size:11.5px;color:rgba(255,255,255,.65);margin-top:2px}
 
 /* ═══ DISCLAIMER ═══ */
 .sec-disclaimer{min-height:auto;padding:40px 32px;background:var(--grege);text-align:center;scroll-snap-align:end}
@@ -794,10 +801,16 @@ function renderParcoursReco(progCle) {
   let cardHtml = '';
   if (info) {
     const prixApresBilan = Math.max(0, info.prix - PRIX_BILAN_DEJA_REGLE);
+    const prixFois3 = Math.round((prixApresBilan / 3) * 100) / 100;
     cardHtml = `
       <div class="pgm-reco-card">
         <div class="pgm-reco-name">${escH(info.nom)} <span class="pgm-reco-sousnom">· ${escH(info.sousNom)}</span></div>
         <div class="pgm-reco-meta">${escH(info.duree)} — ${prixApresBilan} €<span class="pgm-reco-deja"> (bilan déjà réglé déduit)</span></div>
+        <div class="pgm-pay-row">
+          <button type="button" class="pgm-pay-btn pgm-pay-btn-outline" onclick="payerParcours('unique', this)">Payer en une fois — ${prixApresBilan} €</button>
+          <button type="button" class="pgm-pay-btn pgm-pay-btn-primary" onclick="payerParcours('fois3', this)">Payer en 3 fois — ${prixFois3} €/éch.</button>
+        </div>
+        <div class="pgm-pay-note">Réduction du bilan déjà réglé appliquée automatiquement au paiement.</div>
       </div>`;
   }
   return `
@@ -806,6 +819,32 @@ function renderParcoursReco(progCle) {
       <div class="pgm-reco-aluma"><strong>A Luma</strong> — un fil de messagerie directe avec moi entre deux rendez-vous, pour ne jamais rester seule face à une question pendant votre parcours <span class="pgm-reco-deja">(45 €/mois, activable à tout moment)</span>.</div>
       <div class="pgm-reco-noobligation">Cette consultation a, à elle seule, sa pleine valeur — vous n'avez aucune obligation de poursuivre.</div>
     </div>`;
+}
+
+// Appelle create-parcours-checkout pour obtenir un lien de paiement Stripe généré à la volée
+// (coupon "bilan déjà réglé" appliqué automatiquement côté serveur), puis redirige vers Stripe.
+// mode: 'unique' (paiement en une fois) ou 'fois3' (3 échéances, arrêt automatique après la 3e).
+async function payerParcours(mode, btnEl) {
+  if (!currentClientKey) { alert("Impossible d'identifier votre fiche — merci de recharger la page."); return; }
+  const boutons = document.querySelectorAll('.pgm-pay-btn');
+  boutons.forEach(b => b.disabled = true);
+  const texteOriginal = btnEl ? btnEl.textContent : '';
+  if (btnEl) btnEl.textContent = 'Un instant…';
+  try {
+    const res = await fetch(SUPA_URL + '/functions/v1/create-parcours-checkout', {
+      method: 'POST',
+      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ client_key: currentClientKey, mode, cancel_url: window.location.href })
+    });
+    const out = await res.json();
+    if (!res.ok || !out.url) throw new Error(out.error || 'Erreur lors de la génération du lien de paiement.');
+    window.location.href = out.url;
+  } catch (err) {
+    console.error('Erreur payerParcours:', err);
+    alert("Une erreur est survenue en préparant le paiement. Vous pouvez réessayer, ou contacter Sabrina directement si le problème persiste.");
+    boutons.forEach(b => b.disabled = false);
+    if (btnEl) btnEl.textContent = texteOriginal;
+  }
 }
 
 /* ══════════════════════════════════════

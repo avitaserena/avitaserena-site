@@ -193,6 +193,15 @@ body{min-height:100vh}
 .decouverte-card .dc-eyebrow{font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--or);margin-bottom:12px}
 .decouverte-card h3{font-family:'Cormorant Garamond',serif;font-weight:500;font-size:23px;line-height:1.3;color:var(--ardoise);margin-bottom:12px}
 .decouverte-card p{font-size:13.5px;line-height:1.75;color:var(--gris);margin-bottom:20px}
+.dc-pay-row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:14px}
+.dc-pay-btn{display:inline-flex;align-items:center;justify-content:center;padding:12px 22px;border-radius:99px;font-size:13px;font-weight:600;letter-spacing:.04em;cursor:pointer;transition:all .2s;font-family:inherit}
+.dc-pay-btn-primary{background:var(--ocre);color:#fff;border:1.5px solid var(--ocre)}
+.dc-pay-btn-primary:hover{background:var(--or);border-color:var(--or)}
+.dc-pay-btn-outline{background:transparent;color:var(--ardoise);border:1.5px solid var(--taupe)}
+.dc-pay-btn-outline:hover{border-color:var(--ocre);color:var(--ocre)}
+.dc-pay-fallback{font-size:11.5px;color:var(--gris);line-height:1.6}
+.dc-pay-fallback a{color:var(--ocre);font-weight:600;text-decoration:none}
+.dc-pay-fallback a:hover{text-decoration:underline}
 
 /* ── A LUMA — CHAT ── */
 .luma-panel{background:#1a1815;border-radius:20px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.18);max-width:640px;display:flex;flex-direction:column}
@@ -2414,12 +2423,45 @@ function appliquerNiveauDecouverte(enParcours) {
         '<div class="dc-eyebrow">Réservé aux parcours</div>' +
         '<h3>' + info.titre + '</h3>' +
         '<p>' + info.texte + '</p>' +
-        '<a href="mailto:sabrina@avitaserena.com?subject=Question%20sur%20mon%20accompagnement" class="rdv-btn">Écrire à Sabrina →</a>' +
+        '<div class="dc-pay-row">' +
+        '<button type="button" class="dc-pay-btn dc-pay-btn-outline" onclick="payerParcoursEspace(\'unique\', this)">Payer en une fois</button>' +
+        '<button type="button" class="dc-pay-btn dc-pay-btn-primary" onclick="payerParcoursEspace(\'fois3\', this)">Payer en 3 fois</button>' +
+        '</div>' +
+        '<div class="dc-pay-fallback">Un parcours n\'est pas encore déterminé pour vous ? <a href="mailto:sabrina@avitaserena.com?subject=Question%20sur%20mon%20accompagnement">Écrivez à Sabrina</a></div>' +
         '</div>';
       tab.appendChild(overlay);
     }
     overlay.style.display = 'flex';
   });
+}
+
+// Génère à la volée un lien de paiement pour LE parcours déjà déterminé pour cette cliente
+// (recommandation clinique posée dans son protocole, ou parcours déjà actif s'il y en a un) et
+// redirige vers Stripe. Le coupon "bilan déjà réglé" (90€) est appliqué automatiquement côté
+// serveur. Si aucun parcours n'est déterminé pour cette cliente (cas rare, protocole pas encore
+// généré), la fonction renvoie une erreur explicite plutôt que de deviner un parcours.
+async function payerParcoursEspace(mode, btnEl) {
+  const session = avsGetSession();
+  if (!session.key) { alert("Impossible de retrouver votre fiche — merci de vous reconnecter."); return; }
+  const boutons = document.querySelectorAll('.dc-pay-btn');
+  boutons.forEach(function(b){ b.disabled = true; });
+  const texteOriginal = btnEl ? btnEl.textContent : '';
+  if (btnEl) btnEl.textContent = 'Un instant…';
+  try {
+    const res = await fetch(SUPA_URL + '/functions/v1/create-parcours-checkout', {
+      method: 'POST',
+      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ client_key: session.key, mode: mode, cancel_url: window.location.href })
+    });
+    const out = await res.json();
+    if (!res.ok || !out.url) throw new Error(out.error || 'Erreur lors de la génération du lien de paiement.');
+    window.location.href = out.url;
+  } catch (err) {
+    console.error('Erreur payerParcoursEspace:', err);
+    alert("Aucun parcours n'est pour l'instant déterminé pour vous, ou une erreur est survenue. Écrivez à Sabrina pour en discuter directement.");
+    boutons.forEach(function(b){ b.disabled = false; });
+    if (btnEl) btnEl.textContent = texteOriginal;
+  }
 }
 
 function appliquerAccesSerena(programme, chatAddonActif) {
