@@ -1651,6 +1651,9 @@ body {
 
 </style>
 <script src="auth-guard.js"></script>
+<!-- Export en masse des factures du mois (ZIP de PDF individuels, un par facture) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script>
 const SB='https://bqhkdndwldwqacrrbbig.supabase.co';
 const KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxaGtkbmR3bGR3cWFjcnJiYmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MzAyNTIsImV4cCI6MjA5NjMwNjI1Mn0.nH2UktMAVKYwng4L3SvW5F0fluV_sObGV0f3Mk1dnOY';
@@ -5460,6 +5463,8 @@ async function saveFacture(){
 
 function renderFactures(){
   const list=document.getElementById('f-list');const cnt=document.getElementById('f-count');if(!list)return;
+  const monthInput=document.getElementById('f-export-mois');
+  if(monthInput && !monthInput.value){const n=new Date();monthInput.value=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0');}
   const facs=[...db.factures].sort((a,b)=>new Date(b.date)-new Date(a.date));
   cnt.textContent=facs.length;
   if(!facs.length){list.innerHTML='<div class="empty"><div class="eicon">'+ic('file')+'</div><div class="etitle">Aucune facture</div><div class="esub">Créez votre première facture.</div></div>';return;}
@@ -5471,11 +5476,111 @@ function renderFactures(){
   }).join('');
 }
 
+// Marque officielle du logo A VITA SERENA (fill=currentColor, réutilisé partout : PHV, factures, emails)
+const LOGO_AVS_PATHS = '<path d="M162.95,72.57l3.25-4.84,9.58.03c.78,3.69,3.67,5.27,7.1,4.22.97-.3,2.42-1.88,2.53-2.84s-1.28-2.97-2.28-3.23l-8.34-2.11c-4.91-1.24-8.06-4.75-8.47-9.24-.44-4.81,1.6-9.22,6.5-11.26,5-2.08,11.05-2.11,15.88.45,3.68,1.95,6.1,4.92,6.23,9.84l-10.51.07c-.76-2.47-1.97-3.74-3.8-4.03-1.71-.27-4.44.97-4.65,2.56-.86,6.57,11.83,2.59,18.58,11.21.11-7.57,1.63-13.97,7.28-18.15,6.72-4.98,17.13-4.76,23.14,1.18,4.79,4.73,5.31,11.39,4.95,17.87h-24.66c-.01,3.74,2.16,6.58,4.86,7.3,3.86,1.04,7.16-.25,9.01-3.73l10.55.08c-1.97,8.22-8.98,12.8-17.18,12.72-7.82-.07-14.07-4.26-16.92-12.24-.16,4.57-2.35,8.46-6.78,10.44-9.31,4.18-20.95.92-23.22-8.57l-2.64,2.24ZM219.57,57.17c-.25-5.88-3.7-7.48-7.43-7.39s-6.62,2.7-6.49,7.48l13.92-.09Z"/><path d="M253.59,52.74c-2.81-.51-5.64-.46-8,.7-1.91.94-3.41,4.33-3.42,6.93l-.08,19.66-10.92-.02v-37.4s10.75-.04,10.75-.04l.42,6.19c2.57-4.99,7.36-7.01,12.48-5.84l-.12,7.28c3.45-5.62,8.94-8.39,15.57-8.41,7.13-.03,13.34,3.65,15.77,10.49,1.34,3.77,1.62,7.78,1.41,12.02l-24.74.02c-.24,3.63,2.12,6.55,5.11,7.34,3.48.92,6.72-.17,8.55-3.72h10.71c-2.02,8.06-8.77,12.75-16.83,12.73-6.2-.01-12.06-2.5-15.18-7.95-3.56-6.22-3.82-13.17-1.48-19.98Z"/><circle cx="371.06" cy="74.61" r="6.06"/><path d="M288.2,42.48h11.03v37.65h-11.03v-37.65ZM327.38,74.8c-2.49-3.46-3.73-8.1-3.73-13.92s1.28-10.53,3.83-13.99c2.55-3.46,6.08-5.2,10.59-5.2,3.11,0,5.5.69,7.18,2.06,1.67,1.37,2.83,2.76,3.48,4.15h.56v-5.44h10.94v36.91h-10.94v-5.93h-.56c-.7,1.49-1.89,2.96-3.59,4.4-1.7,1.44-4.1,2.16-7.21,2.16-4.55,0-8.07-1.73-10.56-5.2Z"/>';
+
+// Génère le HTML complet d'une facture (même charte que facture.html côté client : ardoise/ocre/Cormorant Garamond)
+function factureHTML(f,c,s){
+  return "<!DOCTYPE html><html><head><meta charset=UTF-8><title>Facture "+f.num+"</title>"+
+  "<link href=\"https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&family=Be+Vietnam+Pro:wght@300;400;500;600;700&display=swap\" rel=\"stylesheet\">"+
+  "<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Be Vietnam Pro',sans-serif;background:#fff;color:#1E1E1C}"+
+  ".page{width:210mm;min-height:297mm;margin:0 auto}"+
+  ".hdr{background:#1E1E1C;padding:32px 44px;display:flex;justify-content:space-between;align-items:flex-start}"+
+  ".logo{width:150px;height:auto;color:#fff}"+
+  ".num{text-align:right;color:rgba(255,255,255,.65);font-size:11px;letter-spacing:.1em;text-transform:uppercase}"+
+  ".num strong{display:block;color:#C4A882;font-size:24px;font-family:'Cormorant Garamond',serif;font-weight:500;letter-spacing:0;text-transform:none;margin-top:4px}"+
+  ".body{padding:44px}.parties{display:grid;grid-template-columns:1fr 1fr;gap:44px;margin-bottom:44px}"+
+  ".plbl{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#B4906A;margin-bottom:9px}"+
+  ".pval{font-size:14px;line-height:1.8;color:#2C2C2A}"+
+  "table{width:100%;border-collapse:collapse;margin-bottom:30px}"+
+  "th{text-align:left;padding:10px 0;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6B6560;border-bottom:1.5px solid #D5CFC6}"+
+  "td{padding:15px 0;border-bottom:1px solid #EDE9E1;font-size:14px;line-height:1.5;color:#2C2C2A}"+
+  ".tdr{text-align:right;font-family:'Cormorant Garamond',serif;font-weight:600}"+
+  ".total{text-align:right;margin-bottom:30px}.tl{font-size:12px;color:#6B6560;margin-bottom:4px}"+
+  ".tv{font-size:38px;font-weight:500;color:#1E1E1C;font-family:'Cormorant Garamond',serif}"+
+  ".mentions{font-size:11.5px;color:#6B6560;line-height:1.8;border-top:1px solid #D5CFC6;padding-top:22px}"+
+  "@media print{body{background:#fff}}</style></head><body>"+
+  "<div class='page'><div class='hdr'>"+
+  "<svg class='logo' viewBox='0 0 402.52 116.56' fill='currentColor'>"+LOGO_AVS_PATHS+"</svg>"+
+  "<div class='num'>Facture<strong>N° AVS-"+f.num+"</strong>"+fmtDate(f.date)+"</div></div>"+
+  "<div class='body'><div class='parties'>"+
+  "<div><div class='plbl'>Émettrice</div><div class='pval'><strong>"+(s.nom||'')+"</strong><br>"+(s.titre||'')+"<br>"+(s.adresse||'')+(s.email?"<br>"+s.email:'')+(s.siret?"<br>SIRET&nbsp;: "+s.siret:'')+(s.adeli?"<br>ADELI&nbsp;: "+s.adeli:'')+"</div></div>"+
+  "<div><div class='plbl'>Destinataire</div><div class='pval'><strong>"+(c?c.prenom+' '+(c.nom||''):'—')+"</strong>"+(c?.email?"<br>"+c.email:'')+"</div></div>"+
+  "</div><table><thead><tr><th>Prestation</th><th>Date</th><th>Paiement</th><th class=tdr>Montant</th></tr></thead><tbody>"+
+  "<tr><td>"+escH(f.prestationLabel||'')+"</td><td>"+fmtDate(f.date)+"</td><td>"+escH(f.paiementLabel||f.paiement||'')+"</td><td class=tdr>"+(f.montant||0).toFixed(2)+" €</td></tr>"+
+  "</tbody></table><div class=total><div class=tl>Total TTC</div><div class=tv>"+(f.montant||0).toFixed(2)+" €</div></div>"+
+  "<div class=mentions>TVA non applicable — Art. 293B du CGI · Naturopathe non conventionné·e<br>A VITA SERENA · "+(s.nom||'')+" · "+(s.adresse||'')+" · "+(s.email||'sabrina@avitaserena.com')+"</div>"+
+  "</div></div></body></html>";
+}
+
 function printF(fid){
   const f=db.factures.find(x=>x.id===fid);if(!f)return;
   const c=db.clients.find(x=>x.id===f.clientId);const s=db.settings||defSettings();
-  const html="<!DOCTYPE html><html><head><meta charset=UTF-8><title>Facture "+f.num+"</title><style>@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=DM+Mono:wght@400&display=swap');*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Inter',sans-serif;background:#fff;color:#1C1C2E}.page{width:210mm;min-height:297mm;margin:0 auto}.hdr{background:#1C1C2E;padding:32px 44px;display:flex;justify-content:space-between;align-items:flex-start}.logo{width:140px;height:auto}.logo path,.logo circle{fill:#fff}.num{text-align:right;color:rgba(255,255,255,.7);font-size:12px}.num strong{display:block;color:#9C5FA0;font-size:22px;font-family:'DM Mono',monospace;margin-top:4px}.body{padding:44px}.parties{display:grid;grid-template-columns:1fr 1fr;gap:44px;margin-bottom:44px}.plbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#8888A8;margin-bottom:9px}.pval{font-size:14px;line-height:1.8}table{width:100%;border-collapse:collapse;margin-bottom:30px}th{text-align:left;padding:10px 13px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#8888A8;border-bottom:2px solid #E4E4F0}td{padding:15px 13px;border-bottom:1px solid #E4E4F0;font-size:14px;line-height:1.5}.tdr{text-align:right;font-family:'DM Mono',monospace;font-weight:600}.total{text-align:right;margin-bottom:30px}.tl{font-size:12px;color:#8888A8;margin-bottom:4px}.tv{font-size:40px;font-weight:800;color:#1C1C2E}.mentions{font-size:11px;color:#8888A8;line-height:1.8;border-top:1px solid #E4E4F0;padding-top:22px}@media print{body{background:#fff}}</style></head><body><div class='page'><div class='hdr'><svg class='logo' viewBox='0 0 402.52 116.56'><path d='M162.95,72.57l3.25-4.84,9.58.03c.78,3.69,3.67,5.27,7.1,4.22.97-.3,2.42-1.88,2.53-2.84s-1.28-2.97-2.28-3.23l-8.34-2.11c-4.91-1.24-8.06-4.75-8.47-9.24-.44-4.81,1.6-9.22,6.5-11.26,5-2.08,11.05-2.11,15.88.45,3.68,1.95,6.1,4.92,6.23,9.84l-10.51.07c-.76-2.47-1.97-3.74-3.8-4.03-1.71-.27-4.44.97-4.65,2.56-.86,6.57,11.83,2.59,18.58,11.21.11-7.57,1.63-13.97,7.28-18.15,6.72-4.98,17.13-4.76,23.14,1.18,4.79,4.73,5.31,11.39,4.95,17.87h-24.66c-.01,3.74,2.16,6.58,4.86,7.3,3.86,1.04,7.16-.25,9.01-3.73l10.55.08c-1.97,8.22-8.98,12.8-17.18,12.72-7.82-.07-14.07-4.26-16.92-12.24-.16,4.57-2.35,8.46-6.78,10.44-9.31,4.18-20.95.92-23.22-8.57l-2.64,2.24ZM219.57,57.17c-.25-5.88-3.7-7.48-7.43-7.39s-6.62,2.7-6.49,7.48l13.92-.09Z' fill='white'/><path d='M253.59,52.74c-2.81-.51-5.64-.46-8,.7-1.91.94-3.41,4.33-3.42,6.93l-.08,19.66-10.92-.02v-37.4s10.75-.04,10.75-.04l.42,6.19c2.57-4.99,7.36-7.01,12.48-5.84l-.12,7.28c3.45-5.62,8.94-8.39,15.57-8.41,7.13-.03,13.34,3.65,15.77,10.49,1.34,3.77,1.62,7.78,1.41,12.02l-24.74.02c-.24,3.63,2.12,6.55,5.11,7.34,3.48.92,6.72-.17,8.55-3.72h10.71c-2.02,8.06-8.77,12.75-16.83,12.73-6.2-.01-12.06-2.5-15.18-7.95-3.56-6.22-3.82-13.17-1.48-19.98Z' fill='white'/><circle cx='371.06' cy='74.61' r='6.06' fill='white'/><path d='M288.2,42.48h11.03v37.65h-11.03v-37.65ZM327.38,74.8c-2.49-3.46-3.73-8.1-3.73-13.92s1.28-10.53,3.83-13.99c2.55-3.46,6.08-5.2,10.59-5.2,3.11,0,5.5.69,7.18,2.06,1.67,1.37,2.83,2.76,3.48,4.15h.56v-5.44h10.94v36.91h-10.94v-5.93h-.56c-.7,1.49-1.89,2.96-3.59,4.4-1.7,1.44-4.1,2.16-7.21,2.16-4.55,0-8.07-1.73-10.56-5.2Z' fill='white'/></svg><div class='num'>Facture<strong>N° AVS-"+f.num+"</strong>"+fmtDate(f.date)+"</div></div><div class='body'><div class='parties'><div><div class='plbl'>Émettrice</div><div class='pval'><strong>"+s.nom+"</strong><br>"+s.titre+"<br>"+s.adresse+(s.email?"<br>"+s.email:'')+(s.siret?"<br>SIRET: "+s.siret:'')+(s.adeli?"<br>ADELI: "+s.adeli:'')+"</div></div><div><div class='plbl'>Destinataire</div><div class='pval'><strong>"+(c?c.prenom+' '+(c.nom||''):'—')+"</strong>"+(c?.email?"<br>"+c.email:'')+"</div></div></div><table><thead><tr><th>Prestation</th><th>Date</th><th>Paiement</th><th class=tdr>Montant</th></tr></thead><tbody><tr><td>"+escH(f.prestationLabel||'')+"</td><td>"+fmtDate(f.date)+"</td><td>"+escH(f.paiementLabel||f.paiement||'')+"</td><td class=tdr>"+(f.montant||0).toFixed(2)+" €</td></tr></tbody></table><div class=total><div class=tl>Total TTC</div><div class=tv>"+(f.montant||0).toFixed(2)+" €</div></div><div class=mentions>TVA non applicable — Art. 293B du CGI · Naturopathe non conventionné·e<br>A VITA SERENA · "+s.nom+" · "+s.adresse+" · "+(s.email||'sabrina@avitaserena.com')+"</div></div></div><script>window.onload=()=>window.print()<\/script></body></html>";
-  const w=window.open('','_blank');w.document.write(html);w.document.close();
+  const html=factureHTML(f,c,s)+"<script>window.onload=()=>window.print()<\/script>";
+  const w=window.open('','_blank');w.document.write(html.replace('</body></html>','<script>window.onload=()=>window.print()<\/script></body></html>'));w.document.close();
+}
+
+// ══════════════════════════════════════
+// EXPORT EN MASSE — factures du mois (ZIP de PDF individuels)
+// Indy n'accepte pas l'import en masse ; ce ZIP prépare tout d'un coup pour
+// que Sabrina n'ait plus qu'à glisser chaque PDF, un par un, dans Indy.
+// ══════════════════════════════════════
+async function exportFacturesMois(){
+  const monthInput=document.getElementById('f-export-mois');
+  const val=monthInput?.value; // format "YYYY-MM"
+  if(!val){toast('Choisissez un mois','warn');return;}
+  const [yyyy,mm]=val.split('-');
+  const facs=db.factures.filter(f=>{
+    if(!f.date) return false;
+    const d=String(f.date);
+    return d.slice(0,4)===yyyy && d.slice(5,7)===mm;
+  });
+  if(!facs.length){toast('Aucune facture pour ce mois','warn');return;}
+  if(typeof html2pdf==='undefined' || typeof JSZip==='undefined'){toast('Modules PDF/ZIP non chargés — vérifiez votre connexion et réessayez','err');return;}
+
+  const btn=document.getElementById('f-export-btn');
+  const original=btn.innerHTML;
+  btn.disabled=true;btn.innerHTML='Génération… 0/'+facs.length;
+
+  const s=db.settings||defSettings();
+  const zip=new JSZip();
+  let done=0;
+
+  // Conteneur hors-écran pour le rendu de chaque facture avant capture PDF
+  const stage=document.createElement('div');
+  stage.style.cssText='position:fixed;left:-9999px;top:0;width:210mm';
+  document.body.appendChild(stage);
+
+  try{
+    for(const f of facs){
+      const c=db.clients.find(x=>x.id===f.clientId);
+      stage.innerHTML=factureHTML(f,c,s).match(/<body>([\s\S]*)<\/body>/)[1];
+      await new Promise(r=>setTimeout(r,60)); // laisse le temps aux polices web de charger avant capture
+      const pdfBlob=await html2pdf().set({
+        margin:0,
+        image:{type:'jpeg',quality:0.95},
+        html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff'},
+        jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}
+      }).from(stage).outputPdf('blob');
+      const prenomSlug=(c?.prenom||'client').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-');
+      const nomSlug=(c?.nom||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-');
+      zip.file('AVS-'+f.num+'-'+prenomSlug+(nomSlug?'-'+nomSlug:'')+'.pdf',pdfBlob);
+      done++;
+      btn.innerHTML='Génération… '+done+'/'+facs.length;
+    }
+    const zipBlob=await zip.generateAsync({type:'blob'});
+    const url=URL.createObjectURL(zipBlob);
+    const a=document.createElement('a');a.href=url;
+    a.download='factures-avitaserena-'+yyyy+'-'+mm+'.zip';
+    a.click();URL.revokeObjectURL(url);
+    toast(facs.length+' facture(s) exportée(s) — glissez-les une par une dans Indy','ok');
+  }catch(e){
+    console.error('Export ZIP factures échoué',e);
+    toast('Erreur lors de l\'export — réessayez','err');
+  }finally{
+    stage.remove();
+    btn.disabled=false;btn.innerHTML=original;
+  }
 }
 
 function defSettings(){return{nom:'Sabrina Castelli',titre:'Naturopathe',adresse:'Porto-Vecchio, Corse',email:'sabrina@avitaserena.com',tel:'',siret:'',adeli:''};}
@@ -7160,10 +7265,18 @@ function ouvrirBilanEntree(clientId, mode){
 
   <!-- FACTURES -->
   <div class="page" id="page-factures">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;gap:12px;flex-wrap:wrap">
       <span style="font-size:13px;font-weight:600;color:var(--muted)"><span id="f-count">0</span> factures</span>
-      <button class="btn btn-primary" onclick="showNewFactureModal()">+ Nouvelle facture</button>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <input type="month" id="f-export-mois" class="fi" style="width:150px;padding:8px 10px" title="Mois à exporter">
+        <button class="btn btn-ghost" id="f-export-btn" onclick="exportFacturesMois()">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13"/><path d="M7 12l5 5 5-5"/><path d="M5 21h14"/></svg>
+          Exporter le mois (ZIP)
+        </button>
+        <button class="btn btn-primary" onclick="showNewFactureModal()">+ Nouvelle facture</button>
+      </div>
     </div>
+    <p style="font-size:12px;color:var(--muted);margin:-10px 0 16px">Le ZIP contient un PDF par facture — Indy n'accepte pas l'import en masse, glissez-les ensuite une par une dans "Importer une facture".</p>
     <div class="card"><div id="f-list"></div></div>
   </div>
 
