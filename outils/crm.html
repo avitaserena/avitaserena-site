@@ -1368,13 +1368,11 @@ body {
 .home-stat:hover { transform: translateY(-3px) scale(1.015); box-shadow: var(--sh2) }
 .home-stat-ic { width:32px; height:32px; border-radius:var(--r12); display:flex; align-items:center; justify-content:center; font-size:15px; margin-bottom:10px; transition:var(--t-spring) }
 .home-stat:hover .home-stat-ic { transform: scale(1.1) }
-.home-stat-val { font-size:25px; font-weight:800; color:var(--ink); letter-spacing:-.02em; font-family:'DM Mono',monospace }
+.home-stat-val { font-size:25px; font-weight:800; color:var(--ink); letter-spacing:-.02em }
 .home-stat-lbl { font-size:10px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; margin-top:3px }
 /* Variante discrète — pour les indicateurs importants mais moins urgents que les messages :
    valeur plus petite, pas de fond coloré, opacité réduite au repos. */
-.home-stat-soft { box-shadow: none; opacity: .82 }
-.home-stat-soft:hover { opacity: 1 }
-.home-stat-soft .home-stat-val { font-size: 19px; color: var(--ink3) }
+.home-stat-soft { opacity: 1 }
 @media (max-width:1100px){ .home-stat-grid{ grid-template-columns:repeat(4,1fr) } }
 @media (max-width:640px){ .home-stat-grid{ grid-template-columns:repeat(2,1fr) } }
 
@@ -2186,7 +2184,9 @@ function addDays(dateStr, n){
 
 function greetingWord(){
   const h = new Date().getHours();
-  return (h>=5 && h<18) ? 'Bonjour' : 'Bonsoir';
+  const mot = (h>=5 && h<18) ? 'Bonjour' : 'Bonsoir';
+  const prenom = ((db.settings && db.settings.nom) || 'Sabrina Castelli').split(' ')[0];
+  return prenom ? mot+' '+prenom : mot;
 }
 
 // Ambiance du bandeau "Aujourd'hui" — trois dégradés doux selon le moment de la journée,
@@ -4129,9 +4129,9 @@ function renderDashboard(){
   const prevMonthDate=new Date(now.getFullYear(),now.getMonth()-1,15);
   const prevMk=mk(prevMonthDate.toISOString());
   const caPrev=db.factures.filter(f=>f.statut==='payee'&&f.date&&mk(f.date)===prevMk).reduce((s,f)=>s+(f.montant||0),0);
-  const hcaJourEl=document.getElementById('hca-jour'); if(hcaJourEl) hcaJourEl.textContent=caJour>0?caJour.toFixed(0)+' €':'—';
-  const hcaSemEl=document.getElementById('hca-sem'); if(hcaSemEl) hcaSemEl.textContent=caSem>0?caSem.toFixed(0)+' €':'—';
-  const hcaMoisEl=document.getElementById('hca-mois'); if(hcaMoisEl) hcaMoisEl.textContent=caM>0?caM.toFixed(0)+' €':'—';
+  const hcaJourEl=document.getElementById('hca-jour'); if(hcaJourEl) hcaJourEl.textContent=caJour>0?caJour.toFixed(0)+' €':'0 €';
+  const hcaSemEl=document.getElementById('hca-sem'); if(hcaSemEl) hcaSemEl.textContent=caSem>0?caSem.toFixed(0)+' €':'0 €';
+  const hcaMoisEl=document.getElementById('hca-mois'); if(hcaMoisEl) hcaMoisEl.textContent=caM>0?caM.toFixed(0)+' €':'0 €';
   const trendEl=document.getElementById('hca-trend');
   if(trendEl){
     if(caPrev>0){
@@ -7339,7 +7339,7 @@ function ouvrirBilanEntree(clientId, mode){
 
     <div class="home-stat-grid">
       <div class="home-stat" onclick="allerAuxMessages()" style="cursor:pointer;--stat-wash:#D1553A18" title="Voir les messages non lus"><div class="home-stat-ic" style="background:#D1553A20;color:#D1553A"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="home-stat-val" id="kv-messages" style="color:#D1553A">—</div><div class="home-stat-lbl" style="color:#D1553A;opacity:.85">Messages non lus</div></div>
-      <div class="home-stat home-stat-soft" onclick="allerAuxAlertes()" style="cursor:pointer" title="Voir le détail des échéances"><div class="home-stat-ic" style="background:var(--surface);color:var(--muted)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" stroke="currentColor" stroke-width="2.5"/></svg></div><div class="home-stat-val" id="kv-echeances">—</div><div class="home-stat-lbl">Échéances</div></div>
+      <div class="home-stat" onclick="allerAuxAlertes()" style="cursor:pointer;--stat-wash:#D98C2B14" title="Voir le détail des échéances"><div class="home-stat-ic" style="background:#D98C2B20;color:#D98C2B"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" stroke="currentColor" stroke-width="2.5"/></svg></div><div class="home-stat-val" id="kv-echeances">—</div><div class="home-stat-lbl">Échéances</div></div>
       <div class="home-stat" style="--stat-wash:#9C5FA014"><div class="home-stat-ic" style="background:#9C5FA018;color:#9C5FA0"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="2.5"/><circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="2.5"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" stroke-width="2.5"/></svg></div><div class="home-stat-val" id="kv-total">—</div><div class="home-stat-lbl">Total clientes</div></div>
       <div class="home-stat" style="--stat-wash:#4C8B5C14"><div class="home-stat-ic" style="background:#4C8B5C18;color:#4C8B5C"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="home-stat-val" id="kv-actives">—</div><div class="home-stat-lbl">En programme</div></div>
       <div class="home-stat" style="--stat-wash:#4177A014"><div class="home-stat-ic" style="background:#4177A018;color:#4177A0"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" stroke-width="2.5"/><line x1="16" y1="2" x2="16" y2="6" stroke="currentColor" stroke-width="2.5"/><line x1="8" y1="2" x2="8" y2="6" stroke="currentColor" stroke-width="2.5"/><line x1="3" y1="10" x2="21" y2="10" stroke="currentColor" stroke-width="2.5"/></svg></div><div class="home-stat-val" id="kv-rdv">—</div><div class="home-stat-lbl">RDV ce mois</div></div>
