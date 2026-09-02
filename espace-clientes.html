@@ -4,7 +4,7 @@
 <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','GTM-T5FFCD78');</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Espace Clientes — A Vita Serena</title>
+<title>Espace cliente — A Vita Serena</title>
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <!-- ── PWA ── -->
@@ -22,6 +22,12 @@
   --blanc:#FFFFFF;--off:#F7F6F4;--grege:#EDE9E1;
   --taupe:#D5CFC6;--sable:#C4A882;--ocre:#B4906A;--or:#9B7230;
   --ardoise:#1E1E1C;--encre:#2C2C2A;--gris:#6B6560;
+  --sauge:#8A9A82;--sauge-clair:#EDF0EA;
+  --ease-out:cubic-bezier(.16,1,.3,1);--ease-spring:cubic-bezier(.34,1.56,.64,1);
+  --r-sm:10px;--r-md:16px;--r-lg:20px;--r-xl:26px;
+  --shadow-sm:0 2px 8px rgba(30,30,28,.06);
+  --shadow-md:0 10px 28px rgba(30,30,28,.09);
+  --shadow-lg:0 24px 60px rgba(30,30,28,.14);
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{font-family:'Be Vietnam Pro',sans-serif;font-size:16.5px;color:var(--ardoise);background:var(--off)}
@@ -114,8 +120,9 @@ body{min-height:100vh}
 @media(prefers-reduced-motion:reduce){.reveal-on-scroll{opacity:1!important;transform:none!important;transition:none!important}.hero-orb{display:none}}
 
 /* ── ÉCRAN DE CONNEXION ── */
-.login-screen{position:fixed;inset:0;background:var(--ardoise);display:flex;align-items:center;justify-content:center;z-index:1000;padding:24px}
-.login-box{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:48px 40px;max-width:400px;width:100%;text-align:center}
+.login-screen{position:fixed;inset:0;background:var(--ardoise);display:flex;align-items:center;justify-content:center;z-index:1000;padding:24px;overflow:hidden}
+.login-box{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:var(--r-xl);padding:48px 40px;max-width:400px;width:100%;text-align:center;position:relative;z-index:1;opacity:0;animation:avsRise .7s var(--ease-out) .1s forwards}
+@media(prefers-reduced-motion:reduce){.login-box{animation:none;opacity:1}.login-screen .hero-orb{display:none}}
 .login-logo{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:28px;color:#fff;margin-bottom:6px;letter-spacing:.02em}
 .login-logo span{font-style:normal;font-weight:300}
 .login-badge{font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:rgba(196,169,125,.6);margin-bottom:32px;display:block}
@@ -123,11 +130,12 @@ body{min-height:100vh}
 .login-sub{font-size:15px;color:rgba(255,255,255,.76);line-height:1.7;margin-bottom:32px}
 .login-field{margin-bottom:14px;text-align:left}
 .login-label{font-size:12.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.76);margin-bottom:6px;display:block}
-.login-input{width:100%;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:12px 16px;font-size:16px;color:#fff;font-family:'Be Vietnam Pro',sans-serif;outline:none;transition:border-color .2s}
+.login-input{width:100%;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:12px 16px;font-size:16px;color:#fff;font-family:'Be Vietnam Pro',sans-serif;outline:none;transition:border-color .2s,background .2s}
 .login-input::placeholder{color:rgba(255,255,255,.7)}
-.login-input:focus{border-color:rgba(196,169,125,.5)}
-.login-btn{width:100%;background:var(--ocre);color:#fff;border:none;border-radius:99px;padding:14px;font-size:15px;font-weight:600;letter-spacing:.08em;cursor:pointer;font-family:'Be Vietnam Pro',sans-serif;margin-top:8px;transition:background .2s}
-.login-btn:hover{background:var(--or)}
+.login-input:focus{border-color:rgba(196,169,125,.5);background:rgba(255,255,255,.1)}
+.login-btn{width:100%;background:var(--ocre);color:#fff;border:none;border-radius:99px;padding:14px;font-size:15px;font-weight:600;letter-spacing:.08em;cursor:pointer;font-family:'Be Vietnam Pro',sans-serif;margin-top:8px;transition:background .2s,transform .15s,box-shadow .2s}
+.login-btn:hover{background:var(--or);box-shadow:0 10px 26px rgba(180,144,106,.3)}
+.login-btn:active{transform:scale(.97)}
 .login-error{font-size:13.5px;color:rgba(220,80,80,.8);margin-top:12px;display:none}
 .login-hint{font-size:12.5px;color:rgba(255,255,255,.7);margin-top:20px;line-height:1.6}
 
@@ -188,20 +196,18 @@ body{min-height:100vh}
    flouté et neutralisé (pointer-events:none) tant que la cliente n'est pas en parcours. */
 .tab-content.locked-decouverte{position:relative}
 .tab-content.locked-decouverte > *:not(.decouverte-overlay){filter:blur(6px);pointer-events:none;user-select:none}
-.decouverte-overlay{position:absolute;inset:0;z-index:50;display:flex;align-items:flex-start;justify-content:center;padding:15vh 20px 40px;background:rgba(247,246,244,.72);backdrop-filter:blur(1px)}
-.decouverte-card{max-width:380px;width:100%;background:var(--blanc);border:1px solid var(--taupe);border-radius:18px;padding:30px 28px;text-align:center;box-shadow:0 24px 60px rgba(30,30,28,.14)}
+.decouverte-overlay{position:absolute;inset:0;z-index:50;display:flex;align-items:flex-start;justify-content:center;padding:15vh 20px 40px;background:rgba(247,246,244,.72);backdrop-filter:blur(2px)}
+.decouverte-card{max-width:400px;width:100%;background:var(--blanc);border:1px solid var(--taupe);border-radius:var(--r-lg,20px);padding:34px 30px;text-align:center;box-shadow:var(--shadow-lg,0 24px 60px rgba(30,30,28,.14));opacity:0;animation:dcCardIn .5s var(--ease-out,cubic-bezier(.16,1,.3,1)) .05s forwards}
+@keyframes dcCardIn{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+.decouverte-card .dc-icon{width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,rgba(196,169,125,.16),rgba(196,169,125,.05));display:flex;align-items:center;justify-content:center;margin:0 auto 16px}
+.decouverte-card .dc-icon svg{width:20px;height:20px;stroke:var(--ocre);fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
 .decouverte-card .dc-eyebrow{font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--or);margin-bottom:12px}
 .decouverte-card h3{font-family:'Cormorant Garamond',serif;font-weight:500;font-size:23px;line-height:1.3;color:var(--ardoise);margin-bottom:12px}
-.decouverte-card p{font-size:13.5px;line-height:1.75;color:var(--gris);margin-bottom:20px}
-.dc-pay-row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:14px}
-.dc-pay-btn{display:inline-flex;align-items:center;justify-content:center;padding:12px 22px;border-radius:99px;font-size:13px;font-weight:600;letter-spacing:.04em;cursor:pointer;transition:all .2s;font-family:inherit}
-.dc-pay-btn-primary{background:var(--ocre);color:#fff;border:1.5px solid var(--ocre)}
-.dc-pay-btn-primary:hover{background:var(--or);border-color:var(--or)}
-.dc-pay-btn-outline{background:transparent;color:var(--ardoise);border:1.5px solid var(--taupe)}
-.dc-pay-btn-outline:hover{border-color:var(--ocre);color:var(--ocre)}
-.dc-pay-fallback{font-size:11.5px;color:var(--gris);line-height:1.6}
-.dc-pay-fallback a{color:var(--ocre);font-weight:600;text-decoration:none}
-.dc-pay-fallback a:hover{text-decoration:underline}
+.decouverte-card p{font-size:13.5px;line-height:1.75;color:var(--gris);margin-bottom:22px}
+.dc-cta-btn{display:inline-flex;align-items:center;gap:8px;justify-content:center;padding:13px 26px;border-radius:99px;font-size:13.5px;font-weight:700;letter-spacing:.02em;cursor:pointer;transition:transform .15s,box-shadow .2s,background .2s;font-family:inherit;background:var(--ardoise);color:#fff;border:none;text-decoration:none}
+.dc-cta-btn:hover{background:var(--encre);box-shadow:0 10px 26px rgba(30,30,28,.22)}
+.dc-cta-btn:active{transform:scale(.96)}
+.dc-cta-btn svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 
 /* ── A LUMA — CHAT ── */
 .luma-panel{background:#1a1815;border-radius:20px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.18);max-width:640px;display:flex;flex-direction:column}
@@ -669,8 +675,14 @@ a,button{-webkit-tap-highlight-color:transparent}
 /* ── CAPSULES ───────────────────────────────────────────── */
 .capsule-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:28px}
 @media(max-width:560px){.capsule-grid{grid-template-columns:1fr}}
-.capsule-card{background:#fff;border:1px solid var(--taupe);border-radius:18px;overflow:hidden;transition:all .3s;cursor:pointer;position:relative}
-.capsule-card:hover{box-shadow:0 10px 32px rgba(33,28,22,.08);transform:translateY(-2px)}
+@keyframes capsuleIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.capsule-card{background:#fff;border:1px solid var(--taupe);border-radius:var(--r-md);overflow:hidden;transition:transform .3s var(--ease-out),box-shadow .3s;cursor:pointer;position:relative;opacity:0;animation:capsuleIn .5s var(--ease-out) both}
+.capsule-card:nth-child(1){animation-delay:.04s}.capsule-card:nth-child(2){animation-delay:.09s}
+.capsule-card:nth-child(3){animation-delay:.14s}.capsule-card:nth-child(4){animation-delay:.19s}
+.capsule-card:nth-child(n+5){animation-delay:.22s}
+@media(prefers-reduced-motion:reduce){.capsule-card{animation:none;opacity:1}}
+.capsule-card:hover{box-shadow:var(--shadow-md);transform:translateY(-3px)}
+.capsule-card:active{transform:translateY(-1px) scale(.99)}
 .capsule-card.locked{cursor:default}
 .capsule-card.locked:hover{transform:none;box-shadow:none}
 .capsule-top{background:var(--ardoise);padding:22px 20px 18px;position:relative}
@@ -729,14 +741,20 @@ a,button{-webkit-tap-highlight-color:transparent}
   background:none;border:none;cursor:pointer;
   font-family:'Be Vietnam Pro',sans-serif;
   font-size:10px;font-weight:600;letter-spacing:.02em;line-height:1.2;
-  color:var(--gris);transition:color .2s;
+  color:var(--gris);transition:color .25s;
   position:relative;
   -webkit-tap-highlight-color:transparent;
 }
-.bn2-item svg{width:22px;height:22px;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;transition:stroke .2s}
+.bn2-item svg{width:22px;height:22px;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;transition:stroke .25s,transform .3s var(--ease-spring)}
 .bn2-item.active{color:var(--ardoise)}
-.bn2-item.active svg{stroke:var(--ardoise)}
-.bn2-item.active::after{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:28px;height:3px;background:var(--ocre);border-radius:0 0 3px 3px}
+.bn2-item.active svg{stroke:var(--ardoise);transform:translateY(-1px)}
+/* Indicateur qui glisse en continu d'un onglet à l'autre plutôt que d'apparaître/
+   disparaître à chaque clic — un seul élément positionné par JS (bnPillUpdate), pas
+   un ::after par bouton. Repli CSS pur si le JS n'a pas encore mesuré les positions. */
+.bn2-pill{position:absolute;top:0;height:3px;width:28px;background:var(--ocre);border-radius:0 0 3px 3px;
+  transition:transform .38s var(--ease-out),width .38s var(--ease-out);pointer-events:none;opacity:0}
+.bn2-pill.ready{opacity:1}
+@media(prefers-reduced-motion:reduce){.bn2-pill{transition:none}}
 /* Bouton + central */
 .bn2-plus{
   display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:4px;
@@ -808,9 +826,17 @@ a,button{-webkit-tap-highlight-color:transparent}
 .ctc-insight strong{color:var(--ardoise);display:block;margin-bottom:2px;font-size:13.5px}
 
 /* Grille rapide dashboard */
+@keyframes dashCardIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
 .db2-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:16px var(--gutter) 0}
-.db2-card{background:#fff;border:1px solid var(--taupe);border-radius:16px;padding:16px;cursor:pointer;transition:.2s}
-.db2-card:active{transform:scale(.97)}
+.db2-card{background:#fff;border:1px solid var(--taupe);border-radius:var(--r-md);padding:16px;cursor:pointer;transition:transform .18s,box-shadow .25s;box-shadow:var(--shadow-sm);opacity:0;animation:dashCardIn .5s var(--ease-out) both}
+.db2-card:nth-child(1){animation-delay:.06s}
+.db2-card:nth-child(2){animation-delay:.12s}
+.db2-card:nth-child(3){animation-delay:.18s}
+.db2-card:nth-child(4){animation-delay:.24s}
+.db2-card:nth-child(n+5){animation-delay:.28s}
+.db2-card:active{transform:scale(.97);box-shadow:var(--shadow-sm)}
+@media(hover:hover){.db2-card:hover{box-shadow:var(--shadow-md);transform:translateY(-2px)}}
+@media(prefers-reduced-motion:reduce){.db2-card{animation:none;opacity:1}}
 .db2-card-ico{width:36px;height:36px;border-radius:10px;background:var(--or-clair);display:flex;align-items:center;justify-content:center;margin-bottom:10px}
 .db2-card-ico svg{width:18px;height:18px;stroke:var(--ocre);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .db2-card-label{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gris);margin-bottom:4px}
@@ -832,17 +858,20 @@ a,button{-webkit-tap-highlight-color:transparent}
 
 /* ═══ CARTE « VOTRE JOURNÉE » (remplace la carte cycle) ════ */
 .today-card{
-  margin:16px var(--gutter) 0;border-radius:20px;overflow:hidden;
+  margin:16px var(--gutter) 0;border-radius:var(--r-lg);overflow:hidden;
   background:linear-gradient(135deg,rgba(196,169,125,.14) 0%,rgba(138,154,130,.09) 100%);
   border:1px solid rgba(196,169,125,.22);padding:20px;
+  opacity:0;animation:dashCardIn .5s var(--ease-out) both;
 }
+@media(prefers-reduced-motion:reduce){.today-card{animation:none;opacity:1}}
 .today-eyebrow{font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--ocre);font-weight:700;margin-bottom:6px}
 .today-title{font-family:'Cormorant Garamond',serif;font-size:26px;color:var(--ardoise);line-height:1.2;margin-bottom:8px}
 .today-sub{font-size:14px;color:var(--gris);line-height:1.65;margin-bottom:16px}
 .today-cta{width:100%;background:var(--ardoise);color:#fff;border:none;border-radius:99px;padding:14px;
   font-family:'Be Vietnam Pro',sans-serif;font-size:14.5px;font-weight:700;cursor:pointer;
-  -webkit-tap-highlight-color:transparent;transition:transform .15s}
-.today-cta:active{transform:scale(.97)}
+  -webkit-tap-highlight-color:transparent;transition:transform .15s,box-shadow .2s;box-shadow:var(--shadow-sm)}
+.today-cta:active{transform:scale(.97);box-shadow:none}
+@media(hover:hover){.today-cta:hover{box-shadow:var(--shadow-md)}}
 .today-done{display:flex;align-items:center;gap:12px;background:#fff;border-radius:14px;padding:14px 16px;border-left:3px solid var(--sauge,#8A9A82)}
 .today-done-ic{width:30px;height:30px;flex-shrink:0;border-radius:50%;background:rgba(138,154,130,.18);display:flex;align-items:center;justify-content:center}
 .today-done-ic svg{width:15px;height:15px;stroke:#5F7358;fill:none;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
@@ -955,6 +984,8 @@ a,button{-webkit-tap-highlight-color:transparent}
 
 <!-- ── ÉCRAN DE CONNEXION ── -->
 <div class="login-screen" id="loginScreen">
+  <div class="hero-orb hero-orb-1" aria-hidden="true"></div>
+  <div class="hero-orb hero-orb-2" aria-hidden="true"></div>
   <div class="login-box">
     <div class="login-logo" style="display:flex;justify-content:center">
       <svg style="height:30px;width:auto;fill:#fff" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 402.52 116.56">
@@ -973,7 +1004,7 @@ a,button{-webkit-tap-highlight-color:transparent}
         <path d="M120.54,42.59h6.46l-8.47,29.04s-1.82,5.64,1.82,3.73,6.3-5.6,6.3-5.6l-.84,1.5s-5.8,10.44-11.84,8.29c-5.1-1.82,6.56-36.97,6.56-36.97Z"/>
       </svg>
     </div>
-    <span class="login-badge">Espace clientes</span>
+    <span class="login-badge">Espace cliente</span>
     <h2 class="login-title">Bienvenue dans<br>votre espace privilégié</h2>
     <p class="login-sub">Votre espace personnel — fiches pratiques, outils de suivi, ressources exclusives. Réservé aux clientes d'A Vita Serena.</p>
     <div class="login-field">
@@ -1018,7 +1049,7 @@ a,button{-webkit-tap-highlight-color:transparent}
       <div class="header-user">
         <span id="headerName" style="font-size:13.5px;color:rgba(255,255,255,.8)"></span>
       </div>
-      <span class="header-badge">Espace clientes</span>
+      <span class="header-badge">Espace cliente</span>
       <button class="signaler-btn" onclick="ouvrirSignalerSouci()" style="background:none;border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.72);font-size:12px;padding:6px 14px;border-radius:99px;cursor:pointer;font-family:'Be Vietnam Pro',sans-serif;transition:color .2s,border-color .2s" onmouseover="this.style.color='#fff';this.style.borderColor='rgba(255,255,255,.4)'" onmouseout="this.style.color='rgba(255,255,255,.72)';this.style.borderColor='rgba(255,255,255,.18)'">Signaler un souci</button>
       <button class="logout-btn" onclick="doLogout()">Déconnexion</button>
     </div>
@@ -1137,6 +1168,7 @@ a,button{-webkit-tap-highlight-color:transparent}
 
   <!-- NAVIGATION BASSE APP — 5 onglets + bouton + central -->
   <nav class="bottom-nav" id="bottomNav">
+    <div class="bn2-pill" id="bn2Pill" aria-hidden="true"></div>
     <button class="bn2-item active" data-tab="dashboard" onclick="switchTabApp('dashboard',this)">
       <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
       Tableau de bord
@@ -1391,7 +1423,7 @@ a,button{-webkit-tap-highlight-color:transparent}
       </div>
       <div class="drawer-footer">
         <button class="drawer-cancel-btn" onclick="fermerDrawer()">Annuler</button>
-        <button class="drawer-save-btn" onclick="sauvegarderSymptomes()">Valider mon questionnaire ✓</button>
+        <button class="drawer-save-btn" onclick="sauvegarderSymptomes()">Valider mon questionnaire<svg viewBox="0 0 24 24" style="width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;margin-left:8px;vertical-align:-2px"><polyline points="20 6 9 17 4 12"/></svg></button>
       </div>
     </div>
   </div>
@@ -2420,48 +2452,17 @@ function appliquerNiveauDecouverte(enParcours) {
       overlay = document.createElement('div');
       overlay.className = 'decouverte-overlay';
       overlay.innerHTML = '<div class="decouverte-card">' +
+        '<div class="dc-icon"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>' +
         '<div class="dc-eyebrow">Réservé aux parcours</div>' +
         '<h3>' + info.titre + '</h3>' +
-        '<p>' + info.texte + '</p>' +
-        '<div class="dc-pay-row">' +
-        '<button type="button" class="dc-pay-btn dc-pay-btn-outline" onclick="payerParcoursEspace(\'unique\', this)">Payer en une fois</button>' +
-        '<button type="button" class="dc-pay-btn dc-pay-btn-primary" onclick="payerParcoursEspace(\'fois3\', this)">Payer en 3 fois</button>' +
-        '</div>' +
-        '<div class="dc-pay-fallback">Un parcours n\'est pas encore déterminé pour vous ? <a href="mailto:sabrina@avitaserena.com?subject=Question%20sur%20mon%20accompagnement">Écrivez à Sabrina</a></div>' +
+        '<p>' + info.texte + ' Dans votre protocole d\'hygiène vitale, Sabrina vous a peut-être déjà orientée vers l\'un des parcours Alba, Aria ou Ora — parlez-en avec elle pour en savoir plus.</p>' +
+        '<a class="dc-cta-btn" href="mailto:sabrina@avitaserena.com?subject=Question%20sur%20mon%20accompagnement">Écrire à Sabrina' +
+        '<svg viewBox="0 0 24 24"><path d="M5 12h14M13 5l7 7-7 7"/></svg></a>' +
         '</div>';
       tab.appendChild(overlay);
     }
     overlay.style.display = 'flex';
   });
-}
-
-// Génère à la volée un lien de paiement pour LE parcours déjà déterminé pour cette cliente
-// (recommandation clinique posée dans son protocole, ou parcours déjà actif s'il y en a un) et
-// redirige vers Stripe. Le coupon "bilan déjà réglé" (90€) est appliqué automatiquement côté
-// serveur. Si aucun parcours n'est déterminé pour cette cliente (cas rare, protocole pas encore
-// généré), la fonction renvoie une erreur explicite plutôt que de deviner un parcours.
-async function payerParcoursEspace(mode, btnEl) {
-  const session = avsGetSession();
-  if (!session.key) { alert("Impossible de retrouver votre fiche — merci de vous reconnecter."); return; }
-  const boutons = document.querySelectorAll('.dc-pay-btn');
-  boutons.forEach(function(b){ b.disabled = true; });
-  const texteOriginal = btnEl ? btnEl.textContent : '';
-  if (btnEl) btnEl.textContent = 'Un instant…';
-  try {
-    const res = await fetch(SUPA_URL + '/functions/v1/create-parcours-checkout', {
-      method: 'POST',
-      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ client_key: session.key, mode: mode, cancel_url: window.location.href })
-    });
-    const out = await res.json();
-    if (!res.ok || !out.url) throw new Error(out.error || 'Erreur lors de la génération du lien de paiement.');
-    window.location.href = out.url;
-  } catch (err) {
-    console.error('Erreur payerParcoursEspace:', err);
-    alert("Aucun parcours n'est pour l'instant déterminé pour vous, ou une erreur est survenue. Écrivez à Sabrina pour en discuter directement.");
-    boutons.forEach(function(b){ b.disabled = false; });
-    if (btnEl) btnEl.textContent = texteOriginal;
-  }
 }
 
 function appliquerAccesSerena(programme, chatAddonActif) {
@@ -2549,6 +2550,7 @@ function openSpace(prenom, programme, chatAddonActif){
     initDashboard();
     openTabFromHash();
     loadJournalHistory();
+    bnPillUpdate();
   }, 80);
 }
 
@@ -3619,7 +3621,7 @@ async function rdvConfirmer(dStr, heure) {
         time: heure,
         type: 'Consultation de suivi (parcours)',
         status: 'attente',
-        notes: 'Reprogrammé par la cliente depuis son espace clientes.',
+        notes: 'Reprogrammé par la cliente depuis son espace cliente.',
         parcours: session.programme || null,
         updated_at: new Date().toISOString()
       })
@@ -4319,7 +4321,7 @@ async function saveCheckinRapide(){
       msgEl.style.cssText = 'color:var(--rouge,#B5533A);font-size:12px;margin-top:8px;text-align:center';
       if(btn && btn.parentNode) btn.parentNode.appendChild(msgEl);
     }
-    msgEl.textContent = '⚠ Échec de l\'enregistrement — vos réponses n\'ont pas encore été sauvegardées, réessayez.';
+    msgEl.textContent = 'Échec de l\'enregistrement — vos réponses n\'ont pas encore été sauvegardées, réessayez.';
   }
 }
 
@@ -4837,10 +4839,28 @@ var CHIP_ICONS = {
 var _selectedChips = {};
 var _currentAppTab = 'dashboard';
 
+// Fait glisser le repère de l'onglet actif d'une position à l'autre au lieu de le faire
+// apparaître/disparaître instantanément — signature de mouvement de la nav basse.
+function bnPillUpdate(){
+  var pill = document.getElementById('bn2Pill');
+  var nav = document.getElementById('bottomNav');
+  if(!pill || !nav) return;
+  var active = nav.querySelector('.bn2-item.active');
+  if(!active){ pill.classList.remove('ready'); return; }
+  var navRect = nav.getBoundingClientRect();
+  var btnRect = active.getBoundingClientRect();
+  var center = (btnRect.left - navRect.left) + (btnRect.width/2);
+  pill.style.width = '28px';
+  pill.style.transform = 'translateX(' + (center - 14) + 'px)';
+  pill.classList.add('ready');
+}
+window.addEventListener('resize', bnPillUpdate);
+
 // ── Switcher d'onglet mobile ──────────────────────────────
 function switchTabApp(name, btn) {
   // Mettre à jour les boutons bn2
   document.querySelectorAll('.bn2-item').forEach(function(el){ el.classList.toggle('active', el.dataset.tab===name); });
+  bnPillUpdate();
 
   // Gérer la visibilité des vues mobile
   var appMain = document.getElementById('appMain');
