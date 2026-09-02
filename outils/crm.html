@@ -1931,6 +1931,20 @@ function renderCheckinsToday(){
 }
 
 // ── ACTIONS DU JOUR ─────────────────────────────────────────────────────────
+// MODIF 02/09/2026 (Claude) : ce panneau ne regardait que le JOUR du rendez-vous,
+// jamais l'heure — du coup les cartes "Rappel", "H-1" et "Clôture" pouvaient
+// toutes s'afficher en même temps dès le matin, même avant la séance. On calcule
+// maintenant l'écart en minutes entre l'heure actuelle et l'heure du RDV (diffMin)
+// pour que H-1 n'apparaisse que dans la vraie fenêtre avant la séance, et que
+// Clôture n'apparaisse qu'une fois la séance réellement passée.
+function diffMinutesRdv(rdv){
+  if(!rdv.time) return null;
+  const [hh, mm] = rdv.time.split(':').map(Number);
+  if(Number.isNaN(hh) || Number.isNaN(mm)) return null;
+  const now = new Date();
+  return (hh*60+mm) - (now.getHours()*60+now.getMinutes());
+}
+
 function getActionsJour(){
   const todayStr = today();
   const tomorrowStr = addDays(todayStr, 1);
@@ -1938,6 +1952,7 @@ function getActionsJour(){
 
   rdvs.filter(r => r.status !== 'annule' && !isRdvPerso(r)).forEach(rdv => {
     const d = diffD(rdv.date);
+    const diffMin = d===0 ? diffMinutesRdv(rdv) : null; // écart en minutes, uniquement pertinent le jour même
     const done = rdv.mails_done || {};
     const client = matchClientForRdv(rdv);
 
@@ -1971,14 +1986,16 @@ function getActionsJour(){
       });
     }
 
-    // Mail H-1 — Dans 1 heure : J0, à envoyer ~1h avant la séance
-    if(d === 0 && !done.mh1){
+    // Mail H-1 — Dans 1 heure : uniquement dans la vraie fenêtre avant la séance
+    // (jusqu'à 1h30 avant, jusqu'à 15 min après le début — au-delà, la séance est
+    // en cours ou terminée, place à la carte Clôture ci-dessous).
+    if(d === 0 && diffMin !== null && diffMin <= 90 && diffMin >= -15 && !done.mh1){
       actions.push({
         rdv, client,
         key: 'mh1',
         ic: 'timer',
-        label: 'H-1 — séance dans 1 heure',
-        chip: '1h avant la séance',
+        label: diffMin > 0 ? 'H-1 — séance dans '+(diffMin>=60?'1h':diffMin+' min') : 'H-1 — séance en cours',
+        chip: diffMin > 0 ? (diffMin>=60 ? '1h avant la séance' : diffMin+' min avant') : 'Séance en cours',
         chipClass: 'chip-red',
         urgence: 3,
         subject: 'Dans 1 heure — '+(rdv.name||''),
@@ -1986,8 +2003,10 @@ function getActionsJour(){
       });
     }
 
-    // Mail 3 — Clôture post-séance : J0 après ou J+1
-    if(d >= -1 && d <= 0 && !done.m3){
+    // Mail 3 — Clôture post-séance : uniquement une fois la séance réellement
+    // passée (diffMin<=0 le jour même), ou le lendemain si toujours pas envoyée.
+    const seanceEcoulee = d===0 ? (diffMin !== null ? diffMin <= 0 : false) : d === -1;
+    if(seanceEcoulee && d >= -1 && d <= 0 && !done.m3){
       actions.push({
         rdv, client,
         key: 'm3',
@@ -7220,7 +7239,7 @@ function ouvrirBilanEntree(clientId, mode){
 
   <!-- ERREURS TECHNIQUES (journal silencieux client_error_logs) -->
   <div class="page" id="page-erreurs">
-    <p style="font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:18px;max-width:640px">Capture automatique des erreurs survenues dans l'espace clientes — sans aucune action de leur part. Utile pour retrouver ce qui s'est passé quand une cliente signale un souci, ou pour repérer un problème avant même qu'elle ne le remarque.</p>
+    <p style="font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:18px;max-width:640px">Capture automatique des erreurs survenues dans l'espace cliente — sans aucune action de leur part. Utile pour retrouver ce qui s'est passé quand une cliente signale un souci, ou pour repérer un problème avant même qu'elle ne le remarque.</p>
     <div id="erreurs-full-box"></div>
   </div>
 
