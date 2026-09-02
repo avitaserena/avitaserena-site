@@ -1317,7 +1317,9 @@ body {
 
 .home-grid { display:grid; grid-template-columns:1.15fr 1fr; gap:18px; margin-bottom:24px }
 @media (max-width:1100px){ .home-grid{ grid-template-columns:1fr } }
-.home-card { background:var(--white); border:1px solid var(--border); border-radius:var(--r16); box-shadow:var(--sh1); overflow:hidden; display:flex; flex-direction:column; animation:fadeUp .5s cubic-bezier(.16,1,.3,1) backwards }
+.home-card { background:var(--white); border:1px solid var(--border); border-radius:var(--r16); box-shadow:var(--sh1); overflow:hidden; display:flex; flex-direction:column; position:relative; transition:box-shadow .2s; animation:fadeUp .5s cubic-bezier(.16,1,.3,1) backwards }
+.home-card::before { content:''; position:absolute; inset:0 0 auto 0; height:3px; background:linear-gradient(90deg, var(--gold), var(--violet)); opacity:.7 }
+.home-card:hover { box-shadow:var(--sh2) }
 .home-card-head { padding:16px 20px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border) }
 .home-card-title { font-size:14.5px; font-weight:700; color:var(--ink); letter-spacing:-.01em }
 .htl-badge { font-size:11.5px; font-weight:700; color:var(--gold-dk); background:var(--gold-lt); padding:4px 12px; border-radius:var(--r99) }
@@ -1343,10 +1345,22 @@ body {
 
 /* File d'action unique */
 .hfeed-scroll { max-height:560px; overflow-y:auto; padding:8px 10px }
-.feed-item { display:flex; align-items:flex-start; gap:12px; padding:13px 12px; border-radius:var(--r12); transition:background .12s; animation:fadeUp .35s ease backwards }
-.feed-message-urgent { background:var(--red-lt,#FEE2E2); border-left:3px solid var(--red,#D1553A) }
+.feed-item { display:flex; align-items:flex-start; gap:12px; padding:13px 12px 13px 15px; border-radius:var(--r12); border-left:3px solid transparent; transition:background .15s, transform .15s, box-shadow .15s; animation:fadeUp .35s cubic-bezier(.16,1,.3,1) backwards }
+/* Blocs mieux organisés — chaque catégorie d'action garde une couleur repère
+   constante (pas seulement sur les cas urgents), pour un repérage visuel
+   immédiat dans une file qui mélange plusieurs types d'actions (refonte 02/09/2026). */
+.feed-refus { border-left-color:var(--red) }
+.feed-message { border-left-color:var(--blue) }
+.feed-reservation { border-left-color:var(--violet) }
+.feed-workflow { border-left-color:var(--orange) }
+.feed-mail { border-left-color:var(--gold) }
+.feed-tache { border-left-color:var(--ink3) }
+.feed-protocole { border-left-color:var(--green) }
+.feed-message-urgent { background:var(--red-lt,#FEE2E2); border-left-color:var(--red,#D1553A) }
 .feed-message-urgent .feed-ic { color:var(--red,#D1553A) }
-.feed-item:hover { background:var(--surface) }
+.feed-protocole-urgent { background:var(--red-lt,#FBEAE3); border-left-color:var(--red) }
+.feed-protocole-urgent .feed-ic { color:var(--red) }
+.feed-item:hover { background:var(--surface); transform:translateX(3px); box-shadow:var(--sh1) }
 .feed-ic { font-size:18px; line-height:1; margin-top:1px }
 .feed-body { flex:1; min-width:0 }
 .feed-title { font-size:13.5px; font-weight:700; color:var(--ink); display:flex; align-items:center; gap:8px; flex-wrap:wrap }
@@ -1358,10 +1372,12 @@ body {
 .tag-workflow { background:var(--orange-lt); color:#B96E1A }
 .tag-mail { background:var(--gold-lt); color:var(--gold-dk) }
 .tag-tache { background:var(--surface); color:var(--ink3); border:1px solid var(--border) }
+.tag-protocole { background:var(--green-lt); color:#2F6B3E }
 .feed-chip { font-size:10px; font-weight:600; padding:2px 9px; border-radius:var(--r99); white-space:nowrap; display:inline-block }
 .feed-actions { display:flex; gap:6px; flex-shrink:0; margin-top:1px; flex-wrap:wrap; justify-content:flex-end; max-width:150px }
 .feed-btn { padding:7px 13px; border-radius:var(--r99); font-size:11.5px; font-weight:600; cursor:pointer; border:none; background:var(--gold); color:#fff; transition:var(--t); white-space:nowrap }
-.feed-btn:hover { background:var(--gold-dk) }
+.feed-btn:hover { background:var(--gold-dk); transform:translateY(-1px); box-shadow:0 3px 10px rgba(193,121,60,.3) }
+.feed-btn:active { transform:translateY(0) }
 .feed-btn:disabled { opacity:.4; cursor:not-allowed }
 .feed-btn-ghost { background:var(--surface); color:var(--ink3); border:1px solid var(--border) }
 .feed-btn-ghost:hover { background:var(--white); border-color:var(--gold) }
@@ -1369,7 +1385,8 @@ body {
 
 /* KPI compacts — vue d'ensemble */
 .kpi-row-mini { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:18px }
-.kpi-mini { background:var(--white); border:1px solid var(--border); border-radius:var(--r12); padding:14px 16px; text-align:center }
+.kpi-mini { background:var(--white); border:1px solid var(--border); border-radius:var(--r12); padding:14px 16px; text-align:center; transition:transform .15s, box-shadow .15s }
+.kpi-mini:hover { transform:translateY(-2px); box-shadow:var(--sh1) }
 .kpi-mini-val { font-family:'DM Mono',monospace; font-size:22px; font-weight:700; color:var(--ink) }
 .kpi-mini-lbl { font-size:11px; color:var(--muted); margin-top:3px }
 
@@ -1945,6 +1962,46 @@ function diffMinutesRdv(rdv){
   return (hh*60+mm) - (now.getHours()*60+now.getMinutes());
 }
 
+// ── ALERTE PROTOCOLE PHV NON ENVOYÉ (ajouté 02/09/2026, Claude) ─────────────
+// Jusqu'ici, rien ne rappelait à Sabrina d'envoyer le protocole après une
+// consultation — c'était une action manuelle isolée sur la fiche cliente,
+// facile à oublier. On repère ici, pour chaque cliente, sa dernière
+// consultation confirmée déjà passée, et on déclenche une alerte dès que 24h
+// se sont écoulées depuis cette séance (heure de RDV incluse, pas seulement
+// le jour), tant qu'aucun protocole n'a été envoyé DEPUIS cette séance —
+// comparaison dateProtocole vs date du RDV, ce qui permet à l'alerte de
+// réapparaître à chaque nouvelle consultation même si un protocole avait
+// déjà été envoyé avant.
+function rdvDateTimeMs(rdv){
+  if(!rdv.date) return null;
+  const dt = new Date(rdv.date+'T'+(rdv.time||'12:00')+':00');
+  return isNaN(dt.getTime()) ? null : dt.getTime();
+}
+
+function getProtocoleAlerts(){
+  const nowMs = Date.now();
+  const dernierRdvParCliente = {};
+  rdvs.forEach(r=>{
+    if(isRdvPerso(r) || r.status!=='confirme') return;
+    const ms = rdvDateTimeMs(r);
+    if(ms===null || ms>nowMs) return; // futur ou date invalide
+    const c = matchClientForRdv(r);
+    if(!c) return;
+    const cur = dernierRdvParCliente[c.id];
+    if(!cur || ms>cur.ms) dernierRdvParCliente[c.id] = {ms, rdv:r, client:c};
+  });
+  const out=[];
+  Object.values(dernierRdvParCliente).forEach(({ms, rdv, client:c})=>{
+    const hoursElapsed = (nowMs-ms)/3600000;
+    if(hoursElapsed < 24) return;
+    const dejaEnvoyeDepuis = c.dateProtocole && c.dateProtocole >= rdv.date;
+    if(dejaEnvoyeDepuis) return;
+    out.push({client:c, rdv, hoursElapsed});
+  });
+  out.sort((a,b)=>b.hoursElapsed-a.hoursElapsed);
+  return out;
+}
+
 function getActionsJour(){
   const todayStr = today();
   const tomorrowStr = addDays(todayStr, 1);
@@ -2159,6 +2216,27 @@ function renderActionsJour(){
       '</div>'});
   });
 
+  // 0.5) Protocoles PHV non envoyés ≥24h après la consultation — la date de la
+  // séance est affichée explicitement pour permettre une vérification rapide
+  // du délai avant l'envoi. Devient rouge/urgent à partir de 72h (3 jours).
+  getProtocoleAlerts().forEach(({client:c, rdv, hoursElapsed})=>{
+    const urgent = hoursElapsed >= 72;
+    const delaiTxt = hoursElapsed >= 48 ? Math.floor(hoursElapsed/24)+' jours écoulés' : Math.floor(hoursElapsed)+'h écoulées';
+    const dateConsult = rdv.date ? new Date(rdv.date+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'}) : '—';
+    items.push({u: urgent?5:4, html:
+      '<div class="feed-item feed-protocole'+(urgent?' feed-protocole-urgent':'')+'">'+
+        '<div class="feed-ic">'+ic('leaf')+'</div>'+
+        '<div class="feed-body">'+
+          '<div class="feed-title">'+escH(c.prenom)+' '+escH(c.nom||'')+' <span class="feed-tag tag-protocole">Protocole à envoyer</span></div>'+
+          '<div class="feed-text">Consultation du '+dateConsult+' · <span class="feed-chip '+(urgent?'chip-red':'chip-orange')+'">'+delaiTxt+'</span></div>'+
+        '</div>'+
+        '<div class="feed-actions">'+
+          '<button class="feed-btn feed-btn-ghost" onclick="openFiche(\''+c.id+'\')">Fiche</button>'+
+          '<button class="feed-btn" onclick="ouvrirEnvoiProtocole(\''+c.id+'\')">'+ic('mail')+' Envoyer</button>'+
+        '</div>'+
+      '</div>'});
+  });
+
   // 1) Recommandations refusées sans alternative — priorité maximale
   const memoUrg = memoAlerts.filter(m => m.refusSansReponse.length > 0);
   memoUrg.forEach(m=>{
@@ -2304,7 +2382,11 @@ function renderActionsJour(){
     return;
   }
   items.sort((a,b)=>b.u-a.u);
-  listEl.innerHTML = items.map(i=>i.html).join('');
+  // Cascade d'entrée légèrement décalée d'un item à l'autre — donne du mouvement
+  // à la file sans surcharger visuellement (ajouté 02/09/2026, refonte dashboard).
+  listEl.innerHTML = items.map((i,idx)=>
+    i.html.replace('<div class="feed-item', '<div style="animation-delay:'+Math.min(idx*0.045,0.5).toFixed(3)+'s" class="feed-item')
+  ).join('');
 }
 
 function sendMailRdvFromBtn(btn){
