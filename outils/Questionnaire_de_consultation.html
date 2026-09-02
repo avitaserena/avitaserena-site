@@ -695,7 +695,7 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
             <option>Plus de 3 ans</option><option>Depuis l'enfance</option>
           </select>
         </div>
-        <div><label class="fl">Âge <span style="font-size:10px;font-weight:400;color:var(--gris)">(auto)</span></label><input class="fi" type="number" id="age" placeholder="34" min="16" max="90" readonly style="background:var(--grege);cursor:default"></div>
+        <div><label class="fl">Âge <span style="font-size:10px;font-weight:400;color:var(--gris)">(auto)</span></label><input class="fi" type="number" id="age" placeholder="34" min="2" max="90" readonly style="background:var(--grege);cursor:default"></div>
       </div>
       <!-- Ligne 2 : morphologie -->
       <div class="g4" style="margin-top:10px">
@@ -705,6 +705,58 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
         <div><label class="fl">Tour de taille (cm)</label><input class="fi" type="number" id="tour-taille" placeholder="82"></div>
       </div>
       <div style="font-size:11px;line-height:1.5;color:var(--gris);margin-top:6px;font-style:italic">Le muscle pèse plus lourd que la graisse à volume égal — un tour de taille élevé peut coexister avec un IMC parfaitement normal, et inversement. C'est souvent le repère le plus fiable pour orienter vers un terrain métabolique ou un tissu adipeux inflammatoire à investiguer, plus que le seul chiffre sur la balance.</div>
+
+      <!-- Ligne 3 : type de consultation (ajout 02/09/2026) -->
+      <div style="margin-top:16px">
+        <label class="fl">Cette consultation concerne</label>
+        <div class="chip-wrap" id="type-conso" style="margin-top:6px">
+          <button type="button" class="chip on" onclick="toggleTypeConsultation(this,false)">La cliente elle-même</button>
+          <button type="button" class="chip" onclick="toggleTypeConsultation(this,true)">Son enfant / un mineur</button>
+        </div>
+      </div>
+
+      <!-- Volet mineur (ajout 02/09/2026) -->
+      <div id="mineur-wrap" style="display:none;margin-top:14px;padding:14px;border-radius:10px;background:var(--grege);border:1px solid rgba(0,0,0,.06)">
+        <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--gris);margin-bottom:10px">Volet mineur — informations complémentaires</div>
+
+        <div class="g4">
+          <div><label class="fl">Taille du père (cm)</label><input class="fi" type="number" id="min-taille-pere" placeholder="178"></div>
+          <div><label class="fl">Taille de la mère (cm)</label><input class="fi" type="number" id="min-taille-mere" placeholder="165"></div>
+          <div><label class="fl">Stade pubertaire</label>
+            <select class="fi" id="min-puberte">
+              <option value="">--</option>
+              <option>Pas encore de signes pubertaires</option>
+              <option>Signes pubertaires débutants (poitrine, pilosité)</option>
+              <option>Réglée depuis moins d'1 an</option>
+              <option>Réglée depuis plus d'1 an</option>
+              <option>Non concerné (garçon)</option>
+            </select>
+          </div>
+          <div><label class="fl">Contexte fratrie / scolarité</label><input class="fi" type="text" id="min-fratrie" placeholder="ex. aînée de 2, entrée en 6e"></div>
+        </div>
+
+        <div class="g3" style="margin-top:10px">
+          <div><label class="fl">Quantité bue par jour (estimation réelle)</label><input class="fi" type="text" id="min-hydrique-qte" placeholder="ex. 4L, gourde 75cl vidée en moins d'1h"></div>
+          <div><label class="fl">Réveils nocturnes pour uriner (nycturie)</label><input class="fi" type="number" id="min-nycturie" placeholder="0"></div>
+          <div><label class="fl">Bouche sèche / respiration nocturne</label>
+            <select class="fi" id="min-bouche-seche">
+              <option value="">--</option>
+              <option>Non</option>
+              <option>Bouche sèche le matin</option>
+              <option>Dort bouche ouverte / ronfle</option>
+              <option>Les deux</option>
+            </select>
+          </div>
+        </div>
+        <div style="font-size:11px;line-height:1.5;color:var(--gris);margin-top:6px;font-style:italic">Une soif marquée associée à des réveils nocturnes pour uriner est un signal qui prime sur tout le reste : avant tout protocole, ce tableau doit être reconfirmé avec le médecin — une glycémie normale n'écarte pas à elle seule un diabète insipide ou une polydipsie d'une autre origine.</div>
+
+        <div class="g2" style="margin-top:10px">
+          <div><label class="fl">Déclencheur infectieux récent (voyage, intoxication alimentaire, gastro...)</label><textarea class="fi" id="min-declencheur" style="min-height:50px" placeholder="Ex : intoxication alimentaire pendant un voyage, traitée par antibiotiques, avec probiotique pris en même temps"></textarea></div>
+          <div><label class="fl">Neuropsychique — peurs, anxiété au coucher, ruminations</label><textarea class="fi" id="min-neuropsy" style="min-height:50px" placeholder="Ex : peur de s'endormir, pense beaucoup, a besoin d'être accompagné(e) pour s'endormir"></textarea></div>
+        </div>
+
+        <div style="font-size:11px;color:var(--gris);margin-top:8px;font-style:italic">Le reste du questionnaire (digestion, sommeil, mode de vie...) reste utilisable tel quel pour un mineur — seules les sections centrées sur le cycle féminin adulte (hormones/gynécologie) sont à ignorer.</div>
+      </div>
 
       <!-- ── FRISE IMAC ── -->
       <div id="imac-frise-wrap" style="margin-top:14px;display:none">
@@ -6718,6 +6770,13 @@ function sauvegarderMaintenant() {
 /* ══════════════════════════════════════
    CALCUL IMC
 ══════════════════════════════════════ */
+function toggleTypeConsultation(btn, mineur) {
+  document.querySelectorAll('#type-conso .chip').forEach(c => c.classList.remove('on'));
+  btn.classList.add('on');
+  const wrap = document.getElementById('mineur-wrap');
+  if (wrap) wrap.style.display = mineur ? 'block' : 'none';
+}
+
 function calcAge() {
   const ddn = document.getElementById('ddn')?.value;
   if (!ddn) return;
