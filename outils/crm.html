@@ -4699,7 +4699,6 @@ function renderFiche(c){
     ['Date de naissance', c.ddn?(fmtDate(c.ddn)+(age?` · <span style="color:var(--muted)">${age} ans</span>`:'')):'—'],
     ['Programme', c.programme?`<span class="prog-badge pb-${pCls(c.programme)}">${pLbl(c.programme)}</span>`:"<span style='color:var(--muted)'>Consultation ponctuelle</span>"],
     ['A Luma', chatAddonHtml],
-    ['Axes de travail', escH(c.axes||'—')],
     c.notes?['Notes', `<span style="font-size:12px">${escH(c.notes)}</span>`]:null,
     ['1ère consultation', fmtDate(c.date1)],
   ].filter(Boolean).map(([k,v])=>`<div class="ic-row"><div class="ic-key">${k}</div><div class="ic-val">${v}</div></div>`).join('');
@@ -5057,7 +5056,7 @@ function renderFiche(c){
           ${hasPHV?btn('fv2-btn',`window.open('${c.phv_url?escH(c.phv_url):'phv-print.html?client='+encodeURIComponent(cid)}','_blank')`,ic('download')+' Voir le PHV'):''}
           ${btn('fv2-btn',`ouvrirPHVCliente('${cid}')`, hasPHV?ic('refresh')+' Régénérer PHV':ic('spark')+' Générer PHV')}
           ${btn('fv2-btn',`ouvrirLettreClinique('${cid}')`,ic('mail')+' Adressage')}
-          ${c.email?btn('fv2-btn',`voirCommeElle('${cid}')`, ic('eye')+' Voir comme elle'):''}
+          ${c.email?`<button class="fv2-btn" title="Ouvre son espace cliente (protocole, journal, check-ins) tel qu'elle le voit — pas cette fiche" onclick="voirCommeElle('${cid}')">${ic('eye')} Aperçu de son espace</button>`:''}
           ${btn('fv2-btn',`ouvrirNouveauRdv('${cid}')`, ic('calendar')+' Nouveau RDV')}
           ${btn('fv2-btn accent',`ouvrirEditionCliente('${cid}')`, ic('edit')+' Modifier')}
           ${btn('fv2-btn danger',`ouvrirSuppressionCliente('${cid}')`, ic('trash')+' Supprimer')}
@@ -5072,7 +5071,7 @@ function renderFiche(c){
       </div>
     </div>
     ${naHtml}
-    ${c.propositionParcoursEnvoyeeLe ? `<div class="next-action soon"><div class="na-icon">${ic('mail')}</div><div class="na-body"><div class="na-label">Proposition ${c.propositionParcoursProgramme?pLbl(c.propositionParcoursProgramme):'de parcours'} envoyée</div><div class="na-sub">Le ${fmtDate(c.propositionParcoursEnvoyeeLe)} — sans confirmation depuis ${Math.round(diffD(c.propositionParcoursEnvoyeeLe))} jours</div></div><button class="feed-btn feed-btn-ghost" onclick="marquerPropositionAnnulee('${cid}')">Effacer</button></div>` : `<button class="wf2-abtn" style="margin-bottom:14px" onclick="marquerPropositionEnvoyeeManuel('${cid}')">${ic('mail')} Marquer une proposition de parcours comme envoyée</button>`}
+    ${c.propositionParcoursEnvoyeeLe ? `<div class="next-action soon"><div class="na-icon">${ic('mail')}</div><div class="na-body"><div class="na-label">Proposition ${c.propositionParcoursProgramme?pLbl(c.propositionParcoursProgramme):'de parcours'} envoyée</div><div class="na-sub">Le ${fmtDate(c.propositionParcoursEnvoyeeLe)} — envoyée automatiquement par Brevo à J+21, sans confirmation depuis ${Math.round(diffD(c.propositionParcoursEnvoyeeLe))} jours</div></div><button class="feed-btn feed-btn-ghost" onclick="marquerPropositionAnnulee('${cid}')">Effacer</button></div>` : ''}
     <div class="fv2-observance">
       ${buildMemoBlock(c)||`<div class="info-card"><div class="ic-head"><div class="ic-title">${ic('refresh')} Observance PHV</div></div><div class="ic-body" style="padding:14px 16px"><div style="font-size:13px;color:var(--muted);font-style:italic">Aucun protocole PHV envoyé pour le moment — les recommandations acceptées et refusées apparaîtront ici après l'envoi.</div></div></div>`}
     </div>
