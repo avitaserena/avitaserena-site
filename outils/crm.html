@@ -26,9 +26,10 @@
   --ink2:    #3A342C;
   --ink3:    #6B6255;
   --muted:   #A79A87;
-  --border:  #EDE3D0;
+  --border:  #E7E0D2;
   --surface: #FAF5EB;
-  --white:   #FFFCF6;
+  --white:   #FFFFFF;
+  --canvas:  #FEFDFB;
 
   /* ── Accent principal : ocre — la couleur A Vita Serena, pas un violet SaaS ── */
   --gold:    #C1793C;
@@ -80,9 +81,9 @@ html { font-size: 15px; scroll-behavior: smooth }
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', 'Segoe UI', sans-serif;
   background:
-    radial-gradient(1100px 500px at 85% -10%, rgba(193,121,60,.07), transparent 60%),
-    radial-gradient(900px 460px at -10% 0%, rgba(156,95,160,.05), transparent 55%),
-    var(--surface);
+    radial-gradient(1200px 520px at 88% -8%, rgba(193,121,60,.045), transparent 60%),
+    radial-gradient(900px 460px at -8% 4%, rgba(156,95,160,.03), transparent 55%),
+    var(--canvas);
   background-attachment: fixed;
   color: var(--ink);
   line-height: 1.5;
@@ -397,7 +398,27 @@ body {
 }
 
 /* ═══ DASH GRID ═══ */
-.dash-grid { display: grid; grid-template-columns: 1fr 330px; gap: 18px }
+/* ═══ EN-TÊTE DE SECTION SECONDAIRE + BASCULE "VUE DÉTAILLÉE" ═══
+   Ajouté 02/09/2026 : le tableau de bord affichait toujours la totalité des
+   cartes de détail sous le flux principal, ce qui créait un mur d'information
+   dès l'ouverture. Cette section est maintenant repliée par défaut — elle
+   reste à un clic, mais ne s'impose plus visuellement au-dessus du flux
+   prioritaire (Votre journée / À traiter maintenant). */
+.s-head { display: flex; align-items: center; gap: 14px; margin: 8px 0 18px }
+.s-head-label { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); white-space: nowrap }
+.s-head-line { flex: 1; height: 1px; background: linear-gradient(90deg, var(--border), transparent) }
+.vd-toggle {
+  margin-left: auto; display: inline-flex; align-items: center; gap: 7px;
+  background: var(--white); border: 1px solid var(--border); border-radius: var(--r99);
+  padding: 8px 15px; font-size: 12px; font-weight: 600; color: var(--ink3);
+  cursor: pointer; transition: var(--t-spring); box-shadow: var(--sh1); font-family: inherit;
+}
+.vd-toggle:hover { border-color: rgba(193,121,60,.4); color: var(--gold-dk); background: var(--gold-lt); transform: translateY(-1px) }
+.vd-toggle svg { width: 14px; height: 14px; transition: transform .35s cubic-bezier(.16,1,.3,1) }
+.vd-toggle.open svg { transform: rotate(180deg) }
+.dash-grid.vd-collapsed { display: none }
+
+.dash-grid { display: grid; grid-template-columns: 1fr 330px; gap: 18px; animation: fadeUp .4s cubic-bezier(.16,1,.3,1) backwards }
 .dash-main { display: flex; flex-direction: column; gap: 18px }
 .dash-side { display: flex; flex-direction: column; gap: 18px }
 .dash-main .card, .dash-side .card { animation: fadeUp .55s cubic-bezier(.16,1,.3,1) backwards }
@@ -1288,30 +1309,32 @@ body {
   flex-wrap: wrap;
   margin-bottom: 22px;
   border-radius: var(--r16);
-  padding: 36px 40px 32px;
-  box-shadow: var(--sh1);
+  padding: 38px 42px 34px;
+  box-shadow: var(--sh2);
   isolation: isolate;
+  transition: var(--t);
 }
 /* Trois ambiances selon l'heure — définies en JS (heroTimeClass) sur .home-hero */
-.home-hero.hero-dawn { background: linear-gradient(125deg, #FFFCF6 0%, #FCF3EC 55%, #F7E9E3 100%); border: 1px solid var(--border) }
-.home-hero.hero-day  { background: linear-gradient(125deg, #FFFCF6 0%, #FDF6E7 55%, #FAEFD8 100%); border: 1px solid var(--border) }
-.home-hero.hero-dusk { background: linear-gradient(125deg, #FFFCF6 0%, #F9F1F6 55%, #F2E6F0 100%); border: 1px solid var(--border) }
+.home-hero.hero-dawn { background: linear-gradient(125deg, #FFFFFF 0%, #FDF5EE 55%, #FBEBE1 100%); border: 1px solid var(--border) }
+.home-hero.hero-day  { background: linear-gradient(125deg, #FFFFFF 0%, #FEF8EB 55%, #FBF0DB 100%); border: 1px solid var(--border) }
+.home-hero.hero-dusk { background: linear-gradient(125deg, #FFFFFF 0%, #FBF2F7 55%, #F5E8F2 100%); border: 1px solid var(--border) }
 .home-hero::before, .home-hero::after {
   content: ''; position: absolute; border-radius: 50%; filter: blur(38px); z-index: -1;
-  background: radial-gradient(circle, rgba(255,255,255,.55), transparent 70%);
+  background: radial-gradient(circle, rgba(255,255,255,.6), transparent 70%);
+  animation: breathe 9s ease-in-out infinite;
 }
-.home-hero::before { width: 260px; height: 260px; top: -110px; right: 60px }
-.home-hero::after   { width: 180px; height: 180px; bottom: -90px; right: 260px; background: radial-gradient(circle, rgba(255,255,255,.35), transparent 70%) }
+.home-hero::before { width: 280px; height: 280px; top: -120px; right: 60px }
+.home-hero::after   { width: 190px; height: 190px; bottom: -95px; right: 270px; background: radial-gradient(circle, rgba(255,255,255,.4), transparent 70%); animation-delay: -4s }
 .home-greet-title {
   font-family: var(--serif);
   font-style: italic;
   font-weight: 600;
-  font-size: 40px;
+  font-size: 44px;
   line-height: 1.05;
-  letter-spacing: -.01em;
+  letter-spacing: -.015em;
   color: #3E2C1E;
 }
-.home-greet-date { font-size: 13.5px; color: #5C4A3A; margin-top: 8px; text-transform: capitalize; font-weight: 600; letter-spacing: .01em }
+.home-greet-date { font-size: 13.5px; color: #5C4A3A; margin-top: 9px; text-transform: capitalize; font-weight: 600; letter-spacing: .01em }
 .home-hero-mark {
   font-family: var(--serif); font-style: italic; font-weight: 600; font-size: 15px;
   color: rgba(62,44,30,.55); letter-spacing: .02em; align-self: flex-start; margin-top: 2px;
@@ -1325,26 +1348,27 @@ body {
 .hca-trend.up { color:var(--gold-dk) }
 .hca-trend.down { color:var(--red) }
 
-/* Grille de statistiques — chaque carte porte la teinte de sa catégorie, plus de blanc plat partout */
-.home-stat-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:10px; margin-bottom:20px }
+/* Grille de statistiques — chaque carte porte la teinte de sa catégorie, sur fond blanc net */
+.home-stat-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:11px; margin-bottom:22px }
 .home-stat {
   position: relative;
   background: var(--stat-wash, var(--white)) var(--white);
   background-blend-mode: normal;
   border: 1px solid var(--border);
   border-radius: var(--r16);
-  padding: 16px 16px;
+  padding: 17px 16px;
   box-shadow: var(--sh1);
-  transition: var(--t);
+  transition: var(--t-spring);
 }
 .home-stat::before {
   content: ''; position: absolute; inset: 0; border-radius: inherit;
   background: var(--stat-wash, transparent); opacity: .55; z-index: 0; pointer-events: none;
 }
 .home-stat > * { position: relative; z-index: 1 }
-.home-stat:hover { transform: translateY(-2px); box-shadow: var(--sh2) }
-.home-stat-ic { width:32px; height:32px; border-radius:var(--r12); display:flex; align-items:center; justify-content:center; font-size:15px; margin-bottom:10px }
-.home-stat-val { font-size:24px; font-weight:800; color:var(--ink); letter-spacing:-.02em; font-family:'DM Mono',monospace }
+.home-stat:hover { transform: translateY(-3px) scale(1.015); box-shadow: var(--sh2) }
+.home-stat-ic { width:32px; height:32px; border-radius:var(--r12); display:flex; align-items:center; justify-content:center; font-size:15px; margin-bottom:10px; transition:var(--t-spring) }
+.home-stat:hover .home-stat-ic { transform: scale(1.1) }
+.home-stat-val { font-size:25px; font-weight:800; color:var(--ink); letter-spacing:-.02em; font-family:'DM Mono',monospace }
 .home-stat-lbl { font-size:10px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; margin-top:3px }
 /* Variante discrète — pour les indicateurs importants mais moins urgents que les messages :
    valeur plus petite, pas de fond coloré, opacité réduite au repos. */
@@ -3375,6 +3399,31 @@ function lumaListToggle(c){
 }
 
 function escH(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+// ── Bascule "Vue détaillée" du tableau de bord (ajouté 02/09/2026) ──────────
+// Repliée par défaut (voir classe vd-collapsed posée directement dans le HTML) :
+// évite le mur de cartes au chargement, tout en restant accessible en un clic.
+// Préférence mémorisée en local pour respecter le choix de Sabrina d'une
+// session à l'autre.
+function toggleVueDetaillee(){
+  const grid = document.getElementById('dash-grid-detail');
+  const btn = document.getElementById('vd-toggle');
+  const txt = document.getElementById('vd-toggle-txt');
+  if(!grid || !btn) return;
+  const nowCollapsed = grid.classList.toggle('vd-collapsed');
+  btn.classList.toggle('open', !nowCollapsed);
+  if(txt) txt.textContent = nowCollapsed ? 'Afficher' : 'Masquer';
+  try{ localStorage.setItem('avs_vd_open', nowCollapsed ? '0' : '1'); }catch(e){}
+}
+document.addEventListener('DOMContentLoaded', function(){
+  try{
+    if(localStorage.getItem('avs_vd_open') === '1'){
+      document.getElementById('dash-grid-detail')?.classList.remove('vd-collapsed');
+      document.getElementById('vd-toggle')?.classList.add('open');
+      const t = document.getElementById('vd-toggle-txt'); if(t) t.textContent = 'Masquer';
+    }
+  }catch(e){}
+});
 
 function nav(name,el){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
@@ -7315,9 +7364,16 @@ function ouvrirBilanEntree(clientId, mode){
       </div>
     </div>
 
-    <div class="s-head"><span class="s-head-label">Vue détaillée</span><div class="s-head-line"></div></div>
+    <div class="s-head">
+      <span class="s-head-label">Vue détaillée</span>
+      <div class="s-head-line"></div>
+      <button class="vd-toggle" id="vd-toggle" onclick="toggleVueDetaillee()">
+        <span id="vd-toggle-txt">Afficher</span>
+        <svg id="vd-toggle-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+    </div>
 
-    <div class="dash-grid">
+    <div class="dash-grid vd-collapsed" id="dash-grid-detail">
       <div class="dash-main">
         <div class="card">
           <div class="card-head">
