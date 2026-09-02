@@ -5416,8 +5416,9 @@ function showNewClientModal(){
   document.getElementById('nc-ddn').value='';
   document.getElementById('nc-prog').value='';
   document.getElementById('nc-duree').value='60';
-  document.getElementById('nc-date1').value=today();
+  document.getElementById('nc-date1').value='';
   document.getElementById('nc-dateproto').value='';
+  document.getElementById('date1-err').style.display='none';
   document.getElementById('ddn-err').style.display='none';
   openM('m-client');
 }
@@ -5432,9 +5433,12 @@ async function saveNewClient(){
   document.getElementById('ddn-err').style.display='none';
   const dup=db.clients.find(c=>(c.prenom||'').toLowerCase()===prenom.toLowerCase()&&(c.nom||'').toLowerCase()===nom.toLowerCase()&&c.ddn===ddn);
   if(dup){toast('Cliente déjà existante','err');return;}
+  const date1=document.getElementById('nc-date1')?.value||'';
+  if(!date1){document.getElementById('date1-err').style.display='inline';toast('Date de 1ère consultation requise — ne pas confondre avec la date de création de la fiche','err');return;}
+  document.getElementById('date1-err').style.display='none';
   const age=ageFrom(ddn);
   const id=idCanoniqueCliente(prenom,nom,ddn);
-  const payload={id,prenom,nom,email:document.getElementById('nc-email')?.value||'',tel:document.getElementById('nc-tel')?.value||'',age:age?String(age):'',ddn,motifs:document.getElementById('nc-motifs')?.value||'',axes:document.getElementById('nc-axes')?.value||'',notes:document.getElementById('nc-notes')?.value||'',programme:document.getElementById('nc-prog')?.value||'',duree_ttt:document.getElementById('nc-duree')?.value||'60',date1:document.getElementById('nc-date1')?.value||today(),date_protocole:document.getElementById('nc-dateproto')?.value||'',timeline:[{type:'creation',title:'Dossier créé',icon:'·',date:today()}],workflow_done:{},created_at:new Date().toISOString()};
+  const payload={id,prenom,nom,email:document.getElementById('nc-email')?.value||'',tel:document.getElementById('nc-tel')?.value||'',age:age?String(age):'',ddn,motifs:document.getElementById('nc-motifs')?.value||'',axes:document.getElementById('nc-axes')?.value||'',notes:document.getElementById('nc-notes')?.value||'',programme:document.getElementById('nc-prog')?.value||'',duree_ttt:document.getElementById('nc-duree')?.value||'60',date1,date_protocole:document.getElementById('nc-dateproto')?.value||'',timeline:[{type:'creation',title:'Dossier créé',icon:'·',date:today()}],workflow_done:{},created_at:new Date().toISOString()};
   try{
     await sb('clientes',{method:'POST',headers:{'Prefer':'return=representation,resolution=merge-duplicates'},body:JSON.stringify(payload)});
     // Mettre à jour en mémoire (remplacer si existant, ajouter sinon)
@@ -6032,7 +6036,7 @@ function ouvrirEditionCliente(clientId){
       <div class="fsep">Programme & suivi</div>
       <div class="fg2">
         <div class="fg"><label class="fl">Programme</label><select id="ec-prog" class="fi fs">${selProg(c.programme||'')}</select></div>
-        <div class="fg"><label class="fl">Durée traitement</label><select id="ec-duree" class="fi fs">${selDur(c.dureeTtt||'60')}</select></div>
+        <div class="fg"><label class="fl">Délai avant prochain suivi <span style="font-weight:400;color:var(--muted);font-size:11px">(≠ durée du parcours)</span></label><select id="ec-duree" class="fi fs">${selDur(c.dureeTtt||'60')}</select></div>
       </div>
       <div class="fg2">
         <div class="fg"><label class="fl">1ère consultation</label><input id="ec-date1" class="fi" type="date" value="${c.date1||''}"></div>
@@ -6188,6 +6192,7 @@ async function envoyerProtocole(clientId){
     c.timeline.push({type:'protocole',title:'Protocole envoyé',icon:'·',date:today()});
     if(!c.workflowDone)c.workflowDone={};c.workflowDone['protocole_envoye']=true;
     c.phv_url=lienPHV;
+    if(!c.dateProtocole)c.dateProtocole=today(); // renseigné automatiquement au premier envoi réel — plus besoin de saisie manuelle
     await saveClient(c);renderFiche(c);
     toast('Protocole envoyé à '+c.email,'ok');
     document.getElementById('modal-envoi-protocole')?.remove();
@@ -7402,7 +7407,7 @@ function ouvrirBilanEntree(clientId, mode){
             <option value="ora">Ora · 9 mois · 780 €</option>
           </select>
         </div>
-        <div class="fg"><label class="fl">Durée traitement</label>
+        <div class="fg"><label class="fl">Délai avant prochain suivi <span style="font-weight:400;color:var(--muted);font-size:11px">(≠ durée du parcours)</span></label>
           <select class="fi fs" id="nc-duree">
             <option value="30">1 mois</option><option value="60" selected>2 mois</option>
             <option value="90">3 mois</option><option value="180">6 mois</option><option value="270">9 mois</option>
@@ -7410,7 +7415,7 @@ function ouvrirBilanEntree(clientId, mode){
         </div>
       </div>
       <div class="fg2">
-        <div class="fg"><label class="fl">Date 1ère consultation *</label><input class="fi" id="nc-date1" type="date"></div>
+        <div class="fg"><label class="fl">Date 1ère consultation * <span id="date1-err" style="color:var(--red);display:none"><svg class="ico-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 20h20L12 3z"/><path d="M12 10v4M12 17h.01"/></svg></span></label><input class="fi" id="nc-date1" type="date"></div>
         <div class="fg"><label class="fl">Date envoi protocole</label><input class="fi" id="nc-dateproto" type="date"></div>
       </div>
       <div class="fg"><label class="fl">Motifs principaux</label><input class="fi" id="nc-motifs" placeholder="SIBO, SPM, fatigue..."></div>
