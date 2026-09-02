@@ -949,20 +949,22 @@ body {
 .fv2-kpis {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  background: var(--surface);
+  background: var(--white);
   border-top: 1px solid var(--border);
 }
 .fv2-kpi {
-  padding: 12px 16px;
+  padding: 16px 16px;
   text-align: center;
   border-right: 1px solid var(--border);
   cursor: default;
+  transition: var(--t);
 }
+.fv2-kpi:hover { background: var(--surface) }
 .fv2-kpi:last-child { border-right: none }
-.fv2-kpi-val { font-size: 17px; font-weight: 700; color: var(--ink); line-height: 1; font-variant-numeric: tabular-nums }
-.fv2-kpi-val.sm { font-size: 12px; font-family: 'DM Mono', monospace }
-.fv2-kpi-lbl { font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-top: 4px }
-.fv2-kpi-sub { font-size: 9px; color: var(--gold-dk); font-weight: 500; margin-top: 1px }
+.fv2-kpi-val { font-size: 22px; font-weight: 800; color: var(--ink); line-height: 1; letter-spacing: -.02em; font-variant-numeric: tabular-nums }
+.fv2-kpi-val.sm { font-size: 16px; font-weight: 700 }
+.fv2-kpi-lbl { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-top: 5px }
+.fv2-kpi-sub { font-size: 9.5px; color: var(--gold-dk); font-weight: 600; margin-top: 2px }
 
 .fv2-tabs {
   display: flex;
@@ -1073,82 +1075,109 @@ body {
 
 .info-card {
   background: var(--white);
-  border-radius: var(--r12);
+  border-radius: var(--r16);
   border: 1px solid var(--border);
   overflow: hidden;
   box-shadow: var(--sh1);
+  transition: var(--t);
 }
+.info-card:hover { box-shadow: var(--sh2); border-color: rgba(193,121,60,.16) }
 .ic-head {
-  padding: 12px 16px;
+  padding: 13px 18px;
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: var(--surface);
+  background: var(--white);
 }
 .ic-title {
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: .08em;
-  color: var(--muted);
+  color: var(--ink3);
   display: flex;
   align-items: center;
   gap: 7px;
 }
 .ic-edit {
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--gold-dk);
   background: var(--gold-lt);
   border: none;
   border-radius: var(--r99);
-  padding: 4px 11px;
+  padding: 5px 12px;
   cursor: pointer;
   font-family: inherit;
-  transition: var(--t);
+  transition: var(--t-spring);
 }
-.ic-edit:hover { background: var(--gold); color: white }
+.ic-edit:hover { background: var(--gold); color: white; transform: translateY(-1px) }
 .ic-body {}
 .ic-row {
   display: flex;
-  padding: 10px 16px;
+  padding: 11px 18px;
   border-bottom: 1px solid var(--border);
   align-items: flex-start;
   gap: 10px;
 }
 .ic-row:last-child { border: none }
-.ic-key { font-size: 12px; font-weight: 500; color: var(--muted); min-width: 110px; flex-shrink: 0; padding-top: 1px }
+.ic-key { font-size: 12px; font-weight: 600; color: var(--muted); min-width: 110px; flex-shrink: 0; padding-top: 1px }
 .ic-val { font-size: 13.5px; font-weight: 400; color: var(--ink); flex: 1; min-width: 0; line-height: 1.5; overflow-wrap: anywhere; word-break: break-word }
+
+/* ═══ FICHE — grille prioritaire "au décroché du téléphone" + section secondaire repliable ═══
+   Ajouté 02/09/2026 : avant, tout (identité, RDV, programme, protocole, bilans, factures,
+   questionnaires, journal...) s'empilait dans une seule colonne étroite sans hiérarchie —
+   illisible en urgence. La grille prioritaire regroupe les 4 blocs qu'il faut voir en
+   décrochant (Informations / Programme / Rendez-vous / Messages) ; tout le reste (suivi
+   clinique, documents, factures) passe dans une section repliée par défaut. */
+.fv2-priority-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; align-items: start; margin-bottom: 20px }
+@media (max-width: 1200px) { .fv2-priority-grid { grid-template-columns: repeat(2, 1fr) } }
+@media (max-width: 700px) { .fv2-priority-grid { grid-template-columns: 1fr } }
+.fv2-detail-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; align-items: start }
+@media (max-width: 1200px) { .fv2-detail-grid { grid-template-columns: 1fr 1fr } }
+@media (max-width: 800px) { .fv2-detail-grid { grid-template-columns: 1fr } }
+.fv2-detail-grid.vd-collapsed { display: none }
+
+/* Messages récents sur la fiche — aperçu, pas le fil complet (voir page Messages) */
+.msg-mini-list { display: flex; flex-direction: column }
+.msg-mini-item { padding: 12px 18px; border-bottom: 1px solid var(--border); cursor: pointer; transition: var(--t) }
+.msg-mini-item:last-child { border-bottom: none }
+.msg-mini-item:hover { background: var(--surface) }
+.msg-mini-txt { font-size: 13px; color: var(--ink); line-height: 1.5; display: flex; align-items: flex-start; gap: 7px }
+.msg-mini-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--red); flex-shrink: 0; margin-top: 5px }
+.msg-mini-date { font-size: 11px; color: var(--muted); margin-top: 3px; padding-left: 14px }
 
 /* Progression programme */
 .prog-card {
   background: var(--white);
-  border-radius: var(--r12);
+  border-radius: var(--r16);
   border: 1px solid var(--border);
   overflow: hidden;
   box-shadow: var(--sh1);
+  transition: var(--t);
 }
+.prog-card:hover { box-shadow: var(--sh2) }
 .prog-card-head {
-  padding: 12px 16px;
+  padding: 13px 18px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   border-bottom: 1px solid var(--border);
-  background: var(--surface);
+  background: var(--white);
 }
-.prog-card-body { padding: 16px }
+.prog-card-body { padding: 18px }
 .prog-bar-wrap { margin: 8px 0 }
 .prog-dates {
   display: flex;
   justify-content: space-between;
   font-size: 11px;
   color: var(--muted);
-  font-family: 'DM Mono', monospace;
+  font-variant-numeric: tabular-nums;
   margin-bottom: 6px;
 }
-.prog-pct-big { font-size: 34px; font-weight: 700; color: var(--ink); line-height: 1; letter-spacing: -.02em; font-variant-numeric: tabular-nums }
-.prog-pct-lbl { font-size: 12px; color: var(--muted); margin-top: 2px }
+.prog-pct-big { font-size: 38px; font-weight: 800; color: var(--ink); line-height: 1; letter-spacing: -.03em; font-variant-numeric: tabular-nums }
+.prog-pct-lbl { font-size: 12px; color: var(--muted); margin-top: 2px; font-weight: 600 }
 
 /* Docs */
 .doc-list { display: flex; flex-direction: column; gap: 8px }
@@ -1160,9 +1189,9 @@ body {
   display: flex;
   align-items: center;
   gap: 14px;
-  transition: var(--t);
+  transition: var(--t-spring);
 }
-.doc-item:hover { border-color: rgba(193,121,60,.4); box-shadow: var(--sh1); transform: translateX(3px) }
+.doc-item:hover { border-color: rgba(193,121,60,.4); box-shadow: var(--sh1); transform: translateX(4px) }
 .doc-icon {
   width: 40px; height: 40px;
   border-radius: var(--r99);
@@ -3425,6 +3454,21 @@ document.addEventListener('DOMContentLoaded', function(){
   }catch(e){}
 });
 
+// ── Bascule "Suivi clinique & documents" sur la fiche cliente (ajouté 02/09/2026) ──
+// Même logique que le tableau de bord, mais l'état initial (ouvert/replié) est déjà
+// posé directement dans le HTML généré par renderFiche() à chaque ouverture de fiche
+// — cette fonction ne gère donc que le clic, pas la restauration au chargement.
+function toggleVueDetailleeFiche(){
+  const grid = document.getElementById('fiche-detail-grid');
+  const btn = document.getElementById('vd-toggle-fiche');
+  const txt = document.getElementById('vd-toggle-fiche-txt');
+  if(!grid || !btn) return;
+  const nowCollapsed = grid.classList.toggle('vd-collapsed');
+  btn.classList.toggle('open', !nowCollapsed);
+  if(txt) txt.textContent = nowCollapsed ? 'Afficher' : 'Masquer';
+  try{ localStorage.setItem('avs_vd_fiche_open', nowCollapsed ? '0' : '1'); }catch(e){}
+}
+
 function nav(name,el){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.sb-item').forEach(n=>n.classList.remove('active'));
@@ -4708,7 +4752,13 @@ function renderFiche(c){
         <div class="prog-dates"><span>Début ${fmtShort(started)}</span><span>Fin ${fmtShort(addD(started,dur))}</span></div>
         <div class="prog-bar-wrap"><div class="pbar"><div class="pfill" style="width:${pct}%;background:${heroAccent}"></div></div></div>
       </div>
-    </div>`:'' ;
+    </div>`:`
+    <div class="prog-card">
+      <div class="prog-card-head"><div class="ic-title">${ic('chart')} Programme</div></div>
+      <div class="prog-card-body">
+        <div style="font-size:13px;color:var(--muted);line-height:1.6">Consultation ponctuelle — aucun parcours en cours actuellement.</div>
+      </div>
+    </div>` ;
 
   // Workflow complet
   const wfHtml=wf.map(s=>{
@@ -4961,6 +5011,30 @@ function renderFiche(c){
     </div>`;
   }
 
+  // Derniers messages échangés — ajouté 02/09/2026 : jusqu'ici invisible depuis la fiche,
+  // il fallait aller sur la page Messages pour savoir ce qu'une cliente avait écrit en
+  // dernier. Matching par client_key si présent, sinon par prénom+nom (comme le reste
+  // de la fiche pour les protocoles/mémos).
+  const clientMsgsAll = clientMessages.filter(m =>
+    (m.client_key && m.client_key === cid) ||
+    ((m.prenom||'').toLowerCase()===(c.prenom||'').toLowerCase() && (m.nom||'').toLowerCase()===(c.nom||'').toLowerCase())
+  ).sort((a,b) => new Date(b.created_at||0) - new Date(a.created_at||0));
+  const msgsHtml = clientMsgsAll.length ? clientMsgsAll.slice(0,4).map(m=>{
+    const txt = m.message || (m.image_url?'Photo envoyée':m.doc_url?'Document envoyé':'(message vide)');
+    const d = m.created_at ? new Date(m.created_at) : null;
+    const dateStr = d ? d.toLocaleDateString('fr-FR',{day:'numeric',month:'short'})+' · '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}) : '';
+    const dot = !m.lu ? '<span class="msg-mini-dot"></span>' : '';
+    const short = txt.length>130 ? escH(txt.slice(0,130))+'…' : escH(txt);
+    return `<div class="msg-mini-item" onclick="nav('messages',document.querySelector('.sb-item[onclick*=messages]'))">
+      <div class="msg-mini-txt">${dot}<span>${short}</span></div>
+      <div class="msg-mini-date">${dateStr}</div>
+    </div>`;
+  }).join('') : `<div style='padding:16px 18px;font-size:13px;color:var(--muted);font-style:italic'>Aucun message échangé pour le moment.</div>`;
+
+  // Section "Suivi clinique & documents" repliée par défaut (même logique que le tableau
+  // de bord) — préférence mémorisée globalement, pas par cliente.
+  const ficheVdOpen = (()=>{ try{ return localStorage.getItem('avs_vd_fiche_open')==='1'; }catch(e){ return false; } })();
+
   // Rendu final
   el.innerHTML=`
     <div class="fv2-header">
@@ -5002,16 +5076,33 @@ function renderFiche(c){
     <div class="fv2-observance">
       ${buildMemoBlock(c)||`<div class="info-card"><div class="ic-head"><div class="ic-title">${ic('refresh')} Observance PHV</div></div><div class="ic-body" style="padding:14px 16px"><div style="font-size:13px;color:var(--muted);font-style:italic">Aucun protocole PHV envoyé pour le moment — les recommandations acceptées et refusées apparaîtront ici après l'envoi.</div></div></div>`}
     </div>
-    <div class="fv2-overview">
-      <div class="fv2-col">
-        <div class="info-card">
-          <div class="ic-head"><div class="ic-title">${ic('user')} Informations</div>${btn('ic-edit',`ouvrirEditionCliente('${cid}')`, ic('edit')+' Modifier')}</div>
-          <div class="ic-body">${infoRows}</div>
-        </div>
-        <div class="info-card"><div class="ic-head"><div class="ic-title">${ic('calendar')} Rendez-vous</div>${cr.length>0?`<span style="font-size:11px;color:var(--muted)">${cr.length} au total</span>`:''}</div><div class="ic-body">${rdvHtml}</div></div>
+    <div class="fv2-priority-grid">
+      <div class="info-card">
+        <div class="ic-head"><div class="ic-title">${ic('user')} Informations</div>${btn('ic-edit',`ouvrirEditionCliente('${cid}')`, ic('edit')+' Modifier')}</div>
+        <div class="ic-body">${infoRows}</div>
       </div>
+      ${progCardHtml}
+      <div class="info-card">
+        <div class="ic-head"><div class="ic-title">${ic('calendar')} Rendez-vous</div>${cr.length>0?`<span style="font-size:11px;color:var(--muted)">${cr.length} au total</span>`:''}</div>
+        <div class="ic-body">${rdvHtml}</div>
+      </div>
+      <div class="info-card">
+        <div class="ic-head"><div class="ic-title">${ic('message')} Derniers messages</div>${clientMsgsAll.length>0?`<span style="font-size:11px;color:var(--muted)">${clientMsgsAll.length} au total</span>`:''}</div>
+        <div class="ic-body"><div class="msg-mini-list">${msgsHtml}</div></div>
+      </div>
+    </div>
+
+    <div class="s-head">
+      <span class="s-head-label">Suivi clinique &amp; documents</span>
+      <div class="s-head-line"></div>
+      <button class="vd-toggle${ficheVdOpen?' open':''}" id="vd-toggle-fiche" onclick="toggleVueDetailleeFiche()">
+        <span id="vd-toggle-fiche-txt">${ficheVdOpen?'Masquer':'Afficher'}</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+    </div>
+
+    <div class="fv2-detail-grid${ficheVdOpen?'':' vd-collapsed'}" id="fiche-detail-grid">
       <div class="fv2-col">
-        ${progCardHtml}
         <div class="info-card">
           <div class="ic-head"><div class="ic-title">${ic('alarm')} Prochaines échéances</div><span style="font-size:11px;color:var(--muted)">${doneCount}/${totalWF} complétées</span></div>
           <div class="ic-body"><div class="wf2-list">${wfHtml||"<div style='padding:16px;font-size:13px;color:var(--muted);font-style:italic'>Aucune échéance de suivi (pas de programme en cours).</div>"}</div></div>
@@ -5024,6 +5115,8 @@ function renderFiche(c){
           <div class="ic-head"><div class="ic-title">${ic('spark')} Historique des protocoles</div><span style="font-size:11px;color:var(--muted)">${protoHist.length} version(s)</span></div>
           <div class="ic-body"><div class="doc-list">${protoHistHtml}</div></div>
         </div>
+      </div>
+      <div class="fv2-col">
         <div class="info-card">
           <div class="ic-head"><div class="ic-title">${ic('drop')} Documents médicaux <span style="font-weight:400;color:var(--muted);font-size:11px">(prises de sang, imagerie...)</span></div>${btn('ic-edit',`ouvrirAjoutDocMedical('${cid}')`,'+ Ajouter')}</div>
           <div class="ic-body"><div class="doc-list">${dmHtml}</div></div>
@@ -5036,6 +5129,8 @@ function renderFiche(c){
           <div class="ic-head"><div class="ic-title">${ic('mail')} Recommandations d'analyses envoyées</div></div>
           <div class="ic-body"><div style="display:flex;flex-direction:column;gap:6px;padding:10px 14px">${raHtml}</div></div>
         </div>
+      </div>
+      <div class="fv2-col">
         <div class="info-card">
           <div class="ic-head"><div class="ic-title">${ic('cash')} Factures</div><span style="font-size:11px;color:var(--muted)">${facturesDeCetteCliente.length} facture(s) · ${caTotal.toFixed(0)} € encaissés</span></div>
           <div class="ic-body"><div class="doc-list">${
