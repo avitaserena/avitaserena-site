@@ -1971,8 +1971,22 @@ function getActionsJour(){
       });
     }
 
-    // Mail 2 — Rappel J-1 : fenêtre J-2 à J-1
-    if(d >= 0 && d <= 1 && !done.m2){
+    // MODIF 02/09/2026 (Claude) : pour un RDV confirmé, ces mails partent déjà tout
+    // seuls via le cron horaire (send-auto-emails). Avant, ce panneau affichait le
+    // bouton "Envoyer" dès l'ouverture de la fenêtre du jour, sans savoir si le cron
+    // avait déjà eu sa chance — donnant l'impression trompeuse qu'une action manuelle
+    // était nécessaire alors que l'envoi automatique allait avoir lieu de toute façon.
+    // Pour un RDV confirmé, on n'affiche donc la carte que si la fenêtre automatique
+    // est déjà strictement passée sans que done soit vrai (vraie panne à rattraper).
+    // Pour un RDV non confirmé, l'automatisation ne le traite jamais — on garde donc
+    // l'ancien comportement (carte visible dès l'ouverture de la fenêtre du jour).
+    const isConfirme = rdv.status === 'confirme';
+    const nowH = new Date().getHours();
+
+    // Mail 2 — Rappel J-1 : fenêtre auto = J-1, 9h-10h. Passée dès que J-1 ≥10h,
+    // ou dès qu'on est arrivé au jour J lui-même (la fenêtre d'hier est forcément close).
+    const m2FenetrePassee = d===0 || (d===1 && nowH>=10);
+    if(d >= 0 && d <= 1 && !done.m2 && (!isConfirme || m2FenetrePassee)){
       actions.push({
         rdv, client,
         key: 'm2',
@@ -2003,10 +2017,12 @@ function getActionsJour(){
       });
     }
 
-    // Mail 3 — Clôture post-séance : uniquement une fois la séance réellement
-    // passée (diffMin<=0 le jour même), ou le lendemain si toujours pas envoyée.
+    // Mail 3 — Clôture post-séance : la séance doit être réellement passée. Pour un
+    // RDV confirmé, la fenêtre auto (J+1, 9h-10h) doit en plus être close, sinon on
+    // laisse le cron s'en charger tranquillement le lendemain matin.
     const seanceEcoulee = d===0 ? (diffMin !== null ? diffMin <= 0 : false) : d === -1;
-    if(seanceEcoulee && d >= -1 && d <= 0 && !done.m3){
+    const m3FenetrePassee = d<=-2 || (d===-1 && nowH>=10);
+    if(seanceEcoulee && d >= -1 && d <= 0 && !done.m3 && (!isConfirme || m3FenetrePassee)){
       actions.push({
         rdv, client,
         key: 'm3',
