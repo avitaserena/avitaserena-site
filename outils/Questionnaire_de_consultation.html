@@ -103,6 +103,20 @@ body{
   .nav-btn.active{border-bottom-color:var(--ocre)}
 }
 
+/* ── MINUTEUR CIRCULAIRE (style pomodoro) ── */
+.pomo-timer{display:flex;align-items:center;gap:9px;background:var(--grege);border:1.5px solid var(--taupe);border-radius:99px;padding:5px 8px 5px 6px;transition:background .3s,border-color .3s}
+.pomo-ring{flex-shrink:0;display:block}
+.pomo-ring-track{fill:none;stroke:var(--taupe);stroke-width:4}
+.pomo-ring-progress{fill:none;stroke:var(--ocre);stroke-width:4;stroke-linecap:round;stroke-dasharray:94.25;stroke-dashoffset:0;transition:stroke-dashoffset 1s linear,stroke .4s}
+.pomo-info{display:flex;flex-direction:column;line-height:1.15;min-width:56px}
+.pomo-time{font-family:'DM Mono',monospace;font-size:14px;font-weight:600;color:var(--ardoise);letter-spacing:.01em}
+.pomo-pct{font-size:10px;color:var(--gris);font-weight:600;letter-spacing:.02em}
+.pomo-controls{display:flex;align-items:center;gap:3px;margin-left:1px}
+.pomo-controls button{background:transparent;border:none;color:var(--gris);cursor:pointer;padding:4px;font-family:inherit;line-height:1;display:flex;align-items:center;justify-content:center;border-radius:99px}
+.pomo-controls button:hover{background:var(--taupe)}
+.pomo-controls .pomo-play{background:var(--ardoise);color:var(--blanc);width:24px;height:24px}
+.pomo-controls .pomo-play:hover{background:var(--ocre)}
+
 /* ── PROGRESS ── */
 .progress-wrap{padding:20px 40px 0;background:transparent}
 .progress-bar{height:6px;background:var(--taupe);border-radius:var(--r99);margin-bottom:0;overflow:hidden}
@@ -582,15 +596,23 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
         <path d="M120.54,42.59h6.46l-8.47,29.04s-1.82,5.64,1.82,3.73,6.3-5.6,6.3-5.6l-.84,1.5s-5.8,10.44-11.84,8.29c-5.1-1.82,6.56-36.97,6.56-36.97Z"/>
       </svg></div>
   <div style="display:flex;align-items:center;gap:10px">
-    <!-- ── CHRONOMÈTRE 90 MIN ── -->
-    <div id="timer-wrap" style="display:flex;align-items:center;gap:8px;background:var(--grege);border:1.5px solid var(--taupe);border-radius:99px;padding:7px 16px;transition:background .3s,border-color .3s">
-      <span style="font-size:14px">⏱</span>
-      <span id="timer-display" style="font-family:'DM Mono',monospace;font-size:15px;font-weight:500;color:var(--ardoise);letter-spacing:.02em;min-width:48px;text-align:center">1:30:00</span>
-      <button id="timer-btn" onclick="timerToggle()" style="background:var(--ardoise);color:var(--blanc);border:none;border-radius:99px;padding:3px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">▶ Démarrer</button>
-      <button onclick="timerReset()" style="background:transparent;color:var(--gris);border:none;cursor:pointer;font-size:13px;padding:2px 4px;font-family:inherit" title="Remettre à zéro">↺</button>
+    <!-- ── MINUTEUR CIRCULAIRE 90 MIN — démarre automatiquement à l'arrivée sur la page ── -->
+    <div id="timer-wrap" class="pomo-timer" title="Chronomètre de La Révélation — 90 minutes, démarre automatiquement">
+      <svg class="pomo-ring" width="34" height="34" viewBox="0 0 34 34" aria-hidden="true">
+        <circle class="pomo-ring-track" cx="17" cy="17" r="15"/>
+        <circle class="pomo-ring-progress" id="timer-ring" cx="17" cy="17" r="15" transform="rotate(-90 17 17)"/>
+      </svg>
+      <div class="pomo-info">
+        <span id="timer-display" class="pomo-time">1:30:00</span>
+        <span id="timer-pct" class="pomo-pct">0% écoulés</span>
+      </div>
+      <div class="pomo-controls">
+        <button id="timer-btn" class="pomo-play" onclick="timerToggle()" title="Mettre en pause / reprendre" aria-label="Mettre en pause ou reprendre le chronomètre"><svg id="timer-btn-icon" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg></button>
+        <button onclick="timerReset()" title="Remettre à zéro" aria-label="Remettre le chronomètre à zéro"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><polyline points="3,4 3,9 8,9"/></svg></button>
+      </div>
     </div>
     <button class="btn-pause" onclick="nouvelleCliente()" title="Effacer et démarrer un nouveau questionnaire" style="background:var(--rouge-clair);border-color:var(--rouge);color:var(--rouge);font-weight:700">✦ Nouvelle cliente</button>
-    <button class="btn-pause" onclick="ouvrirPause()" title="Mettre en pause et reprendre plus tard">⏸ Pause</button>
+    <button class="btn-pause" onclick="ouvrirPause()" title="Mettre en pause et reprendre plus tard"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px" aria-hidden="true"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg> Pause</button>
     <div class="hdr-counter" id="hdr-counter" title="Champs remplis">0 notes</div>
     <button onclick="configurerCleAPI()" title="Configurer la clé API Anthropic (nécessaire pour le résumé narratif automatique en fiche cliente)" style="background:none;border:1px solid var(--taupe);color:var(--gris);border-radius:99px;padding:6px 12px;font-size:11px;cursor:pointer;font-family:'Inter',sans-serif;display:flex;align-items:center;gap:5px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7.5" cy="15.5" r="5.5"/><path d="M21 2l-9.6 9.6M15.5 7.5l3 3L22 7l-3-3"/></svg> Clé API</button>
     <div id="spec-alert" title="Ce repérage précoce s'appuie uniquement sur les réponses déjà données — le détail apparaîtra en encadré, plus loin, dans la section thématique concernée." style="display:none;font-size:11px;font-weight:700;background:var(--ocre);color:var(--blanc);padding:5px 13px;border-radius:99px;animation:pulseAlert 2s infinite"></div>
@@ -6835,18 +6857,25 @@ function updateImacFrise(val) {
   marker.style.background = color;
 }
 
-/* ── CHRONOMÈTRE 90 MIN ── */
+/* ── MINUTEUR CIRCULAIRE 90 MIN (style pomodoro) ── */
 let timerTotal = 90 * 60; // secondes
 let timerRemaining = timerTotal;
 let timerInterval = null;
 let timerRunning = false;
+const TIMER_RING_R = 15;
+const TIMER_RING_CIRC = 2 * Math.PI * TIMER_RING_R; // ≈ 94.25
+
+const ICON_PAUSE = '<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>';
+const ICON_PLAY = '<polygon points="6,4 20,12 6,20"/>';
 
 function timerToggle() {
+  const icon = document.getElementById('timer-btn-icon');
   const btn = document.getElementById('timer-btn');
   if (timerRunning) {
     clearInterval(timerInterval);
     timerRunning = false;
-    if (btn) btn.textContent = '▶ Reprendre';
+    if (icon) icon.innerHTML = ICON_PLAY;
+    if (btn) btn.title = 'Reprendre le chronomètre';
   } else {
     if (timerRemaining <= 0) { timerReset(); }
     timerInterval = setInterval(() => {
@@ -6859,8 +6888,14 @@ function timerToggle() {
       }
     }, 1000);
     timerRunning = true;
-    if (btn) btn.textContent = '⏸ Pause';
+    if (icon) icon.innerHTML = ICON_PAUSE;
+    if (btn) btn.title = 'Mettre en pause le chronomètre';
   }
+}
+
+// Démarrage automatique à l'arrivée sur la page — pour ne jamais oublier de le déclencher
+function timerAutoStart() {
+  if (!timerRunning && timerRemaining === timerTotal) timerToggle();
 }
 
 function timerReset() {
@@ -6868,29 +6903,50 @@ function timerReset() {
   timerRunning = false;
   timerRemaining = timerTotal;
   timerRender();
+  const icon = document.getElementById('timer-btn-icon');
+  if (icon) icon.innerHTML = ICON_PLAY;
   const btn = document.getElementById('timer-btn');
-  if (btn) btn.textContent = '▶ Démarrer';
+  if (btn) btn.title = 'Démarrer le chronomètre';
   const wrap = document.getElementById('timer-wrap');
   if (wrap) { wrap.style.background = ''; wrap.style.borderColor = ''; }
   const disp = document.getElementById('timer-display');
   if (disp) disp.style.color = 'var(--ardoise)';
+  const pctEl = document.getElementById('timer-pct');
+  if (pctEl) { pctEl.textContent = '0% écoulés'; pctEl.style.color = 'var(--gris)'; }
+  const ring = document.getElementById('timer-ring');
+  if (ring) { ring.style.stroke = 'var(--ocre)'; ring.style.strokeDashoffset = '0'; }
 }
 
 function timerRender() {
   const disp = document.getElementById('timer-display');
   const wrap = document.getElementById('timer-wrap');
+  const ring = document.getElementById('timer-ring');
+  const pctEl = document.getElementById('timer-pct');
   if (!disp) return;
   const h = Math.floor(timerRemaining / 3600);
   const m = Math.floor((timerRemaining % 3600) / 60);
   const s = timerRemaining % 60;
   const txt = (h > 0 ? h + ':' : '') + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
   disp.textContent = txt;
+
+  // Le ring s'égraine (se vide) au fil du temps, comme un minuteur pomodoro,
+  // pendant que le % de remplissage grimpe en contrepoint.
+  const elapsed = timerTotal - timerRemaining;
+  const frac = Math.min(1, Math.max(0, elapsed / timerTotal));
+  const pct = Math.round(frac * 100);
+  if (pctEl) pctEl.textContent = pct + '% écoulés';
+  if (ring) ring.style.strokeDashoffset = (TIMER_RING_CIRC * frac).toFixed(2);
+
   // Rouge quand < 20 min
   if (timerRemaining <= 20 * 60 && timerRemaining > 0) {
     disp.style.color = '#C03030';
+    if (pctEl) pctEl.style.color = '#C03030';
+    if (ring) ring.style.stroke = '#C03030';
     if (wrap) { wrap.style.background = '#FFF0F0'; wrap.style.borderColor = '#D94F4F'; }
   } else {
     disp.style.color = 'var(--ardoise)';
+    if (pctEl) pctEl.style.color = 'var(--gris)';
+    if (ring) ring.style.stroke = 'var(--ocre)';
     if (wrap) { wrap.style.background = ''; wrap.style.borderColor = ''; }
   }
 }
@@ -6898,8 +6954,14 @@ function timerRender() {
 function timerAlert() {
   const disp = document.getElementById('timer-display');
   const wrap = document.getElementById('timer-wrap');
+  const ring = document.getElementById('timer-ring');
+  const pctEl = document.getElementById('timer-pct');
+  const icon = document.getElementById('timer-btn-icon');
   if (disp) { disp.textContent = '0:00:00'; disp.style.color = '#C03030'; }
+  if (pctEl) { pctEl.textContent = '100% écoulés'; pctEl.style.color = '#C03030'; }
+  if (ring) { ring.style.stroke = '#C03030'; ring.style.strokeDashoffset = TIMER_RING_CIRC.toFixed(2); }
   if (wrap) { wrap.style.background = '#FFE0E0'; wrap.style.borderColor = '#C03030'; }
+  if (icon) icon.innerHTML = ICON_PLAY;
   // Vibration si disponible
   if (navigator.vibrate) navigator.vibrate([300, 100, 300]);
   showToast('⏰ Temps écoulé — pensez à conclure la séance.');
@@ -9101,7 +9163,7 @@ function supprimerTLEvent(i) {
 }
 
 // Init après chargement DOM
-document.addEventListener('DOMContentLoaded', () => { showAuthGate('praticienne', () => { removeAuthGate(); initTLQuickChips(); }); });
+document.addEventListener('DOMContentLoaded', () => { showAuthGate('praticienne', () => { removeAuthGate(); initTLQuickChips(); timerAutoStart(); }); });
 
 </script>
 
