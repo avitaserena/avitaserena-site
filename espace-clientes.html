@@ -545,6 +545,16 @@ body{-webkit-font-smoothing:antialiased}
 .checkin-pill:active{transform:scale(.94)}
 .checkin-save:not(:disabled):active{transform:scale(.97)}
 
+/* ─── RAPPORT DE PROGRESSION (lettre narrative de Sabrina, J+90/180/270) ─── */
+.rapport-prog-card{background:var(--ardoise);border-radius:20px;padding:24px 22px;margin:0 0 16px;position:relative;cursor:pointer;transition:transform .25s ease}
+.rapport-prog-card:active{transform:scale(.985)}
+.rapport-prog-badge{position:absolute;top:18px;right:20px;background:var(--ocre);color:#fff;font-size:10px;font-weight:700;letter-spacing:.06em;padding:4px 10px;border-radius:99px}
+.rapport-prog-eyebrow{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:20px;color:var(--sable);margin-bottom:8px;line-height:1.3;padding-right:70px}
+.rapport-prog-excerpt{font-size:13.5px;color:rgba(255,255,255,.8);line-height:1.7;margin:0}
+.rapport-prog-excerpt.full p{margin:0 0 14px}
+.rapport-prog-excerpt.full p:last-child{margin-bottom:0}
+.rapport-prog-toggle{display:inline-block;margin-top:14px;font-size:12.5px;color:var(--ocre-vif,#C89F73);font-weight:600;font-family:'Be Vietnam Pro',sans-serif}
+
 /* ─── JALONS (cartes monochromes, alignées sur .db-card) ─── */
 .jalon-card{background:var(--blanc);border:1px solid var(--taupe);border-radius:18px;padding:20px;display:flex;align-items:center;gap:14px;transition:all .3s}
 .jalon-card:hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(0,0,0,.08)}
@@ -1300,6 +1310,11 @@ a,button{-webkit-tap-highlight-color:transparent}
 
     <!-- Bilan de progression -->
     <div class="db2-section-title">Votre progression</div>
+
+    <!-- Rapport de progression narratif (lettre de Sabrina, J+90/180/270) — au-dessus du
+         bilan chiffré ci-dessous, qui reste le résumé calculé depuis vos check-ins. -->
+    <div id="rapportProgBox" style="display:none;margin:0 var(--gutter) 16px"></div>
+
     <div class="bilan-tabs" id="bilanTabs">
       <button class="bilan-tab on" data-jours="30" onclick="afficherBilan(30,this)">1 mois</button>
       <button class="bilan-tab" data-jours="60" onclick="afficherBilan(60,this)">2 mois</button>
@@ -3653,6 +3668,7 @@ async function initDashboard(){
   renderCheckinRapide();
   renderVitalityRing();
   loadJalons();
+  loadRapportProgression();
   loadRappelComplements();
   notifShowBannerIfEligible();
   verifierRetourLuma();
@@ -5327,6 +5343,79 @@ function renderMiniChart() {
 
   drawLine(energies,'#C4A882','rgba(196,168,130,.15)');
   drawLine(bienetre,'rgba(138,154,130,.7)','rgba(138,154,130,.08)');
+}
+
+// ── RAPPORT DE PROGRESSION NARRATIF (lettre de Sabrina, J+90/180/270) ────
+var _rapportProgActuel = null; // { id, contenu, vue_par_cliente }
+var _rapportProgOuvert = false;
+
+async function loadRapportProgression(){
+  var session = avsGetSession();
+  var box = document.getElementById('rapportProgBox');
+  if(!session.key || !box) return;
+  try {
+    var token = await Auth.getValidAccessToken();
+    var res = await fetch(SUPA_URL + '/rest/v1/lettres_cliniques?client_key=eq.' + encodeURIComponent(session.key) +
+      '&type_seance=eq.rapport_progression&statut=eq.envoyee&order=sent_at.desc&limit=1', {
+      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (token || SUPA_KEY) }
+    });
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    var rows = await res.json();
+    if(!rows.length){ box.style.display='none'; return; }
+    _rapportProgActuel = rows[0];
+    _rapportProgOuvert = false;
+    renderRapportProgression();
+    box.style.display = 'block';
+  } catch(e){
+    console.warn('Rapport de progression non chargé :', e);
+  }
+}
+
+function renderRapportProgression(){
+  var box = document.getElementById('rapportProgBox');
+  if(!box || !_rapportProgActuel) return;
+  var r = _rapportProgActuel;
+  var badge = (!r.vue_par_cliente) ? '<span class="rapport-prog-badge">Nouveau</span>' : '';
+  var paragraphes = (r.contenu||'').split(/\n\s*\n/).filter(function(p){return p.trim();});
+
+  if(!_rapportProgOuvert){
+    var extrait = paragraphes[0] || '';
+    box.innerHTML =
+      '<div class="rapport-prog-card" onclick="ouvrirRapportProgression()">' + badge +
+        '<div class="rapport-prog-eyebrow">Le mot de Sabrina</div>' +
+        '<p class="rapport-prog-excerpt">' + escHtml(extrait).slice(0,180) + (extrait.length>180?'…':'') + '</p>' +
+        '<span class="rapport-prog-toggle">Lire mon bilan de progression →</span>' +
+      '</div>';
+  } else {
+    box.innerHTML =
+      '<div class="rapport-prog-card" onclick="fermerRapportProgression(event)">' +
+        '<div class="rapport-prog-eyebrow">Le mot de Sabrina</div>' +
+        '<div class="rapport-prog-excerpt full">' + paragraphes.map(function(p){ return '<p>'+escHtml(p)+'</p>'; }).join('') + '</div>' +
+        '<span class="rapport-prog-toggle">Réduire ↑</span>' +
+      '</div>';
+  }
+}
+
+async function ouvrirRapportProgression(){
+  _rapportProgOuvert = true;
+  renderRapportProgression();
+  if(_rapportProgActuel && !_rapportProgActuel.vue_par_cliente){
+    _rapportProgActuel.vue_par_cliente = true;
+    try {
+      var token = await Auth.getValidAccessToken();
+      await fetch(SUPA_URL + '/rest/v1/lettres_cliniques?id=eq.' + encodeURIComponent(_rapportProgActuel.id), {
+        method: 'PATCH',
+        headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (token || SUPA_KEY), 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ vue_par_cliente: true, vue_at: new Date().toISOString() })
+      });
+    } catch(e){ console.warn('Marquage lecture non enregistré :', e); }
+  }
+}
+
+function fermerRapportProgression(e){
+  if(e) e.stopPropagation();
+  _rapportProgOuvert = false;
+  renderRapportProgression();
 }
 
 // ── BILAN DE PROGRESSION (1 / 2 / 3 / 6 mois) ───────────────

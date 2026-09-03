@@ -1187,6 +1187,15 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <div class="success-item"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px"><path d="M10 14a3.5 3.5 0 0 0 5 0l3-3a3.5 3.5 0 0 0-5-5l-1 1"/><path d="M14 10a3.5 3.5 0 0 0-5 0l-3 3a3.5 3.5 0 0 0 5 5l1-1"/></svg><span>Le lien de connexion vous sera transmis dans le même email</span></div>
     <div class="success-item"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/></svg><span>Votre bilan personnalisé vous sera envoyé sous 24h après la séance</span></div>
   </div>
+  <!-- Ajouter au Google Agenda — lien généré côté client, indépendant de l'agenda de Sabrina.
+       Visible uniquement si un créneau réel a été choisi (pas pour une confirmation verrouillée
+       "à planifier", cf. confirmerParcoursVerrouille()). -->
+  <div id="success-calendrier-box" style="display:none;max-width:400px;margin:0 auto 28px">
+    <a id="success-calendrier-link" href="#" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:9px;background:transparent;color:var(--ardoise);border:1.5px solid var(--taupe,#D9D2C5);padding:12px 22px;border-radius:99px;font-size:13px;font-weight:700;text-decoration:none;font-family:'Be Vietnam Pro',sans-serif">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>
+      Ajouter à mon Google Agenda
+    </a>
+  </div>
   <!-- Bloc A Luma activé — visible uniquement si l'option a été cochée -->
   <div id="success-luma-box" style="display:none;background:var(--ardoise);border-radius:14px;padding:22px 24px;max-width:480px;margin:0 auto 28px;text-align:left">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
@@ -1733,7 +1742,44 @@ function afficherSucces() {
   // Afficher le bloc A Luma uniquement si l'option a été cochée
   var lumaBox = document.getElementById('success-luma-box');
   if(lumaBox) lumaBox.style.display = state.lumaOption ? 'block' : 'none';
+  genererLienGoogleAgenda();
   window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// Génère un lien "Ajouter à mon Google Agenda" pour LA CLIENTE — totalement indépendant
+// de l'agenda de Sabrina (aucune invitation, aucun événement partagé). Elle choisit
+// elle-même de l'ajouter ; l'objet est le libellé générique demandé par Sabrina, puisqu'ici
+// il n'y a plus de conflit avec le titre détaillé que Sabrina garde de son côté (accord du
+// 03/09/2026 — cf. google-calendar-push, qui ne touche plus du tout à cette invitation).
+function genererLienGoogleAgenda() {
+  var box = document.getElementById('success-calendrier-box');
+  var link = document.getElementById('success-calendrier-link');
+  if(!box || !link) return;
+
+  // Pas de créneau réel (confirmation verrouillée "à planifier") : rien à proposer.
+  if(!state.creneauDate || !state.creneauHeure){ box.style.display='none'; return; }
+
+  var dureeMin = (state.prestaId === 'bilan' || ['alba','aria','ora'].indexOf(state.prestaId) >= 0) ? 90 : 45;
+
+  var debut = new Date(state.creneauDate + 'T' + state.creneauHeure + ':00');
+  var fin = new Date(debut.getTime() + dureeMin * 60000);
+
+  function fmt(d) {
+    return d.getFullYear() + String(d.getMonth()+1).padStart(2,'0') + String(d.getDate()).padStart(2,'0') +
+      'T' + String(d.getHours()).padStart(2,'0') + String(d.getMinutes()).padStart(2,'0') + '00';
+  }
+
+  var params = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: 'RDV de naturopathie avec Sabrina — A Vita Serena',
+    dates: fmt(debut) + '/' + fmt(fin),
+    details: 'Votre rendez-vous avec Sabrina Castelli, A Vita Serena.\n\nLien de la consultation : https://meet.google.com/nqw-rpwq-rvi',
+    location: 'https://meet.google.com/nqw-rpwq-rvi',
+    ctz: 'Europe/Paris'
+  });
+
+  link.href = 'https://calendar.google.com/calendar/render?' + params.toString();
+  box.style.display = 'block';
 }
 
 /* ══════════════════════════════
