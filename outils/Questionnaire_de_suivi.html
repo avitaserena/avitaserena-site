@@ -2235,7 +2235,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setDefaultDate();
     renderDiagnosticsList();
     renderChirurgiesList();
-    timerAutoStart();
+    timerAutoStartOrRestore();
     // Arrivée depuis le CRM : on charge le dossier de la cliente plutôt qu'un brouillon
     // sans rapport qui traînerait dans ce navigateur.
     const arriveeDepuisCRM = prefillFromCRM();
@@ -3202,7 +3202,7 @@ function sauvegarderMaintenant() {
 }
 
 /* ══════════════════════════════════════════════════════
-   MINUTEUR CIRCULAIRE 45 MIN (style pomodoro)
+   MINUTEUR CIRCULAIRE 45 MIN (style pomodoro) — persistant (survit à un F5)
 ══════════════════════════════════════════════════════ */
 let timerTotal = 45 * 60; // secondes
 let timerRemaining = timerTotal;
@@ -3210,38 +3210,103 @@ let timerInterval = null;
 let timerRunning = false;
 const TIMER_RING_R = 15;
 const TIMER_RING_CIRC = 2 * Math.PI * TIMER_RING_R; // ≈ 94.25
+const TIMER_STORE_KEY = 'avita_timer_suivi';
+const TIMER_MAX_STALE_MS = 6 * 3600 * 1000; // au-delà, on considère la sauvegarde périmée
 
 const ICON_PAUSE = '<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>';
 const ICON_PLAY = '<polygon points="6,4 20,12 6,20"/>';
 
-function timerToggle() {
-  const icon = document.getElementById('timer-btn-icon');
-  const btn = document.getElementById('timer-btn');
-  if (timerRunning) {
-    clearInterval(timerInterval);
-    timerRunning = false;
-    if (icon) icon.innerHTML = ICON_PLAY;
-    if (btn) btn.title = 'Reprendre le chronomètre';
-  } else {
-    if (timerRemaining <= 0) { timerReset(); }
-    timerInterval = setInterval(() => {
-      timerRemaining--;
-      timerRender();
-      if (timerRemaining <= 0) {
-        clearInterval(timerInterval);
-        timerRunning = false;
-        timerAlert();
-      }
-    }, 1000);
-    timerRunning = true;
-    if (icon) icon.innerHTML = ICON_PAUSE;
-    if (btn) btn.title = 'Mettre en pause le chronomètre';
-  }
+// Identifiant de la cliente en cours (URL CRM), pour ne jamais reprendre le minuteur d'une autre cliente
+function timerClientTag() {
+  try { return new URLSearchParams(window.location.search).get('client_id') || ''; }
+  catch(e) { return ''; }
 }
 
-// Démarrage automatique à l'arrivée sur la page — pour ne jamais oublier de le déclencher
-function timerAutoStart() {
-  if (!timerRunning && timerRemaining === timerTotal) timerToggle();
+function timerSave() {
+  try {
+    localStorage.setItem(TIMER_STORE_KEY, JSON.stringify({
+      remaining: timerRemaining, running: timerRunning,
+      savedAt: Date.now(), client: timerClientTag()
+    }));
+  } catch(e) {}
+}
+
+function timerClearSave() {
+  try { localStorage.removeItem(TIMER_STORE_KEY); } catch(e) {}
+}
+
+function timerStart() {
+  if (timerRemaining <= 0) { timerReset(); }
+  timerInterval = setInterval(() => {
+    timerRemaining--;
+    timerRender();
+    timerSave();
+    if (timerRemaining <= 0) {
+      clearInterval(timerInterval);
+      timerRunning = false;
+      timerAlert();
+    }
+  }, 1000);
+  timerRunning = true;
+  const icon = document.getElementById('timer-btn-icon');
+  if (icon) icon.innerHTML = ICON_PAUSE;
+  const btn = document.getElementById('timer-btn');
+  if (btn) btn.title = 'Mettre en pause le chronomètre';
+  timerSave();
+}
+
+function timerPause() {
+  clearInterval(timerInterval);
+  timerRunning = false;
+  const icon = document.getElementById('timer-btn-icon');
+  if (icon) icon.innerHTML = ICON_PLAY;
+  const btn = document.getElementById('timer-btn');
+  if (btn) btn.title = 'Reprendre le chronomètre';
+  timerSave();
+}
+
+function timerToggle() {
+  if (timerRunning) { timerPause(); } else { timerStart(); }
+}
+
+// Démarrage automatique à l'arrivée sur la page — reprend le décompte là où il en était
+// après un rechargement (F5), ou démarre une séance neuve si rien n'est mémorisé
+// (ou si la sauvegarde appartient à une autre cliente / est trop ancienne).
+function timerAutoStartOrRestore() {
+  let saved = null;
+  try {
+    const raw = localStorage.getItem(TIMER_STORE_KEY);
+    if (raw) saved = JSON.parse(raw);
+  } catch(e) {}
+
+  const valid = saved
+    && typeof saved.remaining === 'number'
+    && saved.client === timerClientTag()
+    && (Date.now() - saved.savedAt) < TIMER_MAX_STALE_MS;
+
+  if (!valid) { timerStart(); return; }
+
+  let remaining = saved.remaining;
+  if (saved.running) {
+    const elapsedSinceSave = Math.max(0, Math.floor((Date.now() - saved.savedAt) / 1000));
+    remaining -= elapsedSinceSave;
+  }
+  timerRemaining = Math.min(timerTotal, Math.max(0, remaining));
+  timerRender();
+
+  if (timerRemaining <= 0) {
+    timerRunning = false;
+    timerAlert();
+  } else if (saved.running) {
+    timerStart(); // reprend automatiquement le décompte, même après un F5
+  } else {
+    // Elle avait mis en pause volontairement : on respecte la pause, on ne relance pas seul
+    timerRunning = false;
+    const icon = document.getElementById('timer-btn-icon');
+    if (icon) icon.innerHTML = ICON_PLAY;
+    const btn = document.getElementById('timer-btn');
+    if (btn) btn.title = 'Reprendre le chronomètre';
+  }
 }
 
 function timerReset() {
@@ -3261,6 +3326,7 @@ function timerReset() {
   if (pctEl) { pctEl.textContent = '0% écoulés'; pctEl.style.color = 'var(--gris)'; }
   const ring = document.getElementById('timer-ring');
   if (ring) { ring.style.stroke = 'var(--ocre)'; ring.style.strokeDashoffset = '0'; }
+  timerClearSave();
 }
 
 function timerRender() {
@@ -3308,6 +3374,7 @@ function timerAlert() {
   if (ring) { ring.style.stroke = '#C03030'; ring.style.strokeDashoffset = TIMER_RING_CIRC.toFixed(2); }
   if (wrap) { wrap.style.background = '#FFE0E0'; wrap.style.borderColor = '#C03030'; }
   if (icon) icon.innerHTML = ICON_PLAY;
+  timerSave();
   if (navigator.vibrate) navigator.vibrate([300, 100, 300]);
   toast('⏰ Temps écoulé — pensez à conclure la séance.');
 }
