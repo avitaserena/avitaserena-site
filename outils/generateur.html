@@ -1272,7 +1272,12 @@ function buildClientData() {
   // sans dupliquer la logique de buildPrompt(). ──
   if (s._type_consultation === 'suivi') {
     const entete = `── SÉANCE DE SUIVI N°${s._num_suivi || '?'} (pas une première consultation — protocole à ajuster, pas à recréer de zéro) ──`;
-    s.symptomes_coches = [entete, s.symptomes_coches, s.symptomes_evolution, s.observance_detail].filter(Boolean).join('\n');
+    // ── FAILLE CORRIGÉE (04/09/2026) : les médicaments nouveaux/arrêtés, les signaux/observance
+    // cochés en suivi et un changement de statut tabac étaient captés côté questionnaire de suivi
+    // (correctif du même jour) mais jamais lus ici — donc jamais transmis au prompt de génération.
+    // On les rattache à symptomes_coches (signaux) et textes_libres (médicaments/contexte), exactement
+    // comme pour la consultation initiale. ──
+    s.symptomes_coches = [entete, s.symptomes_coches, s.symptomes_evolution, s.observance_detail, s.checklist_signaux].filter(Boolean).join('\n');
     s.scores = [s.scores_evolution, s.scores].filter(Boolean).join('\n') || s.scores;
     s.synthese_praticien = [
       s.message_cle && `Message clé de la praticienne : ${s.message_cle}`,
@@ -1282,8 +1287,17 @@ function buildClientData() {
       s.intuition_clinique,
       s.notes_libres,
     ].filter(Boolean).join('\n');
+    // ── FAILLE CORRIGÉE (04/09/2026) : les nouveaux antécédents chirurgicaux ajoutés en suivi
+    // (ex. endométriose opérée entre deux séances, non prévue à la consultation initiale) étaient
+    // bien sauvegardés dans le dossier (s.chirurgies, pour l'écran "Nouvel antécédent chirurgical")
+    // mais jamais lus ici — donc jamais transmis au prompt de génération du PHV, contrairement à ce
+    // que le questionnaire de suivi annonce à la praticienne. ──
+    const chirurgiesTxt = Array.isArray(s.chirurgies) && s.chirurgies.length
+      ? s.chirurgies.map(c => `${c.type}${c.moisAnnee ? ' (' + c.moisAnnee + ')' : ''}${c.ressenti ? ' — ' + c.ressenti : ''}`).join('\n')
+      : '';
     s.textes_libres = [
       s.textes_libres,
+      chirurgiesTxt && `Antécédent(s) chirurgical/chirurgicaux signalé(s) en suivi (à intégrer au terrain, cf. anesthésie/antibiotiques post-opératoires/immobilisation) : ${chirurgiesTxt}`,
       s.proto_maintien && `Protocole précédent à MAINTENIR : ${s.proto_maintien}`,
       s.proto_arret && `Protocole précédent à ARRÊTER : ${s.proto_arret}`,
       s.proto_ajout && `À AJOUTER par rapport au protocole précédent : ${s.proto_ajout}`,
@@ -1294,6 +1308,15 @@ function buildClientData() {
       s.bilans_a_venir && `Bilans à venir déjà prévus : ${s.bilans_a_venir}`,
       s.objectif_actuel && `Objectif actuel de la cliente : ${s.objectif_actuel}`,
       s.questions_prochaine && `À vérifier à la prochaine séance : ${s.questions_prochaine}`,
+      s.medicaments_nouveaux && `Nouveaux médicaments prescrits depuis la dernière séance (RÈGLE N°48 si IPP/metformine) : ${s.medicaments_nouveaux}`,
+      s.medicaments_arretes && `Médicaments arrêtés depuis la dernière séance : ${s.medicaments_arretes}`,
+      s.contexte_tabac_change && `Changement de statut tabac depuis la consultation initiale : ${s.contexte_tabac_change}`,
+      // ── ÉLARGI (04/09/2026) : nouveau examen/chirurgie/événement de vie signalé dans un bloc
+      // spécialité du suivi (SIBO, endométriose, SOPK, ménopause...), et notes libres associées —
+      // même logique que les médicaments, généralisée à toute problématique thématique. ──
+      s.nouveaux_elements_axes && `Éléments nouveaux signalés par axe depuis la consultation initiale (examens, chirurgies, événements de vie) : ${s.nouveaux_elements_axes}`,
+      s.notes_libres_axes && `Notes libres par axe (séance de suivi) : ${s.notes_libres_axes}`,
+      s.modif_hormonale && `Modification contraception/hormones depuis la dernière séance : ${s.modif_hormonale}${s.impact_hormonal ? ' — impact perçu : ' + s.impact_hormonal : ''}`,
     ].filter(Boolean).join('\n');
   }
 
@@ -3363,6 +3386,22 @@ Cette RÈGLE porte uniquement sur LA LECTURE d'un bilan de neuroinflammation qua
 3. LIEN FERRITINE BASSE — SYNDROME DES JAMBES SANS REPOS (voir aussi banque RÈGLE N°5, entrée Fer bisglycinate, et point 4 de la grille fer déjà existante) : si un syndrome des jambes sans repos/impatiences nocturnes est rapporté, toujours vérifier si une ferritine basse est déjà connue ou à investiguer — c'est une des causes les mieux documentées de ce syndrome, y compris en l'absence d'anémie. Ne jamais supplémenter en fer sans dosage confirmé (garde-fou déjà existant), mais toujours relier explicitement les deux éléments pour la cliente/les parents s'ils sont tous deux présents dans le dossier, plutôt que de les traiter comme deux signes séparés.
 
 4. ⛔️ RAPPEL DE SÉCURITÉ ENFANT (cohérent avec le garde-fou déjà existant en RÈGLE N°31 point 8c) : jamais de dosage biologique nommé aux parents, jamais de suggestion de modifier un traitement médical en cours, jamais de terme diagnostique. L'accompagnement naturopathique reste un complément au suivi pédiatrique/médical, jamais un substitut — à rappeler explicitement dans le PHV si le tableau clinique est complexe ou associe plusieurs signes d'alerte (comme au point 2 ci-dessus).
+
+━━ RÈGLE N°48 — DÉFICITS NUTRITIONNELS INDUITS PAR TRAITEMENT MÉDICAMENTEUX (IPP, METFORMINE) : TOUJOURS TRADUIRE EN ORIENTATION NUTRITIONNELLE DANS LE PHV ━━
+
+1. PRINCIPE : si un traitement à risque de déplétion nutritionnelle connue est coché/renseigné dans le questionnaire (IPP, metformine — liste amenée à s'enrichir), intégrer systématiquement l'orientation nutritionnelle correspondante dans le PHV, en langage client accessible, jamais avec une valeur de dosage biologique nommée. Ne jamais suggérer l'arrêt ou la modification du traitement (garde-fou déjà existant RÈGLE N°6) — orientation nutritionnelle uniquement, en complément du traitement, jamais en remplacement.
+
+2. IPP (oméprazole, pantoprazole, ésoméprazole) → l'acidité gastrique réduite perturbe l'absorption du magnésium, du fer, de la B12 et du zinc :
+   - Orienter vers des formes bien absorbées : magnésium bisglycinate, B12 méthylée (méthylcobalamine), zinc bisglycinate/picolinate ; fer bisglycinate uniquement si carence confirmée par un dosage biologique (jamais de fer sans bilan préalable, voir RÈGLE N°5/N°47 point 3).
+   - Expliquer le pourquoi à la cliente en langage accessible : « Votre traitement réduit l'acidité de votre estomac, ce qui rend plus difficile l'absorption de plusieurs minéraux et vitamines — c'est pour ça que je vous propose ce soutien en parallèle. »
+   - Se relie à la cascade déjà décrite en RÈGLE N°23 (hypochlorhydrie, dysbiose de putréfaction) si cet axe est également retenu — ne jamais dupliquer, fusionner l'explication.
+
+3. METFORMINE → déplétion progressive en B12, quasi systématique en usage prolongé, indépendamment de toute autre cause digestive :
+   - Orienter vers une B12 méthylée (méthylcobalamine), marques préférées Energetica Natura ou Nutrilogics.
+   - Expliquer le pourquoi à la cliente : « Votre traitement diminue peu à peu l'absorption de la vitamine B12, ce qui peut expliquer une fatigue ou des picotements aux extrémités qu'on n'aurait pas forcément reliés à ce médicament. »
+   - Si une interaction berbérine/metformine est déjà traitée par ailleurs (RÈGLE N°14 point 2, contexte SOPK), ne pas dupliquer l'explication du traitement lui-même — relier les deux informations en un seul passage cohérent dans le PHV.
+
+4. Ces soutiens comptent dans le total de 2-3 compléments maximum (RÈGLE N°5) — ne jamais les ajouter en plus des autres soutiens déjà retenus pour d'autres axes sans reconsidérer la priorisation globale du protocole.
 
 ━━ RÈGLE N°1quater — SÉCURITÉ JSON (IMPÉRATIF, NE JAMAIS ENFREINDRE) ━━
 Le texte que tu rédiges est intégré tel quel dans des valeurs de chaîne JSON. Pour que le document ne casse JAMAIS techniquement :
