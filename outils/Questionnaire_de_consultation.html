@@ -7780,6 +7780,22 @@ function collectAllData() {
   // Champs de sécurité — transmis tels quels au générateur (Règle N°6), jamais à ressaisir
   d.secu_grossesse = document.getElementById('secu-grossesse')?.value || '';
   d.secu_cancer = document.getElementById('secu-cancer')?.value || '';
+  // ── FAILLE CORRIGÉE (04/09/2026, audit pré-lancement) : ces 5 champs de sécurité étaient
+  // remplis dans le questionnaire mais jamais capturés nommément — seulement noyés dans le
+  // balayage générique des selects (d.selects, texte brut jamais reparsé côté générateur).
+  // Résultat concret : le filtre de sécurité aromathérapie de generateur.html (profilAroma)
+  // ne les recevait JAMAIS en pré-remplissage et les traitait par défaut comme "Non" (aucune
+  // restriction), pas comme "à vérifier" — c'est l'inverse de la philosophie de sécurité
+  // affichée à la praticienne pour ces mêmes champs. Capturés ici nommément pour que
+  // generateur.html puisse les pré-remplir dans prefillParams(), jamais à ressaisir. ──
+  d.secu_epilepsie = document.getElementById('secu-epilepsie')?.value || '';
+  d.secu_asthme = document.getElementById('secu-asthme')?.value || '';
+  d.secu_renal = document.getElementById('secu-renal')?.value || '';
+  d.secu_hepatique = document.getElementById('secu-hepatique')?.value || '';
+  d.secu_allergie_he = document.getElementById('secu-allergie-he')?.value || '';
+  // FAILLE CORRIGÉE (04/09/2026, audit pré-lancement) : jour du cycle affiché dans la roue
+  // interactive mais jamais sauvegardé nulle part (mineur — valeur contextuelle au jour J).
+  d.jour_cycle_consultation = document.getElementById('c-jour-actuel')?.value || '';
   // Tabac — capturé explicitement par id (26/08/2026) pour le pré-remplissage fiable de la
   // puce "Ne fume pas" du questionnaire de suivi ; ne pas dépendre du balayage générique
   // ci-dessous (risque de mauvais étiquetage si un autre label précède dans le même bloc).

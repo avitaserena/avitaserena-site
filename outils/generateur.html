@@ -1140,7 +1140,7 @@ function renderSessionCard() {
     ['Objectif 6 mois', d.objectif_6mois || '—'],
     ['Pathologies pressenties (détectées)', d.pathologies_pressenties ? d.pathologies_pressenties.split('\n')[0] + (d.pathologies_pressenties.includes('\n') ? '…' : '') : '—'],
     ['Bilans recommandés', d.bilans_recommandes || '—'],
-    ['Sécurité importée', [d.secu_grossesse, d.secu_cancer, d.traitements_vigilance, d.allergies_alim].filter(Boolean).join(' · ') || 'Aucune donnée de sécurité importée — à vérifier ci-dessous'],
+    ['Sécurité importée', [d.secu_grossesse, d.secu_cancer, d.traitements_vigilance, d.allergies_alim, d.secu_epilepsie==='Oui'?'Épilepsie':'', d.secu_asthme && d.secu_asthme!=='Non'?'Asthme':'', d.secu_renal==='Oui'?'Insuff. rénale':'', d.secu_hepatique==='Oui'?'Insuff. hépatique':'', d.secu_allergie_he==='Oui'?'Allergie HE':''].filter(Boolean).join(' · ') || 'Aucune donnée de sécurité importée — à vérifier ci-dessous'],
   ];
   // Compter les champs réellement remplis (utiles)
   const richFields = ['prenom','age','duree_symptomes','motifs','mots_cles','objectif_6mois','scores',
@@ -1198,6 +1198,25 @@ function prefillParams() {
   if (sg && !sg.value && sessionData.secu_grossesse) sg.value = sessionData.secu_grossesse;
   const sc = document.getElementById('secu-cancer');
   if (sc && !sc.value && sessionData.secu_cancer) sc.value = sessionData.secu_cancer;
+  // ── FAILLE CORRIGÉE (04/09/2026, audit pré-lancement) : ces 5 champs de sécurité (épilepsie,
+  // asthme, insuffisance rénale/hépatique, allergie HE) sont saisis dans le questionnaire mais
+  // n'étaient JAMAIS pré-remplis ici — contrairement à secu-grossesse/secu-cancer juste au-dessus,
+  // malgré le même commentaire "jamais à ressaisir". Pire : un champ resté vide est traité par
+  // profilAroma comme "Non" (aucune restriction), pas comme "à vérifier" — donc l'absence de
+  // pré-remplissage pouvait faire disparaître silencieusement une restriction déjà connue. ──
+  const seMap = { 'secu-epilepsie': 'secu_epilepsie', 'secu-asthme': 'secu_asthme', 'secu-renal': 'secu_renal', 'secu-hepatique': 'secu_hepatique', 'secu-allergie-he': 'secu_allergie_he' };
+  Object.entries(seMap).forEach(([elId, key]) => {
+    const el = document.getElementById(elId);
+    if (el && !el.value && sessionData[key]) el.value = sessionData[key];
+  });
+  // FAILLE CORRIGÉE (04/09/2026, audit pré-lancement) : le programme (Alba/Aria/Ora) choisi à la
+  // consultation initiale n'était jamais repris en suivi — la praticienne devait le resélectionner
+  // manuellement à chaque séance, avec un risque réel d'incohérence si la durée diffère par erreur.
+  const dp = document.getElementById('duree-prog');
+  if (dp && !dp.value && sessionData.programme) {
+    const match = [...dp.options].find(o => o.value === sessionData.programme || o.textContent.trim() === sessionData.programme);
+    if (match) dp.value = match.value;
+  }
   if (sessionData.traitements_vigilance) {
     const valeurs = sessionData.traitements_vigilance.split(',').map(s => s.trim()).filter(Boolean);
     document.querySelectorAll('#secu-traitements-group .p-toggle').forEach(btn => {
@@ -1295,8 +1314,21 @@ function buildClientData() {
     const chirurgiesTxt = Array.isArray(s.chirurgies) && s.chirurgies.length
       ? s.chirurgies.map(c => `${c.type}${c.moisAnnee ? ' (' + c.moisAnnee + ')' : ''}${c.ressenti ? ' — ' + c.ressenti : ''}`).join('\n')
       : '';
+    // ── FAILLE CORRIGÉE (04/09/2026, audit pré-lancement) : motifs/objectif initiaux, ce qui avait
+    // été prescrit à l'origine (alimentation + hygiène de vie), le ressenti global et le score
+    // d'observance alimentaire étaient tous capturés côté questionnaire de suivi mais jamais lus
+    // ici — donc invisibles du prompt de génération. Sans ça, l'IA régénère un PHV sans savoir ni
+    // pourquoi la cliente est venue à l'origine, ni ce qui lui a déjà été prescrit. ──
+    s.synthese_praticien = [
+      s.synthese_praticien,
+      s.motifs_initiaux && `Motif(s) initial(aux) de consultation (rappel) : ${s.motifs_initiaux}`,
+      s.objectif_initial && `Objectif initial fixé en consultation : ${s.objectif_initial}`,
+      s.ressenti_global && `Ressenti global exprimé par la cliente à cette séance : ${s.ressenti_global}`,
+      s.observance_alim_score && `Score d'observance alimentaire auto-évalué : ${s.observance_alim_score}`,
+    ].filter(Boolean).join('\n');
     s.textes_libres = [
       s.textes_libres,
+      (s.alim_prescrite_initiale || s.hv_prescrit_initial) && `Prescrit à l'origine (consultation initiale) — Alimentation : ${s.alim_prescrite_initiale || '—'} / Hygiène de vie : ${s.hv_prescrit_initial || '—'}`,
       chirurgiesTxt && `Antécédent(s) chirurgical/chirurgicaux signalé(s) en suivi (à intégrer au terrain, cf. anesthésie/antibiotiques post-opératoires/immobilisation) : ${chirurgiesTxt}`,
       s.proto_maintien && `Protocole précédent à MAINTENIR : ${s.proto_maintien}`,
       s.proto_arret && `Protocole précédent à ARRÊTER : ${s.proto_arret}`,
@@ -1416,6 +1448,10 @@ function buildClientData() {
     // le PHV client, seulement une orientation générale de terrain si pertinent. ──
     chanbio_terrains: s.chanbio_terrains || '',
     chanbio_notes: s.chanbio_notes || '',
+    // FAILLE CORRIGÉE (04/09/2026, audit pré-lancement) : traitements liés à un diagnostic précis
+    // (saisis via la popup "En bref" des antécédents — date, statut, effets), capturés côté
+    // questionnaire depuis le 30/08/2026 mais jamais lus ici jusqu'à présent.
+    diag_traitements: s.diag_traitements || '',
     // Paramètres du protocole
     axes_prioritaires: axesSelectionnes,
     duree_prog: gv('duree-prog'),
@@ -1611,6 +1647,7 @@ ${d.bilans_biologiques_resultats || '— Aucun résultat enregistré pour le mom
 Cliente : ${d.prenom}${d.age ? ', ' + d.age + ' ans' : ''} · Profil : ${d.profil}
 Diagnostics médicaux confirmés : ${d.diagnostics_confirmes || 'Aucun renseigné'}${d.sibo_type ? ' · Type de SIBO : ' + d.sibo_type : ''}${d.candidose_profil ? ' · Profil protocole candidose : ' + d.candidose_profil : ''}
 Antécédents résolus (non actifs) : ${d.antecedents_resolus || '—'}
+Traitements liés à un diagnostic précis (date, statut, effets rapportés) : ${d.diag_traitements || '—'}
 Durée des déséquilibres : ${d.duree_symptomes}
 Ressentis & motifs : ${d.motifs}
 Scores de vitalité : ${d.scores}
@@ -3110,6 +3147,7 @@ Cette RÈGLE porte uniquement sur LA LECTURE d'un bilan de stress/biorythmes sal
 Cliente : ${d.prenom}${d.nom ? ' ' + d.nom : ''}${d.age ? ', ' + d.age + ' ans' : ''} · Profil : ${d.profil}
 Diagnostics médicaux confirmés : ${d.diagnostics_confirmes || 'Aucun renseigné — travailler sur les symptômes et axes prioritaires uniquement'}${d.sibo_type ? ' · Type de SIBO : ' + d.sibo_type : ''}${d.candidose_profil ? ' · Profil protocole candidose : ' + d.candidose_profil : ''}
 Antécédents médicaux résolus, NON ACTIFS actuellement (${d.antecedents_resolus ? 'à mentionner seulement si utile au contexte, JAMAIS comme axe de travail actif ni motif de recommandation de complément/soutien ciblé' : 'aucun renseigné'}) : ${d.antecedents_resolus || '—'}
+Traitements liés à un diagnostic précis, date/statut/effets rapportés (utile pour ne pas re-proposer une approche déjà testée sans le dire, cf. RÈGLE N°6) : ${d.diag_traitements || '—'}
 Approches déjà testées avant cette consultation (ne pas répéter à l'identique sans le dire) : ${d.approches_testees || 'Non renseigné'}
 Objectifs exprimés (par ordre de priorité) :
 1. ${d.obj_1 && d.obj_1 !== '(aucun)' ? d.obj_1 : d.objectif_6mois || 'Non précisé'}

@@ -1709,6 +1709,51 @@ select.fi{height:44px;cursor:pointer}
             </select>
           </div>
         </div>
+        <!-- FAILLE CORRIGÉE (04/09/2026, audit pré-lancement) : ces 5 champs existaient dans le
+        questionnaire de consultation et alimentent le filtre de sécurité aromathérapie de
+        generateur.html (profilAroma), mais n'existaient pas du tout ici — jamais réaffichés ni
+        re-confirmables à une séance de suivi, et jamais retransmis au générateur depuis une
+        session de suivi. -->
+        <div class="g2" style="margin-top:10px">
+          <div><label class="fl" style="font-weight:400;text-transform:none;letter-spacing:0;font-size:12px">Épilepsie / ATCD de troubles convulsifs</label>
+            <select class="fi" id="secu-epilepsie">
+              <option value="">— À préciser —</option>
+              <option>Non</option>
+              <option>Oui</option>
+            </select>
+          </div>
+          <div><label class="fl" style="font-weight:400;text-transform:none;letter-spacing:0;font-size:12px">Asthme</label>
+            <select class="fi" id="secu-asthme">
+              <option value="">— À préciser —</option>
+              <option>Non</option>
+              <option>Oui — sans avis allergologue</option>
+              <option>Oui — avis allergologue obtenu</option>
+            </select>
+          </div>
+        </div>
+        <div class="g2" style="margin-top:10px">
+          <div><label class="fl" style="font-weight:400;text-transform:none;letter-spacing:0;font-size:12px">Insuffisance rénale</label>
+            <select class="fi" id="secu-renal">
+              <option value="">— À préciser —</option>
+              <option>Non</option>
+              <option>Oui</option>
+            </select>
+          </div>
+          <div><label class="fl" style="font-weight:400;text-transform:none;letter-spacing:0;font-size:12px">Insuffisance hépatique / hépatite</label>
+            <select class="fi" id="secu-hepatique">
+              <option value="">— À préciser —</option>
+              <option>Non</option>
+              <option>Oui</option>
+            </select>
+          </div>
+        </div>
+        <div style="margin-top:10px;max-width:340px"><label class="fl" style="font-weight:400;text-transform:none;letter-spacing:0;font-size:12px">Allergie connue aux huiles essentielles</label>
+          <select class="fi" id="secu-allergie-he">
+            <option value="">— À préciser —</option>
+            <option>Non</option>
+            <option>Oui</option>
+          </select>
+        </div>
         <div style="margin-top:10px"><label class="fl" style="font-weight:400;text-transform:none;letter-spacing:0;font-size:12px">Traitements en cours nécessitant une vigilance particulière</label>
           <div class="chip-wrap" id="cons-secu-traitements-group">
             <button class="chip" onclick="toggleChip(this)"><span class="ck">✓</span> Anticoagulants</button>
@@ -2839,7 +2884,11 @@ async function chargerDossierSupabase() {
       // Champs cumulatifs qu'il ne faut jamais laisser un maillon récent écraser s'ils sont vides dedans :
       // si le dossier récent n'a pas redéfini un champ de sécurité (ex: laissé vide par erreur),
       // on retombe sur la valeur connue depuis la consultation initiale plutôt que de perdre l'info.
-      ['secu_grossesse','secu_cancer','traitements_vigilance','allergies_alim','diagnostics_actifs','antecedents_resolus'].forEach(k => {
+      // FAILLE CORRIGÉE (04/09/2026, audit pré-lancement) : les 5 champs de sécurité ajoutés le même
+      // jour (épilepsie/asthme/rénal/hépatique/allergie HE) manquaient de cette même protection —
+      // un maillon récent avec un de ces champs resté vide aurait pu faire perdre l'info connue
+      // depuis la consultation initiale.
+      ['secu_grossesse','secu_cancer','traitements_vigilance','allergies_alim','diagnostics_actifs','antecedents_resolus','secu_epilepsie','secu_asthme','secu_renal','secu_hepatique','secu_allergie_he'].forEach(k => {
         if (!mergedRow.snapshot[k] && initRow.snapshot && initRow.snapshot[k]) mergedRow.snapshot[k] = initRow.snapshot[k];
       });
     } else {
@@ -2898,6 +2947,14 @@ function afficherBandeauDossier(row, historique) {
   if (sg && !sg.value && snap.secu_grossesse) sg.value = snap.secu_grossesse;
   const sc = document.getElementById('secu-cancer');
   if (sc && !sc.value && snap.secu_cancer) sc.value = snap.secu_cancer;
+  // FAILLE CORRIGÉE (04/09/2026, audit pré-lancement) : mêmes 5 champs que ceux ajoutés au générateur —
+  // épilepsie/asthme/rénal/hépatique/allergie HE — jamais pré-remplis ici auparavant (les champs
+  // eux-mêmes n'existaient même pas dans ce questionnaire avant cette date).
+  const seMapSuivi = { 'secu-epilepsie': 'secu_epilepsie', 'secu-asthme': 'secu_asthme', 'secu-renal': 'secu_renal', 'secu-hepatique': 'secu_hepatique', 'secu-allergie-he': 'secu_allergie_he' };
+  Object.entries(seMapSuivi).forEach(([elId, key]) => {
+    const el = document.getElementById(elId);
+    if (el && !el.value && snap[key]) el.value = snap[key];
+  });
   if (snap.traitements_vigilance) {
     document.querySelectorAll('#cons-secu-traitements-group .chip').forEach(c => {
       const txt = c.textContent.replace('✓','').trim();
@@ -3260,6 +3317,12 @@ function sauvegarderMaintenant() {
     snap.secu_cancer = dc.secuCancer;
     snap.traitements_vigilance = dc.traitementsVigilance;
     snap.allergies_alim = dc.allergiesAlim;
+    // FAILLE CORRIGÉE (04/09/2026, audit pré-lancement) — mêmes 5 champs que ceux ajoutés au générateur.
+    snap.secu_epilepsie = dc.secuEpilepsie;
+    snap.secu_asthme = dc.secuAsthme;
+    snap.secu_renal = dc.secuRenal;
+    snap.secu_hepatique = dc.secuHepatique;
+    snap.secu_allergie_he = dc.secuAllergieHe;
     const specChips = [...document.querySelectorAll('#sec-0 .chip-wrap .chip.on')].map(c=>c.textContent.replace('✓','').trim());
     if (specChips.length) snap.specialites = specChips.join(', ');
   } catch(e) { console.warn('Enrichissement snapshot suivi échoué', e); }
@@ -3701,6 +3764,12 @@ function collectData() {
   d.secuCancer = document.getElementById('secu-cancer')?.value || '';
   d.traitementsVigilance = [...document.querySelectorAll('#cons-secu-traitements-group .chip.on')].map(c => c.textContent.replace('✓','').trim()).join(', ');
   d.allergiesAlim = [...document.querySelectorAll('#cons-allergies-group .chip.on')].map(c => c.textContent.replace('✓','').trim()).join(', ');
+  // FAILLE CORRIGÉE (04/09/2026, audit pré-lancement) — mêmes 5 champs que ceux ajoutés au générateur.
+  d.secuEpilepsie = document.getElementById('secu-epilepsie')?.value || '';
+  d.secuAsthme = document.getElementById('secu-asthme')?.value || '';
+  d.secuRenal = document.getElementById('secu-renal')?.value || '';
+  d.secuHepatique = document.getElementById('secu-hepatique')?.value || '';
+  d.secuAllergieHe = document.getElementById('secu-allergie-he')?.value || '';
 
   // ── FAILLE CORRIGÉE (04/09/2026) — même correctif que celui appliqué à
   // Questionnaire_de_consultation.html le 25/08/2026 : aucune case .check-item cochée de ce
@@ -4034,6 +4103,12 @@ function finalise() {
     secu_cancer: d.secuCancer,
     traitements_vigilance: d.traitementsVigilance,
     allergies_alim: d.allergiesAlim,
+    // FAILLE CORRIGÉE (04/09/2026, audit pré-lancement) — mêmes 5 champs que ceux ajoutés au générateur.
+    secu_epilepsie: d.secuEpilepsie,
+    secu_asthme: d.secuAsthme,
+    secu_renal: d.secuRenal,
+    secu_hepatique: d.secuHepatique,
+    secu_allergie_he: d.secuAllergieHe,
 
     // Médicaments & contexte (04/09/2026) — jusque-là jamais transmis au générateur PHV,
     // voir FAILLE CORRIGÉE dans collectData(). Repris par generateur.html dans son bloc
