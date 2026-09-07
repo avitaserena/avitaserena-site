@@ -7652,7 +7652,7 @@ function updateCounter() {
   el.dataset.prev = count;
   const specs = detecterSpecialites();
   if (typeof detecterTerrainsChanbio === 'function') detecterTerrainsChanbio(specs);
-  if (typeof detecterMecanismesTransversaux === 'function') detecterMecanismesTransversaux();
+  if (typeof detecterMecanismesTransversaux === 'function') detecterMecanismesTransversaux(specs);
 }
 
 document.addEventListener('input', updateCounter);
@@ -9282,13 +9282,72 @@ const MECANISMES = [
     condition: (diagsLower) => immunoChipOn('inflammation systémique') && compterDiagsAutoImmuns(diagsLower) >= 1,
     pourquoi: "Le chip IBG coché en plus d'un diagnostic auto-immun/inflammatoire signale un terrain de fond (acides gras déséquilibrés, vitamine D, stress oxydatif) qui aggrave tout le reste — RÈGLE N°30, à présenter comme un terrain à calmer, jamais comme un diagnostic supplémentaire.",
     phrase: "<b>Ce que vous pouvez dire à voix haute</b>Au-delà de vos diagnostics précis, votre corps montre aussi les signes d'une inflammation de fond plus diffuse — fatigue, douleurs qui migrent, ce genre de choses. Ce n'est pas une maladie en soi, c'est un terrain qu'on peut calmer avec les bons acides gras, la vitamine D et une meilleure gestion du stress oxydatif, et ça aidera l'ensemble de vos autres axes en même temps."
+  },
+  {
+    id: 'insulino_metabo',
+    label: 'Insulino-résistance — hub métabolique transversal',
+    condition: (diagsLower, specs) => {
+      const signaux = [
+        hasDiag(diagsLower, 'diabète de type 2'), hasDiag(diagsLower, 'hypercholestérolémie'),
+        hasDiag(diagsLower, 'hypertension'), hasDiag(diagsLower, 'sopk'), specs.has('sopk')
+      ].filter(Boolean).length;
+      return signaux >= 2;
+    },
+    pourquoi: "Diabète de type 2, cholestérol, tension et SOPK partagent très souvent la même racine : une résistance à l'insuline (RÈGLE N°29) — les traiter comme 4 sujets séparés fait perdre le fil conducteur le plus actionnable.",
+    phrase: "<b>Ce que vous pouvez dire à voix haute</b>Plusieurs choses qu'on vient de nommer — le sucre, le cholestérol, la tension, [le SOPK] — ont souvent un point commun : vos cellules répondent moins bien à l'insuline, l'hormone qui fait entrer le sucre dans vos cellules. Le corps compense en en fabriquant plus, ce qui dérègle plusieurs équilibres à la fois. C'est pour ça qu'on va travailler sur ce terrain commun plutôt que sur chaque symptôme séparément."
+  },
+  {
+    id: 'hyperoestro',
+    label: 'Excès d\'imprégnation œstrogénique — hub hormonal transversal',
+    condition: (diagsLower, specs) => specs.has('hyperoestro') && (hasDiag(diagsLower, 'endométriose') || hasDiag(diagsLower, 'sopk') || hasDiag(diagsLower, 'fibrome') || hasDiag(diagsLower, 'adénomyose')),
+    pourquoi: "Endométriose, fibromes, adénomyose et certains profils de SOPK peuvent tous être amplifiés par un excès d'œstrogènes relatif (production, détox hépatique, ou déconjugaison intestinale — RÈGLE N°18) — un seul axe de causes à investiguer plutôt que plusieurs diagnostics isolés.",
+    phrase: "<b>Ce que vous pouvez dire à voix haute</b>Ce qu'on vient de voir a un dénominateur commun : un excès relatif d'œstrogènes dans votre corps, qui peut venir de plusieurs sources — le foie qui les élimine moins bien, l'intestin qui les remet en circulation, ou une production simplement plus abondante. On va chercher ensemble la source précise chez vous, plutôt que de traiter chaque symptôme comme s'il n'avait rien à voir avec les autres."
+  },
+  {
+    id: 'cortisol_transversal',
+    label: 'Stress chronique / cortisol — hub transversal',
+    condition: (diagsLower, specs) => specs.has('surr') && (hasDiag(diagsLower, 'hashimoto') || hasDiag(diagsLower, 'hypothyroïdie') || specs.has('hashi') || specs.has('amenorrhee')),
+    pourquoi: "Une fatigue surrénalienne/un cortisol chronique perturbé ralentit la conversion de l'hormone thyroïdienne active et peut couper l'axe hormonal féminin (RÈGLE N°12/N°26) — un seul terrain de fond explique souvent plusieurs plaintes qui semblent indépendantes.",
+    phrase: "<b>Ce que vous pouvez dire à voix haute</b>Votre corps gère un stress chronique depuis un moment, et ça a des répercussions qu'on ne devine pas forcément au premier abord : ça peut ralentir votre thyroïde et perturber vos cycles. Ce n'est pas trois problèmes séparés, c'est votre système de gestion du stress qui tire sur plusieurs cordes à la fois."
+  },
+  {
+    id: 'thyroide_metabo',
+    label: 'Axe thyroïdien-métabolique',
+    condition: (diagsLower, specs) => (hasDiag(diagsLower, 'hashimoto') || hasDiag(diagsLower, 'hypothyroïdie') || specs.has('hashi')) && (hasDiag(diagsLower, 'diabète') || hasDiag(diagsLower, 'hypercholestérolémie') || hasDiag(diagsLower, 'hypertension')),
+    pourquoi: "Une hypothyroïdie, même fonctionnelle avec une TSH \"normale\", ralentit le métabolisme de base et aggrave la résistance à l'insuline (RÈGLE N°11/N°29) — utile à relier explicitement pour la cliente plutôt que de laisser croire à deux sujets sans rapport.",
+    phrase: "<b>Ce que vous pouvez dire à voix haute</b>Votre thyroïde et votre métabolisme du sucre/du cholestérol communiquent en permanence : quand la thyroïde tourne au ralenti, tout le métabolisme ralentit avec elle, ce qui peut expliquer une partie de ce qu'on vient de voir ensemble."
+  },
+  {
+    id: 'dysbiose_hub',
+    label: 'Dysbiose intestinale — hub digestif transversal',
+    condition: (diagsLower, specs) => {
+      const signaux = [hasDiag(diagsLower, 'sibo'), specs.has('sibo'), specs.has('sii'), hasDiag(diagsLower, 'candidose')].filter(Boolean).length;
+      return signaux >= 2;
+    },
+    pourquoi: "SIBO, SII et candidose partagent un terrain de déséquilibre du microbiote qui s'auto-entretient (RÈGLE N°21-24) — présenter comme un seul terrain digestif à rééquilibrer, jamais comme des pathologies concurrentes à traiter chacune de son côté.",
+    phrase: "<b>Ce que vous pouvez dire à voix haute</b>Ce que vous décrivez au niveau digestif se recoupe beaucoup : ce sont souvent les mêmes déséquilibres du microbiote qui s'expriment de façons différentes selon le moment. On va travailler sur l'écosystème intestinal dans son ensemble plutôt que sur chaque symptôme isolément."
+  },
+  {
+    id: 'histamine_transversal',
+    label: 'Histaminose transversale',
+    condition: (diagsLower, specs) => (hasDiag(diagsLower, 'histaminose') || trigCheckCoche('antihistaminiques')) && (specs.has('sibo') || hasDiag(diagsLower, 'urticaire') || hasDiag(diagsLower, 'eczéma')),
+    pourquoi: "Un terrain histaminique se nourrit souvent d'un déséquilibre digestif (SIBO notamment, certaines bactéries produisant de l'histamine) — RÈGLE N°38, à relier explicitement plutôt que de traiter les symptômes cutanés/digestifs séparément.",
+    phrase: "<b>Ce que vous pouvez dire à voix haute</b>Vos réactions cutanées et digestives peuvent avoir un point commun : l'histamine, une molécule que votre corps gère moins bien en ce moment, souvent à cause d'un déséquilibre du microbiote. En travaillant sur l'intestin, on agit aussi sur cette sensibilité."
+  },
+  {
+    id: 'meno_cardio',
+    label: 'Déclin hormonal & risque cardiovasculaire (ménopause)',
+    condition: (diagsLower, specs) => (hasDiag(diagsLower, 'ménopause') || specs.has('meno')) && (hasDiag(diagsLower, 'hypercholestérolémie') || hasDiag(diagsLower, 'hypertension')),
+    pourquoi: "Les œstrogènes protègent le système cardiovasculaire ; leur déclin en ménopause explique une part de la dégradation du profil lipidique/tensionnel souvent observée à cette période — utile à nommer pour désamorcer l'inquiétude d'un \"nouveau problème\" isolé.",
+    phrase: "<b>Ce que vous pouvez dire à voix haute</b>Ce qu'on observe sur votre cholestérol/tension n'est pas un nouveau souci indépendant : les œstrogènes protègent naturellement le système cardiovasculaire, et leur baisse à la ménopause peut expliquer une partie de cette évolution. C'est un axe qu'on va accompagner comme les autres."
   }
 ];
 
-function detecterMecanismesTransversaux() {
+function detecterMecanismesTransversaux(specs) {
+  specs = specs || new Set();
   const diagsLower = getDiagsActuels();
   const actifs = MECANISMES.filter(m => {
-    try { return m.condition(diagsLower); } catch (e) { return false; }
+    try { return m.condition(diagsLower, specs); } catch (e) { return false; }
   });
   const panel = document.getElementById('float-meca');
   const body = document.getElementById('float-meca-body');
