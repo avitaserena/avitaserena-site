@@ -3661,7 +3661,7 @@ async function rdvConfirmer(dStr, heure) {
         email: session.email || '',
         date: dStr,
         time: heure,
-        type: 'Consultation de suivi (parcours)',
+        type: 'suivi', // Code court — voir RDV_TYPE_LABELS, doit rester identique à crm.html (#nr-type), agenda.html, reservation.html et stripe-webhook
         status: 'attente',
         notes: 'Reprogrammé par la cliente depuis son espace cliente.',
         parcours: session.programme || null,
@@ -3710,6 +3710,21 @@ async function initDashboard(){
 // et volontaire, on ne fabrique jamais une étape qui n\'a pas eu lieu.
 var PROGRAMME_LABELS = { alba:'Alba (3 mois)', aria:'Aria (6 mois)', ora:'Ora (9 mois)' };
 
+// Libellés de type de RDV — DOIT rester identique aux <option> de #nr-type dans crm.html,
+// et aux valeurs envoyées par agenda.html, reservation.html et stripe-webhook (07/09/2026).
+// ⚠️ "initial" existe dans un commentaire de crm.html (dureeParTypeCRM) sans figurer dans le
+// menu #nr-type actuel — à clarifier avec Sabrina ; en attendant, replié sur "Rendez-vous".
+var RDV_TYPE_LABELS = {
+  bilan: 'Bilan de vitalité',
+  suivi: 'Consultation de suivi',
+  alba: 'Programme Alba',
+  aria: 'Programme Aria',
+  ora: 'Programme Ora',
+  autre: 'Autre',
+  initial: 'Bilan de vitalité'
+};
+function labelTypeRdv(code){ return RDV_TYPE_LABELS[code] || code || 'Rendez-vous'; }
+
 function formatDateFriseFr(dateStr){
   // dateStr au format YYYY-MM-DD (colonne date de rendez_vous, ou dérivé d\'un created_at)
   var d = new Date(dateStr+'T12:00:00');
@@ -3753,9 +3768,9 @@ async function chargerFriseParcours(){
     var prochainReel = null;
     mesRdv.forEach(function(r){
       if(r.date < today){
-        passes.push({ date:r.date, titre: r.type || 'Rendez-vous', avenir:false });
+        passes.push({ date:r.date, titre: labelTypeRdv(r.type), avenir:false });
       } else if(!prochainReel){
-        prochainReel = { date:r.date, titre: r.type || 'Rendez-vous', heure:r.time };
+        prochainReel = { date:r.date, titre: labelTypeRdv(r.type), heure:r.time };
       }
     });
 
