@@ -861,6 +861,21 @@ a,button{-webkit-tap-highlight-color:transparent}
 
 /* Symptômes du jour sur dashboard */
 .db2-section-title{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gris);padding:26px var(--gutter) 10px}
+
+/* ── FRISE CHRONOLOGIQUE DU PARCOURS (07/09/2026) ── */
+.frise-parcours{position:relative;padding-left:22px}
+.frise-parcours::before{content:"";position:absolute;left:4px;top:5px;bottom:5px;width:1px;background:var(--taupe)}
+.frise-item{position:relative;padding-bottom:22px}
+.frise-item:last-child{padding-bottom:0}
+.frise-item::before{content:"";position:absolute;left:-22px;top:3px;width:9px;height:9px;border-radius:50%;background:var(--blanc);border:2px solid var(--ocre)}
+.frise-item.avenir::before{border-color:var(--taupe);background:var(--off)}
+.frise-date{font-size:11px;color:var(--ocre);font-weight:700;margin-bottom:2px}
+.frise-item.avenir .frise-date{color:var(--gris)}
+.frise-titre{font-size:14.5px;font-weight:600;color:var(--ardoise);line-height:1.35}
+.frise-item.avenir .frise-titre{color:var(--gris);font-weight:500}
+.frise-sub{font-size:12.5px;color:var(--gris);margin-top:2px}
+.frise-empty{font-size:13.5px;color:var(--gris);padding:4px 0}
+
 .symptomes-today{padding:0 var(--gutter);display:flex;flex-wrap:wrap;gap:8px}
 .symptome-chip-done{display:flex;align-items:center;gap:6px;background:var(--or-clair);border:1px solid rgba(180,144,106,.3);border-radius:99px;padding:7px 14px;font-size:13px;font-weight:500;color:var(--ardoise)}
 .symptome-chip-done svg{width:12px;height:12px;stroke:var(--ocre);fill:none;stroke-width:2.5;stroke-linecap:round;flex-shrink:0}
@@ -1496,6 +1511,18 @@ a,button{-webkit-tap-highlight-color:transparent}
             <a class="db-btn">Voir le protocole →</a>
           </div>
 
+        </div>
+
+        <!-- VOTRE PARCOURS — FRISE CHRONOLOGIQUE (07/09/2026)
+             Toujours visible, dès le Bilan de vitalité seul (pas d'onglet verrouillé) : le compte
+             existe déjà à ce stade. Une cliente en bilan seul n'aura qu'une ligne ; la frise
+             s'allonge automatiquement si elle démarre un parcours puis à chaque suivi réel.
+             Dates 100% factuelles (rendez_vous.date, protocoles_client.created_at) — jamais de
+             texte généré, jamais de date devinée. Si aucun prochain RDV n'est programmé, affiche
+             littéralement "Date à venir" plutôt que d'inventer ou de laisser un vide. -->
+        <div id="friseParcoursSection" style="display:none">
+          <div class="db2-section-title">Votre parcours</div>
+          <div id="friseParcoursBox" style="padding:0 var(--gutter) 8px"></div>
         </div>
 
         <!-- COURBE DE PROGRESSION -->
@@ -3662,6 +3689,7 @@ async function initDashboard(){
   await loadClinicalPoints();
   initAppMobile();
   initDashboardRdv();
+  chargerFriseParcours();
   initDashboardJournal();
   initProgressChart();
   checkNouvelleReponse();
@@ -3673,6 +3701,97 @@ async function initDashboard(){
   notifShowBannerIfEligible();
   verifierRetourLuma();
   setTimeout(setupScrollReveal, 80);
+}
+
+// ── FRISE CHRONOLOGIQUE DU PARCOURS (07/09/2026) ──
+// 100% factuel : lit rendez_vous (dates réelles) et protocoles_client (created_at = date
+// d\'activation réelle du parcours, jamais recopiée sur la date du bilan). Aucune génération de
+// texte, aucune date devinée. Une cliente en bilan seul n\'affichera qu\'une ligne — c\'est normal
+// et volontaire, on ne fabrique jamais une étape qui n\'a pas eu lieu.
+var PROGRAMME_LABELS = { alba:'Alba (3 mois)', aria:'Aria (6 mois)', ora:'Ora (9 mois)' };
+
+function formatDateFriseFr(dateStr){
+  // dateStr au format YYYY-MM-DD (colonne date de rendez_vous, ou dérivé d\'un created_at)
+  var d = new Date(dateStr+'T12:00:00');
+  return d.toLocaleDateString('fr-FR', { day:'numeric', month:'long', year:'numeric', timeZone:'Europe/Paris' });
+}
+
+async function chargerFriseParcours(){
+  var section = document.getElementById('friseParcoursSection');
+  var box = document.getElementById('friseParcoursBox');
+  if(!box || !section) return;
+  var session = avsGetSession();
+  if(!session.key){ section.style.display = 'none'; return; }
+  try {
+    var token = await Auth.getValidAccessToken();
+    var headers = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (token || SUPA_KEY) };
+
+    var email = (session.email||'').toLowerCase();
+    var prenom = (session.prenom||'').toLowerCase();
+    var today = localISO();
+
+    var [resRdv, resProto] = await Promise.all([
+      fetch(SUPA_URL+'/rest/v1/rendez_vous?status=neq.annule&order=date.asc,time.asc', { headers: headers }),
+      fetch(SUPA_URL+'/rest/v1/protocoles_client?client_id=eq.'+encodeURIComponent(session.key)+'&select=data,created_at&order=created_at.asc', { headers: headers })
+    ]);
+    var rdvRows = resRdv.ok ? await resRdv.json() : [];
+    var protoRows = resProto.ok ? await resProto.json() : [];
+
+    // Décision du 07/09/2026 : la frise n'a de sens qu'à partir d'un vrai parcours démarré —
+    // une cliente en bilan seul n'a qu'une ligne, ce n'est pas encore "un parcours" à raconter.
+    // Section entièrement masquée (pas d'état vide visible) tant qu'aucun parcours n'a existé.
+    if(!protoRows || !protoRows.length){ section.style.display = 'none'; return; }
+    section.style.display = '';
+
+    // Filtrer les RDV de cette cliente uniquement (même logique que initDashboardRdv)
+    var mesRdv = (rdvRows||[]).filter(function(r){
+      return (r.email && email && r.email.toLowerCase()===email) ||
+             (r.name && prenom && r.name.toLowerCase().includes(prenom));
+    });
+
+    var passes = [];
+    var prochainReel = null;
+    mesRdv.forEach(function(r){
+      if(r.date < today){
+        passes.push({ date:r.date, titre: r.type || 'Rendez-vous', avenir:false });
+      } else if(!prochainReel){
+        prochainReel = { date:r.date, titre: r.type || 'Rendez-vous', heure:r.time };
+      }
+    });
+
+    (protoRows||[]).forEach(function(p){
+      if(!p.created_at) return;
+      var dateActivation = localISO(new Date(p.created_at));
+      var cle = p.data && p.data.programme_cle;
+      var label = (cle && PROGRAMME_LABELS[cle]) ? 'Démarrage de votre parcours ' + PROGRAMME_LABELS[cle] : 'Démarrage de votre parcours';
+      passes.push({ date: dateActivation, titre: label, avenir:false });
+    });
+
+    passes.sort(function(a,b){ return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+
+    if(!passes.length){ box.innerHTML = '<div class="frise-empty">Votre parcours commencera à apparaître ici dès votre premier rendez-vous.</div>'; return; }
+
+    var html = '<div class="frise-parcours">';
+    passes.forEach(function(e){
+      html += '<div class="frise-item">' +
+        '<div class="frise-date">' + formatDateFriseFr(e.date) + '</div>' +
+        '<div class="frise-titre">' + e.titre + '</div>' +
+      '</div>';
+    });
+    if(prochainReel){
+      html += '<div class="frise-item avenir">' +
+        '<div class="frise-date">' + formatDateFriseFr(prochainReel.date) + (prochainReel.heure ? ' à ' + prochainReel.heure : '') + '</div>' +
+        '<div class="frise-titre">' + prochainReel.titre + '</div>' +
+      '</div>';
+    } else {
+      html += '<div class="frise-item avenir">' +
+        '<div class="frise-date">Date à venir</div>' +
+        '<div class="frise-titre">Prochain rendez-vous</div>' +
+      '</div>';
+    }
+    html += '</div>';
+    box.innerHTML = html;
+  } catch(e){ /* silencieux, comme initDashboardRdv */ }
 }
 
 // Prochain RDV
