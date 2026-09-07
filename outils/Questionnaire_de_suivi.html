@@ -210,6 +210,22 @@ select.fi{height:44px;cursor:pointer}
 .evol-btn.sel-same{background:var(--off);border-color:var(--taupe);color:var(--gris)}
 .evol-btn.sel-down{background:var(--rouge-l);border-color:var(--rouge);color:var(--rouge)}
 
+/* ── SUIVI DES TRAITEMENTS (02/09/2026) — traçabilité de tout traitement médical dans le temps ── */
+.tt-block{margin:0 0 16px;padding:12px 14px 4px;background:var(--off);border:1px dashed var(--taupe);border-radius:14px}
+.tt-block-lbl{font-size:9.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gris);margin-bottom:9px;display:flex;align-items:center;gap:6px}
+.tt-item{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--taupe);border-radius:12px;background:var(--blanc);margin-bottom:8px}
+.tt-top{display:flex;flex-wrap:wrap;align-items:center;gap:10px;width:100%}
+.tt-label{flex:1;min-width:180px;color:var(--ardoise);font-size:12.5px;line-height:1.4;font-weight:600}
+.tt-btns{display:flex;gap:5px;flex-wrap:wrap;flex-shrink:0}
+.tt-btn{padding:6px 11px;border-radius:var(--r99);font-size:10.5px;font-weight:700;cursor:pointer;border:1px solid var(--taupe);background:var(--off);font-family:inherit;transition:all .13s;color:var(--gris)}
+.tt-btn:hover{border-color:rgba(180,144,106,.4)}
+.tt-btn.sel{background:var(--acc-l);border-color:var(--acc);color:var(--acc-d)}
+.tt-btn.sel[data-st="arret"]{background:var(--rouge-l);border-color:var(--rouge);color:var(--rouge)}
+.tt-detail{display:none;flex-basis:100%;padding-top:8px;border-top:1px dashed var(--taupe);margin-top:2px}
+.tt-detail.show{display:block}
+.tt-detail input{width:100%}
+
+
 /* ── SCORES ── */
 .score-compare{background:var(--blanc);border:1px solid var(--taupe);border-radius:16px;overflow:hidden;margin-bottom:16px}
 .sc-hdr{display:grid;grid-template-columns:1.4fr 100px 140px 70px;background:var(--off);border-bottom:1px solid var(--taupe)}
@@ -847,6 +863,24 @@ select.fi{height:44px;cursor:pointer}
       <div class="spec-cluster">
 <div class="spec-block" data-spec="sibo">
     <div class="spec-hdr"><svg class="picto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0" aria-hidden="true"><circle cx="12" cy="12" r="4"/><circle cx="12" cy="4" r="1"/><circle cx="12" cy="20" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="20" cy="12" r="1"/></svg> Suivi SIBO — évolution des marqueurs spécifiques</div>
+    <div class="tt-block">
+      <div class="tt-block-lbl"><svg class="picto" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="9" width="16" height="6" rx="3"/><line x1="12" y1="9" x2="12" y2="15"/></svg> Suivi des traitements médicaux en cours</div>
+      <div class="tt-item" data-tt-label="Antibiotique SIBO (rifaximine, néomycine…)">
+        <div class="tt-top">
+          <div class="tt-label">Antibiotique SIBO (rifaximine, néomycine…)<small>Nom, durée de la cure, date de fin si terminée</small></div>
+          <div class="tt-btns">
+            <button class="tt-btn" type="button" onclick="setTraitement(this,'inchange')">Inchangé</button>
+            <button class="tt-btn" type="button" onclick="setTraitement(this,'dose')">Dose modifiée</button>
+            <button class="tt-btn" type="button" onclick="setTraitement(this,'change')">Traitement changé</button>
+            <button class="tt-btn" type="button" onclick="setTraitement(this,'arret')">Arrêté</button>
+          </div>
+        </div>
+        <div class="tt-detail" data-tt-detail="dose"><input class="fi" placeholder="Nouvelle dose / fréquence"></div>
+        <div class="tt-detail" data-tt-detail="change"><input class="fi" placeholder="Nouveau traitement (nom, dose, depuis quand)"></div>
+        <div class="tt-detail" data-tt-detail="arret"><input class="fi" placeholder="Depuis quand / motif si connu"></div>
+      </div>
+    </div>
+
     <div class="edu-box insight" style="margin-bottom:14px">
       <div class="edu-lbl"><svg class="picto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0" aria-hidden="true"><circle cx="12" cy="9" r="5"/><line x1="10" y1="17" x2="14" y2="17"/><line x1="10" y1="20" x2="14" y2="20"/></svg> Rappel clinique</div>
       <p>Le SIBO se juge sur la convergence de plusieurs signes, pas sur un seul symptôme isolé. Une amélioration partielle (ex. ballonnements en baisse mais transit encore perturbé) est normale en cours de traitement — notez precisément lequel évolue et lequel résiste, ça oriente l'ajustement du protocole antimicrobien.</p>
@@ -975,6 +1009,24 @@ select.fi{height:44px;cursor:pointer}
       <div class="spec-cluster">
 <div class="spec-block" data-spec="endo">
     <div class="spec-hdr"><svg class="picto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0" aria-hidden="true"><path d="M12 3 C16 8 19 11.5 19 15 A7 7 0 1 1 5 15 C5 11.5 8 8 12 3 Z"/></svg> Suivi endométriose — évolution des marqueurs clés</div>
+    <div class="tt-block">
+      <div class="tt-block-lbl"><svg class="picto" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="9" width="16" height="6" rx="3"/><line x1="12" y1="9" x2="12" y2="15"/></svg> Suivi des traitements médicaux en cours</div>
+      <div class="tt-item" data-tt-label="Traitement hormonal (pilule, Dienogest, DIU hormonal…)">
+        <div class="tt-top">
+          <div class="tt-label">Traitement hormonal (pilule, Dienogest, DIU hormonal…)<small>Nom exact et dosage — un changement récent explique souvent une évolution des symptômes</small></div>
+          <div class="tt-btns">
+            <button class="tt-btn" type="button" onclick="setTraitement(this,'inchange')">Inchangé</button>
+            <button class="tt-btn" type="button" onclick="setTraitement(this,'dose')">Dose modifiée</button>
+            <button class="tt-btn" type="button" onclick="setTraitement(this,'change')">Traitement changé</button>
+            <button class="tt-btn" type="button" onclick="setTraitement(this,'arret')">Arrêté</button>
+          </div>
+        </div>
+        <div class="tt-detail" data-tt-detail="dose"><input class="fi" placeholder="Nouvelle dose / fréquence"></div>
+        <div class="tt-detail" data-tt-detail="change"><input class="fi" placeholder="Nouveau traitement (nom, dose, depuis quand)"></div>
+        <div class="tt-detail" data-tt-detail="arret"><input class="fi" placeholder="Depuis quand / motif si connu"></div>
+      </div>
+    </div>
+
     <div class="edu-box insight" style="margin-bottom:14px">
       <div class="edu-lbl"><svg class="picto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0" aria-hidden="true"><circle cx="12" cy="9" r="5"/><line x1="10" y1="17" x2="14" y2="17"/><line x1="10" y1="20" x2="14" y2="20"/></svg> Rappel clinique</div>
       <p>L'endométriose ne se traite pas naturopathiquement — l'accompagnement est anti-inflammatoire et complémentaire au suivi gynécologique, jamais un substitut. Vérifiez systématiquement où en est le suivi médical à chaque séance.</p>
@@ -1007,6 +1059,24 @@ select.fi{height:44px;cursor:pointer}
   </div>
 <div class="spec-block" data-spec="sopk">
     <div class="spec-hdr"><svg class="picto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0" aria-hidden="true"><circle cx="12" cy="12" r="2.3"/><circle cx="12" cy="6" r="2.3"/><circle cx="12" cy="18" r="2.3"/><circle cx="6" cy="12" r="2.3"/><circle cx="18" cy="12" r="2.3"/></svg> Suivi SOPK — évolution des marqueurs clés</div>
+    <div class="tt-block">
+      <div class="tt-block-lbl"><svg class="picto" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="9" width="16" height="6" rx="3"/><line x1="12" y1="9" x2="12" y2="15"/></svg> Suivi des traitements médicaux en cours</div>
+      <div class="tt-item" data-tt-label="Traitement hormonal ou metformine pour le SOPK">
+        <div class="tt-top">
+          <div class="tt-label">Traitement hormonal ou metformine pour le SOPK<small>Nom, dose — si metformine, croiser avec le suivi métabolique</small></div>
+          <div class="tt-btns">
+            <button class="tt-btn" type="button" onclick="setTraitement(this,'inchange')">Inchangé</button>
+            <button class="tt-btn" type="button" onclick="setTraitement(this,'dose')">Dose modifiée</button>
+            <button class="tt-btn" type="button" onclick="setTraitement(this,'change')">Traitement changé</button>
+            <button class="tt-btn" type="button" onclick="setTraitement(this,'arret')">Arrêté</button>
+          </div>
+        </div>
+        <div class="tt-detail" data-tt-detail="dose"><input class="fi" placeholder="Nouvelle dose / fréquence"></div>
+        <div class="tt-detail" data-tt-detail="change"><input class="fi" placeholder="Nouveau traitement (nom, dose, depuis quand)"></div>
+        <div class="tt-detail" data-tt-detail="arret"><input class="fi" placeholder="Depuis quand / motif si connu"></div>
+      </div>
+    </div>
+
     <div class="edu-box insight" style="margin-bottom:14px">
       <div class="edu-lbl"><svg class="picto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0" aria-hidden="true"><circle cx="12" cy="9" r="5"/><line x1="10" y1="17" x2="14" y2="17"/><line x1="10" y1="20" x2="14" y2="20"/></svg> Rappel clinique</div>
       <p>On ne prend pas en charge "le SOPK", on prend en charge une patiente atteinte de SOPK — les causes possibles (insuline, prolactine, progestérone, thyroïde, œstrogènes, stress, inflammation, perturbateurs endocriniens) s'auto-entretiennent en cercle, et les marqueurs n'évoluent pas tous à la même vitesse (la peau réagit vite, le cycle réagit lentement). Rassurer sur ce décalage évite un découragement précoce — vérifier ici le profil dominant retenu en consultation pour suivre les bons marqueurs en priorité.</p>
@@ -1038,6 +1108,24 @@ select.fi{height:44px;cursor:pointer}
   </div>
 <div class="spec-block" data-spec="metabo">
     <div class="spec-hdr"><svg class="picto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0" aria-hidden="true"><circle cx="14" cy="12" r="8"/><line x1="5" y1="4" x2="5" y2="10"/><line x1="3" y1="4" x2="3" y2="8"/><line x1="7" y1="4" x2="7" y2="8"/><line x1="5" y1="10" x2="5" y2="21"/></svg> Suivi métabolique — insulino-résistance & mitochondrie</div>
+    <div class="tt-block">
+      <div class="tt-block-lbl"><svg class="picto" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="9" width="16" height="6" rx="3"/><line x1="12" y1="9" x2="12" y2="15"/></svg> Suivi des traitements médicaux en cours</div>
+      <div class="tt-item" data-tt-label="Metformine ou autre antidiabétique">
+        <div class="tt-top">
+          <div class="tt-label">Metformine ou autre antidiabétique<small>Dose — rappel : la metformine déplète progressivement la B12</small></div>
+          <div class="tt-btns">
+            <button class="tt-btn" type="button" onclick="setTraitement(this,'inchange')">Inchangé</button>
+            <button class="tt-btn" type="button" onclick="setTraitement(this,'dose')">Dose modifiée</button>
+            <button class="tt-btn" type="button" onclick="setTraitement(this,'change')">Traitement changé</button>
+            <button class="tt-btn" type="button" onclick="setTraitement(this,'arret')">Arrêté</button>
+          </div>
+        </div>
+        <div class="tt-detail" data-tt-detail="dose"><input class="fi" placeholder="Nouvelle dose / fréquence"></div>
+        <div class="tt-detail" data-tt-detail="change"><input class="fi" placeholder="Nouveau traitement (nom, dose, depuis quand)"></div>
+        <div class="tt-detail" data-tt-detail="arret"><input class="fi" placeholder="Depuis quand / motif si connu"></div>
+      </div>
+    </div>
+
     <div class="edu-box insight" style="margin-bottom:14px">
       <div class="edu-lbl"><svg class="picto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0" aria-hidden="true"><circle cx="12" cy="9" r="5"/><line x1="10" y1="17" x2="14" y2="17"/><line x1="10" y1="20" x2="14" y2="20"/></svg> Rappel clinique</div>
       <p>La résistance à l'insuline se corrige en deux temps : d'abord les leviers de fond (alimentation, activité physique, magnésium, oméga-3), puis seulement en 2e phase les soutiens plus ciblés (zinc, chrome, berbérine, CoQ10) si le terrain stagne ou si un déficit est confirmé au bilan. Ce bloc s'applique aussi bien hors contexte de SOPK (voir alors plutôt le bloc SOPK ci-dessus si les deux coexistent, ne pas dupliquer le suivi).</p>
@@ -1061,6 +1149,24 @@ select.fi{height:44px;cursor:pointer}
   </div>
 <div class="spec-block" data-spec="meno">
     <div class="spec-hdr"><svg class="picto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0" aria-hidden="true"><circle cx="12" cy="12" r="7"/></svg> Suivi périménopause / ménopause — évolution des marqueurs clés</div>
+    <div class="tt-block">
+      <div class="tt-block-lbl"><svg class="picto" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="9" width="16" height="6" rx="3"/><line x1="12" y1="9" x2="12" y2="15"/></svg> Suivi des traitements médicaux en cours</div>
+      <div class="tt-item" data-tt-label="Traitement hormonal de la ménopause (THS, Duphaston…)">
+        <div class="tt-top">
+          <div class="tt-label">Traitement hormonal de la ménopause (THS, Duphaston…)<small>Nom, dosage, voie d'administration (patch, gel, comprimé)</small></div>
+          <div class="tt-btns">
+            <button class="tt-btn" type="button" onclick="setTraitement(this,'inchange')">Inchangé</button>
+            <button class="tt-btn" type="button" onclick="setTraitement(this,'dose')">Dose modifiée</button>
+            <button class="tt-btn" type="button" onclick="setTraitement(this,'change')">Traitement changé</button>
+            <button class="tt-btn" type="button" onclick="setTraitement(this,'arret')">Arrêté</button>
+          </div>
+        </div>
+        <div class="tt-detail" data-tt-detail="dose"><input class="fi" placeholder="Nouvelle dose / fréquence"></div>
+        <div class="tt-detail" data-tt-detail="change"><input class="fi" placeholder="Nouveau traitement (nom, dose, depuis quand)"></div>
+        <div class="tt-detail" data-tt-detail="arret"><input class="fi" placeholder="Depuis quand / motif si connu"></div>
+      </div>
+    </div>
+
     <div class="edu-box insight" style="margin-bottom:14px">
       <div class="edu-lbl"><svg class="picto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0" aria-hidden="true"><circle cx="12" cy="9" r="5"/><line x1="10" y1="17" x2="14" y2="17"/><line x1="10" y1="20" x2="14" y2="20"/></svg> Rappel clinique</div>
       <p>La périménopause peut durer plusieurs années avec des cycles encore présents mais irréguliers — ne pas attendre l'arrêt complet des règles pour prendre les symptômes au sérieux. Attention à ne pas tout expliquer par « la baisse des œstrogènes » : en début et milieu de périménopause, c'est souvent l'inverse — les œstrogènes fluctuent et peuvent être relativement élevés pendant que la progestérone chute la première, créant un déséquilibre œstroprogestatif plutôt qu'un déficit global. Ce n'est qu'en ménopause confirmée que les deux hormones chutent ensemble. Utilisez les deux sous-groupes de marqueurs ci-dessous pour situer où en est la cliente. Si un THM (traitement hormonal) est envisagé ou en cours, notez-le systématiquement : il modifie l'interprétation de chaque marqueur.</p>
@@ -1105,6 +1211,24 @@ select.fi{height:44px;cursor:pointer}
   </div>
 <div class="spec-block" data-spec="thyroide">
     <div class="spec-hdr"><svg class="picto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0" aria-hidden="true"><ellipse cx="7" cy="9" rx="4" ry="5"/><ellipse cx="17" cy="9" rx="4" ry="5"/><ellipse cx="7" cy="15" rx="3" ry="4"/><ellipse cx="17" cy="15" rx="3" ry="4"/><line x1="12" y1="4" x2="12" y2="20"/></svg> Suivi thyroïdien / Hashimoto — évolution des marqueurs clés</div>
+    <div class="tt-block">
+      <div class="tt-block-lbl"><svg class="picto" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="9" width="16" height="6" rx="3"/><line x1="12" y1="9" x2="12" y2="15"/></svg> Suivi des traitements médicaux en cours</div>
+      <div class="tt-item" data-tt-label="Traitement thyroïdien (Lévothyrox, Euthyrox, Cynomel…)">
+        <div class="tt-top">
+          <div class="tt-label">Traitement thyroïdien (Lévothyrox, Euthyrox, Cynomel…)<small>Dosage en µg — un simple ajustement de dose change beaucoup de choses</small></div>
+          <div class="tt-btns">
+            <button class="tt-btn" type="button" onclick="setTraitement(this,'inchange')">Inchangé</button>
+            <button class="tt-btn" type="button" onclick="setTraitement(this,'dose')">Dose modifiée</button>
+            <button class="tt-btn" type="button" onclick="setTraitement(this,'change')">Traitement changé</button>
+            <button class="tt-btn" type="button" onclick="setTraitement(this,'arret')">Arrêté</button>
+          </div>
+        </div>
+        <div class="tt-detail" data-tt-detail="dose"><input class="fi" placeholder="Nouvelle dose / fréquence"></div>
+        <div class="tt-detail" data-tt-detail="change"><input class="fi" placeholder="Nouveau traitement (nom, dose, depuis quand)"></div>
+        <div class="tt-detail" data-tt-detail="arret"><input class="fi" placeholder="Depuis quand / motif si connu"></div>
+      </div>
+    </div>
+
     <div class="edu-box insight" style="margin-bottom:14px">
       <div class="edu-lbl"><svg class="picto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0" aria-hidden="true"><circle cx="12" cy="9" r="5"/><line x1="10" y1="17" x2="14" y2="17"/><line x1="10" y1="20" x2="14" y2="20"/></svg> Rappel clinique</div>
       <p>La naturopathie ne remplace jamais le traitement thyroïdien — elle soutient la conversion T4→T3 et le terrain auto-immun (intestin, gluten) en complément. Toute évolution ici doit rester en lien avec le suivi endocrinologique.</p>
@@ -1205,6 +1329,52 @@ select.fi{height:44px;cursor:pointer}
       <div class="spec-cluster">
 <div class="spec-block" data-spec="immuno">
     <div class="spec-hdr"><svg class="picto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0" aria-hidden="true"><path d="M12 3 L20 6 L20 12 L12 21 L4 12 L4 6 Z"/></svg> Suivi terrain immunitaire & inflammation de bas grade — évolution des marqueurs clés</div>
+    <div class="tt-block">
+      <div class="tt-block-lbl"><svg class="picto" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="9" width="16" height="6" rx="3"/><line x1="12" y1="9" x2="12" y2="15"/></svg> Suivi des traitements médicaux en cours</div>
+      <div class="tt-item" data-tt-label="AINS (anti-inflammatoire) au long cours">
+        <div class="tt-top">
+          <div class="tt-label">AINS (anti-inflammatoire) au long cours<small>Nom, dose, fréquence réelle si elle a changé depuis le dernier suivi</small></div>
+          <div class="tt-btns">
+            <button class="tt-btn" type="button" onclick="setTraitement(this,'inchange')">Inchangé</button>
+            <button class="tt-btn" type="button" onclick="setTraitement(this,'dose')">Dose modifiée</button>
+            <button class="tt-btn" type="button" onclick="setTraitement(this,'change')">Traitement changé</button>
+            <button class="tt-btn" type="button" onclick="setTraitement(this,'arret')">Arrêté</button>
+          </div>
+        </div>
+        <div class="tt-detail" data-tt-detail="dose"><input class="fi" placeholder="Nouvelle dose / fréquence"></div>
+        <div class="tt-detail" data-tt-detail="change"><input class="fi" placeholder="Nouveau traitement (nom, dose, depuis quand)"></div>
+        <div class="tt-detail" data-tt-detail="arret"><input class="fi" placeholder="Depuis quand / motif si connu"></div>
+      </div>
+      <div class="tt-item" data-tt-label="Corticoïdes de fond (hors cure courte)">
+        <div class="tt-top">
+          <div class="tt-label">Corticoïdes de fond (hors cure courte)<small>Dose actuelle et schéma de décroissance si applicable</small></div>
+          <div class="tt-btns">
+            <button class="tt-btn" type="button" onclick="setTraitement(this,'inchange')">Inchangé</button>
+            <button class="tt-btn" type="button" onclick="setTraitement(this,'dose')">Dose modifiée</button>
+            <button class="tt-btn" type="button" onclick="setTraitement(this,'change')">Traitement changé</button>
+            <button class="tt-btn" type="button" onclick="setTraitement(this,'arret')">Arrêté</button>
+          </div>
+        </div>
+        <div class="tt-detail" data-tt-detail="dose"><input class="fi" placeholder="Nouvelle dose / fréquence"></div>
+        <div class="tt-detail" data-tt-detail="change"><input class="fi" placeholder="Nouveau traitement (nom, dose, depuis quand)"></div>
+        <div class="tt-detail" data-tt-detail="arret"><input class="fi" placeholder="Depuis quand / motif si connu"></div>
+      </div>
+      <div class="tt-item" data-tt-label="Biothérapie / immunosuppresseur (anti-TNF, anti-IL17, méthotrexate…)">
+        <div class="tt-top">
+          <div class="tt-label">Biothérapie / immunosuppresseur (anti-TNF, anti-IL17, méthotrexate…)<small>Nom exact, dose, dernière injection/perfusion — noter aussi si échappement thérapeutique rapporté</small></div>
+          <div class="tt-btns">
+            <button class="tt-btn" type="button" onclick="setTraitement(this,'inchange')">Inchangé</button>
+            <button class="tt-btn" type="button" onclick="setTraitement(this,'dose')">Dose modifiée</button>
+            <button class="tt-btn" type="button" onclick="setTraitement(this,'change')">Traitement changé</button>
+            <button class="tt-btn" type="button" onclick="setTraitement(this,'arret')">Arrêté</button>
+          </div>
+        </div>
+        <div class="tt-detail" data-tt-detail="dose"><input class="fi" placeholder="Nouvelle dose / fréquence"></div>
+        <div class="tt-detail" data-tt-detail="change"><input class="fi" placeholder="Nouveau traitement (nom, dose, depuis quand)"></div>
+        <div class="tt-detail" data-tt-detail="arret"><input class="fi" placeholder="Depuis quand / motif si connu"></div>
+      </div>
+    </div>
+
     <div class="edu-box insight" style="margin-bottom:14px">
       <div class="edu-lbl"><svg class="picto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0" aria-hidden="true"><circle cx="12" cy="9" r="5"/><line x1="10" y1="17" x2="14" y2="17"/><line x1="10" y1="20" x2="14" y2="20"/></svg> Rappel clinique</div>
       <p>La vitamine D est le régulateur central de la balance immunitaire (favorise le Treg, freine TH1/TH2/TH17) — son statut conditionne souvent la vitesse d'évolution de tous les marqueurs ci-dessous. Sans cofacteurs (magnésium notamment), elle s'active mal : croiser systématiquement avec l'observance de la supplémentation.</p>
@@ -2661,6 +2831,25 @@ function setEvol(btn, dir) {
 }
 
 /* ══════════════════════════════════════════════════════
+   SUIVI DES TRAITEMENTS (02/09/2026)
+   Traçabilité de l'évolution de tout traitement médical dans le temps,
+   quel que soit l'axe/spec-block où il apparaît — pour ne jamais reproposer
+   un protocole sur la base d'un traitement qui a changé sans que Sabrina le sache.
+══════════════════════════════════════════════════════ */
+function setTraitement(btn, statut) {
+  const item = btn.closest('.tt-item');
+  if (!item) return;
+  item.querySelectorAll('.tt-btn').forEach(b => { b.classList.remove('sel'); b.removeAttribute('data-st'); });
+  btn.classList.add('sel');
+  btn.setAttribute('data-st', statut);
+  item.dataset.ttStatut = statut;
+  item.querySelectorAll('.tt-detail').forEach(d => d.classList.remove('show'));
+  const det = item.querySelector('.tt-detail[data-tt-detail="'+statut+'"]');
+  if (det) det.classList.add('show');
+  updateCounter(); formTouched = true;
+}
+
+/* ══════════════════════════════════════════════════════
    SUIVI SPÉCIALISÉ — affichage conditionnel selon spécialité(s)
 ══════════════════════════════════════════════════════ */
 const SPEC_MAP = {
@@ -3754,6 +3943,19 @@ function collectData() {
   d.sportPrescrit = document.getElementById('sport-prescrit')?.value||'';
   d.bilansInitiaux = document.getElementById('bilans-demandes')?.value||'';
   d.obsAlimVal = document.getElementById('obs-alim-val')?.textContent||'5';
+
+  // Suivi des traitements (02/09/2026) — tout médicament suivi dans le temps, tous spec-blocks confondus
+  d.suiviTraitements = [];
+  document.querySelectorAll('.tt-item').forEach(item => {
+    const statut = item.dataset.ttStatut || '';
+    if (!statut) return;
+    const detailInput = item.querySelector('.tt-detail.show input');
+    d.suiviTraitements.push({
+      label: item.dataset.ttLabel || '',
+      statut: statut, // 'inchange' | 'dose' | 'change' | 'arret'
+      detail: detailInput ? (detailInput.value || '') : ''
+    });
+  });
 
   // Événements de vie
   d.evenementsVie = [...document.querySelectorAll('.chip.on')].map(c=>c.textContent.replace('✓','').trim()).filter(Boolean);
