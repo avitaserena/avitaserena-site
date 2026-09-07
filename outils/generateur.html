@@ -2246,6 +2246,12 @@ Erreurs à ne JAMAIS commettre :
 - Ne jamais fusionner deux recommandations réellement indépendantes en une seule puce "•" sous prétexte qu'elles se ressemblent (ex. 3 options de petit-déjeuner interchangeables restent 3 puces "•" séparées, car la cliente peut suivre l'une sans les autres).
 - Cette règle s'applique à TOUTES les sections du document qui contiennent des puces (s3_protocole, s4_alimentation, s5_rituels, s7_aromatherapie, "complements" de chaque phase) — jamais seulement aux compléments.
 
+━━ RÈGLE N°49 — SECTION "POURQUOI TOUT EST LIÉ CHEZ VOUS" (fil rouge transversal, 07/09/2026) ━━
+Cette section est DISTINCTE de s1_corps : s1_corps explique le mécanisme de CHAQUE axe pris séparément ; celle-ci n'existe QUE pour nommer le mécanisme COMMUN qui relie plusieurs diagnostics/pathologies entre eux, quand un tel mécanisme est cliniquement réel (hyperperméabilité intestinale reliant plusieurs pathologies auto-immunes/inflammatoires et un traitement type AINS/biothérapie ; excès œstrogénique reliant endométriose/SOPK/fibromes ; insulino-résistance reliant diabète/cholestérol/tension/SOPK ; dysbiose reliant SIBO/SII/candidose ; etc. — mêmes logiques que les RÈGLES déjà détaillées dans ce document, notamment RÈGLE N°25/N°15/N°18/N°29).
+CONDITION STRICTE : ne produire cette section QUE si la cliente a au moins 2 diagnostics/pathologies qui partagent réellement un mécanisme documenté. Si un seul axe est concerné, ou si les diagnostics présents ne partagent aucun mécanisme identifiable, laisser la valeur JSON "pourquoi_lie" en chaîne VIDE ("") — ne JAMAIS forcer artificiellement cette section quand elle n'est pas cliniquement justifiée, ça affaiblirait sa valeur les fois où elle l'est vraiment.
+FORMAT : 3 à 5 phrases maximum, un seul mécanisme nommé clairement (jamais plusieurs mécanismes empilés dans la même section — s'il y en a plusieurs de pertinents, choisir le plus structurant cliniquement pour cette cliente). Ton chaleureux et normalisant : l'objectif est qu'elle comprenne que ce n'est pas plusieurs problèmes séparés qui s'acharnent sur elle, mais un seul terrain qui s'exprime à plusieurs endroits — jamais un ton alarmant.
+Cette section apparaît en tout début de document, avant s1_corps — c'est le fil rouge qui cadre la lecture de tout ce qui suit.
+
 ━━ RÈGLE N°2 — PHILOSOPHIE NATUROPATHE : LA CASCADE ━━
 La naturopathie remonte la chaîne des causes. Le ressenti actuel est le dernier domino.
 Tu as ici la ligne de vie et l'analyse causale du praticien. Utilise-les pour donner du sens aux recommandations et expliquer POURQUOI ces déséquilibres sont apparus.
@@ -3471,6 +3477,8 @@ Réponds UNIQUEMENT avec le JSON pur, sans markdown, sans backticks.
   "prenom": "${d.prenom}",
   "sous_titre": "Protocole d'Hygiène Vitale · [reprendre ici EXACTEMENT la valeur retenue pour duree_suggeree — voir RÈGLE N°10 — jamais une autre formulation]",
 
+  "pourquoi_lie": "Voir RÈGLE N°49. UNIQUEMENT si ≥2 diagnostics/pathologies de cette cliente partagent un mécanisme physiologique commun documenté (hyperperméabilité intestinale, excès œstrogénique, insulino-résistance, dysbiose, etc.) : nommer explicitement ce mécanisme et expliquer en langage accessible comment il relie ses diagnostics entre eux, 3-5 phrases maximum, ton chaleureux et rassurant. Si un seul axe est concerné ou qu'aucun mécanisme commun n'est identifiable, renvoyer une chaîne VIDE : \"\".",
+
   "s1_corps": "COMMENCER par 1-2 phrases repartant de l'objectif exprimé par la cliente. Puis, pour CHAQUE axe prioritaire retenu (autant que le dossier le justifie, jamais plus — voir RÈGLE N°1bis), produire 1 paragraphe compact de cascade EN DEUX TEMPS SEULEMENT (constat → mécanisme), en utilisant la ligne de vie et l'analyse causale pour expliquer POURQUOI ce déséquilibre est apparu. ⚠️ NE PAS inclure de 3e temps 'action'/geste concret dans cette section — elle reste volontairement factuelle (ce qui se passe dans son corps, et pourquoi), sans aucune recommandation pratique : l'action et les gestes concrets sont le rôle exclusif de 's3_protocole' et de 'phases' plus bas, jamais répétés ni anticipés ici. Langage accessible et rigoureux, SANS vocabulaire médical. Terminer par 1 phrase d'élan vers ce qui est possible (une ouverture vers la suite, pas une action à faire). Total de la section : voir le garde-fou de longueur de la RÈGLE N°1bis (3-4 cascades pour un protocole court, jusqu'à 5-6 pour Aria/Ora) et rester dans l'esprit '6-8 pages A4 max' du document entier (RÈGLE N°1).",
 
   "s2_axes": "Présente TOUS les axes prioritaires retenus, en expliquant l'ORDRE PHYSIOLOGIQUE de priorisation qui sous-tend la feuille de route détaillée en 'phases' plus bas (voir RÈGLE N°10bis) — sans entrer dans le détail phase par phase ici, c'est une vue d'ensemble. Pour chaque axe : 1/ son titre, 2/ pourquoi il est retenu (mécanisme), 3/ sa place dans le séquençage global (tout de suite, ou plus tard une fois un autre terrain stabilisé — sans donner de dates précises, c'est le rôle de 'phases'). Paragraphes fluides, personnel, prescriptif. JAMAIS de vocabulaire médical.",
@@ -3620,10 +3628,19 @@ async function generate() {
     generatedData.programme_cle = programmeCleFromDuree(generatedData.duree_suggeree || d.duree_prog);
 
     // Convertir les sections en blocs éditables
-    blocks = [
+    blocks = [];
+    // ── RÈGLE N°49 (07/09/2026) : bloc conditionnel, seulement si l'IA a identifié un
+    // mécanisme transversal réel entre ≥2 diagnostics. Positionné en premier — c'est le fil
+    // rouge qui cadre la lecture de tout le protocole. Éditable comme les autres blocs : si
+    // Sabrina repère une erreur ou veut ajuster la formulation, elle corrige ici avant l'envoi,
+    // exactement comme pour s1/s2/s3... (voir ouvrirProtocole() pour la resynchronisation).
+    if ((generatedData.pourquoi_lie || '').trim()) {
+      blocks.push({ id:'s0', title:'Pourquoi tout est lié chez vous', pilier:'bilan', content: stripMd(generatedData.pourquoi_lie) });
+    }
+    blocks.push(
       { id:'s1', title:'Ce qui se passe dans votre organisme', pilier:'bilan',         content: stripMd(generatedData.s1_corps || '') },
       { id:'s2', title:'Vos axes prioritaires & pourquoi',     pilier:'bilan',         content: stripMd(generatedData.s2_axes || '') },
-    ];
+    );
     // ── Feuille de route par phases (22/08/2026) : un bloc client par phase, contenu pédagogique
     // (pourquoi_cliente + compléments de la phase). Le raisonnement clinique (pourquoi_praticien)
     // n'est PAS mis dans un bloc client — il est affiché séparément dans le panneau praticien
@@ -3967,7 +3984,7 @@ async function ouvrirProtocole() {
   if (!generatedData || !blocks.length) return;
 
   // Synchroniser le contenu édité dans generatedData
-  const map = { s1:'s1_corps', s2:'s2_axes', s3:'s3_protocole', s4:'s4_alimentation', s5:'s5_rituels', s6:'s6_signaux', s7:'s7_aromatherapie', sP:'parcours_pourquoi' };
+  const map = { s0:'pourquoi_lie', s1:'s1_corps', s2:'s2_axes', s3:'s3_protocole', s4:'s4_alimentation', s5:'s5_rituels', s6:'s6_signaux', s7:'s7_aromatherapie', sP:'parcours_pourquoi' };
   blocks.forEach(b => { if (map[b.id]) generatedData[map[b.id]] = b.content; });
 
   localStorage.setItem('avita_phv_print', JSON.stringify({ data: generatedData, blocks }));
