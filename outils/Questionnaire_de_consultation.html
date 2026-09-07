@@ -9256,6 +9256,13 @@ function trigCheckCoche(...motsCles) {
 function immunoChipOn(motCle) {
   return [...document.querySelectorAll('#immuno-chips .chip.on')].some(c => c.textContent.toLowerCase().includes(motCle));
 }
+// Cherche un check-item coché (toutes sections) dont le texte contient un des mots-clés donnés
+function checkItemCoche(...motsCles) {
+  return [...document.querySelectorAll('.check-item.checked')].some(el => {
+    const txt = el.textContent.toLowerCase();
+    return motsCles.some(m => txt.includes(m));
+  });
+}
 
 const MECANISMES = [
   {
@@ -9340,6 +9347,59 @@ const MECANISMES = [
     condition: (diagsLower, specs) => (hasDiag(diagsLower, 'ménopause') || specs.has('meno')) && (hasDiag(diagsLower, 'hypercholestérolémie') || hasDiag(diagsLower, 'hypertension')),
     pourquoi: "Les œstrogènes protègent le système cardiovasculaire ; leur déclin en ménopause explique une part de la dégradation du profil lipidique/tensionnel souvent observée à cette période — utile à nommer pour désamorcer l'inquiétude d'un \"nouveau problème\" isolé.",
     phrase: "<b>Ce que vous pouvez dire à voix haute</b>Ce qu'on observe sur votre cholestérol/tension n'est pas un nouveau souci indépendant : les œstrogènes protègent naturellement le système cardiovasculaire, et leur baisse à la ménopause peut expliquer une partie de cette évolution. C'est un axe qu'on va accompagner comme les autres."
+  },
+  {
+    id: 'estrobolome',
+    label: 'Estrobolome — dysbiose et recirculation des œstrogènes',
+    condition: (diagsLower, specs) => {
+      const hormonal = specs.has('hyperoestro') || hasDiag(diagsLower, 'endométriose') || hasDiag(diagsLower, 'sopk');
+      const dysbiose = specs.has('sibo') || specs.has('sii') || hasDiag(diagsLower, 'candidose');
+      return hormonal && dysbiose;
+    },
+    pourquoi: "Le microbiote intestinal peut, via une enzyme (bêta-glucuronidase), \"redécoller\" des œstrogènes déjà traités par le foie et les remettre en circulation — un déséquilibre digestif entretient donc un excès d'œstrogènes même si le foie fonctionne bien (RÈGLE N°8/N°15/N°18).",
+    phrase: "<b>Ce que vous pouvez dire à voix haute</b>Votre foie élimine bien les œstrogènes en trop, mais votre intestin peut en remettre une partie en circulation si son équilibre est perturbé — un peu comme si une partie du \"tri sélectif\" hormonal repartait dans le circuit. C'est pour ça qu'on ne peut pas travailler l'un sans l'autre chez vous."
+  },
+  {
+    id: 'androgene_transversal',
+    label: 'Excès androgénique transversal',
+    condition: (diagsLower) => {
+      const signaux = [hasDiag(diagsLower, 'sopk'), checkItemCoche('hirsutisme'), checkItemCoche('acné'), checkItemCoche('chute de cheveux', 'alopécie')].filter(Boolean).length;
+      return signaux >= 2;
+    },
+    pourquoi: "Acné, chute de cheveux de type masculin et hirsutisme partagent souvent une hyperandrogénie relative (RÈGLE N°14/N°16/N°17) — à présenter comme un seul axe hormonal, jamais comme trois soucis cosmétiques séparés.",
+    phrase: "<b>Ce que vous pouvez dire à voix haute</b>Votre peau, vos cheveux et [le reste] réagissent au même signal hormonal — une sensibilité un peu plus forte aux hormones masculines que vous produisez naturellement en petite quantité. On va travailler cet axe dans son ensemble plutôt que traiter chaque signe séparément."
+  },
+  {
+    id: 'bucco_dentaire',
+    label: 'Porte d\'entrée bucco-dentaire → inflammation systémique',
+    condition: (diagsLower) => immunoChipOn('bucco-dentaire') && (compterDiagsAutoImmuns(diagsLower) >= 1 || hasDiag(diagsLower, 'hypertension') || hasDiag(diagsLower, 'hypercholestérolémie')),
+    pourquoi: "Une inflammation gingivale chronique (parodontite/gingivite) est une porte d'entrée bactérienne documentée vers l'inflammation systémique et le risque cardiovasculaire (RÈGLE N°35) — souvent négligée car jugée \"juste dentaire\".",
+    phrase: "<b>Ce que vous pouvez dire à voix haute</b>Ce qui se passe au niveau de vos gencives n'est pas isolé du reste de votre santé : une inflammation chronique là aussi laisse passer des bactéries dans la circulation, qui viennent nourrir l'inflammation qu'on travaille par ailleurs. Le suivi dentaire fait partie intégrante de votre accompagnement."
+  },
+  {
+    id: 'faiblesse_immunitaire',
+    label: 'Faiblesse immunitaire — porte d\'entrée vers l\'auto-immunité',
+    condition: (diagsLower) => (immunoChipOn('iga sécrétoires') || trigCheckCoche('infections orl', 'virales fréquentes')) && compterDiagsAutoImmuns(diagsLower) >= 1,
+    pourquoi: "Des muqueuses mal défendues (IgA sécrétoires basses, infections à répétition) laissent entrer plus d'antigènes qui sur-sollicitent un système immunitaire déjà orienté vers l'auto-immunité (RÈGLE N°36) — distinct de l'hyperperméabilité : ici c'est une porte d'entrée en plus, jamais un renforcement immunitaire générique à proposer.",
+    phrase: "<b>Ce que vous pouvez dire à voix haute</b>Vos infections qui reviennent souvent ne sont pas qu'une question de \"chance\" : vos muqueuses, en première ligne de défense, semblent un peu moins protectrices en ce moment, ce qui laisse davantage de travail à un système immunitaire déjà bien occupé par ailleurs."
+  },
+  {
+    id: 'metaux_lourds',
+    label: 'Métaux lourds & terrain neuro-inflammatoire',
+    condition: (diagsLower) => trigCheckCoche('amalgames dentaires', 'axe routier', 'zone industrielle') && compterDiagsAutoImmuns(diagsLower) >= 1,
+    pourquoi: "Une exposition chronique aux métaux lourds peut activer ou aggraver un terrain auto-immun et neuro-inflammatoire préexistant (RÈGLE N°44) — à relier explicitement, sans jamais suggérer de chélation médicale, qui reste du ressort exclusif d'un médecin.",
+    phrase: "<b>Ce que vous pouvez dire à voix haute</b>Une exposition discrète et continue — [amalgames dentaires / environnement] — peut ajouter une charge supplémentaire à un système immunitaire déjà sollicité par ailleurs. On va en tenir compte dans les leviers de fond qu'on met en place, sans que ce soit le sujet principal."
+  },
+  {
+    id: 'fer_thyroide',
+    label: 'Carence en fer masquée par l\'inflammation — impact thyroïdien',
+    condition: (diagsLower, specs) => {
+      const perteFer = checkItemCoche('règles abondantes') || trigCheckCoche('antidouleurs') || hasDiag(diagsLower, 'mici') || hasDiag(diagsLower, 'crohn');
+      const thyroide = hasDiag(diagsLower, 'hashimoto') || hasDiag(diagsLower, 'hypothyroïdie') || specs.has('hashi');
+      return perteFer && thyroide;
+    },
+    pourquoi: "Le fer est un cofacteur indispensable de la conversion de l'hormone thyroïdienne de réserve (T4) vers sa forme active (T3) — RÈGLE N°11/N°29. Une perte de fer chronique (règles abondantes, saignement digestif lié aux AINS/MICI) peut aggraver une hypothyroïdie fonctionnelle même avec un bilan thyroïdien \"normal\".",
+    phrase: "<b>Ce que vous pouvez dire à voix haute</b>Votre thyroïde a besoin de fer pour transformer son hormone de réserve en hormone active. Si vous en perdez régulièrement — par les règles ou au niveau digestif — ça peut freiner ce mécanisme même si votre bilan thyroïdien paraît rassurant sur le papier. C'est un point qu'on va vérifier ensemble."
   }
 ];
 
