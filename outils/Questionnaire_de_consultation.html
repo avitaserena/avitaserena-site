@@ -51,6 +51,30 @@
 .float-susp-empty{font-size:11.5px;color:var(--gris);font-style:italic;padding:14px 4px;text-align:center}
 @media (max-width:640px){#float-susp{right:12px;bottom:12px;left:12px;width:auto}}
 
+/* ── FENÊTRE FLOTTANTE — MÉCANISMES TRANSVERSAUX À EXPLIQUER EN DIRECT (02/09/2026) ──
+   Distincte de #float-susp (qui suggère une spécialité à explorer) : celle-ci détecte des
+   combinaisons de diagnostics/traitements déjà cochés qui partagent un mécanisme physiologique
+   commun (ex. hyperperméabilité intestinale) et fournit une phrase prête à dire à la cliente
+   pendant la consultation, sans attendre le PHV. */
+#float-meca{position:fixed;left:22px;bottom:22px;z-index:500;width:360px;max-width:calc(100vw - 32px);font-family:'Inter',-apple-system,sans-serif}
+#float-meca.minimized #float-meca-body{display:none}
+#float-meca.empty{display:none}
+.float-meca-hdr{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--or);color:rgba(255,255,255,.94);padding:12px 16px;border-radius:14px;cursor:pointer;box-shadow:var(--shadow);transition:var(--transition)}
+.float-meca-hdr:hover{background:#7C5530}
+.float-meca-hdr-left{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;letter-spacing:.02em}
+.float-meca-count{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;border-radius:var(--r99);background:var(--blanc);color:var(--or);font-size:11px;font-weight:800}
+.float-meca-chevron{transition:transform .2s;color:rgba(255,255,255,.75)}
+#float-meca.minimized .float-meca-chevron{transform:rotate(180deg)}
+#float-meca-body{margin-top:8px;max-height:min(62vh,540px);overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding-right:2px}
+.float-meca-card{background:var(--blanc);border:1px solid var(--taupe);border-radius:12px;padding:12px 14px;box-shadow:0 6px 18px rgba(33,28,22,.07)}
+.float-meca-label{font-size:12.5px;font-weight:700;color:var(--ardoise);margin-bottom:5px;display:flex;align-items:center;gap:6px}
+.float-meca-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:var(--or)}
+.float-meca-why{font-size:11.5px;color:var(--gris);line-height:1.55;margin-bottom:8px}
+.float-meca-phrase{font-size:12px;color:var(--ardoise);font-style:italic;line-height:1.55;background:var(--or-clair);border-left:2.5px solid var(--or);border-radius:0 8px 8px 0;padding:8px 10px}
+.float-meca-phrase b{font-style:normal;font-weight:700;color:var(--or);font-size:10px;letter-spacing:.08em;text-transform:uppercase;display:block;margin-bottom:3px}
+@media (max-width:640px){#float-meca{left:12px;bottom:12px;right:12px;width:auto}}
+
+
 *{box-sizing:border-box;margin:0;padding:0}
 html{font-family:'Inter',-apple-system,sans-serif;color:var(--ardoise);background:var(--off);font-size:16px;line-height:1.65;scroll-behavior:smooth}
 body{
@@ -582,6 +606,17 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
     <svg class="float-susp-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
   </div>
   <div id="float-susp-body"></div>
+</div>
+
+<div id="float-meca" class="empty">
+  <div class="float-meca-hdr" onclick="document.getElementById('float-meca').classList.toggle('minimized')">
+    <div class="float-meca-hdr-left">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>
+      Mécanismes à expliquer maintenant <span class="float-meca-count" id="float-meca-count">0</span>
+    </div>
+    <svg class="float-meca-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+  </div>
+  <div id="float-meca-body"></div>
 </div>
 
 <!-- ═══ HEADER ═══ -->
@@ -7617,6 +7652,7 @@ function updateCounter() {
   el.dataset.prev = count;
   const specs = detecterSpecialites();
   if (typeof detecterTerrainsChanbio === 'function') detecterTerrainsChanbio(specs);
+  if (typeof detecterMecanismesTransversaux === 'function') detecterMecanismesTransversaux();
 }
 
 document.addEventListener('input', updateCounter);
@@ -7691,6 +7727,12 @@ document.addEventListener('click', function(e) {
   if (e.target.closest('.tl-year')) return;
   const tc = e.target.closest('.trig-check');
   if (tc) { tc.classList.toggle('checked'); updateCounter(); return; }
+  // Diagnostics (spondylarthrite, Crohn...) et chips de terrain immunitaire (TH1/TH2/TH17/IBG) —
+  // ne déclenchent pas nativement updateCounter() car gérés par leur propre onclick (quickAddDiagnostic
+  // ou toggle direct) ; on rattrape ici pour que les mécanismes transversaux se recalculent en direct.
+  if (e.target.closest('.chip[data-diag]') || e.target.closest('#immuno-chips .chip')) {
+    setTimeout(updateCounter, 0);
+  }
 });
 
 /* ══════════════════════════════════════
@@ -9172,6 +9214,97 @@ function renderFloatSuspicions(suggestions) {
   }).join('');
 }
 document.addEventListener('DOMContentLoaded', () => { try { renderFloatSuspicions(new Set()); } catch(e) {} });
+
+/* ══════════════════════════════════════════════════════
+   FENÊTRE FLOTTANTE — MÉCANISMES TRANSVERSAUX (02/09/2026)
+   Objectif différent de "Pistes en direct" : ici on ne suggère pas une spécialité à
+   explorer, on détecte qu'une combinaison de diagnostics/traitements DÉJÀ COCHÉS partage
+   un mécanisme physiologique commun, et on donne à la praticienne une phrase prête à dire
+   à la cliente EN SÉANCE, sans attendre le PHV envoyé 24h plus tard.
+   Pour ajouter un mécanisme plus tard : compléter le tableau MECANISMES ci-dessous, chaque
+   entrée est indépendante (id, condition, pourquoi pour la praticienne, phrase pour la cliente).
+══════════════════════════════════════════════════════ */
+
+// Diagnostics considérés comme auto-immuns/inflammatoires chroniques pour ces mécanismes —
+// volontairement plus large que la seule sphère "Auto-immune" (inclut MICI, cœliaque,
+// Hashimoto, diabète de type 1, Addison : même terrain de fond, même porte d'entrée intestinale).
+const DIAGS_AUTOIMMUN_INFLAM = [
+  'lupus', 'polyarthrite rhumatoïde', 'sclérodermie', 'spondylarthrite', 'gougerot-sjögren',
+  'sclérose en plaques', 'myasthénie', 'guillain-barré', 'vitiligo', 'pelade',
+  'pemphigoïde', 'psoriasis', 'eczéma', 'dermatite atopique', 'biermer',
+  'cirrhose biliaire primitive', 'raynaud', 'urticaire chronique', 'histaminose',
+  'mici', 'crohn', 'rch', 'cœliaque', 'coeliaque',
+  'hashimoto', 'hypothyroïdie', 'diabète de type 1', 'addison'
+];
+
+function getDiagsActuels() {
+  return (typeof diagnosticsList !== 'undefined' ? diagnosticsList : []).map(d => d.nom.toLowerCase());
+}
+function compterDiagsAutoImmuns(diagsLower) {
+  return diagsLower.filter(nom => DIAGS_AUTOIMMUN_INFLAM.some(k => nom.includes(k))).length;
+}
+function hasDiag(diagsLower, motCle) {
+  return diagsLower.some(nom => nom.includes(motCle));
+}
+// Cherche un trig-check coché dont la question contient un des mots-clés donnés (insensible à la casse)
+function trigCheckCoche(...motsCles) {
+  return [...document.querySelectorAll('.trig-check.checked .trig-q')].some(el => {
+    const txt = el.textContent.toLowerCase();
+    return motsCles.some(m => txt.includes(m));
+  });
+}
+function immunoChipOn(motCle) {
+  return [...document.querySelectorAll('#immuno-chips .chip.on')].some(c => c.textContent.toLowerCase().includes(motCle));
+}
+
+const MECANISMES = [
+  {
+    id: 'hyperperm',
+    label: 'Hyperperméabilité intestinale — le fil rouge qui relie tout',
+    condition: (diagsLower) => {
+      const nbAI = compterDiagsAutoImmuns(diagsLower);
+      const aggresseur = trigCheckCoche('antidouleurs', 'biothérapie', 'immunosuppresseur', 'corticoïdes de fond');
+      return nbAI >= 2 || (nbAI >= 1 && aggresseur);
+    },
+    pourquoi: "Plusieurs pathologies auto-immunes/inflammatoires (et/ou un traitement type AINS, corticoïdes de fond, biothérapie) partagent une porte d'entrée commune : la paroi intestinale. C'est le mécanisme unificateur à expliquer maintenant plutôt que de traiter chaque diagnostic comme une case séparée.",
+    phrase: "<b>Ce que vous pouvez dire à voix haute</b>Vos traitements et vos différents diagnostics ont un point commun qu'on oublie souvent de relier : la paroi de votre intestin. Elle est faite de cellules jointes très serrées qui filtrent ce qui passe dans le sang. Quand ces jonctions se relâchent — sous l'effet d'un anti-inflammatoire pris longtemps, du stress, ou d'un déséquilibre du microbiote — des fragments d'aliments et de bactéries passent là où ils ne devraient pas. Comme 70 à 80% de vos cellules immunitaires vivent tout le long de l'intestin, ça les sur-sollicite en permanence, et ça peut entretenir à la fois vos douleurs articulaires, vos poussées digestives, et même réveiller un terrain auto-immun ailleurs dans le corps, comme la thyroïde."
+  },
+  {
+    id: 'endo_inflam',
+    label: 'Endométriose entretenue par le terrain inflammatoire de fond',
+    condition: (diagsLower) => hasDiag(diagsLower, 'endométriose') && (compterDiagsAutoImmuns(diagsLower) >= 1 || immunoChipOn('th17') || immunoChipOn('inflammation systémique')),
+    pourquoi: "L'endométriose suit son propre cercle vicieux inflammation/œstrogènes (RÈGLE N°15), mais un terrain auto-immun ou inflammatoire déjà présent par ailleurs l'entretient aussi indirectement — utile à nommer pour que la cliente comprenne pourquoi on ne traite pas l'endométriose isolément.",
+    phrase: "<b>Ce que vous pouvez dire à voix haute</b>Votre endométriose a sa propre mécanique — inflammation locale qui fait proliférer les lésions, qui elles-mêmes entretiennent l'inflammation. Mais chez vous, ce cercle est alimenté aussi par le terrain inflammatoire plus général qu'on vient d'évoquer : ce n'est pas un hasard si plusieurs choses s'activent en même temps dans votre corps, c'est le même feu de fond qui se manifeste à plusieurs endroits."
+  },
+  {
+    id: 'ibg_transversal',
+    label: 'Inflammation systémique de bas grade — cluster transversal',
+    condition: (diagsLower) => immunoChipOn('inflammation systémique') && compterDiagsAutoImmuns(diagsLower) >= 1,
+    pourquoi: "Le chip IBG coché en plus d'un diagnostic auto-immun/inflammatoire signale un terrain de fond (acides gras déséquilibrés, vitamine D, stress oxydatif) qui aggrave tout le reste — RÈGLE N°30, à présenter comme un terrain à calmer, jamais comme un diagnostic supplémentaire.",
+    phrase: "<b>Ce que vous pouvez dire à voix haute</b>Au-delà de vos diagnostics précis, votre corps montre aussi les signes d'une inflammation de fond plus diffuse — fatigue, douleurs qui migrent, ce genre de choses. Ce n'est pas une maladie en soi, c'est un terrain qu'on peut calmer avec les bons acides gras, la vitamine D et une meilleure gestion du stress oxydatif, et ça aidera l'ensemble de vos autres axes en même temps."
+  }
+];
+
+function detecterMecanismesTransversaux() {
+  const diagsLower = getDiagsActuels();
+  const actifs = MECANISMES.filter(m => {
+    try { return m.condition(diagsLower); } catch (e) { return false; }
+  });
+  const panel = document.getElementById('float-meca');
+  const body = document.getElementById('float-meca-body');
+  const count = document.getElementById('float-meca-count');
+  if (!panel || !body || !count) return;
+  count.textContent = actifs.length;
+  panel.classList.toggle('empty', actifs.length === 0);
+  if (actifs.length === 0) { body.innerHTML = ''; return; }
+  body.innerHTML = actifs.map(m => `<div class="float-meca-card">
+      <div class="float-meca-label"><span class="float-meca-dot"></span>${m.label}</div>
+      <div class="float-meca-why">${m.pourquoi}</div>
+      <div class="float-meca-phrase">${m.phrase}</div>
+    </div>`).join('');
+}
+document.addEventListener('DOMContentLoaded', () => { try { detecterMecanismesTransversaux(); } catch(e) {} });
+
 
 /* ══════════════════════════════════════════════════════
    MOTEUR D'ANALYSE — « Analyser mes réponses »
