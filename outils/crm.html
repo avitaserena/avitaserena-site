@@ -6363,48 +6363,34 @@ async function sauvegarderEditionCliente(clientId){
 }
 
 // ══════════════════════════════════════
-// FICHES REPÈRES — jointes automatiquement à l'email du protocole
-// (même catalogue et même logique de correspondance que espace-clientes.html,
-// gardés synchronisés manuellement — pas de source commune entre les deux
-// fichiers pour l'instant). LIMITE CONNUE (08/09/2026) : "digestif" ne
-// distingue pas encore SIBO de perméabilité intestinale (les deux sont
-// jointes ensemble) ; le SPM n'est joint que si "spm" apparaît explicitement
-// dans suivi_specialites, ce qui suppose une case dédiée pas encore créée
-// dans Questionnaire_de_consultation.html / Questionnaire_de_suivi.html.
+// FICHES À JOINDRE — sélection MANUELLE faite dans generateur.html (cases à
+// cocher, présélectionnées mais toujours confirmées par Sabrina), stockée
+// dans protocoles_client.data.fiches_jointes. Décision du 08/09/2026 : plus
+// de correspondance automatique et silencieuse par spécialité — Sabrina a
+// jugé que ça "alimentait" l'espace cliente sans que ce soit forcément
+// utile. Catalogue volontairement réduit à 4 fiches pour l'instant.
 // ══════════════════════════════════════
 var FICHES_CATALOGUE = {
-  sibo:          { url:'https://avitaserena.com/fiches/sibo.html',                     label:'Pourquoi mon intestin fermente' },
-  permeabilite:  { url:'https://avitaserena.com/fiches/permeabilite-intestinale.html', label:'Comprendre ma barrière intestinale' },
-  sopk:          { url:'https://avitaserena.com/fiches/sopk.html',                     label:'Ce qui se joue avec mon SOPK' },
-  endometriose:  { url:'https://avitaserena.com/fiches/endometriose.html',             label:'Vivre avec mon endométriose' },
-  spm:           { url:'https://avitaserena.com/fiches/spm.html',                      label:'Pourquoi je change avant mes règles' },
-  menopause:     { url:'https://avitaserena.com/fiches/menopause.html',                label:'Traverser cette transition' },
-  thyroide:      { url:'https://avitaserena.com/fiches/hashimoto.html',                label:'Comprendre ma thyroïde' },
-  surrenales:    { url:'https://avitaserena.com/fiches/fatigue-surrenalienne.html',    label:'Sortir de cet épuisement' }
+  'coherence-nerf-vague':  { url:'https://avitaserena.com/fiches/coherence-nerf-vague.html',   label:'Cohérence cardiaque & nerf vague' },
+  'fodmap':                { url:'https://avitaserena.com/fiches/fodmap.html',                 label:'FODMAP — guide alimentaire complet' },
+  'sevrage-ipp':           { url:'https://avitaserena.com/fiches/sevrage-ipp.html',             label:'Sortir des IPP en douceur' },
+  'test-respiratoire-sibo':{ url:'https://avitaserena.com/fiches/test-respiratoire-sibo.html',  label:'Test respiratoire SIBO' },
+  'sibo':                  { url:'https://avitaserena.com/fiches/sibo.html',                    label:'Comprendre son SIBO' },
+  'permeabilite':          { url:'https://avitaserena.com/fiches/permeabilite-intestinale.html',label:'Comprendre sa perméabilité intestinale' },
+  'sopk':                  { url:'https://avitaserena.com/fiches/sopk.html',                    label:'Comprendre son SOPK' },
+  'endometriose':          { url:'https://avitaserena.com/fiches/endometriose.html',            label:'Comprendre son endométriose' },
+  'spm':                   { url:'https://avitaserena.com/fiches/spm.html',                     label:'Comprendre son SPM' },
+  'menopause':             { url:'https://avitaserena.com/fiches/menopause.html',               label:'Traverser sa ménopause/périménopause' },
+  'thyroide':              { url:'https://avitaserena.com/fiches/hashimoto.html',               label:'Comprendre sa thyroïde (Hashimoto)' },
+  'surrenales':            { url:'https://avitaserena.com/fiches/fatigue-surrenalienne.html',   label:'Comprendre sa fatigue surrénalienne' }
 };
-var FICHES_MATCH_MAP = {
-  digestif:'sibo,permeabilite', sibo:'sibo', permeabilite:'permeabilite',
-  endometriose:'endometriose', sopk:'sopk', spm:'spm',
-  menopause:'menopause', thyroide:'thyroide', surrenales:'surrenales'
-};
-function getFichesForClientCRM(c){
-  var raw = '';
-  if (typeof c.suiviSpecialites === 'string' && c.suiviSpecialites.trim()){
-    raw = c.suiviSpecialites;
-  } else {
-    // Repli mots-clés sur axes/motifs, même principe que espace-clientes.html.
-    var profil = ((c.axes||'')+' '+(c.motifs||'')).toLowerCase();
-    var kw = {digestif:['sibo','dysbiose','sii','intestin','microbiote','ballonnement'],endometriose:['endometriose'],sopk:['sopk','ovaire polykystique'],spm:['syndrome premenstruel','spm intense'],menopause:['menopause','perimenopause'],thyroide:['thyroide','hashimoto'],surrenales:['surrenales','cortisol','burn-out','burnout']};
-    raw = Object.keys(kw).filter(function(k){return kw[k].some(function(w){return profil.indexOf(w)>-1;});}).join(',');
-  }
-  var keys = raw.split(',').map(function(s){return s.trim();}).filter(Boolean);
-  var codes = [];
-  keys.forEach(function(k){
-    (FICHES_MATCH_MAP[k]||'').split(',').filter(Boolean).forEach(function(code){
-      if (codes.indexOf(code) === -1) codes.push(code);
-    });
-  });
-  return codes;
+// Lit la sélection déjà faite dans le générateur pour ce protocole (protocoles_client.data.fiches_jointes).
+async function getFichesJointesCRM(clientId){
+  try{
+    var rows = await sb('protocoles_client?client_id=eq.' + encodeURIComponent(clientId) + '&select=data');
+    var codes = rows?.[0]?.data?.fiches_jointes;
+    return Array.isArray(codes) ? codes.filter(function(c){ return FICHES_CATALOGUE[c]; }) : [];
+  }catch(e){ console.warn('Fiches jointes — lecture impossible :', e); return []; }
 }
 function buildFichesHtmlBlock(codes){
   if(!codes.length) return '';
@@ -6412,7 +6398,7 @@ function buildFichesHtmlBlock(codes){
     var f = FICHES_CATALOGUE[code]; if(!f) return '';
     return '<li style="margin-bottom:8px"><a href="'+f.url+'" style="color:#B4906A;text-decoration:none;font-weight:600">'+f.label+' →</a></li>';
   }).join('');
-  return '<div style="margin-top:24px"><div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#5C574C;margin-bottom:10px">Pour comprendre le pourquoi</div><ul style="list-style:none;padding:0;margin:0">'+items+'</ul></div>';
+  return '<div style="margin-top:24px"><div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#5C574C;margin-bottom:10px">Pour aller plus loin</div><ul style="list-style:none;padding:0;margin:0">'+items+'</ul></div>';
 }
 
 // ══════════════════════════════════════
@@ -6438,12 +6424,7 @@ function ouvrirEnvoiProtocole(clientId){
           <div style="display:flex;align-items:center;gap:6px">${ic('user','ico-xs')} ${escH(c.prenom)} · ${ic('calendar','ico-xs')} ${ddnF}</div>
         </div>
       </div>
-      ${(function(){
-        var codes = getFichesForClientCRM(c);
-        if(!codes.length) return '<div style="font-size:11.5px;color:var(--muted);margin-bottom:14px">Aucune fiche repère détectée pour cette cliente (spécialités non renseignées) — vérifiez le champ Axes ou le questionnaire de suivi.</div>';
-        var labels = codes.map(function(code){return FICHES_CATALOGUE[code]?FICHES_CATALOGUE[code].label:code;}).join(' · ');
-        return '<div style="font-size:11.5px;color:var(--ink3);margin-bottom:14px">'+ic('check','ico-xs')+' Fiches repères jointes automatiquement : <strong>'+escH(labels)+'</strong></div>';
-      })()}
+      <div id="ep-fiches-preview" style="font-size:11.5px;color:var(--muted);margin-bottom:14px">Vérification des fiches sélectionnées dans le générateur…</div>
       <label class="fl">Lien vers le protocole (PHV)</label>
       <input id="ep-lien-phv" type="url" class="fi" placeholder="https://avitaserena.com/outils/phv-print.html?…" style="margin-bottom:4px">
       <div id="ep-phv-hint" style="font-size:11px;color:var(--muted);margin-bottom:14px;min-height:16px"></div>
@@ -6459,6 +6440,19 @@ function ouvrirEnvoiProtocole(clientId){
   </div>`;
   modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
   document.body.appendChild(modal);
+
+  // Fiches sélectionnées dans le générateur (protocoles_client.data.fiches_jointes) — lecture async.
+  getFichesJointesCRM(clientId).then(function(codes){
+    var el = document.getElementById('ep-fiches-preview');
+    if (!el) return;
+    if (!codes.length){
+      el.innerHTML = 'Aucune fiche sélectionnée dans le générateur pour ce protocole — l\'email partira sans fiche jointe. Retournez dans generateur.html si vous souhaitez en cocher.';
+      return;
+    }
+    var labels = codes.map(function(code){return FICHES_CATALOGUE[code]?FICHES_CATALOGUE[code].label:code;}).join(' · ');
+    el.innerHTML = ic('check','ico-xs') + ' Fiches sélectionnées dans le générateur : <strong>'+escH(labels)+'</strong>';
+    el.style.color = 'var(--ink3)';
+  });
 
   // Auto-remplir le lien PHV si disponible
   const inp = document.getElementById('ep-lien-phv');
@@ -6499,6 +6493,7 @@ async function envoyerProtocole(clientId){
   const apiKey=getBrevoKey();if(!apiKey){toast('Clé Brevo requise','warn');return;}
   const btn=document.getElementById('ep-send-btn');btn.textContent='Envoi…';btn.disabled=true;
   const prenom=c.prenom||''; const ddnF=c.ddn?c.ddn.split('-').reverse().join('/'):'—';
+  const fichesCodes = await getFichesJointesCRM(clientId);
   try{
     const res=await fetch('https://api.brevo.com/v3/smtp/email',{
       method:'POST',
@@ -6507,7 +6502,7 @@ async function envoyerProtocole(clientId){
         sender:{name:'Sabrina · A Vita Serena',email:'sabrina@avitaserena.com'},
         to:[{email:c.email,name:prenom+' '+(c.nom||'')}],
         templateId: 17,
-        params:{PRENOM:prenom, LIEN_PHV:lienPHV, DDN:ddnF, FICHES_HTML:buildFichesHtmlBlock(getFichesForClientCRM(c))}
+        params:{PRENOM:prenom, LIEN_PHV:lienPHV, DDN:ddnF, FICHES_HTML:buildFichesHtmlBlock(fichesCodes)}
       })
     });
     if(!res.ok){const err=await res.json();throw new Error(err.message||res.status);}

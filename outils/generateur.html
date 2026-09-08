@@ -938,6 +938,12 @@ input.fi[readonly]{background:var(--taupe);cursor:default;opacity:.75}
       <button class="add-block-btn" onclick="openAddModal()">+ Ajouter un bloc</button>
     </div>
   </div>
+
+  <div class="proto-block" id="fiches-a-joindre-block" style="border:1.5px solid var(--sable, #D9C7A8);border-radius:12px;padding:16px 20px;margin-bottom:18px;background:var(--or-clair, #FBF4E2)">
+    <div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ardoise,#1E1E1C);margin-bottom:4px">Fiches à joindre au protocole</div>
+    <div style="font-size:12px;color:var(--gris,#6B6560);margin-bottom:10px">Présélectionnées selon les axes retenus et les traitements en cours — décochez ou cochez librement avant l'envoi.</div>
+    <div id="fiches-a-joindre-list" style="display:flex;flex-direction:column;gap:8px"></div>
+  </div>
   <div class="blocks-container" id="blocks-container"></div>
   <button class="reset-btn" onclick="resetAll()">← Nouveau bilan</button>
 </div>
@@ -3726,6 +3732,7 @@ function renderPreview(data, d) {
   document.getElementById('preview-wrap').style.display = 'block';
   document.getElementById('prev-name').textContent = [d.prenom, d.nom].filter(Boolean).join(' ');
   document.getElementById('prev-sub').textContent = data.sous_titre || 'Protocole d\'Hygiène Vitale · A VITA SERENA';
+  renderFichesAJoindre();
 
   const dureeSel = document.getElementById('prev-duree-override');
   const dureeVal = data.duree_suggeree || d.duree_prog || '';
@@ -3979,6 +3986,72 @@ function addBlock() {
   setTimeout(() => { const items=document.querySelectorAll('.block-item'); if(items.length) items[items.length-1].scrollIntoView({behavior:'smooth',block:'center'}); }, 100);
 }
 
+// ══════════════════════════════════════
+// FICHES À JOINDRE AU PROTOCOLE (08/09/2026)
+// Sélection manuelle avec présélection intelligente — jamais d'envoi automatique
+// silencieux : Sabrina coche/décoche toujours avant l'ouverture/l'envoi du protocole.
+// ══════════════════════════════════════
+const FICHES_DISPONIBLES = [
+  { code:'coherence-nerf-vague', label:'Cohérence cardiaque & nerf vague', url:'https://avitaserena.com/fiches/coherence-nerf-vague.html', groupe:'pratique' },
+  { code:'fodmap',                label:'FODMAP — guide alimentaire complet',   url:'https://avitaserena.com/fiches/fodmap.html', groupe:'pratique' },
+  { code:'sevrage-ipp',           label:'Sortir des IPP en douceur',            url:'https://avitaserena.com/fiches/sevrage-ipp.html', groupe:'pratique' },
+  { code:'test-respiratoire-sibo',label:'Test respiratoire SIBO',               url:'https://avitaserena.com/fiches/test-respiratoire-sibo.html', groupe:'pratique' },
+  { code:'sibo',                 label:'Comprendre son SIBO',                  url:'https://avitaserena.com/fiches/sibo.html', groupe:'mecanisme' },
+  { code:'permeabilite',         label:'Comprendre sa perméabilité intestinale', url:'https://avitaserena.com/fiches/permeabilite-intestinale.html', groupe:'mecanisme' },
+  { code:'sopk',                 label:'Comprendre son SOPK',                  url:'https://avitaserena.com/fiches/sopk.html', groupe:'mecanisme' },
+  { code:'endometriose',         label:'Comprendre son endométriose',          url:'https://avitaserena.com/fiches/endometriose.html', groupe:'mecanisme' },
+  { code:'spm',                  label:'Comprendre son SPM',                   url:'https://avitaserena.com/fiches/spm.html', groupe:'mecanisme' },
+  { code:'menopause',            label:'Traverser sa ménopause/périménopause', url:'https://avitaserena.com/fiches/menopause.html', groupe:'mecanisme' },
+  { code:'thyroide',             label:'Comprendre sa thyroïde (Hashimoto)',   url:'https://avitaserena.com/fiches/hashimoto.html', groupe:'mecanisme' },
+  { code:'surrenales',           label:'Comprendre sa fatigue surrénalienne',  url:'https://avitaserena.com/fiches/fatigue-surrenalienne.html', groupe:'mecanisme' },
+];
+
+// Codes présélectionnés (Set) à partir des axes retenus pour CE protocole et des
+// traitements en cours importés du questionnaire — jamais figé, juste une suggestion de départ.
+function suggererFichesCodes() {
+  const d = generatedData?._client || {};
+  const axes = axesOrder || [];
+  const profil = ((d.axes||'') + ' ' + (d.motifs||'')).toLowerCase();
+  const suggested = new Set();
+  if (axes.includes('SIBO / dysbiose')) { suggested.add('fodmap'); suggested.add('test-respiratoire-sibo'); suggested.add('sibo'); }
+  if (axes.includes('Digestif & microbiote')) { suggested.add('permeabilite'); }
+  if (axes.includes('Stress & système nerveux') || axes.includes('Surrénales & énergie')) { suggested.add('coherence-nerf-vague'); }
+  if (axes.includes('Surrénales & énergie')) { suggested.add('surrenales'); }
+  if (axes.includes('Thyroïde')) { suggested.add('thyroide'); }
+  if (axes.includes('Périménopause / ménopause')) { suggested.add('menopause'); }
+  if (axes.includes('Hormonal & cycles')) {
+    // Pas d'axe dédié SOPK/endométriose/SPM — repli sur le texte libre (axes/motifs du dossier).
+    if (profil.includes('sopk') || profil.includes('ovaire polykyst')) suggested.add('sopk');
+    if (profil.includes('endometriose') || profil.includes('endométriose')) suggested.add('endometriose');
+    if (profil.includes('spm') || profil.includes('premenstruel') || profil.includes('prémenstruel')) suggested.add('spm');
+  }
+  if (/\bipp\b/i.test(d.traitements_vigilance || '')) { suggested.add('sevrage-ipp'); }
+  return suggested;
+}
+
+function renderFichesAJoindre() {
+  const list = document.getElementById('fiches-a-joindre-list');
+  if (!list) return;
+  const suggested = suggererFichesCodes();
+  const pratiques = FICHES_DISPONIBLES.filter(f => f.groupe === 'pratique');
+  const mecanismes = FICHES_DISPONIBLES.filter(f => f.groupe === 'mecanisme');
+  const renderGroupe = (fiches) => fiches.map(f => `
+    <label style="display:flex;align-items:center;gap:9px;font-size:13px;color:var(--ardoise,#1E1E1C);cursor:pointer">
+      <input type="checkbox" data-fiche-code="${f.code}" ${suggested.has(f.code) ? 'checked' : ''} style="width:16px;height:16px;accent-color:#B4906A">
+      ${f.label}
+    </label>
+  `).join('');
+  list.innerHTML =
+    '<div style="font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--gris,#6B6560);margin:2px 0 2px">Guides pratiques</div>' +
+    renderGroupe(pratiques) +
+    '<div style="font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--gris,#6B6560);margin:10px 0 2px">Comprendre sa pathologie</div>' +
+    renderGroupe(mecanismes);
+}
+
+function getFichesJointesCochees() {
+  return [...document.querySelectorAll('#fiches-a-joindre-list input[type=checkbox]:checked')].map(el => el.dataset.ficheCode);
+}
+
 // ── Ouvrir phv-print.html ──
 async function ouvrirProtocole() {
   if (!generatedData || !blocks.length) return;
@@ -3986,6 +4059,10 @@ async function ouvrirProtocole() {
   // Synchroniser le contenu édité dans generatedData
   const map = { s0:'pourquoi_lie', s1:'s1_corps', s2:'s2_axes', s3:'s3_protocole', s4:'s4_alimentation', s5:'s5_rituels', s6:'s6_signaux', s7:'s7_aromatherapie', sP:'parcours_pourquoi' };
   blocks.forEach(b => { if (map[b.id]) generatedData[map[b.id]] = b.content; });
+
+  // Fiches à joindre : uniquement celles cochées manuellement au moment de l'ouverture —
+  // jamais un envoi automatique silencieux, cf. décision du 08/09/2026.
+  generatedData.fiches_jointes = getFichesJointesCochees();
 
   localStorage.setItem('avita_phv_print', JSON.stringify({ data: generatedData, blocks }));
   // Archiver avec clé indexée par prénom + timestamp pour le CRM

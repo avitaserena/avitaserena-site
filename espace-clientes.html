@@ -4204,42 +4204,42 @@ var CHECKIN_PROFILE_DIMS = {
    indépendante de SOPK. L'entrée "digestif" reste en repli pour les dossiers
    jamais revus avec les nouvelles cases (colonne suivi_specialites vide). */
 var FICHES_CATALOGUE = {
-  sibo:          { url:'/fiches/sibo.html',                     label:'Pourquoi mon intestin fermente' },
-  permeabilite:  { url:'/fiches/permeabilite-intestinale.html', label:'Comprendre ma barrière intestinale' },
-  sopk:          { url:'/fiches/sopk.html',                     label:'Ce qui se joue avec mon SOPK' },
-  endometriose:  { url:'/fiches/endometriose.html',             label:'Vivre avec mon endométriose' },
-  spm:           { url:'/fiches/spm.html',                      label:'Pourquoi je change avant mes règles' },
-  menopause:     { url:'/fiches/menopause.html',                label:'Traverser cette transition' },
-  thyroide:      { url:'/fiches/hashimoto.html',                label:'Comprendre ma thyroïde' },
-  surrenales:    { url:'/fiches/fatigue-surrenalienne.html',    label:'Sortir de cet épuisement' }
+  'coherence-nerf-vague':  { url:'/fiches/coherence-nerf-vague.html',   label:'Cohérence cardiaque & nerf vague' },
+  'fodmap':                { url:'/fiches/fodmap.html',                 label:'FODMAP — guide alimentaire complet' },
+  'sevrage-ipp':           { url:'/fiches/sevrage-ipp.html',             label:'Sortir des IPP en douceur' },
+  'test-respiratoire-sibo':{ url:'/fiches/test-respiratoire-sibo.html',  label:'Test respiratoire SIBO' },
+  'sibo':                  { url:'/fiches/sibo.html',                   label:'Comprendre son SIBO' },
+  'permeabilite':          { url:'/fiches/permeabilite-intestinale.html',label:'Comprendre sa perméabilité intestinale' },
+  'sopk':                  { url:'/fiches/sopk.html',                   label:'Comprendre son SOPK' },
+  'endometriose':          { url:'/fiches/endometriose.html',           label:'Comprendre son endométriose' },
+  'spm':                   { url:'/fiches/spm.html',                    label:'Comprendre son SPM' },
+  'menopause':             { url:'/fiches/menopause.html',              label:'Traverser sa ménopause/périménopause' },
+  'thyroide':              { url:'/fiches/hashimoto.html',              label:'Comprendre sa thyroïde (Hashimoto)' },
+  'surrenales':            { url:'/fiches/fatigue-surrenalienne.html',  label:'Comprendre sa fatigue surrénalienne' }
 };
-// Catégorie brute issue de getCheckinProfileKeys() → un ou plusieurs codes de fiches.
-var FICHES_MATCH_MAP = {
-  digestif:     ['sibo','permeabilite'],
-  sibo:         ['sibo'],
-  permeabilite: ['permeabilite'],
-  endometriose: ['endometriose'],
-  sopk:         ['sopk'],
-  spm:          ['spm'],
-  menopause:    ['menopause'],
-  thyroide:     ['thyroide'],
-  surrenales:   ['surrenales']
-};
-function getFichesForClient(){
-  var keys = getCheckinProfileKeys();
-  var codes = [];
-  keys.forEach(function(k){
-    (FICHES_MATCH_MAP[k]||[]).forEach(function(code){
-      if (codes.indexOf(code) === -1) codes.push(code);
+// Lit la sélection MANUELLE faite par Sabrina dans generateur.html (cases à cocher,
+// présélectionnées mais toujours confirmées avant l'ouverture du protocole), stockée
+// dans protocoles_client.data.fiches_jointes. Décision du 08/09/2026 : plus de
+// correspondance automatique et silencieuse par spécialité — remplacé par ce choix
+// explicite, catalogue volontairement réduit à 4 fiches pour l'instant.
+async function getFichesForClient(){
+  if(!session.key) return [];
+  try{
+    var token = await Auth.getValidAccessToken();
+    var res = await fetch(SUPA_URL + '/rest/v1/protocoles_client?client_id=eq.' + encodeURIComponent(session.key) + '&select=data', {
+      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (token || SUPA_KEY) }
     });
-  });
-  return codes;
+    if(!res.ok) return [];
+    var rows = await res.json();
+    var codes = rows?.[0]?.data?.fiches_jointes;
+    return Array.isArray(codes) ? codes.filter(function(c){ return FICHES_CATALOGUE[c]; }) : [];
+  }catch(e){ console.warn('Fiches jointes — lecture impossible :', e); return []; }
 }
-function renderFichesProtocole(){
+async function renderFichesProtocole(){
   var bloc = document.getElementById('fichesProtocoleBloc');
   var container = document.getElementById('fichesProtocoleList');
   if(!bloc || !container) return;
-  var codes = getFichesForClient();
+  var codes = await getFichesForClient();
   if(!codes.length){ bloc.style.display = 'none'; return; }
   bloc.style.display = '';
   container.innerHTML = codes.map(function(code){
