@@ -682,6 +682,20 @@ body{-webkit-font-smoothing:antialiased}
 .db-btn:active,.rdv-btn:active,.protocole-link:active,.dl-item:active,.login-btn:active,#lumaSubscribeBtn:active,#notifActivateBtn:active,#pwaInstallBtn:active{opacity:.72}
 a,button{-webkit-tap-highlight-color:transparent}
 
+/* ── FICHES REPÈRES ─────────────────────────────────────── */
+.fiche-repere-btn{display:flex;align-items:center;justify-content:space-between;width:100%;text-align:left;background:#fff;border:1px solid var(--taupe);border-radius:12px;padding:14px 18px;font-family:'Be Vietnam Pro',sans-serif;font-size:14px;font-weight:500;color:var(--ardoise,#1E1E1C);cursor:pointer;transition:border-color .2s,transform .2s}
+.fiche-repere-btn:hover{border-color:var(--ocre);transform:translateY(-1px)}
+.fiche-modal-overlay{display:none;position:fixed;inset:0;z-index:9500;background:rgba(20,18,15,.55);backdrop-filter:blur(4px);align-items:center;justify-content:center;padding:16px}
+.fiche-modal-box{background:#fff;width:100%;max-width:760px;height:min(88vh,900px);border-radius:16px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.fiche-modal-head{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid rgba(30,30,28,.1);background:#FBFAF7}
+.fiche-modal-title{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:17px;color:var(--ardoise,#1E1E1C)}
+.fiche-modal-actions{display:flex;align-items:center;gap:10px}
+.fiche-modal-print{background:none;border:1px solid var(--taupe);border-radius:99px;padding:6px 14px;font-size:12.5px;font-family:'Be Vietnam Pro',sans-serif;color:var(--ardoise,#1E1E1C);cursor:pointer}
+.fiche-modal-print:hover{border-color:var(--ocre)}
+.fiche-modal-close{background:none;border:none;font-size:18px;line-height:1;cursor:pointer;color:var(--ardoise,#1E1E1C);padding:4px 6px}
+.fiche-modal-box iframe{flex:1;width:100%;border:none;background:#FBFAF7}
+@media(max-width:560px){.fiche-modal-box{height:92vh;border-radius:12px}}
+
 /* ── CAPSULES ───────────────────────────────────────────── */
 .capsule-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:28px}
 @media(max-width:560px){.capsule-grid{grid-template-columns:1fr}}
@@ -1220,6 +1234,20 @@ a,button{-webkit-tap-highlight-color:transparent}
       <span class="bn2-badge" id="bnSerenaBadge" style="display:none"></span>
     </div>
   </nav>
+
+  <!-- MODAL FICHE REPÈRE — superposition dans l'app, jamais de navigation externe -->
+  <div class="fiche-modal-overlay" id="ficheModal" onclick="if(event.target===this)fermerFicheModal()">
+    <div class="fiche-modal-box">
+      <div class="fiche-modal-head">
+        <div class="fiche-modal-title" id="ficheModalTitle">Fiche repère</div>
+        <div class="fiche-modal-actions">
+          <button type="button" class="fiche-modal-print" onclick="imprimerFicheModal()">Imprimer</button>
+          <button type="button" class="fiche-modal-close" onclick="fermerFicheModal()" aria-label="Fermer">✕</button>
+        </div>
+      </div>
+      <iframe id="ficheModalFrame" src="" title="Fiche repère"></iframe>
+    </div>
+  </div>
 
   <!-- FEUILLE "PLUS" — ressources secondaires, remonte du bas -->
   <div class="more-sheet-overlay" id="plusSheetOverlay" onclick="if(event.target===this)fermerPlusSheet()">
@@ -1888,6 +1916,14 @@ a,button{-webkit-tap-highlight-color:transparent}
       </div>
       <div style="text-align:right;margin-top:-8px;margin-bottom:24px">
         <a href="outils/phv-print.html" target="_blank" id="protocoleFullscreenLink" style="font-size:12.5px;color:var(--gris);text-decoration:none">Ouvrir en plein écran / imprimer →</a>
+      </div>
+
+      <!-- FICHES REPÈRES — une par spécialité cochée pour cette cliente, ouverture en
+           superposition (jamais de navigation externe, retour en arrière toujours possible). -->
+      <div class="proto-block" id="fichesProtocoleBloc" style="display:none">
+        <h3 class="proto-block-title">Comprendre ce qui se passe dans votre corps</h3>
+        <p class="proto-block-sub">Des fiches courtes, propres à votre suivi, pour comprendre le pourquoi derrière votre protocole.</p>
+        <div id="fichesProtocoleList" style="display:flex;flex-direction:column;gap:8px"></div>
       </div>
 
       <!-- Un seul bloc de relance, dont le texte s'adapte selon que la cliente est déjà en
@@ -2630,7 +2666,7 @@ function switchTab(id, btn){
   if(id === 'capsules'){ initCapsules(); }
   if(id === 'serena'){ gardienLoadHistory(); marquerReponsesVues(); }
   if(id === 'recettes' && !recettesLoaded) loadRecettes();
-  if(id === 'protocole'){ loadBilans(); loadSeances(); }
+  if(id === 'protocole'){ loadBilans(); loadSeances(); renderFichesProtocole(); }
   if(id === 'journal') loadJournalHistory();
   if(id === 'hormones') loadCycleHistory();
   setTimeout(setupScrollReveal, 60);
@@ -4146,6 +4182,91 @@ var CHECKIN_PROFILE_DIMS = {
   surrenales:   ['coupdebarre'],
   general:      ['sommeil','stress']
 };
+
+/* ── FICHES REPÈRES PAR SPÉCIALITÉ (08/09/2026) ────────────────────────────
+   8 fiches pédagogiques (mécanisme du corps + leviers d'action), une par
+   pathologie. Affichées sous le protocole, dans l'onglet Protocole, en
+   superposition dans l'app (jamais en navigation externe) pour permettre
+   de revenir en arrière sans perdre l'état de l'app.
+   Réutilise getCheckinProfileKeys() (même source de vérité que le check-in :
+   clientes.suivi_specialites, avec repli mots-clés sur axes/motifs si la
+   colonne n'a jamais été renseignée).
+   LIMITE CONNUE, à lever dès que Questionnaire_de_consultation.html /
+   Questionnaire_de_suivi.html auront des cases dédiées "SIBO",
+   "Perméabilité intestinale" et "SPM" (actuellement absentes — voir
+   FICHES_MATCH_MAP) :
+   - "digestif" ne distingue pas SIBO de perméabilité intestinale → les deux
+     fiches sont montrées ensemble par défaut, ce qui reste pertinent
+     cliniquement (la perméabilité accompagne très souvent le SIBO).
+   - le SPM n'est montré que si "spm" apparaît explicitement dans
+     suivi_specialites — ce qui n'arrivera jamais tant que la case dédiée
+     n'existe pas (le SPM est aujourd'hui noyé comme mot-clé dans "sopk"). */
+var FICHES_CATALOGUE = {
+  sibo:          { url:'/fiches/sibo.html',                     label:'Pourquoi mon intestin fermente' },
+  permeabilite:  { url:'/fiches/permeabilite-intestinale.html', label:'Comprendre ma barrière intestinale' },
+  sopk:          { url:'/fiches/sopk.html',                     label:'Ce qui se joue avec mon SOPK' },
+  endometriose:  { url:'/fiches/endometriose.html',             label:'Vivre avec mon endométriose' },
+  spm:           { url:'/fiches/spm.html',                      label:'Pourquoi je change avant mes règles' },
+  menopause:     { url:'/fiches/menopause.html',                label:'Traverser cette transition' },
+  thyroide:      { url:'/fiches/hashimoto.html',                label:'Comprendre ma thyroïde' },
+  surrenales:    { url:'/fiches/fatigue-surrenalienne.html',    label:'Sortir de cet épuisement' }
+};
+// Catégorie brute issue de getCheckinProfileKeys() → un ou plusieurs codes de fiches.
+var FICHES_MATCH_MAP = {
+  digestif:     ['sibo','permeabilite'],
+  sibo:         ['sibo'],
+  permeabilite: ['permeabilite'],
+  endometriose: ['endometriose'],
+  sopk:         ['sopk'],
+  spm:          ['spm'],
+  menopause:    ['menopause'],
+  thyroide:     ['thyroide'],
+  surrenales:   ['surrenales']
+};
+function getFichesForClient(){
+  var keys = getCheckinProfileKeys();
+  var codes = [];
+  keys.forEach(function(k){
+    (FICHES_MATCH_MAP[k]||[]).forEach(function(code){
+      if (codes.indexOf(code) === -1) codes.push(code);
+    });
+  });
+  return codes;
+}
+function renderFichesProtocole(){
+  var bloc = document.getElementById('fichesProtocoleBloc');
+  var container = document.getElementById('fichesProtocoleList');
+  if(!bloc || !container) return;
+  var codes = getFichesForClient();
+  if(!codes.length){ bloc.style.display = 'none'; return; }
+  bloc.style.display = '';
+  container.innerHTML = codes.map(function(code){
+    var f = FICHES_CATALOGUE[code]; if(!f) return '';
+    return '<button type="button" class="fiche-repere-btn" onclick="ouvrirFiche(\''+code+'\')">'+f.label+' →</button>';
+  }).join('');
+}
+function ouvrirFiche(code){
+  var fiche = FICHES_CATALOGUE[code]; if(!fiche) return;
+  var modal = document.getElementById('ficheModal');
+  var frame = document.getElementById('ficheModalFrame');
+  var title = document.getElementById('ficheModalTitle');
+  if(!modal || !frame) return;
+  frame.src = fiche.url;
+  if(title) title.textContent = fiche.label;
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+function fermerFicheModal(){
+  var modal = document.getElementById('ficheModal');
+  var frame = document.getElementById('ficheModalFrame');
+  if(modal) modal.style.display = 'none';
+  if(frame) frame.src = '';
+  document.body.style.overflow = '';
+}
+function imprimerFicheModal(){
+  var frame = document.getElementById('ficheModalFrame');
+  try{ frame.contentWindow.focus(); frame.contentWindow.print(); }catch(e){}
+}
 // Construit l'union des dimensions pour TOUS les profils actifs de la cliente, dans un
 // ordre stable : Énergie + curseur d'abord, piliers spécifiques ensuite (dans l'ordre des
 // profils déclarés, sans doublon), Humeur toujours en dernier.
