@@ -1171,6 +1171,7 @@ function prefillParams() {
   if (/SIBO|IMO\b|hydrogène|méthane|CH4|H2S|sulfure/i.test(checks)) autoAxes.push('SIBO / dysbiose');
   if (/digestif|ballonnem|transit|SII|microbiote|gaz|constip|diarrh/i.test(checks)) autoAxes.push('Digestif & microbiote');
   if (/SPM|cycle|hormonal|ovaires|règles|endométriose|SOPK|estrogène|progestérone/i.test(checks)) autoAxes.push('Hormonal & cycles');
+  if (/SPM|syndrome prémenstruel|prémenstruel/i.test(checks)) autoAxes.push('SPM');
   if (/cortisol|surrén|épuisée|énergie|fatigue/i.test(checks)) autoAxes.push('Surrénales & énergie');
   if (/sommeil|insomn|réveil nocturne|endorm/i.test(checks)) autoAxes.push('Sommeil & récupération');
   if (/foie|hépatique|détox|acné menton|réveil 2h|3h/i.test(checks)) autoAxes.push('Foie & détox');
@@ -1182,6 +1183,28 @@ function prefillParams() {
   document.querySelectorAll('#axes-group .p-toggle').forEach(btn => {
     if (autoAxes.includes(btn.dataset.val)) {
       axesOrder.push(btn.dataset.val);
+    }
+  });
+
+  // ── Axe principal / secondaire (séance de SUIVI uniquement) — ces 2 champs sont une
+  // sélection propre et structurée faite par la praticienne, mais leurs libellés historiques
+  // ne correspondent pas tous mot pour mot aux boutons d'axes du générateur (ex. "Foie &
+  // détoxication" vs "Foie & détox") — sans cette table de correspondance, la présélection
+  // ne se déclenchait silencieusement pour aucun des deux dans 4 cas sur 7. ──
+  const AXE_SUIVI_VERS_GENERATEUR = {
+    'Digestif & microbiote': 'Digestif & microbiote',
+    'Hormonal & cycles': 'Hormonal & cycles',
+    'Surrénales & énergie': 'Surrénales & énergie',
+    'Foie & détoxication': 'Foie & détox',
+    'Thyroïde & immunité': 'Thyroïde',
+    'Inflammation & douleur': 'Inflammation chronique',
+    'Psy-émotionnel': 'Stress & système nerveux',
+  };
+  [sessionData.axe_principal, sessionData.axe_secondaire].filter(Boolean).forEach(val => {
+    const cible = AXE_SUIVI_VERS_GENERATEUR[val] || val;
+    if (!axesOrder.includes(cible)) {
+      const btn = document.querySelector('#axes-group .p-toggle[data-val="' + cible.replace(/"/g,'\\"') + '"]');
+      if (btn) axesOrder.push(cible);
     }
   });
   refreshAxesBadges();
@@ -1304,7 +1327,7 @@ function buildClientData() {
     // (correctif du même jour) mais jamais lus ici — donc jamais transmis au prompt de génération.
     // On les rattache à symptomes_coches (signaux) et textes_libres (médicaments/contexte), exactement
     // comme pour la consultation initiale. ──
-    s.symptomes_coches = [entete, s.symptomes_coches, s.symptomes_evolution, s.observance_detail, s.checklist_signaux].filter(Boolean).join('\n');
+    s.symptomes_coches = [entete, s.symptomes_coches, s.symptomes_evolution, s.observance_detail, s.checklist_signaux, s.champs_non_catalogues].filter(Boolean).join('\n');
     s.scores = [s.scores_evolution, s.scores].filter(Boolean).join('\n') || s.scores;
     s.synthese_praticien = [
       s.message_cle && `Message clé de la praticienne : ${s.message_cle}`,
@@ -1313,6 +1336,9 @@ function buildClientData() {
       s.phase && `Phase du programme : ${s.phase}`,
       s.intuition_clinique,
       s.notes_libres,
+      // Filet de sécurité générique (08/09/2026) — tout champ du questionnaire de suivi non
+      // capturé nommément par ailleurs (mêmes principe et risque que côté consultation).
+      s.champs_non_catalogues,
     ].filter(Boolean).join('\n');
     // ── FAILLE CORRIGÉE (04/09/2026) : les nouveaux antécédents chirurgicaux ajoutés en suivi
     // (ex. endométriose opérée entre deux séances, non prévue à la consultation initiale) étaient
