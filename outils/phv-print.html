@@ -222,6 +222,11 @@ body.pdf-export-mode .sec-page-logo svg{height:100%;width:auto;display:block}
 
 /* ═══ DISCLAIMER ═══ */
 .sec-disclaimer{min-height:auto;padding:40px 32px;background:var(--grege);text-align:center;scroll-snap-align:end}
+.sec-fiches-jointes{flex-direction:column;text-align:left;background:var(--blanc)}
+.fiches-jointes-list{display:flex;flex-direction:column;gap:10px}
+.fiche-jointe-item{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border:1.5px solid var(--grege);border-radius:12px;color:var(--ardoise);text-decoration:none;font-size:14.5px;font-weight:500;transition:border-color .2s,background .2s}
+.fiche-jointe-item:hover{border-color:var(--ocre);background:var(--sable-l,#FBF4E2)}
+.fiche-jointe-item span{color:var(--ocre);font-weight:700}
 .disclaimer-txt{max-width:600px;margin:0 auto;font-size:12px;color:var(--gris);line-height:1.7}
 
 /* ═══ MOBILE ═══ */
@@ -346,6 +351,51 @@ const PARCOURS_INFO = {
   ora:  { nom:'Ora',  sousNom:'Le Temps',  duree:'9 mois', prix:780 }
 };
 const PRIX_BILAN_DEJA_REGLE = 90; // doit rester identique à reservation.html
+
+// ══════════════════════════════════════
+// FICHES À JOINDRE — sélection faite dans le générateur (cases à cocher),
+// affichées ici pour que la cliente y ait accès même en imprimant son protocole.
+// Même catalogue que generateur.html / crm.html / espace-clientes.html.
+// ══════════════════════════════════════
+const FICHES_CATALOGUE = {
+  'coherence-nerf-vague':          { url:'https://avitaserena.com/fiches/coherence-nerf-vague.html',          label:'Cohérence cardiaque & nerf vague' },
+  'fodmap':                        { url:'https://avitaserena.com/fiches/fodmap.html',                        label:'FODMAP — guide alimentaire complet' },
+  'sevrage-ipp':                   { url:'https://avitaserena.com/fiches/sevrage-ipp.html',                   label:'Sortir des IPP en douceur' },
+  'test-respiratoire-sibo':        { url:'https://avitaserena.com/fiches/test-respiratoire-sibo.html',        label:'Test respiratoire SIBO' },
+  'sibo':                          { url:'https://avitaserena.com/fiches/sibo.html',                          label:'Comprendre son SIBO' },
+  'permeabilite':                  { url:'https://avitaserena.com/fiches/permeabilite-intestinale.html',      label:'Comprendre sa perméabilité intestinale' },
+  'sopk':                          { url:'https://avitaserena.com/fiches/sopk.html',                          label:'Comprendre son SOPK' },
+  'sopk-pratique':                 { url:'https://avitaserena.com/fiches/sopk-pratique.html',                 label:'SOPK — guide pratique glycémie/insuline' },
+  'endometriose':                  { url:'https://avitaserena.com/fiches/endometriose.html',                  label:'Comprendre son endométriose' },
+  'endometriose-pratique':         { url:'https://avitaserena.com/fiches/endometriose-pratique.html',         label:'Endométriose — guide anti-inflammatoire' },
+  'spm':                           { url:'https://avitaserena.com/fiches/spm.html',                           label:'Comprendre son SPM' },
+  'spm-pratique':                  { url:'https://avitaserena.com/fiches/spm-pratique.html',                  label:'SPM — guide pratique par phase du cycle' },
+  'menopause':                     { url:'https://avitaserena.com/fiches/menopause.html',                     label:'Traverser sa ménopause/périménopause' },
+  'menopause-pratique':            { url:'https://avitaserena.com/fiches/menopause-pratique.html',            label:'Ménopause — guide symptôme par symptôme' },
+  'thyroide':                      { url:'https://avitaserena.com/fiches/hashimoto.html',                     label:'Comprendre sa thyroïde (Hashimoto)' },
+  'hashimoto-pratique':            { url:'https://avitaserena.com/fiches/hashimoto-pratique.html',            label:'Thyroïde — guide iode/sélénium au quotidien' },
+  'surrenales':                    { url:'https://avitaserena.com/fiches/fatigue-surrenalienne.html',         label:'Comprendre sa fatigue surrénalienne' },
+  'fatigue-surrenalienne-pratique':{ url:'https://avitaserena.com/fiches/fatigue-surrenalienne-pratique.html', label:'Fatigue surrénalienne — guide rythme cortisol' }
+};
+
+function renderFichesJointes() {
+  const codes = Array.isArray(data && data.fiches_jointes) ? data.fiches_jointes : [];
+  const valid = codes.filter(c => FICHES_CATALOGUE[c]);
+  if (!valid.length) return '';
+  const items = valid.map(code => {
+    const f = FICHES_CATALOGUE[code];
+    return `<a href="${f.url}" target="_blank" class="fiche-jointe-item">${escH(f.label)} <span aria-hidden="true">→</span></a>`;
+  }).join('');
+  return `
+  <section class="sec sec-fiches-jointes" id="sec-fiches">
+    <div class="sec-inner" style="max-width:560px">
+      <div class="sec-eyebrow" style="color:var(--ocre)"><span class="eyebrow-ico">✦</span>Pour aller plus loin</div>
+      <div class="sec-title">Vos fiches repères</div>
+      <p style="font-size:14px;color:var(--gris);line-height:1.7;margin-bottom:24px">Quelques guides pour approfondir ce qu'on a vu ensemble, à consulter quand vous en avez besoin.</p>
+      <div class="fiches-jointes-list">${items}</div>
+    </div>
+  </section>`;
+}
 
 function escH(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
@@ -929,6 +979,9 @@ function buildImmersive() {
     </div>
   </section>`;
   });
+
+  // ── FICHES JOINTES ──
+  html += renderFichesJointes();
 
   // ── DISCLAIMER ──
   html += `
