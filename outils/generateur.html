@@ -454,6 +454,7 @@ input.fi[readonly]{background:var(--taupe);cursor:default;opacity:.75}
   <div style="margin-top:14px;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ocre)">Digestif &amp; microbiote</div>
   <div class="chip-wrap" id="diagnostics-group-digestif" style="margin-top:8px">
     <button class="p-toggle" data-val="SIBO" onclick="toggleDiagnostic(this)">SIBO</button>
+    <button class="p-toggle" data-val="Hyperperméabilité intestinale (leaky gut)" onclick="toggleDiagnostic(this)">Hyperperméabilité intestinale</button>
     <button class="p-toggle" data-val="SII / côlon irritable" onclick="toggleDiagnostic(this)">SII / côlon irritable</button>
     <button class="p-toggle" data-val="MICI (Crohn / RCH)" onclick="toggleDiagnostic(this)">MICI (Crohn / RCH)</button>
     <button class="p-toggle" data-val="Maladie cœliaque" onclick="toggleDiagnostic(this)">Maladie cœliaque</button>
@@ -4000,31 +4001,58 @@ const FICHES_DISPONIBLES = [
   { code:'sibo',                 label:'Comprendre son SIBO',                  url:'https://avitaserena.com/fiches/sibo.html', groupe:'mecanisme' },
   { code:'permeabilite',         label:'Comprendre sa perméabilité intestinale', url:'https://avitaserena.com/fiches/permeabilite-intestinale.html', groupe:'mecanisme' },
   { code:'sopk',                 label:'Comprendre son SOPK',                  url:'https://avitaserena.com/fiches/sopk.html', groupe:'mecanisme' },
+  { code:'sopk-pratique',        label:'SOPK — guide pratique glycémie/insuline', url:'https://avitaserena.com/fiches/sopk-pratique.html', groupe:'pratique' },
   { code:'endometriose',         label:'Comprendre son endométriose',          url:'https://avitaserena.com/fiches/endometriose.html', groupe:'mecanisme' },
+  { code:'endometriose-pratique',label:'Endométriose — guide anti-inflammatoire', url:'https://avitaserena.com/fiches/endometriose-pratique.html', groupe:'pratique' },
   { code:'spm',                  label:'Comprendre son SPM',                   url:'https://avitaserena.com/fiches/spm.html', groupe:'mecanisme' },
+  { code:'spm-pratique',         label:'SPM — guide pratique par phase du cycle', url:'https://avitaserena.com/fiches/spm-pratique.html', groupe:'pratique' },
   { code:'menopause',            label:'Traverser sa ménopause/périménopause', url:'https://avitaserena.com/fiches/menopause.html', groupe:'mecanisme' },
+  { code:'menopause-pratique',   label:'Ménopause — guide symptôme par symptôme', url:'https://avitaserena.com/fiches/menopause-pratique.html', groupe:'pratique' },
   { code:'thyroide',             label:'Comprendre sa thyroïde (Hashimoto)',   url:'https://avitaserena.com/fiches/hashimoto.html', groupe:'mecanisme' },
+  { code:'thyroide-pratique',    label:'Thyroïde — guide iode/sélénium au quotidien', url:'https://avitaserena.com/fiches/thyroide-pratique.html', groupe:'pratique' },
   { code:'surrenales',           label:'Comprendre sa fatigue surrénalienne',  url:'https://avitaserena.com/fiches/fatigue-surrenalienne.html', groupe:'mecanisme' },
+  { code:'surrenales-pratique',  label:'Fatigue surrénalienne — guide rythme cortisol', url:'https://avitaserena.com/fiches/surrenales-pratique.html', groupe:'pratique' },
 ];
 
 // Codes présélectionnés (Set) à partir des axes retenus pour CE protocole et des
 // traitements en cours importés du questionnaire — jamais figé, juste une suggestion de départ.
+// Diagnostic confirmé et coché (le signal le plus fiable qui existe) — cherche
+// dans TOUS les groupes de diagnostics, peu importe lequel.
+function diagCoche(label){
+  return !!document.querySelector('.chip-wrap[id^="diagnostics-group"] [data-val="' + label.replace(/"/g,'\\"') + '"]')?.classList.contains('on');
+}
+
 function suggererFichesCodes() {
   const d = generatedData?._client || {};
   const axes = axesOrder || [];
   const suggested = new Set();
-  if (axes.includes('SIBO / dysbiose')) { suggested.add('fodmap'); suggested.add('test-respiratoire-sibo'); suggested.add('sibo'); }
-  if (axes.includes('Digestif & microbiote')) { suggested.add('permeabilite'); }
-  if (axes.includes('Stress & système nerveux') || axes.includes('Surrénales & énergie')) { suggested.add('coherence-nerf-vague'); }
-  if (axes.includes('Surrénales & énergie')) { suggested.add('surrenales'); }
-  if (axes.includes('Thyroïde')) { suggested.add('thyroide'); }
-  if (axes.includes('Périménopause / ménopause')) { suggested.add('menopause'); }
-  // SOPK et Endométriose ont déjà leurs propres puces de DIAGNOSTIC CONFIRMÉ
-  // (groupe "Gynécologique & hormonal féminin") — pas besoin d'un second axe
-  // en double, on lit directement leur état coché.
-  if (document.querySelector('#diagnostics-group-gyneco [data-val="SOPK"]')?.classList.contains('on')) { suggested.add('sopk'); }
-  if (document.querySelector('#diagnostics-group-gyneco [data-val="Endométriose"]')?.classList.contains('on')) { suggested.add('endometriose'); }
-  if (axes.includes('SPM')) { suggested.add('spm'); }
+
+  // SIBO — diagnostic confirmé en priorité, axe de travail en repli plus large.
+  if (diagCoche('SIBO') || axes.includes('SIBO / dysbiose')) { suggested.add('fodmap'); suggested.add('test-respiratoire-sibo'); suggested.add('sibo'); }
+
+  // Perméabilité intestinale — puce dédiée désormais disponible (plus fiable que
+  // l'ancien repli sur l'axe large "Digestif & microbiote").
+  if (diagCoche('Hyperperméabilité intestinale (leaky gut)')) { suggested.add('permeabilite'); }
+
+  // Stress / nerf vague — reste sur les axes, pas de diagnostic dédié pertinent ici.
+  if (axes.includes('Stress & système nerveux') || axes.includes('Surrénales & énergie') || diagCoche('Fatigue surrénalienne / burn-out')) { suggested.add('coherence-nerf-vague'); }
+
+  // Surrénales — diagnostic confirmé en priorité, axe de travail en repli.
+  if (diagCoche('Fatigue surrénalienne / burn-out') || axes.includes('Surrénales & énergie')) { suggested.add('surrenales'); suggested.add('surrenales-pratique'); }
+
+  // Thyroïde — les 3 diagnostics possibles, axe large en repli.
+  if (diagCoche('Hypothyroïdie') || diagCoche('Hashimoto / hypothyroïdie') || diagCoche('Basedow / hyperthyroïdie') || axes.includes('Thyroïde')) { suggested.add('thyroide'); suggested.add('thyroide-pratique'); }
+
+  // Ménopause / périménopause — les 2 diagnostics possibles, axe large en repli.
+  if (diagCoche('Périménopause') || diagCoche('Ménopause') || axes.includes('Périménopause / ménopause')) { suggested.add('menopause'); suggested.add('menopause-pratique'); }
+
+  // SOPK et Endométriose — diagnostics confirmés dédiés, pas d'axe en double.
+  if (diagCoche('SOPK')) { suggested.add('sopk'); suggested.add('sopk-pratique'); }
+  if (diagCoche('Endométriose') || diagCoche('Endométriose du côlon') || diagCoche('Adénomyose')) { suggested.add('endometriose'); suggested.add('endometriose-pratique'); }
+
+  // SPM — aucun diagnostic (ce n'est pas une maladie), l'axe dédié est le bon signal.
+  if (axes.includes('SPM')) { suggested.add('spm'); suggested.add('spm-pratique'); }
+
   if (/\bipp\b/i.test(d.traitements_vigilance || '')) { suggested.add('sevrage-ipp'); }
   return suggested;
 }
