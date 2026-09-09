@@ -1,0 +1,1761 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A VITA SERENA — Boîte à outils compléments</title>
+<style>
+  :root { --ardoise:#1E1E1C; --ocre:#B4906A; --sable:#D9C7A8; --ivoire:#EDE9E1; --conseil-bg:#F3EADD; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--ivoire); color:var(--ardoise); font-family:'Be Vietnam Pro',Arial,sans-serif; font-size:14px; line-height:1.5; }
+  h1,h2,h3 { font-family:'Cormorant Garamond',Georgia,serif; font-style:italic; color:var(--ardoise); }
+  header { background:var(--ardoise); color:var(--ivoire); padding:26px 24px 0; position:sticky; top:0; z-index:50; }
+  header h1 { margin:0 0 4px; font-size:24px; color:#fff; }
+  header p.sub { margin:0 0 16px; color:rgba(255,255,255,.7); font-size:12.5px; max-width:760px; }
+  #search { width:100%; max-width:480px; padding:10px 14px; border-radius:6px; border:none; font-size:15px; font-family:inherit; background:rgba(255,255,255,.95); color:var(--ardoise); margin-bottom:10px; }
+  #search::placeholder { color:#8A8378; }
+  #count { color:rgba(255,255,255,.6); font-size:11.5px; margin-bottom:14px; min-height:14px; }
+  .tabs { display:flex; gap:4px; }
+  .tab-btn { background:transparent; border:none; color:rgba(255,255,255,.6); font-family:inherit; font-size:13.5px; padding:10px 18px; cursor:pointer; border-bottom:3px solid transparent; }
+  .tab-btn.active { color:#fff; border-bottom-color:var(--ocre); font-weight:600; }
+  .tab-btn:hover { color:#fff; }
+  main { max-width:1150px; margin:0 auto; padding:24px; }
+  .tab-pane { display:none; }
+  .tab-pane.active { display:block; }
+  .jump-row { display:flex; flex-wrap:wrap; gap:6px 8px; margin-bottom:18px; }
+  .jump-row a { color:var(--ardoise); background:#fff; text-decoration:none; font-size:12px; border:1px solid rgba(180,144,106,.4); border-radius:20px; padding:4px 12px; white-space:nowrap; }
+  .jump-row a:hover { background:var(--sable); }
+  .actif-card, .marque-card { background:#fff; border:1px solid rgba(30,30,28,.08); border-radius:10px; padding:20px 22px 16px; margin-bottom:22px; }
+  .actif-head { display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:6px 16px; border-bottom:1px solid rgba(180,144,106,.3); padding-bottom:8px; margin-bottom:14px; }
+  .actif-head h2 { margin:0; font-size:22px; }
+  .source { font-size:11.5px; color:#8A8378; }
+  .table-wrap { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th { text-align:left; background:var(--ardoise); color:var(--ivoire); padding:8px 10px; font-weight:600; font-size:11.5px; position:sticky; top:0; }
+  td { padding:9px 10px; border-bottom:1px solid rgba(30,30,28,.08); vertical-align:top; }
+  tr.row-conseil td { background:var(--conseil-bg); }
+  .col-forme { font-weight:600; min-width:160px; }
+  .badge { display:block; color:var(--ocre); font-size:10.5px; font-weight:700; margin-bottom:2px; }
+  .pourquoi { font-weight:400; font-size:12px; color:#5b564d; margin-top:4px; font-style:italic; }
+  .col-ci { color:#8a3b2f; min-width:180px; }
+  .alt-avaler { margin-top:14px; padding:10px 14px; background:rgba(217,199,168,.25); border-radius:6px; font-size:12.5px; }
+  .no-results { text-align:center; color:#8A8378; padding:60px 0; display:none; }
+  .catalogue-table { background:#fff; border-radius:10px; min-width:1300px; }
+  .note-bas { font-size:11.5px; color:#8A8378; margin-top:14px; }
+  .marques-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:16px; }
+  .marque-card h3 { margin:0 0 10px; font-size:19px; }
+  .marque-card p { margin:0 0 8px; font-size:12.5px; }
+  .marque-notes { color:#8A8378; font-style:italic; }
+  footer { max-width:1150px; margin:0 auto; padding:10px 24px 40px; font-size:11.5px; color:#8A8378; }
+  @media (max-width:640px) { header{padding:18px 16px 0} main{padding:16px} .actif-card,.marque-card{padding:14px 14px 12px} table{font-size:12px} .tabs{overflow-x:auto} }
+</style>
+</head>
+<body>
+<header>
+  <h1>Boîte à outils compléments, phyto & aromathérapie</h1>
+  <p class="sub">A VITA SERENA · Référence praticienne interne — comparatifs de formes, catalogue complet, marques et distribution. La recherche filtre l'onglet actif.</p>
+  <input type="text" id="search" placeholder="Rechercher un actif, une forme, une marque, une contre-indication…" autocomplete="off">
+  <div id="count"></div>
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="tab1">Comparatifs actifs</button>
+    <button class="tab-btn" data-tab="tab2">Catalogue complet</button>
+    <button class="tab-btn" data-tab="tab3">Marques — où acheter</button>
+  </div>
+</header>
+<main>
+  <div class="tab-pane active" id="tab1"><div class="jump-row"><a href="#actif-zinc">Zinc</a><a href="#actif-magnesium">Magnésium</a><a href="#actif-vitamine-d3">Vitamine D3</a><a href="#actif-omega-3-epa-dha">Oméga-3 (EPA/DHA)</a><a href="#actif-fer">Fer</a><a href="#actif-vitamine-c">Vitamine C</a><a href="#actif-probiotiques">Probiotiques</a><a href="#actif-coenzyme-q10">Coenzyme Q10</a><a href="#actif-curcuma-curcumine">Curcuma / Curcumine</a><a href="#actif-vitamine-b12">Vitamine B12</a><a href="#actif-selenium">Sélénium</a><a href="#actif-nac-n-acetylcysteine">NAC (N-acétylcystéine)</a><a href="#actif-5-htp-griffonia">5-HTP (Griffonia)</a><a href="#actif-dim-diindolylmethane">DIM (diindolylméthane)</a><a href="#actif-melatonine">Mélatonine</a><a href="#actif-chrome">Chrome</a></div>
+    <section class="actif-card searchable" id="actif-zinc" data-search="zinc bisglycinate de zinc nutripure zinc bisglycinate (déjà votre référence actuelle) · nutrixeal aucune majeure picolinate de zinc nutrixeal · nutergia aucune majeure citrate de zinc diverses marques aucune majeure gluconate de zinc granions zinc (très large diffusion pharmacie française) aucune majeure oxyde de zinc multivitamines bas de gamme aucune majeure mais peu efficace pour corriger une vraie carence sulfate de zinc compléments génériques risque de nausées à jeun — à éviter si terrain digestif fragile (sibo/dysbiose)">
+      <div class="actif-head">
+        <h2>Zinc</h2>
+        <div class="source">Source : RÈGLE N°5 (generateur.html) — pilote déjà validé avec vous</div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Forme</th><th>Biodisponibilité</th><th>Marques repères</th><th>Dose typique</th><th>Contre-indications / interactions médicamenteuses</th></tr></thead>
+          <tbody>
+        <tr class="row-conseil">
+          <td class="col-forme"><span class="badge">★ Forme conseillée</span>Bisglycinate de zinc<div class="pourquoi">Meilleure tolérance digestive, forme actuellement recommandée dans vos protocoles — cohérent avec vos choix DFM</div></td>
+          <td>Élevée — forme chélatée, bien tolérée</td>
+          <td>Nutripure Zinc Bisglycinate (déjà votre référence actuelle) · Nutrixeal</td>
+          <td>15mg/j, jusqu'à 15mg matin+soir en phase d'attaque</td>
+          <td class="col-ci">Aucune majeure</td>
+        </tr>
+        <tr class="">
+          <td class="col-forme">Picolinate de zinc<div class="pourquoi">Alternative si le bisglycinate est indisponible localement</div></td>
+          <td>Élevée — autre forme chélatée très bien absorbée</td>
+          <td>Nutrixeal · Nutergia</td>
+          <td>Variable selon produit</td>
+          <td class="col-ci">Aucune majeure</td>
+        </tr>
+        <tr class="">
+          <td class="col-forme">Citrate de zinc<div class="pourquoi">Bonne tolérance générale, un peu moins concentré en zinc élémentaire à poids égal</div></td>
+          <td>Moyenne à bonne</td>
+          <td>Diverses marques</td>
+          <td>Variable</td>
+          <td class="col-ci">Aucune majeure</td>
+        </tr>
+        <tr class="">
+          <td class="col-forme">Gluconate de zinc<div class="pourquoi">Très large disponibilité y compris en pharmacie de base — bonne option si bisglycinate introuvable en Corse ; existe déjà en ampoule liquide = alternative sans avaler</div></td>
+          <td>Moyenne — forme la plus répandue en pharmacie généraliste</td>
+          <td>Granions Zinc (très large diffusion pharmacie française)</td>
+          <td>15mg/j (ampoule buvable)</td>
+          <td class="col-ci">Aucune majeure</td>
+        </tr>
+        <tr class="">
+          <td class="col-forme">Oxyde de zinc<div class="pourquoi">À éviter en 1ère intention pour vos protocoles ciblés</div></td>
+          <td>Faible — la moins bien absorbée</td>
+          <td>Multivitamines bas de gamme</td>
+          <td>Variable</td>
+          <td class="col-ci">Aucune majeure mais peu efficace pour corriger une vraie carence</td>
+        </tr>
+        <tr class="">
+          <td class="col-forme">Sulfate de zinc</td>
+          <td>Faible à moyenne, plus irritant pour l'estomac</td>
+          <td>Compléments génériques</td>
+          <td>Variable</td>
+          <td class="col-ci">Risque de nausées à jeun — à éviter si terrain digestif fragile (SIBO/dysbiose)</td>
+        </tr></tbody>
+        </table>
+      </div>
+      <div class="alt-avaler"><strong>Alternative sans avaler :</strong> Le gluconate de zinc existe nativement en ampoule buvable (type Granions) — alternative simple et très accessible.</div>
+    </section>
+    <section class="actif-card searchable" id="actif-magnesium" data-search="magnésium bisglycinate nutrixeal (seul, sans taurine/b6) · nutergia ergymag · holistica aucune majeure. vigilance : la plupart des formulations associent taurine + b6 — au-delà de 400-500mg/j cumulés, risque d'excitation paradoxale ou d'excès de b6, préférer alors une forme seule glycérophosphate d-stress (synergia) · pileje (certaines gammes) aucune majeure citrate pileje · nat &amp; form effet laxatif dose-dépendant — à réserver aux clientes constipées ou en cas d'acidose métabolique (règle n°33 point 4) chlorure (nigari, zechstein) formes brutes en magasin bio (hors marques praticien) fréquentes diarrhées/inconfort digestif si mal toléré oxyde / sulfate formes génériques bas de gamme, pharmacie généraliste peu d'intérêt thérapeutique ciblé — à éviter en 1ère intention">
+      <div class="actif-head">
+        <h2>Magnésium</h2>
+        <div class="source">Source : RÈGLE N°33 (generateur.html) + confirmé par vos lectures naturopathiques</div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Forme</th><th>Biodisponibilité</th><th>Marques repères</th><th>Dose typique</th><th>Contre-indications / interactions médicamenteuses</th></tr></thead>
+          <tbody>
+        <tr class="row-conseil">
+          <td class="col-forme"><span class="badge">★ Forme conseillée</span>Bisglycinate<div class="pourquoi">C'est déjà votre référence actuelle (RÈGLE N°5) — meilleure tolérance digestive que les sels classiques, cohérent avec vos formations DFM</div></td>
+          <td>Élevée — chélaté, très bien toléré</td>
+          <td>Nutrixeal (seul, sans taurine/B6) · Nutergia Ergymag · Holistica</td>
+          <td>300-400mg/j, jusqu'à 600-800mg/j fractionné si cortisol élevé</td>
+          <td class="col-ci">Aucune majeure. Vigilance : la plupart des formulations associent taurine + B6 — au-delà de 400-500mg/j cumulés, risque d'excitation paradoxale ou d'excès de B6, préférer alors une forme seule</td>
+        </tr>
+        <tr class="">
+          <td class="col-forme">Glycérophosphate</td>
+          <td>Élevée, peu acide</td>
+          <td>D-Stress (Synergia) · Pileje (certaines gammes)</td>
+          <td>Selon produit</td>
+          <td class="col-ci">Aucune majeure</td>
+        </tr>
+        <tr class="">
+          <td class="col-forme">Citrate</td>
+          <td>Très élevée mais laxative à haute dose</td>
+          <td>Pileje · Nat &amp; Form</td>
+          <td>Selon produit</td>
+          <td class="col-ci">Effet laxatif dose-dépendant — à réserver aux clientes constipées ou en cas d'acidose métabolique (RÈGLE N°33 point 4)</td>
+        </tr>
+        <tr class="">
+          <td class="col-forme">Chlorure (nigari, Zechstein)</td>
+          <td>Élevée mais souvent mal tolérée sur le plan digestif</td>
+          <td>Formes brutes en magasin bio (hors marques praticien)</td>
+          <td>Cure de 21 jours en général</td>
+          <td class="col-ci">Fréquentes diarrhées/inconfort digestif si mal toléré</td>
+        </tr>
+        <tr class="">
+          <td class="col-forme">Oxyde / sulfate</td>
+          <td>Faible — peu absorbé, effet surtout laxatif</td>
+          <td>Formes génériques bas de gamme, pharmacie généraliste</td>
+          <td>Variable</td>
+          <td class="col-ci">Peu d'intérêt thérapeutique ciblé — à éviter en 1ère intention</td>
+        </tr></tbody>
+        </table>
+      </div>
+      <div class="alt-avaler"><strong>Alternative sans avaler :</strong> Existe largement en poudre à diluer et en ampoule buvable (dont chez Nutrixeal et Nutripure) — bonne alternative à vérifier par référence précise.</div>
+    </section>
+    <section class="actif-card searchable" id="actif-vitamine-d3" data-search="vitamine d3 d3 (cholécalciférol), huileuse en gouttes pileje d3 biane (gouttes) · nutergia · nutrixeal ci absolue k2 associée si avk (règle n°9) — d3 seule reste possible d3 + k2 (mk-7) combinée pileje d3k2 ci absolue si avk (coumadine, previscan, sintrom) — règle n°9 d2 (ergocalciférol), végétale rares marques véganes spécifiques aucune majeure, mais moins efficace à dose égale">
+      <div class="actif-head">
+        <h2>Vitamine D3</h2>
+        <div class="source">Source : RÈGLE N°9 (generateur.html) — D3 déjà tranchée comme supérieure à D2 dans vos cours</div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Forme</th><th>Biodisponibilité</th><th>Marques repères</th><th>Dose typique</th><th>Contre-indications / interactions médicamenteuses</th></tr></thead>
+          <tbody>
+        <tr class="row-conseil">
+          <td class="col-forme"><span class="badge">★ Forme conseillée</span>D3 (cholécalciférol), huileuse en gouttes<div class="pourquoi">Déjà votre référence DFM — la D3 augmente mieux et plus durablement le taux sanguin que la D2, confirmé par la littérature (méta-analyse 2012) ET vos cours</div></td>
+          <td>Élevée — meilleure absorption avec un repas gras</td>
+          <td>Pileje D3 Biane (gouttes) · Nutergia · Nutrixeal</td>
+          <td>Attaque 8000-12000 UI/j 2-3 mois, entretien 60-80 UI/kg/j</td>
+          <td class="col-ci">CI absolue K2 associée si AVK (RÈGLE N°9) — D3 seule reste possible</td>
+        </tr>
+        <tr class="">
+          <td class="col-forme">D3 + K2 (MK-7) combinée<div class="pourquoi">Recommandée seulement si pas d'AVK, cf. RÈGLE N°9</div></td>
+          <td>Élevée — synergie fixation osseuse</td>
+          <td>Pileje D3K2</td>
+          <td>Selon produit</td>
+          <td class="col-ci">CI ABSOLUE si AVK (Coumadine, Previscan, Sintrom) — RÈGLE N°9</td>
+        </tr>
+        <tr class="">
+          <td class="col-forme">D2 (ergocalciférol), végétale<div class="pourquoi">À réserver aux clientes strictement véganes refusant la lanoline (origine D3 classique) — vérifier l'existence de D3 végétale (lichen) avant de basculer sur D2</div></td>
+          <td>Inférieure à la D3 pour élever durablement le taux sanguin</td>
+          <td>Rares marques véganes spécifiques</td>
+          <td>Doses généralement plus élevées nécessaires</td>
+          <td class="col-ci">Aucune majeure, mais moins efficace à dose égale</td>
+        </tr></tbody>
+        </table>
+      </div>
+      <div class="alt-avaler"><strong>Alternative sans avaler :</strong> Déjà disponible nativement en gouttes buvables chez plusieurs marques (Pileje D3 Biane) — aucune gélule à trouver en alternative, c'est souvent la forme par défaut.</div>
+    </section>
+    <section class="actif-card searchable" id="actif-omega-3-epa-dha" data-search="oméga-3 (epa/dha) huile de poisson (triglycérides) pileje omégabiane · nutrixeal · bionutrics prudence anticoagulant/antiagrégant (effet fluidifiant additif) au-delà de 2g/j huile de krill (phospholipides) marques spécialisées (à vérifier disponibilité pharmacie corse) allergie aux crustacés huile d'algue (végane) nutrixeal physio dha green aucune majeure">
+      <div class="actif-head">
+        <h2>Oméga-3 (EPA/DHA)</h2>
+        <div class="source">Source : RÈGLE N°23/24 + alternative véganne déjà intégrée (Nutrixeal Physio DHA Green)</div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Forme</th><th>Biodisponibilité</th><th>Marques repères</th><th>Dose typique</th><th>Contre-indications / interactions médicamenteuses</th></tr></thead>
+          <tbody>
+        <tr class="row-conseil">
+          <td class="col-forme"><span class="badge">★ Forme conseillée</span>Huile de poisson (triglycérides)<div class="pourquoi">Ratio EPA/DHA ajustable selon l'axe (2/3-1/3 pour l'inflammatoire) — forme la mieux tolérée et la plus documentée dans vos protocoles</div></td>
+          <td>Élevée, forme naturelle</td>
+          <td>Pileje Omégabiane · Nutrixeal · Bionutrics</td>
+          <td>500-1500mg EPA+DHA/j selon axe</td>
+          <td class="col-ci">Prudence anticoagulant/antiagrégant (effet fluidifiant additif) au-delà de 2g/j</td>
+        </tr>
+        <tr class="">
+          <td class="col-forme">Huile de krill (phospholipides)<div class="pourquoi">Alternative intéressante si mauvaise tolérance digestive à l'huile de poisson classique</div></td>
+          <td>Bonne, meilleure stabilité à l'oxydation (astaxanthine)</td>
+          <td>Marques spécialisées (à vérifier disponibilité pharmacie Corse)</td>
+          <td>Selon produit</td>
+          <td class="col-ci">Allergie aux crustacés</td>
+        </tr>
+        <tr class="">
+          <td class="col-forme">Huile d'algue (végane)<div class="pourquoi">Déjà intégrée pour le profil végétarien/végétalien (voir generateur.html) — seule vraie équivalence EPA/DHA sans poisson</div></td>
+          <td>Bonne — apporte directement EPA/DHA (pas seulement l'ALA)</td>
+          <td>Nutrixeal Physio DHA Green</td>
+          <td>1 gél/j (250mg DHA), jusqu'à 2 gél/j</td>
+          <td class="col-ci">Aucune majeure</td>
+        </tr></tbody>
+        </table>
+      </div>
+      <div class="alt-avaler"><strong>Alternative sans avaler :</strong> Existe en flacon liquide à la cuillère (goût fruits/citron chez certaines marques) pour qui n'aime pas les capsules molles.</div>
+    </section>
+    <section class="actif-card searchable" id="actif-fer" data-search="fer bisglycinate nutergia · nutrixeal · bionutrics hémochromatose, ferritine normale/élevée. espacer de 4h du thé/café et du lévothyrox liquide (type floradix) salus floradix (hors liste marques praticien — à confirmer équivalent chez vos marques) idem — jamais sans bilan sulfate/fumarate ferreux (classique pharmacie) génériques pharmacie de base fréquents troubles digestifs, jamais sans bilan">
+      <div class="actif-head">
+        <h2>Fer</h2>
+        <div class="source">Source : RÈGLE N°29 point 11 (generateur.html) + lecture croisée</div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Forme</th><th>Biodisponibilité</th><th>Marques repères</th><th>Dose typique</th><th>Contre-indications / interactions médicamenteuses</th></tr></thead>
+          <tbody>
+        <tr class="row-conseil">
+          <td class="col-forme"><span class="badge">★ Forme conseillée</span>Bisglycinate<div class="pourquoi">C'est déjà votre référence — bien meilleure tolérance digestive que le sulfate ferreux classique, cohérent avec vos cours</div></td>
+          <td>Élevée, bien toléré (peu de constipation)</td>
+          <td>Nutergia · Nutrixeal · Bionutrics</td>
+          <td>15-45mg/j selon déficit, jamais sans bilan préalable</td>
+          <td class="col-ci">Hémochromatose, ferritine normale/élevée. Espacer de 4h du thé/café et du Lévothyrox</td>
+        </tr>
+        <tr class="">
+          <td class="col-forme">Liquide (type Floradix)<div class="pourquoi">Bonne alternative sans avaler, mais marque hors de votre liste actuelle — à vérifier s'il existe un équivalent liquide chez Nutergia/Nutrixeal</div></td>
+          <td>Bonne, fer + plantes/vitamine C associées</td>
+          <td>Salus Floradix (hors liste marques praticien — à confirmer équivalent chez vos marques)</td>
+          <td>7,5-15ml/j selon âge</td>
+          <td class="col-ci">Idem — jamais sans bilan</td>
+        </tr>
+        <tr class="">
+          <td class="col-forme">Sulfate/fumarate ferreux (classique pharmacie)</td>
+          <td>Correcte mais souvent mal tolérée (constipation, nausées)</td>
+          <td>Génériques pharmacie de base</td>
+          <td>Prescription médicale le plus souvent</td>
+          <td class="col-ci">Fréquents troubles digestifs, jamais sans bilan</td>
+        </tr></tbody>
+        </table>
+      </div>
+      <div class="alt-avaler"><strong>Alternative sans avaler :</strong> Existe en forme liquide/ampoule buvable (très répandu pour le fer, ex. type Floradix) — alternative facile à trouver même en pharmacie généraliste.</div>
+    </section>
+    <section class="actif-card searchable" id="actif-vitamine-c" data-search="vitamine c acide ascorbique pur (poudre ou comprimé) nutrixeal · nutripure prudence lithiase oxalocalcique (max 1g/j dans ce cas) acérola (naturelle) nutergia · arkopharma attention à l'étiquette : 1000mg d'acérola ≠ 1000mg de vitamine c pure liposomale nutrixeal · bionutrics aucune majeure, coût plus élevé">
+      <div class="actif-head">
+        <h2>Vitamine C</h2>
+        <div class="source">Source : RÈGLE N°5/N°12/N°36 (generateur.html)</div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Forme</th><th>Biodisponibilité</th><th>Marques repères</th><th>Dose typique</th><th>Contre-indications / interactions médicamenteuses</th></tr></thead>
+          <tbody>
+        <tr class="row-conseil">
+          <td class="col-forme"><span class="badge">★ Forme conseillée</span>Acide ascorbique pur (poudre ou comprimé)<div class="pourquoi">Forme la plus simple et économique pour les doses utilisées dans vos protocoles — pas besoin de forme sophistiquée à ces dosages</div></td>
+          <td>Bonne à dose modérée, tolérance digestive dose-dépendante</td>
+          <td>Nutrixeal · Nutripure</td>
+          <td>500mg-1g/j entretien, jusqu'à 125mg/2h en aigu</td>
+          <td class="col-ci">Prudence lithiase oxalocalcique (max 1g/j dans ce cas)</td>
+        </tr>
+        <tr class="">
+          <td class="col-forme">Acérola (naturelle)<div class="pourquoi">Bonne option pour une cliente qui préfère une source 'naturelle' en prévention légère, pas pour les doses thérapeutiques élevées</div></td>
+          <td>Bonne, mais teneur en vit C variable et souvent plus faible par comprimé (lire l'étiquette)</td>
+          <td>Nutergia · Arkopharma</td>
+          <td>2 comprimés à 1000mg d'acérola/j en prévention hivernale simple</td>
+          <td class="col-ci">Attention à l'étiquette : 1000mg d'acérola ≠ 1000mg de vitamine C pure</td>
+        </tr>
+        <tr class="">
+          <td class="col-forme">Liposomale<div class="pourquoi">À réserver aux cas de forte demande (infection virale, fatigue immunitaire marquée) où les doses classiques ne suffiraient pas sans dépasser le seuil de tolérance intestinale</div></td>
+          <td>Très élevée — assimilation cellulaire proche de la perfusion IV à dose équivalente</td>
+          <td>Nutrixeal · Bionutrics</td>
+          <td>1g/j = équivalent à ~5g de vitamine C classique</td>
+          <td class="col-ci">Aucune majeure, coût plus élevé</td>
+        </tr></tbody>
+        </table>
+      </div>
+      <div class="alt-avaler"><strong>Alternative sans avaler :</strong> Très largement disponible en poudre pure (acide ascorbique ou acérola en poudre) — l'une des alternatives 'sans avaler' les plus simples à trouver.</div>
+    </section>
+    <section class="actif-card searchable" id="actif-probiotiques" data-search="probiotiques gélule gastro-résistante pileje lactibiane (gamme complète) · bionutrics aucune majeure — prudence immunosupprimé/valve cardiaque pour certaines souches à très haute dose (rare) sachet-poudre à diluer vivomixx (arkopharma) · lactibiane sachets enfant (pileje) aucune majeure ovule (usage vaginal, hors digestif) gynophilus (pileje) sans objet">
+      <div class="actif-head">
+        <h2>Probiotiques</h2>
+        <div class="source">Source : RÈGLES N°21/22/23/24 (generateur.html) — sélection par souche déjà très précise dans vos cours</div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Forme</th><th>Biodisponibilité</th><th>Marques repères</th><th>Dose typique</th><th>Contre-indications / interactions médicamenteuses</th></tr></thead>
+          <tbody>
+        <tr class="row-conseil">
+          <td class="col-forme"><span class="badge">★ Forme conseillée</span>Gélule gastro-résistante<div class="pourquoi">C'est le format que vous utilisez déjà systématiquement (Lactibiane) — la gastro-résistance est le critère qui compte le plus, pas la marque en tant que telle</div></td>
+          <td>Bonne — protège les souches de l'acidité gastrique jusqu'à l'intestin</td>
+          <td>Pileje Lactibiane (gamme complète) · Bionutrics</td>
+          <td>Selon souche et indication (voir RÈGLES N°21-24)</td>
+          <td class="col-ci">Aucune majeure — prudence immunosupprimé/valve cardiaque pour certaines souches à très haute dose (rare)</td>
+        </tr>
+        <tr class="">
+          <td class="col-forme">Sachet-poudre à diluer<div class="pourquoi">Alternative déjà identifiée pour les clientes qui n'avalent pas de gélules, ou en pédiatrie</div></td>
+          <td>Bonne si la souche est elle-même protégée (encapsulation)</td>
+          <td>Vivomixx (Arkopharma) · Lactibiane sachets enfant (Pileje)</td>
+          <td>1 sachet/j</td>
+          <td class="col-ci">Aucune majeure</td>
+        </tr>
+        <tr class="">
+          <td class="col-forme">Ovule (usage vaginal, hors digestif)<div class="pourquoi">Catégorie à part — déjà bien utilisée dans votre protocole SPM/ménopause</div></td>
+          <td>Sans objet (voie non orale)</td>
+          <td>Gynophilus (Pileje)</td>
+          <td>1 ovule au coucher</td>
+          <td class="col-ci">Sans objet</td>
+        </tr></tbody>
+        </table>
+      </div>
+      <div class="alt-avaler"><strong>Alternative sans avaler :</strong> Le sachet-poudre est déjà l'alternative native pour qui ne peut pas avaler de gélules (Vivomixx notamment).</div>
+    </section>
+    <section class="actif-card searchable" id="actif-coenzyme-q10" data-search="coenzyme q10 ubiquinone (forme oxydée classique) nutrixeal · bionutrics aucune majeure ubiquinol (forme réduite, active) kaneka ubiquinol (référence brevetée, à chercher chez vos marques distributrices) aucune majeure">
+      <div class="actif-head">
+        <h2>Coenzyme Q10</h2>
+        <div class="source">Source : Recherche scientifique (PubMed, revue 2020) — DFM ne tranche pas explicitement entre les 2 formes</div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Forme</th><th>Biodisponibilité</th><th>Marques repères</th><th>Dose typique</th><th>Contre-indications / interactions médicamenteuses</th></tr></thead>
+          <tbody>
+        <tr class="row-conseil">
+          <td class="col-forme"><span class="badge">★ Forme conseillée</span>Ubiquinone (forme oxydée classique)<div class="pourquoi">Suffisant et bien étudié pour la majorité de vos clientes (profil insulino-résistance/mitochondrial) — coût inférieur, efficacité comparable chez l'adulte jeune selon les études les plus robustes</div></td>
+          <td>Correcte chez l'adulte jeune en bonne santé — le corps la convertit en ubiquinol</td>
+          <td>Nutrixeal · Bionutrics</td>
+          <td>200mg/j 2 semaines puis 100mg/j (RÈGLE N°29)</td>
+          <td class="col-ci">Aucune majeure</td>
+        </tr>
+        <tr class="">
+          <td class="col-forme">Ubiquinol (forme réduite, active)<div class="pourquoi">À réserver aux clientes de plus de 45-50 ans, sous statine, ou en cas de stagnation clinique malgré l'ubiquinone classique — pas nécessaire en 1ère intention</div></td>
+          <td>Supérieure surtout après 40-50 ans (la conversion ubiquinone→ubiquinol décline avec l'âge) et sous statine</td>
+          <td>Kaneka Ubiquinol (référence brevetée, à chercher chez vos marques distributrices)</td>
+          <td>Souvent des dosages plus faibles suffisent (ratio d'équivalence variable selon les études)</td>
+          <td class="col-ci">Aucune majeure</td>
+        </tr></tbody>
+        </table>
+      </div>
+      <div class="alt-avaler"><strong>Alternative sans avaler :</strong> Existe en émulsion/forme liquide chez certaines marques (dont Energetica Natura) — alternative repérée mais référence exacte à confirmer.</div>
+    </section>
+    <section class="actif-card searchable" id="actif-curcuma-curcumine" data-search="curcuma / curcumine extrait titré + pipérine (poivre noir) nutrixeal curcuma complex ⚠️ la pipérine inhibe des enzymes hépatiques (cyp3a4) qui métabolisent de nombreux médicaments — interaction possible avec anticoagulants, certains antidépresseurs, immunosuppresseurs. toujours vérifier les traitements en cours (règle n°6) phytosome (liée à la phosphatidylcholine, ex. meriva) nutergia · bionutrics (vérifier gamme avec cette technologie) pas d'interaction avec la pipérine puisqu'elle n'en contient pas — option plus sûre si la cliente est sous traitement au long cours liposomale marques spécialisées à identifier aucune interaction connue liée à la pipérine">
+      <div class="actif-head">
+        <h2>Curcuma / Curcumine</h2>
+        <div class="source">Source : RÈGLE N°23 (generateur.html, curcuma+boswellia) enrichie par recherche scientifique sur la biodisponibilité</div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Forme</th><th>Biodisponibilité</th><th>Marques repères</th><th>Dose typique</th><th>Contre-indications / interactions médicamenteuses</th></tr></thead>
+          <tbody>
+        <tr class="">
+          <td class="col-forme">Extrait titré + pipérine (poivre noir)</td>
+          <td>x20 environ vs curcumine brute</td>
+          <td>Nutrixeal Curcuma Complex</td>
+          <td>1 à 1,5g curcumine + 10-20mg pipérine/j</td>
+          <td class="col-ci">⚠️ La pipérine inhibe des enzymes hépatiques (CYP3A4) qui métabolisent de nombreux médicaments — interaction possible avec anticoagulants, certains antidépresseurs, immunosuppresseurs. Toujours vérifier les traitements en cours (RÈGLE N°6)</td>
+        </tr>
+        <tr class="row-conseil">
+          <td class="col-forme"><span class="badge">★ Forme conseillée</span>Phytosome (liée à la phosphatidylcholine, ex. Meriva)<div class="pourquoi">Meilleur compromis efficacité/sécurité pour votre patientèle : biodisponibilité très supérieure ET sans le risque d'interaction médicamenteuse de la pipérine — préférable si la cliente prend un traitement chronique</div></td>
+          <td>x29 environ vs curcumine brute, très documentée cliniquement (arthrose, syndrome métabolique)</td>
+          <td>Nutergia · Bionutrics (vérifier gamme avec cette technologie)</td>
+          <td>1 à 2g/j en 2 prises</td>
+          <td class="col-ci">Pas d'interaction avec la pipérine puisqu'elle n'en contient pas — option plus sûre si la cliente est sous traitement au long cours</td>
+        </tr>
+        <tr class="">
+          <td class="col-forme">Liposomale<div class="pourquoi">Alternative valable au phytosome, souvent plus chère, forme liquide parfois disponible (intéressant pour 'sans avaler')</div></td>
+          <td>Très élevée, délivrance intracellulaire directe</td>
+          <td>Marques spécialisées à identifier</td>
+          <td>500mg-1g/j</td>
+          <td class="col-ci">Aucune interaction connue liée à la pipérine</td>
+        </tr></tbody>
+        </table>
+      </div>
+      <div class="alt-avaler"><strong>Alternative sans avaler :</strong> La curcumine liposomale existe en forme liquide — bonne alternative si la cliente ne peut pas avaler de gélules, en plus du curcuma en poudre alimentaire (moins concentré, usage cuisine uniquement).</div>
+    </section>
+    <section class="actif-card searchable" id="actif-vitamine-b12" data-search="vitamine b12 méthylcobalamine nutergia ergyfolamine (b9+b12 méthylées) · nutrixeal aucune majeure — à préférer chez la fumeuse ou en cas d'insuffisance rénale/hépatique (la cyanocobalamine libère une trace de cyanure à détoxifier par le foie/rein) cyanocobalamine génériques pharmacie, ampoules buvables standards prudence chez la fumeuse ou en cas d'insuffisance rénale/hépatique (trace de cyanure à éliminer) hydroxocobalamine réservée au corps médical (injectable) sans objet — jamais proposée par vous, relève du médecin">
+      <div class="actif-head">
+        <h2>Vitamine B12</h2>
+        <div class="source">Source : RÈGLE N°34 (generateur.html) enrichie par recherche scientifique</div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Forme</th><th>Biodisponibilité</th><th>Marques repères</th><th>Dose typique</th><th>Contre-indications / interactions médicamenteuses</th></tr></thead>
+          <tbody>
+        <tr class="row-conseil">
+          <td class="col-forme"><span class="badge">★ Forme conseillée</span>Méthylcobalamine<div class="pourquoi">Forme active déjà utilisée dans votre RÈGLE N°34 (méthylation) — cohérent de la garder aussi pour le profil carentiel végane, notamment chez une fumeuse ou en cas de fragilité hépatique/rénale déjà signalée dans vos champs de sécurité</div></td>
+          <td>Forme active directement utilisable, pas de conversion hépatique nécessaire — meilleure pénétration nerveuse</td>
+          <td>Nutergia Ergyfolamine (B9+B12 méthylées) · Nutrixeal</td>
+          <td>~250µg/j en soutien méthylation (RÈGLE N°34) ; jusqu'à 1000µg en ampoule hebdo si profil végane</td>
+          <td class="col-ci">Aucune majeure — à préférer chez la fumeuse ou en cas d'insuffisance rénale/hépatique (la cyanocobalamine libère une trace de cyanure à détoxifier par le foie/rein)</td>
+        </tr>
+        <tr class="">
+          <td class="col-forme">Cyanocobalamine<div class="pourquoi">Reste un choix valable et très accessible en pharmacie — à réserver aux clientes sans les vigilances ci-contre</div></td>
+          <td>Bonne, forme la plus stable et économique, nécessite une conversion hépatique en forme active</td>
+          <td>Génériques pharmacie, ampoules buvables standards</td>
+          <td>1000µg/4ml, 1 ampoule/semaine (profil végane, RÈGLE N°29/34)</td>
+          <td class="col-ci">Prudence chez la fumeuse ou en cas d'insuffisance rénale/hépatique (trace de cyanure à éliminer)</td>
+        </tr>
+        <tr class="">
+          <td class="col-forme">Hydroxocobalamine</td>
+          <td>Bonne, forme utilisée en injection médicale (hors champ naturopathique)</td>
+          <td>Réservée au corps médical (injectable)</td>
+          <td>Sans objet en naturopathie</td>
+          <td class="col-ci">Sans objet — jamais proposée par vous, relève du médecin</td>
+        </tr></tbody>
+        </table>
+      </div>
+      <div class="alt-avaler"><strong>Alternative sans avaler :</strong> Déjà en ampoule buvable (voie orale, pas injectable) dans votre protocole végane — aucune gélule à éviter ici.</div>
+    </section>
+    <section class="actif-card searchable" id="actif-selenium" data-search="sélénium sélénométhionine (forme organique) thérascience (lynside forte se+, forme brevetée) · nutrixeal aucune majeure à cette dose levure enrichie au sélénium diverses marques bio allergie à la levure sélénite/sélénate de sodium (forme inorganique) génériques pharmacie de base, noix du brésil (alimentaire, forme naturelle) aucune majeure mais moins efficace à dose égale">
+      <div class="actif-head">
+        <h2>Sélénium</h2>
+        <div class="source">Source : RÈGLE N°11/N°36 (generateur.html) enrichie par recherche scientifique</div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Forme</th><th>Biodisponibilité</th><th>Marques repères</th><th>Dose typique</th><th>Contre-indications / interactions médicamenteuses</th></tr></thead>
+          <tbody>
+        <tr class="row-conseil">
+          <td class="col-forme"><span class="badge">★ Forme conseillée</span>Sélénométhionine (forme organique)<div class="pourquoi">Biodisponibilité quasi double par rapport au sélénite selon les études — c'est la forme organique la mieux retenue par l'organisme, à privilégier systématiquement</div></td>
+          <td>Élevée, 80-90% — s'incorpore directement dans les protéines tissulaires, bien tolérée, meilleure rétention</td>
+          <td>Thérascience (Lynside Forte Se+, forme brevetée) · Nutrixeal</td>
+          <td>55µg/j — toujours avant l'iode (RÈGLE N°11)</td>
+          <td class="col-ci">Aucune majeure à cette dose</td>
+        </tr>
+        <tr class="">
+          <td class="col-forme">Levure enrichie au sélénium<div class="pourquoi">Alternative acceptable mais moins constante d'un lot à l'autre que la sélénométhionine pure</div></td>
+          <td>Bonne mais composition variable en sélénométhionine selon les lots (moins prévisible)</td>
+          <td>Diverses marques bio</td>
+          <td>Selon produit</td>
+          <td class="col-ci">Allergie à la levure</td>
+        </tr>
+        <tr class="">
+          <td class="col-forme">Sélénite/sélénate de sodium (forme inorganique)<div class="pourquoi">Reste une alternative alimentaire simple (noix du Brésil, déjà citée dans votre banque) même si moins concentrée que la sélénométhionine pure</div></td>
+          <td>Plus faible, 40-50%, éliminée plus vite</td>
+          <td>Génériques pharmacie de base, noix du Brésil (alimentaire, forme naturelle)</td>
+          <td>Selon produit</td>
+          <td class="col-ci">Aucune majeure mais moins efficace à dose égale</td>
+        </tr></tbody>
+        </table>
+      </div>
+      <div class="alt-avaler"><strong>Alternative sans avaler :</strong> Alternative alimentaire déjà prévue dans vos protocoles (noix du Brésil, 3-4/j) — pas de gélule nécessaire pour une cliente qui préfère un aliment.</div>
+    </section>
+    <section class="actif-card searchable" id="actif-nac-n-acetylcysteine" data-search="nac (n-acétylcystéine) gélule/comprimé standard nutrixeal · nutergia · bionutrics ulcère gastroduodénal actif, asthme (rare bronchospasme à forte dose)">
+      <div class="actif-head">
+        <h2>NAC (N-acétylcystéine)</h2>
+        <div class="source">Source : RÈGLE N°23/N°44 (generateur.html)</div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Forme</th><th>Biodisponibilité</th><th>Marques repères</th><th>Dose typique</th><th>Contre-indications / interactions médicamenteuses</th></tr></thead>
+          <tbody>
+        <tr class="row-conseil">
+          <td class="col-forme"><span class="badge">★ Forme conseillée</span>Gélule/comprimé standard<div class="pourquoi">Il n'existe pas de forme alternative avec une biodisponibilité significativement supérieure documentée pour la NAC — la variable qui compte est la pureté/qualité du fournisseur, pas la forme chimique</div></td>
+          <td>Bonne, forme unique largement utilisée, pas de variante galénique majeure documentée</td>
+          <td>Nutrixeal · Nutergia · Bionutrics</td>
+          <td>600mg 1-2x/j</td>
+          <td class="col-ci">Ulcère gastroduodénal actif, asthme (rare bronchospasme à forte dose)</td>
+        </tr></tbody>
+        </table>
+      </div>
+      <div class="alt-avaler"><strong>Alternative sans avaler :</strong> Existe en poudre pure (vrac nutraceutique, à peser) — alternative simple pour qui ne veut pas de gélules.</div>
+    </section>
+    <section class="actif-card searchable" id="actif-5-htp-griffonia" data-search="5-htp (griffonia) extrait titré à 20% de 5-htp (standard) nutrixeal · nutergia ci absolue avec isrs/antidépresseurs (risque de syndrome sérotoninergique), grossesse, allaitement gastro-résistante selon disponibilité idem">
+      <div class="actif-head">
+        <h2>5-HTP (Griffonia)</h2>
+        <div class="source">Source : RÈGLE N°28 (generateur.html)</div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Forme</th><th>Biodisponibilité</th><th>Marques repères</th><th>Dose typique</th><th>Contre-indications / interactions médicamenteuses</th></tr></thead>
+          <tbody>
+        <tr class="row-conseil">
+          <td class="col-forme"><span class="badge">★ Forme conseillée</span>Extrait titré à 20% de 5-HTP (standard)<div class="pourquoi">La standardisation en % de 5-HTP est le critère qui compte vraiment (garantit la dose réelle reçue) — 20% est le standard le mieux documenté, pas de forme galénique alternative supérieure identifiée</div></td>
+          <td>Bonne, forme la plus courante et la mieux dosée avec précision</td>
+          <td>Nutrixeal · Nutergia</td>
+          <td>50-100mg 1-3x/j, titrable jusqu'à 300-500mg/j (RÈGLE N°28)</td>
+          <td class="col-ci">CI ABSOLUE avec ISRS/antidépresseurs (risque de syndrome sérotoninergique), grossesse, allaitement</td>
+        </tr>
+        <tr class="">
+          <td class="col-forme">Gastro-résistante<div class="pourquoi">Intéressant seulement en cas d'intolérance digestive au 5-HTP standard</div></td>
+          <td>Peut réduire les nausées associées à la prise de 5-HTP chez certaines clientes sensibles</td>
+          <td>Selon disponibilité</td>
+          <td>Idem</td>
+          <td class="col-ci">Idem</td>
+        </tr></tbody>
+        </table>
+      </div>
+      <div class="alt-avaler"><strong>Alternative sans avaler :</strong> Non identifiée sous forme poudre/liquide fiable pour le 5-HTP isolé — reste presque exclusivement en gélule dans l'offre actuelle du marché.</div>
+    </section>
+    <section class="actif-card searchable" id="actif-dim-diindolylmethane" data-search="dim (diindolylméthane) dim cristallin standard (non micro-encapsulé) génériques bas de gamme grossesse, allaitement — troubles digestifs plus fréquents à haute dose dim micro-encapsulé (technologie brevetée type bioresponse) à rechercher chez vos marques (vérifier laquelle propose cette technologie, ex. bionutrics/nutrixeal) grossesse, allaitement">
+      <div class="actif-head">
+        <h2>DIM (diindolylméthane)</h2>
+        <div class="source">Source : RÈGLE N°18/branche Gonades (generateur.html) enrichie par recherche scientifique</div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Forme</th><th>Biodisponibilité</th><th>Marques repères</th><th>Dose typique</th><th>Contre-indications / interactions médicamenteuses</th></tr></thead>
+          <tbody>
+        <tr class="">
+          <td class="col-forme">DIM cristallin standard (non micro-encapsulé)</td>
+          <td>Très faible — le DIM brut est mal absorbé, nécessite des doses élevées peu tolérées</td>
+          <td>Génériques bas de gamme</td>
+          <td>Doses élevées nécessaires (mauvaise absorption)</td>
+          <td class="col-ci">Grossesse, allaitement — troubles digestifs plus fréquents à haute dose</td>
+        </tr>
+        <tr class="row-conseil">
+          <td class="col-forme"><span class="badge">★ Forme conseillée</span>DIM micro-encapsulé (technologie brevetée type BioResponse)<div class="pourquoi">Le DIM standard est notoirement mal absorbé — la littérature est unanime : sans technologie d'encapsulation, une grande partie de la dose n'est simplement pas assimilée. Le surcoût se justifie ici plus que pour la plupart des autres actifs</div></td>
+          <td>Nettement supérieure (+50 à 75% selon les études) — permet une dose efficace plus faible</td>
+          <td>À rechercher chez vos marques (vérifier laquelle propose cette technologie, ex. Bionutrics/Nutrixeal)</td>
+          <td>100-200mg/j de DIM micro-encapsulé (équivalent à une dose bien plus forte de DIM standard)</td>
+          <td class="col-ci">Grossesse, allaitement</td>
+        </tr></tbody>
+        </table>
+      </div>
+      <div class="alt-avaler"><strong>Alternative sans avaler :</strong> Non identifiée — le DIM existe presque exclusivement en gélule du fait des contraintes de stabilité de la micro-encapsulation.</div>
+    </section>
+    <section class="actif-card searchable" id="actif-melatonine" data-search="mélatonine libération prolongée (lp) marques pharmaceutiques standards (souvent hors marques praticien, comprimé lp réglementé) vérifier profil cortisol avant de proposer (règle n°28) libération immédiate (li), spray ou comprimé diverses marques, spray sublingual fréquent ne traite pas un réveil nocturne (effet trop bref)">
+      <div class="actif-head">
+        <h2>Mélatonine</h2>
+        <div class="source">Source : RÈGLE N°28/N°32 (generateur.html) — distinction LP/LI déjà tranchée dans vos cours</div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Forme</th><th>Biodisponibilité</th><th>Marques repères</th><th>Dose typique</th><th>Contre-indications / interactions médicamenteuses</th></tr></thead>
+          <tbody>
+        <tr class="row-conseil">
+          <td class="col-forme"><span class="badge">★ Forme conseillée</span>Libération prolongée (LP)<div class="pourquoi">C'est la forme qui correspond le mieux à un vrai trouble de maintien du sommeil (réveils nocturnes) — déjà votre choix par défaut</div></td>
+          <td>Mime la sécrétion physiologique nocturne progressive</td>
+          <td>Marques pharmaceutiques standards (souvent hors marques praticien, comprimé LP réglementé)</td>
+          <td>1,9mg au coucher — seulement si cortisol du soir non élevé (RÈGLE N°28)</td>
+          <td class="col-ci">Vérifier profil cortisol avant de proposer (RÈGLE N°28)</td>
+        </tr>
+        <tr class="">
+          <td class="col-forme">Libération immédiate (LI), spray ou comprimé<div class="pourquoi">Réservée au recalage de phase (jet-lag, horaires décalés), jamais pour un trouble de maintien du sommeil — distinction déjà bien posée dans vos cours</div></td>
+          <td>Pic rapide, redescend vite</td>
+          <td>Diverses marques, spray sublingual fréquent</td>
+          <td>~0,5mg — recalage chronobiologique uniquement (RÈGLE N°32)</td>
+          <td class="col-ci">Ne traite pas un réveil nocturne (effet trop bref)</td>
+        </tr></tbody>
+        </table>
+      </div>
+      <div class="alt-avaler"><strong>Alternative sans avaler :</strong> La LI existe déjà en spray sublingual chez plusieurs marques — alternative native pour qui n'aime pas avaler de comprimé.</div>
+    </section>
+    <section class="actif-card searchable" id="actif-chrome" data-search="chrome picolinate de chrome nutrixeal · nutergia aucune majeure aux doses nutritionnelles usuelles polynicotinate de chrome (chrome + niacine) diverses marques aucune majeure chlorure de chrome (forme inorganique) génériques bas de gamme aucune majeure mais moins efficace à dose égale">
+      <div class="actif-head">
+        <h2>Chrome</h2>
+        <div class="source">Source : RÈGLE N°29 (generateur.html) — DFM ne tranche pas la forme chimique, recherche scientifique complémentaire</div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Forme</th><th>Biodisponibilité</th><th>Marques repères</th><th>Dose typique</th><th>Contre-indications / interactions médicamenteuses</th></tr></thead>
+          <tbody>
+        <tr class="row-conseil">
+          <td class="col-forme"><span class="badge">★ Forme conseillée</span>Picolinate de chrome<div class="pourquoi">C'est la forme la plus documentée dans la littérature sur la sensibilité à l'insuline — bon choix par défaut en l'absence de préconisation DFM plus précise</div></td>
+          <td>La forme la plus étudiée et la mieux absorbée parmi les chromes trivalents</td>
+          <td>Nutrixeal · Nutergia</td>
+          <td>Selon fabricant (RÈGLE N°29 : dose non précisée dans le cours source, à vérifier sur fiche produit)</td>
+          <td class="col-ci">Aucune majeure aux doses nutritionnelles usuelles</td>
+        </tr>
+        <tr class="">
+          <td class="col-forme">Polynicotinate de chrome (chrome + niacine)<div class="pourquoi">Alternative valable, moins étudiée que le picolinate mais sans désavantage identifié</div></td>
+          <td>Bonne, parfois présentée comme mieux tolérée</td>
+          <td>Diverses marques</td>
+          <td>Selon fabricant</td>
+          <td class="col-ci">Aucune majeure</td>
+        </tr>
+        <tr class="">
+          <td class="col-forme">Chlorure de chrome (forme inorganique)</td>
+          <td>Plus faible</td>
+          <td>Génériques bas de gamme</td>
+          <td>Selon fabricant</td>
+          <td class="col-ci">Aucune majeure mais moins efficace à dose égale</td>
+        </tr></tbody>
+        </table>
+      </div>
+      <div class="alt-avaler"><strong>Alternative sans avaler :</strong> Non identifiée de façon fiable — le chrome se trouve presque toujours en gélule/comprimé dans l'offre praticien.</div>
+    </section><div class="no-results searchable-empty">Aucun résultat pour cette recherche.</div></div>
+  <div class="tab-pane" id="tab2">
+    <div class="table-wrap">
+      <table class="catalogue-table">
+        <thead><tr>
+          <th>Catégorie clinique</th><th>Complément</th><th>Marque actuelle</th><th>Posologie</th>
+          <th>Contre-indications</th><th>Forme galénique</th><th>Alternative sans avaler</th>
+        </tr></thead>
+        <tbody>
+      <tr class="searchable" data-search="1.1 candidose intestinale huile essentielle d'origan (origan compact/oléocaps) — fragilité/insuff. hépatique, grossesse, allaitement gélule (he) aucune — l'he pure doit être encapsulée pour la voie orale, jamais avalée telle quelle">
+        <td>1.1 Candidose intestinale</td>
+        <td><strong>Huile essentielle d'origan (Origan compact/Oléocaps)</strong></td>
+        <td>—</td>
+        <td>2 gél 2x/j, 5j/7, 3 sem max</td>
+        <td class="col-ci">Fragilité/insuff. hépatique, grossesse, allaitement</td>
+        <td>Gélule (HE)</td>
+        <td>Aucune — l'HE pure doit être encapsulée pour la voie orale, jamais avalée telle quelle</td>
+      </tr>
+      <tr class="searchable" data-search="1.1 candidose intestinale ergypar (relais fragilité hépatique) nutergia 2 mois, 5j/7 liquide (déjà sans gélule) déjà liquide">
+        <td>1.1 Candidose intestinale</td>
+        <td><strong>Ergypar (relais fragilité hépatique)</strong></td>
+        <td>Nutergia</td>
+        <td>10-20ml/j dilués</td>
+        <td class="col-ci">2 mois, 5j/7</td>
+        <td>Liquide (déjà sans gélule)</td>
+        <td>Déjà liquide</td>
+      </tr>
+      <tr class="searchable" data-search="1.1 candidose intestinale epp (extrait pépins de pamplemousse) — compatible grossesse à dose adaptée liquide (gouttes) déjà liquide">
+        <td>1.1 Candidose intestinale</td>
+        <td><strong>EPP (extrait pépins de pamplemousse)</strong></td>
+        <td>—</td>
+        <td>20 gouttes 3x/j</td>
+        <td class="col-ci">Compatible grossesse à dose adaptée</td>
+        <td>Liquide (gouttes)</td>
+        <td>Déjà liquide</td>
+      </tr>
+      <tr class="searchable" data-search="1.1 candidose intestinale chlorophylle — — gélule ou liquide selon marque existe en version liquide (flacon compte-gouttes) chez plusieurs marques — à privilégier si besoin">
+        <td>1.1 Candidose intestinale</td>
+        <td><strong>Chlorophylle</strong></td>
+        <td>—</td>
+        <td>1 gél matin+soir</td>
+        <td class="col-ci">—</td>
+        <td>Gélule ou liquide selon marque</td>
+        <td>Existe en version liquide (flacon compte-gouttes) chez plusieurs marques — à privilégier si besoin</td>
+      </tr>
+      <tr class="searchable" data-search="1.1 candidose intestinale probiotiques anti-candida (l. helveticus, l. ncfm, s. boulardii) — — gélule le plus souvent existe en poudre/sachet chez certaines marques (à vérifier par référence précise)">
+        <td>1.1 Candidose intestinale</td>
+        <td><strong>Probiotiques anti-candida (L. helveticus, L. NCFM, S. boulardii)</strong></td>
+        <td>—</td>
+        <td>Selon phase</td>
+        <td class="col-ci">—</td>
+        <td>Gélule le plus souvent</td>
+        <td>Existe en poudre/sachet chez certaines marques (à vérifier par référence précise)</td>
+      </tr>
+      <tr class="searchable" data-search="1.1 candidose intestinale vivomixx / lactichoc (réensemencement) arkopharma / pileje 20j / 1 mois sachet (poudre) ou gélule vivomixx déjà en sachet-poudre — préférer cette option si sans avaler">
+        <td>1.1 Candidose intestinale</td>
+        <td><strong>Vivomixx / Lactichoc (réensemencement)</strong></td>
+        <td>Arkopharma / Pileje</td>
+        <td>1 sachet à jeun / 2 gél avant petit-déj</td>
+        <td class="col-ci">20j / 1 mois</td>
+        <td>Sachet (poudre) ou gélule</td>
+        <td>Vivomixx déjà en sachet-poudre — préférer cette option si sans avaler</td>
+      </tr>
+      <tr class="searchable" data-search="1.1 candidose intestinale ultradyn impact / perméa+ bionutrics / thérascience 3 mois (j1-j90) gélule/poudre selon marque perméa+ existe en poudre chez thérascience — à confirmer référence exacte">
+        <td>1.1 Candidose intestinale</td>
+        <td><strong>Ultradyn Impact / Perméa+</strong></td>
+        <td>Bionutrics / Thérascience</td>
+        <td>—</td>
+        <td class="col-ci">3 mois (J1-J90)</td>
+        <td>Gélule/poudre selon marque</td>
+        <td>Perméa+ existe en poudre chez Thérascience — à confirmer référence exacte</td>
+      </tr>
+      <tr class="searchable" data-search="1.1 candidose intestinale lactibiane cnd / enfant pileje 3 mois sachet (poudre, à diluer) déjà sans gélule">
+        <td>1.1 Candidose intestinale</td>
+        <td><strong>Lactibiane CND / enfant</strong></td>
+        <td>Pileje</td>
+        <td>1 sachet/j</td>
+        <td class="col-ci">3 mois</td>
+        <td>Sachet (poudre, à diluer)</td>
+        <td>Déjà sans gélule</td>
+      </tr>
+      <tr class="searchable" data-search="1.2 dysbiose/sibo/hyperperméabilité hcl bétaïne nutripure ou équiv. ci absolue : ulcère, œsophagite, gastrite, ipp en cours comprimé non identifiée — la bétaïne hcl existe presque exclusivement en comprimé (poudre trop irritante à nu)">
+        <td>1.2 Dysbiose/SIBO/Hyperperméabilité</td>
+        <td><strong>HCl bétaïne</strong></td>
+        <td>Nutripure ou équiv.</td>
+        <td>1 cp/repas, titrage progressif</td>
+        <td class="col-ci">CI ABSOLUE : ulcère, œsophagite, gastrite, IPP en cours</td>
+        <td>Comprimé</td>
+        <td>Non identifiée — la bétaïne HCl existe presque exclusivement en comprimé (poudre trop irritante à nu)</td>
+      </tr>
+      <tr class="searchable" data-search="1.2 dysbiose/sibo/hyperperméabilité gingembre — prudence ulcère actif/anticoagulant gélule gingembre frais râpé en infusion — alternative alimentaire simple">
+        <td>1.2 Dysbiose/SIBO/Hyperperméabilité</td>
+        <td><strong>Gingembre</strong></td>
+        <td>—</td>
+        <td>2 gél après repas x2</td>
+        <td class="col-ci">Prudence ulcère actif/anticoagulant</td>
+        <td>Gélule</td>
+        <td>Gingembre frais râpé en infusion — alternative alimentaire simple</td>
+      </tr>
+      <tr class="searchable" data-search="1.2 dysbiose/sibo/hyperperméabilité safran nutrixeal ou équiv. grossesse, isrs (prudence) gélule ou extrait liquide existe en extrait liquide chez certaines marques">
+        <td>1.2 Dysbiose/SIBO/Hyperperméabilité</td>
+        <td><strong>Safran</strong></td>
+        <td>Nutrixeal ou équiv.</td>
+        <td>30mg/j</td>
+        <td class="col-ci">Grossesse, ISRS (prudence)</td>
+        <td>Gélule ou extrait liquide</td>
+        <td>Existe en extrait liquide chez certaines marques</td>
+      </tr>
+      <tr class="searchable" data-search="1.2 dysbiose/sibo/hyperperméabilité berbérine / allicine — fragilité hépatique, grossesse (he origan) gélule non identifiée pour la berbérine pure (peu de formes poudre en vente libre fiable)">
+        <td>1.2 Dysbiose/SIBO/Hyperperméabilité</td>
+        <td><strong>Berbérine / Allicine</strong></td>
+        <td>—</td>
+        <td>1g/j en 2-3 prises</td>
+        <td class="col-ci">Fragilité hépatique, grossesse (HE origan)</td>
+        <td>Gélule</td>
+        <td>Non identifiée pour la berbérine pure (peu de formes poudre en vente libre fiable)</td>
+      </tr>
+      <tr class="searchable" data-search="1.2 dysbiose/sibo/hyperperméabilité thym eps, noyer eps, mauve infusion — — liquide (eps) ou infusion déjà sans gélule">
+        <td>1.2 Dysbiose/SIBO/Hyperperméabilité</td>
+        <td><strong>Thym EPS, Noyer EPS, Mauve infusion</strong></td>
+        <td>—</td>
+        <td>—</td>
+        <td class="col-ci">—</td>
+        <td>Liquide (EPS) ou infusion</td>
+        <td>Déjà sans gélule</td>
+      </tr>
+      <tr class="searchable" data-search="1.2 dysbiose/sibo/hyperperméabilité glutamine (permealine) pileje — poudre en sachet déjà en poudre">
+        <td>1.2 Dysbiose/SIBO/Hyperperméabilité</td>
+        <td><strong>Glutamine (Permealine)</strong></td>
+        <td>Pileje</td>
+        <td>3g le soir</td>
+        <td class="col-ci">—</td>
+        <td>Poudre en sachet</td>
+        <td>Déjà en poudre</td>
+      </tr>
+      <tr class="searchable" data-search="1.2 dysbiose/sibo/hyperperméabilité zinc bisglycinate nutripure — gélule existe en poudre/liquide chez certaines marques — à vérifier">
+        <td>1.2 Dysbiose/SIBO/Hyperperméabilité</td>
+        <td><strong>Zinc bisglycinate</strong></td>
+        <td>Nutripure</td>
+        <td>15mg/j</td>
+        <td class="col-ci">—</td>
+        <td>Gélule</td>
+        <td>Existe en poudre/liquide chez certaines marques — à vérifier</td>
+      </tr>
+      <tr class="searchable" data-search="2.1 vitamine d et synergies vitamine d3 (±k2) pileje (d3k2) prise le soir au repas gélule, gouttes ou spray selon marque existe très largement en gouttes/spray buvable (ex. d3 biane pileje en gouttes) — alternative facile et déjà répandue">
+        <td>2.1 Vitamine D et synergies</td>
+        <td><strong>Vitamine D3 (±K2)</strong></td>
+        <td>Pileje (D3K2)</td>
+        <td>Attaque 8000-12000UI/j puis entretien</td>
+        <td class="col-ci">Prise le soir au repas</td>
+        <td>Gélule, gouttes ou spray selon marque</td>
+        <td>Existe très largement en gouttes/spray buvable (ex. D3 Biane Pileje en gouttes) — alternative facile et déjà répandue</td>
+      </tr>
+      <tr class="searchable" data-search="2.1 vitamine d et synergies vitamine a (huile de foie de morue) — ci absolue grossesse/désir grossesse gélule ou liquide existe en flacon liquide (huile pure à la cuillère)">
+        <td>2.1 Vitamine D et synergies</td>
+        <td><strong>Vitamine A (huile de foie de morue)</strong></td>
+        <td>—</td>
+        <td>1,5g/j</td>
+        <td class="col-ci">CI ABSOLUE grossesse/désir grossesse</td>
+        <td>Gélule ou liquide</td>
+        <td>Existe en flacon liquide (huile pure à la cuillère)</td>
+      </tr>
+      <tr class="searchable" data-search="2.1 vitamine d et synergies magnésium (cofacteur) — cofacteur d obligatoire voir fiche magnésium (6.1) voir 6.1">
+        <td>2.1 Vitamine D et synergies</td>
+        <td><strong>Magnésium (cofacteur)</strong></td>
+        <td>—</td>
+        <td>—</td>
+        <td class="col-ci">Cofacteur D obligatoire</td>
+        <td>Voir fiche magnésium (6.1)</td>
+        <td>Voir 6.1</td>
+      </tr>
+      <tr class="searchable" data-search="2.2 terrain inflammatoire/allergique curcuma + boswellia nutergia ou équiv. calculs biliaires, grossesse, sevrage ains/ipp gélule curcuma existe en poudre alimentaire (moins concentré, usage cuisine) — pas une vraie équivalence thérapeutique, à mentionner avec prudence">
+        <td>2.2 Terrain inflammatoire/allergique</td>
+        <td><strong>Curcuma + Boswellia</strong></td>
+        <td>Nutergia ou équiv.</td>
+        <td>—</td>
+        <td class="col-ci">Calculs biliaires, grossesse, sevrage AINS/IPP</td>
+        <td>Gélule</td>
+        <td>Curcuma existe en poudre alimentaire (moins concentré, usage cuisine) — pas une vraie équivalence thérapeutique, à mentionner avec prudence</td>
+      </tr>
+      <tr class="searchable" data-search="2.2 terrain inflammatoire/allergique acide alpha-lipoïque — — gélule non identifiée">
+        <td>2.2 Terrain inflammatoire/allergique</td>
+        <td><strong>Acide alpha-lipoïque</strong></td>
+        <td>—</td>
+        <td>300-600mg/j</td>
+        <td class="col-ci">—</td>
+        <td>Gélule</td>
+        <td>Non identifiée</td>
+      </tr>
+      <tr class="searchable" data-search="2.2 terrain inflammatoire/allergique polyphénols (raisin/thé vert) — — gélule ou extrait liquide extrait liquide existe chez plusieurs marques">
+        <td>2.2 Terrain inflammatoire/allergique</td>
+        <td><strong>Polyphénols (raisin/thé vert)</strong></td>
+        <td>—</td>
+        <td>Selon fabricant</td>
+        <td class="col-ci">—</td>
+        <td>Gélule ou extrait liquide</td>
+        <td>Extrait liquide existe chez plusieurs marques</td>
+      </tr>
+      <tr class="searchable" data-search="2.2 terrain inflammatoire/allergique huile de poisson epa/dha — prudence anticoagulant gélule (capsule molle) existe en flacon liquide à la cuillère (goût citron/fruits chez certaines marques) — bonne alternative">
+        <td>2.2 Terrain inflammatoire/allergique</td>
+        <td><strong>Huile de poisson EPA/DHA</strong></td>
+        <td>—</td>
+        <td>500-1500mg/j</td>
+        <td class="col-ci">Prudence anticoagulant</td>
+        <td>Gélule (capsule molle)</td>
+        <td>Existe en flacon liquide à la cuillère (goût citron/fruits chez certaines marques) — bonne alternative</td>
+      </tr>
+      <tr class="searchable" data-search="2.2 terrain inflammatoire/allergique quercétine nutripure — gélule existe en poudre chez certaines marques sportives">
+        <td>2.2 Terrain inflammatoire/allergique</td>
+        <td><strong>Quercétine</strong></td>
+        <td>Nutripure</td>
+        <td>500mg 2x/j hors repas</td>
+        <td class="col-ci">—</td>
+        <td>Gélule</td>
+        <td>Existe en poudre chez certaines marques sportives</td>
+      </tr>
+      <tr class="searchable" data-search="2.2 terrain inflammatoire/allergique huile de périlla — — gélule (capsule molle) existe en huile liquide en bouteille (usage assaisonnement) — bonne alternative alimentaire">
+        <td>2.2 Terrain inflammatoire/allergique</td>
+        <td><strong>Huile de périlla</strong></td>
+        <td>—</td>
+        <td>1-2g/j</td>
+        <td class="col-ci">—</td>
+        <td>Gélule (capsule molle)</td>
+        <td>Existe en huile liquide en bouteille (usage assaisonnement) — bonne alternative alimentaire</td>
+      </tr>
+      <tr class="searchable" data-search="2.2 terrain inflammatoire/allergique bromélaïne — prudence anticoagulant, ulcère gastrique actif gélule/comprimé non identifiée">
+        <td>2.2 Terrain inflammatoire/allergique</td>
+        <td><strong>Bromélaïne</strong></td>
+        <td>—</td>
+        <td>500mg/j à jeun</td>
+        <td class="col-ci">Prudence anticoagulant, ulcère gastrique actif</td>
+        <td>Gélule/comprimé</td>
+        <td>Non identifiée</td>
+      </tr>
+      <tr class="searchable" data-search="2.2 terrain inflammatoire/allergique dao daosin ou équiv. — gélule non identifiée — la dao est une enzyme fragile, rarement disponible hors gélule">
+        <td>2.2 Terrain inflammatoire/allergique</td>
+        <td><strong>DAO</strong></td>
+        <td>Daosin ou équiv.</td>
+        <td>1 gél avant repas riche en histamine</td>
+        <td class="col-ci">—</td>
+        <td>Gélule</td>
+        <td>Non identifiée — la DAO est une enzyme fragile, rarement disponible hors gélule</td>
+      </tr>
+      <tr class="searchable" data-search="2.2 terrain inflammatoire/allergique cbd nutrixeal ou équiv. contrôlé grossesse, allaitement, interactions cytochromes huile sublinguale (gouttes) déjà sans gélule (sublingual)">
+        <td>2.2 Terrain inflammatoire/allergique</td>
+        <td><strong>CBD</strong></td>
+        <td>Nutrixeal ou équiv. contrôlé</td>
+        <td>Titrage jusqu'à 20-100mg/j, sublingual</td>
+        <td class="col-ci">Grossesse, allaitement, interactions cytochromes</td>
+        <td>Huile sublinguale (gouttes)</td>
+        <td>Déjà sans gélule (sublingual)</td>
+      </tr>
+      <tr class="searchable" data-search="2.2 terrain inflammatoire/allergique pea (palmitoyléthanolamide) — grossesse, allaitement, enfant gélule/comprimé non identifiée">
+        <td>2.2 Terrain inflammatoire/allergique</td>
+        <td><strong>PEA (palmitoyléthanolamide)</strong></td>
+        <td>—</td>
+        <td>Aigu 1200mg/j, entretien ~600mg/j</td>
+        <td class="col-ci">Grossesse, allaitement, enfant</td>
+        <td>Gélule/comprimé</td>
+        <td>Non identifiée</td>
+      </tr>
+      <tr class="searchable" data-search="2.2 terrain inflammatoire/allergique sélénium nutripure ou noix du brésil — gélule alternative alimentaire déjà prévue (noix du brésil)">
+        <td>2.2 Terrain inflammatoire/allergique</td>
+        <td><strong>Sélénium</strong></td>
+        <td>Nutripure ou noix du Brésil</td>
+        <td>55µg/j</td>
+        <td class="col-ci">—</td>
+        <td>Gélule</td>
+        <td>Alternative alimentaire déjà prévue (noix du Brésil)</td>
+      </tr>
+      <tr class="searchable" data-search="2.2 terrain inflammatoire/allergique vitamine c — prudence lithiase oxalocalcique comprimé/gélule/poudre existe très largement en poudre (acide ascorbique pur ou acérola en poudre) — alternative facile et courante">
+        <td>2.2 Terrain inflammatoire/allergique</td>
+        <td><strong>Vitamine C</strong></td>
+        <td>—</td>
+        <td>500mg-1g/j entretien</td>
+        <td class="col-ci">Prudence lithiase oxalocalcique</td>
+        <td>Comprimé/gélule/poudre</td>
+        <td>Existe très largement en poudre (acide ascorbique pur ou acérola en poudre) — alternative facile et courante</td>
+      </tr>
+      <tr class="searchable" data-search="2.2 terrain inflammatoire/allergique vitamine e — prudence anticoagulant gélule (capsule molle) existe en flacon liquide (huile de germe de blé riche en vit e) — alternative alimentaire">
+        <td>2.2 Terrain inflammatoire/allergique</td>
+        <td><strong>Vitamine E</strong></td>
+        <td>—</td>
+        <td>100-200mg/j au repas</td>
+        <td class="col-ci">Prudence anticoagulant</td>
+        <td>Gélule (capsule molle)</td>
+        <td>Existe en flacon liquide (huile de germe de blé riche en vit E) — alternative alimentaire</td>
+      </tr>
+      <tr class="searchable" data-search="2.3 parodontite/immunité oil pulling (huile de coco) — 1 mois liquide (huile alimentaire) déjà sans gélule">
+        <td>2.3 Parodontite/immunité</td>
+        <td><strong>Oil pulling (huile de coco)</strong></td>
+        <td>—</td>
+        <td>1 c. à soupe 5-10min à jeun</td>
+        <td class="col-ci">1 mois</td>
+        <td>Liquide (huile alimentaire)</td>
+        <td>Déjà sans gélule</td>
+      </tr>
+      <tr class="searchable" data-search="2.3 parodontite/immunité probiotique buccodentaire (l. reuteri) — — comprimé à sucer ou pastille déjà sans avaler (sucé, pas avalé entier)">
+        <td>2.3 Parodontite/immunité</td>
+        <td><strong>Probiotique buccodentaire (L. reuteri)</strong></td>
+        <td>—</td>
+        <td>1/j</td>
+        <td class="col-ci">—</td>
+        <td>Comprimé à sucer ou pastille</td>
+        <td>Déjà sans avaler (sucé, pas avalé entier)</td>
+      </tr>
+      <tr class="searchable" data-search="2.3 parodontite/immunité papaïne — ne remplace jamais le détartrage comprimé non identifiée">
+        <td>2.3 Parodontite/immunité</td>
+        <td><strong>Papaïne</strong></td>
+        <td>—</td>
+        <td>Selon fabricant</td>
+        <td class="col-ci">Ne remplace jamais le détartrage</td>
+        <td>Comprimé</td>
+        <td>Non identifiée</td>
+      </tr>
+      <tr class="searchable" data-search="3. métabolique magnésium bisglycinate — phase 1 systématique gélule voir fiche magnésium (6.1) — poudre/liquide disponibles">
+        <td>3. Métabolique</td>
+        <td><strong>Magnésium bisglycinate</strong></td>
+        <td>—</td>
+        <td>300mg/j</td>
+        <td class="col-ci">Phase 1 systématique</td>
+        <td>Gélule</td>
+        <td>Voir fiche magnésium (6.1) — poudre/liquide disponibles</td>
+      </tr>
+      <tr class="searchable" data-search="3. métabolique zinc bisglycinate nutripure 3 mois puis recontrôler gélule voir comparatif zinc (onglet dédié)">
+        <td>3. Métabolique</td>
+        <td><strong>Zinc bisglycinate</strong></td>
+        <td>Nutripure</td>
+        <td>15mg matin+soir</td>
+        <td class="col-ci">3 mois puis recontrôler</td>
+        <td>Gélule</td>
+        <td>Voir comparatif zinc (onglet dédié)</td>
+      </tr>
+      <tr class="searchable" data-search="3. métabolique chrome (picolinate) — — gélule/comprimé non identifiée">
+        <td>3. Métabolique</td>
+        <td><strong>Chrome (picolinate)</strong></td>
+        <td>—</td>
+        <td>Selon fabricant</td>
+        <td class="col-ci">—</td>
+        <td>Gélule/comprimé</td>
+        <td>Non identifiée</td>
+      </tr>
+      <tr class="searchable" data-search="3. métabolique berbérine — grossesse gélule non identifiée">
+        <td>3. Métabolique</td>
+        <td><strong>Berbérine</strong></td>
+        <td>—</td>
+        <td>~1g/j en 2-3 prises</td>
+        <td class="col-ci">Grossesse</td>
+        <td>Gélule</td>
+        <td>Non identifiée</td>
+      </tr>
+      <tr class="searchable" data-search="3. métabolique acide r-alpha-lipoïque — phase 2 gélule non identifiée">
+        <td>3. Métabolique</td>
+        <td><strong>Acide R-alpha-lipoïque</strong></td>
+        <td>—</td>
+        <td>300mg/j</td>
+        <td class="col-ci">Phase 2</td>
+        <td>Gélule</td>
+        <td>Non identifiée</td>
+      </tr>
+      <tr class="searchable" data-search="3. métabolique coq10 — 2 mois puis recontrôler gélule (capsule molle, huileuse) existe en forme liquide/émulsion (ex. gamme energetica natura) — alternative repérée">
+        <td>3. Métabolique</td>
+        <td><strong>CoQ10</strong></td>
+        <td>—</td>
+        <td>200mg/j puis 100mg/j</td>
+        <td class="col-ci">2 mois puis recontrôler</td>
+        <td>Gélule (capsule molle, huileuse)</td>
+        <td>Existe en forme liquide/émulsion (ex. gamme Energetica Natura) — alternative repérée</td>
+      </tr>
+      <tr class="searchable" data-search="3. métabolique oméga-3 epa/dha — — gélule voir 2.2 — flacon liquide existant">
+        <td>3. Métabolique</td>
+        <td><strong>Oméga-3 EPA/DHA</strong></td>
+        <td>—</td>
+        <td>500-1000mg/j</td>
+        <td class="col-ci">—</td>
+        <td>Gélule</td>
+        <td>Voir 2.2 — flacon liquide existant</td>
+      </tr>
+      <tr class="searchable" data-search="3. métabolique fer bisglycinate — hémochromatose, ferritine normale/élevée gélule existe en forme liquide (type floradix, ampoule) — alternative très répandue pour le fer">
+        <td>3. Métabolique</td>
+        <td><strong>Fer bisglycinate</strong></td>
+        <td>—</td>
+        <td>15-45mg/j selon déficit</td>
+        <td class="col-ci">Hémochromatose, ferritine normale/élevée</td>
+        <td>Gélule</td>
+        <td>Existe en forme liquide (type Floradix, ampoule) — alternative très répandue pour le fer</td>
+      </tr>
+      <tr class="searchable" data-search="3. métabolique cuivre bisglycinate — hémochromatose, wilson gélule non identifiée">
+        <td>3. Métabolique</td>
+        <td><strong>Cuivre bisglycinate</strong></td>
+        <td>—</td>
+        <td>1-2mg/j</td>
+        <td class="col-ci">Hémochromatose, Wilson</td>
+        <td>Gélule</td>
+        <td>Non identifiée</td>
+      </tr>
+      <tr class="searchable" data-search="3. métabolique nicotinamide (b3) — — gélule/comprimé existe en poudre pure (vrac nutraceutique)">
+        <td>3. Métabolique</td>
+        <td><strong>Nicotinamide (B3)</strong></td>
+        <td>—</td>
+        <td>250mg/j</td>
+        <td class="col-ci">—</td>
+        <td>Gélule/comprimé</td>
+        <td>Existe en poudre pure (vrac nutraceutique)</td>
+      </tr>
+      <tr class="searchable" data-search="3. métabolique resvératrol — prudence anticoagulant gélule non identifiée">
+        <td>3. Métabolique</td>
+        <td><strong>Resvératrol</strong></td>
+        <td>—</td>
+        <td>150mg/j</td>
+        <td class="col-ci">Prudence anticoagulant</td>
+        <td>Gélule</td>
+        <td>Non identifiée</td>
+      </tr>
+      <tr class="searchable" data-search="3. métabolique l-carnitine — profils à risque (végane, déficit b, mthfr) gélule existe en flacon liquide (ampoule buvable, très courant en nutrition sportive) — bonne alternative">
+        <td>3. Métabolique</td>
+        <td><strong>L-carnitine</strong></td>
+        <td>—</td>
+        <td>500-1000mg/j</td>
+        <td class="col-ci">Profils à risque (végane, déficit B, MTHFR)</td>
+        <td>Gélule</td>
+        <td>Existe en flacon liquide (ampoule buvable, très courant en nutrition sportive) — bonne alternative</td>
+      </tr>
+      <tr class="searchable" data-search="4.1 neurotransmetteurs l-tyrosine — — gélule/poudre existe nativement en poudre pure — alternative simple">
+        <td>4.1 Neurotransmetteurs</td>
+        <td><strong>L-Tyrosine</strong></td>
+        <td>—</td>
+        <td>1g au lever à jeun</td>
+        <td class="col-ci">—</td>
+        <td>Gélule/poudre</td>
+        <td>Existe nativement en poudre pure — alternative simple</td>
+      </tr>
+      <tr class="searchable" data-search="4.1 neurotransmetteurs mucuna pruriens (l-dopa) — grossesse, dopaminergiques/antipsychotiques/imao liquide (eps) ou gélule eps déjà sans gélule si cette forme choisie">
+        <td>4.1 Neurotransmetteurs</td>
+        <td><strong>Mucuna pruriens (L-Dopa)</strong></td>
+        <td>—</td>
+        <td>EPS 30-60mg/5ml ou extrait sec 300-1200mg</td>
+        <td class="col-ci">Grossesse, dopaminergiques/antipsychotiques/IMAO</td>
+        <td>Liquide (EPS) ou gélule</td>
+        <td>EPS déjà sans gélule si cette forme choisie</td>
+      </tr>
+      <tr class="searchable" data-search="4.1 neurotransmetteurs l-tryptophane — — gélule/poudre existe en poudre pure">
+        <td>4.1 Neurotransmetteurs</td>
+        <td><strong>L-Tryptophane</strong></td>
+        <td>—</td>
+        <td>400mg vers 16h30</td>
+        <td class="col-ci">—</td>
+        <td>Gélule/poudre</td>
+        <td>Existe en poudre pure</td>
+      </tr>
+      <tr class="searchable" data-search="4.1 neurotransmetteurs 5-htp (griffonia) — ci absolue isrs, grossesse, allaitement gélule non identifiée pour le 5-htp isolé">
+        <td>4.1 Neurotransmetteurs</td>
+        <td><strong>5-HTP (Griffonia)</strong></td>
+        <td>—</td>
+        <td>50-300mg/j titrable</td>
+        <td class="col-ci">CI ABSOLUE ISRS, grossesse, allaitement</td>
+        <td>Gélule</td>
+        <td>Non identifiée pour le 5-HTP isolé</td>
+      </tr>
+      <tr class="searchable" data-search="4.1 neurotransmetteurs mélatonine lp/li — selon profil cortisol / règle n°32 comprimé (lp) ou gélule li existe en spray sublingual chez plusieurs marques — alternative fréquente">
+        <td>4.1 Neurotransmetteurs</td>
+        <td><strong>Mélatonine LP/LI</strong></td>
+        <td>—</td>
+        <td>1,9mg / ~0,5mg</td>
+        <td class="col-ci">Selon profil cortisol / RÈGLE N°32</td>
+        <td>Comprimé (LP) ou gélule</td>
+        <td>LI existe en spray sublingual chez plusieurs marques — alternative fréquente</td>
+      </tr>
+      <tr class="searchable" data-search="4.1 neurotransmetteurs magnésium bisglycinate nutergia ergymag/holistica — gélule voir 6.1">
+        <td>4.1 Neurotransmetteurs</td>
+        <td><strong>Magnésium bisglycinate</strong></td>
+        <td>Nutergia Ergymag/Holistica</td>
+        <td>400mg/j soir</td>
+        <td class="col-ci">—</td>
+        <td>Gélule</td>
+        <td>Voir 6.1</td>
+      </tr>
+      <tr class="searchable" data-search="4.1 neurotransmetteurs oméga-3 epa/dha pileje omégabiane — gélule voir 2.2">
+        <td>4.1 Neurotransmetteurs</td>
+        <td><strong>Oméga-3 EPA/DHA</strong></td>
+        <td>Pileje Omégabiane</td>
+        <td>2 gél/j</td>
+        <td class="col-ci">—</td>
+        <td>Gélule</td>
+        <td>Voir 2.2</td>
+      </tr>
+      <tr class="searchable" data-search="4.2 neuroexcitabilité/gaba mélisse officinale — surveiller affinité tsh (pas ci) comprimé, liquide ou infusion eps/infusion déjà sans gélule">
+        <td>4.2 Neuroexcitabilité/GABA</td>
+        <td><strong>Mélisse officinale</strong></td>
+        <td>—</td>
+        <td>Extrait sec 600mg/j ou EPS/infusion</td>
+        <td class="col-ci">Surveiller affinité TSH (pas CI)</td>
+        <td>Comprimé, liquide ou infusion</td>
+        <td>EPS/infusion déjà sans gélule</td>
+      </tr>
+      <tr class="searchable" data-search="4.2 neuroexcitabilité/gaba valériane officinale — enfant, grossesse, allaitement, sédatifs/alcool gélule ou liquide (eps) eps déjà sans gélule">
+        <td>4.2 Neuroexcitabilité/GABA</td>
+        <td><strong>Valériane officinale</strong></td>
+        <td>—</td>
+        <td>400-500mg/j ou EPS 5-10ml/j</td>
+        <td class="col-ci">Enfant, grossesse, allaitement, sédatifs/alcool</td>
+        <td>Gélule ou liquide (EPS)</td>
+        <td>EPS déjà sans gélule</td>
+      </tr>
+      <tr class="searchable" data-search="4.2 neuroexcitabilité/gaba théanine — — gélule existe en poudre pure">
+        <td>4.2 Neuroexcitabilité/GABA</td>
+        <td><strong>Théanine</strong></td>
+        <td>—</td>
+        <td>100-200mg/j</td>
+        <td class="col-ci">—</td>
+        <td>Gélule</td>
+        <td>Existe en poudre pure</td>
+      </tr>
+      <tr class="searchable" data-search="4.2 neuroexcitabilité/gaba probiotiques gabaergiques (l. rhamnosus, l. casei) — en renfort si axe digestif gélule/sachet existe en sachet-poudre selon marque">
+        <td>4.2 Neuroexcitabilité/GABA</td>
+        <td><strong>Probiotiques GABAergiques (L. rhamnosus, L. casei)</strong></td>
+        <td>—</td>
+        <td>—</td>
+        <td class="col-ci">En renfort si axe digestif</td>
+        <td>Gélule/sachet</td>
+        <td>Existe en sachet-poudre selon marque</td>
+      </tr>
+      <tr class="searchable" data-search="4.3 nerf vague/sna aubépine — grossesse, enfant &lt;12 ans gélule ou infusion infusion déjà sans gélule">
+        <td>4.3 Nerf vague/SNA</td>
+        <td><strong>Aubépine</strong></td>
+        <td>—</td>
+        <td>900-1200mg/j</td>
+        <td class="col-ci">Grossesse, enfant &lt;12 ans</td>
+        <td>Gélule ou infusion</td>
+        <td>Infusion déjà sans gélule</td>
+      </tr>
+      <tr class="searchable" data-search="4.3 nerf vague/sna marjolaine à coquilles (he) — grossesse, dilution obligatoire liquide (he, jamais avalée pure) voie cutanée/olfactive — n'est jamais 'avalée' dans ce protocole">
+        <td>4.3 Nerf vague/SNA</td>
+        <td><strong>Marjolaine à coquilles (HE)</strong></td>
+        <td>—</td>
+        <td>1-2 gouttes diluées</td>
+        <td class="col-ci">Grossesse, dilution obligatoire</td>
+        <td>Liquide (HE, jamais avalée pure)</td>
+        <td>Voie cutanée/olfactive — n'est jamais 'avalée' dans ce protocole</td>
+      </tr>
+      <tr class="searchable" data-search="4.4 méthylation b9+b12 méthylées nutergia ergyfolamine ou équiv. — gélule non identifiée pour la forme combinée — b12 seule existe en ampoule buvable (voir profil végane)">
+        <td>4.4 Méthylation</td>
+        <td><strong>B9+B12 méthylées</strong></td>
+        <td>Nutergia Ergyfolamine ou équiv.</td>
+        <td>1/j au repas</td>
+        <td class="col-ci">—</td>
+        <td>Gélule</td>
+        <td>Non identifiée pour la forme combinée — B12 seule existe en ampoule buvable (voir profil végane)</td>
+      </tr>
+      <tr class="searchable" data-search="4.4 méthylation bétaïne (tmg) — — gélule/poudre existe nativement en poudre">
+        <td>4.4 Méthylation</td>
+        <td><strong>Bétaïne (TMG)</strong></td>
+        <td>—</td>
+        <td>~800mg/j</td>
+        <td class="col-ci">—</td>
+        <td>Gélule/poudre</td>
+        <td>Existe nativement en poudre</td>
+      </tr>
+      <tr class="searchable" data-search="4.4 méthylation vitamine b2 — — comprimé existe en poudre (rare) ou incluse dans complexes b liquides">
+        <td>4.4 Méthylation</td>
+        <td><strong>Vitamine B2</strong></td>
+        <td>—</td>
+        <td>~5mg/j</td>
+        <td class="col-ci">—</td>
+        <td>Comprimé</td>
+        <td>Existe en poudre (rare) ou incluse dans complexes B liquides</td>
+      </tr>
+      <tr class="searchable" data-search="4.5 détox métaux lourds chlorella ex. detoxssentiel (thérascience) maladie auto-immune active, allergie algues comprimé/poudre existe nativement en poudre pure — alternative très simple">
+        <td>4.5 Détox métaux lourds</td>
+        <td><strong>Chlorella</strong></td>
+        <td>Ex. Detoxssentiel (Thérascience)</td>
+        <td>Selon fabricant</td>
+        <td class="col-ci">Maladie auto-immune active, allergie algues</td>
+        <td>Comprimé/poudre</td>
+        <td>Existe nativement en poudre pure — alternative très simple</td>
+      </tr>
+      <tr class="searchable" data-search="4.5 détox métaux lourds eau riche en silice volvic, rozana — liquide (eau) déjà liquide">
+        <td>4.5 Détox métaux lourds</td>
+        <td><strong>Eau riche en silice</strong></td>
+        <td>Volvic, Rozana</td>
+        <td>Boisson quotidienne</td>
+        <td class="col-ci">—</td>
+        <td>Liquide (eau)</td>
+        <td>Déjà liquide</td>
+      </tr>
+      <tr class="searchable" data-search="4.5 détox métaux lourds acide alpha-lipoïque — — gélule non identifiée">
+        <td>4.5 Détox métaux lourds</td>
+        <td><strong>Acide alpha-lipoïque</strong></td>
+        <td>—</td>
+        <td>300-600mg/j</td>
+        <td class="col-ci">—</td>
+        <td>Gélule</td>
+        <td>Non identifiée</td>
+      </tr>
+      <tr class="searchable" data-search="4.5 détox métaux lourds nac — ulcère gastroduodénal actif, asthme gélule/comprimé existe en poudre pure (vrac nutraceutique)">
+        <td>4.5 Détox métaux lourds</td>
+        <td><strong>NAC</strong></td>
+        <td>—</td>
+        <td>600mg 1-2x/j</td>
+        <td class="col-ci">Ulcère gastroduodénal actif, asthme</td>
+        <td>Gélule/comprimé</td>
+        <td>Existe en poudre pure (vrac nutraceutique)</td>
+      </tr>
+      <tr class="searchable" data-search="5.1 surrénales ashwagandha (5% withanolides) — grossesse, interaction digoxine gélule existe en poudre traditionnelle (ayurvédique) — alternative simple">
+        <td>5.1 Surrénales</td>
+        <td><strong>Ashwagandha (5% withanolides)</strong></td>
+        <td>—</td>
+        <td>600-1000mg/j</td>
+        <td class="col-ci">Grossesse, interaction digoxine</td>
+        <td>Gélule</td>
+        <td>Existe en poudre traditionnelle (ayurvédique) — alternative simple</td>
+      </tr>
+      <tr class="searchable" data-search="5.1 surrénales rhodiola rosea — grossesse, bipolarité, anticoagulants, antihypertenseurs gélule non identifiée">
+        <td>5.1 Surrénales</td>
+        <td><strong>Rhodiola rosea</strong></td>
+        <td>—</td>
+        <td>200mg/j le matin</td>
+        <td class="col-ci">Grossesse, bipolarité, anticoagulants, antihypertenseurs</td>
+        <td>Gélule</td>
+        <td>Non identifiée</td>
+      </tr>
+      <tr class="searchable" data-search="5.1 surrénales safran — grossesse, isrs gélule voir 1.2 — extrait liquide existant">
+        <td>5.1 Surrénales</td>
+        <td><strong>Safran</strong></td>
+        <td>—</td>
+        <td>30mg/j</td>
+        <td class="col-ci">Grossesse, ISRS</td>
+        <td>Gélule</td>
+        <td>Voir 1.2 — extrait liquide existant</td>
+      </tr>
+      <tr class="searchable" data-search="5.1 surrénales réglisse (glycyrrhizinée) — ci absolue hta, cancer hormonodépendant, insuff. rénale sévère, grossesse gélule ou infusion infusion/racine déjà sans gélule">
+        <td>5.1 Surrénales</td>
+        <td><strong>Réglisse (glycyrrhizinée)</strong></td>
+        <td>—</td>
+        <td>—</td>
+        <td class="col-ci">CI ABSOLUE HTA, cancer hormonodépendant, insuff. rénale sévère, grossesse</td>
+        <td>Gélule ou infusion</td>
+        <td>Infusion/racine déjà sans gélule</td>
+      </tr>
+      <tr class="searchable" data-search="5.1 surrénales bourgeons de cassis (gemmothérapie) — — liquide (gouttes) déjà liquide">
+        <td>5.1 Surrénales</td>
+        <td><strong>Bourgeons de Cassis (gemmothérapie)</strong></td>
+        <td>—</td>
+        <td>Attaque 5-15 gouttes, entretien 5 gouttes</td>
+        <td class="col-ci">—</td>
+        <td>Liquide (gouttes)</td>
+        <td>Déjà liquide</td>
+      </tr>
+      <tr class="searchable" data-search="5.1 surrénales cordyceps sinensis — grossesse, allaitement, auto-immun, anticoagulants poudre déjà en poudre">
+        <td>5.1 Surrénales</td>
+        <td><strong>Cordyceps sinensis</strong></td>
+        <td>—</td>
+        <td>1-3g/j poudre</td>
+        <td class="col-ci">Grossesse, allaitement, auto-immun, anticoagulants</td>
+        <td>Poudre</td>
+        <td>Déjà en poudre</td>
+      </tr>
+      <tr class="searchable" data-search="5.1 surrénales vitamine c — — voir 2.2 voir 2.2">
+        <td>5.1 Surrénales</td>
+        <td><strong>Vitamine C</strong></td>
+        <td>—</td>
+        <td>2g/j fractionné</td>
+        <td class="col-ci">—</td>
+        <td>Voir 2.2</td>
+        <td>Voir 2.2</td>
+      </tr>
+      <tr class="searchable" data-search="5.2 thyroïde/hashimoto sélénium — toujours avant l'iode voir 2.2 voir 2.2">
+        <td>5.2 Thyroïde/Hashimoto</td>
+        <td><strong>Sélénium</strong></td>
+        <td>—</td>
+        <td>55µg/j</td>
+        <td class="col-ci">Toujours avant l'iode</td>
+        <td>Voir 2.2</td>
+        <td>Voir 2.2</td>
+      </tr>
+      <tr class="searchable" data-search="5.2 thyroïde/hashimoto iode (iodine+) nutri-logics basedow/hyperthyroïdie, hashimoto si sélénium non vérifié gélule non identifiée">
+        <td>5.2 Thyroïde/Hashimoto</td>
+        <td><strong>Iode (Iodine+)</strong></td>
+        <td>Nutri-logics</td>
+        <td>Paliers 450→150-250→~150µg/j</td>
+        <td class="col-ci">Basedow/hyperthyroïdie, Hashimoto si sélénium non vérifié</td>
+        <td>Gélule</td>
+        <td>Non identifiée</td>
+      </tr>
+      <tr class="searchable" data-search="5.3 ménopause/périménopause feminabiane ménopause (houblon+sauge+valériane) pileje ci absolue cancer hormonodépendant, mastoses, grossesse, allaitement gélule non identifiée pour cette formule combinée">
+        <td>5.3 Ménopause/périménopause</td>
+        <td><strong>Feminabiane Ménopause (houblon+sauge+valériane)</strong></td>
+        <td>Pileje</td>
+        <td>—</td>
+        <td class="col-ci">CI absolue cancer hormonodépendant, mastoses, grossesse, allaitement</td>
+        <td>Gélule</td>
+        <td>Non identifiée pour cette formule combinée</td>
+      </tr>
+      <tr class="searchable" data-search="5.3 ménopause/périménopause houblon eps / sauge officinale eps phytostandard pileje idem ci-dessus liquide (eps) déjà sans gélule">
+        <td>5.3 Ménopause/périménopause</td>
+        <td><strong>Houblon EPS / Sauge officinale EPS</strong></td>
+        <td>Phytostandard Pileje</td>
+        <td>4-5j/7</td>
+        <td class="col-ci">Idem ci-dessus</td>
+        <td>Liquide (EPS)</td>
+        <td>Déjà sans gélule</td>
+      </tr>
+      <tr class="searchable" data-search="5.3 ménopause/périménopause actée à grappes noires + griffonia — griffonia jamais avec isrs gélule non identifiée">
+        <td>5.3 Ménopause/périménopause</td>
+        <td><strong>Actée à grappes noires + Griffonia</strong></td>
+        <td>—</td>
+        <td>Griffonia 50-100mg 1-3x/j</td>
+        <td class="col-ci">Griffonia jamais avec ISRS</td>
+        <td>Gélule</td>
+        <td>Non identifiée</td>
+      </tr>
+      <tr class="searchable" data-search="5.3 ménopause/périménopause gynophilus (ovule) pileje renouvelable 1 sem/mois x3 si récidive ovule (voie vaginale, pas orale) sans objet — voie non orale">
+        <td>5.3 Ménopause/périménopause</td>
+        <td><strong>Gynophilus (ovule)</strong></td>
+        <td>Pileje</td>
+        <td>1 ovule au coucher, 2 sem.</td>
+        <td class="col-ci">Renouvelable 1 sem/mois x3 si récidive</td>
+        <td>Ovule (voie vaginale, pas orale)</td>
+        <td>Sans objet — voie non orale</td>
+      </tr>
+      <tr class="searchable" data-search="5.3 ménopause/périménopause pac de canneberge nutergia/pileje — gélule existe en jus/poudre de canneberge concentrée">
+        <td>5.3 Ménopause/périménopause</td>
+        <td><strong>PAC de canneberge</strong></td>
+        <td>Nutergia/Pileje</td>
+        <td>32-36mg PAC/j</td>
+        <td class="col-ci">—</td>
+        <td>Gélule</td>
+        <td>Existe en jus/poudre de canneberge concentrée</td>
+      </tr>
+      <tr class="searchable" data-search="5.3 ménopause/périménopause zinc bisglycinate nutripure profil androgénique voir comparatif zinc voir comparatif zinc">
+        <td>5.3 Ménopause/périménopause</td>
+        <td><strong>Zinc bisglycinate</strong></td>
+        <td>Nutripure</td>
+        <td>—</td>
+        <td class="col-ci">Profil androgénique</td>
+        <td>Voir comparatif zinc</td>
+        <td>Voir comparatif zinc</td>
+      </tr>
+      <tr class="searchable" data-search="5.4 sopk cannelle de ceylan — — poudre déjà en poudre">
+        <td>5.4 SOPK</td>
+        <td><strong>Cannelle de Ceylan</strong></td>
+        <td>—</td>
+        <td>1-3g/j poudre avec repas</td>
+        <td class="col-ci">—</td>
+        <td>Poudre</td>
+        <td>Déjà en poudre</td>
+      </tr>
+      <tr class="searchable" data-search="5.4 sopk graines de fenouil — — infusion déjà sans gélule">
+        <td>5.4 SOPK</td>
+        <td><strong>Graines de fenouil</strong></td>
+        <td>—</td>
+        <td>Infusion 2-3 tasses/j</td>
+        <td class="col-ci">—</td>
+        <td>Infusion</td>
+        <td>Déjà sans gélule</td>
+      </tr>
+      <tr class="searchable" data-search="5.4 sopk maitake — après échec traitement médical 1ère intention gélule/poudre existe en poudre chez certaines marques">
+        <td>5.4 SOPK</td>
+        <td><strong>Maitake</strong></td>
+        <td>—</td>
+        <td>1-3g/j extrait titré</td>
+        <td class="col-ci">Après échec traitement médical 1ère intention</td>
+        <td>Gélule/poudre</td>
+        <td>Existe en poudre chez certaines marques</td>
+      </tr>
+      <tr class="searchable" data-search="5.5 endométriose camomille romaine/allemande — — infusion déjà sans gélule">
+        <td>5.5 Endométriose</td>
+        <td><strong>Camomille Romaine/Allemande</strong></td>
+        <td>—</td>
+        <td>Infusion 150ml, 2-3g, 10min</td>
+        <td class="col-ci">—</td>
+        <td>Infusion</td>
+        <td>Déjà sans gélule</td>
+      </tr>
+      <tr class="searchable" data-search="5.5 endométriose achillée millefeuille — grossesse, allaitement infusion déjà sans gélule">
+        <td>5.5 Endométriose</td>
+        <td><strong>Achillée millefeuille</strong></td>
+        <td>—</td>
+        <td>150ml, 2-4g, 2-3x/j</td>
+        <td class="col-ci">Grossesse, allaitement</td>
+        <td>Infusion</td>
+        <td>Déjà sans gélule</td>
+      </tr>
+      <tr class="searchable" data-search="5.5 endométriose alchémille (hémostatique) — — infusion déjà sans gélule">
+        <td>5.5 Endométriose</td>
+        <td><strong>Alchémille (hémostatique)</strong></td>
+        <td>—</td>
+        <td>150ml, 2g, 2-3x/j</td>
+        <td class="col-ci">—</td>
+        <td>Infusion</td>
+        <td>Déjà sans gélule</td>
+      </tr>
+      <tr class="searchable" data-search="5.5 endométriose magnésium bisglycinate nutergia ergymag — gélule voir 6.1">
+        <td>5.5 Endométriose</td>
+        <td><strong>Magnésium bisglycinate</strong></td>
+        <td>Nutergia Ergymag</td>
+        <td>Crampes/spasmes utérins</td>
+        <td class="col-ci">—</td>
+        <td>Gélule</td>
+        <td>Voir 6.1</td>
+      </tr>
+      <tr class="searchable" data-search="5.5 endométriose curcuma — — décoction (racine) déjà sans gélule">
+        <td>5.5 Endométriose</td>
+        <td><strong>Curcuma</strong></td>
+        <td>—</td>
+        <td>Décoction 1 c. à soupe/tasse/j</td>
+        <td class="col-ci">—</td>
+        <td>Décoction (racine)</td>
+        <td>Déjà sans gélule</td>
+      </tr>
+      <tr class="searchable" data-search="5.5 endométriose huile de bourrache/onagre — prudence épilepsie gélule (capsule molle) existe en huile liquide en bouteille (assaisonnement) — alternative alimentaire">
+        <td>5.5 Endométriose</td>
+        <td><strong>Huile de bourrache/onagre</strong></td>
+        <td>—</td>
+        <td>500mg, 2-3 gél/j</td>
+        <td class="col-ci">Prudence épilepsie</td>
+        <td>Gélule (capsule molle)</td>
+        <td>Existe en huile liquide en bouteille (assaisonnement) — alternative alimentaire</td>
+      </tr>
+      <tr class="searchable" data-search="5.6 branche gonades — communs gattilier (vitex agnus-castus) — grossesse, allaitement, &lt;18 ans, dopaminergiques gélule, poudre ou liquide selon forme choisie poudre et eps déjà disponibles comme alternatives directes">
+        <td>5.6 Branche Gonades — communs</td>
+        <td><strong>Gattilier (Vitex agnus-castus)</strong></td>
+        <td>—</td>
+        <td>20mg extrait sec, 300-500mg poudre, ou EPS 5-10ml/j</td>
+        <td class="col-ci">Grossesse, allaitement, &lt;18 ans, dopaminergiques</td>
+        <td>Gélule, poudre ou liquide selon forme choisie</td>
+        <td>Poudre et EPS déjà disponibles comme alternatives directes</td>
+      </tr>
+      <tr class="searchable" data-search="5.6 branche gonades — communs alchémille — alternative douce au gattilier liquide/infusion déjà sans gélule">
+        <td>5.6 Branche Gonades — communs</td>
+        <td><strong>Alchémille</strong></td>
+        <td>—</td>
+        <td>EPS ou infusion</td>
+        <td class="col-ci">Alternative douce au gattilier</td>
+        <td>Liquide/infusion</td>
+        <td>Déjà sans gélule</td>
+      </tr>
+      <tr class="searchable" data-search="5.6 branche gonades — communs mucuna pruriens — grossesse, dopaminergiques, cardio/hépatique/psychiatrique gélule voir 4.1 — eps existant">
+        <td>5.6 Branche Gonades — communs</td>
+        <td><strong>Mucuna pruriens</strong></td>
+        <td>—</td>
+        <td>300-1200mg (15% L-Dopa)</td>
+        <td class="col-ci">Grossesse, dopaminergiques, cardio/hépatique/psychiatrique</td>
+        <td>Gélule</td>
+        <td>Voir 4.1 — EPS existant</td>
+      </tr>
+      <tr class="searchable" data-search="5.6 branche gonades — communs huile de bourrache/onagre — prudence épilepsie gélule voir 5.5">
+        <td>5.6 Branche Gonades — communs</td>
+        <td><strong>Huile de bourrache/onagre</strong></td>
+        <td>—</td>
+        <td>500mg, 2-3 gél/j</td>
+        <td class="col-ci">Prudence épilepsie</td>
+        <td>Gélule</td>
+        <td>Voir 5.5</td>
+      </tr>
+      <tr class="searchable" data-search="5.6 branche gonades — communs ortie racine — cancer hormonodépendant gélule existe en poudre de racine ou décoction">
+        <td>5.6 Branche Gonades — communs</td>
+        <td><strong>Ortie racine</strong></td>
+        <td>—</td>
+        <td>1-2 gél/j</td>
+        <td class="col-ci">Cancer hormonodépendant</td>
+        <td>Gélule</td>
+        <td>Existe en poudre de racine ou décoction</td>
+      </tr>
+      <tr class="searchable" data-search="5.6 branche gonades — communs maca — grossesse, thyroïde non stabilisée poudre déjà en poudre (forme traditionnelle)">
+        <td>5.6 Branche Gonades — communs</td>
+        <td><strong>Maca</strong></td>
+        <td>—</td>
+        <td>1,5-3g/j le matin</td>
+        <td class="col-ci">Grossesse, thyroïde non stabilisée</td>
+        <td>Poudre</td>
+        <td>Déjà en poudre (forme traditionnelle)</td>
+      </tr>
+      <tr class="searchable" data-search="5.6 branche gonades — communs tribulus terrestris — grossesse, cancer hormonodépendant gélule existe en poudre">
+        <td>5.6 Branche Gonades — communs</td>
+        <td><strong>Tribulus terrestris</strong></td>
+        <td>—</td>
+        <td>250-500mg/j</td>
+        <td class="col-ci">Grossesse, cancer hormonodépendant</td>
+        <td>Gélule</td>
+        <td>Existe en poudre</td>
+      </tr>
+      <tr class="searchable" data-search="5.6 branche gonades — communs palmier nain (serenoa repens) — grossesse, allaitement gélule (capsule molle huileuse) non identifiée">
+        <td>5.6 Branche Gonades — communs</td>
+        <td><strong>Palmier nain (Serenoa repens)</strong></td>
+        <td>—</td>
+        <td>160-320mg/j</td>
+        <td class="col-ci">Grossesse, allaitement</td>
+        <td>Gélule (capsule molle huileuse)</td>
+        <td>Non identifiée</td>
+      </tr>
+      <tr class="searchable" data-search="5.6 branche gonades — communs graines de lin broyées — — poudre (aliment) déjà sans gélule">
+        <td>5.6 Branche Gonades — communs</td>
+        <td><strong>Graines de lin broyées</strong></td>
+        <td>—</td>
+        <td>1-2 c. à soupe/j</td>
+        <td class="col-ci">—</td>
+        <td>Poudre (aliment)</td>
+        <td>Déjà sans gélule</td>
+      </tr>
+      <tr class="searchable" data-search="5.6 branche gonades — communs huile de courge — — liquide (aliment) déjà sans gélule">
+        <td>5.6 Branche Gonades — communs</td>
+        <td><strong>Huile de courge</strong></td>
+        <td>—</td>
+        <td>1-2 c. à soupe/j</td>
+        <td class="col-ci">—</td>
+        <td>Liquide (aliment)</td>
+        <td>Déjà sans gélule</td>
+      </tr>
+      <tr class="searchable" data-search="5.6 branche gonades — communs chrysine — grossesse, allaitement ; réservé œstrogènes non bas gélule non identifiée">
+        <td>5.6 Branche Gonades — communs</td>
+        <td><strong>Chrysine</strong></td>
+        <td>—</td>
+        <td>500mg 2-3x/j</td>
+        <td class="col-ci">Grossesse, allaitement ; réservé œstrogènes non bas</td>
+        <td>Gélule</td>
+        <td>Non identifiée</td>
+      </tr>
+      <tr class="searchable" data-search="5.6 branche gonades — communs dim (diindolylméthane) — grossesse, allaitement gélule non identifiée">
+        <td>5.6 Branche Gonades — communs</td>
+        <td><strong>DIM (diindolylméthane)</strong></td>
+        <td>—</td>
+        <td>100-200mg/j</td>
+        <td class="col-ci">Grossesse, allaitement</td>
+        <td>Gélule</td>
+        <td>Non identifiée</td>
+      </tr>
+      <tr class="searchable" data-search="5.6 branche gonades — communs gemmo framboisier/pommier — cancer hormonodépendant (framboisier) liquide (gouttes) déjà liquide">
+        <td>5.6 Branche Gonades — communs</td>
+        <td><strong>Gemmo Framboisier/Pommier</strong></td>
+        <td>—</td>
+        <td>15 gouttes/j</td>
+        <td class="col-ci">Cancer hormonodépendant (framboisier)</td>
+        <td>Liquide (gouttes)</td>
+        <td>Déjà liquide</td>
+      </tr>
+      <tr class="searchable" data-search="5.6 branche gonades — communs sauge officinale/houblon (formes brutes) — ci absolue cancer hormonodépendant, mastoses, grossesse liquide/infusion déjà sans gélule selon forme choisie">
+        <td>5.6 Branche Gonades — communs</td>
+        <td><strong>Sauge officinale/Houblon (formes brutes)</strong></td>
+        <td>—</td>
+        <td>Infusion/TM/EPS selon forme</td>
+        <td class="col-ci">CI absolue cancer hormonodépendant, mastoses, grossesse</td>
+        <td>Liquide/infusion</td>
+        <td>Déjà sans gélule selon forme choisie</td>
+      </tr>
+      <tr class="searchable" data-search="6.1 magnésium (cadre général) magnésium bisglycinate nutergia ergymag / holistica / nutrixeal (seul, sans taurine) vigilance taurine/b6 en cumul gélule existe largement en poudre à diluer et en ampoule buvable chez plusieurs marques (dont nutrixeal, nutripure) — bonne alternative à identifier précisément par référence">
+        <td>6.1 Magnésium (cadre général)</td>
+        <td><strong>Magnésium bisglycinate</strong></td>
+        <td>Nutergia Ergymag / Holistica / Nutrixeal (seul, sans taurine)</td>
+        <td>300-400mg/j soir, jusqu'à 600-800mg/j fractionné</td>
+        <td class="col-ci">Vigilance taurine/B6 en cumul</td>
+        <td>Gélule</td>
+        <td>Existe largement en poudre à diluer et en ampoule buvable chez plusieurs marques (dont Nutrixeal, Nutripure) — bonne alternative à identifier précisément par référence</td>
+      </tr>
+      <tr class="searchable" data-search="6.2 oméga-3 epa/dha oméga-3 epa/dha pileje omégabiane — gélule (capsule molle) voir alternative véganne déjà intégrée (nutrixeal physio dha green) + flacon liquide classique existant">
+        <td>6.2 Oméga-3 EPA/DHA</td>
+        <td><strong>Oméga-3 EPA/DHA</strong></td>
+        <td>Pileje Omégabiane</td>
+        <td>2 gél/j au repas</td>
+        <td class="col-ci">—</td>
+        <td>Gélule (capsule molle)</td>
+        <td>Voir alternative véganne déjà intégrée (Nutrixeal Physio DHA Green) + flacon liquide classique existant</td>
+      </tr>
+      <tr class="searchable" data-search="6.3 fonction biliaire/hépatique chardon-marie eps phytostandard pileje en chimiothérapie liquide (eps) déjà sans gélule">
+        <td>6.3 Fonction biliaire/hépatique</td>
+        <td><strong>Chardon-Marie EPS</strong></td>
+        <td>Phytostandard Pileje</td>
+        <td>5ml 1-2x/j avant repas</td>
+        <td class="col-ci">En chimiothérapie</td>
+        <td>Liquide (EPS)</td>
+        <td>Déjà sans gélule</td>
+      </tr>
+      <tr class="searchable" data-search="6.3 fonction biliaire/hépatique fumeterre eps phytostandard pileje grossesse, calculs biliaires connus (→rézium) liquide (eps) déjà sans gélule">
+        <td>6.3 Fonction biliaire/hépatique</td>
+        <td><strong>Fumeterre EPS</strong></td>
+        <td>Phytostandard Pileje</td>
+        <td>5ml 1-2x/j avant repas</td>
+        <td class="col-ci">Grossesse, calculs biliaires connus (→Rézium)</td>
+        <td>Liquide (EPS)</td>
+        <td>Déjà sans gélule</td>
+      </tr>
+      <tr class="searchable" data-search="6.3 fonction biliaire/hépatique desmodium eps phytostandard pileje grossesse, allaitement liquide (eps) déjà sans gélule">
+        <td>6.3 Fonction biliaire/hépatique</td>
+        <td><strong>Desmodium EPS</strong></td>
+        <td>Phytostandard Pileje</td>
+        <td>5ml 1-2x/j</td>
+        <td class="col-ci">Grossesse, allaitement</td>
+        <td>Liquide (EPS)</td>
+        <td>Déjà sans gélule</td>
+      </tr>
+      <tr class="searchable" data-search="6.3 fonction biliaire/hépatique pissenlit eps phytostandard pileje obstruction voies biliaires, grossesse liquide (eps) déjà sans gélule">
+        <td>6.3 Fonction biliaire/hépatique</td>
+        <td><strong>Pissenlit EPS</strong></td>
+        <td>Phytostandard Pileje</td>
+        <td>5ml 1-2x/j</td>
+        <td class="col-ci">Obstruction voies biliaires, grossesse</td>
+        <td>Liquide (EPS)</td>
+        <td>Déjà sans gélule</td>
+      </tr>
+      <tr class="searchable" data-search="6.3 fonction biliaire/hépatique artichaut eps phytostandard pileje obstruction voies biliaires liquide (eps) déjà sans gélule">
+        <td>6.3 Fonction biliaire/hépatique</td>
+        <td><strong>Artichaut EPS</strong></td>
+        <td>Phytostandard Pileje</td>
+        <td>5ml 1-2x/j</td>
+        <td class="col-ci">Obstruction voies biliaires</td>
+        <td>Liquide (EPS)</td>
+        <td>Déjà sans gélule</td>
+      </tr>
+      <tr class="searchable" data-search="6.3 fonction biliaire/hépatique radis noir eps phytostandard pileje obstruction, ulcère, gastrite, pathologie thyroïdienne liquide (eps) déjà sans gélule">
+        <td>6.3 Fonction biliaire/hépatique</td>
+        <td><strong>Radis noir EPS</strong></td>
+        <td>Phytostandard Pileje</td>
+        <td>5ml 1-2x/j</td>
+        <td class="col-ci">Obstruction, ulcère, gastrite, pathologie thyroïdienne</td>
+        <td>Liquide (EPS)</td>
+        <td>Déjà sans gélule</td>
+      </tr>
+      <tr class="searchable" data-search="6.3 fonction biliaire/hépatique beta+ (bile de bœuf + taurine) énergétique nature — gélule non identifiée">
+        <td>6.3 Fonction biliaire/hépatique</td>
+        <td><strong>Beta+ (bile de bœuf + taurine)</strong></td>
+        <td>Énergétique Nature</td>
+        <td>1 gél/repas gras</td>
+        <td class="col-ci">—</td>
+        <td>Gélule</td>
+        <td>Non identifiée</td>
+      </tr>
+      <tr class="searchable" data-search="6.3 fonction biliaire/hépatique rézium (litholytique) énergétique nature grossesse, obstruction confirmée gélule non identifiée">
+        <td>6.3 Fonction biliaire/hépatique</td>
+        <td><strong>Rézium (litholytique)</strong></td>
+        <td>Énergétique Nature</td>
+        <td>Selon notice</td>
+        <td class="col-ci">Grossesse, obstruction confirmée</td>
+        <td>Gélule</td>
+        <td>Non identifiée</td>
+      </tr></tbody>
+      </table>
+    </div>
+    <div class="no-results searchable-empty">Aucun résultat pour cette recherche.</div>
+    <p class="note-bas">114 lignes extraites de generateur.html (RÈGLES N°1-52) au 01/09/2026. Colonnes "disponibilité pharmacie Corse" et dates de vérification : voir le fichier Excel de suivi, ce tableau HTML reste la vue de lecture rapide.</p>
+</div>
+  <div class="tab-pane" id="tab3"><div class="marques-grid">
+    <div class="marque-card searchable" data-search="nutergia vendu en pharmacie/parapharmacie physique et en ligne (revendeurs agréés) — pas de boutique grand public sur nutergia.com pas de code conseil identifié pour le grand public ; réseau pro existant (pro.nutergia.com) — à demander directement à votre contact labo si vous en avez un marque distribuée quasi exclusivement via professionnels de santé/pharmacies">
+      <h3>Nutergia</h3>
+      <p><strong>Distribution :</strong> Vendu en pharmacie/parapharmacie physique et en ligne (revendeurs agréés) — pas de boutique grand public sur nutergia.com</p>
+      <p><strong>Site / référence :</strong> https://nutergia.com (vitrine + localisateur de pharmacies)</p>
+      <p><strong>Parrainage / code pro :</strong> Pas de code conseil identifié pour le grand public ; réseau pro existant (pro.nutergia.com) — à demander directement à votre contact labo si vous en avez un</p>
+      <p class="marque-notes">Marque distribuée quasi exclusivement via professionnels de santé/pharmacies</p>
+    </div>
+    <div class="marque-card searchable" data-search="pileje vendu en pharmacie (&gt;10 000 pharmacies) + revendeurs en ligne multiples — pileje.fr propose un localisateur de pharmacies, pas de vente directe grand public identifiée programme professionnel de santé existant (pileje travaille beaucoup avec les praticiens) — à vérifier auprès de votre interlocuteur pileje habituel marque historique en micronutrition, très large diffusion pharmacie">
+      <h3>Pileje</h3>
+      <p><strong>Distribution :</strong> Vendu en pharmacie (&gt;10 000 pharmacies) + revendeurs en ligne multiples — pileje.fr propose un localisateur de pharmacies, pas de vente directe grand public identifiée</p>
+      <p><strong>Site / référence :</strong> https://www.pileje.fr (localisateur de pharmacies)</p>
+      <p><strong>Parrainage / code pro :</strong> Programme professionnel de santé existant (Pileje travaille beaucoup avec les praticiens) — à vérifier auprès de votre interlocuteur Pileje habituel</p>
+      <p class="marque-notes">Marque historique en micronutrition, très large diffusion pharmacie</p>
+    </div>
+    <div class="marque-card searchable" data-search="nutrixeal vente directe officielle sur nutrixeal.fr (particuliers) — programme fidélité maison programme fidélité déjà existant sur nutrixeal.fr ; existence d'un espace nutrixeal pro (nutrixeal-pro.fr) réservé aux professionnels avec compte dédié — à demander l'ouverture d'un compte pro pour un code de parrainage un des rares labos de votre liste avec vente directe + espace pro actif">
+      <h3>Nutrixeal</h3>
+      <p><strong>Distribution :</strong> Vente directe officielle sur nutrixeal.fr (particuliers) — programme fidélité maison</p>
+      <p><strong>Site / référence :</strong> https://www.nutrixeal.fr</p>
+      <p><strong>Parrainage / code pro :</strong> Programme fidélité déjà existant sur nutrixeal.fr ; existence d'un espace Nutrixeal Pro (nutrixeal-pro.fr) réservé aux professionnels avec compte dédié — à demander l'ouverture d'un compte pro pour un code de parrainage</p>
+      <p class="marque-notes">Un des rares labos de votre liste avec vente directe + espace pro actif</p>
+    </div>
+    <div class="marque-card searchable" data-search="nutripure vente directe officielle sur nutripure.fr — marque digitale native (pas de réseau pharmacie prioritaire) nutripure a un programme d'affiliation influenceurs/partenaires assez actif (marque e-commerce) — à demander via leur formulaire contact/partenariats marque française sport/santé, dtc (vente directe)">
+      <h3>Nutripure</h3>
+      <p><strong>Distribution :</strong> Vente directe officielle sur nutripure.fr — marque digitale native (pas de réseau pharmacie prioritaire)</p>
+      <p><strong>Site / référence :</strong> https://www.nutripure.fr</p>
+      <p><strong>Parrainage / code pro :</strong> Nutripure a un programme d'affiliation influenceurs/partenaires assez actif (marque e-commerce) — à demander via leur formulaire contact/partenariats</p>
+      <p class="marque-notes">Marque française sport/santé, DTC (vente directe)</p>
+    </div>
+    <div class="marque-card searchable" data-search="bionutrics vente directe officielle sur bionutrics.fr + réseau pharmacie à demander directement — site e-commerce actif, structure adaptée à un partenariat pro médecine nutritionnelle et fonctionnelle, produits brevetés">
+      <h3>Bionutrics</h3>
+      <p><strong>Distribution :</strong> Vente directe officielle sur bionutrics.fr + réseau pharmacie</p>
+      <p><strong>Site / référence :</strong> https://www.bionutrics.fr</p>
+      <p><strong>Parrainage / code pro :</strong> À demander directement — site e-commerce actif, structure adaptée à un partenariat pro</p>
+      <p class="marque-notes">Médecine nutritionnelle et fonctionnelle, produits brevetés</p>
+    </div>
+    <div class="marque-card searchable" data-search="thérascience boutique en ligne officielle sur therascience.com + très large réseau pharmacie/parapharmacie marque très implantée auprès des professionnels de santé (physionutrition) — programme prescripteur probable, à demander à votre contact (ex. via votre gastro-entérologue qui utilise déjà leurs qr codes d'ordonnance) utilisée déjà pour le protocole sibo méthane (règle n°5bis)">
+      <h3>Thérascience</h3>
+      <p><strong>Distribution :</strong> Boutique en ligne officielle sur therascience.com + très large réseau pharmacie/parapharmacie</p>
+      <p><strong>Site / référence :</strong> https://www.therascience.com</p>
+      <p><strong>Parrainage / code pro :</strong> Marque très implantée auprès des professionnels de santé (physionutrition) — programme prescripteur probable, à demander à votre contact (ex. via votre gastro-entérologue qui utilise déjà leurs QR codes d'ordonnance)</p>
+      <p class="marque-notes">Utilisée déjà pour le protocole SIBO méthane (RÈGLE N°5bis)</p>
+    </div>
+    <div class="marque-card searchable" data-search="holistica vendu en pharmacie/parapharmacie et revendeurs en ligne — holistica.fr est vitrine, pas de boutique directe identifiée non identifié — marque distribuée via un réseau classique de revendeurs gamme plantes/bien-être, présente chez de nombreux revendeurs généralistes">
+      <h3>Holistica</h3>
+      <p><strong>Distribution :</strong> Vendu en pharmacie/parapharmacie et revendeurs en ligne — holistica.fr est vitrine, pas de boutique directe identifiée</p>
+      <p><strong>Site / référence :</strong> https://www.holistica.fr (vitrine produits)</p>
+      <p><strong>Parrainage / code pro :</strong> Non identifié — marque distribuée via un réseau classique de revendeurs</p>
+      <p class="marque-notes">Gamme plantes/bien-être, présente chez de nombreux revendeurs généralistes</p>
+    </div>
+    <div class="marque-card searchable" data-search="nat &amp; form marque grand public largement distribuée en pharmacie/parapharmacie et grandes surfaces bio peu probable pour cette marque grand public généraliste bonne disponibilité attendue en corse (marque très répandue)">
+      <h3>Nat &amp; Form</h3>
+      <p><strong>Distribution :</strong> Marque grand public largement distribuée en pharmacie/parapharmacie et grandes surfaces bio</p>
+      <p><strong>Site / référence :</strong> À rechercher (nat-et-form.com à vérifier)</p>
+      <p><strong>Parrainage / code pro :</strong> Peu probable pour cette marque grand public généraliste</p>
+      <p class="marque-notes">Bonne disponibilité attendue en Corse (marque très répandue)</p>
+    </div>
+    <div class="marque-card searchable" data-search="novoma à vérifier — marque moins documentée dans nos recherches à vérifier marque ponctuellement citée — vérifier son statut avant de la garder comme référence">
+      <h3>Novoma</h3>
+      <p><strong>Distribution :</strong> À vérifier — marque moins documentée dans nos recherches</p>
+      <p><strong>Site / référence :</strong> À rechercher</p>
+      <p><strong>Parrainage / code pro :</strong> À vérifier</p>
+      <p class="marque-notes">Marque ponctuellement citée — vérifier son statut avant de la garder comme référence</p>
+    </div>
+    <div class="marque-card searchable" data-search="arkopharma grande marque française très largement distribuée en pharmacie physique dans toute la france, y compris corse peu probable (marque grand public à très large diffusion) très bonne disponibilité attendue en pharmacie corse">
+      <h3>Arkopharma</h3>
+      <p><strong>Distribution :</strong> Grande marque française très largement distribuée en pharmacie physique dans toute la France, y compris Corse</p>
+      <p><strong>Site / référence :</strong> https://www.arkopharma.com (vitrine + localisateur)</p>
+      <p><strong>Parrainage / code pro :</strong> Peu probable (marque grand public à très large diffusion)</p>
+      <p class="marque-notes">Très bonne disponibilité attendue en pharmacie Corse</p>
+    </div>
+    <div class="marque-card searchable" data-search="herbalgem / énergétique nature herbalgem = gemmothérapie belge, distribution pharmacie/magasins bio ; énergétique nature = marque française plantes/gemmothérapie, diffusion pharmacie/parapharmacie à vérifier ⚠️ à clarifier : votre banque mentionne les deux nooms ensemble, ce sont a priori deux marques différentes">
+      <h3>Herbalgem / Énergétique Nature</h3>
+      <p><strong>Distribution :</strong> Herbalgem = gemmothérapie belge, distribution pharmacie/magasins bio ; Énergétique Nature = marque française plantes/gemmothérapie, diffusion pharmacie/parapharmacie</p>
+      <p><strong>Site / référence :</strong> À rechercher séparément (deux marques distinctes malgré la mention groupée dans vos notes)</p>
+      <p><strong>Parrainage / code pro :</strong> À vérifier</p>
+      <p class="marque-notes">⚠️ à clarifier : votre banque mentionne les deux nOoms ensemble, ce sont a priori deux marques différentes</p>
+    </div>
+    <div class="marque-card searchable" data-search="nutri-logics / energetica natura vente directe officielle sur energeticanatura.com — système de « code conseil » déjà existant pour les professionnels de santé prescripteurs ✅ confirmé : energetica natura a déjà un code conseil professionnel intégré à son tunnel de commande ("un professionnel vous a orienté vers nous ? lors de la commande, saisissez votre code conseil") — vous pouvez leur demander directement d'être enregistrée comme praticienne prescriptrice bonne nouvelle : c'est la marque la plus simple pour un vrai partenariat/code, à contacter en priorité">
+      <h3>Nutri-logics / Energetica Natura</h3>
+      <p><strong>Distribution :</strong> Vente directe officielle sur energeticanatura.com — système de « code conseil » déjà existant pour les professionnels de santé prescripteurs</p>
+      <p><strong>Site / référence :</strong> https://www.energeticanatura.com</p>
+      <p><strong>Parrainage / code pro :</strong> ✅ CONFIRMÉ : Energetica Natura a déjà un code conseil professionnel intégré à son tunnel de commande ("Un professionnel vous a orienté vers nous ? Lors de la commande, saisissez votre code conseil") — vous pouvez leur demander directement d'être enregistrée comme praticienne prescriptrice</p>
+      <p class="marque-notes">Bonne nouvelle : c'est la marque la plus simple pour un vrai partenariat/code, à contacter en priorité</p>
+    </div></div><div class="no-results searchable-empty">Aucun résultat pour cette recherche.</div></div>
+</main>
+<footer>Document de travail interne — formes, dosages et contre-indications à revérifier ponctuellement sur les fiches produit officielles avant tout premier usage.</footer>
+<script>
+  const input = document.getElementById('search');
+  const count = document.getElementById('count');
+  const tabBtns = document.querySelectorAll('.tab-btn');
+  const panes = document.querySelectorAll('.tab-pane');
+
+  tabBtns.forEach(btn => btn.addEventListener('click', () => {
+    tabBtns.forEach(b => b.classList.remove('active'));
+    panes.forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.tab).classList.add('active');
+    filter();
+  }));
+
+  function filter() {
+    const q = input.value.trim().toLowerCase();
+    const activePane = document.querySelector('.tab-pane.active');
+    const items = activePane.querySelectorAll('.searchable');
+    let visible = 0;
+    items.forEach(el => {
+      const match = !q || el.dataset.search.includes(q);
+      el.style.display = match ? '' : 'none';
+      if (match) visible++;
+    });
+    const emptyMsg = activePane.querySelector('.searchable-empty');
+    if (emptyMsg) emptyMsg.style.display = (q && visible === 0) ? 'block' : 'none';
+    count.textContent = q ? (visible + ' résultat(s) dans cet onglet') : '';
+  }
+  input.addEventListener('input', filter);
+</script>
+</body>
+</html>
