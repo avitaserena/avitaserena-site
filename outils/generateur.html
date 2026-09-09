@@ -379,6 +379,24 @@ input.fi[readonly]{background:var(--taupe);cursor:default;opacity:.75}
       </select>
     </div>
   </div>
+  <div class="g2">
+    <div>
+      <label class="fl">Gastrite / ulcère actif</label>
+      <select class="fi" id="secu-gastrite">
+        <option value="">— À préciser —</option>
+        <option>Non</option>
+        <option>Oui</option>
+      </select>
+    </div>
+    <div>
+      <label class="fl">Troubles cardiovasculaires (arythmie, HTA non stabilisée...)</label>
+      <select class="fi" id="secu-cardiovasculaire">
+        <option value="">— À préciser —</option>
+        <option>Non</option>
+        <option>Oui</option>
+      </select>
+    </div>
+  </div>
   <div style="margin-top:14px">
     <label class="fl">Allergie connue aux huiles essentielles</label>
     <select class="fi" id="secu-allergie-he" style="max-width:340px">
@@ -386,7 +404,7 @@ input.fi[readonly]{background:var(--taupe);cursor:default;opacity:.75}
       <option>Non</option>
       <option>Oui</option>
     </select>
-    <p class="field-hint">Ces 5 champs alimentent exclusivement le filtre de sécurité de la Règle N°7 — Aromathérapie (voir plus bas). Un champ laissé vide est traité comme "à vérifier", jamais comme "sans risque".</p>
+    <p class="field-hint">Ces 7 champs (+ l'allergie aux fruits à coque déjà captée dans les allergies alimentaires) alimentent exclusivement le filtre de sécurité de la Règle N°7 — Aromathérapie (voir plus bas). Un champ laissé vide est traité comme "à vérifier", jamais comme "sans risque".</p>
   </div>
 
   <div style="margin-top:16px">
@@ -1148,7 +1166,7 @@ function renderSessionCard() {
     ['Objectif 6 mois', d.objectif_6mois || '—'],
     ['Pathologies pressenties (détectées)', d.pathologies_pressenties ? d.pathologies_pressenties.split('\n')[0] + (d.pathologies_pressenties.includes('\n') ? '…' : '') : '—'],
     ['Bilans recommandés', d.bilans_recommandes || '—'],
-    ['Sécurité importée', [d.secu_grossesse, d.secu_cancer, d.traitements_vigilance, d.allergies_alim, d.secu_epilepsie==='Oui'?'Épilepsie':'', d.secu_asthme && d.secu_asthme!=='Non'?'Asthme':'', d.secu_renal==='Oui'?'Insuff. rénale':'', d.secu_hepatique==='Oui'?'Insuff. hépatique':'', d.secu_allergie_he==='Oui'?'Allergie HE':''].filter(Boolean).join(' · ') || 'Aucune donnée de sécurité importée — à vérifier ci-dessous'],
+    ['Sécurité importée', [d.secu_grossesse, d.secu_cancer, d.traitements_vigilance, d.allergies_alim, d.secu_epilepsie==='Oui'?'Épilepsie':'', d.secu_asthme && d.secu_asthme!=='Non'?'Asthme':'', d.secu_renal==='Oui'?'Insuff. rénale':'', d.secu_hepatique==='Oui'?'Insuff. hépatique':'', d.secu_gastrite==='Oui'?'Gastrite/ulcère':'', d.secu_cardiovasculaire==='Oui'?'Trouble cardiovasculaire':'', d.secu_allergie_he==='Oui'?'Allergie HE':''].filter(Boolean).join(' · ') || 'Aucune donnée de sécurité importée — à vérifier ci-dessous'],
   ];
   // Compter les champs réellement remplis (utiles)
   const richFields = ['prenom','age','duree_symptomes','motifs','mots_cles','objectif_6mois','scores',
@@ -1235,7 +1253,7 @@ function prefillParams() {
   // malgré le même commentaire "jamais à ressaisir". Pire : un champ resté vide est traité par
   // profilAroma comme "Non" (aucune restriction), pas comme "à vérifier" — donc l'absence de
   // pré-remplissage pouvait faire disparaître silencieusement une restriction déjà connue. ──
-  const seMap = { 'secu-epilepsie': 'secu_epilepsie', 'secu-asthme': 'secu_asthme', 'secu-renal': 'secu_renal', 'secu-hepatique': 'secu_hepatique', 'secu-allergie-he': 'secu_allergie_he' };
+  const seMap = { 'secu-epilepsie': 'secu_epilepsie', 'secu-asthme': 'secu_asthme', 'secu-renal': 'secu_renal', 'secu-hepatique': 'secu_hepatique', 'secu-gastrite': 'secu_gastrite', 'secu-cardiovasculaire': 'secu_cardiovasculaire', 'secu-allergie-he': 'secu_allergie_he' };
   Object.entries(seMap).forEach(([elId, key]) => {
     const el = document.getElementById(elId);
     if (el && !el.value && sessionData[key]) el.value = sessionData[key];
@@ -1420,6 +1438,9 @@ function buildClientData() {
     anticoagulants: traitementsVigilance.includes('Anticoagulants'),
     insuffisance_renale: gv('secu-renal') === 'Oui',
     insuffisance_hepatique: gv('secu-hepatique') === 'Oui',
+    gastrite_ulcere: gv('secu-gastrite') === 'Oui',
+    troubles_cardiovasculaires: gv('secu-cardiovasculaire') === 'Oui',
+    allergie_fruits_coque: allergiesAlim.includes('Fruits à coque'),
     allergies_he: gv('secu-allergie-he') === 'Oui',
   };
 
@@ -1456,13 +1477,13 @@ function buildClientData() {
     secu_asthme: gv('secu-asthme'),
     secu_renal: gv('secu-renal'),
     secu_hepatique: gv('secu-hepatique'),
+    secu_gastrite: gv('secu-gastrite'),
+    secu_cardiovasculaire: gv('secu-cardiovasculaire'),
     secu_allergie_he: gv('secu-allergie-he'),
     profil_aroma: profilAroma,
     aroma_candidats: (function(){
       try {
-        const compat = aromatherapieFiltrer(HUILES_ESSENTIELLES, profilAroma)
-          .map(h => `${h.nom} (${h.latin}) — propriétés: ${h.proprietes.join(', ')} ; indications: ${h.indications.join(', ')} ; âge min: ${h.age_min||'—'} ; précaution: ${h.precaution||'—'}`);
-        return compat.join('\n');
+        return getCandidatsAromatherapie(profilAroma);
       } catch(e) { console.warn('Filtre aromathérapie indisponible:', e); return ''; }
     })(),
     traitements_vigilance: traitementsVigilance,
@@ -2495,11 +2516,11 @@ ${d.traitements_vigilance.includes('Anticoagulants') ? (!d.anticoag_type || d.an
 5. VIGILANCE DOSE CUMULÉE MAGNÉSIUM : le magnésium bisglycinate revient dans de nombreuses branches à des doses différentes (300mg base, jusqu'à 600-800mg si excès de cortisol marqué) — appliquer le point 4 ci-dessus (une seule entrée, dose du besoin le plus élevé) et respecter la vigilance taurine/B6 déjà prévue dans la banque RÈGLE N°5 si la dose retenue dépasse 400-500mg/j.
 
 ━━ RÈGLE N°7 — AROMATHÉRAPIE (huiles essentielles, huiles végétales, hydrolats) ━━
-La liste ci-dessous ("HUILES COMPATIBLES") a déjà été filtrée automatiquement par le code (pas par toi) selon le profil de sécurité de la cliente (grossesse/allaitement, âge, cancer hormono-dépendant, épilepsie, asthme, anticoagulants, insuffisance rénale/hépatique, allergie aux HE). Tu ne dois JAMAIS proposer une huile qui n'apparaît pas dans cette liste, même si elle te semble pertinente.
-Si la liste est vide ou ne contient rien de pertinent pour les axes prioritaires de la cliente, ne force RIEN : n'inclus simplement pas la section s7_aromatherapie (renvoie une chaîne vide), ou limite-toi à recommander un hydrolat doux (aucune contre-indication connue) si un seul semble pertinent.
-Choisis AU MAXIMUM 1 à 2 huiles essentielles (jamais plus, cohérent avec la philosophie "peu mais bien choisi"), en t'appuyant sur les indications listées qui recoupent le mieux les axes prioritaires de la cliente. Tu peux y associer 1 huile végétale (support de dilution ou actif à part entière) et/ou 1 hydrolat si pertinent, notamment pour la peau ou l'usage quotidien doux.
-Pour CHAQUE huile essentielle proposée, tu DOIS systématiquement afficher, à la suite de la recommandation : la voie d'administration, l'âge minimum, ET la précaution/contre-indication telle que fournie dans les données (ne jamais l'omettre, même si tu penses qu'elle n'est pas pertinente pour cette cliente précise) — c'est une exigence de sécurité non négociable : la cliente doit pouvoir se relire et vérifier elle-même qu'aucune contre-indication ne la concerne, y compris une qu'elle n'aurait pas jugé bon de mentionner en consultation.
-Structure attendue pour s7_aromatherapie (voir RÈGLE N°1ter) : 1 phrase d'intro reliant le choix à l'axe prioritaire, puis pour chaque produit, une puce "•" avec le nom (nom latin) et l'usage en une courte formule, suivie de ses détails d'application en puces "◦" (jamais "•") : dilution/dose, étapes d'application si plusieurs gestes successifs, fréquence, durée, et "◦ Précaution : [texte exact fourni]" en dernier. Exemple exact à imiter :
+La liste ci-dessous ("PRODUITS COMPATIBLES") a déjà été filtrée automatiquement par le code (pas par toi) selon le profil de sécurité de la cliente (grossesse/allaitement, âge, cancer hormono-dépendant, épilepsie, anticoagulants/troubles de la coagulation, insuffisance rénale/hépatique, gastrite/ulcère actif, troubles cardiovasculaires, allergie aux fruits à coque, allergie aux HE). Elle contient déjà, mélangées et étiquetées par catégorie ([Huile essentielle] / [Huile végétale] / [Hydrolat]), les 3 familles de produits — tu n'as JAMAIS besoin d'aller chercher une huile végétale ou un hydrolat ailleurs que dans cette liste. Tu ne dois JAMAIS proposer un produit qui n'apparaît pas dans cette liste, même s'il te semble pertinent.
+Si la liste est vide ou ne contient rien de pertinent pour les axes prioritaires de la cliente, ne force RIEN : n'inclus simplement pas la section s7_aromatherapie (renvoie une chaîne vide), ou limite-toi à recommander un hydrolat doux de la liste (généralement le moins de contre-indications) si un seul semble pertinent.
+Choisis AU MAXIMUM 1 à 2 huiles essentielles (jamais plus, cohérent avec la philosophie "peu mais bien choisi"), en t'appuyant sur les indications listées qui recoupent le mieux les axes prioritaires de la cliente. Tu peux y associer 1 huile végétale de la liste (support de dilution ou actif à part entière) et/ou 1 hydrolat de la liste si pertinent, notamment pour la peau ou l'usage quotidien doux.
+Pour CHAQUE produit proposé, tu DOIS systématiquement afficher, à la suite de la recommandation : la voie d'administration, l'âge minimum, ET l'intégralité du champ "Vigilances/contre-indications" tel que fourni dans les données (ne jamais l'omettre, ne jamais en résumer ou en retirer une partie, même si tu penses qu'une mention n'est pas pertinente pour cette cliente précise — par exemple la mention systématique de l'asthme n'exclut jamais un produit de la liste mais doit toujours être affichée) — c'est une exigence de sécurité non négociable : la cliente doit pouvoir se relire et vérifier elle-même qu'aucune contre-indication ne la concerne, y compris une qu'elle n'aurait pas jugé bon de mentionner en consultation.
+Structure attendue pour s7_aromatherapie (voir RÈGLE N°1ter) : 1 phrase d'intro reliant le choix à l'axe prioritaire, puis pour chaque produit, une puce "•" avec le nom (nom latin) et l'usage en une courte formule, suivie de ses détails d'application en puces "◦" (jamais "•") : dilution/dose, étapes d'application si plusieurs gestes successifs, fréquence, durée, et "◦ Précaution : [texte exact du champ Vigilances/contre-indications fourni]" en dernier. Exemple exact à imiter :
 • Nom (nom latin) — usage précis en une courte formule
 ◦ Dilution/dose et mode d'application
 ◦ Étape suivante si application en plusieurs gestes (ex. étaler, laisser poser, rincer)
@@ -2507,7 +2528,7 @@ Structure attendue pour s7_aromatherapie (voir RÈGLE N°1ter) : 1 phrase d'intr
 ◦ Précaution : [texte exact fourni]
 Ne jamais dépasser une dilution de bon sens (jamais pure sur la peau sauf mention explicite contraire dans les données) — rappelle si besoin de diluer dans une huile végétale.
 
-HUILES COMPATIBLES (pré-filtrées, sécurisées pour cette cliente) :
+PRODUITS COMPATIBLES (pré-filtrés, sécurisés pour cette cliente) :
 ${d.aroma_candidats || 'Aucune donnée de filtre disponible — ne pas proposer de section aromathérapie.'}
 
 ━━ RÈGLE N°8 — SOUTIEN DÉTOX HÉPATIQUE : ORDRE ET SÉCURITÉ ━━

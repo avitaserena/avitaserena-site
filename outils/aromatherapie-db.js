@@ -96,30 +96,116 @@ const HYDROLATS = [
 ];
 
 /* --------------------------------------------------------------------------
+   Libellés lisibles pour CHAQUE clé de contre-indication rencontrée dans les
+   objets ci{} ci-dessus — utilisés pour ne JAMAIS perdre une contre-indication
+   silencieusement : même une CI qui ne sert pas à exclure (faute de champ
+   dédié dans le questionnaire) doit rester VISIBLE dans le texte transmis à
+   la praticienne et à la cliente (principe du doute : mieux vaut une mention
+   surabondante qu'une contre-indication passée sous silence).
+   -------------------------------------------------------------------------- */
+const CI_LABELS = {
+  grossesse: 'grossesse',
+  allaitement: 'allaitement',
+  epilepsie: 'épilepsie / ATCD de troubles convulsifs',
+  asthme: 'asthme — avis allergologue conseillé avant usage',
+  cancer_hormonodependant: 'cancer hormono-dépendant',
+  mastose: 'mastose',
+  anticoagulants: 'traitement anticoagulant',
+  troubles_coagulation: 'trouble de la coagulation',
+  insuffisance_renale: 'insuffisance rénale',
+  insuffisance_hepatique: 'insuffisance hépatique',
+  hepatite: 'hépatite',
+  gastrite: 'gastrite active',
+  ulcere: 'ulcère actif',
+  troubles_cardiovasculaires: 'troubles cardiovasculaires',
+  hypertension: 'hypertension',
+  allergie_aspirine: 'allergie à l\'aspirine/aux salicylés',
+  allergie_asteracees: 'allergie aux astéracées (famille marguerite/ambroisie)',
+  allergie_fruits_coque: 'allergie aux fruits à coque',
+  allergie: 'terrain allergique à vérifier',
+  chirurgie_prevue: 'intervention chirurgicale prévue',
+  vigilance_pro: 'vigilance en cas d\'exposition professionnelle prolongée',
+  homeopathie_incompatible: 'délai à respecter avec un traitement homéopathique',
+  lactones_allergisantes: 'risque allergisant (lactones) — test cutané conseillé',
+  peau_acneique: 'déconseillée sur peau acnéique',
+  photosensibilisant: 'photosensibilisant — éviter le soleil après application',
+};
+
+/* --------------------------------------------------------------------------
    Filtre de sécurité : écarte toute huile incompatible avec le profil de
    la cliente AVANT toute proposition. Le silence sur un champ = à vérifier,
    jamais "c'est sûr" (cf. principe du doute).
    Profil attendu : { grossesse:bool, allaitement:bool, age:number,
      cancer_hormonodependant:bool, epilepsie:bool, asthme:bool,
      anticoagulants:bool, insuffisance_renale:bool, insuffisance_hepatique:bool,
-     allergies_he:bool }
+     gastrite_ulcere:bool, troubles_cardiovasculaires:bool,
+     allergie_fruits_coque:bool, allergies_he:bool }
+   NOTE ASTHME : ci.asthme vaut toujours la chaîne "avis_allergologue" (jamais
+   un booléen d'exclusion stricte) — volontaire, car l'asthme ne contre-indique
+   pas systématiquement une huile mais impose une vigilance. Cette vigilance
+   n'exclut donc jamais une huile de la liste, mais elle est TOUJOURS affichée
+   via formatCIComplet() ci-dessous, jamais silencieuse.
    -------------------------------------------------------------------------- */
 function aromatherapieFiltrer(liste, profil) {
   return liste.filter(item => {
     const ci = item.ci || {};
+    const ageMin = item.age_min || ci.age_min; // normalise : age_min tantôt au niveau racine (HE), tantôt dans ci{} (certaines HV)
     if (profil.allergies_he) return false; // allergie HE connue -> on n'en propose aucune
     if ((profil.grossesse || profil.allaitement) && (ci.grossesse || ci.allaitement)) return false;
     if (profil.cancer_hormonodependant && (ci.cancer_hormonodependant || ci.mastose)) return false;
     if (profil.epilepsie && ci.epilepsie) return false;
-    if (profil.asthme && ci.asthme === true) return false; // "avis_allergologue" = signaler, pas exclure d'office
-    if (profil.anticoagulants && ci.anticoagulants) return false;
+    if (profil.anticoagulants && (ci.anticoagulants || ci.troubles_coagulation)) return false;
     if (profil.insuffisance_renale && ci.insuffisance_renale) return false;
     if (profil.insuffisance_hepatique && (ci.insuffisance_hepatique || ci.hepatite)) return false;
-    if (item.age_min && profil.age && profil.age < item.age_min) return false;
+    if (profil.gastrite_ulcere && (ci.gastrite || ci.ulcere)) return false;
+    if (profil.troubles_cardiovasculaires && (ci.troubles_cardiovasculaires || ci.hypertension)) return false;
+    if (profil.allergie_fruits_coque && ci.allergie_fruits_coque) return false;
+    if (ageMin && profil.age && profil.age < ageMin) return false;
     return true;
   });
 }
 
+/* --------------------------------------------------------------------------
+   Construit le texte COMPLET des précautions d'un item : le champ libre
+   "precaution" ET l'intégralité des clés ci{} présentes (traduites en
+   français lisible), même celles qui ne servent pas à filtrer faute de champ
+   dédié dans le questionnaire actuel. Objectif : aucune contre-indication
+   connue ne doit jamais rester invisible pour la praticienne ou la cliente.
+   -------------------------------------------------------------------------- */
+function formatCIComplet(item) {
+  const ci = item.ci || {};
+  const cles = new Set(Object.keys(ci));
+  if (item.photosensibilisant) cles.add('photosensibilisant');
+  const labels = [...cles]
+    .filter(k => ci[k] || (k === 'photosensibilisant' && item.photosensibilisant))
+    .filter(k => k !== 'age_min') // déjà affiché séparément (âge minimum)
+    .map(k => CI_LABELS[k] || k);
+  const texteCI = labels.length ? `Vigilances/contre-indications : ${labels.join(', ')}.` : '';
+  return [item.precaution && item.precaution !== '—' ? item.precaution : '', texteCI].filter(Boolean).join(' ');
+}
+
+/* --------------------------------------------------------------------------
+   Point d'entrée unique pour generateur.html : filtre ET formate en une seule
+   fois les 3 bases (huiles essentielles, huiles végétales, hydrolats) selon
+   le profil de sécurité de la cliente, prêt à être injecté tel quel dans le
+   prompt (RÈGLE N°7). Remplace l'appel direct à aromatherapieFiltrer() seul,
+   qui ne couvrait jusqu'ici QUE les huiles essentielles — les huiles
+   végétales et les hydrolats de cette base n'étaient jamais transmis.
+   -------------------------------------------------------------------------- */
+function getCandidatsAromatherapie(profil) {
+  const ageMin = (item) => item.age_min || (item.ci && item.ci.age_min);
+  const formatLigne = (h, categorie) => {
+    const age = ageMin(h);
+    const proprietes = h.proprietes ? h.proprietes.join(', ') : '—';
+    const indications = h.indications ? h.indications.join(', ') : '—';
+    return `[${categorie}] ${h.nom} (${h.latin}) — propriétés: ${proprietes} ; indications: ${indications} ; âge min: ${age || '—'} ; ${formatCIComplet(h)}`;
+  };
+  const he = aromatherapieFiltrer(HUILES_ESSENTIELLES, profil).map(h => formatLigne(h, 'Huile essentielle'));
+  const hv = aromatherapieFiltrer(HUILES_VEGETALES, profil).map(h => formatLigne(h, 'Huile végétale'));
+  const hy = aromatherapieFiltrer(HYDROLATS, profil).map(h => formatLigne(h, 'Hydrolat'));
+  return [...he, ...hv, ...hy].join('\n');
+}
+
 if (typeof module !== 'undefined') {
-  module.exports = { HUILES_ESSENTIELLES, HUILES_VEGETALES, HYDROLATS, aromatherapieFiltrer };
+  module.exports = { HUILES_ESSENTIELLES, HUILES_VEGETALES, HYDROLATS, CI_LABELS, aromatherapieFiltrer, formatCIComplet, getCandidatsAromatherapie };
 }
