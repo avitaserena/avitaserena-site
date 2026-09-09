@@ -1681,6 +1681,13 @@ body {
 .fst.ok { background: var(--green-lt); color: var(--green) }
 .fst.pend { background: var(--orange-lt); color: var(--orange) }
 .fst.refund { background: var(--red-lt); color: var(--red) }
+.findy { font-size: 10.5px; font-weight: 700; padding: 4px 11px; border-radius: var(--r99); border: 1px solid var(--border); background: var(--white); color: var(--muted); cursor: pointer; font-family: inherit; transition: var(--t) }
+.findy:hover { border-color: rgba(193,121,60,.4); color: var(--gold-dk); background: var(--gold-lt) }
+.findy.on { background: var(--green-lt); color: var(--green); border-color: transparent }
+.findy.on:hover { background: var(--red-lt); color: var(--red) }
+.findy-summary { font-size: 12px; font-weight: 600; padding: 5px 12px; border-radius: var(--r99) }
+.findy-summary.warn { background: var(--orange-lt); color: var(--orange) }
+.findy-summary.ok { background: var(--green-lt); color: var(--green) }
 
 /* Silence */
 .sil-item { display: flex; align-items: center; gap: 10px; padding: 10px 11px; border-radius: var(--r12); border: 1px solid var(--border); margin-bottom: 6px; cursor: pointer; transition: var(--t) }
@@ -1907,7 +1914,7 @@ async function loadClients(){
 async function loadFactures(){
   try{
     const r=await sb('factures?order=date.desc&limit=500');
-    db.factures=r.map(f=>({id:f.id,num:f.num,clientId:f.client_id,date:f.date,prestation:f.prestation,prestationLabel:f.prestation_label,montant:parseFloat(f.montant)||0,paiement:f.paiement,paiementLabel:f.paiement_label,statut:f.statut,deuxFois:f.deux_fois,montantRembourse:f.montant_rembourse!=null?parseFloat(f.montant_rembourse):0,rembourseLe:f.rembourse_le||null}));
+    db.factures=r.map(f=>({id:f.id,num:f.num,clientId:f.client_id,date:f.date,prestation:f.prestation,prestationLabel:f.prestation_label,montant:parseFloat(f.montant)||0,paiement:f.paiement,paiementLabel:f.paiement_label,statut:f.statut,deuxFois:f.deux_fois,montantRembourse:f.montant_rembourse!=null?parseFloat(f.montant_rembourse):0,rembourseLe:f.rembourse_le||null,indySaisie:!!f.indy_saisie,indySaisieLe:f.indy_saisie_le||null}));
     console.log('[CRM] ✓ Factures:', db.factures.length);
   }catch(e){
     console.error('[CRM] ✗ Factures:', e.message);
@@ -5770,13 +5777,36 @@ function renderFactures(){
   if(monthInput && !monthInput.value){const n=new Date();monthInput.value=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0');}
   const facs=[...db.factures].sort((a,b)=>new Date(b.date)-new Date(a.date));
   cnt.textContent=facs.length;
+  const pasEncoreIndy=facs.filter(f=>!f.indySaisie).length;
+  const indyCntEl=document.getElementById('f-indy-count');
+  if(indyCntEl){
+    indyCntEl.textContent=pasEncoreIndy>0?(pasEncoreIndy+' pas encore saisie'+(pasEncoreIndy>1?'s':'')+' dans Indy'):'Tout est à jour dans Indy';
+    indyCntEl.className='findy-summary'+(pasEncoreIndy>0?' warn':' ok');
+  }
   if(!facs.length){list.innerHTML='<div class="empty"><div class="eicon">'+ic('file')+'</div><div class="etitle">Aucune facture</div><div class="esub">Créez votre première facture.</div></div>';return;}
   list.innerHTML=facs.map(f=>{
     const c=db.clients.find(x=>x.id===f.clientId);
     const fstCls=f.statut==='remboursee'?'refund':(f.statut==='payee'?'ok':'pend');
     const fstLbl=f.statut==='remboursee'?('Remboursée'+(f.montantRembourse&&f.montantRembourse<f.montant?' (partiel)':'')):(f.statut==='payee'?'Payée':'En attente');
-    return "<div class='fr'><span class='fnum'>N° "+escH(f.num||'')+"</span><div style='flex:1'><div class='fcl'>"+(c?escH(c.prenom+' '+(c.nom||'')):"<span style='color:var(--muted)'>—</span>")+"</div><div class='fpre'>"+escH(f.prestationLabel||f.prestation||'')+"</div></div><span class='fdat'>"+fmtShort(f.date)+"</span><span class='famt'>"+(f.montant||0).toFixed(0)+" €</span><span class='fst "+fstCls+"'>"+fstLbl+"</span><button class='btn btn-ghost btn-xs' onclick=\"printF('"+f.id+"')\">"+ic('printer')+"</button></div>";
+    const indyCls=f.indySaisie?'findy on':'findy';
+    const indyTitle=f.indySaisie?('Saisie dans Indy'+(f.indySaisieLe?(' le '+fmtShort(f.indySaisieLe)):'')+' — cliquer pour annuler'):'Pas encore saisie dans Indy — cliquer pour marquer comme fait';
+    return "<div class='fr'><span class='fnum'>N° "+escH(f.num||'')+"</span><div style='flex:1'><div class='fcl'>"+(c?escH(c.prenom+' '+(c.nom||'')):"<span style='color:var(--muted)'>—</span>")+"</div><div class='fpre'>"+escH(f.prestationLabel||f.prestation||'')+"</div></div><span class='fdat'>"+fmtShort(f.date)+"</span><span class='famt'>"+(f.montant||0).toFixed(0)+" €</span><span class='fst "+fstCls+"'>"+fstLbl+"</span><button class='"+indyCls+"' title=\""+indyTitle+"\" onclick=\"toggleIndySaisie('"+f.id+"')\">"+(f.indySaisie?ic('check'):'Indy')+"</button><button class='btn btn-ghost btn-xs' onclick=\"printF('"+f.id+"')\">"+ic('printer')+"</button></div>";
   }).join('');
+}
+
+async function toggleIndySaisie(fid){
+  const f=db.factures.find(x=>x.id===fid);if(!f)return;
+  const nouveauStatut=!f.indySaisie;
+  const dateDuJour=nouveauStatut?today():null;
+  try{
+    await sb('factures?id=eq.'+encodeURIComponent(fid),{method:'PATCH',body:JSON.stringify({indy_saisie:nouveauStatut,indy_saisie_le:dateDuJour}),prefer:'return=minimal'});
+    f.indySaisie=nouveauStatut;f.indySaisieLe=dateDuJour;
+    renderFactures();
+    toast(nouveauStatut?'Marquée comme saisie dans Indy':'Marquée comme non saisie','ok');
+  }catch(e){
+    console.error('[CRM] toggleIndySaisie:',e);
+    toast('Échec de la mise à jour — réessayez','err');
+  }
 }
 
 // Marque officielle du logo A VITA SERENA (fill=currentColor, réutilisé partout : PHV, factures, emails)
@@ -7638,6 +7668,7 @@ function ouvrirBilanEntree(clientId, mode){
   <div class="page" id="page-factures">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;gap:12px;flex-wrap:wrap">
       <span style="font-size:13px;font-weight:600;color:var(--muted)"><span id="f-count">0</span> factures</span>
+      <span id="f-indy-count" class="findy-summary"></span>
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
         <input type="month" id="f-export-mois" class="fi" style="width:150px;padding:8px 10px" title="Mois à exporter">
         <button class="btn btn-ghost" id="f-export-btn" onclick="exportFacturesMois()">
