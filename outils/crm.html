@@ -2430,13 +2430,19 @@ function renderActionsJour(){
   rdvs.filter(r => r.status==='annule' && r.facture_id).forEach(r=>{
     const facture = db.factures.find(f=>f.id===r.facture_id);
     if(!facture || facture.statut!=='payee') return;
+    // Un remboursement Stripe partiel (déclenché depuis le Dashboard) met à jour
+    // montantRembourse sans faire passer le statut à "remboursee" tant que le total
+    // remboursé n'atteint pas le montant de la facture — reste dû = la différence.
+    const resteDu = facture.montant - (facture.montantRembourse||0);
+    if(resteDu <= 0) return;
     const client = matchClientForRdv(r);
+    const dejaLabel = facture.montantRembourse>0 ? (' ('+facture.montantRembourse.toFixed(0)+' € déjà remboursés)') : '';
     items.push({u:4, html:
       '<div class="feed-item feed-remboursement">'+
         '<div class="feed-ic">'+ic('warn')+'</div>'+
         '<div class="feed-body">'+
           '<div class="feed-title">'+escH(r.name||'—')+' <span class="feed-tag" style="background:var(--red-lt,#FEE2E2);color:var(--red,#D1553A)">RDV annulé — remboursement dû</span></div>'+
-          '<div class="feed-text">Facture N°'+escH(facture.num)+' · <span class="feed-chip chip-red">'+facture.montant.toFixed(0)+' € à rembourser</span></div>'+
+          '<div class="feed-text">Facture N°'+escH(facture.num)+' · <span class="feed-chip chip-red">'+resteDu.toFixed(0)+' € à rembourser</span>'+escH(dejaLabel)+'</div>'+
         '</div>'+
         '<div class="feed-actions">'+
           (client?'<button class="feed-btn feed-btn-ghost" onclick=\'openFiche("'+client.id+'")\'>Fiche</button>':'')+
@@ -3738,20 +3744,32 @@ async function annulerRdv(rdvId, cid){
 async function marquerFactureRemboursee(factureId){
   const facture = db.factures.find(f=>f.id===factureId);
   if(!facture){ toast('Facture introuvable','err'); return; }
-  if(!confirm('Confirmer que le remboursement de '+facture.montant.toFixed(0)+' € a bien été effectué ?\n\nUn email de confirmation sera envoyé à la cliente.')) return;
+  const dejaRembourse = facture.montantRembourse||0;
+  const resteDu = facture.montant - dejaRembourse;
+  const saisie = prompt(
+    (dejaRembourse>0 ? dejaRembourse.toFixed(0)+' € déjà remboursés (probablement via Stripe). ' : '')+
+    'Montant remboursé maintenant (€) :', resteDu.toFixed(0)
+  );
+  if(saisie===null) return; // annulé
+  const montantSaisi = parseFloat(saisie.replace(',','.'));
+  if(!montantSaisi || montantSaisi<=0){ toast('Montant invalide','err'); return; }
+  if(!confirm('Confirmer l\'enregistrement d\'un remboursement de '+montantSaisi.toFixed(0)+' € ?\n\nUn email de confirmation sera envoyé à la cliente.')) return;
 
   const dateRembours = today();
+  const totalRembourse = dejaRembourse + montantSaisi;
+  const soldeApres = facture.montant - totalRembourse;
+  const nouveauStatut = soldeApres <= 0 ? 'remboursee' : 'payee'; // reste "payee" tant que non soldée, comme côté Stripe
   try{
     await sb('factures?id=eq.'+factureId, {
       method:'PATCH', prefer:'return=minimal',
-      body: JSON.stringify({ statut:'remboursee', montant_rembourse: facture.montant, rembourse_le: dateRembours })
+      body: JSON.stringify({ statut:nouveauStatut, montant_rembourse: totalRembourse, rembourse_le: dateRembours })
     });
-    facture.statut='remboursee'; facture.montantRembourse=facture.montant; facture.rembourseLe=dateRembours;
+    facture.statut=nouveauStatut; facture.montantRembourse=totalRembourse; facture.rembourseLe=dateRembours;
 
     const client = db.clients.find(c=>c.id===facture.clientId);
     if(client){
       if(!client.timeline) client.timeline=[];
-      client.timeline.push({ type:'remboursement', title:'Facture N°'+facture.num+' remboursée — '+facture.montant.toFixed(0)+' €', icon:'↩', date:dateRembours, desc:'Remboursement manuel (virement)' });
+      client.timeline.push({ type:'remboursement', title:(soldeApres<=0?'Facture N°'+facture.num+' remboursée — ':'Remboursement partiel facture N°'+facture.num+' — ')+montantSaisi.toFixed(0)+' €', icon:'↩', date:dateRembours, desc:'Remboursement manuel (virement)' });
       await saveClient(client);
 
       // Email de confirmation à la cliente — best effort : un échec d'envoi ne doit pas
@@ -3767,7 +3785,7 @@ async function marquerFactureRemboursee(factureId){
               sender:{name:'Sabrina · A Vita Serena',email:'sabrina@avitaserena.com'},
               to:[{email:client.email, name:client.prenom+' '+(client.nom||'')}],
               templateId: 29,
-              params:{ PRENOM: client.prenom, DATE: dateSeance, MONTANT: facture.montant.toFixed(0) }
+              params:{ PRENOM: client.prenom, DATE: dateSeance, MONTANT: montantSaisi.toFixed(0) }
             })
           });
           if(!res.ok){ const e=await res.json(); console.error('Erreur envoi mail remboursement:', e); toast('Remboursement enregistré, mais le mail n\'est pas parti ('+(e.message||res.status)+')','warn'); }
