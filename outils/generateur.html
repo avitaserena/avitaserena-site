@@ -1936,10 +1936,14 @@ async function envoyerRecommandationCliente(evt) {
       return;
     }
 
-    // 3) Envoi email via la fonction Edge
+    // 3) Envoi email via la fonction Edge — authentification requise depuis le 10/09/2026
+    // (CORRECTIF Claude : cette fonction était jusqu'ici appelable sans aucune vérification,
+    // permettant à quiconque connaîtrait son URL d'envoyer un email signé A Vita Serena à
+    // n'importe quelle adresse, avec un contenu libre). On réutilise le jeton déjà obtenu
+    // ci-dessus pour les appels REST — pas besoin d'en demander un nouveau.
     const emailRes = await fetch(SB_URL + '/functions/v1/send-recommandation-analyses', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY, 'Authorization': 'Bearer ' + authToken },
       body: JSON.stringify({
         to_email: cl.email,
         to_name: [cl.prenom, cl.nom].filter(Boolean).join(' ') || d.prenom || '',
