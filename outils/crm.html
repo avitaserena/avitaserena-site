@@ -2270,7 +2270,7 @@ function buildDayTimeline(){
     const top=((now.getHours()*60+now.getMinutes())-DAY_START*60)/60*hourH;
     nowHtml = '<div class="htl-now" style="top:'+top+'px"></div>';
   }
-  function rdvDur(r){ return r.type==='initial' ? 90 : 45; }
+  function rdvDur(r){ return r.type==='bilan' ? 90 : 45; }
   function minutesOf(t){ if(!t) return DAY_START*60; const p=t.split(':').map(Number); return (p[0]||0)*60+(p[1]||0); }
 
   const blocksHtml = rdvJour.map(r=>{
@@ -2283,7 +2283,7 @@ function buildDayTimeline(){
     return '<div class="htl-block '+statusCls+'" style="top:'+top+'px;height:'+height+'px" '+(cl?'onclick="openFiche(\''+cl.id+'\')"':'')+'>'+
       '<div class="htl-block-time">'+escH(r.time||'—')+'</div>'+
       '<div class="htl-block-name">'+escH(r.name||'—')+'</div>'+
-      '<div class="htl-block-type">'+escH(r.type==='initial'?'Consultation initiale':(r.type||r.motif||'Suivi'))+'</div>'+
+      '<div class="htl-block-type">'+escH(r.type==='bilan'?'Consultation initiale':(r.type||r.motif||'Suivi'))+'</div>'+
       '</div>';
   }).join('');
 
@@ -4730,7 +4730,7 @@ function renderFiche(c){
     const done=r.mails_done||{};
     const defs=[
       {key:'m1',lbl:'Confirmation'},
-      ...(r.type==='initial'?[{key:'prepvisio',lbl:'Prép. visio'}]:[]),
+      ...(r.type==='bilan'?[{key:'prepvisio',lbl:'Prép. visio'}]:[]),
       {key:'m2',lbl:'Rappel J-1'},
       {key:'mh1',lbl:'H-1'},
       {key:'m3',lbl:'Clôture'},
@@ -6081,7 +6081,7 @@ function renderStats(){
   const caPeriodTotal=caSeries.reduce((s,v)=>s+v,0);
 
   const rdvMap={};const durMap={};keys.forEach(k=>{rdvMap[k]=0;durMap[k]=0;});
-  periodRdvs.forEach(r=>{const k=bucketKeyFor(r.date,granularity);if(k in rdvMap){rdvMap[k]++;durMap[k]+=(r.type==='initial'?90:45);}});
+  periodRdvs.forEach(r=>{const k=bucketKeyFor(r.date,granularity);if(k in rdvMap){rdvMap[k]++;durMap[k]+=(r.type==='bilan'?90:45);}});
   const rdvSeries=keys.map(k=>rdvMap[k]);
   const durSeries=keys.map(k=>durMap[k]);
   const rdvPeriodTotal=rdvSeries.reduce((s,v)=>s+v,0);
