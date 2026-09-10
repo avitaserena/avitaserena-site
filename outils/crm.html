@@ -1796,7 +1796,7 @@ const LKEY='avs_crm_v2';
 function loadL(){try{return JSON.parse(localStorage.getItem(LKEY)||'{}')}catch(e){return{}}}
 function saveL(d){localStorage.setItem(LKEY,JSON.stringify(d))}
 
-let db={clients:[],factures:[],settings:null,nextF:1};
+let db={clients:[],factures:[],settings:null};
 let taches=[],rdvs=[],emailCtx=null,curTab='msg',curSearch='',curFilter='all';
 let memoAlerts=[];
 let memoHistoryAll=[]; // tous les mémos PHV, sans dédoublonnage — historique complet par cliente
@@ -1864,7 +1864,6 @@ async function init(){
 
   const loc=loadL();
   db.settings=loc.settings||defSettings();
-  db.nextF=loc.nextF||1;
 
   // Chargement totalement isolé — une erreur ne bloque pas les autres
   await Promise.allSettled([
@@ -2124,7 +2123,7 @@ function getActionsJour(){
         chipClass: d<=1 ? 'chip-red' : d<=3 ? 'chip-orange' : 'chip-green',
         urgence: d<=1 ? 2 : 1,
         subject: (rdv.name||'votre cliente')+', votre rendez-vous est confirmé',
-        tplId: 27
+        tplId: 28
       });
     }
 
@@ -2424,6 +2423,28 @@ function renderActionsJour(){
       '</div>'});
   });
 
+  // 3.7) Remboursements à faire — RDV annulé mais facture encore "payée" : le remboursement
+  // (virement ou remboursement carte via Stripe) n'a pas encore été effectué, ou pas encore
+  // détecté par le webhook Stripe. Reste affiché tant que la facture n'est pas passée à
+  // "remboursée" — automatiquement via Stripe (refund.created), ou manuellement ici même.
+  rdvs.filter(r => r.status==='annule' && r.facture_id).forEach(r=>{
+    const facture = db.factures.find(f=>f.id===r.facture_id);
+    if(!facture || facture.statut!=='payee') return;
+    const client = matchClientForRdv(r);
+    items.push({u:4, html:
+      '<div class="feed-item feed-remboursement">'+
+        '<div class="feed-ic">'+ic('warn')+'</div>'+
+        '<div class="feed-body">'+
+          '<div class="feed-title">'+escH(r.name||'—')+' <span class="feed-tag" style="background:var(--red-lt,#FEE2E2);color:var(--red,#D1553A)">RDV annulé — remboursement dû</span></div>'+
+          '<div class="feed-text">Facture N°'+escH(facture.num)+' · <span class="feed-chip chip-red">'+facture.montant.toFixed(0)+' € à rembourser</span></div>'+
+        '</div>'+
+        '<div class="feed-actions">'+
+          (client?'<button class="feed-btn feed-btn-ghost" onclick=\'openFiche("'+client.id+'")\'>Fiche</button>':'')+
+          '<button class="feed-btn" onclick="marquerFactureRemboursee(\''+facture.id+'\')">Marquer remboursée</button>'+
+        '</div>'+
+      '</div>'});
+  });
+
   // 4) Suivi de programme en retard (bilan, protocole, check-in, clôture...)
   const urgAl = db.clients.flatMap(c=>getAlerts(c).map(a=>({client:c,alert:a}))).filter(a=>a.alert.isOvd);
   urgAl.forEach(({client:c,alert:a})=>{
@@ -2461,7 +2482,7 @@ function renderActionsJour(){
             'data-email="'+escH(email)+'" data-name="'+escH(nomCliente)+'" '+
             'data-subject="'+escH(a.subject)+'" data-heure="'+escH(a.rdv.time||'')+'" '+
             'data-date="'+escH(new Date((a.rdv.date||today())+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'}))+'" '+
-            'data-motif="'+escH(a.client?.motifs||'')+'" '+
+            'data-motif="'+escH(a.client?.motifs||'')+'" data-type="'+escH(a.rdv.type||'')+'" '+
             'onclick="sendMailRdvFromBtn(this)" '+(!email?'disabled title="Email manquant — vérifiez la fiche cliente"':'')+'>'+sendLabel+'</button>'+
         '</div>'+
       '</div>'});
@@ -2509,10 +2530,11 @@ function sendMailRdvFromBtn(btn){
   const heure = btn.dataset.heure || '';
   const date = btn.dataset.date || '';
   const motif = btn.dataset.motif || '';
-  sendMailRdv(rdvId, key, tplId, subject, email, name, heure, date, motif);
+  const type = btn.dataset.type || '';
+  sendMailRdv(rdvId, key, tplId, subject, email, name, heure, date, motif, type);
 }
 
-async function sendMailRdv(rdvId, key, tplId, subject, email, name, heure='', date='', motif=''){
+async function sendMailRdv(rdvId, key, tplId, subject, email, name, heure='', date='', motif='', type=''){
   if(!email){ toast('Email introuvable pour ce RDV','err'); return; }
   const apiKey = getBrevoKey(); if(!apiKey){ toast('Clé Brevo requise','warn'); return; }
   const btn = document.getElementById('ajd-send-'+rdvId+'-'+key);
@@ -2523,10 +2545,11 @@ async function sendMailRdv(rdvId, key, tplId, subject, email, name, heure='', da
     if(tplId){
       // Params selon le template
       const params = { PRENOM: name.split(' ')[0], NOM: name };
-      if(tplId === 27){ // Confirmation
+      if(tplId === 28){ // Confirmation
         params.DATE = date;
         params.HEURE = heure;
         params.LIEN_VISIO = 'https://meet.google.com/nqw-rpwq-rvi';
+        params.BILAN = (type === 'bilan');
       } else if(tplId === 4){ // Rappel J-1
         params.DATE = date;
         params.HEURE = heure;
@@ -3701,6 +3724,65 @@ async function annulerRdv(rdvId, cid){
     renderActionsJour();
   }catch(e){
     toast('Erreur annulation : '+e.message,'err');
+  }
+}
+
+// ── Marquer un remboursement comme fait (virement manuel, ou remboursement Stripe déjà
+// effectué mais pas encore capté par le webhook) ── AJOUT 10/09/2026 (Claude) : avant
+// cette fonction, une facture liée à un RDV annulé restait "payée" indéfiniment tant que
+// Sabrina n'allait pas la corriger à la main dans Stripe — rien ne la relançait, et rien
+// n'informait la cliente que son argent lui avait bien été rendu. On aligne ce chemin
+// manuel sur ce que fait déjà traiterRemboursement() côté stripe-webhook pour un vrai
+// remboursement Stripe : même mise à jour de la facture, même entrée de timeline, même
+// mail de confirmation envoyé à la cliente (template Brevo #29).
+async function marquerFactureRemboursee(factureId){
+  const facture = db.factures.find(f=>f.id===factureId);
+  if(!facture){ toast('Facture introuvable','err'); return; }
+  if(!confirm('Confirmer que le remboursement de '+facture.montant.toFixed(0)+' € a bien été effectué ?\n\nUn email de confirmation sera envoyé à la cliente.')) return;
+
+  const dateRembours = today();
+  try{
+    await sb('factures?id=eq.'+factureId, {
+      method:'PATCH', prefer:'return=minimal',
+      body: JSON.stringify({ statut:'remboursee', montant_rembourse: facture.montant, rembourse_le: dateRembours })
+    });
+    facture.statut='remboursee'; facture.montantRembourse=facture.montant; facture.rembourseLe=dateRembours;
+
+    const client = db.clients.find(c=>c.id===facture.clientId);
+    if(client){
+      if(!client.timeline) client.timeline=[];
+      client.timeline.push({ type:'remboursement', title:'Facture N°'+facture.num+' remboursée — '+facture.montant.toFixed(0)+' €', icon:'↩', date:dateRembours, desc:'Remboursement manuel (virement)' });
+      await saveClient(client);
+
+      // Email de confirmation à la cliente — best effort : un échec d'envoi ne doit pas
+      // empêcher le remboursement d'être enregistré (Sabrina le voit déjà via le CRM).
+      const apiKey = getBrevoKey();
+      if(apiKey && client.email){
+        const rdvAssocie = rdvs.find(r=>r.facture_id===factureId);
+        const dateSeance = rdvAssocie?.date ? new Date(rdvAssocie.date+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'}) : '';
+        try{
+          const res = await fetch('https://api.brevo.com/v3/smtp/email',{
+            method:'POST', headers:{'Content-Type':'application/json','api-key':apiKey},
+            body: JSON.stringify({
+              sender:{name:'Sabrina · A Vita Serena',email:'sabrina@avitaserena.com'},
+              to:[{email:client.email, name:client.prenom+' '+(client.nom||'')}],
+              templateId: 29,
+              params:{ PRENOM: client.prenom, DATE: dateSeance, MONTANT: facture.montant.toFixed(0) }
+            })
+          });
+          if(!res.ok){ const e=await res.json(); console.error('Erreur envoi mail remboursement:', e); toast('Remboursement enregistré, mais le mail n\'est pas parti ('+(e.message||res.status)+')','warn'); }
+          else toast('Remboursement enregistré, mail envoyé à '+client.email,'ok');
+        }catch(e){ console.error('Erreur envoi mail remboursement:', e); toast('Remboursement enregistré, mais le mail n\'est pas parti','warn'); }
+      } else {
+        toast('Remboursement enregistré','ok');
+      }
+    } else {
+      toast('Remboursement enregistré (aucune fiche cliente trouvée pour l\'email)','ok');
+    }
+    renderActionsJour();
+    if(typeof renderFactures==='function') renderFactures();
+  }catch(e){
+    toast('Erreur : '+e.message,'err');
   }
 }
 
@@ -5771,12 +5853,22 @@ async function saveFacture(){
   const statut=document.getElementById('nf-statut')?.value||'payee';
   const frac=document.getElementById('nf-frac')?.value||'non';
   if(!montant){toast('Montant requis','err');return;}
-  const num=String(db.nextF||1).padStart(4,'0');const id='f_'+Date.now();
+  // CORRECTIF 10/09/2026 (Claude) : le numéro venait auparavant d'un compteur stocké dans
+  // le localStorage du navigateur (db.nextF), totalement déconnecté du compteur réel utilisé
+  // par les factures automatiques (fonction Postgres next_facture_num(), appelée par
+  // stripe-webhook). Deux conséquences possibles : numéros en double si une facture auto
+  // était créée entre-temps, ou décalage si le navigateur change (autre poste, cache vidé).
+  // On appelle désormais la même fonction que le webhook — un seul et unique compteur,
+  // garanti sans collision ni trou, que la facture soit automatique ou saisie à la main.
+  let num;
+  try{
+    num = await sb('rpc/next_facture_num',{method:'POST',body:JSON.stringify({})});
+  }catch(e){ toast('Erreur de numérotation : '+e.message,'err'); return; }
+  const id='f_'+Date.now();
   const fac={id,num,client_id:cid,date,prestation:presta,prestation_label:prestaLbl,montant,paiement:paie,paiement_label:paieLbl,statut,deux_fois:frac,created_at:new Date().toISOString()};
   try{
     await sb('factures',{method:'POST',body:JSON.stringify(fac)});
     db.factures.unshift({id,num,clientId:cid,date,prestation:presta,prestationLabel:prestaLbl,montant,paiement:paie,paiementLabel:paieLbl,statut,deuxFois:frac});
-    db.nextF=(db.nextF||1)+1;const loc=loadL();loc.nextF=db.nextF;saveL(loc);
     if(cid){const c=db.clients.find(x=>x.id===cid);if(c){if(!c.timeline)c.timeline=[];c.timeline.push({type:'facture',title:'Facture N°'+num+' — '+montant+' €',icon:'€',date,desc:prestaLbl});await saveClient(c);}}
     closeM('m-facture');renderFactures();toast('Facture enregistrée','ok');
   }catch(e){toast('Erreur: '+e.message,'err');}
