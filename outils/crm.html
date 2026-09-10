@@ -2140,16 +2140,24 @@ function getActionsJour(){
     const isConfirme = rdv.status === 'confirme';
     const nowH = new Date().getHours();
 
-    // Mail 2 — Rappel J-1 : fenêtre auto = J-1, 9h-10h. Passée dès que J-1 ≥10h,
-    // ou dès qu'on est arrivé au jour J lui-même (la fenêtre d'hier est forcément close).
-    const m2FenetrePassee = d===0 || (d===1 && nowH>=10);
+    // Mail 2 — Rappel J-1 : fenêtre auto = J-1, 9h-10h. Passée dès que J-1 ≥10h.
+    // CORRECTIF 10/09/2026 (Claude) : pour d===0 (RDV aujourd'hui), l'ancien code
+    // considérait la fenêtre comme "forcément close" dans tous les cas — y compris
+    // quand le RDV a été pris LE JOUR MÊME (aucune fenêtre J-1 n'a alors jamais existé,
+    // ce n'est pas une panne à rattraper). On ne bascule en "vraie panne" que si le RDV
+    // était déjà confirmé au plus tard la veille (m1 envoyé avant le jour du RDV) —
+    // dans ce cas seulement, le cron a bien eu une fenêtre et ne l'a pas utilisée.
+    const veilleRdv = addDays(rdv.date, -1);
+    const m1DateStr = (done.m1 && done.m1.sentAt) ? (function(dt){return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');})(new Date(done.m1.sentAt)) : null;
+    const rdvExistaitAvantFenetreM2 = m1DateStr !== null && m1DateStr <= veilleRdv;
+    const m2FenetrePassee = (d===1 && nowH>=10) || (d===0 && rdvExistaitAvantFenetreM2);
     if(d >= 0 && d <= 1 && !done.m2 && (!isConfirme || m2FenetrePassee)){
       actions.push({
         rdv, client,
         key: 'm2',
         ic: 'bell',
-        label: d===0 ? 'Rappel — séance AUJOURD\'HUI' : 'Rappel J-1 — séance demain',
-        chip: d===0 ? '≤ 18h ce soir' : 'À envoyer ce soir',
+        label: d===0 ? 'Rappel J-1 manqué — séance aujourd\'hui' : 'Rappel J-1 — séance demain',
+        chip: d===0 ? ('Séance à '+(rdv.time||'?')) : 'À envoyer ce soir',
         chipClass: 'chip-red',
         urgence: 3,
         subject: (rdv.name||'votre cliente')+', votre séance est demain',
