@@ -1247,7 +1247,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
       <div id="stripe-ready" style="display:none">
         <div style="margin-bottom:16px">
-          <label class="lbl">Numéro de carte</label>
+          <label class="lbl">Moyen de paiement</label>
           <div class="stripe-element-wrap" id="card-element"></div>
           <div class="stripe-error" id="card-errors"></div>
         </div>
@@ -1391,7 +1391,7 @@ var state = {
   prestaPrix: null,
   creneauDate: null, creneauHeure: null,
   prenom: '', nom: '', email: '', tel: '', ddn: '', motif: '', message: '',
-  stripe: null, cardElement: null, stripeInitialized: false, lumaOption: false,
+  stripe: null, elements: null, paymentElement: null, stripeInitialized: false, lumaOption: false,
   parraineePar: '' // client_key de la cliente qui a partagé son lien — vide si venue directement
 };
 
@@ -1741,24 +1741,41 @@ function initStripe() {
 
   try {
     state.stripe = Stripe(pk);
-    var elements = state.stripe.elements({
-      fonts:[{cssSrc:'https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400&display=swap'}]
-    });
-    state.cardElement = elements.create('card',{
-      style:{
-        base:{
+
+    // Payment Element en mode différé : on ne connaît pas encore le clientSecret
+    // (le PaymentIntent réel n'est créé côté serveur qu'au clic sur "Payer", une fois
+    // le montant validé). On indique juste le montant/devise pour que Stripe propose
+    // dynamiquement les moyens de paiement compatibles — carte, mais aussi Apple Pay,
+    // Google Pay, Link selon l'appareil/navigateur de la cliente.
+    //
+    // Exception A Luma (abonnement mensuel récurrent, prélèvement automatique sans
+    // repasser par la cliente) : on restreint à la carte, seul moyen fiable en usage
+    // "off_session" — cohérent avec la restriction déjà appliquée côté serveur dans
+    // create-payment-intent.
+    var elementsConfig = {
+      mode: 'payment',
+      amount: Math.max(50, Math.round((state.prestaPrix||0) * 100)),
+      currency: 'eur',
+      fonts:[{cssSrc:'https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400&display=swap'}],
+      appearance:{
+        variables:{
           fontFamily:"'Be Vietnam Pro', sans-serif",
-          fontSize:'15px',
-          color:'#2C2C2A',
-          '::placeholder':{color:'#9A9590'}
-        },
-        invalid:{color:'#8B3A3A'}
+          fontSizeBase:'15px',
+          colorText:'#2C2C2A',
+          colorTextPlaceholder:'#9A9590',
+          colorDanger:'#8B3A3A',
+          borderRadius:'9px'
+        }
       }
-    });
-    state.cardElement.mount('#card-element');
-    state.cardElement.on('focus',function(){document.querySelector('.stripe-element-wrap').classList.add('focused');});
-    state.cardElement.on('blur',function(){document.querySelector('.stripe-element-wrap').classList.remove('focused');});
-    state.cardElement.on('change',function(e){
+    };
+    if(state.lumaOption){ elementsConfig.paymentMethodTypes = ['card']; }
+
+    state.elements = state.stripe.elements(elementsConfig);
+    state.paymentElement = state.elements.create('payment',{layout:'tabs'});
+    state.paymentElement.mount('#card-element');
+    state.paymentElement.on('focus',function(){document.querySelector('.stripe-element-wrap').classList.add('focused');});
+    state.paymentElement.on('blur',function(){document.querySelector('.stripe-element-wrap').classList.remove('focused');});
+    state.paymentElement.on('change',function(e){
       var err=document.getElementById('card-errors');
       if(e.error){err.textContent=e.error.message;err.style.display='block';}
       else{err.style.display='none';}
@@ -1786,6 +1803,18 @@ async function lancerPaiement() {
   btn.querySelector('span').textContent = 'Traitement en cours…';
 
   try {
+    // Étape obligatoire avec le Payment Element : valide les champs saisis (carte,
+    // ou moyen sélectionné dans l'onglet actif) avant tout appel serveur.
+    var elResult = await state.elements.submit();
+    if(elResult.error){
+      var errElInit = document.getElementById('card-errors');
+      errElInit.textContent = elResult.error.message;
+      errElInit.style.display = 'block';
+      btn.disabled=false;btn.classList.remove('loading');
+      btn.querySelector('span').textContent = state.prestaPrix+'€';
+      return;
+    }
+
     // Appel à l'Edge Function Supabase — crée le PaymentIntent côté serveur,
     // la clé secrète Stripe ne quitte jamais Supabase.
     var response = await fetch('https://bqhkdndwldwqacrrbbig.supabase.co/functions/v1/create-payment-intent', {
@@ -1829,15 +1858,24 @@ async function lancerPaiement() {
 
     if(!data.clientSecret) throw new Error(data.error || 'Pas de clientSecret reçu du serveur');
 
-    // Confirmer le paiement avec Stripe
-    var result = await state.stripe.confirmCardPayment(data.clientSecret, {
-      payment_method: {
-        card: state.cardElement,
-        billing_details: {
-          name: state.prenom+' '+state.nom,
-          email: state.email
+    // Confirmer le paiement avec Stripe. redirect:'if_required' garde le parcours
+    // actuel (pas de sortie de page) pour carte / Apple Pay / Google Pay / Link — les
+    // seuls moyens activés côté Stripe à ce jour. Si un moyen avec redirection
+    // obligatoire (ex. virement, portefeuille européen) est activé un jour, Stripe
+    // redirigera automatiquement vers return_url puis reviendra sur cette page.
+    var result = await state.stripe.confirmPayment({
+      elements: state.elements,
+      clientSecret: data.clientSecret,
+      confirmParams: {
+        return_url: window.location.href,
+        payment_method_data: {
+          billing_details: {
+            name: state.prenom+' '+state.nom,
+            email: state.email
+          }
         }
-      }
+      },
+      redirect: 'if_required'
     });
 
     if(result.error) {
@@ -1846,7 +1884,7 @@ async function lancerPaiement() {
       errEl.style.display = 'block';
       btn.disabled=false;btn.classList.remove('loading');
       btn.querySelector('span').textContent = state.prestaPrix+'€';
-    } else if(result.paymentIntent.status === 'succeeded') {
+    } else if(result.paymentIntent && result.paymentIntent.status === 'succeeded') {
       // La réservation est enregistrée côté serveur par le webhook Stripe
       // (stripe-webhook), jamais depuis ce code navigateur.
       afficherSucces();
@@ -2020,6 +2058,22 @@ document.addEventListener('DOMContentLoaded', function(){
     state.parraineePar = invite.trim();
     var banner = document.getElementById('inviteBanner');
     if(banner) banner.style.display = 'block';
+  }
+
+  // Filet de sécurité Payment Element : avec redirect:'if_required', carte / Apple Pay /
+  // Google Pay / Link ne quittent jamais cette page. Mais si un moyen à redirection
+  // obligatoire est activé un jour côté Stripe (ex. virement bancaire européen), la
+  // cliente revient ici avec ces paramètres dans l'URL — on vérifie alors le statut du
+  // paiement pour afficher la confirmation au lieu de la laisser sur une page vide.
+  var piClientSecret = params.get('payment_intent_client_secret');
+  if(piClientSecret){
+    var stripeRetour = Stripe(STRIPE_PUBLISHABLE_KEY);
+    stripeRetour.retrievePaymentIntent(piClientSecret).then(function(r){
+      if(r.paymentIntent && r.paymentIntent.status === 'succeeded'){
+        allerEtape(4);
+        afficherSucces();
+      }
+    });
   }
 });
 
