@@ -880,6 +880,9 @@ body {
   font-size: 13px;
   line-height: 1.55;
   color: var(--ink);
+  max-height: 130px;
+  overflow-y: auto;
+  overflow-wrap: break-word;
 }
 .fv2-brief-pending .fv2-brief-txt {
   color: var(--muted);
@@ -6660,17 +6663,20 @@ function ficheBriefEstPerime(cid){
 // aucune ressaisie manuelle, uniquement des données déjà présentes dans le CRM.
 function texteContexteBrief(cid){
   const c=db.clients.find(x=>x.id===cid);
-  if(!c) return '';
+  if(!c) return {texte:'',hasSignal:false};
   const blocs=[];
+  let hasSignal=false; // vrai dès qu'au moins une source de contenu réelle (hors prénom) est présente
 
   blocs.push(`Prénom : ${c.prenom||''}${c.axes?` — Axes de travail suivis : ${c.axes}`:''}`);
-  if(c.motifs) blocs.push(`Motif principal renseigné en fiche : ${c.motifs}`);
-  if(c.notes) blocs.push(`Notes cliniques libres (Sabrina) : ${c.notes}`);
+  if(c.axes) hasSignal=true;
+  if(c.motifs){ blocs.push(`Motif principal renseigné en fiche : ${c.motifs}`); hasSignal=true; }
+  if(c.notes){ blocs.push(`Notes cliniques libres (Sabrina) : ${c.notes}`); hasSignal=true; }
 
   // Contexte de vie éventuellement renseigné dans le questionnaire de consultation
   const qList=(questionnairesClient[cid]||[]).filter(q=>q.type==='consultation');
   if(qList[0]){
     blocs.push(`── Réponses du questionnaire de consultation (le plus récent, du ${fmtDate(qList[0].created_at)}) ──\n${texteDonneesQuestionnaire(qList[0].snapshot)}`);
+    hasSignal=true;
   }
 
   // Dernier protocole PHV — ce qui a été mis en place, accepté, refusé
@@ -6680,14 +6686,15 @@ function texteContexteBrief(cid){
     const nbOk=m.stats?.ok||0, nbTotal=m.stats?.total||0;
     const refusTxt=(m.refuses||[]).map(r=>`- [${r.aDejaReponse?'répondu':'en attente de réponse'}] ${r.pilier||''} : ${r.texte||''}`).join('\n');
     blocs.push(`── Dernier protocole PHV envoyé (le ${fmtDate(m.created_at)}) ──\n${nbOk}/${nbTotal} recommandations acceptées.${refusTxt?'\nRecommandations refusées ou en discussion :\n'+refusTxt:'\nAucun refus — protocole accepté en totalité.'}`);
+    hasSignal=true;
   }
 
   // Prochaine étape attendue (workflow)
   const wf=buildWF(c);
   const nextWF=wf.find(s=>!s.done);
-  if(nextWF) blocs.push(`Prochaine étape prévue dans le suivi : ${nextWF.label}${nextWF.tgt?' (prévue le '+fmtDate(nextWF.tgt)+')':''}`);
+  if(nextWF){ blocs.push(`Prochaine étape prévue dans le suivi : ${nextWF.label}${nextWF.tgt?' (prévue le '+fmtDate(nextWF.tgt)+')':''}`); hasSignal=true; }
 
-  return blocs.join('\n\n');
+  return {texte:blocs.join('\n\n'),hasSignal};
 }
 
 async function genererBriefFicheIA(cid,{silencieux=false}={}){
@@ -6696,8 +6703,27 @@ async function genererBriefFicheIA(cid,{silencieux=false}={}){
   const apiKey=getAnthropicKey();
   if(!apiKey){ if(!silencieux) toast('Clé API requise pour générer le pense-bête','err'); return; }
 
-  const contexte=texteContexteBrief(cid);
+  const {texte:contexte,hasSignal}=texteContexteBrief(cid);
   const prenom=c.prenom||'la cliente';
+
+  // Fiche trop vide (aucun questionnaire, note, motif, protocole ou étape de suivi) :
+  // pas d'appel IA — on enregistre directement un message neutre, sans coût ni risque
+  // que le modèle comble le vide par une réponse hors-sujet (cf. cas observé le 10/09/2026).
+  if(!hasSignal){
+    await sb('fiche_briefs',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify({
+      id:'brief_'+cid+'_'+Date.now(),
+      client_key:cid,
+      prenom:c.prenom||null,
+      nom:c.nom||null,
+      brief_md:'Pas encore assez d\'informations enregistrées (questionnaire, notes ou protocole) pour générer un pense-bête utile.',
+      source_signature:ficheBriefSignature(cid),
+      created_at:new Date().toISOString()
+    })});
+    await loadFicheBrief(cid);
+    if(!silencieux) toast('Pense-bête : pas encore assez de données','ok');
+    renderFiche(c);
+    return;
+  }
 
   const prompt=`Tu es l'assistant de Sabrina Castelli, naturopathe fonctionnelle (A VITA SERENA, Porto-Vecchio, Corse). Tu rédiges un pense-bête ultra-court, à usage strictement interne, que Sabrina lit en quelques secondes juste avant d'ouvrir une visio avec ${escH(prenom)}, pour reprendre le contexte instantanément.
 
