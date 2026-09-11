@@ -6457,9 +6457,12 @@ function renderStats(){
   const payEntries=Object.entries(payMap).sort((a,b)=>b[1]-a[1]);
   const payTotal=payEntries.reduce((s,[,v])=>s+v,0);
 
-  // CA annuel par programme (indépendant de la période, vision structurelle)
-  const caByProg={alba:0,aria:0,ora:0,autre:0};
-  const prestas={'alba':'alba','aria':'aria','ora':'ora'};
+  // CA annuel par prestation (indépendant de la période, vision structurelle) —
+  // étendu le 11/09/2026 (Claude) pour distinguer bilan/suivi séparément, pas
+  // seulement les 3 parcours — sur demande de Sabrina, suivi métier direct
+  // depuis les factures Supabase, sans dépendre de comptabilite.html.
+  const caByProg={bilan:0,suivi:0,alba:0,aria:0,ora:0,autre:0};
+  const prestas={'bilan':'bilan','suivi':'suivi','alba':'alba','aria':'aria','ora':'ora'};
   factures.filter(f=>f.statut==='payee'&&f.date&&f.date.startsWith(yr+'')).forEach(f=>{caByProg[prestas[f.prestation]||'autre']+=(f.montant||0);});
   const caTotal=Object.values(caByProg).reduce((s,v)=>s+v,0);
 
@@ -6498,7 +6501,7 @@ function renderStats(){
     </div>`;
   };
 
-  const gMaps={alba:'#D98C2B',aria:'#9C5FA0',ora:'#C1793C'};
+  const gMaps={bilan:'#4177A0',suivi:'#4C8B5C',alba:'#D98C2B',aria:'#9C5FA0',ora:'#C1793C'};
 
   // Option chat — adoption, usage réel, et poids récurrent dans le CA.
   // chat_addon_source==='stripe' seul compte dans le CA (le 'manuel' sert aux tests/gestes commerciaux).
@@ -6548,8 +6551,10 @@ function renderStats(){
       </div>
     </div>
     <div class="card">
-      <div class="card-head"><div class="card-title"><div class="card-dot" style="background:var(--orange)"></div>CA par programme — ${yr}</div></div>
+      <div class="card-head"><div class="card-title"><div class="card-dot" style="background:var(--orange)"></div>CA par prestation — ${yr}</div></div>
       <div class="card-body">
+        ${caByProg.bilan>0?progBar('Bilan de vitalité',caByProg.bilan,caTotal,gMaps.bilan):''}
+        ${caByProg.suivi>0?progBar('Consultation de suivi',caByProg.suivi,caTotal,gMaps.suivi):''}
         ${progBar('Alba',caByProg.alba,caTotal,gMaps.alba)}
         ${progBar('Aria',caByProg.aria,caTotal,gMaps.aria)}
         ${progBar('Ora',caByProg.ora,caTotal,gMaps.ora)}
