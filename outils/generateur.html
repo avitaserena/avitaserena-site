@@ -1461,20 +1461,34 @@ function buildClientData() {
   // est traité comme "à vérifier", jamais comme "sans risque".
   const secuGrossesseVal = gv('secu-grossesse');
   const secuCancerVal = gv('secu-cancer');
+  // ── FAILLE CORRIGÉE (12/09/2026, audit ultra-approfondi pré-ouverture) : chacun des 9 champs
+  // ci-dessous, quand il n'avait jamais été rempli (valeur ''), était évalué comme si la cliente
+  // avait explicitement répondu "Non" — silencieusement "aucune restriction", alors que le
+  // principe même de ce filtre (voir aromatherapie-db.js) est "le silence = à vérifier, jamais
+  // sans risque". Un champ de sécurité resté sur "— À préciser —" — rien ne bloque la suite du
+  // questionnaire dans ce cas — pouvait donc laisser passer une huile essentielle réellement
+  // contre-indiquée pour une grossesse ou une épilepsie jamais renseignée. Correction : une
+  // valeur vide est désormais restrictive (true) au même titre qu'un "Oui", et seule une réponse
+  // explicite qui écarte le risque (Non, Non concernée, ou avis allergologue déjà obtenu pour
+  // l'asthme) repasse le champ à false. Même logique étendue aux deux groupes de puces
+  // (anticoagulants, allergies alimentaires) : un groupe jamais touché, pas même sur "Aucun de
+  // ces traitements"/"Aucune connue", est maintenant traité comme "à vérifier" lui aussi.
+  const secuTraitementsTouche = traitementsBtns.length > 0 || [...document.querySelectorAll('#secu-traitements-group .p-toggle')].some(b => b.classList.contains('on'));
+  const allergiesTouchees = allergiesBtns.length > 0 || [...document.querySelectorAll('#allergies-group .p-toggle')].some(b => b.classList.contains('on'));
   const profilAroma = {
-    grossesse: !!secuGrossesseVal && secuGrossesseVal !== 'Non concernée',
+    grossesse: secuGrossesseVal !== 'Non concernée',
     allaitement: secuGrossesseVal === 'Allaitement en cours',
     age: parseInt(manual.age || s.age || '', 10) || null,
-    cancer_hormonodependant: secuCancerVal.startsWith('Oui'),
-    epilepsie: gv('secu-epilepsie') === 'Oui',
-    asthme: gv('secu-asthme') === 'Oui — sans avis allergologue',
-    anticoagulants: traitementsVigilance.includes('Anticoagulants'),
-    insuffisance_renale: gv('secu-renal') === 'Oui',
-    insuffisance_hepatique: gv('secu-hepatique') === 'Oui',
-    gastrite_ulcere: gv('secu-gastrite') === 'Oui',
-    troubles_cardiovasculaires: gv('secu-cardiovasculaire') === 'Oui',
-    allergie_fruits_coque: allergiesAlim.includes('Fruits à coque'),
-    allergies_he: gv('secu-allergie-he') === 'Oui',
+    cancer_hormonodependant: secuCancerVal !== 'Non',
+    epilepsie: gv('secu-epilepsie') !== 'Non',
+    asthme: gv('secu-asthme') !== 'Non' && gv('secu-asthme') !== 'Oui — avis allergologue obtenu',
+    anticoagulants: !secuTraitementsTouche || traitementsVigilance.includes('Anticoagulants'),
+    insuffisance_renale: gv('secu-renal') !== 'Non',
+    insuffisance_hepatique: gv('secu-hepatique') !== 'Non',
+    gastrite_ulcere: gv('secu-gastrite') !== 'Non',
+    troubles_cardiovasculaires: gv('secu-cardiovasculaire') !== 'Non',
+    allergie_fruits_coque: !allergiesTouchees || allergiesAlim.includes('Fruits à coque'),
+    allergies_he: gv('secu-allergie-he') !== 'Non',
   };
 
   return {
@@ -2573,8 +2587,8 @@ Cancer hormonodépendant OU SOPK → JAMAIS orienter vers une supplémentation e
 - Antécédent de cancer hormono-dépendant : ${d.secu_cancer || 'Non renseigné'}
 - Traitements en cours nécessitant vigilance : ${d.traitements_vigilance || 'Non renseigné'}${d.traitements_vigilance.includes('Anticoagulants') ? ' · Type d\'anticoagulant précis : ' + (d.anticoag_type || 'non précisé — traiter par prudence comme un AVK potentiel') : ''}
 - Allergies / intolérances alimentaires connues : ${d.allergies_alim || 'Non renseigné'}
-${(d.secu_grossesse && d.secu_grossesse !== 'Non concernée') ? '⛔️ Cette cliente est concernée par une grossesse, un allaitement ou un désir de grossesse : AUCUNE huile essentielle par voie interne, vérifier CHAQUE plante et complément proposé pour sa compatibilité, écarter les phytoestrogènes.' : ''}
-${(d.secu_cancer && d.secu_cancer.startsWith('Oui')) ? '⛔️ Antécédent de cancer hormono-dépendant confirmé : JAMAIS de Feminabiane Ménopause ni de phytoestrogènes (soja, houblon, sauge), quelle que soit la pertinence apparente pour l\'axe hormonal.' : ''}
+${(d.secu_grossesse !== 'Non concernée') ? '⛔️ Cette cliente est concernée par une grossesse, un allaitement, un désir de grossesse, ou ce point n\'a jamais été vérifié : AUCUNE huile essentielle par voie interne, vérifier CHAQUE plante et complément proposé pour sa compatibilité, écarter les phytoestrogènes.' : ''}
+${(d.secu_cancer !== 'Non') ? '⛔️ Antécédent de cancer hormono-dépendant confirmé, ou ce point n\'a jamais été vérifié : JAMAIS de Feminabiane Ménopause ni de phytoestrogènes (soja, houblon, sauge), quelle que soit la pertinence apparente pour l\'axe hormonal.' : ''}
 ${d.allergies_alim && !/aucune/i.test(d.allergies_alim) ? '⛔️ Ne JAMAIS recommander un aliment, une recette ou un complément contenant : ' + d.allergies_alim + '.' : ''}
 ${d.traitements_vigilance.includes('Anticoagulants') ? (!d.anticoag_type || d.anticoag_type === '' || d.anticoag_type.startsWith('AVK') || d.anticoag_type === 'Autre / ne sait pas' ? '⛔️ Anticoagulant de type AVK (ou non précisé, donc traité par prudence comme un AVK) : Vitamine K2 INTERDITE (voir RÈGLE N°9), proposer une Vitamine D3 seule si un soutien vitamine D est retenu.' : '✅ Anticoagulant de type ' + d.anticoag_type + ' — la contre-indication à la Vitamine K2 (RÈGLE N°9) ne s\'applique qu\'aux AVK, donc D3+K2 reste envisageable ici si aucune autre CI ; rester prudente sur les autres points de vigilance anticoagulants (oméga-3 >2g/j, millepertuis, gingko, RÈGLE N°6).') : ''}
 ${d.traitements_vigilance.includes('Lévothyrox') ? '⚠️ Cette cliente est sous Lévothyrox/traitement thyroïdien : si fer, calcium, magnésium, zinc ou un IPP sont recommandés dans ce protocole, la ligne "◦ Précaution" de CHACUN de ces compléments DOIT contenir la phrase nominative "Puisque vous êtes sous Lévothyrox, veillez à espacer la prise de votre [complément] d\'au moins 4h." (RÈGLE N°5quinquies/N°6) — ne jamais l\'omettre, ne jamais réduire ce délai à 2h.' : ''}
@@ -3948,17 +3962,21 @@ function afficherAlertesConformite(blocksArr) {
   // de séance, indépendamment de ce que l'IA a cru comprendre du prompt (RÈGLE N°6).
   const dSec = generatedData?._client || {};
 
-  if (dSec.secu_cancer && /^oui/i.test(dSec.secu_cancer)) {
+  // FAILLE CORRIGÉE (12/09/2026, audit ultra-approfondi) : `dSec.secu_cancer && ...` et
+  // `dSec.secu_grossesse && ...` désactivaient silencieusement cette vérification croisée quand
+  // le champ n'avait jamais été rempli (chaîne vide = faux au même titre qu'un "Non" explicite),
+  // alors que l'absence de réponse est justement le cas où la vigilance doit rester maximale.
+  if (dSec.secu_cancer !== 'Non') {
     // Exception documentée RÈGLE N°6 : l'actée à grappes noires (Cimicifuga) n'est PAS un phytoestrogène,
     // on ne la flag donc jamais ici même si elle apparaît à côté du mot "cancer".
     if (/feminabiane\s*m[ée]nopause|phytostandard\s*m[ée]nopause|\bhoublon\b|\bsauge\b(?!\s*officinale\s*\(hors)|tr[èe]fle\s*rouge|phytoestrog[èe]ne/i.test(texte)) {
-      alertes.push('Antécédent de cancer hormono-dépendant renseigné : un phytoestrogène (houblon/sauge/trèfle rouge/Feminabiane) semble présent dans le texte — à vérifier en priorité, interdit sauf erreur de lecture.');
+      alertes.push('Antécédent de cancer hormono-dépendant renseigné (ou jamais vérifié) : un phytoestrogène (houblon/sauge/trèfle rouge/Feminabiane) semble présent dans le texte — à vérifier en priorité, interdit sauf erreur de lecture.');
     }
   }
 
-  if (dSec.secu_grossesse && dSec.secu_grossesse !== 'Non concernée') {
+  if (dSec.secu_grossesse !== 'Non concernée') {
     if (/huile\s+essentielle/i.test(texte) && !/\bhydrolat\b/i.test(texte.split(/huile\s+essentielle/i)[0].slice(-40))) {
-      alertes.push('Grossesse/allaitement/désir de grossesse renseigné : une huile essentielle est mentionnée — vérifier qu\'elle n\'est jamais proposée par voie interne et que la compatibilité grossesse est bien vérifiée.');
+      alertes.push('Grossesse/allaitement/désir de grossesse renseigné (ou jamais vérifié) : une huile essentielle est mentionnée — vérifier qu\'elle n\'est jamais proposée par voie interne et que la compatibilité grossesse est bien vérifiée.');
     }
   }
 
