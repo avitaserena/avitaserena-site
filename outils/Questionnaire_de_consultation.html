@@ -124,6 +124,10 @@ body{
 .spec-section .tblock-body{display:block !important}
 .spec-section .tblock-hdr{cursor:default;padding-bottom:18px;border-bottom:1.5px solid rgba(0,0,0,.08);margin-bottom:4px}
 .spec-section .tblock-hdr:hover{opacity:1}
+.spec-section .clin-body{display:block !important}
+.spec-section .clin-hdr{cursor:default}
+.spec-section .clin-hdr:hover{opacity:1}
+.spec-section .clin-chevron{display:none}
 @media (max-width:860px){
   .layout{flex-direction:column}
   .nav{position:static;width:100%;flex-direction:row;flex-wrap:wrap;height:auto;border-right:none;border-bottom:1px solid var(--taupe);top:auto}
@@ -7488,12 +7492,22 @@ function renderAntecedentsRecap() {
 }
 
 function goSection(n) {
-  // Une navigation normale (menu, précédent/suivant) rend obsolète un éventuel retour mémorisé
-  // depuis un saut "Pistes en direct" — sauf si cet appel fait lui-même partie du saut/retour.
-  if (typeof _isJumpNavigation !== 'undefined' && !_isJumpNavigation) {
+  // Mémorise systématiquement d'où l'on part quand on entre dans un guide spécialisé (n >= 12)
+  // depuis le parcours principal (n < 12) — quel que soit le chemin emprunté pour y entrer
+  // (barre latérale, chip de spécialité suggérée, ou piste en direct). Si un point de retour
+  // est déjà mémorisé (ex. on saute d'un guide à un autre via une piste), on ne l'écrase pas :
+  // on doit toujours pouvoir remonter jusqu'au tout premier endroit quitté dans le parcours.
+  // À l'inverse, revenir dans le parcours principal (n < 12) efface ce point de retour, quel
+  // que soit le chemin emprunté pour y revenir.
+  const sectionsAvant = document.querySelectorAll('.section');
+  const currentAvant = document.querySelector('.section.active');
+  const currentIndexAvant = currentAvant ? Array.prototype.indexOf.call(sectionsAvant, currentAvant) : null;
+  if (n >= 12 && currentIndexAvant !== null && currentIndexAvant < 12 && lastSectionBeforeJump === null) {
+    lastSectionBeforeJump = currentIndexAvant;
+  } else if (n < 12) {
     lastSectionBeforeJump = null;
-    if (typeof updateReturnBanner === 'function') updateReturnBanner();
   }
+  if (typeof updateReturnBanner === 'function') updateReturnBanner();
   // Forcer la suppression immédiate de toutes les sections avant d'afficher la nouvelle
   document.querySelectorAll('.section').forEach((s, i) => {
     s.classList.remove('active');
@@ -9193,10 +9207,10 @@ const SUSP_JUMP_TARGET = {
   amenorrhee:{section:SPEC_SECTION_INDEX.amenorrhee, el:'tblock-amenorrhee'},
   hyperoestro:{section:8, el:'anchor-hyperoestro'}
 };
-// Mémorise l'onglet quitté pour un saut, afin de proposer un retour en un clic — jamais écrasé
-// par une navigation normale (voir le flag _isJumpNavigation dans goSection).
+// Mémorise l'onglet quitté pour retrouver le chemin du retour en un clic — la mémorisation
+// elle-même est gérée de façon générale dans goSection(), pour tout chemin d'entrée dans un
+// guide spécialisé (barre latérale, chip de spécialité suggérée, ou piste en direct ci-dessous).
 let lastSectionBeforeJump = null;
-let _isJumpNavigation = false;
 
 function updateReturnBanner(){
   const banner = document.getElementById('jump-return-banner');
@@ -9207,16 +9221,7 @@ function updateReturnBanner(){
 function jumpToSuspicion(key){
   const t = SUSP_JUMP_TARGET[key];
   if(!t) return;
-  const sections = document.querySelectorAll('.section');
-  const current = document.querySelector('.section.active');
-  const currentIndex = current ? Array.prototype.indexOf.call(sections, current) : null;
-  if(currentIndex !== null && currentIndex !== t.section){
-    lastSectionBeforeJump = currentIndex;
-    updateReturnBanner();
-  }
-  _isJumpNavigation = true;
   goSection(t.section);
-  _isJumpNavigation = false;
   setTimeout(function(){
     const el = document.getElementById(t.el);
     if(!el) return;
@@ -9228,11 +9233,7 @@ function jumpToSuspicion(key){
 
 function revenirSectionPrecedente(){
   if(lastSectionBeforeJump === null) return;
-  _isJumpNavigation = true;
   goSection(lastSectionBeforeJump);
-  _isJumpNavigation = false;
-  lastSectionBeforeJump = null;
-  updateReturnBanner();
 }
 function renderFloatSuspicions(suggestions) {
   const body = document.getElementById('float-susp-body');
