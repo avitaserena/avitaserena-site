@@ -1844,6 +1844,7 @@ function loadL(){try{return JSON.parse(localStorage.getItem(LKEY)||'{}')}catch(e
 function saveL(d){localStorage.setItem(LKEY,JSON.stringify(d))}
 
 let db={clients:[],factures:[],settings:null};
+let sourcesDecouverte=[]; // table dédiée sources_decouverte — réponses au micro-sondage de la page de réservation
 let taches=[],rdvs=[],emailCtx=null,curTab='msg',curSearch='',curFilter='all';
 let memoAlerts=[];
 let memoHistoryAll=[]; // tous les mémos PHV, sans dédoublonnage — historique complet par cliente
@@ -1923,7 +1924,8 @@ async function init(){
     loadErreurs(),
     loadSettingsFromSupabase(),
     loadPilotage(),
-    loadCheckinsToday()
+    loadCheckinsToday(),
+    loadSourcesDecouverte()
   ]);
 
   if(titleEl) titleEl.textContent="Aujourd'hui";
@@ -1957,6 +1959,17 @@ async function loadClients(){
     db.clients=[];
     // Afficher l'erreur complète dans le toast pour diagnostic
     setTimeout(()=>toast('Clientes non chargées — '+e.message.substring(0,120),'err'),500);
+  }
+}
+
+async function loadSourcesDecouverte(){
+  try{
+    const r=await sb('sources_decouverte?order=created_at.desc&limit=1000');
+    sourcesDecouverte=r;
+    console.log('[CRM] ✓ Sources de découverte:', sourcesDecouverte.length);
+  }catch(e){
+    console.error('[CRM] ✗ Sources de découverte:', e.message);
+    sourcesDecouverte=[];
   }
 }
 
@@ -6490,6 +6503,17 @@ function renderStats(){
   const dursMoy=clients.filter(c=>c.date1&&c.dateProtocole).map(c=>diffD(c.date1)-diffD(c.dateProtocole)).filter(d=>d>=0&&d<365);
   const moyDur=dursMoy.length>0?Math.round(dursMoy.reduce((s,d)=>s+d,0)/dursMoy.length):null;
 
+  // Source de découverte — micro-sondage posé sur la page de réservation, sur la période sélectionnée.
+  const sourceMap={};
+  const sourceAutreDetails=[];
+  sourcesDecouverte.filter(s=>keys.includes(bucketKeyFor(s.created_at,granularity))).forEach(s=>{
+    const lbl=s.source||'Non renseigné';
+    sourceMap[lbl]=(sourceMap[lbl]||0)+1;
+    if(s.source==='Autre'&&s.autre_texte) sourceAutreDetails.push({texte:s.autre_texte,prenom:s.prenom||'',date:(s.created_at||'').slice(0,10)});
+  });
+  const sourceEntries=Object.entries(sourceMap).sort((a,b)=>b[1]-a[1]);
+  const sourceTotal=sourceEntries.reduce((s,[,v])=>s+v,0);
+
   _statsLastBuckets={keys,labels,caSeries,rdvSeries,durSeries};
 
   const periodLbl={semaine:'7 derniers jours',mois:'30 derniers jours',annee:'12 derniers mois',tout:'12 derniers mois'}[statsPeriod];
@@ -6592,12 +6616,28 @@ function renderStats(){
     </div>
   </div>
 
-  <div class="card">
-    <div class="card-head"><div class="card-title"><div class="card-dot" style="background:var(--pink)"></div>Motifs les plus fréquents</div></div>
-    <div class="card-body">
-      ${topMotifs.length?topMotifs.map(([m,n])=>progBar(m.charAt(0).toUpperCase()+m.slice(1),n,topMotifs[0][1],'var(--pink)')).join(''):'<div style="font-size:13px;color:var(--muted);font-style:italic">Aucun motif renseigné</div>'}
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+    <div class="card">
+      <div class="card-head"><div class="card-title"><div class="card-dot" style="background:var(--ocre,#B4906A)"></div>Comment elles vous trouvent — ${periodLbl}</div></div>
+      <div class="card-body">
+        ${sourceEntries.length?sourceEntries.map(([s,n])=>progBar(s,n,sourceEntries[0][1],'var(--ocre,#B4906A)')).join(''):'<div style="font-size:13px;color:var(--muted);font-style:italic">Aucune réponse sur cette période</div>'}
+        ${sourceTotal>0?`<div style="font-size:11px;color:var(--muted);margin-top:4px">${sourceTotal} réponse(s) au total sur la période</div>`:''}
+      </div>
     </div>
-  </div>`;
+    <div class="card">
+      <div class="card-head"><div class="card-title"><div class="card-dot" style="background:var(--pink)"></div>Motifs les plus fréquents</div></div>
+      <div class="card-body">
+        ${topMotifs.length?topMotifs.map(([m,n])=>progBar(m.charAt(0).toUpperCase()+m.slice(1),n,topMotifs[0][1],'var(--pink)')).join(''):'<div style="font-size:13px;color:var(--muted);font-style:italic">Aucun motif renseigné</div>'}
+      </div>
+    </div>
+  </div>
+  ${sourceAutreDetails.length?`
+  <div class="card">
+    <div class="card-head"><div class="card-title"><div class="card-dot" style="background:var(--ocre,#B4906A)"></div>Réponses "Autre" détaillées</div></div>
+    <div class="card-body">
+      ${sourceAutreDetails.map(d=>`<div style="font-size:13px;color:var(--ink);padding:8px 0;border-bottom:1px solid var(--border)"><strong>${d.prenom||'—'}</strong> · ${d.date} — ${d.texte}</div>`).join('')}
+    </div>
+  </div>`:''}`;
 }
 
 function exportStatsCSV(){

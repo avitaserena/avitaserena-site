@@ -180,6 +180,9 @@ textarea.fi{min-height:90px;resize:vertical;line-height:1.65}
 .success-box-t{font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--vert);margin-bottom:12px}
 .success-item{display:flex;align-items:flex-start;gap:10px;font-size:13px;color:var(--encre);margin-bottom:8px;line-height:1.6}
 .success-item:last-child{margin-bottom:0}
+.source-choice{background:var(--blanc);border:1px solid var(--taupe);color:var(--encre);font-size:12.5px;font-weight:500;padding:8px 14px;border-radius:99px;cursor:pointer;font-family:inherit;transition:all .15s}
+.source-choice:hover{border-color:var(--ocre);color:var(--ocre)}
+.source-choice.selected{background:var(--ardoise);border-color:var(--ardoise);color:#fff}
 
 /* ── ERREUR STRIPE ── */
 .stripe-error{background:var(--rouge-l);border:1px solid rgba(139,58,58,.2);border-left:3px solid var(--rouge);border-radius:0 9px 9px 0;padding:12px 16px;margin-top:12px;font-size:13px;color:var(--rouge);display:none}
@@ -1331,6 +1334,29 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <p style="font-size:13.5px;color:rgba(255,255,255,.8);line-height:1.7;margin:0 0 10px">Votre accès A Luma démarre à la fin de votre séance, avec un premier prélèvement de 45€ à ce moment-là, puis chaque mois à la même date.</p>
     <p style="font-size:12px;color:rgba(255,255,255,.68);margin:0">Résiliation possible à tout moment depuis votre espace cliente.</p>
   </div>
+  <!-- Micro-sondage source de découverte — posé une fois la réservation confirmée, jamais
+       obligatoire. Écrit directement dans sources_decouverte via la clé anon (SUPA_KEY_PUBLIC),
+       indépendamment du webhook Stripe qui crée la ligne rendez_vous : aucun risque de
+       concurrence entre les deux écritures. -->
+  <div id="success-source-box" style="max-width:480px;margin:0 auto 28px;background:var(--off);border:1px solid var(--taupe);border-radius:14px;padding:22px 24px;text-align:left">
+    <div style="font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--ocre);margin-bottom:10px">Une dernière question</div>
+    <p id="source-question" style="font-size:13px;color:var(--gris);line-height:1.6;margin:0 0 14px">Comment avez-vous entendu parler d'A VITA SERENA ?</p>
+    <div id="source-choices" style="display:flex;flex-wrap:wrap;gap:8px">
+      <button type="button" class="source-choice" data-src="Médecin / professionnel de santé" onclick="choisirSourceDecouverte(this)">Médecin / professionnel de santé</button>
+      <button type="button" class="source-choice" data-src="Recommandation d'une proche" onclick="choisirSourceDecouverte(this)">Recommandation d'une proche</button>
+      <button type="button" class="source-choice" data-src="Instagram" onclick="choisirSourceDecouverte(this)">Instagram</button>
+      <button type="button" class="source-choice" data-src="Recherche Google" onclick="choisirSourceDecouverte(this)">Recherche Google</button>
+      <button type="button" class="source-choice" data-src="Flyer / affiche" onclick="choisirSourceDecouverte(this)">Flyer / affiche</button>
+      <button type="button" class="source-choice" data-src="Article" onclick="choisirSourceDecouverte(this)">Article</button>
+      <button type="button" class="source-choice" data-src="Déjà cliente" onclick="choisirSourceDecouverte(this)">Déjà cliente</button>
+      <button type="button" class="source-choice" data-src="Autre" onclick="choisirSourceDecouverte(this)">Autre</button>
+    </div>
+    <div id="source-autre-wrap" style="display:none;margin-top:12px">
+      <input type="text" id="source-autre-texte" placeholder="Précisez en quelques mots" style="width:100%;padding:10px 12px;border:1px solid var(--taupe);border-radius:8px;font-family:inherit;font-size:13px;color:var(--encre);background:var(--blanc)">
+      <button type="button" onclick="envoyerSourceAutre()" style="margin-top:8px;background:var(--ardoise);color:#fff;border:none;padding:9px 18px;border-radius:99px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit">Envoyer</button>
+    </div>
+    <div id="source-merci" style="display:none;font-size:13px;color:var(--vert);font-weight:600">Merci, c'est noté ✓</div>
+  </div>
   <div style="font-size:13px;color:var(--gris);line-height:1.75;max-width:400px;margin:0 auto">
     Une question ? Répondez à l'email de confirmation ou écrivez à<br>
     <a href="mailto:sabrina@avitaserena.com" style="color:var(--ocre);font-weight:600">sabrina@avitaserena.com</a>
@@ -1908,6 +1934,57 @@ function afficherSucces() {
   if(lumaBox) lumaBox.style.display = state.lumaOption ? 'block' : 'none';
   genererLienGoogleAgenda();
   window.scrollTo({top:0,behavior:'smooth'});
+}
+
+/* ── Micro-sondage "comment avez-vous entendu parler d'A VITA SERENA" ──
+   Facultatif, posé une seule fois sur la page de succès. Écriture directe dans
+   sources_decouverte (table dédiée, indépendante de rendez_vous) pour ne jamais
+   interférer avec l'écriture du webhook Stripe. */
+function normalizeIdPartSource(s){
+  return (s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .trim().toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
+}
+
+function choisirSourceDecouverte(btn){
+  var src = btn.getAttribute('data-src');
+  document.querySelectorAll('.source-choice').forEach(function(b){ b.classList.remove('selected'); });
+  btn.classList.add('selected');
+  if(src === 'Autre'){
+    document.getElementById('source-autre-wrap').style.display = 'block';
+    document.getElementById('source-autre-texte').focus();
+    return;
+  }
+  document.getElementById('source-autre-wrap').style.display = 'none';
+  envoyerSourceDecouverte(src, null);
+}
+
+function envoyerSourceAutre(){
+  var texte = (document.getElementById('source-autre-texte').value || '').trim();
+  envoyerSourceDecouverte('Autre', texte || null);
+}
+
+function envoyerSourceDecouverte(source, autreTexte){
+  var p = normalizeIdPartSource(state.prenom);
+  var n = normalizeIdPartSource(state.nom);
+  var d = (state.ddn || '').replace(/-/g,'');
+  var clientKey = (p && d) ? (p + (n ? '-' + n : '') + '-' + d) : null;
+
+  fetch(SUPA_URL_PUBLIC + '/rest/v1/sources_decouverte', {
+    method: 'POST',
+    headers: { 'apikey': SUPA_KEY_PUBLIC, 'Authorization': 'Bearer ' + SUPA_KEY_PUBLIC, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+    body: JSON.stringify({ client_key: clientKey, prenom: state.prenom || null, source: source, autre_texte: autreTexte || null })
+  }).catch(function(e){ console.error('Erreur envoi source de découverte:', e); });
+
+  // Optionnel et discret : on affiche le remerciement dans tous les cas, même si
+  // l'écriture réseau échoue en silence — la cliente ne doit jamais voir d'erreur ici.
+  var question = document.getElementById('source-question');
+  var choices = document.getElementById('source-choices');
+  var autreWrap = document.getElementById('source-autre-wrap');
+  var merci = document.getElementById('source-merci');
+  if(question) question.style.display = 'none';
+  if(choices) choices.style.display = 'none';
+  if(autreWrap) autreWrap.style.display = 'none';
+  if(merci) merci.style.display = 'block';
 }
 
 // Génère un lien "Ajouter à mon Google Agenda" pour LA CLIENTE — totalement indépendant
