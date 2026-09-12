@@ -3980,16 +3980,21 @@ function afficherAlertesConformite(blocksArr) {
     }
   }
 
-  if (dSec.traitements_vigilance && dSec.traitements_vigilance.includes('Anticoagulants')) {
+  // FAILLE CORRIGÉE (12/09/2026, audit ultra-approfondi) : ces interactions (K2, millepertuis,
+  // gingko) sont des interactions supplément/plante qui ne passent jamais par le filtre
+  // aromathérapie — ce contrôle JS est leur SEUL filet de sécurité. `dSec.traitements_vigilance
+  // && ...` le désactivait silencieusement quand le groupe de puces n'avait jamais été touché
+  // (même pas coché "Aucun de ces traitements"), au lieu de rester prudent par défaut.
+  if (!dSec.traitements_vigilance || dSec.traitements_vigilance.includes('Anticoagulants')) {
     const estAVK = !dSec.anticoag_type || dSec.anticoag_type === '' || dSec.anticoag_type.startsWith('AVK') || dSec.anticoag_type === 'Autre / ne sait pas';
     if (estAVK && /vitamine\s*k2|\bK2\b/i.test(texte)) {
-      alertes.push('Anticoagulant AVK (ou non précisé) : "K2" apparaît dans le texte — la Vitamine K2 est contre-indiquée, vérifier qu\'une D3 seule est bien proposée à la place.');
+      alertes.push('Anticoagulant AVK (ou statut jamais vérifié) : "K2" apparaît dans le texte — la Vitamine K2 est contre-indiquée, vérifier qu\'une D3 seule est bien proposée à la place.');
     }
     if (/millepertuis/i.test(texte)) {
-      alertes.push('Anticoagulant en cours : "millepertuis" détecté — interaction dangereuse, à vérifier immédiatement.');
+      alertes.push('Anticoagulant en cours (ou statut jamais vérifié) : "millepertuis" détecté — interaction dangereuse, à vérifier immédiatement.');
     }
     if (/gingko|ginkgo/i.test(texte)) {
-      alertes.push('Anticoagulant en cours : "gingko" détecté — interaction à vérifier immédiatement.');
+      alertes.push('Anticoagulant en cours (ou statut jamais vérifié) : "gingko" détecté — interaction à vérifier immédiatement.');
     }
   }
 
