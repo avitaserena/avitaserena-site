@@ -1410,15 +1410,31 @@ function buildClientData() {
       s.notes_libres_axes && `Notes libres par axe (séance de suivi) : ${s.notes_libres_axes}`,
       s.modif_hormonale && `Modification contraception/hormones depuis la dernière séance : ${s.modif_hormonale}${s.impact_hormonal ? ' — impact perçu : ' + s.impact_hormonal : ''}`,
     ].filter(Boolean).join('\n');
-    // ── FAILLE CORRIGÉE (12/09/2026) : le questionnaire de suivi capture bien toute case à
-    // cocher générique (dont les exemples de réponses convertis en chips) dans s.evenementsVie,
-    // mais rien ne lisait ce champ ici — contrairement à la consultation initiale, dont le
-    // même type de sélection atterrit dans chips_coches, lu plus bas par buildPrompt(). Sans ce
-    // pont, ces chips étaient enregistrées dans la fiche cliente mais absentes du protocole
-    // généré après une séance de suivi. ──
-    s.chips_coches = Array.isArray(s.evenementsVie) && s.evenementsVie.length
-      ? s.evenementsVie.join(', ')
-      : (s.chips_coches || '');
+    // ── FAILLE CORRIGÉE (12/09/2026, audit approfondi) : le questionnaire de suivi capture
+    // bien les chips génériques (dont les exemples de réponses convertis en chips) et les 365
+    // questions de relance ("Puisque ça empire...") dans s.evenements_vie / s.relances_suivi,
+    // mais rien ne lisait ces champs ici — contrairement à la consultation initiale, dont
+    // le même type de sélection atterrit dans chips_coches, lu plus bas par buildPrompt(). Sans
+    // ce pont, ces éléments étaient enregistrés dans la fiche cliente mais absents du protocole
+    // généré après une séance de suivi. Les relances vont dans symptomes_coches (même registre
+    // que chips_coches : du signal clinique direct, pas une note libre). ──
+    s.chips_coches = s.evenements_vie || s.chips_coches || '';
+    s.symptomes_coches = [s.symptomes_coches, s.relances_suivi].filter(Boolean).join('\n');
+    // ── FAILLE CORRIGÉE (12/09/2026, audit approfondi) : le protocole de compléments initial
+    // complet (avec dosage/durée/objectif) et les bilans initialement demandés étaient eux
+    // aussi capturés puis perdus avant d'atteindre ce bloc. ──
+    s.textes_libres = [
+      s.textes_libres,
+      s.proto_initial_complet && `Protocole de compléments initial complet (rappel) : \n${s.proto_initial_complet}`,
+      s.bilans_initiaux && `Bilans demandés à la consultation initiale : ${s.bilans_initiaux}`,
+      s.sport_prescrit_initial && `Activité physique prescrite initialement : ${s.sport_prescrit_initial}`,
+      // FAILLE CORRIGÉE (12/09/2026, audit approfondi) : suivi_traitements (dose modifiée /
+      // nouveau traitement / arrêté depuis la dernière séance, saisi via les tt-item) était
+      // capturé mais jamais rattaché à rien de lu par buildPrompt() — perdu en silence comme
+      // les autres. s.medicaments_nouveaux n'est plus une option ici : il n'est lu qu'une fois,
+      // plus haut, avant que ce bloc ne s'exécute — le raccrocher là n'aurait aucun effet.
+      s.suivi_traitements && `Suivi des traitements depuis la dernière séance : \n${s.suivi_traitements}`,
+    ].filter(Boolean).join('\n');
   }
 
   // Collecter les axes sélectionnés
@@ -1468,20 +1484,27 @@ function buildClientData() {
     client_id: s.client_id || '',
     age: manual.age || s.age || '',
     duree_symptomes: manual.duree || s.duree_symptomes || '',
-    contraception: manual.contra || s.selects?.match(/(?:Contraception|Pilule|DIU|Implant|contraceptif)[^\n]*/gi)?.join(', ') || '',
+    contraception: manual.contra || s.contraception_actuelle || s.selects?.match(/(?:Contraception|Pilule|DIU|Implant|contraceptif)[^\n]*/gi)?.join(', ') || '',
     motifs: manual.motifs || [s.motifs, s.mots_cles].filter(Boolean).join(', '),
     objectif_6mois: s.objectif_6mois || '',
     scores: manual.scores || s.scores || '',
     symptomes_coches: manual.checks || s.symptomes_coches || '',
     chips: s.chips_coches || '',
-    // Toutes les zones de texte libre du questionnaire
-    textes_libres: s.textes_libres || '',
+    // Toutes les zones de texte libre du questionnaire — complétées (12/09/2026, audit approfondi)
+    // des pathologies digestives/gynéco/immunitaires spécifiques et du régime alimentaire déclaré,
+    // capturés côté questionnaire depuis un moment mais jamais lus jusqu'ici par le générateur.
+    textes_libres: [
+      s.textes_libres,
+      s.digestif_pathologies && `Pathologies digestives spécifiques cochées : ${s.digestif_pathologies}${s.digestif_notes ? ' — ' + s.digestif_notes : ''}`,
+      s.immuno_terrain && `Terrain immunitaire (TH1/TH2/TH17/Treg) coché : ${s.immuno_terrain}${s.immuno_notes ? ' — ' + s.immuno_notes : ''}`,
+      s.regime_viande && `Régime alimentaire déclaré : ${s.regime_viande}`,
+    ].filter(Boolean).join('\n'),
     // Toutes les sélections (selects)
     selects_complets: s.selects || '',
     // Motivation & prédispositions au changement
     motivation_changement: s.motivation || '',
     medics_allergies: manual.medics || (s.textes_libres?.match(/(?:Médicament|allergie|traitement|ordonnance)[^\n]*/gi) || []).join('\n'),
-    gyneco: manual.gyneco || (s.textes_libres?.match(/(?:Cycle|Gynécolog|Thyroïde|règles|hormones|ménopause|endométriose|SOPK)[^\n]*/gi) || []).join('\n') || (s.selects?.match(/(?:Cycle|Gynécolog|Thyroïde|Règles|Contraception)[^\n]*/gi) || []).join('\n'),
+    gyneco: manual.gyneco || [s.gyneco_pathologies && `Pathologies gynéco-hormonales cochées : ${s.gyneco_pathologies}${s.gyneco_notes ? ' — ' + s.gyneco_notes : ''}`].filter(Boolean).join('\n') || (s.textes_libres?.match(/(?:Cycle|Gynécolog|Thyroïde|règles|hormones|ménopause|endométriose|SOPK)[^\n]*/gi) || []).join('\n') || (s.selects?.match(/(?:Cycle|Gynécolog|Thyroïde|Règles|Contraception)[^\n]*/gi) || []).join('\n'),
     alimentation: manual.alim || (s.selects?.match(/(?:Alimentation|Transit|Ballonnem|Alcool|Tabac|Café|Régime|Végétar)[^\n]*/gi) || []).join('\n') || (s.textes_libres?.match(/(?:Alimentation|Transit|Ballonnem)[^\n]*/gi) || []).join('\n'),
     notes_praticien: manual.notes || s.synthese_praticien || '',
     lifeline: manual.lifeline || s.lifeline || (s.textes_libres?.match(/(?:ligne de vie|déclencheur|depuis|après|avant)[^\n]*/gi) || []).slice(0,5).join('\n') || '',

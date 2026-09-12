@@ -4135,6 +4135,20 @@ function collectData() {
   // Événements de vie
   d.evenementsVie = [...document.querySelectorAll('.chip.on')].map(c=>c.textContent.replace('✓','').trim()).filter(Boolean);
 
+  // ── FAILLE CORRIGÉE (12/09/2026, audit approfondi) : les 365 questions de relance (fchip
+  // dans les funnel-followup, déclenchées par un symptôme marqué "↓ Pire") n'étaient captées
+  // par aucun mécanisme — c'est pourtant le cœur du raisonnement clinique du suivi (pourquoi ce
+  // symptôme empire : écart de protocole ? nouveau facteur ? résistance réelle ?). La piste
+  // d'orientation qui en découle (funnel-orient) est incluse avec la réponse choisie. ──
+  d.relancesSuivi = [...document.querySelectorAll('.funnel-followup')].map(block => {
+    const q = block.querySelector('.funnel-q')?.textContent?.trim() || '';
+    const choixBtn = block.querySelector('.fchip.on');
+    const choix = choixBtn?.textContent?.trim() || '';
+    const orientation = choixBtn?.dataset?.orient || '';
+    if (!q || !choix) return '';
+    return `${q} → ${choix}` + (orientation ? ` (piste : ${orientation})` : '');
+  }).filter(Boolean);
+
   // Ajustement protocole
   d.protoMaintien = document.getElementById('proto-maintien')?.value||'';
   d.protoArret = document.getElementById('proto-arret')?.value||'';
@@ -4442,6 +4456,17 @@ function finalise() {
 
   const obsStr = d.observance.map(o=>`${o.pris==='oui'?'✓':o.pris==='partiel'?'⚠':o.pris==='non'?'✕':'–'} ${o.complement}: ${o.effet||''} ${o.raison?'('+o.raison+')':''}`.trim()).join('\n');
 
+  // ── FAILLE CORRIGÉE (12/09/2026, audit approfondi) : ces quatre éléments étaient bien
+  // capturés dans d. mais jamais reversés dans suivi_session — donc jamais transmis au
+  // générateur, quel que soit le soin apporté à les remplir pendant la séance. ──
+  const relancesStr = (d.relancesSuivi || []).join('\n');
+  const evenementsVieStr = (d.evenementsVie || []).join(', ');
+  const suiviTraitementsStr = (d.suiviTraitements || []).map(t => {
+    const statutLbl = { inchange:'inchangé', dose:'dose modifiée', change:'changé', arret:'arrêté' }[t.statut] || t.statut;
+    return `${t.label} — ${statutLbl}${t.detail ? ' (' + t.detail + ')' : ''}`;
+  }).join('\n');
+  const protoInitialStr = (d.protoInitial || []).map(p => `${p.complement} — ${p.dosage}${p.duree ? ', ' + p.duree : ''}${p.objectif ? ' (objectif : ' + p.objectif + ')' : ''}`).join('\n');
+
   const suivi_session = {
     // Identification
     _type_consultation: 'suivi',
@@ -4511,6 +4536,22 @@ function finalise() {
     secu_renal: d.secuRenal,
     secu_hepatique: d.secuHepatique,
     secu_allergie_he: d.secuAllergieHe,
+    // FAILLE CORRIGÉE (12/09/2026, audit approfondi) — ces deux-là manquaient à l'appel alors
+    // que les 5 autres champs de sécurité avaient déjà été corrigés le 04/09/2026.
+    secu_gastrite: d.secuGastrite,
+    secu_cardiovasculaire: d.secuCardiovasculaire,
+
+    // FAILLE CORRIGÉE (12/09/2026, audit approfondi) : ces quatre champs étaient capturés dans
+    // collectData() mais jamais reversés ici — voir le détail au niveau de leur sérialisation
+    // juste au-dessus. relances_suivi et evenements_vie sont aussi lus via chips_coches côté
+    // generateur.html (bloc _type_consultation === 'suivi'), pour rester au même endroit que
+    // symptomes_coches dans le prompt final plutôt que noyés dans les notes libres.
+    relances_suivi: relancesStr,
+    evenements_vie: evenementsVieStr,
+    suivi_traitements: suiviTraitementsStr,
+    proto_initial_complet: protoInitialStr,
+    bilans_initiaux: d.bilansInitiaux,
+    sport_prescrit_initial: d.sportPrescrit,
 
     // Médicaments & contexte (04/09/2026) — jusque-là jamais transmis au générateur PHV,
     // voir FAILLE CORRIGÉE dans collectData(). Repris par generateur.html dans son bloc

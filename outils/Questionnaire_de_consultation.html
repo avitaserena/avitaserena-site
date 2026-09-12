@@ -8155,6 +8155,38 @@ function collectAllData() {
     d.pathologies_pressenties = pathos.join('\n');
   } catch (e) { console.warn('[Analyse] pathologies pressenties non calculées :', e); }
 
+  // ── FAILLE CORRIGÉE (12/09/2026, audit approfondi) : les 53 tx-item du questionnaire
+  // (traitements reçus/en cours — THS, Metformine, pilule, antibiotiques ciblés, chirurgies...,
+  // répartis dans le tronc commun et les 7 guides spécialisés) n'étaient captés par AUCUN
+  // mécanisme existant — ni check-item, ni chip, ni trig-check ne les couvrent. Un protocole
+  // pouvait donc être généré sans que l'IA sache qu'une cliente était par exemple déjà sous THS
+  // ou Metformine. On les rattache à leur section, avec le détail (début/statut/effets) saisi
+  // dans le panneau déplié, exactement comme pour les diagnostics/traitements de la popup. ──
+  const txChecked = [...document.querySelectorAll('.tx-item.on')].map(el => {
+    const nom = el.querySelector('span')?.textContent?.trim() || el.textContent.replace('✓','').trim();
+    const detail = el.nextElementSibling?.classList?.contains('tx-detail') ? el.nextElementSibling : null;
+    const inputs = detail ? [...detail.querySelectorAll('input.fi, select.fi')].map(i => i.value?.trim()).filter(Boolean) : [];
+    const section = el.closest('.section')?.id || '';
+    const ligne = nom + (inputs.length ? ' (' + inputs.join(' · ') + ')' : '');
+    return { section, ligne };
+  });
+  d.traitements_recus = txChecked.map(t => `[${t.section}] ${t.ligne}`).join('\n');
+  txChecked.forEach(t => { if (t.section && t.section !== 'sec-11') { if (!d.parSection[t.section]) d.parSection[t.section] = []; d.parSection[t.section].push(t.ligne); } });
+  d.symptomes_coches += (d.symptomes_coches ? '\n' : '') + d.traitements_recus;
+
+  // ── FAILLE CORRIGÉE (12/09/2026, audit approfondi) : les 80 « portes » (Le SPM a-t-il un
+  // impact visible ? Non/Un peu/Oui, etc.) ne laissaient aucune trace exploitable — seul le
+  // contenu déplié APRÈS un « oui » était capté (via check-item/trig-check), jamais la réponse
+  // de la porte elle-même. Un « Non, ça va » explicite disparaissait donc complètement, alors
+  // que c'est une information clinique réelle (élimine une piste) au même titre qu'un « oui ». ──
+  const portesRepondues = [...document.querySelectorAll('.porte-opt.sel')].map(btn => {
+    const q = btn.closest('.porte-card')?.querySelector('.porte-q')?.textContent?.trim() || '';
+    const section = btn.closest('.section')?.id || '';
+    return { section, q, reponse: btn.textContent.trim() };
+  }).filter(p => p.q);
+  portesRepondues.forEach(p => { if (p.section && p.section !== 'sec-11') { if (!d.parSection[p.section]) d.parSection[p.section] = []; d.parSection[p.section].push(`${p.q} → ${p.reponse}`); } });
+  d.symptomes_coches += (d.symptomes_coches ? '\n' : '') + portesRepondues.map(p => `[${p.section}] ${p.q} → ${p.reponse}`).join('\n');
+
   return d;
 }
 
