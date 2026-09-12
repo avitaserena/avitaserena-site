@@ -16,10 +16,14 @@
   /* ── Refonte 11/09/2026 (Claude), déclinée du CRM : noir pur pour le texte réel,
      gris neutre fonctionnel pour les libellés, ocre réservé aux accents/boutons/
      graphiques, plus de dégradé de fond ni d'ombre épaisse. ── */
-  --ardoise:#000000;--ocre:#C1793C;--sable:#9C5FA0;--grege:#F5F5F5;
-  --off:#FFFFFF;--blanc:#FFFFFF;--gris:#8A8A8E;--taupe:#E5E5E5;--or:#8F5A26;
-  --vert:#4C8B5C;--rouge:#D1553A;
-  --gold-lt:#F7E9D6;--r99:999px;
+  /* ── Refonte 12/09/2026 (Claude), alignée sur le CRM v6 « rose framboise » : même
+     accent, même gamme arc-en-ciel (gold/orange/vert/bleu/violet) pour les liserés
+     et halos animés, même verre chaud sur les surfaces flottantes. ── */
+  --ardoise:#000000;--ocre:#D6336C;--sable:#9C5FA0;--grege:#F5F5F5;
+  --off:#FFFFFF;--blanc:#FFFFFF;--gris:#8A8A8E;--taupe:#E5E5E5;--or:#7A1F3D;
+  --vert:#4C8B5C;--rouge:#D1553A;--orange:#D98C2B;--bleu:#4177A0;--violet:#9C5FA0;
+  --gold-lt:#FDEEF3;--r99:999px;
+  --sb-bg:#FBF7F2;
   --sh1:0 1px 3px rgba(0,0,0,.05), 0 1px 2px rgba(0,0,0,.04);
   --sh2:0 4px 10px rgba(0,0,0,.06), 0 2px 4px rgba(0,0,0,.05);
   --sh3:0 8px 24px rgba(0,0,0,.1);
@@ -27,6 +31,7 @@
   --t-spring:all .3s cubic-bezier(.22,1.2,.36,1);
   --serif:'Cormorant Garamond',Georgia,serif;
   --serif-num:'Fraunces',var(--serif);
+  --mono:'DM Mono',monospace;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{font-size:15px;scroll-behavior:smooth}
@@ -37,16 +42,18 @@ body{
   -webkit-font-smoothing:antialiased;
   font-feature-settings:'tnum' 1,'cv11' 1;
 }
-::selection{background:rgba(193,121,60,.28);color:var(--ardoise)}
+::selection{background:rgba(214,51,108,.28);color:var(--ardoise)}
 ::-webkit-scrollbar{width:9px;height:9px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:rgba(0,0,0,.15);border-radius:var(--r99);border:2px solid transparent;background-clip:padding-box}
 ::-webkit-scrollbar-thumb:hover{background:rgba(0,0,0,.25);background-clip:padding-box}
-:focus-visible{outline:2px solid rgba(193,121,60,.55);outline-offset:2px;border-radius:6px}
+:focus-visible{outline:2px solid rgba(214,51,108,.55);outline-offset:2px;border-radius:6px}
 @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 @keyframes popIn{from{opacity:0;transform:scale(.96) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}
 @keyframes slideIn{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
 @keyframes breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.045)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+@keyframes rainbowShimmer{from{background-position:0% 0}to{background-position:200% 0}}
 @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 
 .header{background:rgba(255,255,255,.78);backdrop-filter:blur(20px) saturate(1.5);-webkit-backdrop-filter:blur(20px) saturate(1.5);padding:14px 28px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--taupe);position:sticky;top:0;z-index:300}
@@ -60,20 +67,22 @@ body.is-embed .app{min-height:100vh}
 .app{display:grid;grid-template-columns:320px 1fr;min-height:calc(100vh - 56px)}
 
 /* ── SIDEBAR ── */
-.sidebar{background:var(--blanc);border-right:1px solid var(--taupe);padding:24px;display:flex;flex-direction:column;gap:24px;overflow-y:auto}
+.sidebar{background:var(--sb-bg);border-right:1px solid var(--taupe);padding:24px;display:flex;flex-direction:column;gap:24px;overflow-y:auto}
 .sidebar-section-title{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--gris);margin-bottom:12px}
 
 /* Stats */
 .stats-mini{display:grid;grid-template-columns:1fr 1fr;gap:9px}
-.stat-mini{background:var(--blanc);border-radius:16px;padding:15px 12px;text-align:center;border:1px solid var(--taupe);box-shadow:var(--sh1);transition:var(--t-spring);animation:fadeUp .5s cubic-bezier(.16,1,.3,1) backwards}
+.stat-mini{position:relative;overflow:hidden;background:var(--blanc);border-radius:16px;padding:15px 12px;text-align:center;border:1px solid var(--taupe);box-shadow:var(--sh1);transition:var(--t-spring);animation:fadeUp .5s cubic-bezier(.16,1,.3,1) backwards}
+.stat-mini::after{content:'';position:absolute;inset:0 0 auto 0;height:3px;background:linear-gradient(90deg,var(--ocre),var(--orange),var(--vert),var(--bleu),var(--violet));background-size:200% 100%;opacity:0;transition:var(--t);animation:rainbowShimmer 3.5s linear infinite}
+.stat-mini:hover::after{opacity:.9}
 .stat-mini:nth-child(1){animation-delay:.02s}
 .stat-mini:nth-child(2){animation-delay:.06s}
 .stat-mini:nth-child(3){animation-delay:.1s}
 .stat-mini:nth-child(4){animation-delay:.14s}
-.stat-mini:hover{transform:translateY(-3px) scale(1.02);box-shadow:var(--sh2)}
+.stat-mini:hover{transform:translateY(-3px) scale(1.02);box-shadow:0 16px 32px rgba(214,51,108,.16),var(--sh2);border-color:rgba(214,51,108,.3)}
 .stat-mini-num{font-family:var(--serif-num);font-optical-sizing:auto;font-size:27px;font-weight:600;color:var(--ardoise);line-height:1;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
-.stat-mini-label{font-size:11px;color:var(--gris);margin-top:5px;font-weight:600}
-.stat-mini.alert{background:linear-gradient(160deg,var(--gold-lt),#FBF3E8);border:1px solid rgba(193,121,60,.28)}
+.stat-mini-label{font-family:var(--mono);font-size:10.5px;color:var(--gris);margin-top:5px;font-weight:500;letter-spacing:.01em}
+.stat-mini.alert{background:linear-gradient(160deg,var(--gold-lt),#FBF3E8);border:1px solid rgba(214,51,108,.28)}
 .stat-mini.alert .stat-mini-num{color:var(--or)}
 
 /* Mini calendrier */
@@ -87,7 +96,7 @@ body.is-embed .app{min-height:100vh}
 .mini-day{font-size:12px;text-align:center;padding:6px 2px;border-radius:var(--r99);cursor:pointer;transition:var(--t-spring);border:none;background:none;font-family:inherit;color:var(--ardoise)}
 .mini-day:hover{background:var(--gold-lt);color:var(--or);transform:scale(1.12)}
 .mini-day.today{background:var(--ardoise);color:#fff;font-weight:700;box-shadow:0 3px 10px rgba(43,38,32,.3)}
-.mini-day.selected{background:var(--ocre);color:#fff;font-weight:700;box-shadow:0 3px 10px rgba(193,121,60,.35)}
+.mini-day.selected{background:var(--ocre);color:#fff;font-weight:700;box-shadow:0 3px 10px rgba(214,51,108,.35)}
 .mini-day.has-rdv{position:relative}
 .mini-day.has-rdv::after{content:'';position:absolute;bottom:2px;left:50%;transform:translateX(-50%);width:4px;height:4px;border-radius:50%;background:var(--ocre)}
 .mini-day.today.has-rdv::after,.mini-day.selected.has-rdv::after{background:#fff}
@@ -97,9 +106,10 @@ body.is-embed .app{min-height:100vh}
 /* Type de consultation */
 .type-filter{display:flex;flex-direction:column;gap:7px}
 .type-btn{display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:14px;border:1px solid var(--taupe);background:var(--blanc);cursor:pointer;font-family:inherit;transition:var(--t-spring);text-align:left}
-.type-btn:hover{border-color:rgba(193,121,60,.35);transform:translateX(2px)}
+.type-btn:hover{border-color:rgba(214,51,108,.35);transform:translateX(2px)}
 .type-btn.active{border-color:var(--ocre);background:var(--gold-lt);box-shadow:var(--sh1)}
 .type-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.type-btn.active .type-dot{}
 .type-btn-name{font-size:13px;font-weight:600;color:var(--ardoise)}
 .type-btn-duration{font-size:11px;color:var(--gris)}
 
@@ -117,11 +127,13 @@ body.is-embed .app{min-height:100vh}
 
 /* ── MAIN ── */
 .main{padding:26px 34px 40px;overflow-y:auto;animation:fadeUp .35s cubic-bezier(.16,1,.3,1)}
-.main-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:26px;flex-wrap:wrap;gap:12px}
+.main-header{position:relative;display:flex;align-items:center;justify-content:space-between;margin-bottom:26px;flex-wrap:wrap;gap:12px;row-gap:14px;padding-bottom:14px}
+.main-header::after{content:'';position:absolute;left:0;right:0;bottom:0;height:3px;background:linear-gradient(90deg,var(--ocre),var(--orange),var(--vert),var(--bleu),var(--violet),var(--ocre));background-size:200% 100%;border-radius:var(--r99);animation:rainbowShimmer 6s linear infinite}
 .main-title{font-family:var(--serif);font-style:italic;font-weight:600;font-size:30px;letter-spacing:-.015em;color:var(--ardoise)}
 .main-title span{color:var(--ocre);font-style:normal;font-weight:600}
 .view-tabs{display:flex;gap:3px;background:var(--off);border:1px solid var(--taupe);border-radius:var(--r99);padding:3px}
 .view-tab{padding:8px 17px;border-radius:var(--r99);font-size:12px;font-weight:600;letter-spacing:0;cursor:pointer;border:none;background:none;color:var(--gris);font-family:inherit;transition:var(--t-spring)}
+.view-tab{position:relative}
 .view-tab.active{background:var(--blanc);color:var(--ardoise);font-weight:700;box-shadow:var(--sh1)}
 .view-tab:hover:not(.active){color:var(--ardoise)}
 
@@ -133,11 +145,11 @@ body.is-embed .app{min-height:100vh}
 .agenda-day-count{font-size:11px;color:var(--or);background:var(--gold-lt);padding:2px 10px;border-radius:var(--r99);font-weight:700}
 .agenda-empty{font-size:13px;color:var(--gris);font-style:normal;padding:8px 0}
 .rdv-card{background:var(--blanc);border-radius:18px;border:1px solid var(--taupe);padding:16px 18px;display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:center;margin-bottom:9px;cursor:pointer;transition:var(--t-spring);box-shadow:var(--sh1)}
-.rdv-card:hover{border-color:rgba(193,121,60,.35);box-shadow:var(--sh2);transform:translateY(-3px)}
+.rdv-card:hover{border-color:rgba(214,51,108,.35);box-shadow:var(--sh2);transform:translateY(-3px)}
 .rdv-card.attente{border-left:3px solid var(--sable);border-radius:0 18px 18px 0}
 .rdv-card.confirme{border-left:3px solid var(--vert);border-radius:0 18px 18px 0}
 .rdv-card.annule{border-left:3px solid var(--rouge);border-radius:0 18px 18px 0;opacity:.55}
-.rdv-time{font-size:14px;font-weight:700;color:var(--ardoise);white-space:nowrap;font-variant-numeric:tabular-nums}
+.rdv-time{font-family:var(--mono);font-size:14px;font-weight:500;color:var(--ardoise);white-space:nowrap;font-variant-numeric:tabular-nums}
 .rdv-duration{font-size:10px;color:var(--gris);margin-top:2px}
 .rdv-name{font-size:14px;font-weight:700;color:var(--ardoise)}
 .rdv-type{font-size:11px;color:var(--gris);margin-top:2px}
@@ -154,14 +166,14 @@ body.is-embed .app{min-height:100vh}
 .modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px}
 .modal-field label{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gris);display:block;margin-bottom:6px}
 .modal-field input,.modal-field select,.modal-field textarea{width:100%;padding:10px 14px;border:1px solid var(--taupe);border-radius:12px;font-family:inherit;font-size:13px;background:var(--off);color:var(--ardoise);outline:none;transition:var(--t)}
-.modal-field input:focus,.modal-field select:focus,.modal-field textarea:focus{border-color:var(--ocre);background:var(--blanc);box-shadow:0 0 0 4px rgba(193,121,60,.1)}
+.modal-field input:focus,.modal-field select:focus,.modal-field textarea:focus{border-color:var(--ocre);background:var(--blanc);box-shadow:0 0 0 4px rgba(214,51,108,.1)}
 .modal-field.full{grid-column:span 2}
 .modal-actions{display:flex;gap:10px;margin-top:24px;padding-top:20px;border-top:1px solid var(--taupe)}
 .btn-primary{background:var(--ocre);color:#fff;padding:12px 26px;border-radius:var(--r99);font-size:14px;font-weight:600;cursor:pointer;border:none;font-family:inherit;transition:var(--t-spring);position:relative}
 .btn-primary:hover{background:var(--or);transform:translateY(-1.5px)}
 .btn-primary:active{transform:scale(.96)}
 .btn-secondary{background:var(--blanc);border:1px solid var(--taupe);color:var(--ardoise);padding:10px 22px;border-radius:var(--r99);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:var(--t-spring)}
-.btn-secondary:hover{border-color:rgba(193,121,60,.35);background:var(--gold-lt);color:var(--or);transform:translateY(-1px)}
+.btn-secondary:hover{border-color:rgba(214,51,108,.35);background:var(--gold-lt);color:var(--or);transform:translateY(-1px)}
 .btn-danger{background:none;border:1px solid var(--rouge);color:var(--rouge);padding:10px 18px;border-radius:var(--r99);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;margin-left:auto;transition:var(--t)}
 .btn-danger:hover{background:var(--rouge);color:#fff}
 
@@ -187,7 +199,7 @@ body.is-embed .app{min-height:100vh}
 .wk-daylbl.today{background:var(--ocre);color:#fff}
 .wk-body{position:relative}
 .wk-hours{position:relative}
-.wk-hourlabel{position:absolute;right:6px;font-size:10px;color:var(--gris);font-family:inherit;transform:translateY(-50%)}
+.wk-hourlabel{position:absolute;right:6px;font-size:10px;color:var(--gris);font-family:var(--mono);transform:translateY(-50%)}
 .wk-daycol{position:relative;border-left:1px solid var(--taupe)}
 .wk-daycol.blocked{background:repeating-linear-gradient(135deg,rgba(209,85,58,.05),rgba(209,85,58,.05) 6px,transparent 6px,transparent 12px)}
 
@@ -196,12 +208,12 @@ body.is-embed .app{min-height:100vh}
 .jr-daycol.blocked{background:repeating-linear-gradient(135deg,rgba(209,85,58,.05),rgba(209,85,58,.05) 6px,transparent 6px,transparent 12px)}
 .jr-evt{position:absolute;left:6px;right:6px;border-radius:10px;padding:6px 10px;overflow:hidden;cursor:pointer;transition:var(--t-spring);display:flex;flex-direction:column;gap:2px;box-shadow:var(--sh1);animation:fadeUp .4s cubic-bezier(.16,1,.3,1) backwards}
 .jr-evt:hover{box-shadow:var(--sh2);transform:translateY(-2px) scale(1.008)}
-.jr-evt.type-initial{background:linear-gradient(90deg,rgba(193,121,60,.16),rgba(193,121,60,.05));border-left:4px solid var(--ocre)}
+.jr-evt.type-initial{background:linear-gradient(90deg,rgba(214,51,108,.16),rgba(214,51,108,.05));border-left:4px solid var(--ocre)}
 .jr-evt.type-suivi{background:linear-gradient(90deg,rgba(76,139,92,.16),rgba(76,139,92,.05));border-left:4px solid var(--vert)}
 .jr-evt.attente{background:repeating-linear-gradient(135deg, rgba(156,95,160,.14) 0 7px, rgba(156,95,160,.06) 7px 14px);border-left:4px dashed #9C5FA0}
 .jr-evt.perso{background:repeating-linear-gradient(135deg, rgba(107,101,96,.1) 0 8px, rgba(107,101,96,.18) 8px 16px);border-left:4px solid #9C958C;cursor:default;box-shadow:none}
 .jr-evt.tache{background:rgba(156,95,160,.1);border-left:4px solid #9C5FA0;box-shadow:none}
-.jr-evt-time{font-size:10.5px;font-weight:700;color:var(--ardoise);font-family:inherit;font-variant-numeric:tabular-nums}
+.jr-evt-time{font-size:10.5px;font-weight:500;color:var(--ardoise);font-family:var(--mono);font-variant-numeric:tabular-nums}
 .jr-evt-name{font-size:13px;font-weight:700;color:var(--ardoise);display:flex;align-items:center;gap:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .jr-evt-name svg{flex-shrink:0}
 .jr-evt-tag{font-size:9px;font-weight:700;padding:1px 7px;border-radius:99px;margin-left:auto;flex-shrink:0}
@@ -213,17 +225,17 @@ body.is-embed .app{min-height:100vh}
 .wk-evt{position:absolute;left:2px;right:2px;border-radius:8px;padding:3px 6px;overflow:hidden;cursor:pointer;transition:var(--t-spring);display:flex;flex-direction:column;gap:1px}
 .wk-evt:hover{filter:brightness(0.97);box-shadow:0 4px 12px rgba(74,58,32,.14);transform:scale(1.01)}
 /* Confirmé — le code couleur porte sur le TYPE de consultation, reconnaissable en un coup d'oeil */
-.wk-evt.type-initial{background:linear-gradient(90deg,rgba(193,121,60,.22),rgba(193,121,60,.08));border-left:3px solid var(--ocre)}
+.wk-evt.type-initial{background:linear-gradient(90deg,rgba(214,51,108,.22),rgba(214,51,108,.08));border-left:3px solid var(--ocre)}
 .wk-evt.type-suivi{background:linear-gradient(90deg,rgba(76,139,92,.22),rgba(76,139,92,.08));border-left:3px solid var(--vert)}
 /* En attente de confirmation — toujours violet, indépendamment du type, pour signaler "pas encore validé" */
 .wk-evt.attente{background:repeating-linear-gradient(135deg, rgba(156,95,160,.16) 0 7px, rgba(156,95,160,.08) 7px 14px);border-left:3px dashed #9C5FA0}
 .wk-evt.tache{background:rgba(156,95,160,.12);border-left:3px solid #9C5FA0;font-size:10px;font-weight:600;color:#7A4680;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.wk-evt-time{font-size:10px;font-weight:700;color:var(--ardoise);font-family:inherit;font-variant-numeric:tabular-nums}
+.wk-evt-time{font-size:10px;font-weight:500;color:var(--ardoise);font-family:var(--mono);font-variant-numeric:tabular-nums}
 .wk-evt-name{font-size:11px;font-weight:700;color:var(--ardoise);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:4px}
 .wk-evt-name svg{flex-shrink:0}
 .wk-evt-meta{font-size:9px;font-weight:600;color:var(--gris);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:.01em}
 .wk-evt-parcours{display:inline-block;font-size:8.5px;font-weight:700;letter-spacing:.03em;padding:0 5px;border-radius:99px;margin-left:4px;vertical-align:middle}
-.wk-evt.type-initial .wk-evt-parcours{background:rgba(193,121,60,.2);color:var(--or)}
+.wk-evt.type-initial .wk-evt-parcours{background:rgba(214,51,108,.2);color:var(--or)}
 .wk-evt.type-suivi .wk-evt-parcours{background:rgba(76,139,92,.2);color:#2F5A3A}
 .wk-nav-btn{background:var(--off);border:1px solid var(--taupe);width:31px;height:31px;border-radius:var(--r99);cursor:pointer;font-size:14px;transition:var(--t-spring);color:var(--ardoise)}
 .wk-nav-btn:hover{background:var(--ocre);color:#fff;border-color:var(--ocre);transform:scale(1.08)}
@@ -293,7 +305,7 @@ body.is-embed .app{min-height:100vh}
         Google Agenda
         <span id="googleCalStatus" style="font-size:9px;font-weight:700;padding:2px 8px;border-radius:99px;background:rgba(209,85,58,.1);color:var(--rouge)">Non connecté</span>
       </div>
-      <div style="background:rgba(193,121,60,.08);border:1px solid rgba(193,121,60,.2);border-radius:10px;padding:12px;font-size:12px;line-height:1.7;color:var(--gris)">
+      <div style="background:rgba(214,51,108,.08);border:1px solid rgba(214,51,108,.2);border-radius:10px;padding:12px;font-size:12px;line-height:1.7;color:var(--gris)">
         <div id="googleCalDetail" style="margin-bottom:8px">Synchronise tes RDV dans les deux sens avec ton agenda Google personnel.</div>
         <button id="googleCalConnectBtn" onclick="connectGoogleCalendar()" style="width:100%;padding:7px;background:var(--ardoise);color:#fff;border:none;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">
           Connecter Google Agenda
@@ -310,7 +322,7 @@ body.is-embed .app{min-height:100vh}
         </span>
         <span id="emailjsStatus" style="font-size:9px;font-weight:700;padding:2px 8px;border-radius:99px;background:rgba(209,85,58,.1);color:var(--rouge)">Non configuré</span>
       </div>
-      <div id="emailjsSetupGuide" style="display:none;background:rgba(193,121,60,.08);border:1px solid rgba(193,121,60,.2);border-radius:10px;padding:12px;font-size:12px;line-height:1.7;color:var(--gris)">
+      <div id="emailjsSetupGuide" style="display:none;background:rgba(214,51,108,.08);border:1px solid rgba(214,51,108,.2);border-radius:10px;padding:12px;font-size:12px;line-height:1.7;color:var(--gris)">
         <div style="font-weight:700;color:var(--ardoise);margin-bottom:6px">Configuration Brevo</div>
         <div style="margin-bottom:8px">
           <b>1.</b> Va sur <a href="https://app.brevo.com" target="_blank" style="color:var(--ocre)">app.brevo.com</a> → ton compte<br>
@@ -1399,7 +1411,7 @@ function renderSemaine() {
     </div>
   </div>
   <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:12px;font-size:10.5px;color:var(--gris);font-weight:600">
-    <span style="display:flex;align-items:center;gap:5px"><span style="width:11px;height:11px;border-radius:3px;background:linear-gradient(90deg,rgba(193,121,60,.35),rgba(193,121,60,.15));border-left:2px solid var(--ocre);display:inline-block"></span>Consultation initiale</span>
+    <span style="display:flex;align-items:center;gap:5px"><span style="width:11px;height:11px;border-radius:3px;background:linear-gradient(90deg,rgba(214,51,108,.35),rgba(214,51,108,.15));border-left:2px solid var(--ocre);display:inline-block"></span>Consultation initiale</span>
     <span style="display:flex;align-items:center;gap:5px"><span style="width:11px;height:11px;border-radius:3px;background:linear-gradient(90deg,rgba(76,139,92,.35),rgba(76,139,92,.15));border-left:2px solid var(--vert);display:inline-block"></span>Suivi</span>
     <span style="display:flex;align-items:center;gap:5px"><span style="width:11px;height:11px;border-radius:3px;background:repeating-linear-gradient(135deg, rgba(156,95,160,.3) 0 3px, rgba(156,95,160,.15) 3px 6px);border-left:2px dashed #9C5FA0;display:inline-block"></span>En attente de confirmation</span>
     <span style="display:flex;align-items:center;gap:5px"><span style="width:11px;height:11px;border-radius:3px;background:repeating-linear-gradient(135deg, rgba(107,101,96,.2) 0 4px, rgba(107,101,96,.35) 4px 8px);display:inline-block"></span>Événement personnel</span>
@@ -1647,7 +1659,7 @@ function renderMois() {
           ? `<div style="background:rgba(107,101,96,.1);border-radius:3px;padding:1px 5px;font-size:9.5px;font-weight:600;color:#6B6560;font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${it.time} ${it.label}</div>`
           : (it.attente
               ? `<div style="background:repeating-linear-gradient(135deg, rgba(156,95,160,.16) 0 5px, rgba(156,95,160,.06) 5px 10px);border-left:2px dashed #9C5FA0;border-radius:3px;padding:1px 5px 1px 4px;font-size:9.5px;font-weight:700;color:#7A4680;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${it.time} ${it.label}</div>`
-              : `<div style="background:rgba(193,121,60,.12);border-radius:3px;padding:1px 5px;font-size:9.5px;font-weight:600;color:var(--ardoise);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${it.time} ${it.label}</div>`))
+              : `<div style="background:rgba(214,51,108,.12);border-radius:3px;padding:1px 5px;font-size:9.5px;font-weight:600;color:var(--ardoise);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${it.time} ${it.label}</div>`))
       : `<div style="background:rgba(156,95,160,.12);border-radius:3px;padding:1px 5px;font-size:9.5px;font-weight:600;color:#7A4680;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${it.time} ${it.label}</div>`
     ).join('');
 
@@ -2260,7 +2272,7 @@ async function refreshGoogleCalendarStatus() {
     const row = rows[0];
     if (row && row.connected_at) {
       el.textContent = 'Connecté';
-      el.style.background = 'rgba(193,121,60,.12)';
+      el.style.background = 'rgba(214,51,108,.12)';
       el.style.color = 'var(--ocre)';
       if (btn) btn.textContent = 'Reconnecter';
       if (detail) {
