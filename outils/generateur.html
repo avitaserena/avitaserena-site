@@ -1410,6 +1410,15 @@ function buildClientData() {
       s.notes_libres_axes && `Notes libres par axe (séance de suivi) : ${s.notes_libres_axes}`,
       s.modif_hormonale && `Modification contraception/hormones depuis la dernière séance : ${s.modif_hormonale}${s.impact_hormonal ? ' — impact perçu : ' + s.impact_hormonal : ''}`,
     ].filter(Boolean).join('\n');
+    // ── FAILLE CORRIGÉE (12/09/2026) : le questionnaire de suivi capture bien toute case à
+    // cocher générique (dont les exemples de réponses convertis en chips) dans s.evenementsVie,
+    // mais rien ne lisait ce champ ici — contrairement à la consultation initiale, dont le
+    // même type de sélection atterrit dans chips_coches, lu plus bas par buildPrompt(). Sans ce
+    // pont, ces chips étaient enregistrées dans la fiche cliente mais absentes du protocole
+    // généré après une séance de suivi. ──
+    s.chips_coches = Array.isArray(s.evenementsVie) && s.evenementsVie.length
+      ? s.evenementsVie.join(', ')
+      : (s.chips_coches || '');
   }
 
   // Collecter les axes sélectionnés
