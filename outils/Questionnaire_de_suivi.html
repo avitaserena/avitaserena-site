@@ -1733,6 +1733,20 @@ select.fi.answered{background:var(--off)}
     <div class="qinput">
       <div style="font-size:11.5px;color:var(--gris);font-style:italic;margin-bottom:12px">Même liste et même texte exact que le questionnaire de consultation, pour que tout reste cohérent d'une séance à l'autre — cliquez sur ce qui s'applique dans la sphère concernée, puis précisez le statut.</div>
 
+      <!-- Recherche libre (13/09/2026) : une cliente peut développer une nouvelle pathologie, ou
+           subir une opération, entre deux séances — cette recherche permet de la retrouver vite
+           parmi toutes les puces sans dérouler les 5 sphères une par une. Même mécanique que la
+           consultation (filtre en direct + lien de saut avec surbrillance). -->
+      <div style="margin-bottom:16px;padding-bottom:16px;border-bottom:1px dashed var(--taupe)">
+        <label class="fl">Rechercher un antécédent par son nom</label>
+        <div class="g2" style="margin-top:16px">
+          <input class="fi" type="text" id="diag-search-input" placeholder="Ex : endométriose, migraine…" oninput="filtrerAntecedentsRecherche(this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();ajouterDepuisRecherche();}">
+          <button class="btn" type="button" onclick="ajouterDepuisRecherche()">+ Ajouter à la liste</button>
+        </div>
+        <p class="field-hint" id="diag-search-hint" style="margin-top:6px;font-size:11.5px;color:var(--gris)">Filtre les puces ci-dessous en direct. Si l'antécédent n'existe pas déjà comme puce, le bouton l'ajoute tel quel — il sera bien repris par le générateur, comme le reste de cette liste.</p>
+        <button type="button" id="diag-search-jump" onclick="allerVersPuceTrouvee()" style="display:none;margin-top:8px;padding:8px 14px;background:var(--gold);color:var(--white);border:none;border-radius:8px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit">↓ Aller à la puce trouvée</button>
+      </div>
+
       <div class="acc-box"><div class="acc-hdr" onclick="accT(this)">Endocrinien, métabolique &amp; cardiovasculaire <span class="chevron">▼</span></div>
         <div class="acc-body">
           <div class="chip-wrap">
@@ -1884,29 +1898,35 @@ select.fi.answered{background:var(--off)}
       </div>
     </div>
     <div class="qinput">
+      <div style="margin-bottom:16px;padding-bottom:16px;border-bottom:1px dashed var(--taupe)">
+        <label class="fl">Rechercher un type d'intervention</label>
+        <input class="fi" type="text" id="chir-search" placeholder="Ex : hernie, appendicite…" oninput="filtrerChirurgieChips(this.value)">
+        <p class="field-hint" id="chir-search-hint" style="margin-top:6px;font-size:11.5px;color:var(--gris)">Filtre les puces ci-dessous en direct.</p>
+        <button type="button" id="chir-search-jump" onclick="allerVersChirurgiePuce()" style="display:none;margin-top:8px;padding:8px 14px;background:var(--gold);color:var(--white);border:none;border-radius:8px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit">↓ Aller à la puce trouvée</button>
+      </div>
       <div class="g3" style="grid-template-columns:2fr 1fr 1fr;gap:10px">
         <div>
           <label class="fl">Type d'intervention</label>
-          <select class="fi" id="chir-type" onchange="document.getElementById('chir-autre-wrap').style.display = this.value==='__autre__' ? 'block' : 'none'">
-            <option value="">—</option>
-            <option>Cœlioscopie diagnostique</option>
-            <option>Cœlioscopie — exérèse de lésions d'endométriose</option>
-            <option>Kystectomie ovarienne</option>
-            <option>Hystérectomie (totale)</option>
-            <option>Hystérectomie (subtotale)</option>
-            <option>Myomectomie</option>
-            <option>Curetage</option>
-            <option>Ablation de polype utérin</option>
-            <option>Conisation (col utérin)</option>
-            <option>Ligature des trompes</option>
-            <option>Pose/ablation de DIU (geste chirurgical)</option>
-            <option>Thyroïdectomie</option>
-            <option>Appendicectomie</option>
-            <option>Cholécystectomie (ablation vésicule biliaire)</option>
-            <option>Chirurgie bariatrique</option>
-            <option>Autre chirurgie abdominale</option>
-            <option value="__autre__">Autre — préciser</option>
-          </select>
+          <div class="chip-wrap" id="chir-type-chips">
+            <button type="button" class="chip" data-chir="Cœlioscopie diagnostique" onclick="selectChirType(this)">Cœlioscopie diagnostique</button>
+            <button type="button" class="chip" data-chir="Cœlioscopie — exérèse de lésions d'endométriose" onclick="selectChirType(this)">Cœlioscopie — exérèse de lésions d'endométriose</button>
+            <button type="button" class="chip" data-chir="Kystectomie ovarienne" onclick="selectChirType(this)">Kystectomie ovarienne</button>
+            <button type="button" class="chip" data-chir="Hystérectomie (totale)" onclick="selectChirType(this)">Hystérectomie (totale)</button>
+            <button type="button" class="chip" data-chir="Hystérectomie (subtotale)" onclick="selectChirType(this)">Hystérectomie (subtotale)</button>
+            <button type="button" class="chip" data-chir="Myomectomie" onclick="selectChirType(this)">Myomectomie</button>
+            <button type="button" class="chip" data-chir="Curetage" onclick="selectChirType(this)">Curetage</button>
+            <button type="button" class="chip" data-chir="Ablation de polype utérin" onclick="selectChirType(this)">Ablation de polype utérin</button>
+            <button type="button" class="chip" data-chir="Conisation (col utérin)" onclick="selectChirType(this)">Conisation (col utérin)</button>
+            <button type="button" class="chip" data-chir="Ligature des trompes" onclick="selectChirType(this)">Ligature des trompes</button>
+            <button type="button" class="chip" data-chir="Pose/ablation de DIU (geste chirurgical)" onclick="selectChirType(this)">Pose/ablation de DIU (geste chirurgical)</button>
+            <button type="button" class="chip" data-chir="Thyroïdectomie" onclick="selectChirType(this)">Thyroïdectomie</button>
+            <button type="button" class="chip" data-chir="Appendicectomie" onclick="selectChirType(this)">Appendicectomie</button>
+            <button type="button" class="chip" data-chir="Cholécystectomie (ablation vésicule biliaire)" onclick="selectChirType(this)">Cholécystectomie (ablation vésicule biliaire)</button>
+            <button type="button" class="chip" data-chir="Hernie (ombilicale, inguinale, hiatale...)" onclick="selectChirType(this)">Hernie (ombilicale, inguinale, hiatale...)</button>
+            <button type="button" class="chip" data-chir="Chirurgie bariatrique" onclick="selectChirType(this)">Chirurgie bariatrique</button>
+            <button type="button" class="chip" data-chir="Autre chirurgie abdominale" onclick="selectChirType(this)">Autre chirurgie abdominale</button>
+            <button type="button" class="chip" data-chir="__autre__" onclick="selectChirType(this)">Autre — préciser</button>
+          </div>
         </div>
         <div>
           <label class="fl">Mois</label>
@@ -4123,9 +4143,46 @@ function toast(msg, dur=2800) {
 let diagnosticsList = []; // [{ nom, sphere, statut: 'actif' | 'resolu' | null }]
 let chirurgiesList = []; // [{ type, moisAnnee, ressenti }] — évolutif d'une séance à l'autre (01/09/2026)
 
+let chirTypeSelectionne = '';
+function selectChirType(btn) {
+  document.querySelectorAll('#chir-type-chips .chip').forEach(c => c.classList.remove('on'));
+  btn.classList.add('on');
+  chirTypeSelectionne = btn.dataset.chir;
+  document.getElementById('chir-autre-wrap').style.display = chirTypeSelectionne === '__autre__' ? 'block' : 'none';
+}
+// Recherche/filtre des puces d'intervention (13/09/2026), même principe que côté consultation.
+function filtrerChirurgieChips(val) {
+  const q = (val || '').trim().toLowerCase();
+  const chips = document.querySelectorAll('#chir-type-chips .chip[data-chir]');
+  let anyVisible = false;
+  chips.forEach(chip => {
+    const match = !q || chip.dataset.chir.toLowerCase().includes(q);
+    chip.style.display = match ? '' : 'none';
+    if (match && q && chip.dataset.chir !== '__autre__') anyVisible = true;
+  });
+  const hint = document.getElementById('chir-search-hint');
+  const jumpBtn = document.getElementById('chir-search-jump');
+  if (!hint) return;
+  if (!q) {
+    hint.textContent = 'Filtre les puces ci-dessous en direct.';
+    if (jumpBtn) jumpBtn.style.display = 'none';
+  } else if (anyVisible) {
+    hint.textContent = "Puce(s) trouvée(s) et mise(s) en évidence ci-dessous.";
+    if (jumpBtn) jumpBtn.style.display = 'inline-block';
+  } else {
+    hint.textContent = 'Aucune puce ne correspond — utilisez "Autre — préciser" pour la saisir librement.';
+    if (jumpBtn) jumpBtn.style.display = 'none';
+  }
+}
+function allerVersChirurgiePuce() {
+  const chip = [...document.querySelectorAll('#chir-type-chips .chip[data-chir]')].find(c => c.style.display !== 'none' && c.dataset.chir !== '__autre__');
+  if (!chip) return;
+  chip.scrollIntoView({behavior:'smooth', block:'center'});
+  chip.classList.add('jump-highlight');
+  setTimeout(function(){ chip.classList.remove('jump-highlight'); }, 2200);
+}
 function ajouterChirurgie() {
-  const selType = document.getElementById('chir-type');
-  const typeVal = selType?.value || '';
+  const typeVal = chirTypeSelectionne;
   if (!typeVal) { toast('Choisissez le type d\'intervention'); return; }
   const type = typeVal === '__autre__'
     ? (document.getElementById('chir-autre-precision')?.value || '').trim()
@@ -4139,7 +4196,8 @@ function ajouterChirurgie() {
   renderChirurgiesList();
   formTouched = true;
   toast('Antécédent chirurgical ajouté');
-  selType.value = '';
+  document.querySelectorAll('#chir-type-chips .chip').forEach(c => c.classList.remove('on'));
+  chirTypeSelectionne = '';
   document.getElementById('chir-autre-wrap').style.display = 'none';
   document.getElementById('chir-autre-precision').value = '';
   document.getElementById('chir-mois').value = '';
@@ -4268,6 +4326,42 @@ function syncDiagChipsState() {
   });
 }
 
+// Recherche libre d'antécédent (13/09/2026), identique à la consultation — voir le champ
+// "Rechercher un antécédent par son nom" plus haut dans ce même bloc.
+function filtrerAntecedentsRecherche(val) {
+  const q = (val || '').trim().toLowerCase();
+  const chips = document.querySelectorAll('.acc-box .chip[data-diag]');
+  let anyVisible = false;
+  chips.forEach(chip => {
+    const match = !q || chip.dataset.diag.toLowerCase().includes(q);
+    chip.style.display = match ? '' : 'none';
+    if (match && q) anyVisible = true;
+  });
+  const hint = document.getElementById('diag-search-hint');
+  const jumpBtn = document.getElementById('diag-search-jump');
+  if (!hint) return;
+  if (!q) {
+    hint.textContent = "Filtre les puces ci-dessous en direct. Si l'antécédent n'existe pas déjà comme puce, le bouton l'ajoute tel quel — il sera bien repris par le générateur, comme le reste de cette liste.";
+    if (jumpBtn) jumpBtn.style.display = 'none';
+  } else if (anyVisible) {
+    hint.textContent = "Puce(s) trouvée(s) et mise(s) en évidence ci-dessous — cliquez dessus pour l'ajouter avec son statut.";
+    if (jumpBtn) jumpBtn.style.display = 'inline-block';
+  } else {
+    hint.textContent = "Aucune puce existante ne correspond — le bouton \"+ Ajouter à la liste\" l'ajoutera tel quel, pris en compte par le générateur comme les autres.";
+    if (jumpBtn) jumpBtn.style.display = 'none';
+  }
+}
+function allerVersPuceTrouvee() {
+  const chip = [...document.querySelectorAll('.acc-box .chip[data-diag]')].find(c => c.style.display !== 'none');
+  if (!chip) return;
+  chip.scrollIntoView({behavior:'smooth', block:'center'});
+  chip.classList.add('jump-highlight');
+  setTimeout(function(){ chip.classList.remove('jump-highlight'); }, 2200);
+}
+function ajouterDepuisRecherche() {
+  addManualDiagnostic('autre', 'diag-search-input');
+  filtrerAntecedentsRecherche('');
+}
 function addManualDiagnostic(sphere, inputId) {
   sphere = sphere || 'autre';
   const el = document.getElementById(inputId || 'diag-manual-input');
