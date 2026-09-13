@@ -1453,7 +1453,7 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
   <div class="sec-title">
     <div class="sec-num">Section 03 · 12</div>
     <div class="sec-h">Antécédents médicaux & hérédité</div>
-    <div class="sec-sub">L'histoire de la santé passée éclaire toujours le présent. Chaque maladie chronique, chirurgie ou traitement long a laissé une empreinte biochimique sur le terrain.</div>
+    <div class="sec-sub">L'histoire de la santé passée éclaire toujours le présent. Toute pathologie, chronique ou non, toute chirurgie ou tout traitement long a laissé une empreinte biochimique sur le terrain.</div>
   </div>
 
   <!-- Fratrie — DÉPLACÉE ici (13/09/2026), tout au début de la section, à la demande de
@@ -1648,7 +1648,7 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
     <div class="qcard-top">
       <div class="qnum"><svg class="picto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0" aria-hidden="true"><path d="M7 3 L7 11 A5 5 0 0 0 17 11 L17 3"/><circle cx="19" cy="14" r="2.5"/><line x1="17" y1="11" x2="17" y2="12.5"/></svg></div>
       <div class="qcontent">
-        <div class="qtext">Avez-vous des maladies chroniques ou antécédents diagnostiqués — actifs ou résolus ?</div>
+        <div class="qtext">Avez-vous des maladies ou antécédents diagnostiqués, chroniques ou non — actifs ou résolus ?</div>
         <div class="qtags"><span class="qtag cle">Transmis directement au générateur PHV</span></div>
         <div class="info-boxes">
           <div class="info-box pourquoi">
@@ -1727,15 +1727,6 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
             <button class="btn" type="button" onclick="addManualDiagnostic('digestif','diag-manual-digestif')">+ Ajouter</button>
           </div>
           <div class="diag-list-render" data-sphere="digestif" style="margin-top:12px;display:flex;flex-direction:column;gap:8px"></div>
-          <div style="margin-top:10px"><label class="fl">Statut évolutif actuel de la/les pathologie(s) cochée(s)</label>
-            <select class="fi" id="digestif-statut">
-              <option value="">— À préciser —</option>
-              <option>Poussée active</option>
-              <option>Rémission</option>
-              <option>Stable sous traitement</option>
-              <option>Non applicable</option>
-            </select>
-          </div>
           <div style="margin-top:10px"><label class="fl">Précisions cliniques (facultatif — date, sévérité, traitement… inutile de re-saisir le nom déjà coché ci-dessus)</label>
             <textarea class="fi" id="digestif-cliente" placeholder="Ex : SIBO H₂ confirmé par test en 2022, traité rifaximine, rechute…"></textarea>
           </div>
@@ -1799,15 +1790,6 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
             <button class="btn" type="button" onclick="addManualDiagnostic('autoimmune','diag-manual-autoimmune')">+ Ajouter</button>
           </div>
           <div class="diag-list-render" data-sphere="autoimmune" style="margin-top:12px;display:flex;flex-direction:column;gap:8px"></div>
-          <div style="margin-top:10px"><label class="fl">Statut évolutif actuel de la/les pathologie(s) cochée(s)</label>
-            <select class="fi" id="autoimmune-statut">
-              <option value="">— À préciser —</option>
-              <option>Poussée active</option>
-              <option>Rémission</option>
-              <option>Stable sous traitement</option>
-              <option>Non applicable</option>
-            </select>
-          </div>
           <div style="margin-top:10px"><label class="fl">Précisions cliniques (facultatif — date, sévérité, traitement… inutile de re-saisir le nom déjà coché ci-dessus)</label>
             <textarea class="fi" id="autoimmune-cliente" placeholder="Ex : Polyarthrite rhumatoïde sous méthotrexate → surveiller B12, folates + foie…"></textarea>
           </div>
@@ -6996,12 +6978,26 @@ function renderPopupStatutWidget(nom) {
   if (idx === -1) { wrap.innerHTML = ''; return; }
   const d = diagnosticsList[idx];
   const safeNom = nom.replace(/'/g, "\\'");
+  // Évolution par pathologie (13/09/2026, retour de Sabrina) : ce choix vivait avant comme UN
+  // SEUL menu partagé pour toute une sphère ("Statut évolutif actuel de la/les pathologie(s)
+  // cochée(s)") — impossible de distinguer "SIBO en poussée active" de "MICI en rémission" si
+  // les deux étaient cochées dans la même sphère digestif. Il est maintenant ici, dans le popup
+  // de CHAQUE pathologie individuellement, exactement comme le statut actif/résolu juste au-dessus.
+  const EVOLUTIONS = ['Poussée active', 'Rémission', 'Stable sous traitement', 'Non applicable'];
+  const evoOptions = EVOLUTIONS.map(e => `<option ${d.evolution===e?'selected':''}>${e}</option>`).join('');
   wrap.innerHTML = `
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 14px;border:1.5px solid var(--sable);background:var(--or-clair);border-radius:14px;margin-bottom:14px">
       <span style="font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--gris);width:100%">Statut de cet antécédent</span>
       <button type="button" onclick="setPopupDiagStatut('${safeNom}','actif')" style="padding:7px 14px;border-radius:999px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;border:1.5px solid ${d.statut==='actif'?'var(--rouge)':'var(--taupe)'};background:${d.statut==='actif'?'var(--rouge-clair)':'var(--blanc)'};color:${d.statut==='actif'?'var(--rouge)':'var(--gris)'}">${ICO_ACTIF} Actif actuellement</button>
       <button type="button" onclick="setPopupDiagStatut('${safeNom}','resolu')" style="padding:7px 14px;border-radius:999px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;border:1.5px solid ${d.statut==='resolu'?'var(--ocre)':'var(--taupe)'};background:${d.statut==='resolu'?'var(--or-clair)':'var(--blanc)'};color:${d.statut==='resolu'?'var(--or)':'var(--gris)'}">${ICO_RESOLU} Antécédent résolu</button>
       ${d.statut==='resolu' ? `<input type="text" inputmode="numeric" placeholder="Année (ex : 2019)" value="${d.annee||''}" oninput="setPopupDiagAnnee('${safeNom}', this.value)" style="width:120px;padding:6px 10px;border-radius:999px;border:1.5px solid var(--taupe);font-size:12px;font-family:inherit;color:var(--ardoise)">` : ''}
+      <div style="width:100%;margin-top:8px">
+        <label class="fl" style="font-size:10px">Évolution actuelle</label>
+        <select class="fi" style="padding:7px 10px;font-size:12.5px" onchange="setPopupDiagEvolution('${safeNom}', this.value)">
+          <option value="" ${!d.evolution?'selected':''}>— À préciser —</option>
+          ${evoOptions}
+        </select>
+      </div>
       <button type="button" onclick="fermerBriefPopup()" style="margin-left:auto;padding:8px 18px;border-radius:999px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;border:none;background:var(--ardoise);color:var(--blanc)">Valider ✓</button>
     </div>`;
 }
@@ -7012,6 +7008,12 @@ function setPopupDiagStatut(nom, statut) {
   if (diagnosticsList[idx].statut !== 'resolu') diagnosticsList[idx].annee = '';
   renderDiagnosticsList();
   renderPopupStatutWidget(nom);
+  formTouched = true;
+}
+function setPopupDiagEvolution(nom, val) {
+  const idx = diagnosticsList.findIndex(d => d.nom.toLowerCase() === nom.toLowerCase());
+  if (idx === -1) return;
+  diagnosticsList[idx].evolution = val;
   formTouched = true;
 }
 function setPopupDiagAnnee(nom, val) {
@@ -7077,7 +7079,7 @@ function quickAddDiagnostic(nom, sphere) {
     showToast('Retiré : ' + nom);
     return;
   }
-  diagnosticsList.push({ nom, sphere, statut: null, annee: '' });
+  diagnosticsList.push({ nom, sphere, statut: null, annee: '', evolution: '' });
   renderDiagnosticsList();
   syncDiagChipsState();
   formTouched = true;
@@ -7150,7 +7152,7 @@ function addManualDiagnostic(sphere, inputId) {
   const nom = (el?.value || '').trim();
   if (!nom) return;
   if (diagnosticsList.some(d => d.nom.toLowerCase() === nom.toLowerCase())) { showToast('Déjà ajouté : ' + nom); return; }
-  diagnosticsList.push({ nom, sphere, statut: null, annee: '' });
+  diagnosticsList.push({ nom, sphere, statut: null, annee: '', evolution: '' });
   el.value = '';
   renderDiagnosticsList();
   syncDiagChipsState();
@@ -8589,6 +8591,15 @@ function collectAllData() {
   // Diagnostics & antécédents (statut actif/résolu) — pour le générateur PHV
   d.diagnostics_actifs = diagnosticsList.filter(x => x.statut === 'actif').map(x => x.nom).join(', ');
   d.antecedents_resolus = diagnosticsList.filter(x => x.statut === 'resolu').map(x => x.nom + (x.annee ? ' (' + x.annee + ')' : '')).join(', ');
+  // Évolution par pathologie (13/09/2026) : avant recueillie comme un seul champ partagé par
+  // sphère (perdait l'attribution exacte dès que 2 pathologies étaient cochées dans la même
+  // sphère) — chaque ligne ici est maintenant rattachée sans ambiguïté à SA pathologie précise.
+  const diagEvolutionLines = diagnosticsList.filter(x => x.evolution).map(x => `${x.nom} — ${x.evolution}`);
+  d.diagnostics_evolution = diagEvolutionLines.join('\n');
+  if (diagEvolutionLines.length) {
+    if (!d.parSection['sec-1']) d.parSection['sec-1'] = [];
+    d.parSection['sec-1'].push(...diagEvolutionLines);
+  }
   // FAILLE ÉVITÉE (30/08/2026) : sans ce bloc, les traitements cochés dans la popup "En bref"
   // des antécédents (date, statut, effets) n'étaient captés que si cette popup précise restait
   // ouverte au moment de collectAllData() — désormais lus depuis diagTxState, qui persiste
