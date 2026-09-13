@@ -3736,6 +3736,30 @@ function captureSnapshot() {
   try { snap._ai_panel = JSON.stringify(window.AIPanel ? window.AIPanel.getEntries() : []); } catch (e) {}
   snap._diagnostics_list = JSON.stringify(diagnosticsList);
   snap._chirurgies_list = JSON.stringify(chirurgiesList);
+  // Tableaux Protocole initial & Observance (13/09/2026, audit complet demandé par Sabrina) :
+  // ces deux tableaux ont un bouton "+ Ajouter une ligne" — leur nombre de lignes peut donc varier
+  // d'une séance à l'autre. Comme ils ne sont composés que de champs sans id (par position DOM
+  // uniquement), ce nombre variable décale tous les champs positionnés après eux dans le formulaire
+  // à chaque rechargement où le nombre diffère du nombre par défaut (5). On capture donc chaque
+  // ligne comme une vraie donnée structurée, pas comme une position.
+  snap._proto_init = JSON.stringify([...document.querySelectorAll('#proto-init-tbody tr')].map(tr => {
+    const inputs = [...tr.querySelectorAll('input')];
+    return inputs.map(i => i.value);
+  }));
+  snap._observance = JSON.stringify([...document.querySelectorAll('#observance-tbody tr')].map(tr => {
+    const inputs = [...tr.querySelectorAll('input')];
+    const select = tr.querySelector('select');
+    return [inputs[0]?.value || '', select?.value || '', inputs[1]?.value || '', inputs[2]?.value || ''];
+  }));
+  // Traitements suivis ajoutés manuellement (13/09/2026) : leurs 3 champs de détail (dose/nouveau
+  // traitement/motif d'arrêt) n'ont ni id ni type="text" explicite — donc jamais captés par les
+  // boucles génériques ci-dessus, à aucun moment, peu importe la position. On les capture ici par
+  // le libellé du traitement (data-tt-label), stable d'une sauvegarde à l'autre pour un même item.
+  snap._tt_details = JSON.stringify([...document.querySelectorAll('.tt-item')].map(item => ({
+    label: item.dataset.ttLabel || '',
+    statut: item.dataset.ttStatut || '',
+    details: [...item.querySelectorAll('.tt-detail input')].map(i => i.value)
+  })));
   return snap;
 }
 
@@ -3745,6 +3769,70 @@ function restaurerDraft() {
   try {
     const snap = JSON.parse(raw);
     if (!snap._ts || Date.now()-snap._ts > 8*3600*1000) return;
+    // ── BUG CORRIGÉ (13/09/2026, audit complet demandé par Sabrina) ──
+    // Protocole initial / Observance ont un bouton "+ Ajouter une ligne" : leur nombre de lignes
+    // peut varier d'une séance à l'autre. Reconstruit AVANT la boucle générique ci-dessous, pour
+    // que celle-ci (basée sur la position DOM pour les champs sans id) retrouve exactement la même
+    // forme de formulaire qu'au moment de la sauvegarde — sinon tout ce qui suit ces tableaux dans
+    // le formulaire se voit décalé, silencieusement.
+    try {
+      const protoRows = JSON.parse(snap._proto_init || '[]');
+      if (protoRows.length) {
+        const tbody = document.getElementById('proto-init-tbody');
+        if (tbody) {
+          tbody.innerHTML = '';
+          protoRows.forEach(vals => {
+            ajouterLigneProtoInitial(false);
+            const inputs = [...tbody.lastElementChild.querySelectorAll('input')];
+            vals.forEach((v,i) => { if (inputs[i]) inputs[i].value = v; });
+          });
+        }
+      }
+    } catch(e) {}
+    try {
+      const obsRows = JSON.parse(snap._observance || '[]');
+      if (obsRows.length) {
+        const tbody = document.getElementById('observance-tbody');
+        if (tbody) {
+          tbody.innerHTML = '';
+          obsRows.forEach(vals => {
+            ajouterLigneObservance(false);
+            const tr = tbody.lastElementChild;
+            const inputs = tr.querySelectorAll('input');
+            const select = tr.querySelector('select');
+            if (inputs[0]) inputs[0].value = vals[0] || '';
+            if (select) select.value = vals[1] || '';
+            if (inputs[1]) inputs[1].value = vals[2] || '';
+            if (inputs[2]) inputs[2].value = vals[3] || '';
+          });
+        }
+      }
+    } catch(e) {}
+    // Traitements suivis ajoutés manuellement — reconstruits par libellé (pas de contrainte de
+    // position ici puisqu'ils ne sont jamais lus par la boucle générique, voir capture ci-dessus).
+    try {
+      const ttRows = JSON.parse(snap._tt_details || '[]');
+      const container = document.getElementById('tt-dynamic-items');
+      if (ttRows.length && container) {
+        ttRows.forEach(t => {
+          if (!t.label) return;
+          if (![...container.querySelectorAll('.tt-item')].some(it => it.dataset.ttLabel === t.label)) {
+            container.insertAdjacentHTML('beforeend', ttItemHtml(t.label, 'Ajouté manuellement'));
+          }
+          const item = [...container.querySelectorAll('.tt-item')].find(it => it.dataset.ttLabel === t.label);
+          if (item && t.statut) {
+            const btn = [...item.querySelectorAll('.tt-btn')].find(b => b.getAttribute('onclick')?.includes("'"+t.statut+"'"));
+            if (btn) setTraitement(btn, t.statut);
+          }
+          if (item && Array.isArray(t.details)) {
+            const inputs = item.querySelectorAll('.tt-detail input');
+            t.details.forEach((v,i) => { if (inputs[i]) inputs[i].value = v; });
+          }
+        });
+        const empty = document.getElementById('tt-dynamic-empty');
+        if (empty) empty.style.display = 'none';
+      }
+    } catch(e) {}
     Object.entries(snap).forEach(([k,v])=>{
       if(k.startsWith('_')) return;
       const el = document.getElementById(k)||document.querySelector('[name="'+k+'"]');

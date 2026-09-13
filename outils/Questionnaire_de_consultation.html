@@ -7923,6 +7923,13 @@ function captureSnapshot() {
   snap['diagnostics_list'] = JSON.stringify(diagnosticsList);
   saveDiagPopupState(); // fige l'état de la popup en cours avant l'instantané, si elle est ouverte
   snap['diag_tx_state'] = JSON.stringify(diagTxState);
+  // Ligne de vie — événements ajoutés à la main (13/09/2026, audit complet demandé par Sabrina) :
+  // les événements auto-détectés se régénèrent tout seuls depuis d'autres champs déjà sauvegardés
+  // (tl-src, enfants, DDN…) dès qu'on rouvre la section, mais ceux tapés à la main via "+ Ajouter
+  // un événement" n'avaient jamais de sauvegarde propre — perdus purement et simplement à chaque
+  // rechargement, sans lien avec le bug de décalage de position (celui-ci n'existait dans aucune
+  // sauvegarde, à aucun moment).
+  snap['tl_manuels'] = JSON.stringify(TL_EVENTS.filter(e => e.source !== 'auto'));
   return snap;
 }
 
@@ -7972,6 +7979,12 @@ function restoreSnapshot(snap) {
       });
     }
   } catch(e) {}
+  // Ligne de vie — événements manuels : reconstruits avant toute chose, comme enfants/fratrie
+  // (voir explication en tête de fonction) — même si TL_EVENTS n'est pas indexé par position DOM,
+  // il doit être en place avant que construireLigneDeVie() ne soit potentiellement appelée.
+  try {
+    TL_EVENTS = JSON.parse(snap['tl_manuels'] || '[]');
+  } catch(e) { TL_EVENTS = []; }
   document.querySelectorAll('input.fi').forEach((el, i) => { const v = snap['input_' + (el.id || i)]; if (v !== undefined) el.value = v; });
   document.querySelectorAll('select.fi').forEach((el, i) => { const v = snap['select_' + (el.id || i)]; if (v) el.value = v; });
   document.querySelectorAll('textarea.fi').forEach((el, i) => { const v = snap['ta_' + (el.id || i)]; if (v !== undefined) el.value = v; });
