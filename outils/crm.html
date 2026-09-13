@@ -2034,6 +2034,33 @@ var CHECKIN_ALERT_KEYWORDS = [
 function normTxt(s){
   return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
 }
+// ── Sécurité identité client (13/09/2026, demande explicite de Sabrina) ──
+// Prénom + nom ne suffisent JAMAIS à identifier une cliente de façon fiable : deux clientes
+// peuvent un jour partager exactement le même prénom et nom de famille. Ces deux fonctions
+// centralisent LA règle dans tout le CRM : toujours comparer prénom + nom + date de naissance,
+// insensible aux accents, à la casse, et aux tirets/espaces dans les prénoms/noms composés —
+// un seul endroit à maintenir si la règle doit évoluer, plutôt que des comparaisons ad hoc
+// dispersées (c'est justement ce qui posait problème : plusieurs endroits ne comparaient que
+// prénom+nom, sans la date de naissance, alors que celle-ci était pourtant déjà disponible).
+function normIdentite(s){
+  return (s||'').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[-\s]+/g,' ').trim();
+}
+// Compare deux "personnes" (formes acceptées : {client_key ou id, prenom, nom, ddn}).
+// Retourne true (même personne), false (personnes différentes), ou null (prénom+nom identiques
+// mais date de naissance manquante d'un côté ou de l'autre — homonymie non tranchée). Les
+// appelants doivent traiter `null` comme "pas de correspondance confirmée" (jamais un match
+// silencieux) : mieux vaut ne rien afficher/rattacher que rattacher à la mauvaise cliente.
+function memeCliente(a, b){
+  if(!a || !b) return false;
+  const keyA = a.client_key || a.id, keyB = b.client_key || b.id;
+  if(keyA && keyB) return keyA === keyB;
+  const pa=normIdentite(a.prenom), na=normIdentite(a.nom);
+  const pb=normIdentite(b.prenom), nb=normIdentite(b.nom);
+  if(!pa || !na || !pb || !nb) return false;
+  if(pa!==pb || na!==nb) return false;
+  if(!a.ddn || !b.ddn) return null;
+  return a.ddn === b.ddn;
+}
 // Analyse un check-in et renvoie les raisons d'alerte (énergie sous le seuil, humeur
 // préoccupante, mot-clé de détresse dans le champ libre) — vide si rien à signaler.
 function checkinAlertInfo(j){
@@ -2543,7 +2570,7 @@ function renderActionsJour(){
   // 1) Recommandations refusées sans alternative — priorité maximale
   const memoUrg = memoAlerts.filter(m => m.refusSansReponse.length > 0);
   memoUrg.forEach(m=>{
-    const client = db.clients.find(c => (c.prenom||'').toLowerCase()===(m.prenom||'').toLowerCase() && (c.nom||'').toLowerCase()===(m.nom||'').toLowerCase());
+    const client = db.clients.find(c => memeCliente(c, m) === true);
     const prenomEnc=encodeURIComponent(m.prenom||''), nomEnc=encodeURIComponent(m.nom||''), ddnEnc=encodeURIComponent(m.ddn||'');
     items.push({u:4, html:
       '<div class="feed-item feed-refus">'+
@@ -2879,14 +2906,19 @@ async function loadMemoAlerts(){
     // Charger en parallèle les mémos et les alternatives déjà envoyées
     const [memoRows, altRows] = await Promise.all([
       sb('phv_memos?order=created_at.desc&limit=1000'),
-      sb('alternatives?select=prenom,nom,refus_texte,alternative_text&order=sent_at.desc&limit=1000')
+      sb('alternatives?select=client_id,prenom,nom,refus_texte,alternative_text&order=sent_at.desc&limit=1000')
     ]);
 
-    // Construire un index des alternatives par "prenom|nom|refus40chars"
+    // Index des alternatives déjà envoyées (13/09/2026, sécurité identité) : clé primaire sur
+    // client_id quand il est renseigné (fiable même en cas d'homonymie) ; clé de secours sur
+    // prénom+nom normalisés (accents/casse) UNIQUEMENT quand client_id manque sur cette ligne —
+    // avant, la clé ne portait que prénom+nom bruts, ce qui pouvait faire croire à tort qu'une
+    // cliente avait déjà reçu une alternative en réalité envoyée à une homonyme.
     const altIndex = new Set();
     altRows.forEach(a => {
-      const key = (a.prenom||'').toLowerCase() + '|' + (a.nom||'').toLowerCase() + '|' + (a.refus_texte||'').substring(0,40).toLowerCase();
-      altIndex.add(key);
+      const refus40 = (a.refus_texte||'').substring(0,40).toLowerCase();
+      if (a.client_id) altIndex.add('id|'+a.client_id+'|'+refus40);
+      else altIndex.add('nom|'+normIdentite(a.prenom)+'|'+normIdentite(a.nom)+'|'+refus40);
     });
 
     // Transforme une ligne brute phv_memos en objet exploitable (stats + refus détaillés)
@@ -2898,7 +2930,9 @@ async function loadMemoAlerts(){
         Object.entries(details).forEach(([pilier, items]) => {
           if(!Array.isArray(items)) return;
           items.filter(i => i.etat === 'non').forEach(i => {
-            const altKey = (r.prenom||'').toLowerCase() + '|' + (r.nom||'').toLowerCase() + '|' + (i.texte||'').substring(0,40).toLowerCase();
+            const texte40 = (i.texte||'').substring(0,40).toLowerCase();
+            const altKey = r.client_key ? 'id|'+r.client_key+'|'+texte40
+              : 'nom|'+normIdentite(r.prenom)+'|'+normIdentite(r.nom)+'|'+texte40;
             refuses.push({
               pilier,
               texte: i.texte,
@@ -3798,10 +3832,8 @@ function pLbl(p){return p==='aria'?'Aria · 6 mois':p==='ora'?'Ora · 9 mois':p=
 
 function protoDateFor(c){
   if(c.dateProtocole) return c.dateProtocole;
-  const memos=(typeof memoHistoryAll!=='undefined'?memoHistoryAll:[]).filter(m=>
-    (m.prenom||'').toLowerCase()===(c.prenom||'').toLowerCase() &&
-    (m.nom||'').toLowerCase()===(c.nom||'').toLowerCase()
-  ).sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||''));
+  const memos=(typeof memoHistoryAll!=='undefined'?memoHistoryAll:[]).filter(m=>memeCliente(c, m) === true)
+    .sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||''));
   return memos[0]?.created_at ? memos[0].created_at.slice(0,10) : null;
 }
 function buildWF(c){
@@ -3856,14 +3888,19 @@ function splitRdvName(name){
 }
 function rdvMatchesClient(rdv, c){
   if(!rdv || !c) return false;
-  // Identifiant stable (prénom-nom-ddn, même formule que clientes.id) — priorité absolue,
-  // fiable même en cas d'homonymes ou de coquille dans le nom/email saisi au RDV.
+  // Identifiant stable (prénom-nom-ddn, même formule que clientes.id) — priorité absolue.
   if(rdv.client_key && rdv.client_key === c.id) return true;
   if(rdv.email && c.email && rdv.email.toLowerCase() === c.email.toLowerCase()) return true;
   const parts = splitRdvName(rdv.name);
-  return !!(parts.prenom && parts.nom && c.prenom && c.nom &&
-    parts.prenom.toLowerCase() === c.prenom.toLowerCase() &&
-    parts.nom.toLowerCase() === c.nom.toLowerCase());
+  if(!(parts.prenom && parts.nom && c.prenom && c.nom &&
+    normIdentite(parts.prenom) === normIdentite(c.prenom) &&
+    normIdentite(parts.nom) === normIdentite(c.nom))) return false;
+  // Un RDV Google Calendar ne porte pas de date de naissance — le nom seul ne suffit à
+  // confirmer QUE s'il n'existe aucune homonyme dans le fichier clientes (13/09/2026,
+  // sécurité demandée par Sabrina). En cas d'homonymie, on refuse le rattachement
+  // automatique plutôt que de risquer d'écrire dans le mauvais dossier.
+  const homonymes = db.clients.filter(x => normIdentite(x.prenom)===normIdentite(parts.prenom) && normIdentite(x.nom)===normIdentite(parts.nom));
+  return homonymes.length === 1;
 }
 function matchClientForRdv(rdv){ return db.clients.find(c => rdvMatchesClient(rdv, c)) || null; }
 function cRdvs(c){ return rdvs.filter(r => rdvMatchesClient(r, c)); }
@@ -4562,10 +4599,7 @@ function renderDashboard(){
   const memoUrgAl = memoAlerts
     .filter(m => m.refusSansReponse.length > 0)
     .map(m => {
-      const client = db.clients.find(c =>
-        (c.prenom||'').toLowerCase()===(m.prenom||'').toLowerCase() &&
-        (c.nom||'').toLowerCase()===(m.nom||'').toLowerCase()
-      );
+      const client = db.clients.find(c => memeCliente(c, m) === true);
       return { client: client||{prenom:m.prenom,nom:m.nom,id:null}, memo:m, isMemo:true };
     });
 
@@ -4621,7 +4655,7 @@ function switchTab(tab,el){
   const memoUrgAl=memoAlerts
     .filter(m=>m.refusSansReponse.length>0)
     .map(m=>{
-      const client=db.clients.find(c=>(c.prenom||'').toLowerCase()===(m.prenom||'').toLowerCase()&&(c.nom||'').toLowerCase()===(m.nom||'').toLowerCase());
+      const client=db.clients.find(c=>memeCliente(c, m) === true);
       return{client:client||{prenom:m.prenom,nom:m.nom,id:null},memo:m,isMemo:true};
     });
   renderAlerts(tab,allAl.filter(a=>a.alert.isOvd),allAl.filter(a=>!a.alert.isOvd&&a.alert.isSoon),memoUrgAl);
@@ -4679,10 +4713,7 @@ function renderAlerts(tab,urg,sem,memoUrgAl=[]){
         ).join('');
         const plusHtml = m.refuses.length > 3 ? `<div style="font-size:10px;color:var(--muted);margin-top:4px">+ ${m.refuses.length-3} autre(s) refus</div>` : '';
         // Trouver la fiche cliente correspondante
-        const client = db.clients.find(c =>
-          (c.prenom||'').toLowerCase() === (m.prenom||'').toLowerCase() &&
-          (c.nom||'').toLowerCase() === (m.nom||'').toLowerCase()
-        );
+        const client = db.clients.find(c => memeCliente(c, m) === true);
         const ficheBtn = client ? `<button onclick="openFiche('${client.id}')" style="margin-top:8px;padding:5px 12px;background:var(--ardoise);color:white;border:none;border-radius:99px;font-size:11px;font-weight:600;cursor:pointer">Voir la fiche →</button>` : '';
         return `<div class="al-item urg" style="flex-direction:column;align-items:flex-start;padding:12px 14px">
           <div style="display:flex;align-items:center;gap:10px;width:100%">
@@ -5015,7 +5046,7 @@ function renderFiche(c){
   const totalWF=wf.length;
   const daysLeft=started&&dur>0?Math.max(0,dur-Math.round(diffD(started))):null;
   const hasPHV=!!(c.phv_url || protocolesClient[cid]);
-  const clientMemosAll=memoHistoryAll.filter(m=>(m.prenom||'').toLowerCase()===(c.prenom||'').toLowerCase()&&(m.nom||'').toLowerCase()===(c.nom||'').toLowerCase()).sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||''));
+  const clientMemosAll=memoHistoryAll.filter(m=>memeCliente(c, m) === true).sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||''));
   const hasMemoHistory=clientMemosAll.length>0;
   const dm=docsMedicaux[cid]||[];
   const docsCount=[hasPHV,c.timeline?.some(t=>t.title?.includes('Lettre')),c.timeline?.some(t=>t.title?.includes('Bilan'))].filter(Boolean).length + dm.length;
@@ -5384,12 +5415,15 @@ function renderFiche(c){
 
   // Derniers messages échangés — ajouté 02/09/2026 : jusqu'ici invisible depuis la fiche,
   // il fallait aller sur la page Messages pour savoir ce qu'une cliente avait écrit en
-  // dernier. Matching par client_key si présent, sinon par prénom+nom (comme le reste
-  // de la fiche pour les protocoles/mémos).
-  const clientMsgsAll = clientMessages.filter(m =>
-    (m.client_key && m.client_key === cid) ||
-    ((m.prenom||'').toLowerCase()===(c.prenom||'').toLowerCase() && (m.nom||'').toLowerCase()===(c.nom||'').toLowerCase())
-  ).sort((a,b) => new Date(b.created_at||0) - new Date(a.created_at||0));
+  // dernier. Matching sécurisé (13/09/2026) : client_key en priorité ; à défaut, prénom+nom
+  // normalisés (accents/tirets) MAIS seulement si aucune autre cliente ne porte ce même nom —
+  // les messages ne portent pas de date de naissance, donc en cas d'homonymie on ne devine pas.
+  const clientMsgsAll = clientMessages.filter(m => {
+    if(m.client_key) return m.client_key === cid;
+    if(!m.prenom || !m.nom || !c.prenom || !c.nom) return false;
+    if(normIdentite(m.prenom)!==normIdentite(c.prenom) || normIdentite(m.nom)!==normIdentite(c.nom)) return false;
+    return db.clients.filter(x=>normIdentite(x.prenom)===normIdentite(c.prenom)&&normIdentite(x.nom)===normIdentite(c.nom)).length===1;
+  }).sort((a,b) => new Date(b.created_at||0) - new Date(a.created_at||0));
   const msgsHtml = clientMsgsAll.length ? clientMsgsAll.slice(0,4).map(m=>{
     const txt = m.message || (m.image_url?'Photo envoyée':m.doc_url?'Document envoyé':'(message vide)');
     const d = m.created_at ? new Date(m.created_at) : null;
@@ -5561,10 +5595,8 @@ function ficheSwitchTab(name, el){
 function buildMemoBlock(c){
   // Tous les mémos de cette cliente, triés du plus récent au plus ancien — historique complet,
   // pas seulement celui qui sert au badge d'alertes (memoAlerts est dédupliqué à 1 par cliente).
-  const clientMemos = memoHistoryAll.filter(m =>
-    (m.prenom||'').toLowerCase() === (c.prenom||'').toLowerCase() &&
-    (m.nom||'').toLowerCase() === (c.nom||'').toLowerCase()
-  ).sort((a,b) => (b.created_at||'').localeCompare(a.created_at||''));
+  const clientMemos = memoHistoryAll.filter(m => memeCliente(c, m) === true)
+    .sort((a,b) => (b.created_at||'').localeCompare(a.created_at||''));
 
   if(!clientMemos.length) return '';
 
@@ -6091,7 +6123,7 @@ async function saveNewClient(){
   if(!prenom){toast('Prénom requis','err');return;}
   if(!ddn){document.getElementById('ddn-err').style.display='inline';toast('DDN requise','err');return;}
   document.getElementById('ddn-err').style.display='none';
-  const dup=db.clients.find(c=>(c.prenom||'').toLowerCase()===prenom.toLowerCase()&&(c.nom||'').toLowerCase()===nom.toLowerCase()&&c.ddn===ddn);
+  const dup=db.clients.find(c=>normIdentite(c.prenom)===normIdentite(prenom)&&normIdentite(c.nom)===normIdentite(nom)&&c.ddn===ddn);
   if(dup){toast('Cliente déjà existante','err');return;}
   const date1=document.getElementById('nc-date1')?.value||'';
   if(!date1){document.getElementById('date1-err').style.display='inline';toast('Date de 1ère consultation requise — ne pas confondre avec la date de création de la fiche','err');return;}
@@ -6939,7 +6971,7 @@ function ouvrirEnvoiProtocole(clientId){
       if (lastRaw) {
         try {
           const last = JSON.parse(lastRaw);
-          if (last.prenom?.toLowerCase() === (c.prenom||'').toLowerCase()) {
+          if (normIdentite(last.prenom) === normIdentite(c.prenom)) {
             inp.value = last.url;
             if (hint) hint.innerHTML = '<span style="color:#B4906A">'+ic('bolt')+' Dernier PHV généré · Vérifiez que c\'est bien pour cette cliente</span>';
           }
@@ -7074,7 +7106,7 @@ function ficheBriefSignature(cid){
   if(!c) return '';
   const qList=(questionnairesClient[cid]||[]).filter(q=>q.type==='consultation');
   const dernierQ=qList[0]?.created_at||'';
-  const clientMemos=memoHistoryAll.filter(m=>(m.prenom||'').toLowerCase()===(c.prenom||'').toLowerCase()&&(m.nom||'').toLowerCase()===(c.nom||'').toLowerCase()).sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||''));
+  const clientMemos=memoHistoryAll.filter(m=>memeCliente(c, m) === true).sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||''));
   const dernierMemo=clientMemos[0]?.created_at||'';
   const wf=buildWF(c);
   const nextWF=wf.find(s=>!s.done);
@@ -7108,7 +7140,7 @@ function texteContexteBrief(cid){
   }
 
   // Dernier protocole PHV — ce qui a été mis en place, accepté, refusé
-  const clientMemos=memoHistoryAll.filter(m=>(m.prenom||'').toLowerCase()===(c.prenom||'').toLowerCase()&&(m.nom||'').toLowerCase()===(c.nom||'').toLowerCase()).sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||''));
+  const clientMemos=memoHistoryAll.filter(m=>memeCliente(c, m) === true).sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||''));
   if(clientMemos[0]){
     const m=clientMemos[0];
     const nbOk=m.stats?.ok||0, nbTotal=m.stats?.total||0;
@@ -7425,17 +7457,12 @@ function ouvrirAlternativesModal(prenomEnc, nomEnc, ddnEnc, refusIdx){
   const prenom = decodeURIComponent(prenomEnc);
   const nom    = decodeURIComponent(nomEnc);
   const ddn    = decodeURIComponent(ddnEnc);
+  const identite = {prenom, nom, ddn};
 
-  const m = memoAlerts.find(x =>
-    (x.prenom||'').toLowerCase()===(prenom||'').toLowerCase() &&
-    (x.nom||'').toLowerCase()===(nom||'').toLowerCase()
-  );
+  const m = memoAlerts.find(x => memeCliente(x, identite) === true);
   if(!m || !m.refuses.length){ toast('Aucun refus trouvé','err'); return; }
   const refuses = refusIdx >= 0 ? [m.refuses[refusIdx]] : m.refuses;
-  const client  = db.clients.find(c =>
-    (c.prenom||'').toLowerCase()===(prenom||'').toLowerCase() &&
-    (c.nom||'').toLowerCase()===(nom||'').toLowerCase()
-  );
+  const client  = db.clients.find(c => memeCliente(c, identite) === true);
   const email = client?.email || '';
 
   document.getElementById('modal-alternatives')?.remove();
@@ -7599,10 +7626,7 @@ Propose une alternative concrète, bienveillante et réaliste en 2-3 phrases max
 }
 
 async function sauvegarderAlternatives(prenom, nom, ddn, email, refusIdx, envoyer){
-  const m = memoAlerts.find(x =>
-    (x.prenom||'').toLowerCase()===(prenom||'').toLowerCase() &&
-    (x.nom||'').toLowerCase()===(nom||'').toLowerCase()
-  );
+  const m = memoAlerts.find(x => memeCliente(x, {prenom, nom, ddn}) === true);
   if(!m){ toast('Mémo introuvable','err'); return; }
   const refuses = refusIdx >= 0 ? [m.refuses[refusIdx]] : m.refuses;
 
