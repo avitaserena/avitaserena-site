@@ -1588,6 +1588,10 @@ function buildClientData() {
     allergies_alim: allergiesAlim,
     // ── Diagnostics confirmés ──
     diagnostics_confirmes: diagnosticsConfirmes,
+    // Évolution par pathologie (13/09/2026) — simple passthrough texte, comme chanbio_terrains :
+    // pas de correspondance à une liste de boutons possible ici (le générateur n'a pas de select
+    // par diagnostic), donc jamais de risque de perte silencieuse par non-reconnaissance.
+    diagnostics_evolution: sessionData?.diagnostics_evolution || '',
     sibo_type: gv('sibo-type'),
     candidose_profil: gv('candidose-profil'),
     selenium_statut: gv('selenium-statut'),
@@ -1797,7 +1801,7 @@ ${d.bilans_biologiques_resultats || '— Aucun résultat enregistré pour le mom
 
 ━━ DONNÉES DE LA SÉANCE ━━
 Cliente : ${d.prenom}${d.age ? ', ' + d.age + ' ans' : ''} · Profil : ${d.profil}
-Diagnostics médicaux confirmés : ${d.diagnostics_confirmes || 'Aucun renseigné'}${d.sibo_type ? ' · Type de SIBO : ' + d.sibo_type : ''}${d.candidose_profil ? ' · Profil protocole candidose : ' + d.candidose_profil : ''}
+Diagnostics médicaux confirmés : ${d.diagnostics_confirmes || 'Aucun renseigné'}${d.sibo_type ? ' · Type de SIBO : ' + d.sibo_type : ''}${d.candidose_profil ? ' · Profil protocole candidose : ' + d.candidose_profil : ''}${d.diagnostics_evolution ? '\nÉvolution actuelle par pathologie (poussée active/rémission/stable sous traitement) : ' + d.diagnostics_evolution.replace(/\n/g,' · ') : ''}
 Antécédents résolus (non actifs) : ${d.antecedents_resolus || '—'}
 Traitements liés à un diagnostic précis (date, statut, effets rapportés) : ${d.diag_traitements || '—'}
 Durée des déséquilibres : ${d.duree_symptomes}
@@ -2152,7 +2156,7 @@ ${lignesTxt}
 
 ━━ CONTEXTE CLINIQUE DE LA CLIENTE (pour éclairer, jamais pour halluciner) ━━
 Cliente : ${d?.prenom || 'Non renseignée'}${d?.age ? ', ' + d.age + ' ans' : ''}
-Diagnostics confirmés : ${d?.diagnostics_confirmes || '—'}
+Diagnostics confirmés : ${d?.diagnostics_confirmes || '—'}${d?.diagnostics_evolution ? ' (évolution : ' + d.diagnostics_evolution.replace(/\n/g,' · ') + ')' : ''}
 Motifs & symptômes : ${d?.motifs || '—'} · ${d?.symptomes_coches || '—'}
 Alimentation & mode de vie : ${d?.alimentation || '—'}`;
 }
@@ -3342,7 +3346,7 @@ Cette RÈGLE porte uniquement sur LA LECTURE d'un bilan de stress/biorythmes sal
 
 ━━ DONNÉES DE LA SÉANCE ━━
 Cliente : ${d.prenom}${d.nom ? ' ' + d.nom : ''}${d.age ? ', ' + d.age + ' ans' : ''} · Profil : ${d.profil}
-Diagnostics médicaux confirmés : ${d.diagnostics_confirmes || 'Aucun renseigné — travailler sur les symptômes et axes prioritaires uniquement'}${d.sibo_type ? ' · Type de SIBO : ' + d.sibo_type : ''}${d.candidose_profil ? ' · Profil protocole candidose : ' + d.candidose_profil : ''}
+Diagnostics médicaux confirmés : ${d.diagnostics_confirmes || 'Aucun renseigné — travailler sur les symptômes et axes prioritaires uniquement'}${d.sibo_type ? ' · Type de SIBO : ' + d.sibo_type : ''}${d.candidose_profil ? ' · Profil protocole candidose : ' + d.candidose_profil : ''}${d.diagnostics_evolution ? '\nÉvolution actuelle par pathologie (poussée active/rémission/stable sous traitement) : ' + d.diagnostics_evolution.replace(/\n/g,' · ') : ''}
 Antécédents médicaux résolus, NON ACTIFS actuellement (${d.antecedents_resolus ? 'à mentionner seulement si utile au contexte, JAMAIS comme axe de travail actif ni motif de recommandation de complément/soutien ciblé' : 'aucun renseigné'}) : ${d.antecedents_resolus || '—'}
 Traitements liés à un diagnostic précis, date/statut/effets rapportés (utile pour ne pas re-proposer une approche déjà testée sans le dire, cf. RÈGLE N°6) : ${d.diag_traitements || '—'}
 Approches déjà testées avant cette consultation (ne pas répéter à l'identique sans le dire) : ${d.approches_testees || 'Non renseigné'}

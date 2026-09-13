@@ -3532,14 +3532,24 @@ const SPHERE_PAR_DIAGNOSTIC = {
 function importerDiagnosticsDepuisSnapshot(snap) {
   const actifs = (snap.diagnostics_actifs || '').split(',').map(s => s.trim()).filter(Boolean);
   const resolus = (snap.antecedents_resolus || '').split(',').map(s => s.trim()).filter(Boolean);
+  // Évolution par pathologie (13/09/2026, à la demande de Sabrina : pouvoir dire pour chaque
+  // maladie si elle est terminée ou encore traitée, pour ne jamais proposer quelque chose en
+  // contre-indication) — reprend l'évolution déjà notée à la consultation ("Nom — Évolution"
+  // une ligne par pathologie), pour ne pas repartir de zéro à chaque séance.
+  const evolutionParNom = {};
+  (snap.diagnostics_evolution || '').split('\n').filter(Boolean).forEach(ligne => {
+    const sep = ligne.lastIndexOf(' — ');
+    if (sep === -1) return;
+    evolutionParNom[ligne.slice(0, sep).trim().toLowerCase()] = ligne.slice(sep + 3).trim();
+  });
   let ajoutes = 0;
   actifs.forEach(nom => {
-    if (!diagnosticsList.some(d => d.nom.toLowerCase() === nom.toLowerCase())) { diagnosticsList.push({ nom, sphere: SPHERE_PAR_DIAGNOSTIC[nom] || 'autre', statut: 'actif' }); ajoutes++; }
+    if (!diagnosticsList.some(d => d.nom.toLowerCase() === nom.toLowerCase())) { diagnosticsList.push({ nom, sphere: SPHERE_PAR_DIAGNOSTIC[nom] || 'autre', statut: 'actif', evolution: evolutionParNom[nom.toLowerCase()] || '' }); ajoutes++; }
   });
   resolus.forEach(nom => {
     if (!diagnosticsList.some(d => d.nom.toLowerCase() === nom.toLowerCase())) {
       const nomSansAnnee = nom.replace(/\s*\(\d{4}\)\s*$/, '');
-      diagnosticsList.push({ nom, sphere: SPHERE_PAR_DIAGNOSTIC[nom] || SPHERE_PAR_DIAGNOSTIC[nomSansAnnee] || 'autre', statut: 'resolu' });
+      diagnosticsList.push({ nom, sphere: SPHERE_PAR_DIAGNOSTIC[nom] || SPHERE_PAR_DIAGNOSTIC[nomSansAnnee] || 'autre', statut: 'resolu', evolution: evolutionParNom[nomSansAnnee.toLowerCase()] || '' });
       ajoutes++;
     }
   });
@@ -4370,7 +4380,7 @@ function quickAddDiagnostic(nom, sphere) {
     toast('Retiré : ' + nom);
     return;
   }
-  diagnosticsList.push({ nom, sphere, statut: null });
+  diagnosticsList.push({ nom, sphere, statut: null, evolution: "" });
   renderDiagnosticsList();
   syncDiagChipsState();
   formTouched = true;
@@ -4428,7 +4438,7 @@ function addManualDiagnostic(sphere, inputId) {
   const nom = (el?.value || '').trim();
   if (!nom) return;
   if (diagnosticsList.some(d => d.nom.toLowerCase() === nom.toLowerCase())) { toast('Déjà ajouté : ' + nom); return; }
-  diagnosticsList.push({ nom, sphere, statut: null });
+  diagnosticsList.push({ nom, sphere, statut: null, evolution: "" });
   el.value = '';
   renderDiagnosticsList();
   syncDiagChipsState();
@@ -4439,6 +4449,11 @@ function setDiagnosticStatut(idx, statut) {
   if (!diagnosticsList[idx]) return;
   diagnosticsList[idx].statut = diagnosticsList[idx].statut === statut ? null : statut;
   renderDiagnosticsList();
+  formTouched = true;
+}
+function setDiagnosticEvolution(idx, val) {
+  if (!diagnosticsList[idx]) return;
+  diagnosticsList[idx].evolution = val;
   formTouched = true;
 }
 
@@ -4463,14 +4478,25 @@ function renderDiagnosticsList() {
         : '';
       return;
     }
-    wrap.innerHTML = items.map(({ d, i }) => `
+    wrap.innerHTML = items.map(({ d, i }) => {
+      const EVOLUTIONS = ['Poussée active', 'Rémission', 'Stable sous traitement', 'Non applicable'];
+      const evoOptions = EVOLUTIONS.map(e => `<option ${d.evolution===e?'selected':''}>${e}</option>`).join('');
+      return `
       <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border:1px solid var(--taupe);border-radius:14px;background:var(--blanc);flex-wrap:wrap">
         <span style="flex:1;min-width:140px;font-size:14px;color:var(--ardoise);font-weight:500">${d.nom}</span>
         <button type="button" onclick="setDiagnosticStatut(${i},'actif')" style="padding:7px 14px;border-radius:999px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;border:1.5px solid ${d.statut==='actif'?'var(--rouge)':'var(--taupe)'};background:${d.statut==='actif'?'var(--rouge-l)':'var(--blanc)'};color:${d.statut==='actif'?'var(--rouge)':'var(--gris)'}">${ICO_ACTIF} Actif actuellement</button>
         <button type="button" onclick="setDiagnosticStatut(${i},'resolu')" style="padding:7px 14px;border-radius:999px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;border:1.5px solid ${d.statut==='resolu'?'var(--ocre)':'var(--taupe)'};background:${d.statut==='resolu'?'var(--or-clair)':'var(--blanc)'};color:${d.statut==='resolu'?'var(--or)':'var(--gris)'}">${ICO_RESOLU} Antécédent résolu</button>
         <button type="button" onclick="removeDiagnostic(${i})" style="background:transparent;border:none;cursor:pointer;color:var(--gris);font-size:15px;padding:4px 6px" title="Supprimer">✕</button>
+        <div style="width:100%">
+          <label class="fl" style="font-size:10px">Évolution actuelle — essentiel pour éviter une contre-indication avec un traitement en cours</label>
+          <select class="fi" style="padding:6px 10px;font-size:12px" onchange="setDiagnosticEvolution(${i}, this.value)">
+            <option value="" ${!d.evolution?'selected':''}>— À préciser —</option>
+            ${evoOptions}
+          </select>
+        </div>
       </div>
-    `).join('');
+    `;
+    }).join('');
   });
 }
 
@@ -4592,6 +4618,9 @@ function collectData() {
   // Diagnostics & antécédents (statut actif/résolu) — pour le générateur PHV
   d.diagnosticsActifs = diagnosticsList.filter(x => x.statut === 'actif').map(x => x.nom).join(', ');
   d.antecedentsResolus = diagnosticsList.filter(x => x.statut === 'resolu').map(x => x.nom).join(', ');
+  // Évolution par pathologie (13/09/2026) — même principe que la consultation, rattachée sans
+  // ambiguïté à chaque pathologie précise plutôt qu'un champ générique partagé.
+  d.diagnosticsEvolution = diagnosticsList.filter(x => x.evolution).map(x => `${x.nom} — ${x.evolution}`).join('\n');
   // Antécédents chirurgicaux — liste complète (anciens + nouveau du jour), pour le générateur PHV
   // et pour l'import automatique à la séance de suivi suivante.
   d.chirurgies = chirurgiesList;
@@ -4964,6 +4993,7 @@ function finalise() {
     // Diagnostics & antécédents (statut actif/résolu) — noms alignés avec le questionnaire de consultation
     diagnostics_actifs: d.diagnosticsActifs,
     antecedents_resolus: d.antecedentsResolus,
+    diagnostics_evolution: d.diagnosticsEvolution,
     // Antécédents chirurgicaux — évolutif d'une séance à l'autre (01/09/2026), importé automatiquement
     // à la séance suivante via importerChirurgiesDepuisSnapshot()
     chirurgies: d.chirurgies,
