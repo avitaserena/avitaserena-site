@@ -2589,6 +2589,22 @@ Séparation en cours. Charge mentale très élevée. Explorer ashwagandha pour l
   </div>
 </div>
 
+<!-- Popup "détails de l'intervention" (13/09/2026, retour de Sabrina : même logique que la
+     consultation — cocher une puce d'intervention doit ouvrir un popup dédié, pas ajouter une
+     carte tout en bas avec des champs inline). Le suivi n'a pas l'infrastructure de popup
+     diagnostics de la consultation (#brief-overlay/DIAG_DB) : celui-ci est une modale dédiée,
+     plus légère, mais avec la même interaction (clic → popup → date + ressenti → fermer). -->
+<div id="chir-popup-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;align-items:center;justify-content:center;padding:20px">
+  <div class="modal" style="max-width:440px;padding:24px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h3 id="chir-popup-title" style="margin:0;font-size:16px;color:var(--ink);font-family:'Inter',sans-serif"></h3>
+      <button type="button" onclick="fermerChirPopup()" style="background:none;border:none;font-size:20px;line-height:1;cursor:pointer;color:var(--muted)">×</button>
+    </div>
+    <div id="chir-popup-body"></div>
+    <button type="button" class="btn" style="margin-top:16px;width:100%" onclick="fermerChirPopup()">Valider</button>
+  </div>
+</div>
+
 <script>
 /* ══════════════════════════════════════════════════════
    MOTEUR ENTONNOIRE (repris du questionnaire de consultation)
@@ -4144,36 +4160,65 @@ function toast(msg, dur=2800) {
    Transmis directement dans la session au générateur PHV.
 ══════════════════════════════════════════════════════ */
 let diagnosticsList = []; // [{ nom, sphere, statut: 'actif' | 'resolu' | null }]
-let chirurgiesList = []; // [{ type, moisAnnee, ressenti, statut }] — évolutif d'une séance à l'autre (01/09/2026)
+let chirurgiesList = []; // [{ type, moisAnnee, ressenti }] — évolutif d'une séance à l'autre (01/09/2026)
+let currentChirPopup = null;
+let chirTxState = {}; // { [type]: {moisAnnee, ressenti} } — persiste tant que le popup se rouvre
 
-// Refonte (13/09/2026, retour de Sabrina) : sélection MULTIPLE — chaque puce cochée ajoute
-// immédiatement sa propre ligne avec ses propres champs, au lieu d'un seul jeu de champs partagé.
+// Refonte (13/09/2026, retour de Sabrina : même logique que la consultation) — cocher une puce
+// d'intervention ouvre un popup dédié (date + effets ressentis), au lieu d'ajouter une carte tout
+// en bas avec des champs inline.
 function toggleChirurgie(btn) {
   const type = btn.dataset.chir;
   const idx = chirurgiesList.findIndex(c => c.type === type);
   if (idx > -1) {
     chirurgiesList.splice(idx, 1);
+    delete chirTxState[type];
     btn.classList.remove('on');
-  } else {
-    chirurgiesList.push({ type, moisAnnee: '', ressenti: '', statut: '' });
-    btn.classList.add('on');
+    renderChirurgiesList();
+    formTouched = true;
+    toast('Retiré : ' + type);
+    return;
   }
+  btn.classList.add('on');
+  chirurgiesList.push({ type, moisAnnee: '', ressenti: '' });
   renderChirurgiesList();
   formTouched = true;
+  ouvrirChirPopup(type);
 }
 function ajouterChirurgieManuelle() {
   const el = document.getElementById('chir-manuel');
   const nom = (el?.value || '').trim();
   if (!nom) return;
   if (chirurgiesList.some(c => c.type.toLowerCase() === nom.toLowerCase())) { toast('Déjà ajouté : ' + nom); return; }
-  chirurgiesList.push({ type: nom, moisAnnee: '', ressenti: '', statut: '' });
+  chirurgiesList.push({ type: nom, moisAnnee: '', ressenti: '' });
   el.value = '';
   renderChirurgiesList();
   formTouched = true;
+  ouvrirChirPopup(nom);
 }
-function updateChirurgieChamp(idx, champ, val) {
-  if (chirurgiesList[idx]) chirurgiesList[idx][champ] = val;
+function ouvrirChirPopup(nom) {
+  currentChirPopup = nom;
+  document.getElementById('chir-popup-title').textContent = nom;
+  // Lit depuis chirurgiesList (source de vérité, y compris pour un antécédent importé d'une
+  // séance précédente) plutôt que chirTxState, qui ne sert que de brouillon pendant l'édition.
+  const entry = chirurgiesList.find(c => c.type === nom) || {};
+  document.getElementById('chir-popup-body').innerHTML = `
+    <div><label class="fl">Date de réalisation</label><input class="fi" type="text" id="chir-popup-date" placeholder="ex : mars 2026" value="${entry.moisAnnee||''}"></div>
+    <div style="margin-top:10px"><label class="fl">Effets ressentis</label><input class="fi" type="text" id="chir-popup-ressenti" placeholder="ex : bien tolérée, amélioration nette / effets secondaires…" value="${entry.ressenti||''}"></div>
+  `;
+  document.getElementById('chir-popup-overlay').style.display = 'flex';
+}
+function fermerChirPopup() {
+  if (!currentChirPopup) { document.getElementById('chir-popup-overlay').style.display = 'none'; return; }
+  const moisAnnee = document.getElementById('chir-popup-date')?.value || '';
+  const ressenti = document.getElementById('chir-popup-ressenti')?.value || '';
+  chirTxState[currentChirPopup] = { moisAnnee, ressenti };
+  const entry = chirurgiesList.find(c => c.type === currentChirPopup);
+  if (entry) { entry.moisAnnee = moisAnnee; entry.ressenti = ressenti; }
+  renderChirurgiesList();
   formTouched = true;
+  document.getElementById('chir-popup-overlay').style.display = 'none';
+  currentChirPopup = null;
 }
 // Recherche/filtre des puces d'intervention (13/09/2026) — cherche maintenant dans les 3 sphères
 // (Gynécologique / Digestif & abdominal / Thyroïde) plutôt qu'une seule liste plate.
@@ -4211,6 +4256,7 @@ function allerVersChirurgiePuce() {
 function removeChirurgie(idx) {
   const type = chirurgiesList[idx]?.type;
   chirurgiesList.splice(idx, 1);
+  delete chirTxState[type];
   const chip = [...document.querySelectorAll('#chirurgies-card .chip[data-chir]')].find(c => c.dataset.chir === type);
   if (chip) chip.classList.remove('on');
   renderChirurgiesList();
@@ -4225,22 +4271,12 @@ function renderChirurgiesList() {
     return;
   }
   wrap.innerHTML = chirurgiesList.map((c, i) => `
-    <div style="padding:12px 14px;border:1px solid var(--taupe);border-radius:14px;background:var(--blanc)">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
-        <div style="font-size:14px;color:var(--ardoise);font-weight:600">${c.type}</div>
-        <button type="button" onclick="removeChirurgie(${i})" style="background:transparent;border:none;cursor:pointer;color:var(--gris);font-size:15px;padding:0 2px" title="Supprimer">✕</button>
+    <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border:1px solid var(--taupe);border-radius:14px;background:var(--blanc);cursor:pointer" onclick="ouvrirChirPopup('${c.type.replace(/'/g,"\\'")}')">
+      <div style="flex:1;min-width:140px">
+        <div style="font-size:14px;color:var(--ardoise);font-weight:600">${c.type}${c.moisAnnee ? ` <span style="font-weight:400;color:var(--gris);font-size:12.5px">— ${c.moisAnnee}</span>` : ''}</div>
+        ${c.ressenti ? `<div style="font-size:12.5px;color:var(--gris);margin-top:3px">${c.ressenti}</div>` : ''}
       </div>
-      <div class="g3" style="margin-top:8px;gap:8px">
-        <div><label class="fl" style="font-size:10px">Mois / Année</label><input class="fi" type="text" style="padding:7px 10px;font-size:12.5px" placeholder="ex : mars 2026" value="${c.moisAnnee||''}" oninput="updateChirurgieChamp(${i},'moisAnnee',this.value)"></div>
-        <div><label class="fl" style="font-size:10px">Statut</label>
-          <select class="fi" style="padding:7px 10px;font-size:12.5px" onchange="updateChirurgieChamp(${i},'statut',this.value)">
-            <option value="" ${!c.statut?'selected':''}>—</option>
-            <option ${c.statut==='Bien récupérée, sans séquelle'?'selected':''}>Bien récupérée, sans séquelle</option>
-            <option ${c.statut==='Séquelles ou suivi encore en cours'?'selected':''}>Séquelles ou suivi encore en cours</option>
-          </select>
-        </div>
-        <div><label class="fl" style="font-size:10px">Ressenti / évolution</label><input class="fi" type="text" style="padding:7px 10px;font-size:12.5px" placeholder="ex : bien vécue" value="${c.ressenti||''}" oninput="updateChirurgieChamp(${i},'ressenti',this.value)"></div>
-      </div>
+      <button type="button" onclick="event.stopPropagation();removeChirurgie(${i})" style="background:transparent;border:none;cursor:pointer;color:var(--gris);font-size:15px;padding:4px 6px" title="Supprimer">✕</button>
     </div>
   `).join('');
 }

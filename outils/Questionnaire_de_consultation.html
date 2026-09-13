@@ -1115,7 +1115,7 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
     </div>
     <div class="qinput">
       <div class="g3">
-        <div><label class="fl">Heure de coucher habituelle</label><input class="fi" type="time" value="23:00"></div>
+        <div><label class="fl">Heure de coucher habituelle</label><input class="fi" type="time"></div>
         <div><label class="fl">Temps d'endormissement</label>
           <select class="fi">
             <option value="">— —</option>
@@ -2600,8 +2600,8 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
     </div>
     <div class="qinput">
 <div class="g2" style="margin-top:16px">
-        <div><label class="fl">Heure du lever habituelle</label><input class="fi" type="time" value="07:00"></div>
-        <div><label class="fl">Heure du premier repas</label><input class="fi" type="time" value="07:30"></div>
+        <div><label class="fl">Heure du lever habituelle</label><input class="fi" type="time"></div>
+        <div><label class="fl">Heure du premier repas</label><input class="fi" type="time"></div>
       </div>
       <div style="margin-top:10px"><label class="fl">Profil du petit-déjeuner</label>
         <div class="chip-wrap">
@@ -7047,7 +7047,21 @@ function restoreDiagPopupState(nom) {
 }
 
 function fermerBriefPopup() {
-  saveDiagPopupState();
+  if (currentChirPopup) {
+    saveChirPopupState();
+    const nom = currentChirPopup;
+    const state = chirTxState[nom];
+    const entry = chirurgiesListeConsultation.find(c => c.type === nom);
+    if (entry && state) {
+      entry.moisAnnee = state.values[0] || '';
+      entry.ressenti = state.values[1] || '';
+    }
+    renderChirurgiesListConsultation();
+    updateCounter();
+    currentChirPopup = null;
+  } else {
+    saveDiagPopupState();
+  }
   document.getElementById('brief-overlay').classList.remove('open');
 }
 
@@ -7600,37 +7614,75 @@ function toggleFratrieOuiNon(btn, oui) {
 // liste équivalente du suivi : une liste en mémoire, jamais liée à la position DOM, restaurée
 // AVANT toute boucle générique positionnelle (voir restoreSnapshot) pour éviter le bug de
 // décalage déjà rencontré avec enfants/fratrie.
-let chirurgiesListeConsultation = []; // [{ type, moisAnnee, ressenti, statut }]
-// Refonte (13/09/2026, retour de Sabrina) : sélection MULTIPLE — chaque puce cochée ajoute
-// immédiatement sa propre ligne avec ses propres champs (mois/année, statut, ressenti), au lieu
-// d'un seul jeu de champs partagé pour toute la liste (qui ne pouvait garder qu'une seule date
-// pour plusieurs interventions cochées).
+let chirurgiesListeConsultation = []; // [{ type, moisAnnee, ressenti }]
+let currentChirPopup = null; // parallèle à currentDiagPopup — les deux popups sont mutuellement exclusifs
+let chirTxState = {}; // { [type]: {values:[date, ressenti]} } — persiste tant que la popup se rouvre/referme
+
+// Refonte (13/09/2026, retour de Sabrina : "je ne sais pas pourquoi tu m'as fait un truc
+// totalement différent") — cocher une puce d'intervention ouvre maintenant EXACTEMENT le même
+// popup que pour un antécédent médical (même overlay #brief-overlay, même rendu tItemHtml),
+// au lieu d'ajouter une carte tout en bas de la liste avec des champs mois/année/statut inline.
 function toggleChirurgie_c(btn) {
   const type = btn.dataset.chir;
   const idx = chirurgiesListeConsultation.findIndex(c => c.type === type);
   if (idx > -1) {
+    // Reclic sur une puce déjà cochée → la retire, comme pour un diagnostic (quickAddDiagnostic).
     chirurgiesListeConsultation.splice(idx, 1);
+    delete chirTxState[type];
     btn.classList.remove('on');
-  } else {
-    chirurgiesListeConsultation.push({ type, moisAnnee: '', ressenti: '', statut: '' });
-    btn.classList.add('on');
+    renderChirurgiesListConsultation();
+    updateCounter();
+    showToast('Retiré : ' + type);
+    return;
   }
+  btn.classList.add('on');
+  chirurgiesListeConsultation.push({ type, moisAnnee: '', ressenti: '' });
   renderChirurgiesListConsultation();
   updateCounter();
+  renderChirPopup(type);
 }
 function ajouterChirurgieManuelle_c() {
   const el = document.getElementById('chir-manuel-c');
   const nom = (el?.value || '').trim();
   if (!nom) return;
   if (chirurgiesListeConsultation.some(c => c.type.toLowerCase() === nom.toLowerCase())) { showToast('Déjà ajouté : ' + nom); return; }
-  chirurgiesListeConsultation.push({ type: nom, moisAnnee: '', ressenti: '', statut: '' });
+  chirurgiesListeConsultation.push({ type: nom, moisAnnee: '', ressenti: '' });
   el.value = '';
   renderChirurgiesListConsultation();
   updateCounter();
+  renderChirPopup(nom);
 }
-function updateChirurgieChamp_c(idx, champ, val) {
-  if (chirurgiesListeConsultation[idx]) chirurgiesListeConsultation[idx][champ] = val;
-  updateCounter();
+// Ouvre le popup "en bref" partagé avec les diagnostics, mais réduit à une seule fiche
+// d'intervention (date de réalisation + effets ressentis) — pas de bloc En bref/Symptômes/PEC
+// puisqu'il ne s'agit pas d'une pathologie, juste d'une intervention ponctuelle.
+function renderChirPopup(nom) {
+  saveDiagPopupState(); // ferme proprement un éventuel popup diagnostic resté ouvert
+  currentDiagPopup = null;
+  currentChirPopup = nom;
+  document.getElementById('brief-modal-title').textContent = nom;
+  document.getElementById('brief-modal-body').innerHTML =
+    `<label class="fl" style="display:block">Détails de l'intervention</label><div class="tx-wrap">${tItemHtml(nom, true)}</div>`;
+  const item = document.querySelector('#brief-modal-body .tx-item');
+  if (item) { item.classList.add('on'); item.nextElementSibling.classList.add('open'); }
+  // Lit depuis chirurgiesListeConsultation (source de vérité, y compris pour un antécédent
+  // importé/restauré) plutôt que chirTxState, qui ne sert que de brouillon pendant l'édition.
+  const entry = chirurgiesListeConsultation.find(c => c.type === nom);
+  if (entry && item) {
+    const inputs = [...item.nextElementSibling.querySelectorAll('input.fi, select.fi')];
+    if (inputs[0]) inputs[0].value = entry.moisAnnee || '';
+    if (inputs[1]) inputs[1].value = entry.ressenti || '';
+  }
+  const statutWrap = document.getElementById('brief-modal-statut');
+  if (statutWrap) statutWrap.innerHTML = ''; // widget actif/résolu non pertinent pour une intervention
+  document.getElementById('brief-overlay').classList.add('open');
+}
+function saveChirPopupState() {
+  if (!currentChirPopup) return;
+  const item = document.querySelector('#brief-modal-body .tx-item');
+  if (!item) return;
+  const detail = item.nextElementSibling;
+  const inputs = [...detail.querySelectorAll('input.fi, select.fi')];
+  chirTxState[currentChirPopup] = { values: inputs.map(i => i.value) };
 }
 // Recherche/filtre des puces d'intervention (13/09/2026), même principe que la recherche de
 // diagnostics : filtre en direct + lien de saut avec surbrillance, pour retrouver une intervention
@@ -7669,6 +7721,7 @@ function allerVersChirurgiePuce_c() {
 function removeChirurgieConsultation(idx) {
   const type = chirurgiesListeConsultation[idx]?.type;
   chirurgiesListeConsultation.splice(idx, 1);
+  delete chirTxState[type];
   const chip = [...document.querySelectorAll('#chirurgies-antecedents-card .chip[data-chir]')].find(c => c.dataset.chir === type);
   if (chip) chip.classList.remove('on');
   renderChirurgiesListConsultation();
@@ -7682,22 +7735,12 @@ function renderChirurgiesListConsultation() {
     return;
   }
   wrap.innerHTML = chirurgiesListeConsultation.map((c, i) => `
-    <div style="padding:12px 14px;border:1px solid var(--taupe);border-radius:14px;background:var(--blanc)">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
-        <div style="font-size:14px;color:var(--ardoise);font-weight:600">${c.type}</div>
-        <button type="button" onclick="removeChirurgieConsultation(${i})" style="background:transparent;border:none;cursor:pointer;color:var(--gris);font-size:15px;padding:0 2px" title="Supprimer">✕</button>
+    <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border:1px solid var(--taupe);border-radius:14px;background:var(--blanc);cursor:pointer" onclick="renderChirPopup('${c.type.replace(/'/g,"\\'")}')">
+      <div style="flex:1;min-width:140px">
+        <div style="font-size:14px;color:var(--ardoise);font-weight:600">${c.type}${c.moisAnnee ? ` <span style="font-weight:400;color:var(--gris);font-size:12.5px">— ${c.moisAnnee}</span>` : ''}</div>
+        ${c.ressenti ? `<div style="font-size:12.5px;color:var(--gris);margin-top:3px">${c.ressenti}</div>` : ''}
       </div>
-      <div class="g3" style="margin-top:8px;gap:8px">
-        <div><label class="fl" style="font-size:10px">Mois / Année</label><input class="fi" type="text" style="padding:7px 10px;font-size:12.5px" placeholder="ex : mars 2005" value="${c.moisAnnee||''}" oninput="updateChirurgieChamp_c(${i},'moisAnnee',this.value)"></div>
-        <div><label class="fl" style="font-size:10px">Statut</label>
-          <select class="fi" style="padding:7px 10px;font-size:12.5px" onchange="updateChirurgieChamp_c(${i},'statut',this.value)">
-            <option value="" ${!c.statut?'selected':''}>—</option>
-            <option ${c.statut==='Bien récupérée, sans séquelle'?'selected':''}>Bien récupérée, sans séquelle</option>
-            <option ${c.statut==='Séquelles ou suivi encore en cours'?'selected':''}>Séquelles ou suivi encore en cours</option>
-          </select>
-        </div>
-        <div><label class="fl" style="font-size:10px">Ressenti / suites</label><input class="fi" type="text" style="padding:7px 10px;font-size:12.5px" placeholder="ex : bien vécue" value="${c.ressenti||''}" oninput="updateChirurgieChamp_c(${i},'ressenti',this.value)"></div>
-      </div>
+      <button type="button" onclick="event.stopPropagation();removeChirurgieConsultation(${i})" style="background:transparent;border:none;cursor:pointer;color:var(--gris);font-size:15px;padding:4px 6px" title="Supprimer">✕</button>
     </div>
   `).join('');
 }
@@ -7982,16 +8025,29 @@ function updateNavProgress() {
     if (!sec || !label) continue;
     const qcards = sec.querySelectorAll('.qcard');
     if (!qcards.length) { label.textContent = ''; continue; }
-    let answered = 0;
+    // Champs libres exclus du calcul (13/09/2026, à la demande de Sabrina) : une textarea de
+    // notes facultatives ("Notes libres — ...") est volontairement remplie très rarement, même
+    // sur un questionnaire par ailleurs complet — elle ne doit ni compter comme "répondue" en
+    // elle-même, ni faire baisser le pourcentage si c'est la SEULE chose présente dans la
+    // question. On repère donc d'abord si une question a au moins un élément structuré
+    // (puce, case, select, porte, champ court type date/année) ; si oui, seul un élément
+    // structuré compte pour la marquer "répondue". Si une question n'a VRAIMENT que des
+    // textareas (aucun élément structuré), elle est exclue du calcul dans les deux sens —
+    // ni comptée comme un manque, ni comme un acquis.
+    let total = 0, answered = 0;
     qcards.forEach(q => {
+      const structureExiste =
+        q.querySelector('select.fi, input.fi[type=text], input.fi[type=number], input.fi[type=date], input.fi[type=time], .chip[data-diag], .chip[data-chir], .check-item, .trig-check, .porte-opts, .bilan-card') !== null;
+      if (!structureExiste) return; // question uniquement composée de champ(s) libre(s) — exclue
+      total++;
       const has =
         [...q.querySelectorAll('input.fi[type=text], input.fi[type=number], input.fi[type=date], input.fi[type=time]')].some(el => el.value.trim().length > 0) ||
-        [...q.querySelectorAll('textarea.fi')].some(el => el.value.trim().length > 3) ||
         [...q.querySelectorAll('select.fi')].some(el => el.value) ||
         !!q.querySelector('.chip.on, .check-item.checked, .trig-check.checked, .porte-opt.sel, .bilan-card.checked');
       if (has) answered++;
     });
-    const pct = Math.round(answered / qcards.length * 100);
+    if (!total) { label.textContent = ''; continue; }
+    const pct = Math.round(answered / total * 100);
     label.textContent = pct + '%';
     label.classList.toggle('complete', pct === 100);
   }
