@@ -8272,11 +8272,26 @@ function collectAllData() {
   // des antécédents (date, statut, effets) n'étaient captés que si cette popup précise restait
   // ouverte au moment de collectAllData() — désormais lus depuis diagTxState, qui persiste
   // indépendamment de l'ouverture/fermeture de la popup (voir saveDiagPopupState).
+  // PONT AUTOMATIQUE VERS LE SUIVI (13/09/2026, demande explicite de Sabrina) : diagTxState
+  // mélangeait jusqu'ici opérations (ex. Conisation) et traitements (ex. Antithyroïdiens) dans
+  // une seule liste texte. On les sépare maintenant : les opérations alimentent d.chirurgies —
+  // exactement le champ que le suivi sait déjà importer automatiquement dans sa liste évolutive
+  // "Antécédents chirurgicaux" (voir importerChirurgiesDepuisSnapshot côté suivi, qui existait
+  // déjà mais ne recevait jamais rien depuis la consultation) — sans qu'aucune modification ne
+  // soit nécessaire côté suivi. Une opération se distingue d'un traitement par sa fiche détail :
+  // toujours un seul champ (date de réalisation) contre plusieurs pour un traitement (statut,
+  // date d'arrêt, marque) — cf. tItemHtml, qui construit ces deux formes différemment.
   const diagTxLines = [];
+  const chirurgiesAuto = [];
   Object.keys(diagTxState).forEach(nom => {
     (diagTxState[nom] || []).filter(t => t.on).forEach(t => {
       const details = t.values.filter(Boolean).join(' · ');
-      diagTxLines.push(`${nom} — ${t.label}` + (details ? ` (${details})` : ''));
+      const estOperation = t.values.length <= 2; // date + effets ressentis seulement (vs 5 champs pour un traitement) — voir tItemHtml
+      if (estOperation) {
+        chirurgiesAuto.push({ type: `${t.label} (${nom})`, moisAnnee: t.values[0] || '' });
+      } else {
+        diagTxLines.push(`${nom} — ${t.label}` + (details ? ` (${details})` : ''));
+      }
     });
   });
   d.diag_traitements = diagTxLines.join('\n');
@@ -8334,6 +8349,31 @@ function collectAllData() {
   d.traitements_recus = txChecked.map(t => `[${t.section}] ${t.ligne}`).join('\n');
   txChecked.forEach(t => { if (t.section && t.section !== 'sec-11') { if (!d.parSection[t.section]) d.parSection[t.section] = []; d.parSection[t.section].push(t.ligne); } });
   d.symptomes_coches += (d.symptomes_coches ? '\n' : '') + d.traitements_recus;
+
+  // PONT AUTOMATIQUE VERS LE SUIVI, suite (13/09/2026) : les tx-item cochés directement dans les
+  // guides spécialisés (Chirurgie ovarienne, THS, Metformine, Cœlioscopie…) — PAS dans une popup
+  // de diagnostic — n'étaient captés qu'en texte libre (d.traitements_recus ci-dessus), jamais
+  // réinjectés dans le suivi. On les répartit ici, comme pour diagTxState juste avant : les
+  // opérations rejoignent d.chirurgies, les traitements s'ajoutent à d.diag_traitements. On
+  // exclut la popup de diagnostic (#brief-modal-body) pour ne jamais compter deux fois le même
+  // item : diagTxState reste la source de vérité pour ce qui est coché dans une popup.
+  const CHIRURGIE_RE = /chirurgie|cœlioscopie|coelioscopie|kystectomie|ponction ovocytaire|ablation|conisation|drilling|thyroïdectomie|myomectomie|césarienne|appendicectomie|résection/i;
+  [...document.querySelectorAll('.tx-item.on')].forEach(el => {
+    if (el.closest('#brief-modal-body')) return; // déjà traité via diagTxState ci-dessus
+    const nom = el.querySelector('span')?.textContent?.trim() || el.textContent.replace('✓','').trim();
+    if (/^aucun/i.test(nom)) return; // "Aucune chirurgie", "Aucun traitement…" — jamais une donnée positive
+    const detail = el.nextElementSibling?.classList?.contains('tx-detail') ? el.nextElementSibling : null;
+    const inputs = detail ? [...detail.querySelectorAll('input.fi, select.fi')].map(i => i.value?.trim()).filter(Boolean) : [];
+    if (CHIRURGIE_RE.test(nom)) {
+      chirurgiesAuto.push({ type: nom, moisAnnee: inputs[0] || '' });
+    } else if (inputs.length) {
+      // Seulement si un détail a été renseigné (date/statut/marque) — un simple "coché sans
+      // rien préciser" reste dans d.traitements_recus mais n'a pas besoin de dupliquer la ligne.
+      diagTxLines.push(nom + ' (' + inputs.join(' · ') + ')');
+    }
+  });
+  d.chirurgies = chirurgiesAuto;
+  d.diag_traitements = diagTxLines.join('\n');
 
   // ── FAILLE CORRIGÉE (12/09/2026, audit approfondi) : les 80 « portes » (Le SPM a-t-il un
   // impact visible ? Non/Un peu/Oui, etc.) ne laissaient aucune trace exploitable — seul le
