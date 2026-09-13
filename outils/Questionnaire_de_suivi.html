@@ -50,9 +50,18 @@
 .float-susp-label{font-size:12.5px;font-weight:700;color:var(--ardoise);margin-bottom:4px;display:flex;align-items:center;gap:6px}
 .float-susp-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
 .float-susp-new{font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--acc-d);background:var(--acc-l);border-radius:var(--r99);padding:2px 7px;margin-left:auto}
+.float-susp-score{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.float-susp-score-text{font-size:10.5px;font-weight:700;color:var(--gris);letter-spacing:.03em;white-space:nowrap}
+.float-susp-score-bar{flex:1;height:5px;border-radius:var(--r99);background:var(--off);overflow:hidden}
+.float-susp-score-fill{height:100%;border-radius:var(--r99);background:var(--ocre);transition:width .3s ease}
 .float-susp-why{font-size:11.5px;color:var(--gris);line-height:1.55;margin-bottom:8px}
 .float-susp-relance{font-size:11.5px;color:var(--encre);line-height:1.5;background:var(--off);border-left:2.5px solid var(--sable);border-radius:0 8px 8px 0;padding:7px 10px}
 .float-susp-relance b{font-weight:700;color:var(--gris);font-size:10px;letter-spacing:.08em;text-transform:uppercase;display:block;margin-bottom:2px}
+.float-susp-relance-clickable{cursor:pointer;transition:all .15s}
+.float-susp-relance-clickable:hover{border-left-color:var(--ocre);background:var(--rose-clair)}
+.float-susp-jump{display:block;margin-top:5px;font-size:10px;font-weight:700;color:var(--ocre);text-transform:uppercase;letter-spacing:.04em}
+.jump-highlight{animation:jumpPulseSuivi 1.1s ease 2}
+@keyframes jumpPulseSuivi{0%,100%{box-shadow:none}50%{box-shadow:0 0 0 4px var(--ocre)}}
 .float-susp-empty{font-size:11.5px;color:var(--gris);font-style:italic;padding:14px 4px;text-align:center}
 @media (max-width:640px){#float-susp{right:12px;bottom:12px;left:12px;width:auto}}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -605,7 +614,11 @@ select.fi.answered{background:var(--off)}
 <div class="ex-chips" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px"><button type="button" class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> SIBO H₂ confirmé par test respiratoire (résultat positif à 28 ppm H₂ à 90 min).</button><button type="button" class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Ballonnements quotidiens après chaque repas, ventre «  enceinte » le soir.</button><button type="button" class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Fatigue chronique matinale malgré 8h de sommeil.</button><button type="button" class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Dysménorrhée sévère J1-J2.</button><button type="button" class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Alternance diarrhée-constipation depuis 4 ans.</button><button type="button" class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Anxiety alimentaire.</button><button type="button" class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> SPM (irritabilité, gonflement, crampes J-5).</button><button type="button" class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Candidose vaginale récurrente.</button></div>
       </div>
       <div style="margin-top:10px"><label class="fl">Spécialité(s) concernée(s)</label>
-        <div class="chip-wrap">
+        <!-- BUG CORRIGÉ (13/09/2026, audit report automatique) : ce chip-wrap n'avait jamais
+             d'id="specialite-chips" alors que collectData() lit précisément
+             #specialite-chips .chip.on pour construire d.specialites — ce champ était donc
+             TOUJOURS vide depuis sa création, qu'importe ce qui était coché ici. -->
+        <div class="chip-wrap" id="specialite-chips">
           <button class="chip" onclick="toggleChip(this)"><span class="ck">✓</span> SIBO H₂</button>
           <button class="chip" onclick="toggleChip(this)"><span class="ck">✓</span> SIBO Méthane</button>
           <button class="chip" onclick="toggleChip(this)"><span class="ck">✓</span> SIBO H₂S</button>
@@ -1657,6 +1670,50 @@ select.fi.answered{background:var(--off)}
       <div style="margin-top:12px"><label class="fl">Précisions — date d'apparition, circonstances, intensité</label>
         <textarea class="fi" placeholder="Saisissez vos notes…"></textarea>
 <div class="ex-chips" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px"><button type="button" class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Céphalées frontales apparues J12 (coïncide avec la suppression du café — sevrage probable, à surveiller).</button><button type="button" class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Nouvelle fatigue musculaire depuis 3 semaines sans lien apparent — vérifier ferritine.</button><button type="button" class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Urticaire localisée au ventre J8 — possible réaction à l&#39;origan → suspendre et observer.</button><button type="button" class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Spotting inter-menstruel depuis la 2e semaine — explorer lien avec les crucifères et la détox des œstrogènes.</button><button type="button" class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Douleurs lombaires aggravées la nuit → orienter vers médecin.</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- VEILLE INTER-SPÉCIALITÉS (13/09/2026) : 2 signaux courts par spécialité, TOUJOURS visibles
+       ici (contrairement aux .spec-block, display:none tant que la spécialité n'est pas déjà
+       active) — pour qu'un terrain émergent chez une cliente suivie pour une seule pathologie
+       remonte quand même dans la fenêtre flottante. Libellés identiques au questionnaire de
+       consultation pour un score "X sur Y" comparable d'un outil à l'autre. -->
+  <div class="qcard">
+    <div class="qcard-top">
+      <div class="qnum"><svg class="picto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
+      <div class="qcontent">
+        <div class="qtitle">Veille inter-spécialités — à cocher pour toutes, quel que soit le terrain déjà suivi</div>
+        <div class="edu-box science">
+          <div class="edu-lbl"><svg class="picto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0" aria-hidden="true"><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/><line x1="4.9" y1="4.9" x2="7" y2="7"/><line x1="17" y1="17" x2="19.1" y2="19.1"/><line x1="4.9" y1="19.1" x2="7" y2="17"/><line x1="17" y1="7" x2="19.1" y2="4.9"/></svg> Pourquoi ce balayage, même hors sujet du protocole en cours</div>
+          <p>Un terrain évolue dans le temps — un signe qui apparaît alors qu'une autre pathologie est déjà suivie ne remonte pas toujours spontanément. Ces deux signaux par spécialité suffisent à faire apparaître une piste dans la fenêtre flottante, sans dérouler tout un guide approfondi pendant la séance.</p>
+        </div>
+      </div>
+    </div>
+    <div class="qinput">
+      <div class="check-list">
+        <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div><div>SOPK — Cycles irréguliers (&gt;35 jours) associés à une pilosité excessive (visage, torse)<span class="check-sub">L'association cycles longs + pilosité oriente vers une hyperandrogénie, le mécanisme central du SOPK.</span></div></div>
+        <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div><div>SOPK — Acné hormonale (mâchoire, menton) résistante aux traitements classiques<span class="check-sub">Une acné qui résiste aux traitements dermatologiques et se localise sur la mâchoire signe souvent une origine hormonale.</span></div></div>
+        <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div><div>SIBO — Ballonnements marqués et systématiques après les repas, surtout riches en fibres<span class="check-sub">Une prolifération bactérienne dans l'intestin grêle fermente les fibres sur place, d'où ce ballonnement quasi-immédiat.</span></div></div>
+        <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div><div>SIBO — Antécédent de gastro-entérite sévère ou de cure d'antibiotiques à large spectre<span class="check-sub">Ces deux événements sont les déclencheurs les plus documentés d'un SIBO post-infectieux ou post-antibiotique.</span></div></div>
+        <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div><div>Endométriose — Douleurs pelviennes chroniques en dehors des règles (dyspareunie, douleur à la défécation)<span class="check-sub">Une douleur qui déborde largement de la période des règles oriente vers des lésions actives toute l'année.</span></div></div>
+        <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div><div>Endométriose — Règles très douloureuses et invalidantes depuis les premières règles<span class="check-sub">Une dysménorrhée sévère présente dès l'adolescence est l'un des signaux les plus spécifiques d'une endométriose jamais explorée.</span></div></div>
+        <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div><div>SII — Douleur abdominale nettement soulagée par la défécation<span class="check-sub">Ce soulagement net après la selle est le critère le plus spécifique du syndrome de l'intestin irritable.</span></div></div>
+        <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div><div>SII — Urgences défécatoires fréquentes (besoin impérieux et immédiat d'aller à la selle)<span class="check-sub">Cette urgence traduit une hypersensibilité et une hypermotilité du côlon typiques du SII.</span></div></div>
+        <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div><div>Ménopause / périménopause — Bouffées de chaleur ou sueurs nocturnes, hors contexte infectieux<span class="check-sub">Ce signe vasomoteur, sans fièvre ni infection, reflète directement la baisse et l'instabilité des œstrogènes.</span></div></div>
+        <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div><div>Ménopause / périménopause — Cycles qui se raccourcissent ou s'irrégularisent après 40 ans, avec sécheresse vaginale<span class="check-sub">La combinaison cycle qui change + sécheresse vaginale après 40 ans est plus spécifique que chaque signe pris seul.</span></div></div>
+        <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div><div>Hashimoto / thyroïde — Frilosité permanente, même en été<span class="check-sub">Une frilosité qui persiste même par temps chaud traduit un ralentissement du métabolisme de base.</span></div></div>
+        <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div><div>Hashimoto / thyroïde — Sourcils clairsemés au niveau de la queue du sourcil<span class="check-sub">C'est l'un des signes visuels les plus fiables d'une thyroïde ralentie.</span></div></div>
+        <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div><div>Surrénales / cortisol — Épuisement franc au réveil qui s'améliore nettement en fin de journée<span class="check-sub">Ce profil d'énergie inversé est la signature la plus caractéristique d'un cortisol qui ne suit plus son rythme naturel.</span></div></div>
+        <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div><div>Surrénales / cortisol — Craquages sucrés systématiques en fin d'après-midi (16h-17h)<span class="check-sub">Cette baisse d'énergie à heure fixe traduit une chute de cortisol l'après-midi, compensée par un besoin de sucre rapide.</span></div></div>
+        <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div><div>Aménorrhée centrale — Absence de règles depuis plus de 6 mois, sans grossesse ni ménopause<span class="check-sub">Une absence de règles aussi longue oriente vers un arrêt de l'axe cerveau-ovaires plutôt qu'un simple cycle irrégulier.</span></div></div>
+        <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div><div>Aménorrhée centrale — Charge d'entraînement sportif élevée et/ou apports alimentaires réduits<span class="check-sub">Un déficit énergétique est la cause la plus fréquente de mise en veille de l'axe hormonal chez la femme jeune.</span></div></div>
+        <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div><div>Excès d'imprégnation œstrogénique — Règles abondantes avec caillots importants<span class="check-sub">Des règles hémorragiques avec caillots signalent souvent un endomètre trop stimulé par un excès d'œstrogènes.</span></div></div>
+        <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div><div>Excès d'imprégnation œstrogénique — Tension mammaire marquée en 2e partie de cycle<span class="check-sub">Cette tension prémenstruelle intense traduit une stimulation excessive du tissu mammaire par les œstrogènes.</span></div></div>
+        <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div><div>Déficit de progestérone — Cycle raccourci (&lt;25 jours) ou phase lutéale courte (&lt;10 jours)<span class="check-sub">Une phase lutéale courte traduit une production de progestérone insuffisante après l'ovulation.</span></div></div>
+        <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div><div>Déficit de progestérone — Fausse(s) couche(s) précoce(s) récente(s)<span class="check-sub">La progestérone maintient la muqueuse utérine en tout début de grossesse — un déficit peut y contribuer.</span></div></div>
+        <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div><div>Déficit androgénique féminin — Baisse de libido marquée et persistante<span class="check-sub">La testostérone, même à faible dose chez la femme, joue un rôle central dans le désir.</span></div></div>
+        <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div><div>Déficit androgénique féminin — Perte de masse musculaire ou de tonicité malgré une activité inchangée<span class="check-sub">Une perte de tonicité malgré une activité stable oriente vers un manque d'androgènes anabolisants.</span></div></div>
       </div>
     </div>
   </div>
@@ -3065,17 +3122,17 @@ function updateSpecialtyBlocks() {
    en haut du questionnaire (badge "nouveau").
 ══════════════════════════════════════════════════════ */
 const SPEC_KEYWORDS_LIVE = {
-  sopk: [/hirsutisme/i, /acné hormonale/i, /acanthosis nigricans/i, /cycles? (courts|irrégulier)/i, /chute de cheveux.*androgénique/i],
-  sibo: [/gastro-entérite sévère/i, /antibiotiques à large spectre/i, /ballonnements/i],
-  endo: [/dysménorrhée sévère/i, /dyspareunie/i, /douleurs pelviennes chroniques/i, /crampes.*(spasmes|utérins)/i],
-  sii: [/douleur.*soulagée.*défécation/i, /urgences défécatoires/i],
-  meno: [/bouffées de chaleur/i, /sécheresse vaginale/i, /vaginose/i, /fuites urinaires/i, /incontinence/i, /douleurs articulaires/i, /brouillard mental/i],
-  hashi: [/frilosité/i, /queue.*sourcil/i, /constipation/i],
-  surr: [/épuisée le matin/i, /coup de barre/i, /réveils nocturnes/i, /craquages? sucrés?/i, /décrocher.*soir/i],
-  amenorrhee: [/retour des règles/i, /adéquation apports.*dépense/i, /balance énergétique/i, /rapport difficile.*(alimentation|poids|corps)/i],
-  hyperoestro: [/règles abondantes/i, /tension mammaire/i, /seins fibrokystiques/i, /migraines cycliques/i, /rétention d.eau/i],
-  progesterone_def: [/déficit de progestérone/i, /phase lutéale courte/i, /fausse\(s\) couche\(s\)/i, /spotting/i],
-  androgene_f: [/baisse de libido/i, /perte de densité osseuse/i, /perte de masse musculaire/i, /libido & désir/i]
+  sopk: [/hirsutisme/i, /acné hormonale/i, /acanthosis nigricans/i, /cycles? (courts|irrégulier)/i, /chute de cheveux.*androgénique/i, /cycles irréguliers.*pilosité excessive/i, /acné hormonale.*résistante/i],
+  sibo: [/gastro-entérite sévère/i, /antibiotiques à large spectre/i, /ballonnements/i, /ballonnements marqués et systématiques après les repas/i],
+  endo: [/dysménorrhée sévère/i, /dyspareunie/i, /douleurs pelviennes chroniques/i, /crampes.*(spasmes|utérins)/i, /règles très douloureuses.*invalidantes.*depuis les premières règles/i],
+  sii: [/douleur.*soulagée.*défécation/i, /urgences défécatoires/i, /douleur abdominale nettement soulagée par la défécation/i],
+  meno: [/bouffées de chaleur/i, /sécheresse vaginale/i, /vaginose/i, /fuites urinaires/i, /douleurs articulaires/i, /brouillard mental/i, /sueurs nocturnes.*hors contexte infectieux/i, /cycles.*raccourcissent.*40 ans/i],
+  hashi: [/frilosité/i, /queue.*sourcil/i, /constipation/i, /frilosité permanente.*même en été/i],
+  surr: [/réveils nocturnes/i, /craquages? sucrés?/i, /décrocher.*soir/i, /épuisement franc au réveil qui s.améliore/i],
+  amenorrhee: [/retour des règles/i, /adéquation apports.*dépense/i, /balance énergétique/i, /rapport difficile.*(alimentation|poids|corps)/i, /absence de règles.*(6 mois|sans grossesse)/i, /charge d.entraînement sportif élevée/i],
+  hyperoestro: [/règles abondantes/i, /tension mammaire/i, /règles abondantes avec caillots importants/i],
+  progesterone_def: [/déficit de progestérone/i, /phase lutéale courte \(<10 jours\)/i, /fausse\(s\) couche\(s\)/i, /fausse\(s\) couche\(s\) précoce\(s\) récente\(s\)/i],
+  androgene_f: [/baisse de libido/i, /perte de masse musculaire/i, /baisse de libido marquée et persistante/i, /perte de masse musculaire ou de tonicité/i]
 };
 const SPEC_REASONS_LIVE = {
   sibo:  { label: 'SIBO (prolifération bactérienne)', pourquoi: 'Ballonnements marqués et/ou antécédent d\'antibiotiques/gastro-entérite — muqueuse et motilité peuvent rester perturbées longtemps.', relance: 'Le ballonnement est-il systématique après les repas ? Persiste-t-il malgré les ajustements alimentaires déjà mis en place ?' },
@@ -3095,6 +3152,31 @@ const FLOAT_SUSP_DOT_SUIVI = {
   meno:'var(--amber)', hashi:'var(--rouge)', surr:'var(--bleu)',
   hyperoestro:'var(--rouge)', progesterone_def:'var(--amber)', androgene_f:'var(--violet)', amenorrhee:'var(--violet)'
 };
+// Activation en un clic depuis la fenêtre flottante (13/09/2026) — contrairement à la
+// consultation où les guides spécialité sont de simples onglets consultables librement, le
+// suivi les garde masqués (.spec-block{display:none}) tant que la spécialité n'est pas
+// officiellement cochée dans "Spécialité(s) concernée(s)" (section 01). Ce clic coche donc
+// réellement le chip correspondant (comme le ferait Sabrina à la main), ce qui déclenche
+// updateSpecialtyBlocks() et affiche le guide complet — puis on y défile directement.
+function activateSuspicionSuivi(key) {
+  const label = Object.entries(SPEC_MAP).find(([, k]) => k === key)?.[0];
+  if (label) {
+    document.querySelectorAll('.chip-wrap .chip').forEach(chip => {
+      if (chip.textContent.replace('✓','').trim() === label && !chip.classList.contains('on')) {
+        chip.classList.add('on');
+      }
+    });
+  }
+  updateSpecialtyBlocks();
+  goSection(2);
+  setTimeout(function(){
+    const el = document.querySelector('.spec-block[data-spec="' + key + '"]');
+    if (!el) return;
+    el.scrollIntoView({behavior:'smooth', block:'start'});
+    el.classList.add('jump-highlight');
+    setTimeout(function(){ el.classList.remove('jump-highlight'); }, 2200);
+  }, 60);
+}
 function getActiveSpecs() {
   const actives = new Set();
   document.querySelectorAll('#sec-2b-chipref .chip.on, .chip-wrap .chip.on').forEach(c => {
@@ -3110,6 +3192,11 @@ document.addEventListener('click', function(e) {
 });
 function detecterSuspicionsLive(actives) {
   const suggestions = new Set();
+  // Score de confiance (13/09/2026) : même principe que le questionnaire de consultation —
+  // on mémorise l'INDEX de chaque motif SPEC_KEYWORDS_LIVE déjà rencontré parmi les items
+  // cochés/dégradés de la séance de suivi, pour afficher ensuite "X sur Y" dans la fenêtre
+  // flottante plutôt qu'un simple badge suggéré/non suggéré.
+  const specMatchIndices = {};
   const textes = [];
   document.querySelectorAll('.check-item.checked').forEach(el => textes.push(el.textContent));
   document.querySelectorAll('.evol-item').forEach(item => {
@@ -3120,12 +3207,22 @@ function detecterSuspicionsLive(actives) {
   });
   textes.forEach(txt => {
     for (const [spec, patterns] of Object.entries(SPEC_KEYWORDS_LIVE)) {
-      if (patterns.some(re => re.test(txt))) suggestions.add(spec);
+      patterns.forEach((re, idx) => {
+        if (re.test(txt)) {
+          suggestions.add(spec);
+          if (!specMatchIndices[spec]) specMatchIndices[spec] = new Set();
+          specMatchIndices[spec].add(idx);
+        }
+      });
     }
   });
-  renderFloatSuspicionsSuivi(suggestions, actives || new Set());
+  renderFloatSuspicionsSuivi(suggestions, actives || new Set(), specMatchIndices);
+  // Exposé pour finalise()/collectData() : transmettre ces pistes au générateur PHV exactement
+  // comme le fait le questionnaire de consultation avec pathologies_pressenties — sinon toute la
+  // détection ajoutée le 13/09/2026 ne sert qu'à l'affichage en séance et se perd à l'export.
+  window.__suiviSuspicions = { suggestions, actives: actives || new Set(), matchIndices: specMatchIndices };
 }
-function renderFloatSuspicionsSuivi(suggestions, actives) {
+function renderFloatSuspicionsSuivi(suggestions, actives, matchIndices) {
   const body = document.getElementById('float-susp-body');
   const count = document.getElementById('float-susp-count');
   if (!body || !count) return;
@@ -3138,10 +3235,24 @@ function renderFloatSuspicionsSuivi(suggestions, actives) {
   body.innerHTML = list.map(s => {
     const r = SPEC_REASONS_LIVE[s];
     const isNew = !actives.has(s);
+    // Voir Questionnaire_de_consultation.html pour la logique détaillée du score.
+    const total = Array.isArray(SPEC_KEYWORDS_LIVE[s]) ? SPEC_KEYWORDS_LIVE[s].length : null;
+    const matched = matchIndices && matchIndices[s] ? matchIndices[s].size : 0;
+    const scoreHtml = !total ? '' : `<div class="float-susp-score">
+      <span class="float-susp-score-text">${matched} sur ${total} signes</span>
+      <span class="float-susp-score-bar"><span class="float-susp-score-fill" style="width:${Math.round(matched / total * 100)}%"></span></span>
+    </div>`;
+    // hyperoestro / progesterone_def / androgene_f n'ont pas de guide dédié (.spec-block)
+    // dans ce fichier — seul un clic vers un guide qui existe réellement est proposé.
+    const hasGuide = !!document.querySelector('.spec-block[data-spec="' + s + '"]');
+    const relanceHtml = !r.relance ? '' : hasGuide
+      ? `<div class="float-susp-relance float-susp-relance-clickable" onclick="activateSuspicionSuivi('${s}')"><b>Question de relance</b>${r.relance}<span class="float-susp-jump">↳ Activer et ouvrir le guide complet</span></div>`
+      : `<div class="float-susp-relance"><b>Question de relance</b>${r.relance}</div>`;
     return `<div class="float-susp-card">
       <div class="float-susp-label"><span class="float-susp-dot" style="background:${FLOAT_SUSP_DOT_SUIVI[s] || 'var(--sable)'}"></span>${r.label}${isNew ? '<span class="float-susp-new">nouveau</span>' : ''}</div>
+      ${scoreHtml}
       <div class="float-susp-why">${r.pourquoi}</div>
-      ${r.relance ? `<div class="float-susp-relance"><b>Question de relance</b>${r.relance}</div>` : ''}
+      ${relanceHtml}
     </div>`;
   }).join('');
 }
@@ -3355,6 +3466,10 @@ function afficherBandeauDossier(row, historique) {
   // Reconstituer les antécédents chirurgicaux déjà notés précédemment (01/09/2026) — la cliente
   // garde son historique complet visible, on n'ajoute ici que ce qui est vraiment nouveau.
   importerChirurgiesDepuisSnapshot(snap);
+  // Reprendre automatiquement la ou les spécialités déjà identifiées (13/09/2026) — le suivi
+  // doit prioriser la pathologie déjà suivie plutôt que de repartir d'une case vide à chaque
+  // séance. Coche les chips correspondants et ouvre directement leur(s) guide(s).
+  importerSpecialitesDepuisSnapshot(snap);
 }
 
 const SPHERE_PAR_DIAGNOSTIC = {
@@ -3954,6 +4069,52 @@ function renderChirurgiesList() {
 // Reconstitue les antécédents chirurgicaux déjà notés lors d'une séance précédente (consultation
 // ou suivi antérieur), pour qu'ils restent visibles sans avoir à les ressaisir — seul le nouveau,
 // s'il y en a un, doit être ajouté manuellement via le formulaire ci-dessus.
+// Report automatique des spécialités suivies (13/09/2026, à la demande de Sabrina) : au suivi,
+// la pathologie déjà identifiée doit être suivie en priorité, pas recochée de mémoire à chaque
+// séance. Deux vocabulaires de libellés coexistent : celui de la consultation initiale (motifs
+// pressentis, Q1c) et celui, plus fin, du suivi (variantes SIBO H₂/Méthane/H₂S, etc.) — cette
+// table fait le pont entre les deux. Les motifs génériques sans guide dédié (ex. "Fatigue
+// chronique", "Prise de poids") ne sont volontairement pas reportés : ils n'ouvrent aucun guide.
+const SPECIALITE_CARRYOVER_MAP = {
+  // Vocabulaire consultation initiale → libellé cible dans le suivi
+  'SIBO': 'SIBO H₂', // hypothèse par défaut : sous-type le plus fréquent, à corriger manuellement
+                      // si le test respiratoire a confirmé Méthane ou H₂S entre-temps.
+  'SII / Côlon irritable': 'SII / Dysbiose',
+  'Endométriose': 'Endométriose',
+  'SOPK': 'SOPK',
+  'Ménopause / périménopause': 'Périménopause',
+  'Hashimoto / Thyroïde': 'Thyroïde',
+  'Fatigue surrénalienne / Cortisol': 'Fatigue / Surrénales',
+  'Aménorrhée centrale': 'Aménorrhée centrale',
+  // Vocabulaire suivi → passe tel quel (report suivi → suivi, séances suivantes)
+  'SIBO H₂': 'SIBO H₂', 'SIBO Méthane': 'SIBO Méthane', 'SIBO H₂S': 'SIBO H₂S',
+  'Dysbiose putréfaction': 'Dysbiose putréfaction', 'Barrière intestinale (LGS)': 'Barrière intestinale (LGS)',
+  'Candidose': 'Candidose', 'SPM': 'SPM', 'Neurotransmetteurs': 'Neurotransmetteurs',
+  'Foie & Détox': 'Foie & Détox', 'Insulino-résistance / métabolique': 'Insulino-résistance / métabolique',
+  'Immunité / Inflammation': 'Immunité / Inflammation'
+};
+function importerSpecialitesDepuisSnapshot(snap) {
+  // snap.specialites vient d'un suivi précédent (vocabulaire suivi) ; snap.motifs vient de la
+  // consultation initiale (vocabulaire consultation) — on prend ce qui est disponible, en
+  // priorité le plus récent (specialites) s'il existe.
+  const source = snap.specialites || snap.motifs || '';
+  if (!source) return;
+  const wrap = document.getElementById('specialite-chips');
+  if (!wrap) return;
+  const chips = [...wrap.querySelectorAll('.chip')];
+  let nbImportees = 0;
+  source.split(',').map(s => s.trim()).filter(Boolean).forEach(label => {
+    const cible = SPECIALITE_CARRYOVER_MAP[label];
+    if (!cible) return; // motif générique sans guide dédié — pas de report
+    const chip = chips.find(c => c.textContent.replace('✓','').trim() === cible);
+    if (chip && !chip.classList.contains('on')) {
+      chip.classList.add('on');
+      chip.dataset.prefilled = '1';
+      nbImportees++;
+    }
+  });
+  if (nbImportees > 0) updateSpecialtyBlocks(); // révèle immédiatement le(s) guide(s) reporté(s)
+}
 function importerChirurgiesDepuisSnapshot(snap) {
   const anterieures = Array.isArray(snap.chirurgies) ? snap.chirurgies : [];
   let ajoutees = 0;
@@ -4450,6 +4611,23 @@ function finalise() {
   const snap = captureSnapshot();
   sauvegarderMaintenant();
 
+  // Pathologies/pistes pressenties (13/09/2026) : même champ, même format que le questionnaire
+  // de consultation (pathologies_pressenties) — c'est celui que generateur.html sait déjà lire
+  // et afficher (aperçu + injection dans "checks"). Sans ce champ, la détection inter-spécialités
+  // du suivi resterait cantonnée à la fenêtre flottante et ne remonterait jamais au générateur.
+  let pathologiesPressentiesStr = '';
+  try {
+    const susp = window.__suiviSuspicions || { suggestions: new Set(), actives: new Set(), matchIndices: {} };
+    pathologiesPressentiesStr = [...susp.suggestions].filter(s => SPEC_REASONS_LIVE[s]).map(s => {
+      const r = SPEC_REASONS_LIVE[s];
+      const total = Array.isArray(SPEC_KEYWORDS_LIVE[s]) ? SPEC_KEYWORDS_LIVE[s].length : null;
+      const matched = susp.matchIndices[s] ? susp.matchIndices[s].size : 0;
+      const scoreTxt = total ? ` (${matched} sur ${total} signes)` : '';
+      const nouveauTxt = susp.actives.has(s) ? '' : ' — NOUVEAU, spécialité pas encore suivie pour cette cliente';
+      return `${r.label}${scoreTxt}${nouveauTxt} — ${r.pourquoi}`;
+    }).join('\n');
+  } catch (e) { console.warn('[Suivi] pathologies pressenties non calculées :', e); }
+
   // Construction du contexte enrichi pour le générateur PHV
   const scoresStr = d.scores.filter(s=>s.prev&&s.now)
     .map(s=>`${s.lbl}: ${s.prev}/10 → ${s.now}/10 (${parseInt(s.now)-parseInt(s.prev)>0?'+':''+(parseInt(s.now)-parseInt(s.prev))})`)
@@ -4481,6 +4659,9 @@ function finalise() {
     date_suivi: d.dateSuivi,
     specialites: d.specialites,
     suivi_specialites: d.suivi_specialites,
+    // Détection automatique inter-spécialités (13/09/2026) — même champ que la consultation,
+    // lu tel quel par generateur.html (aperçu + injection dans "checks").
+    pathologies_pressenties: pathologiesPressentiesStr,
 
     // Contexte
     motifs_initiaux: d.motifsInitiaux,
