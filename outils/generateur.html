@@ -419,6 +419,11 @@ input.fi[readonly]{background:var(--taupe);cursor:default;opacity:.75}
       <button class="p-toggle" data-val="Lévothyrox / thyroïdien" onclick="this.classList.toggle('on')">Lévothyrox / thyroïdien</button>
       <button class="p-toggle" data-val="Aucun de ces traitements" onclick="this.classList.toggle('on')">Aucun de ces traitements</button>
     </div>
+    <div style="margin-top:10px">
+      <label class="fl" style="font-size:11px">Autres traitements à vigilance non listés ci-dessus</label>
+      <textarea class="fi" id="traitements-vigilance-autres" style="min-height:44px" placeholder="Ex : corticoïdes au long cours, chimiothérapie en cours…"></textarea>
+      <p class="field-hint">Pré-rempli automatiquement (13/09/2026) avec tout traitement signalé dans le questionnaire mais qui ne correspond à aucune puce ci-dessus — sans ce champ, il disparaissait silencieusement, y compris pour les interactions à surveiller.</p>
+    </div>
     <div class="subfield" id="anticoag-type-wrap">
       <label class="fl">Type d'anticoagulant précis</label>
       <select class="fi" id="anticoag-type">
@@ -442,6 +447,11 @@ input.fi[readonly]{background:var(--taupe);cursor:default;opacity:.75}
       <button class="p-toggle" data-val="Soja" onclick="this.classList.toggle('on')">Soja</button>
       <button class="p-toggle" data-val="Histamine (intolérance)" onclick="this.classList.toggle('on')">Histamine</button>
       <button class="p-toggle" data-val="Aucune connue" onclick="this.classList.toggle('on')">Aucune connue</button>
+    </div>
+    <div style="margin-top:10px">
+      <label class="fl" style="font-size:11px">Autres allergies / intolérances non listées ci-dessus</label>
+      <textarea class="fi" id="allergies-autres" style="min-height:44px" placeholder="Ex : allergie aux crustacés, intolérance au fructose…"></textarea>
+      <p class="field-hint">⛔️ Pré-rempli automatiquement (13/09/2026) avec toute allergie signalée dans le questionnaire mais absente des puces ci-dessus — sans ce champ, une allergie réelle pouvait disparaître silencieusement au lieu de bloquer une recommandation dangereuse. Vérifiez systématiquement.</p>
     </div>
   </div>
 </div>
@@ -1290,17 +1300,31 @@ function prefillParams() {
   }
   if (sessionData.traitements_vigilance) {
     const valeurs = sessionData.traitements_vigilance.split(',').map(s => s.trim()).filter(Boolean);
-    document.querySelectorAll('#secu-traitements-group .p-toggle').forEach(btn => {
+    const boutonsTx = document.querySelectorAll('#secu-traitements-group .p-toggle');
+    boutonsTx.forEach(btn => {
       const dv = btn.dataset.val;
       if (!btn.classList.contains('on') && valeurs.some(v => v && (dv.includes(v) || v.includes(dv)))) btn.classList.add('on');
     });
+    // FAILLE CORRIGÉE (13/09/2026, signalée par Sabrina) : même bug que les diagnostics — un
+    // traitement à vigilance qui ne correspond à AUCUNE puce (même partiellement) disparaissait
+    // silencieusement, alors qu'il peut conditionner une interaction à surveiller.
+    const txNonReconnus = valeurs.filter(v => !v || ![...boutonsTx].some(b => b.dataset.val.includes(v) || v.includes(b.dataset.val)));
+    const champTxAutres = document.getElementById('traitements-vigilance-autres');
+    if (champTxAutres && !champTxAutres.value && txNonReconnus.length) champTxAutres.value = txNonReconnus.join(', ');
   }
   if (sessionData.allergies_alim) {
     const valeurs = sessionData.allergies_alim.split(',').map(s => s.trim()).filter(Boolean);
-    document.querySelectorAll('#allergies-group .p-toggle').forEach(btn => {
+    const boutonsAl = document.querySelectorAll('#allergies-group .p-toggle');
+    boutonsAl.forEach(btn => {
       const dv = btn.dataset.val;
       if (!btn.classList.contains('on') && valeurs.some(v => v && (dv.includes(v) || v.includes(dv)))) btn.classList.add('on');
     });
+    // FAILLE CORRIGÉE (13/09/2026) : une allergie non reconnue disparaissait silencieusement —
+    // potentiellement le pire cas de tous, puisque les allergies bloquent des recommandations
+    // dangereuses (⛔️ ligne dédiée dans le prompt).
+    const alNonReconnues = valeurs.filter(v => !v || ![...boutonsAl].some(b => b.dataset.val.includes(v) || v.includes(b.dataset.val)));
+    const champAlAutres = document.getElementById('allergies-autres');
+    if (champAlAutres && !champAlAutres.value && alNonReconnues.length) champAlAutres.value = alNonReconnues.join(', ');
   }
 
   // ── Objectifs exprimés — suggestion (surbrillance) à partir de l'objectif à 6 mois formulé
@@ -1467,9 +1491,11 @@ function buildClientData() {
 
   // Collecter traitements à vigilance & allergies alimentaires (sécurité)
   const traitementsBtns = document.querySelectorAll('#secu-traitements-group .p-toggle.on');
-  const traitementsVigilance = [...traitementsBtns].map(b => b.dataset.val).join(', ') || '';
+  const traitementsAutresTxt = document.getElementById('traitements-vigilance-autres')?.value?.trim() || '';
+  const traitementsVigilance = [...[...traitementsBtns].map(b => b.dataset.val), ...(traitementsAutresTxt ? traitementsAutresTxt.split(',').map(s=>s.trim()).filter(Boolean) : [])].join(', ') || '';
   const allergiesBtns = document.querySelectorAll('#allergies-group .p-toggle.on');
-  const allergiesAlim = [...allergiesBtns].map(b => b.dataset.val).join(', ') || '';
+  const allergiesAutresTxt = document.getElementById('allergies-autres')?.value?.trim() || '';
+  const allergiesAlim = [...[...allergiesBtns].map(b => b.dataset.val), ...(allergiesAutresTxt ? allergiesAutresTxt.split(',').map(s=>s.trim()).filter(Boolean) : [])].join(', ') || '';
 
   const gv = id => document.getElementById(id)?.value?.trim() || '';
 
