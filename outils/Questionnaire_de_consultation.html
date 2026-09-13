@@ -1761,6 +1761,36 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
         </div>
       </div>
 
+      <!-- ── SPHÈRE : ONCOLOGIQUE ── (13/09/2026, trou signalé par Sabrina : aucune sphère ne
+           permettait de noter un cancer, quel qu'il soit, comme antécédent à part entière — avec
+           statut actif/résolu, évolution et année, exactement comme les autres pathologies. Le
+           champ "Antécédent de cancer hormono-dépendant" (section Sécurité, plus loin) reste
+           distinct : c'est un garde-fou spécifique pour la contre-indication aux phytoestrogènes,
+           pas un antécédent complet — les deux se complètent, ils ne font pas doublon. -->
+      <div class="acc-box"><div class="acc-hdr" onclick="accT(this)">Oncologique <span class="chevron">▼</span></div>
+        <div class="acc-body">
+          <div class="chip-wrap">
+            <button class="chip" type="button" data-diag="Cancer du sein" onclick="quickAddDiagnostic('Cancer du sein','onco')">Cancer du sein</button>
+            <button class="chip" type="button" data-diag="Cancer de l'endomètre / utérus" onclick="quickAddDiagnostic('Cancer de l\'endomètre / utérus','onco')">Cancer de l'endomètre / utérus</button>
+            <button class="chip" type="button" data-diag="Cancer de l'ovaire" onclick="quickAddDiagnostic('Cancer de l\'ovaire','onco')">Cancer de l'ovaire</button>
+            <button class="chip" type="button" data-diag="Cancer du col de l'utérus" onclick="quickAddDiagnostic('Cancer du col de l\'utérus','onco')">Cancer du col de l'utérus</button>
+            <button class="chip" type="button" data-diag="Cancer de la thyroïde" onclick="quickAddDiagnostic('Cancer de la thyroïde','onco')">Cancer de la thyroïde</button>
+            <button class="chip" type="button" data-diag="Cancer colorectal" onclick="quickAddDiagnostic('Cancer colorectal','onco')">Cancer colorectal</button>
+            <button class="chip" type="button" data-diag="Cancer de la peau (mélanome ou autre)" onclick="quickAddDiagnostic('Cancer de la peau (mélanome ou autre)','onco')">Cancer de la peau (mélanome ou autre)</button>
+            <button class="chip" type="button" data-diag="Cancer du poumon" onclick="quickAddDiagnostic('Cancer du poumon','onco')">Cancer du poumon</button>
+            <button class="chip" type="button" data-diag="Lymphome / leucémie" onclick="quickAddDiagnostic('Lymphome / leucémie','onco')">Lymphome / leucémie</button>
+          </div>
+          <div class="g2" style="margin-top:16px">
+            <input class="fi" type="text" id="diag-manual-onco" placeholder="Autre cancer non listé…" onkeydown="if(event.key==='Enter'){event.preventDefault();addManualDiagnostic('onco','diag-manual-onco');}">
+            <button class="btn" type="button" onclick="addManualDiagnostic('onco','diag-manual-onco')">+ Ajouter</button>
+          </div>
+          <div class="diag-list-render" data-sphere="onco" style="margin-top:12px;display:flex;flex-direction:column;gap:8px"></div>
+          <div style="margin-top:10px"><label class="fl">Précisions cliniques (facultatif — type histologique, traitements reçus (chimio, radiothérapie, chirurgie, hormonothérapie), séquelles…)</label>
+            <textarea class="fi" id="onco-cliente" placeholder="Ex : Cancer du sein RH+ diagnostiqué en 2019, traité par chirurgie + chimiothérapie + hormonothérapie (Tamoxifène en cours) — fatigue résiduelle, bouffées de chaleur…"></textarea>
+          </div>
+        </div>
+      </div>
+
       <!-- ── SPHÈRE : AUTO-IMMUNE, IMMUNITAIRE & CUTANÉE ── -->
       <div class="acc-box"><div class="acc-hdr" onclick="accT(this)">Auto-immune, immunitaire & cutanée <span class="chevron">▼</span></div>
         <div class="acc-body">
@@ -7014,6 +7044,7 @@ function setPopupDiagEvolution(nom, val) {
   const idx = diagnosticsList.findIndex(d => d.nom.toLowerCase() === nom.toLowerCase());
   if (idx === -1) return;
   diagnosticsList[idx].evolution = val;
+  renderDiagnosticsList();
   formTouched = true;
 }
 function setPopupDiagAnnee(nom, val) {
@@ -7172,6 +7203,11 @@ function setDiagnosticAnnee(idx, val) {
   diagnosticsList[idx].annee = (val || '').trim();
   formTouched = true;
 }
+function setDiagnosticEvolution(idx, val) {
+  if (!diagnosticsList[idx]) return;
+  diagnosticsList[idx].evolution = val;
+  formTouched = true;
+}
 
 function removeDiagnostic(idx) {
   diagnosticsList.splice(idx, 1);
@@ -7198,15 +7234,26 @@ function renderDiagnosticsList() {
         : '';
       return;
     }
-    wrap.innerHTML = items.map(({ d, i }) => `
+    wrap.innerHTML = items.map(({ d, i }) => {
+      const EVOLUTIONS = ['Poussée active', 'Rémission', 'Stable sous traitement', 'Non applicable'];
+      const evoOptions = EVOLUTIONS.map(e => `<option ${d.evolution===e?'selected':''}>${e}</option>`).join('');
+      return `
       <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border:1px solid var(--taupe);border-radius:14px;background:var(--blanc);flex-wrap:wrap">
         <span style="flex:1;min-width:140px;font-size:14px;color:var(--ardoise);font-weight:500">${d.nom}</span>
         <button type="button" onclick="setDiagnosticStatut(${i},'actif')" style="padding:7px 14px;border-radius:999px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;border:1.5px solid ${d.statut==='actif'?'var(--rouge)':'var(--taupe)'};background:${d.statut==='actif'?'var(--rouge-clair)':'var(--blanc)'};color:${d.statut==='actif'?'var(--rouge)':'var(--gris)'}">${ICO_ACTIF} Actif actuellement</button>
         <button type="button" onclick="setDiagnosticStatut(${i},'resolu')" style="padding:7px 14px;border-radius:999px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;border:1.5px solid ${d.statut==='resolu'?'var(--ocre)':'var(--taupe)'};background:${d.statut==='resolu'?'var(--or-clair)':'var(--blanc)'};color:${d.statut==='resolu'?'var(--or)':'var(--gris)'}">${ICO_RESOLU} Antécédent résolu</button>
         ${d.statut==='resolu' ? `<input type="text" inputmode="numeric" placeholder="Année (ex : 2019)" value="${d.annee||''}" oninput="setDiagnosticAnnee(${i}, this.value)" style="width:120px;padding:6px 10px;border-radius:999px;border:1.5px solid var(--taupe);font-size:12px;font-family:inherit;color:var(--ardoise)">` : ''}
         <button type="button" onclick="removeDiagnostic(${i})" style="background:transparent;border:none;cursor:pointer;color:var(--gris);font-size:15px;padding:4px 6px" title="Supprimer">✕</button>
+        <div style="width:100%">
+          <label class="fl" style="font-size:10px">Évolution actuelle</label>
+          <select class="fi" style="padding:6px 10px;font-size:12px" onchange="setDiagnosticEvolution(${i}, this.value)">
+            <option value="" ${!d.evolution?'selected':''}>— À préciser —</option>
+            ${evoOptions}
+          </select>
+        </div>
       </div>
-    `).join('');
+    `;
+    }).join('');
   });
 }
 
@@ -7801,7 +7848,7 @@ function construireLigneDeVie() {
   });
 
   // 3) Scan des 4 champs libres "chez la cliente" (Q4) à la recherche d'une année mentionnée dans le texte
-  ['endocrinien-cliente','digestif-cliente','gyneco-cliente','autoimmune-cliente','neuropsy-cliente'].forEach(id => {
+  ['endocrinien-cliente','digestif-cliente','gyneco-cliente','onco-cliente','autoimmune-cliente','neuropsy-cliente'].forEach(id => {
     const el = document.getElementById(id);
     if (!el || !el.value) return;
     const matches = [...el.value.matchAll(/(19|20)\d{2}/g)];
