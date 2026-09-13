@@ -1533,8 +1533,12 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
           <button class="btn" type="button" onclick="ajouterDepuisRecherche()">+ Ajouter à la liste</button>
         </div>
         <p class="field-hint" id="diag-search-hint" style="margin-top:6px;font-size:11.5px;color:var(--gris)">Filtre les puces ci-dessous en direct. Si l'antécédent n'existe pas déjà comme puce, le bouton l'ajoute tel quel — il sera bien repris par le générateur, comme le reste de cette liste.</p>
+        <!-- Lien direct vers la puce trouvée (13/09/2026) : le message texte seul passait
+             inaperçu quand la puce filtrée se trouve loin plus bas dans une autre sphère —
+             ce bouton y défile directement et la fait clignoter, au lieu de la laisser se
+             fondre silencieusement dans une sphère par ailleurs vidée de ses autres puces. -->
+        <button type="button" id="diag-search-jump" onclick="allerVersPuceTrouvee()" style="display:none;margin-top:8px;padding:8px 14px;background:var(--ocre);color:var(--blanc);border:none;border-radius:8px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit">↓ Aller à la puce trouvée</button>
       </div>
-
       <!-- ── SPHÈRE : ENDOCRINIEN, MÉTABOLIQUE & CARDIOVASCULAIRE ── -->
       <div class="acc-box"><div class="acc-hdr" onclick="accT(this)">Endocrinien, métabolique & cardiovasculaire <span class="chevron">▼</span></div>
         <div class="acc-body">
@@ -6999,14 +7003,28 @@ function filtrerAntecedentsRecherche(val) {
     if (match && q) anyVisible = true;
   });
   const hint = document.getElementById('diag-search-hint');
+  const jumpBtn = document.getElementById('diag-search-jump');
   if (!hint) return;
   if (!q) {
     hint.textContent = "Filtre les puces ci-dessous en direct. Si l'antécédent n'existe pas déjà comme puce, le bouton l'ajoute tel quel — il sera bien repris par le générateur, comme le reste de cette liste.";
+    if (jumpBtn) jumpBtn.style.display = 'none';
   } else if (anyVisible) {
     hint.textContent = "Puce(s) trouvée(s) et mise(s) en évidence ci-dessous — cliquez dessus pour l'ajouter avec son statut.";
+    if (jumpBtn) jumpBtn.style.display = 'inline-block';
   } else {
     hint.textContent = "Aucune puce existante ne correspond — le bouton \"+ Ajouter à la liste\" l'ajoutera tel quel, pris en compte par le générateur comme les autres.";
+    if (jumpBtn) jumpBtn.style.display = 'none';
   }
+}
+// Défile directement jusqu'à la première puce filtrée et la fait clignoter (13/09/2026) —
+// nécessaire car une puce isolée par le filtre peut se trouver dans une sphère bien plus bas
+// dans la page (ex. "Auto-immune, immunitaire & cutanée"), facile à manquer visuellement.
+function allerVersPuceTrouvee() {
+  const chip = [...document.querySelectorAll('.acc-box .chip[data-diag]')].find(c => c.style.display !== 'none');
+  if (!chip) return;
+  chip.scrollIntoView({behavior:'smooth', block:'center'});
+  chip.classList.add('jump-highlight');
+  setTimeout(function(){ chip.classList.remove('jump-highlight'); }, 2200);
 }
 
 function ajouterDepuisRecherche() {
