@@ -7907,6 +7907,19 @@ function captureSnapshot() {
   }));
   snap['enfants_oui_non'] = enfantsOui;
   snap['enfants_data'] = JSON.stringify(enfantsData);
+  // Fratrie — même bug que les enfants, jamais capturée du tout jusqu'ici (13/09/2026) : ses
+  // champs dynamiques (sexe/mois/année/lien) n'ont pas d'id, donc sans capture dédiée ils étaient
+  // silencieusement perdus au rechargement, en plus de décaler l'index de TOUS les champs
+  // suivants dans le formulaire (voir le correctif dans restoreSnapshot ci-dessous).
+  const fratrieOui = document.getElementById('fratrie-oui-non')?.querySelector('.chip.on')?.textContent?.trim() || '';
+  const fratrieData = [...document.querySelectorAll('.fratrie-row')].map(row => ({
+    sexe: row.querySelector('.fratrie-sexe')?.value || '',
+    mois: row.querySelector('.fratrie-mois')?.value || '',
+    annee: row.querySelector('.fratrie-annee')?.value || '',
+    lien: row.querySelector('.fratrie-lien')?.value || ''
+  }));
+  snap['fratrie_oui_non'] = fratrieOui;
+  snap['fratrie_data'] = JSON.stringify(fratrieData);
   snap['diagnostics_list'] = JSON.stringify(diagnosticsList);
   saveDiagPopupState(); // fige l'état de la popup en cours avant l'instantané, si elle est ouverte
   snap['diag_tx_state'] = JSON.stringify(diagTxState);
@@ -7915,6 +7928,50 @@ function captureSnapshot() {
 
 function restoreSnapshot(snap) {
   if (!snap) return;
+  // ── BUG CORRIGÉ (13/09/2026, remonté par Sabrina — champs Sommeil non restaurés) ──
+  // Les lignes enfants/fratrie sont créées dynamiquement (pas présentes au chargement de la
+  // page). Les boucles génériques juste en dessous indexent input.fi/select.fi/textarea.fi par
+  // POSITION dans le DOM quand ils n'ont pas d'id. Si ces lignes n'existent pas encore quand ces
+  // boucles s'exécutent, tous les champs situés après elles dans le formulaire (Sommeil, et en
+  // réalité tout le reste du questionnaire) reçoivent un index décalé par rapport à celui utilisé
+  // à l'enregistrement → restauration silencieusement vide ou fausse. On reconstruit donc CES
+  // lignes en tout premier, avant toute boucle générique, pour que le DOM ait exactement la même
+  // forme qu'au moment de la sauvegarde.
+  try {
+    if (snap['enfants_oui_non'] === 'Oui') {
+      const btnOui = document.querySelector('#enfants-oui-non .chip');
+      if (btnOui) toggleEnfantsOuiNon(btnOui, true);
+      document.getElementById('enfants-list').innerHTML = '';
+      const enfantsData = JSON.parse(snap['enfants_data'] || '[]');
+      enfantsData.forEach(e => {
+        ajouterEnfant();
+        const row = document.querySelector('.enfant-row:last-child');
+        if (row) {
+          if (e.sexe) row.querySelector('.enfant-sexe').value = e.sexe;
+          if (e.annee) row.querySelector('.enfant-annee').value = e.annee;
+          if (e.mode) row.querySelector('.enfant-mode').value = e.mode;
+        }
+      });
+    }
+  } catch(e) {}
+  try {
+    if (snap['fratrie_oui_non'] === 'Oui') {
+      const btnOui = document.querySelector('#fratrie-oui-non .chip');
+      if (btnOui) toggleFratrieOuiNon(btnOui, true);
+      document.getElementById('fratrie-list').innerHTML = '';
+      const fratrieData = JSON.parse(snap['fratrie_data'] || '[]');
+      fratrieData.forEach(f => {
+        ajouterFrereSoeur();
+        const row = document.querySelector('.fratrie-row:last-child');
+        if (row) {
+          if (f.sexe) row.querySelector('.fratrie-sexe').value = f.sexe;
+          if (f.mois) row.querySelector('.fratrie-mois').value = f.mois;
+          if (f.annee) row.querySelector('.fratrie-annee').value = f.annee;
+          if (f.lien) row.querySelector('.fratrie-lien').value = f.lien;
+        }
+      });
+    }
+  } catch(e) {}
   document.querySelectorAll('input.fi').forEach((el, i) => { const v = snap['input_' + (el.id || i)]; if (v !== undefined) el.value = v; });
   document.querySelectorAll('select.fi').forEach((el, i) => { const v = snap['select_' + (el.id || i)]; if (v) el.value = v; });
   document.querySelectorAll('textarea.fi').forEach((el, i) => { const v = snap['ta_' + (el.id || i)]; if (v !== undefined) el.value = v; });
@@ -7966,24 +8023,8 @@ function restoreSnapshot(snap) {
       window.AIPanel.attachButtons();
     }
   } catch (e) {}
-  // Enfants — recréer les lignes dynamiques avant de réinjecter leurs valeurs
-  try {
-    if (snap['enfants_oui_non'] === 'Oui') {
-      const btnOui = document.querySelector('#enfants-oui-non .chip');
-      if (btnOui) toggleEnfantsOuiNon(btnOui, true);
-      document.getElementById('enfants-list').innerHTML = '';
-      const enfantsData = JSON.parse(snap['enfants_data'] || '[]');
-      enfantsData.forEach(e => {
-        ajouterEnfant();
-        const row = document.querySelector('.enfant-row:last-child');
-        if (row) {
-          if (e.sexe) row.querySelector('.enfant-sexe').value = e.sexe;
-          if (e.annee) row.querySelector('.enfant-annee').value = e.annee;
-          if (e.mode) row.querySelector('.enfant-mode').value = e.mode;
-        }
-      });
-    }
-  } catch(e) {}
+  // Enfants — reconstruction déplacée tout en haut de cette fonction (13/09/2026), voir le
+  // correctif du bug de décalage d'index expliqué en tête de fonction.
   // Diagnostics & antécédents (statut actif/résolu)
   try { diagnosticsList = JSON.parse(snap['diagnostics_list'] || '[]'); } catch(e) { diagnosticsList = []; }
   try { diagTxState = JSON.parse(snap['diag_tx_state'] || '{}'); } catch(e) { diagTxState = {}; }

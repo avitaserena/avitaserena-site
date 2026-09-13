@@ -3751,6 +3751,23 @@ function restaurerDraft() {
       if(el && el.type!=='range') { el.value=v; }
       else if(el && el.type==='range') { el.value=v; if(el.oninput) el.oninput(); }
     });
+    // BUG CORRIGÉ (13/09/2026, remonté par Sabrina) : les champs sans id sont capturés par
+    // captureSnapshot() sous des clés positionnelles (f_i pour input/textarea, s_i pour select),
+    // mais la boucle ci-dessus ne peut jamais les relire — getElementById('f_3') ou
+    // querySelector('[name="f_3"]') ne trouvent jamais rien puisque ce nom n'existe nulle part
+    // dans le HTML. Résultat : TOUT champ sans id restait vierge après un rechargement, quelle
+    // que soit la section. On les relit ici explicitement, avec le même schéma d'index que la
+    // capture (pas de contenu dynamique inséré avant eux dans ce fichier, donc l'ordre reste fiable).
+    document.querySelectorAll('input[type=text],input[type=number],input[type=date],textarea').forEach((el,i)=>{
+      if (el.id) return;
+      const v = snap['f_'+i];
+      if (v !== undefined) el.value = v;
+    });
+    document.querySelectorAll('select').forEach((el,i)=>{
+      if (el.id) return;
+      const v = snap['s_'+i];
+      if (v) el.value = v;
+    });
     if(snap._chips) try{ const chips=JSON.parse(snap._chips); document.querySelectorAll('.chip').forEach(c=>{ if(chips.includes(c.textContent.replace('✓','').trim())) c.classList.add('on'); }); }catch(e){}
     if(snap._checks) try{ const checks=JSON.parse(snap._checks); document.querySelectorAll('.check-item').forEach((c,i)=>{ if(checks.includes(i)) c.classList.add('checked'); }); }catch(e){}
     if(snap._diagnostics_list) try{ diagnosticsList = JSON.parse(snap._diagnostics_list); renderDiagnosticsList(); syncDiagChipsState(); }catch(e){}
