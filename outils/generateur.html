@@ -565,6 +565,11 @@ input.fi[readonly]{background:var(--taupe);cursor:default;opacity:.75}
     <p class="field-hint">Garde-fou RÈGLE N°11 : une complémentation en iode ne doit jamais être proposée tant que le statut sélénium n'est pas vérifié et optimisé — "Non vérifié" reste le choix le plus prudent par défaut.</p>
   </div>
   <div style="margin-top:16px">
+    <label class="fl">Autres diagnostics actifs non listés ci-dessus</label>
+    <textarea class="fi" id="diagnostics-actifs-autres" style="min-height:52px" placeholder="Ex : Mucoviscidose, maladie de Wilson… tout diagnostic actif qui ne correspond à aucune puce ci-dessus."></textarea>
+    <p class="field-hint">Pré-rempli automatiquement (13/09/2026) avec tout diagnostic marqué « actif » dans le questionnaire mais qui ne correspond à aucune puce prédéfinie ci-dessus — sans ce champ, ce diagnostic disparaissait silencieusement et n'atteignait jamais le prompt envoyé à l'IA, même s'il changeait les contre-indications. Vérifiez, complétez si besoin.</p>
+  </div>
+  <div style="margin-top:16px">
     <label class="fl">Antécédents médicaux résolus (non actifs actuellement)</label>
     <textarea class="fi" id="antecedents-resolus" style="min-height:60px" placeholder="Ex : Papillomavirus (HPV) avec frottis anormal, traité et résolu en 2022 — plus de suivi nécessaire. Mycoses vaginales récidivantes il y a 3 ans, réglées depuis."></textarea>
     <p class="field-hint">Tout ce qui est noté ici est traité comme réglé — le protocole ne proposera pas de soutien actif dessus (ex : pas de soutien immunité vaginale pour un HPV déjà résolu). Utile pour ne pas confondre un antécédent mentionné en séance avec une pathologie active.</p>
@@ -1239,9 +1244,18 @@ function prefillParams() {
   // (module "Diagnostics & antécédents" du questionnaire de consultation/suivi)
   if (sessionData.diagnostics_actifs) {
     const actifs = sessionData.diagnostics_actifs.split(',').map(s => s.trim()).filter(Boolean);
-    document.querySelectorAll('[id^="diagnostics-group"] .p-toggle').forEach(btn => {
-      if (actifs.includes(btn.dataset.val)) toggleDiagnostic(btn);
+    const boutonsDiag = document.querySelectorAll('[id^="diagnostics-group"] .p-toggle');
+    actifs.forEach(nom => {
+      const btn = [...boutonsDiag].find(b => b.dataset.val.toLowerCase() === nom.toLowerCase());
+      if (btn) toggleDiagnostic(btn);
     });
+    // FAILLE CORRIGÉE (13/09/2026, signalée par Sabrina) : un diagnostic actif qui ne correspond
+    // à AUCUNE puce prédéfinie (mucoviscidose, maladie de Wilson, n'importe quoi hors de la
+    // liste type) disparaissait purement et simplement — jamais coché, jamais dans le texte
+    // libre, jamais transmis au prompt. Il rejoint maintenant ce champ dédié, toujours visible.
+    const nonReconnus = actifs.filter(nom => !boutonsDiag.length || ![...boutonsDiag].some(b => b.dataset.val.toLowerCase() === nom.toLowerCase()));
+    const champAutres = document.getElementById('diagnostics-actifs-autres');
+    if (champAutres && !champAutres.value && nonReconnus.length) champAutres.value = nonReconnus.join(', ');
   }
   if (sessionData.antecedents_resolus) {
     const champ = document.getElementById('antecedents-resolus');
@@ -1448,7 +1462,8 @@ function buildClientData() {
 
   // Collecter les diagnostics confirmés
   const diagBtns = document.querySelectorAll('[id^="diagnostics-group"] .p-toggle.on');
-  const diagnosticsConfirmes = [...diagBtns].map(b => b.dataset.val).join(', ') || '';
+  const diagAutresTxt = document.getElementById('diagnostics-actifs-autres')?.value?.trim() || '';
+  const diagnosticsConfirmes = [...[...diagBtns].map(b => b.dataset.val), ...(diagAutresTxt ? diagAutresTxt.split(',').map(s=>s.trim()).filter(Boolean) : [])].join(', ') || '';
 
   // Collecter traitements à vigilance & allergies alimentaires (sécurité)
   const traitementsBtns = document.querySelectorAll('#secu-traitements-group .p-toggle.on');
