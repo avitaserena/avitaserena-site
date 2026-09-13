@@ -109,11 +109,18 @@ body{
 .layout{display:flex;align-items:flex-start;max-width:1180px;margin:0 auto}
 .nav{background:rgba(255,255,255,.88);backdrop-filter:blur(20px);border-right:1px solid var(--taupe);flex:0 0 212px;width:212px;display:flex;flex-direction:column;gap:3px;padding:20px 12px;position:sticky;top:65px;height:calc(100vh - 65px);overflow-y:auto;scrollbar-width:none}
 .nav::-webkit-scrollbar{display:none}
-.nav-btn{padding:11px 14px;font-size:12.5px;font-family:'Inter',sans-serif;font-weight:500;color:var(--gris);border:none;border-left:3px solid transparent;background:none;cursor:pointer;white-space:normal;text-align:left;line-height:1.4;border-radius:0 10px 10px 0;transition:all .2s cubic-bezier(.4,0,.2,1)}
+.nav-btn{padding:9px 14px;font-size:12.5px;font-family:'Inter',sans-serif;font-weight:500;color:var(--gris);border:none;border-left:3px solid transparent;background:none;cursor:pointer;white-space:normal;text-align:left;line-height:1.4;border-radius:0 10px 10px 0;transition:all .2s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;gap:1px}
 .nav-btn.active{color:var(--or);border-left-color:var(--ocre);font-weight:700;background:linear-gradient(to right,var(--or-clair),transparent)}
-.nav-btn:not(.nav-btn-spec)::after{content:'';display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--taupe);margin-left:8px;vertical-align:middle;transition:background .25s}
-.nav-btn.visited:not(.nav-btn-spec)::after{background:var(--ocre)}
+.nav-btn-label::after{content:'';display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--taupe);margin-left:8px;vertical-align:middle;transition:background .25s}
+.nav-btn.visited .nav-btn-label::after{background:var(--ocre)}
 .nav-btn:hover:not(.active){color:var(--ardoise);background:var(--off);border-left-color:var(--taupe);padding-left:17px}
+/* Progression par section dans le menu vertical (13/09/2026) — pourcentage de questions déjà
+   répondues dans CETTE section précise, recalculé en direct sur chaque saisie (voir
+   updateNavProgress, appelée depuis updateCounter). Distinct du point "visité" (juste ouverte
+   une fois) et de la barre globale en haut (juste "quelle section sur 12"). */
+.nav-btn-progress{font-size:10px;font-weight:600;color:var(--taupe);letter-spacing:.02em}
+.nav-btn.active .nav-btn-progress{color:var(--ocre)}
+.nav-btn-progress.complete{color:var(--ocre);font-weight:700}
 .main-col{flex:1 1 auto;min-width:0}
 
 /* ── Guides spécialisés dans la nav (30/08/2026) : groupe visuellement distinct des 12 sections du parcours ── */
@@ -691,18 +698,18 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 <div class="layout">
 <!-- ═══ NAV ═══ -->
 <nav class="nav" id="nav">
-  <button class="nav-btn active" onclick="goSection(0)">01 · Accueil & motif</button>
-  <button class="nav-btn" onclick="goSection(1)">02 · Mode de vie</button>
-  <button class="nav-btn" onclick="goSection(2)">03 · Antécédents</button>
-  <button class="nav-btn" onclick="goSection(3)">04 · Traitements & allergies</button>
-  <button class="nav-btn" onclick="goSection(4)">05 · Scores cliniques</button>
-  <button class="nav-btn" onclick="goSection(5)">06 · Alimentation</button>
-  <button class="nav-btn" onclick="goSection(6)">07 · Foie & émonctoires</button>
-  <button class="nav-btn" onclick="goSection(7)">08 · Surrénales</button>
-  <button class="nav-btn" onclick="goSection(8)">09 · Hormones & cycle</button>
-  <button class="nav-btn" onclick="goSection(9)">10 · Observation</button>
-  <button class="nav-btn" onclick="goSection(10)">11 · Ligne de vie</button>
-  <button class="nav-btn" onclick="goSection(11)">12 · Synthèse</button>
+  <button class="nav-btn active" onclick="goSection(0)"><span class="nav-btn-label">01 · Accueil & motif</span><span class="nav-btn-progress" id="nav-prog-0">0%</span></button>
+  <button class="nav-btn" onclick="goSection(1)"><span class="nav-btn-label">02 · Mode de vie</span><span class="nav-btn-progress" id="nav-prog-1">0%</span></button>
+  <button class="nav-btn" onclick="goSection(2)"><span class="nav-btn-label">03 · Antécédents</span><span class="nav-btn-progress" id="nav-prog-2">0%</span></button>
+  <button class="nav-btn" onclick="goSection(3)"><span class="nav-btn-label">04 · Traitements & allergies</span><span class="nav-btn-progress" id="nav-prog-3">0%</span></button>
+  <button class="nav-btn" onclick="goSection(4)"><span class="nav-btn-label">05 · Scores cliniques</span><span class="nav-btn-progress" id="nav-prog-4">0%</span></button>
+  <button class="nav-btn" onclick="goSection(5)"><span class="nav-btn-label">06 · Alimentation</span><span class="nav-btn-progress" id="nav-prog-5">0%</span></button>
+  <button class="nav-btn" onclick="goSection(6)"><span class="nav-btn-label">07 · Foie & émonctoires</span><span class="nav-btn-progress" id="nav-prog-6">0%</span></button>
+  <button class="nav-btn" onclick="goSection(7)"><span class="nav-btn-label">08 · Surrénales</span><span class="nav-btn-progress" id="nav-prog-7">0%</span></button>
+  <button class="nav-btn" onclick="goSection(8)"><span class="nav-btn-label">09 · Hormones & cycle</span><span class="nav-btn-progress" id="nav-prog-8">0%</span></button>
+  <button class="nav-btn" onclick="goSection(9)"><span class="nav-btn-label">10 · Observation</span><span class="nav-btn-progress" id="nav-prog-9">0%</span></button>
+  <button class="nav-btn" onclick="goSection(10)"><span class="nav-btn-label">11 · Ligne de vie</span><span class="nav-btn-progress" id="nav-prog-10">0%</span></button>
+  <button class="nav-btn" onclick="goSection(11)"><span class="nav-btn-label">12 · Synthèse</span><span class="nav-btn-progress" id="nav-prog-11">0%</span></button>
 
   <div class="nav-divider">
     <span>Guides spécialisés</span>
@@ -7432,12 +7439,13 @@ function timerRender() {
   if (pctEl) pctEl.textContent = pct + '% écoulés';
   if (ring) ring.style.strokeDashoffset = (TIMER_RING_CIRC * frac).toFixed(2);
 
-  // Rouge quand < 20 min
+  // Couleur d'urgence (13/09/2026) : terracotta plutôt que rose pâle — la palette de marque
+  // étant elle-même rose framboise, un fond rose pour "alerte" ne se distinguait plus assez.
   if (timerRemaining <= 20 * 60 && timerRemaining > 0) {
-    disp.style.color = '#C03030';
-    if (pctEl) pctEl.style.color = '#C03030';
-    if (ring) ring.style.stroke = '#C03030';
-    if (wrap) { wrap.style.background = '#FFF0F0'; wrap.style.borderColor = '#D94F4F'; }
+    disp.style.color = 'var(--rouge)';
+    if (pctEl) pctEl.style.color = 'var(--rouge)';
+    if (ring) ring.style.stroke = 'var(--rouge)';
+    if (wrap) { wrap.style.background = 'var(--rouge-clair)'; wrap.style.borderColor = 'var(--rouge)'; }
   } else {
     disp.style.color = 'var(--ardoise)';
     if (pctEl) pctEl.style.color = 'var(--gris)';
@@ -7452,10 +7460,10 @@ function timerAlert() {
   const ring = document.getElementById('timer-ring');
   const pctEl = document.getElementById('timer-pct');
   const icon = document.getElementById('timer-btn-icon');
-  if (disp) { disp.textContent = '0:00:00'; disp.style.color = '#C03030'; }
-  if (pctEl) { pctEl.textContent = '100% écoulés'; pctEl.style.color = '#C03030'; }
-  if (ring) { ring.style.stroke = '#C03030'; ring.style.strokeDashoffset = TIMER_RING_CIRC.toFixed(2); }
-  if (wrap) { wrap.style.background = '#FFE0E0'; wrap.style.borderColor = '#C03030'; }
+  if (disp) { disp.textContent = '0:00:00'; disp.style.color = 'var(--rouge)'; }
+  if (pctEl) { pctEl.textContent = '100% écoulés'; pctEl.style.color = 'var(--rouge)'; }
+  if (ring) { ring.style.stroke = 'var(--rouge)'; ring.style.strokeDashoffset = TIMER_RING_CIRC.toFixed(2); }
+  if (wrap) { wrap.style.background = 'var(--rouge-clair)'; wrap.style.borderColor = 'var(--rouge)'; }
   if (icon) icon.innerHTML = ICON_PLAY;
   timerSave();
   // Vibration si disponible
@@ -7940,6 +7948,35 @@ function updateCounter() {
   const specs = detecterSpecialites();
   if (typeof detecterTerrainsChanbio === 'function') detecterTerrainsChanbio(specs);
   if (typeof detecterMecanismesTransversaux === 'function') detecterMecanismesTransversaux(specs);
+  updateNavProgress();
+}
+// Progression par section dans le menu vertical (13/09/2026) — % de "questions" (qcard) de
+// chaque section qui ont au moins une réponse renseignée. Une question compte comme répondue
+// dès qu'un de ses champs a du contenu (texte, sélection, puce cochée...), peu importe combien —
+// l'objectif est de voir en un coup d'œil où il reste des questions non abordées, pas de compter
+// chaque champ individuellement. Les 12 sections du parcours seulement (pas les guides
+// spécialisés, qui ne sont pas des questions à "compléter" au même sens).
+function updateNavProgress() {
+  const sections = document.querySelectorAll('.section');
+  for (let i = 0; i < 12; i++) {
+    const sec = sections[i];
+    const label = document.getElementById('nav-prog-' + i);
+    if (!sec || !label) continue;
+    const qcards = sec.querySelectorAll('.qcard');
+    if (!qcards.length) { label.textContent = ''; continue; }
+    let answered = 0;
+    qcards.forEach(q => {
+      const has =
+        [...q.querySelectorAll('input.fi[type=text], input.fi[type=number], input.fi[type=date], input.fi[type=time]')].some(el => el.value.trim().length > 0) ||
+        [...q.querySelectorAll('textarea.fi')].some(el => el.value.trim().length > 3) ||
+        [...q.querySelectorAll('select.fi')].some(el => el.value) ||
+        !!q.querySelector('.chip.on, .check-item.checked, .trig-check.checked, .porte-opt.sel, .bilan-card.checked');
+      if (has) answered++;
+    });
+    const pct = Math.round(answered / qcards.length * 100);
+    label.textContent = pct + '%';
+    label.classList.toggle('complete', pct === 100);
+  }
 }
 
 document.addEventListener('input', updateCounter);
@@ -10125,6 +10162,7 @@ function closeRestoreModal(doRestore) {
   if (overlay) document.body.removeChild(overlay);
   if (doRestore && window._pendingRestoreData) {
     restoreSnapshot(window._pendingRestoreData);
+    updateNavProgress();
     showToast('✓ Session restaurée');
   } else {
     localStorage.removeItem(SAVE_KEY);
@@ -10276,7 +10314,7 @@ function supprimerTLEvent(i) {
 }
 
 // Init après chargement DOM
-document.addEventListener('DOMContentLoaded', () => { showAuthGate('praticienne', () => { removeAuthGate(); initTLQuickChips(); timerAutoStartOrRestore(); marquerSectionVisitee(0); }); });
+document.addEventListener('DOMContentLoaded', () => { showAuthGate('praticienne', () => { removeAuthGate(); initTLQuickChips(); timerAutoStartOrRestore(); marquerSectionVisitee(0); updateNavProgress(); }); });
 
 </script>
 
