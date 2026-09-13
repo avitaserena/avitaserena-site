@@ -9764,17 +9764,28 @@ function detecterSpecialites() {
     if (SPEC_CHIP_MAP[txt]) suggestions.add(SPEC_CHIP_MAP[txt]);
   });
 
+  // Seuil minimal avant suggestion (13/09/2026, retour de Sabrina) : un seul signe isolé
+  // (ballonnements, par exemple) n'est pas assez spécifique pour orienter vers un guide —
+  // beaucoup de signes pris seuls sont banals et se retrouvent dans plusieurs pistes à la fois.
+  // On construit donc d'abord le score de TOUS les signes rencontrés, et on ne fait apparaître
+  // la suggestion dans "Pistes en direct" qu'à partir de 2 signes indépendants corroborants.
+  // Ne s'applique qu'à la détection par mots-clés ci-dessous — un motif explicitement coché par
+  // la cliente elle-même (juste au-dessus) reste, lui, affiché dès le premier signe : c'est une
+  // intuition de départ assumée, pas une détection automatique à fiabiliser.
+  const SEUIL_MIN_SIGNES = 2;
   document.querySelectorAll('.trig-check.checked .trig-q, .check-item.checked span:first-of-type').forEach(el => {
     const txt = el.textContent;
     for (const [spec, patterns] of Object.entries(SPEC_KEYWORDS)) {
       patterns.forEach((re, idx) => {
         if (re.test(txt)) {
-          suggestions.add(spec);
           if (!specMatchIndices[spec]) specMatchIndices[spec] = new Set();
           specMatchIndices[spec].add(idx);
         }
       });
     }
+  });
+  Object.entries(specMatchIndices).forEach(([spec, indices]) => {
+    if (indices.size >= SEUIL_MIN_SIGNES) suggestions.add(spec);
   });
   window.__specMatchIndices = specMatchIndices;
 
