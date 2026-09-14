@@ -5221,6 +5221,44 @@ function collectData() {
   d.modifHormonale = document.getElementById('suivi-modif-hormonale')?.value || '';
   d.impactHormonal = document.getElementById('suivi-impact-hormonal')?.value?.trim() || '';
 
+  // ── FAILLE CORRIGÉE (14/09/2026, signalée par Sabrina) : contrairement au questionnaire de
+  // consultation (qui a un balayage générique de secours depuis le 25/08/2026), le suivi n'en
+  // avait AUCUN — tout champ libre sans id explicite (ex. "suivi-metformine-dose", les
+  // précisions dans les guides spécialisés type "Ex : Allicine 500mg 3x/j...") était perdu en
+  // silence, jamais transmis au générateur. generateur.html attendait même déjà un champ
+  // `champs_non_catalogues` (voir son prompt) qui n'a jamais été rempli côté suivi jusqu'ici.
+  // Exclut les .tt-item (déjà capturés en détail via d.suiviTraitements ci-dessus) pour éviter
+  // les doublons, et les champs SANS id uniquement — les champs avec id sont déjà tous lus
+  // nommément dans cette fonction.
+  function labelForField(el) {
+    let node = el.parentElement;
+    while (node) {
+      const lbl = [...node.children].find(c => c.tagName === 'LABEL');
+      if (lbl) return lbl.textContent.trim();
+      node = node.parentElement;
+    }
+    return '';
+  }
+  const catalogues = [];
+  document.querySelectorAll('textarea.fi:not([id]), input.fi:not([id])').forEach(el => {
+    if (el.type === 'range') return;
+    if (el.closest('.tt-item')) return; // déjà capturé en détail via d.suiviTraitements
+    const val = el.value?.trim();
+    if (!val || val.length < 2) return;
+    const lbl = labelForField(el) || el.placeholder || 'Note';
+    catalogues.push(`${lbl} : ${val}`);
+  });
+  document.querySelectorAll('select.fi:not([id])').forEach(el => {
+    if (el.closest('.tt-item')) return;
+    const val = el.value;
+    if (!val || val === '--' || val === '') return;
+    const lbl = labelForField(el) || 'Choix';
+    catalogues.push(`${lbl} : ${val}`);
+  });
+  const metfDose = document.getElementById('suivi-metformine-dose')?.value?.trim();
+  if (metfDose) catalogues.push(`Metformine — nouvelle dose/fréquence si changée : ${metfDose}`);
+  d.champsNonCatalogues = catalogues.join('\n');
+
   return d;
 }
 
@@ -5573,6 +5611,9 @@ function finalise() {
     notes_libres_axes: d.notesLibresParAxe,
     modif_hormonale: d.modifHormonale,
     impact_hormonal: d.impactHormonal,
+    // Filet de sécurité générique (14/09/2026) — tout champ libre du suivi non capturé nommément
+    // par ailleurs. generateur.html lit déjà ce champ, il n'était simplement jamais rempli ici.
+    champs_non_catalogues: d.champsNonCatalogues,
   };
 
   localStorage.setItem('avita_suivi_session', JSON.stringify(suivi_session));
