@@ -51,6 +51,9 @@
 .float-susp-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
 .float-susp-new{font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--acc-d);background:var(--acc-l);border-radius:var(--r99);padding:2px 7px;margin-left:auto}
 .float-susp-score{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.float-susp-signs{list-style:none;margin:0 0 10px;padding:0;font-size:12px;line-height:1.6}
+.float-susp-signs li.signe-coche{color:var(--ardoise);font-weight:600}
+.float-susp-signs li.signe-absent{color:var(--gris);opacity:.7}
 .float-susp-score-text{font-size:10.5px;font-weight:700;color:var(--gris);letter-spacing:.03em;white-space:nowrap}
 .float-susp-score-bar{flex:1;height:5px;border-radius:var(--r99);background:var(--off);overflow:hidden}
 .float-susp-score-fill{height:100%;border-radius:var(--r99);background:var(--ocre);transition:width .3s ease}
@@ -1133,7 +1136,6 @@ select.fi.answered{background:var(--off)}
       <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div><div>SOPK — Acné hormonale (mâchoire, menton) résistante aux traitements classiques<span class="check-sub">Une acné qui résiste aux traitements dermatologiques et se localise sur la mâchoire signe souvent une origine hormonale.</span></div></div>
       <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div><div>Endométriose — Douleurs pelviennes chroniques en dehors des règles (dyspareunie, douleur à la défécation)<span class="check-sub">Une douleur qui déborde largement de la période des règles oriente vers des lésions actives toute l'année.</span></div></div>
       <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div><div>Endométriose — Règles très douloureuses et invalidantes depuis les premières règles<span class="check-sub">Une dysménorrhée sévère présente dès l'adolescence est l'un des signaux les plus spécifiques d'une endométriose jamais explorée.</span></div></div>
-      <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div><div>Ménopause / périménopause — Bouffées de chaleur ou sueurs nocturnes, hors contexte infectieux<span class="check-sub">Ce signe vasomoteur, sans fièvre ni infection, reflète directement la baisse et l'instabilité des œstrogènes.</span></div></div>
       <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div><div>Ménopause / périménopause — Cycles qui se raccourcissent ou s'irrégularisent après 40 ans, avec sécheresse vaginale<span class="check-sub">La combinaison cycle qui change + sécheresse vaginale après 40 ans est plus spécifique que chaque signe pris seul.</span></div></div>
       <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div><div>Aménorrhée centrale — Absence de règles depuis plus de 6 mois, sans grossesse ni ménopause<span class="check-sub">Une absence de règles aussi longue oriente vers un arrêt de l'axe cerveau-ovaires plutôt qu'un simple cycle irrégulier.</span></div></div>
       <div class="check-item" onclick="this.classList.toggle('checked')"><div class="cb">✓</div><div>Aménorrhée centrale — Charge d'entraînement sportif élevée et/ou apports alimentaires réduits<span class="check-sub">Un déficit énergétique est la cause la plus fréquente de mise en veille de l'axe hormonal chez la femme jeune.</span></div></div>
@@ -3418,19 +3420,75 @@ function updateSpecialtyBlocks() {
    lesquelles la spécialité correspondante n'a pas encore été sélectionnée
    en haut du questionnaire (badge "nouveau").
 ══════════════════════════════════════════════════════ */
-const SPEC_KEYWORDS_LIVE = {
-  sopk: [/hirsutisme/i, /acné hormonale/i, /acanthosis nigricans/i, /cycles? (courts|irrégulier)/i, /chute de cheveux.*androgénique/i, /cycles irréguliers.*pilosité excessive/i, /acné hormonale.*résistante/i],
-  sibo: [/gastro-entérite sévère/i, /antibiotiques à large spectre/i, /ballonnements/i, /ballonnements marqués et systématiques après les repas/i],
-  endo: [/dysménorrhée sévère/i, /dyspareunie/i, /douleurs pelviennes chroniques/i, /crampes.*(spasmes|utérins)/i, /règles très douloureuses.*invalidantes.*depuis les premières règles/i],
-  sii: [/douleur.*soulagée.*défécation/i, /urgences défécatoires/i, /douleur abdominale nettement soulagée par la défécation/i],
-  meno: [/bouffées de chaleur/i, /sécheresse vaginale/i, /vaginose/i, /fuites urinaires/i, /douleurs articulaires/i, /brouillard mental/i, /sueurs nocturnes.*hors contexte infectieux/i, /cycles.*raccourcissent.*40 ans/i],
-  hashi: [/frilosité/i, /queue.*sourcil/i, /constipation/i, /frilosité permanente.*même en été/i],
-  surr: [/réveils nocturnes/i, /craquages? sucrés?/i, /décrocher.*soir/i, /épuisement franc au réveil qui s.améliore/i],
-  amenorrhee: [/retour des règles/i, /adéquation apports.*dépense/i, /balance énergétique/i, /rapport difficile.*(alimentation|poids|corps)/i, /absence de règles.*(6 mois|sans grossesse)/i, /charge d.entraînement sportif élevée/i],
-  hyperoestro: [/règles abondantes/i, /tension mammaire/i, /règles abondantes avec caillots importants/i],
-  progesterone_def: [/déficit de progestérone/i, /phase lutéale courte \(<10 jours\)/i, /fausse\(s\) couche\(s\)/i, /fausse\(s\) couche\(s\) précoce\(s\) récente\(s\)/i],
-  androgene_f: [/baisse de libido/i, /perte de masse musculaire/i, /baisse de libido marquée et persistante/i, /perte de masse musculaire ou de tonicité/i]
+const SPEC_SIGNS_LIVE = {
+  // Même principe que côté consultation : un signe peut être reconnu par plusieurs formulations
+  // différentes — s'il matche avec N'IMPORTE LAQUELLE, le signe compte une seule fois.
+  sopk: [
+    { label: 'Hirsutisme / pilosité excessive', patterns: [/hirsutisme/i, /cycles irréguliers.*pilosité excessive/i] },
+    { label: 'Acné hormonale résistante (mâchoire, menton)', patterns: [/acné hormonale/i, /acné hormonale.*résistante/i] },
+    { label: 'Acanthosis nigricans', patterns: [/acanthosis nigricans/i] },
+    { label: 'Cycles courts ou irréguliers', patterns: [/cycles? (courts|irrégulier)/i] },
+    { label: 'Chute de cheveux d\'origine androgénique', patterns: [/chute de cheveux.*androgénique/i] },
+  ],
+  sibo: [
+    { label: 'Antécédent de gastro-entérite sévère', patterns: [/gastro-entérite sévère/i] },
+    { label: 'Antécédent d\'antibiotiques à large spectre', patterns: [/antibiotiques à large spectre/i] },
+    { label: 'Ballonnements marqués et systématiques après les repas', patterns: [/ballonnements/i, /ballonnements marqués et systématiques après les repas/i] },
+  ],
+  endo: [
+    { label: 'Dysménorrhée sévère depuis les premières règles', patterns: [/dysménorrhée sévère/i, /règles très douloureuses.*invalidantes.*depuis les premières règles/i] },
+    { label: 'Dyspareunie (douleur pendant les rapports)', patterns: [/dyspareunie/i] },
+    { label: 'Douleurs pelviennes chroniques hors règles', patterns: [/douleurs pelviennes chroniques/i] },
+    { label: 'Crampes / spasmes utérins marqués', patterns: [/crampes.*(spasmes|utérins)/i] },
+  ],
+  sii: [
+    { label: 'Douleur nettement soulagée par la défécation', patterns: [/douleur.*soulagée.*défécation/i, /douleur abdominale nettement soulagée par la défécation/i] },
+    { label: 'Urgences défécatoires fréquentes', patterns: [/urgences défécatoires/i] },
+  ],
+  meno: [
+    { label: 'Bouffées de chaleur', patterns: [/bouffées de chaleur/i] },
+    { label: 'Sécheresse vaginale', patterns: [/sécheresse vaginale/i] },
+    { label: 'Vaginose', patterns: [/vaginose/i] },
+    { label: 'Fuites urinaires', patterns: [/fuites urinaires/i] },
+    { label: 'Douleurs articulaires', patterns: [/douleurs articulaires/i] },
+    { label: 'Brouillard mental', patterns: [/brouillard mental/i] },
+    { label: 'Sueurs nocturnes, hors contexte infectieux', patterns: [/sueurs nocturnes.*hors contexte infectieux/i] },
+    { label: 'Cycles qui se raccourcissent après 40 ans', patterns: [/cycles.*raccourcissent.*40 ans/i] },
+  ],
+  hashi: [
+    { label: 'Frilosité, même en été', patterns: [/frilosité/i, /frilosité permanente.*même en été/i] },
+    { label: 'Perte de la queue du sourcil', patterns: [/queue.*sourcil/i] },
+    { label: 'Constipation', patterns: [/constipation/i] },
+  ],
+  surr: [
+    { label: 'Réveils nocturnes', patterns: [/réveils nocturnes/i] },
+    { label: 'Craquages sucrés systématiques', patterns: [/craquages? sucrés?/i] },
+    { label: 'Difficulté à décrocher le soir', patterns: [/décrocher.*soir/i] },
+    { label: 'Épuisement matinal qui s\'améliore en soirée', patterns: [/épuisement franc au réveil qui s.améliore/i] },
+  ],
+  amenorrhee: [
+    { label: 'Retour des règles difficile / absent', patterns: [/retour des règles/i] },
+    { label: 'Adéquation apports / dépense énergétique', patterns: [/adéquation apports.*dépense/i, /balance énergétique/i] },
+    { label: 'Rapport difficile à l\'alimentation, au poids ou au corps', patterns: [/rapport difficile.*(alimentation|poids|corps)/i] },
+    { label: 'Absence de règles depuis plus de 6 mois', patterns: [/absence de règles.*(6 mois|sans grossesse)/i] },
+    { label: 'Charge d\'entraînement sportif élevée', patterns: [/charge d.entraînement sportif élevée/i] },
+  ],
+  hyperoestro: [
+    { label: 'Règles abondantes avec caillots importants', patterns: [/règles abondantes/i, /règles abondantes avec caillots importants/i] },
+    { label: 'Tension mammaire marquée', patterns: [/tension mammaire/i] },
+  ],
+  progesterone_def: [
+    { label: 'Cycle raccourci ou phase lutéale courte', patterns: [/déficit de progestérone/i, /phase lutéale courte \(<10 jours\)/i] },
+    { label: 'Fausse(s) couche(s) précoce(s) récente(s)', patterns: [/fausse\(s\) couche\(s\)/i, /fausse\(s\) couche\(s\) précoce\(s\) récente\(s\)/i] },
+  ],
+  androgene_f: [
+    { label: 'Baisse de libido marquée et persistante', patterns: [/baisse de libido/i, /baisse de libido marquée et persistante/i] },
+    { label: 'Perte de masse musculaire ou de tonicité', patterns: [/perte de masse musculaire/i, /perte de masse musculaire ou de tonicité/i] },
+  ],
 };
+const SPEC_KEYWORDS_LIVE = Object.fromEntries(
+  Object.entries(SPEC_SIGNS_LIVE).map(([spec, signs]) => [spec, signs.flatMap(s => s.patterns)])
+);
 const SPEC_REASONS_LIVE = {
   sibo:  { label: 'SIBO (prolifération bactérienne)', pourquoi: 'Ballonnements marqués et/ou antécédent d\'antibiotiques/gastro-entérite — muqueuse et motilité peuvent rester perturbées longtemps.', relance: 'Le ballonnement est-il systématique après les repas ? Persiste-t-il malgré les ajustements alimentaires déjà mis en place ?' },
   sii:   { label: 'SII / côlon irritable', pourquoi: 'Douleur soulagée par la défécation et/ou urgences défécatoires — souvent amplifié par le stress.', relance: 'La douleur est-elle toujours nettement soulagée après la selle ? Le stress récent a-t-il augmenté ?' },
@@ -3503,9 +3561,9 @@ function detecterSuspicionsLive(actives) {
     }
   });
   textes.forEach(txt => {
-    for (const [spec, patterns] of Object.entries(SPEC_KEYWORDS_LIVE)) {
-      patterns.forEach((re, idx) => {
-        if (re.test(txt)) {
+    for (const [spec, signs] of Object.entries(SPEC_SIGNS_LIVE)) {
+      signs.forEach((signe, idx) => {
+        if (signe.patterns.some(re => re.test(txt))) {
           suggestions.add(spec);
           if (!specMatchIndices[spec]) specMatchIndices[spec] = new Set();
           specMatchIndices[spec].add(idx);
@@ -3532,13 +3590,19 @@ function renderFloatSuspicionsSuivi(suggestions, actives, matchIndices) {
   body.innerHTML = list.map(s => {
     const r = SPEC_REASONS_LIVE[s];
     const isNew = !actives.has(s);
-    // Voir Questionnaire_de_consultation.html pour la logique détaillée du score.
-    const total = Array.isArray(SPEC_KEYWORDS_LIVE[s]) ? SPEC_KEYWORDS_LIVE[s].length : null;
-    const matched = matchIndices && matchIndices[s] ? matchIndices[s].size : 0;
+    const signesSpec = SPEC_SIGNS_LIVE[s] || [];
+    const total = signesSpec.length || null;
+    const matchedSet = matchIndices && matchIndices[s] ? matchIndices[s] : new Set();
+    const matched = matchedSet.size;
     const scoreHtml = !total ? '' : `<div class="float-susp-score">
       <span class="float-susp-score-text">${matched} sur ${total} signes</span>
       <span class="float-susp-score-bar"><span class="float-susp-score-fill" style="width:${Math.round(matched / total * 100)}%"></span></span>
     </div>`;
+    // Liste des signes un à un, coché ou non (14/09/2026, demande de Sabrina — voir note
+    // identique côté Questionnaire_de_consultation.html).
+    const signesHtml = !signesSpec.length ? '' : `<ul class="float-susp-signs">${signesSpec.map((signe, idx) =>
+      `<li class="${matchedSet.has(idx) ? 'signe-coche' : 'signe-absent'}">${matchedSet.has(idx) ? '☑' : '☐'} ${signe.label}</li>`
+    ).join('')}</ul>`;
     // hyperoestro / progesterone_def / androgene_f n'ont pas de guide dédié (.spec-block)
     // dans ce fichier — seul un clic vers un guide qui existe réellement est proposé.
     const hasGuide = !!document.querySelector('.spec-block[data-spec="' + s + '"]');
@@ -3548,6 +3612,7 @@ function renderFloatSuspicionsSuivi(suggestions, actives, matchIndices) {
     return `<div class="float-susp-card">
       <div class="float-susp-label"><span class="float-susp-dot" style="background:${FLOAT_SUSP_DOT_SUIVI[s] || 'var(--sable)'}"></span>${r.label}${isNew ? '<span class="float-susp-new">nouveau</span>' : ''}</div>
       ${scoreHtml}
+      ${signesHtml}
       <div class="float-susp-why">${r.pourquoi}</div>
       ${relanceHtml}
     </div>`;
