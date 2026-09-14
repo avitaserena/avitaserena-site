@@ -4685,6 +4685,11 @@ function collectData() {
   // Antécédents chirurgicaux — liste complète (anciens + nouveau du jour), pour le générateur PHV
   // et pour l'import automatique à la séance de suivi suivante.
   d.chirurgies = chirurgiesList;
+  // Statut actif/résolu + évolution des interventions chirurgicales — même pont que les
+  // diagnostics ci-dessus (13/09/2026, demande de Sabrina).
+  d.chirurgiesActives = chirurgiesList.filter(x => x.statut === 'actif').map(x => x.type).join(', ');
+  d.chirurgiesResolues = chirurgiesList.filter(x => x.statut === 'resolu').map(x => x.type + (x.annee ? ' (' + x.annee + ')' : '')).join(', ');
+  d.chirurgiesEvolution = chirurgiesList.filter(x => x.evolution).map(x => `${x.type} — ${x.evolution}`).join('\n');
   // Champs de sécurité (grossesse, cancer, traitements, allergies) — importés du dossier précédent,
   // corrigés si besoin, et retransmis tels quels au générateur + au prochain suivi (chaîne de continuité).
   d.secuGrossesse = document.getElementById('secu-grossesse')?.value || '';
@@ -5058,6 +5063,11 @@ function finalise() {
     // Antécédents chirurgicaux — évolutif d'une séance à l'autre (01/09/2026), importé automatiquement
     // à la séance suivante via importerChirurgiesDepuisSnapshot()
     chirurgies: d.chirurgies,
+    // Statut actif/résolu + évolution des interventions chirurgicales — même pont que les
+    // diagnostics ci-dessus (13/09/2026, demande de Sabrina).
+    chirurgies_actives: d.chirurgiesActives,
+    chirurgies_resolues: d.chirurgiesResolues,
+    chirurgies_evolution: d.chirurgiesEvolution,
 
     // Champs de sécurité — noms alignés avec le questionnaire de consultation et generateur.html (Règle N°6)
     secu_grossesse: d.secuGrossesse,

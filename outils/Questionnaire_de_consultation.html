@@ -8826,6 +8826,17 @@ function collectAllData() {
   // sources se complètent (checkboxes des guides spécialisés + saisie libre pour tout le reste).
   d.chirurgies = [...chirurgiesListeConsultation, ...chirurgiesAuto];
   d.diag_traitements = diagTxLines.join('\n');
+  // Statut actif/résolu + évolution des interventions chirurgicales — même pont que les
+  // diagnostics ci-dessus (13/09/2026, demande de Sabrina : le générateur PHV doit recevoir
+  // les suites actives d'une opération exactement comme un antécédent médical actif).
+  d.chirurgies_actives = chirurgiesListeConsultation.filter(x => x.statut === 'actif').map(x => x.type).join(', ');
+  d.chirurgies_resolues = chirurgiesListeConsultation.filter(x => x.statut === 'resolu').map(x => x.type + (x.annee ? ' (' + x.annee + ')' : '')).join(', ');
+  const chirEvolutionLines = chirurgiesListeConsultation.filter(x => x.evolution).map(x => `${x.type} — ${x.evolution}`);
+  d.chirurgies_evolution = chirEvolutionLines.join('\n');
+  if (chirEvolutionLines.length) {
+    if (!d.parSection['sec-1']) d.parSection['sec-1'] = [];
+    d.parSection['sec-1'].push(...chirEvolutionLines);
+  }
 
   // ── FAILLE CORRIGÉE (12/09/2026, audit approfondi) : les 80 « portes » (Le SPM a-t-il un
   // impact visible ? Non/Un peu/Oui, etc.) ne laissaient aucune trace exploitable — seul le
@@ -8904,6 +8915,10 @@ function construireSectionsSynthese(d) {
       d.diagnostics_actifs ? `Actifs actuellement : ${d.diagnostics_actifs}` : '',
       d.antecedents_resolus ? `Antécédents résolus (non actifs) : ${d.antecedents_resolus}` : '',
     ].filter(Boolean).join('\n') || '— Aucun renseigné —' },
+    { icone: 'heart', titre: 'Interventions chirurgicales — suites actives / résolues', contenu: [
+      d.chirurgies_actives ? `Suites actives : ${d.chirurgies_actives}` : '',
+      d.chirurgies_resolues ? `Bien cicatrisées / résolues : ${d.chirurgies_resolues}` : '',
+    ].filter(Boolean).join('\n') || '— Aucune renseignée —' },
     { icone: 'leaf', titre: 'Pathologies & terrains pressentis (détection automatique)', contenu: d.pathologies_pressenties || '— Aucune détection —' },
     ...sectionsParParcours,
     { icone: 'drop', titre: 'Bilans recommandés', contenu: d.bilans_recommandes || '— Aucun sélectionné —' },
