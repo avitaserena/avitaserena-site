@@ -2131,7 +2131,7 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
   </div>
 
 <!-- Q7 -->
-  <div class="qcard">
+  <div class="qcard" id="q7-medicaments-card">
     <div class="qcard-top">
       <div class="qnum">4</div>
       <div class="qcontent">
@@ -2362,7 +2362,7 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
     </div>
 
 <!-- Q10 Allergies -->
-  <div class="qcard">
+  <div class="qcard" id="q10-allergies-card">
     <div class="qcard-top">
       <div class="qnum">6</div>
       <div class="qcontent">
@@ -2447,6 +2447,18 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
       <div><label class="fl">Notes libres — allergies & intolérances</label>
         <textarea class="fi" placeholder="Réactions inexpliquées, tests d'éviction tentés, bilan allergologique réalisé ou non, contexte de déclenchement..."></textarea>
       </div>
+    </div>
+  </div>
+
+  <div class="qcard" id="recap-traitements-allergies-card" style="border:1.5px solid var(--sable);background:var(--or-clair)">
+    <div class="qcard-top" style="padding-bottom:6px">
+      <div class="qcontent">
+        <div class="qtext" style="font-size:14px"><svg class="picto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0" aria-hidden="true"><path d="M9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> Ce que je retiens de vos traitements, allergies et intolérances — à vérifier avec la cliente</div>
+      </div>
+    </div>
+    <div class="qinput" style="padding-top:0">
+      <div id="recap-traitements-allergies-body" style="font-size:13px;line-height:1.7;color:var(--ardoise)"></div>
+      <p class="field-hint" style="margin-top:8px;font-size:11.5px;color:var(--gris)">Se met à jour automatiquement à chaque case cochée ou champ rempli plus haut — vérifiez qu'il ne manque rien avant de passer à la suite.</p>
     </div>
   </div>
 
@@ -8685,6 +8697,80 @@ function updateNavProgress() {
 
 document.addEventListener('input', updateCounter);
 document.addEventListener('change', updateCounter);
+
+// Récapitulatif "Ce que je retiens de vos traitements, allergies et intolérances" (14/09/2026,
+// demande de Sabrina, même principe que le récapitulatif des antécédents) — recalculé à chaque
+// saisie plutôt que stocké dans un tableau JS dédié, car cette carte mélange trig-check, chips et
+// champs libres sans structure de données commune.
+function labelPourChamp(el) {
+  return el.closest('div')?.querySelector('label')?.textContent?.trim() || '';
+}
+function renderRecapTraitementsAllergies() {
+  const body = document.getElementById('recap-traitements-allergies-body');
+  if (!body) return;
+  const lignesMedicaments = [];
+  const lignesAllergies = [];
+
+  // ── Médicaments/traitements cochés dans les 7 sphères (Q7) ──
+  document.querySelectorAll('#q7-medicaments-card .trig-check.checked').forEach(tc => {
+    const q = tc.querySelector('.trig-q')?.textContent?.trim() || '';
+    const details = [...tc.querySelectorAll('input.fi')].map(inp => {
+      const val = inp.value?.trim();
+      if (!val) return '';
+      const lbl = labelPourChamp(inp);
+      return lbl ? `${lbl} : ${val}` : val;
+    }).filter(Boolean).join(', ');
+    lignesMedicaments.push(details ? `${q} — ${details}` : q);
+  });
+  const ippNonBtn = document.querySelector('[data-funnel="ipp-non"]');
+  if (ippNonBtn && ippNonBtn.classList.contains('on')) lignesMedicaments.push('Aucun IPP actuellement');
+  // Champs "Autre — non listé" et "Notes libres" remplis, dans Q7
+  document.querySelectorAll('#q7-medicaments-card textarea.fi').forEach(ta => {
+    const val = ta.value?.trim();
+    if (!val) return;
+    const lbl = labelPourChamp(ta) || 'Note';
+    lignesMedicaments.push(`${lbl} : ${val}`);
+  });
+
+  // ── Chips de vigilance rapide (Q9 Sécurité) ──
+  const traitementsVigilance = [...document.querySelectorAll('#cons-secu-traitements-group .chip.on')].map(c => c.textContent.replace('✓','').trim());
+  traitementsVigilance.forEach(t => lignesMedicaments.push(`Vigilance : ${t}`));
+
+  // ── Allergies rapides (Q9 Sécurité) ──
+  const allergiesRapides = [...document.querySelectorAll('#cons-allergies-group .chip.on')].map(c => c.textContent.replace('✓','').trim());
+  allergiesRapides.forEach(a => lignesAllergies.push(a));
+
+  // ── Allergies croisées à explorer (pollens) cochées, dans Q10 ──
+  document.querySelectorAll('#q10-allergies-card .acc-box').forEach(box => {
+    const titre = box.querySelector('.acc-hdr')?.textContent?.replace('▼','').trim() || '';
+    if (titre.startsWith('Allergies croisées à explorer')) {
+      box.querySelectorAll('.trig-check.checked .trig-q').forEach(q => lignesAllergies.push(q.textContent.trim()));
+    } else {
+      // Chips cochées (ex-chips) dans chaque catégorie d'allergie détaillée
+      box.querySelectorAll('.ex-chips .chip.on').forEach(c => lignesAllergies.push(`${titre} : ${c.textContent.replace('✓','').trim()}`));
+      // Champ libre rempli de chaque catégorie
+      box.querySelectorAll('textarea.fi').forEach(ta => {
+        const val = ta.value?.trim();
+        if (val) lignesAllergies.push(`${titre} : ${val}`);
+      });
+    }
+  });
+  // Notes libres — allergies & intolérances (hors accordéons, en bas de la carte Q10)
+  const notesAllergies = document.querySelector('#q10-allergies-card > .qinput > div:last-of-type textarea.fi');
+  if (notesAllergies) {
+    const val = notesAllergies.value?.trim();
+    if (val) lignesAllergies.push(`Notes libres : ${val}`);
+  }
+
+  const bloc = (titre, lignes) => lignes.length
+    ? `<div style="margin-bottom:10px"><strong>${titre}</strong><ul style="margin:6px 0 0 18px;padding:0">${lignes.map(l => `<li>${l}</li>`).join('')}</ul></div>`
+    : `<div style="margin-bottom:10px"><strong>${titre}</strong><p style="margin:4px 0 0;color:var(--gris);font-style:italic">Rien de coché ou renseigné pour l'instant.</p></div>`;
+
+  body.innerHTML = bloc('Médicaments & traitements', lignesMedicaments) + bloc('Allergies & intolérances', lignesAllergies);
+}
+document.addEventListener('input', renderRecapTraitementsAllergies);
+document.addEventListener('change', renderRecapTraitementsAllergies);
+document.addEventListener('click', () => setTimeout(renderRecapTraitementsAllergies, 0));
 
 function refreshFunnel() {
   const active = new Set();

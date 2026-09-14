@@ -2062,7 +2062,7 @@ select.fi.answered{background:var(--off)}
     </div>
   </div>
 
-  <div class="qcard">
+  <div class="qcard" id="q14-medicaments-card">
     <div class="qcard-top">
       <div class="qnum">14</div>
       <div class="qcontent">
@@ -2146,7 +2146,7 @@ select.fi.answered{background:var(--off)}
     </div>
   </div>
 
-  <div class="qcard" style="border:1.5px solid var(--sable);background:var(--or-clair)">
+  <div class="qcard" id="q16-securite-card" style="border:1.5px solid var(--sable);background:var(--or-clair)">
     <div class="qcard-top">
       <div class="qnum">16</div>
       <div class="qcontent">
@@ -2261,6 +2261,18 @@ select.fi.answered{background:var(--off)}
         </div>
         <p style="font-size:11px;color:#8C4B67;margin-top:8px;line-height:1.5">Ces champs sont importés automatiquement depuis le dossier précédent (consultation ou dernier suivi) et retransmis au générateur — vous n'avez rien à faire si rien n'a changé.</p>
       </div>
+    </div>
+  </div>
+
+  <div class="qcard" id="recap-traitements-allergies-card-suivi" style="border:1.5px solid var(--sable);background:var(--or-clair)">
+    <div class="qcard-top" style="padding-bottom:6px">
+      <div class="qcontent">
+        <div class="qtext" style="font-size:14px"><svg class="picto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0" aria-hidden="true"><path d="M9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> Ce que je retiens des traitements et allergies pour cette séance — à vérifier avec la cliente</div>
+      </div>
+    </div>
+    <div class="qinput" style="padding-top:0">
+      <div id="recap-traitements-allergies-body-suivi" style="font-size:13px;line-height:1.7;color:var(--ardoise)"></div>
+      <p class="field-hint" style="margin-top:8px;font-size:11.5px;color:var(--gris)">Se met à jour automatiquement à chaque case cochée ou champ rempli plus haut.</p>
     </div>
   </div>
 
@@ -2804,6 +2816,75 @@ function selectFunnelChoice(btn) {
 document.addEventListener('click', () => setTimeout(refreshFunnel, 0));
 document.addEventListener('change', () => setTimeout(refreshFunnel, 0));
 document.addEventListener('DOMContentLoaded', refreshFunnel);
+
+// Récapitulatif "Ce que je retiens des traitements et allergies" (14/09/2026, demande de Sabrina,
+// même principe que côté consultation) — recalculé à chaque saisie.
+function labelPourChampSuivi(el) {
+  return el.closest('div')?.querySelector('label')?.textContent?.trim() || '';
+}
+function renderRecapTraitementsAllergiesSuivi() {
+  const body = document.getElementById('recap-traitements-allergies-body-suivi');
+  if (!body) return;
+  const lignesMedicaments = [];
+  const lignesAllergies = [];
+
+  // ── Check-items cochés dans "Modifications médicamenteuses" (Q14) ──
+  document.querySelectorAll('#q14-medicaments-card .check-item.checked').forEach(ci => {
+    const contentDiv = ci.children[1];
+    let label = '';
+    if (contentDiv) {
+      for (const node of contentDiv.childNodes) {
+        if (node.nodeType === 3 && node.textContent.trim()) { label = node.textContent.trim(); break; }
+      }
+    }
+    if (!label) label = ci.textContent.replace('✓','').trim();
+    const details = [...ci.querySelectorAll('input.fi')].map(inp => {
+      const val = inp.value?.trim();
+      if (!val) return '';
+      const lbl = labelPourChampSuivi(inp);
+      return lbl ? `${lbl} : ${val}` : val;
+    }).filter(Boolean).join(', ');
+    lignesMedicaments.push(details ? `${label} — ${details}` : label);
+  });
+  // Nouveaux médicaments / arrêtés (textareas dans Q14)
+  document.querySelectorAll('#q14-medicaments-card textarea.fi').forEach(ta => {
+    const val = ta.value?.trim();
+    if (!val) return;
+    const lbl = labelPourChampSuivi(ta) || 'Note';
+    lignesMedicaments.push(`${lbl} : ${val}`);
+  });
+
+  // ── Traitements suivis dans les guides spécialisés (tt-item), partout dans le document ──
+  document.querySelectorAll('.tt-item').forEach(item => {
+    const statut = item.dataset.ttStatut;
+    if (!statut) return;
+    const statutLbl = { inchange:'inchangé', dose:'dose modifiée', change:'traitement changé', arret:'arrêté' }[statut] || statut;
+    const detailDiv = item.querySelector('.tt-detail.show');
+    const detail = detailDiv ? [...detailDiv.querySelectorAll('input.fi')].map(inp => {
+      const val = inp.value?.trim();
+      if (!val) return '';
+      const lbl = labelPourChampSuivi(inp);
+      return lbl ? `${lbl} : ${val}` : val;
+    }).filter(Boolean).join(', ') : '';
+    const label = item.dataset.ttLabel || '';
+    lignesMedicaments.push(`${label} — ${statutLbl}${detail ? ' (' + detail + ')' : ''}`);
+  });
+
+  // ── Chips de vigilance et d'allergies rapides (Q16 Sécurité) ──
+  const traitementsVigilance = [...document.querySelectorAll('#cons-secu-traitements-group .chip.on')].map(c => c.textContent.replace('✓','').trim());
+  traitementsVigilance.forEach(t => lignesMedicaments.push(`Vigilance : ${t}`));
+  const allergiesRapides = [...document.querySelectorAll('#cons-allergies-group .chip.on')].map(c => c.textContent.replace('✓','').trim());
+  allergiesRapides.forEach(a => lignesAllergies.push(a));
+
+  const blocSuivi = (titre, lignes) => lignes.length
+    ? `<div style="margin-bottom:10px"><strong>${titre}</strong><ul style="margin:6px 0 0 18px;padding:0">${lignes.map(l => `<li>${l}</li>`).join('')}</ul></div>`
+    : `<div style="margin-bottom:10px"><strong>${titre}</strong><p style="margin:4px 0 0;color:var(--gris);font-style:italic">Rien de coché ou renseigné pour l'instant.</p></div>`;
+
+  body.innerHTML = blocSuivi('Médicaments & traitements', lignesMedicaments) + blocSuivi('Allergies & intolérances', lignesAllergies);
+}
+document.addEventListener('input', renderRecapTraitementsAllergiesSuivi);
+document.addEventListener('change', renderRecapTraitementsAllergiesSuivi);
+document.addEventListener('click', () => setTimeout(renderRecapTraitementsAllergiesSuivi, 0));
 
 /* ══════════════════════════════════════════════════════
    CONSTANTES & CONFIG
