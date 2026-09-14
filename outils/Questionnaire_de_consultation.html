@@ -7691,7 +7691,7 @@ function toggleChirurgie_c(btn) {
     return;
   }
   btn.classList.add('on');
-  chirurgiesListeConsultation.push({ type, moisAnnee: '', ressenti: '', statut: null, annee: '', evolution: '' });
+  chirurgiesListeConsultation.push({ type, moisAnnee: '', ressenti: '', statut: null, evolution: '' });
   renderChirurgiesListConsultation();
   updateCounter();
   renderChirPopup(type);
@@ -7701,7 +7701,7 @@ function ajouterChirurgieManuelle_c() {
   const nom = (el?.value || '').trim();
   if (!nom) return;
   if (chirurgiesListeConsultation.some(c => c.type.toLowerCase() === nom.toLowerCase())) { showToast('Déjà ajouté : ' + nom); return; }
-  chirurgiesListeConsultation.push({ type: nom, moisAnnee: '', ressenti: '', statut: null, annee: '', evolution: '' });
+  chirurgiesListeConsultation.push({ type: nom, moisAnnee: '', ressenti: '', statut: null, evolution: '' });
   el.value = '';
   renderChirurgiesListConsultation();
   updateCounter();
@@ -7716,7 +7716,7 @@ function renderChirPopup(nom) {
   currentChirPopup = nom;
   document.getElementById('brief-modal-title').textContent = nom;
   document.getElementById('brief-modal-body').innerHTML =
-    `<label class="fl" style="display:block">Détails de l'intervention</label><div class="tx-wrap">${tItemHtml(nom, true)}</div>`;
+    `${chirBriefCardHtml(nom)}<label class="fl" style="display:block;margin-top:14px">Détails de l'intervention</label><div class="tx-wrap">${tItemHtml(nom, true)}</div>`;
   const item = document.querySelector('#brief-modal-body .tx-item');
   if (item) { item.classList.add('on'); item.nextElementSibling.classList.add('open'); }
   // Lit depuis chirurgiesListeConsultation (source de vérité, y compris pour un antécédent
@@ -7789,14 +7789,8 @@ function setChirurgieStatut_c(idx, statut) {
   if (!chirurgiesListeConsultation[idx]) return;
   const c = chirurgiesListeConsultation[idx];
   c.statut = c.statut === statut ? null : statut;
-  if (c.statut !== 'resolu') c.annee = '';
   renderChirurgiesListConsultation();
   if (currentChirPopup === c.type) renderPopupChirStatutWidget(c.type);
-  formTouched = true;
-}
-function setChirurgieAnnee_c(idx, val) {
-  if (!chirurgiesListeConsultation[idx]) return;
-  chirurgiesListeConsultation[idx].annee = (val || '').trim();
   formTouched = true;
 }
 function setChirurgieEvolution_c(idx, val) {
@@ -7806,7 +7800,125 @@ function setChirurgieEvolution_c(idx, val) {
   if (currentChirPopup === c.type) renderPopupChirStatutWidget(c.type);
   formTouched = true;
 }
-const CHIR_EVOLUTIONS = ['Bien récupérée', 'Séquelles persistantes', 'Amélioration nette', 'Non applicable'];
+const CHIR_EVOLUTIONS = ['Bien récupérée, sans séquelle', 'Séquelles ou gêne persistante', 'Changement anatomique définitif à intégrer au terrain', 'Non applicable'];
+// Base pédagogique des interventions chirurgicales (14/09/2026, demande de Sabrina) — même
+// principe que DIAG_DB pour les diagnostics : en quoi consiste l'intervention, son impact sur
+// le terrain (notamment si le changement anatomique est définitif) et ce que la naturopathie
+// apporte, affiché automatiquement dans le popup au clic sur la puce, comme pour un diagnostic.
+const CHIR_DB = {
+  "cœlioscopie diagnostique": {
+    enBref: "Chirurgie mini-invasive (petites incisions, caméra) pratiquée pour explorer le bassin et confirmer un diagnostic (endométriose, kystes, adhérences), sans geste thérapeutique associé.",
+    impact: "Anesthésie générale courte, récupération de quelques jours. Le gaz utilisé pour gonfler l'abdomen peut donner des douleurs d'épaule transitoires. Aucun changement anatomique définitif si seule l'exploration a été faite.",
+    naturo: "Soutien du foie et du transit dans les suites de l'anesthésie, apaisement de l'inflammation locale à court terme.",
+    definitif: false
+  },
+  "cœlioscopie — exérèse de lésions d'endométriose": {
+    enBref: "Même technique mini-invasive que la cœlioscopie diagnostique, avec en plus le retrait chirurgical des lésions d'endométriose repérées (kystes, implants, adhérences).",
+    impact: "Suites parfois plus longues qu'une cœlioscopie simple selon l'étendue des lésions retirées ; le tissu ovarien ou péritonéal peut être fragilisé localement.",
+    naturo: "Accompagnement de la cicatrisation, soutien anti-inflammatoire et hormonal pour limiter la récidive des lésions.",
+    definitif: false
+  },
+  "kystectomie ovarienne": {
+    enBref: "Ablation chirurgicale d'un kyste ovarien en préservant l'ovaire lui-même.",
+    impact: "La réserve ovarienne peut être légèrement diminuée selon la taille du kyste retiré et la quantité de tissu ovarien sain emportée avec lui.",
+    naturo: "Soutien de la cicatrisation ovarienne et de l'équilibre hormonal dans les mois qui suivent.",
+    definitif: false
+  },
+  "hystérectomie (totale)": {
+    enBref: "Ablation complète de l'utérus et du col de l'utérus. Les ovaires peuvent être conservés ou non selon l'indication.",
+    impact: "Plus de règles ni de grossesse possible — c'est un changement anatomique définitif. Si les ovaires sont conservés, la fonction hormonale se poursuit jusqu'à la ménopause naturelle.",
+    naturo: "Accompagnement de la cicatrisation et du transit ; si les ovaires ont été retirés en même temps, soutien hormonal comme pour une ménopause chirurgicale.",
+    definitif: true
+  },
+  "hystérectomie (subtotale)": {
+    enBref: "Ablation du corps de l'utérus en conservant le col utérin.",
+    impact: "Plus de règles ni de grossesse possible — changement anatomique définitif. Le col restant continue de nécessiter un suivi gynécologique (frottis).",
+    naturo: "Mêmes accompagnements que pour une hystérectomie totale : cicatrisation, transit, équilibre hormonal si les ovaires ont été touchés.",
+    definitif: true
+  },
+  "myomectomie": {
+    enBref: "Ablation chirurgicale d'un ou plusieurs fibromes utérins, en conservant l'utérus.",
+    impact: "L'utérus est préservé, une grossesse reste possible ensuite (parfois avec surveillance renforcée) ; risque de récidive de nouveaux fibromes avec le temps.",
+    naturo: "Soutien de la cicatrisation utérine et du terrain hormonal pouvant favoriser la formation de fibromes (excès relatif d'œstrogènes).",
+    definitif: false
+  },
+  "curetage": {
+    enBref: "Geste consistant à retirer le contenu de la cavité utérine (après une fausse couche, une IVG, ou pour explorer un saignement anormal).",
+    impact: "Geste ponctuel sans séquelle anatomique dans la grande majorité des cas ; de rares curetages répétés peuvent fragiliser la paroi utérine.",
+    naturo: "Soutien de la récupération hormonale et émotionnelle selon le contexte du curetage.",
+    definitif: false
+  },
+  "ablation de polype utérin": {
+    enBref: "Retrait chirurgical d'un polype de la muqueuse utérine (endomètre), généralement sous hystéroscopie.",
+    impact: "Geste ponctuel, sans changement anatomique durable ; les polypes peuvent parfois récidiver.",
+    naturo: "Soutien du terrain hormonal (les polypes sont favorisés par un excès relatif d'œstrogènes) pour limiter la récidive.",
+    definitif: false
+  },
+  "conisation (col utérin)": {
+    enBref: "Ablation d'une partie du col de l'utérus contenant des cellules anormales (lésions précancéreuses, souvent liées au HPV).",
+    impact: "Le col est raccourci ; selon l'ampleur du geste, cela peut augmenter légèrement un risque d'accouchement prématuré lors d'une grossesse ultérieure. Un suivi gynécologique régulier reste nécessaire.",
+    naturo: "Soutien de l'immunité locale et du terrain HPV pour limiter une nouvelle lésion.",
+    definitif: false
+  },
+  "ligature des trompes": {
+    enBref: "Section ou occlusion chirurgicale des trompes de Fallope à visée contraceptive définitive.",
+    impact: "Contraception définitive — changement anatomique volontaire et permanent. Aucun impact hormonal : les ovaires continuent de fonctionner normalement.",
+    naturo: "Aucun accompagnement spécifique nécessaire au-delà de la cicatrisation post-opératoire habituelle.",
+    definitif: true
+  },
+  "pose/ablation de diu (geste chirurgical)": {
+    enBref: "Pose ou retrait d'un dispositif intra-utérin (stérilet) — geste habituellement réalisé au cabinet, parfois sous anesthésie si complexe.",
+    impact: "Geste réversible, sans séquelle anatomique attendue.",
+    naturo: "Aucun accompagnement spécifique, sauf si des saignements ou douleurs post-pose persistent.",
+    definitif: false
+  },
+  "appendicectomie": {
+    enBref: "Ablation chirurgicale de l'appendice, le plus souvent en urgence pour une appendicite.",
+    impact: "L'appendice ne joue pas de rôle digestif indispensable ; son retrait est sans conséquence fonctionnelle majeure connue, mais l'épisode inflammatoire et l'antibiothérapie associée peuvent avoir marqué le microbiote.",
+    naturo: "Soutien du microbiote intestinal et de la muqueuse digestive dans les mois qui suivent, surtout si une antibiothérapie a été nécessaire.",
+    definitif: true
+  },
+  "cholécystectomie (ablation vésicule biliaire)": {
+    enBref: "Ablation chirurgicale de la vésicule biliaire, le plus souvent pour des calculs biliaires symptomatiques.",
+    impact: "La bile s'écoule alors en continu du foie vers l'intestin au lieu d'être stockée puis libérée par à-coups — cela peut modifier durablement la digestion des graisses (transit plus rapide, selles molles) chez certaines personnes.",
+    naturo: "Soutien hépatobiliaire, digestion des graisses et adaptation alimentaire pour compenser l'absence de réservoir biliaire.",
+    definitif: true
+  },
+  "hernie (ombilicale, inguinale, hiatale...)": {
+    enBref: "Réparation chirurgicale d'une hernie — passage anormal d'un organe ou tissu à travers une zone de faiblesse de la paroi (abdominale ou diaphragmatique selon le type).",
+    impact: "Geste le plus souvent réparateur et définitif, parfois avec pose d'une plaque de renfort ; récidive possible selon la zone et la qualité tissulaire.",
+    naturo: "Soutien de la cicatrisation tissulaire et du transit dans les suites opératoires.",
+    definitif: false
+  },
+  "chirurgie bariatrique": {
+    enBref: "Chirurgie de restriction et/ou de malabsorption du tube digestif (sleeve, bypass...) réalisée dans le cadre d'une prise en charge de l'obésité.",
+    impact: "Modification anatomique définitive du tube digestif, avec risque durable de carences (fer, B12, vitamine D, calcium...) à surveiller à vie.",
+    naturo: "Suivi micronutritionnel rapproché et adaptation des formes galéniques (souvent liquides/sublinguales) pour limiter les carences.",
+    definitif: true
+  },
+  "autre chirurgie abdominale": {
+    enBref: "Catégorie générique pour toute intervention abdominale non listée par ailleurs — à préciser dans les effets ressentis.",
+    impact: "Impact variable selon le geste exact réalisé.",
+    naturo: "Accompagnement à ajuster selon l'organe concerné et les suites rapportées.",
+    definitif: false
+  },
+  "thyroïdectomie": {
+    enBref: "Ablation partielle ou totale de la glande thyroïde.",
+    impact: "Si l'ablation est totale, un traitement hormonal substitutif (lévothyroxine) à vie devient indispensable — changement anatomique et hormonal définitif.",
+    naturo: "Vérification systématique de la prise de lévothyroxine (interactions fer/calcium/IPP, RÈGLE existante) et soutien du terrain énergétique.",
+    definitif: true
+  }
+};
+function chirBriefCardHtml(nom) {
+  const key = Object.keys(CHIR_DB).find(k => k === nom.toLowerCase());
+  if (!key) return '';
+  const info = CHIR_DB[key];
+  return `<div class="brief-card">
+      <div class="brief-row"><div class="brief-label">En quoi ça consiste</div><p class="brief-txt">${info.enBref}</p></div>
+      <div class="brief-row"><div class="brief-label">Ce que ça implique pour le terrain</div><p class="brief-txt">${info.impact}</p></div>
+      <div class="brief-row"><div class="brief-label">Ce que la naturopathie apporte</div><p class="brief-txt">${info.naturo}</p></div>
+    </div>${info.definitif ? '<p style="margin-top:8px;font-size:12px;color:var(--or);font-style:italic">⚠ Changement anatomique définitif — le statut restera « Terminée » de façon permanente, il n\'y a pas de guérison à attendre, seulement d\'éventuelles suites à surveiller.</p>' : ''}`;
+}
 function renderChirurgiesListConsultation() {
   const wrap = document.getElementById('chirurgies-list-render-c');
   if (!wrap) return;
@@ -7821,8 +7933,7 @@ function renderChirurgiesListConsultation() {
     <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border:1px solid var(--taupe);border-radius:14px;background:var(--blanc);flex-wrap:wrap">
       <span style="flex:1;min-width:140px;font-size:14px;color:var(--ardoise);font-weight:500;cursor:pointer" onclick="renderChirPopup('${safeType}')" title="Ouvrir les détails">${c.type}${c.moisAnnee ? ` <span style="font-weight:400;color:var(--gris);font-size:12.5px">— ${c.moisAnnee}</span>` : ''}</span>
       <button type="button" onclick="setChirurgieStatut_c(${i},'actif')" style="padding:7px 14px;border-radius:999px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;border:1.5px solid ${c.statut==='actif'?'var(--rouge)':'var(--taupe)'};background:${c.statut==='actif'?'var(--rouge-clair)':'var(--blanc)'};color:${c.statut==='actif'?'var(--rouge)':'var(--gris)'}">${ICO_ACTIF} Suites actives</button>
-      <button type="button" onclick="setChirurgieStatut_c(${i},'resolu')" style="padding:7px 14px;border-radius:999px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;border:1.5px solid ${c.statut==='resolu'?'var(--ocre)':'var(--taupe)'};background:${c.statut==='resolu'?'var(--or-clair)':'var(--blanc)'};color:${c.statut==='resolu'?'var(--or)':'var(--gris)'}">${ICO_RESOLU} Bien cicatrisée / résolue</button>
-      ${c.statut==='resolu' ? `<input type="text" inputmode="numeric" placeholder="Année (ex : 2019)" value="${c.annee||''}" oninput="setChirurgieAnnee_c(${i}, this.value)" style="width:120px;padding:6px 10px;border-radius:999px;border:1.5px solid var(--taupe);font-size:12px;font-family:inherit;color:var(--ardoise)">` : ''}
+      <button type="button" onclick="setChirurgieStatut_c(${i},'resolu')" style="padding:7px 14px;border-radius:999px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;border:1.5px solid ${c.statut==='resolu'?'var(--ocre)':'var(--taupe)'};background:${c.statut==='resolu'?'var(--or-clair)':'var(--blanc)'};color:${c.statut==='resolu'?'var(--or)':'var(--gris)'}">${ICO_RESOLU} Terminée — aucune suite</button>
       <button type="button" onclick="renderChirPopup('${safeType}')" style="padding:7px 12px;border-radius:999px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;border:1.5px solid var(--taupe);background:var(--blanc);color:var(--gris)" title="Détails de l'intervention">✎ Détails</button>
       <button type="button" onclick="removeChirurgieConsultation(${i})" style="background:transparent;border:none;cursor:pointer;color:var(--gris);font-size:15px;padding:4px 6px" title="Supprimer">✕</button>
       ${c.ressenti ? `<div style="width:100%;font-size:12.5px;color:var(--gris)">${c.ressenti}</div>` : ''}
@@ -7851,8 +7962,7 @@ function renderPopupChirStatutWidget(nom) {
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 14px;border:1.5px solid var(--sable);background:var(--or-clair);border-radius:14px;margin-bottom:14px">
       <span style="font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--gris);width:100%">Statut de cette intervention</span>
       <button type="button" onclick="setChirurgieStatut_c(${idx},'actif')" style="padding:7px 14px;border-radius:999px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;border:1.5px solid ${c.statut==='actif'?'var(--rouge)':'var(--taupe)'};background:${c.statut==='actif'?'var(--rouge-clair)':'var(--blanc)'};color:${c.statut==='actif'?'var(--rouge)':'var(--gris)'}">${ICO_ACTIF} Suites actives</button>
-      <button type="button" onclick="setChirurgieStatut_c(${idx},'resolu')" style="padding:7px 14px;border-radius:999px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;border:1.5px solid ${c.statut==='resolu'?'var(--ocre)':'var(--taupe)'};background:${c.statut==='resolu'?'var(--or-clair)':'var(--blanc)'};color:${c.statut==='resolu'?'var(--or)':'var(--gris)'}">${ICO_RESOLU} Bien cicatrisée / résolue</button>
-      ${c.statut==='resolu' ? `<input type="text" inputmode="numeric" placeholder="Année (ex : 2019)" value="${c.annee||''}" oninput="setChirurgieAnnee_c(${idx}, this.value)" style="width:120px;padding:6px 10px;border-radius:999px;border:1.5px solid var(--taupe);font-size:12px;font-family:inherit;color:var(--ardoise)">` : ''}
+      <button type="button" onclick="setChirurgieStatut_c(${idx},'resolu')" style="padding:7px 14px;border-radius:999px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;border:1.5px solid ${c.statut==='resolu'?'var(--ocre)':'var(--taupe)'};background:${c.statut==='resolu'?'var(--or-clair)':'var(--blanc)'};color:${c.statut==='resolu'?'var(--or)':'var(--gris)'}">${ICO_RESOLU} Terminée — aucune suite</button>
       <div style="width:100%;margin-top:8px">
         <label class="fl" style="font-size:10px">Évolution actuelle</label>
         <select class="fi" style="padding:7px 10px;font-size:12.5px" onchange="setChirurgieEvolution_c(${idx}, this.value)">
@@ -8830,7 +8940,7 @@ function collectAllData() {
   // diagnostics ci-dessus (13/09/2026, demande de Sabrina : le générateur PHV doit recevoir
   // les suites actives d'une opération exactement comme un antécédent médical actif).
   d.chirurgies_actives = chirurgiesListeConsultation.filter(x => x.statut === 'actif').map(x => x.type).join(', ');
-  d.chirurgies_resolues = chirurgiesListeConsultation.filter(x => x.statut === 'resolu').map(x => x.type + (x.annee ? ' (' + x.annee + ')' : '')).join(', ');
+  d.chirurgies_resolues = chirurgiesListeConsultation.filter(x => x.statut === 'resolu').map(x => x.type + (x.moisAnnee ? ' (' + x.moisAnnee + ')' : '')).join(', ');
   const chirEvolutionLines = chirurgiesListeConsultation.filter(x => x.evolution).map(x => `${x.type} — ${x.evolution}`);
   d.chirurgies_evolution = chirEvolutionLines.join('\n');
   if (chirEvolutionLines.length) {
