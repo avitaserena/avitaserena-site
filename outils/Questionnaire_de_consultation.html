@@ -2512,8 +2512,28 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
           Localiser les douleurs — silhouette
         </button>
       </div>
-      <div style="margin-top:6px"><label class="fl">Localisation des douleurs (désignée par la cliente)</label>
-        <textarea class="fi" id="douleur-localisation-notes" style="min-height:44px" placeholder="Utilisez le bouton « silhouette » ci-dessus, ou saisissez librement…"></textarea>
+      <div id="douleur-zones-group-c" style="margin-top:6px">
+        <label class="fl">Localisation des douleurs — cochez ce qui s'applique</label>
+        <div class="chip-wrap">
+          <button type="button" class="chip" data-zone="tete" onclick="toggleZoneDouleur_c(this)">Tête / migraines</button>
+          <button type="button" class="chip" data-zone="gorge" onclick="toggleZoneDouleur_c(this)">Gorge / thyroïde</button>
+          <button type="button" class="chip" data-zone="poitrine" onclick="toggleZoneDouleur_c(this)">Poitrine</button>
+          <button type="button" class="chip" data-zone="foie" onclick="toggleZoneDouleur_c(this)">Foie / hypochondre droit</button>
+          <button type="button" class="chip" data-zone="estomac" onclick="toggleZoneDouleur_c(this)">Estomac / plexus</button>
+          <button type="button" class="chip" data-zone="ventre" onclick="toggleZoneDouleur_c(this)">Bas-ventre / pelvis</button>
+          <button type="button" class="chip" data-zone="lombaires" onclick="toggleZoneDouleur_c(this)">Bas du dos / lombaires</button>
+          <button type="button" class="chip" data-zone="hanches" onclick="toggleZoneDouleur_c(this)">Hanches</button>
+          <button type="button" class="chip" data-zone="poignets" onclick="toggleZoneDouleur_c(this)">Mains / poignets</button>
+          <button type="button" class="chip" data-zone="genoux" onclick="toggleZoneDouleur_c(this)">Genoux</button>
+        </div>
+        <p class="field-hint" style="margin-top:6px;font-size:11.5px;color:var(--gris)">Cocher une zone ici équivaut à la désigner sur la silhouette ci-dessus — les deux restent synchronisés.</p>
+        <div style="margin-top:10px"><label class="fl" style="font-size:10px">Autre localisation — non listée ci-dessus</label>
+          <textarea class="fi" id="douleur-localisation-notes" style="min-height:44px" placeholder="Uniquement si rien ci-dessus ne correspond…"></textarea>
+        </div>
+        <div class="check-item" id="douleur-alerte-item-c" style="margin-top:10px;border-color:#C1694F" onclick="this.classList.toggle('checked')">
+          <div class="cb">✓</div>
+          <div>Douleur nouvelle, apparue brutalement, ou qui s'aggrave rapidement<span class="check-sub">Signal à ne jamais couvrir par une simple explication naturopathique — le PHV orientera systématiquement vers un avis médical pour cette douleur avant toute recommandation.</span></div>
+        </div>
       </div>
 
       <div style="margin-top:4px"><label class="fl">Notes libres — scores & contexte de vie global</label>
@@ -8526,9 +8546,16 @@ function sv(input, vid) {
   const v = parseInt(input.value);
   const el = document.getElementById(vid);
   el.textContent = v;
-  const colors = ['#8B3A3A','#A04A2A','#9B5E20','#9B7230','#7A8020','#4A8A2A','#3A8A40','#2A7A50','#206A6A','#1E5A7A'];
-  el.style.background = colors[v - 1] || '#3D6B2C';
-  updateCounter();
+  // Dégradé rouge → vert (14/09/2026, demande de Sabrina) — remplace l'ancien dégradé multi-teintes
+  // qui finissait sur du bleu, peu lisible comme signal "c'est bien / ce n'est pas bien". Le sens
+  // de la couleur suit celui déjà en place partout : 1 = mauvais (rouge), 10 = bon (vert).
+  const t = (v - 1) / 9;
+  const r = Math.round(181 - t * 57);
+  const g = Math.round(83 + t * 65);
+  const b = Math.round(58 + t * 57);
+  const couleur = `rgb(${r},${g},${b})`;
+  el.style.background = couleur;
+  input.style.accentColor = couleur;
 }
 
 /* ══════════════════════════════════════
@@ -8627,6 +8654,13 @@ function toggleSpecialite(el) {
 ══════════════════════════════════════ */
 function updateCounter() {
   let count = 0;
+  // Couleur des curseurs de score toujours synchronisée avec leur valeur actuelle (14/09/2026) —
+  // placé ici plutôt qu'à l'initialisation seule, pour rester correct même après restauration
+  // d'un brouillon ou pré-remplissage depuis le CRM (valeurs fixées par le code, pas par un clic).
+  document.querySelectorAll('.slider-row input[type="range"]').forEach(inp => {
+    const vid = inp.id.replace('-input', '');
+    if (document.getElementById(vid)) sv(inp, vid);
+  });
   document.querySelectorAll('textarea.fi').forEach(t => { if (t.value.trim().length > 3) count++; });
   document.querySelectorAll('input.fi[type=text], input.fi[type=number]').forEach(i => { if (i.value.trim().length > 0) count++; });
   document.querySelectorAll('.chip.on').forEach(() => count++);
@@ -8808,6 +8842,14 @@ document.addEventListener('click', (e) => {
 document.addEventListener('click', () => setTimeout(refreshFunnel, 0));
 document.addEventListener('change', () => setTimeout(refreshFunnel, 0));
 document.addEventListener('DOMContentLoaded', refreshFunnel);
+document.addEventListener('DOMContentLoaded', () => { try {
+  // Applique la couleur initiale des curseurs de score (14/09/2026) — sinon ils restent
+  // couleur neutre par défaut tant qu'on n'a pas encore bougé le curseur au moins une fois.
+  document.querySelectorAll('.slider-row input[type="range"]').forEach(inp => {
+    const vid = inp.id.replace('-input', '');
+    if (document.getElementById(vid)) sv(inp, vid);
+  });
+} catch(e) {} });
 function toggleCollapseGroup(groupKey) {
   document.querySelectorAll(`[data-collapse-hide-if~="${groupKey}"]`).forEach(el => {
     el.dataset.forceShow = el.dataset.forceShow === '1' ? '0' : '1';
@@ -9406,6 +9448,16 @@ function collectAllData() {
     d.pathologies_pressenties = pathos.join('\n');
   } catch (e) { console.warn('[Analyse] pathologies pressenties non calculées :', e); }
 
+  // Localisation des douleurs (14/09/2026, demande de Sabrina) — extraite spécifiquement des
+  // puces de zones + de l'éventuel champ "Autre", pour que le générateur sache explicitement
+  // qu'il s'agit de zones douloureuses (et non d'une puce cochée parmi d'autres au milieu du
+  // reste du questionnaire) et puisse en expliquer les causes possibles à la cliente.
+  const zonesDouleur = [...document.querySelectorAll('#douleur-zones-group-c .chip.on')].map(c => c.textContent.trim());
+  const autreDouleur = document.getElementById('douleur-localisation-notes')?.value?.trim();
+  if (autreDouleur) zonesDouleur.push(autreDouleur);
+  d.douleurs_localisation = zonesDouleur.join(', ');
+  d.douleur_alerte = document.getElementById('douleur-alerte-item-c')?.classList.contains('checked') || false;
+
   // ── FAILLE CORRIGÉE (12/09/2026, audit approfondi) : les 53 tx-item du questionnaire
   // (traitements reçus/en cours — THS, Metformine, pilule, antibiotiques ciblés, chirurgies...,
   // répartis dans le tronc commun et les 7 guides spécialisés) n'étaient captés par AUCUN
@@ -9916,20 +9968,44 @@ function majSilhouette() {
   const chipsEl = document.getElementById('s-chips');
   const labels = [...new Set([...silhouetteActives].map(id => ZONES_SILHOUETTE.find(z => z.id === id).lbl))];
   chipsEl.innerHTML = labels.map(l => `<span class="s-chip">${l}</span>`).join('');
+  majChipsZonesDouleur_c();
 }
-
+// Puces "Localisation des douleurs" du formulaire principal (14/09/2026, demande de Sabrina) —
+// même source de vérité (silhouetteActives) que la silhouette plein écran, pour que cocher une
+// puce ou cliquer sur la silhouette reviennent strictement au même. Un clic sur une puce peut
+// correspondre à 2 zones symétriques sur la silhouette (ex. genoux gauche/droit) : on active la
+// zone "principale" en cochant, et on retire les deux au décochage pour que la silhouette se
+// nettoie complètement.
+function majChipsZonesDouleur_c() {
+  document.querySelectorAll('#douleur-zones-group-c .chip[data-zone]').forEach(chip => {
+    const label = ZONES_SILHOUETTE.find(z => z.id === chip.dataset.zone)?.lbl;
+    const actif = ZONES_SILHOUETTE.filter(z => z.lbl === label).some(z => silhouetteActives.has(z.id));
+    chip.classList.toggle('on', actif);
+  });
+}
+function toggleZoneDouleur_c(btn) {
+  const zone = btn.dataset.zone;
+  const label = ZONES_SILHOUETTE.find(z => z.id === zone)?.lbl;
+  const idsMemeLabel = ZONES_SILHOUETTE.filter(z => z.lbl === label).map(z => z.id);
+  const dejaActif = idsMemeLabel.some(id => silhouetteActives.has(id));
+  if (dejaActif) {
+    idsMemeLabel.forEach(id => silhouetteActives.delete(id));
+  } else {
+    silhouetteActives.add(zone);
+  }
+  majChipsZonesDouleur_c();
+  if (silhouetteBuilt) majSilhouette();
+  formTouched = true;
+}
 function ouvrirSilhouettePleinEcran() {
   if (!silhouetteBuilt) construireSilhouette();
   majSilhouette();
   document.getElementById('silhouette-overlay').style.display = 'block';
   document.body.style.overflow = 'hidden';
 }
-
 function fermerSilhouettePleinEcran(reporter) {
   if (reporter) {
-    const labels = [...new Set([...silhouetteActives].map(id => ZONES_SILHOUETTE.find(z => z.id === id).lbl))];
-    const champ = document.getElementById('douleur-localisation-notes');
-    champ.value = labels.join(', ');
+    majChipsZonesDouleur_c();
     formTouched = true; updateCounter();
     showToast('✓ Localisation des douleurs reportée');
   }
