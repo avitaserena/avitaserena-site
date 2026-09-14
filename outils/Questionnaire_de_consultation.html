@@ -4574,7 +4574,7 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
     <div class="qcard-top">
       <div class="qnum">30</div>
       <div class="qcontent">
-        <div class="qtext">Motifs fréquents — étiquettes pour votre dossier</div><div style="display:inline-block;margin-top:4px;padding:3px 9px;border-radius:99px;background:#E8F5EC;color:#1E7A3D;font-size:10.5px;font-weight:700;letter-spacing:.03em">⚡ Pré-coché automatiquement (≥ 2 signes indépendants) — modifiable librement</div>
+        <div class="qtext">Motifs fréquents — étiquettes pour votre dossier</div><div style="display:inline-block;margin-top:4px;padding:3px 9px;border-radius:99px;background:var(--grege);color:var(--gris);font-size:10.5px;font-weight:700;letter-spacing:.03em">✋ Coché manuellement (miroir de « Spécialités pressenties » en section 1) — jamais auto-coché par le détecteur de signes</div>
         <div class="qtags"><span class="qtag opt">Jamais lues à la cliente — synchronisé depuis la section 1</span></div>
       </div>
     </div>
@@ -10913,6 +10913,12 @@ function detecterSyntheseAuto(suggestionsSpecialites) {
 
 function detecterSpecialites() {
   const suggestions = new Set();
+  // (14/09/2026, retour de Sabrina) : distingue une spécialité cochée à la main (via "Spécialités
+  // pressenties" en section 1, ou son miroir "Motifs fréquents") d'une spécialité suggérée par le
+  // détecteur de signes — pour ne jamais laisser croire qu'un score faible ("1 sur 4 signes") est
+  // la preuve d'une détection automatique alors que c'est en réalité un choix manuel affiché tel
+  // quel, sans seuil, par design (voir note plus bas).
+  const manuellementCochees = new Set();
   // Score de confiance (13/09/2026) : pour chaque spécialité, mémorise l'INDEX des motifs
   // SPEC_KEYWORDS déjà rencontrés parmi les items cochés, sur toute la séance (Set d'index,
   // jamais décrémenté — un signe déjà vu reste acquis même si l'item est décoché ensuite).
@@ -10927,7 +10933,7 @@ function detecterSpecialites() {
 
   document.querySelectorAll('#motifs-chips .chip.on').forEach(c => {
     const txt = c.textContent.replace('✓', '').trim();
-    if (SPEC_CHIP_MAP[txt]) suggestions.add(SPEC_CHIP_MAP[txt]);
+    if (SPEC_CHIP_MAP[txt]) { suggestions.add(SPEC_CHIP_MAP[txt]); manuellementCochees.add(SPEC_CHIP_MAP[txt]); }
   });
 
   // Seuil minimal avant suggestion (13/09/2026, retour de Sabrina) : un seul signe isolé
@@ -10954,6 +10960,7 @@ function detecterSpecialites() {
     if (indices.size >= SEUIL_MIN_SIGNES) suggestions.add(spec);
   });
   window.__specMatchIndices = specMatchIndices;
+  window.__specManuellementCochees = manuellementCochees;
 
   // Détail des signes sous chaque motif coché dans "Motifs fréquents" (14/09/2026, demande de
   // Sabrina) — qu'il ait été coché à la main en section 1 ou suggéré automatiquement, on affiche
@@ -11067,6 +11074,7 @@ function renderFloatSuspicions(suggestions, matchIndices) {
   body.innerHTML = list.map(s => {
     const r = SPEC_REASONS[s];
     const target = SUSP_JUMP_TARGET[s];
+    const cocheeManuelle = window.__specManuellementCochees?.has(s);
     // Score de confiance "X sur Y" : Y = nombre de signes cliniques distincts référencés pour
     // cette spécialité dans SPEC_SIGNS, X = nombre de signes distincts déjà rencontrés dans la
     // séance en cours. Un chip "motifs pressentis" coché manuellement (sans aucun signe
@@ -11076,6 +11084,13 @@ function renderFloatSuspicions(suggestions, matchIndices) {
     const total = signesSpec.length || null;
     const matchedSet = matchIndices && matchIndices[s] ? matchIndices[s] : new Set();
     const matched = matchedSet.size;
+    // Bandeau d'origine (14/09/2026, retour de Sabrina) — sans lui, un score faible ("1 sur 4")
+    // pouvait donner l'impression fausse que le détecteur automatique s'était trompé, alors qu'en
+    // réalité c'est une case cochée à la main (section 1 ou son miroir) qui s'affiche ici sans
+    // seuil, par choix assumé — pas le détecteur de signes qui aurait suggéré ça tout seul.
+    const origineHtml = cocheeManuelle
+      ? `<div style="font-size:10.5px;font-weight:700;color:var(--or);margin-bottom:6px">✋ Cochée à la main dans « Spécialités pressenties » — affichée sans seuil, quel que soit le nombre de signes ci-dessous</div>`
+      : `<div style="font-size:10.5px;font-weight:700;color:#1E7A3D;margin-bottom:6px">🔍 Suggérée automatiquement — au moins 2 signes indépendants trouvés</div>`;
     const scoreHtml = !total ? '' : `<div class="float-susp-score">
       <span class="float-susp-score-text">${matched} sur ${total} signes</span>
       <span class="float-susp-score-bar"><span class="float-susp-score-fill" style="width:${Math.round(matched / total * 100)}%"></span></span>
@@ -11090,6 +11105,7 @@ function renderFloatSuspicions(suggestions, matchIndices) {
       : `<div class="float-susp-relance"><b>Question de relance</b>${r.relance}</div>`;
     return `<div class="float-susp-card">
       <div class="float-susp-label"><span class="float-susp-dot" style="background:${FLOAT_SUSP_DOT[s] || 'var(--sable)'}"></span>${r.label}</div>
+      ${origineHtml}
       ${scoreHtml}
       ${signesHtml}
       <div class="float-susp-why">${r.pourquoi}</div>
