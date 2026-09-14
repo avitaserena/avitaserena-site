@@ -1952,7 +1952,11 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
         <div style="display:flex;align-items:flex-end"><button class="btn" type="button" onclick="ajouterChirurgieManuelle_c()">+ Ajouter</button></div>
       </div>
 
-      <div id="chirurgies-list-render-c" style="margin-top:16px;display:flex;flex-direction:column;gap:10px"></div>
+      <div style="margin-top:20px;padding:16px 18px;border:1.5px solid var(--sable);background:var(--or-clair);border-radius:16px">
+        <label class="fl" style="color:var(--ardoise);font-size:13px">Ce que je retiens de vos antécédents chirurgicaux — à rappeler à l'oral</label>
+        <div id="chirurgies-list-render-c" style="margin-top:10px;display:flex;flex-direction:column;gap:10px"></div>
+        <p class="field-hint" style="margin-top:8px;font-size:11.5px;color:var(--gris)">Vérifiez ici que chaque intervention a bien un statut et une évolution avant de passer à la suite.</p>
+      </div>
     </div>
   </div>
 
@@ -7687,7 +7691,7 @@ function toggleChirurgie_c(btn) {
     return;
   }
   btn.classList.add('on');
-  chirurgiesListeConsultation.push({ type, moisAnnee: '', ressenti: '' });
+  chirurgiesListeConsultation.push({ type, moisAnnee: '', ressenti: '', statut: null, annee: '', evolution: '' });
   renderChirurgiesListConsultation();
   updateCounter();
   renderChirPopup(type);
@@ -7697,7 +7701,7 @@ function ajouterChirurgieManuelle_c() {
   const nom = (el?.value || '').trim();
   if (!nom) return;
   if (chirurgiesListeConsultation.some(c => c.type.toLowerCase() === nom.toLowerCase())) { showToast('Déjà ajouté : ' + nom); return; }
-  chirurgiesListeConsultation.push({ type: nom, moisAnnee: '', ressenti: '' });
+  chirurgiesListeConsultation.push({ type: nom, moisAnnee: '', ressenti: '', statut: null, annee: '', evolution: '' });
   el.value = '';
   renderChirurgiesListConsultation();
   updateCounter();
@@ -7723,8 +7727,7 @@ function renderChirPopup(nom) {
     if (inputs[0]) inputs[0].value = entry.moisAnnee || '';
     if (inputs[1]) inputs[1].value = entry.ressenti || '';
   }
-  const statutWrap = document.getElementById('brief-modal-statut');
-  if (statutWrap) statutWrap.innerHTML = ''; // widget actif/résolu non pertinent pour une intervention
+  renderPopupChirStatutWidget(nom);
   document.getElementById('brief-overlay').classList.add('open');
 }
 function saveChirPopupState() {
@@ -7778,6 +7781,32 @@ function removeChirurgieConsultation(idx) {
   renderChirurgiesListConsultation();
   updateCounter();
 }
+// Statut « suites actives / bien cicatrisée » + évolution, sur le MÊME modèle que
+// setDiagnosticStatut/setDiagnosticAnnee/setDiagnosticEvolution — pour que le récapitulatif
+// chirurgical se lise exactement comme "Ce que je retiens de vos antécédents" (13/09/2026,
+// demande de Sabrina : présentation strictement identique entre les deux récapitulatifs).
+function setChirurgieStatut_c(idx, statut) {
+  if (!chirurgiesListeConsultation[idx]) return;
+  const c = chirurgiesListeConsultation[idx];
+  c.statut = c.statut === statut ? null : statut;
+  if (c.statut !== 'resolu') c.annee = '';
+  renderChirurgiesListConsultation();
+  if (currentChirPopup === c.type) renderPopupChirStatutWidget(c.type);
+  formTouched = true;
+}
+function setChirurgieAnnee_c(idx, val) {
+  if (!chirurgiesListeConsultation[idx]) return;
+  chirurgiesListeConsultation[idx].annee = (val || '').trim();
+  formTouched = true;
+}
+function setChirurgieEvolution_c(idx, val) {
+  if (!chirurgiesListeConsultation[idx]) return;
+  chirurgiesListeConsultation[idx].evolution = val;
+  const c = chirurgiesListeConsultation[idx];
+  if (currentChirPopup === c.type) renderPopupChirStatutWidget(c.type);
+  formTouched = true;
+}
+const CHIR_EVOLUTIONS = ['Bien récupérée', 'Séquelles persistantes', 'Amélioration nette', 'Non applicable'];
 function renderChirurgiesListConsultation() {
   const wrap = document.getElementById('chirurgies-list-render-c');
   if (!wrap) return;
@@ -7785,15 +7814,54 @@ function renderChirurgiesListConsultation() {
     wrap.innerHTML = '<p style="font-size:13px;color:var(--gris);font-style:italic">Aucun antécédent chirurgical enregistré pour l\'instant.</p>';
     return;
   }
-  wrap.innerHTML = chirurgiesListeConsultation.map((c, i) => `
-    <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border:1px solid var(--taupe);border-radius:14px;background:var(--blanc);cursor:pointer" onclick="renderChirPopup('${c.type.replace(/'/g,"\\'")}')">
-      <div style="flex:1;min-width:140px">
-        <div style="font-size:14px;color:var(--ardoise);font-weight:600">${c.type}${c.moisAnnee ? ` <span style="font-weight:400;color:var(--gris);font-size:12.5px">— ${c.moisAnnee}</span>` : ''}</div>
-        ${c.ressenti ? `<div style="font-size:12.5px;color:var(--gris);margin-top:3px">${c.ressenti}</div>` : ''}
+  wrap.innerHTML = chirurgiesListeConsultation.map((c, i) => {
+    const evoOptions = CHIR_EVOLUTIONS.map(e => `<option ${c.evolution===e?'selected':''}>${e}</option>`).join('');
+    const safeType = c.type.replace(/'/g,"\\'");
+    return `
+    <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border:1px solid var(--taupe);border-radius:14px;background:var(--blanc);flex-wrap:wrap">
+      <span style="flex:1;min-width:140px;font-size:14px;color:var(--ardoise);font-weight:500;cursor:pointer" onclick="renderChirPopup('${safeType}')" title="Ouvrir les détails">${c.type}${c.moisAnnee ? ` <span style="font-weight:400;color:var(--gris);font-size:12.5px">— ${c.moisAnnee}</span>` : ''}</span>
+      <button type="button" onclick="setChirurgieStatut_c(${i},'actif')" style="padding:7px 14px;border-radius:999px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;border:1.5px solid ${c.statut==='actif'?'var(--rouge)':'var(--taupe)'};background:${c.statut==='actif'?'var(--rouge-clair)':'var(--blanc)'};color:${c.statut==='actif'?'var(--rouge)':'var(--gris)'}">${ICO_ACTIF} Suites actives</button>
+      <button type="button" onclick="setChirurgieStatut_c(${i},'resolu')" style="padding:7px 14px;border-radius:999px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;border:1.5px solid ${c.statut==='resolu'?'var(--ocre)':'var(--taupe)'};background:${c.statut==='resolu'?'var(--or-clair)':'var(--blanc)'};color:${c.statut==='resolu'?'var(--or)':'var(--gris)'}">${ICO_RESOLU} Bien cicatrisée / résolue</button>
+      ${c.statut==='resolu' ? `<input type="text" inputmode="numeric" placeholder="Année (ex : 2019)" value="${c.annee||''}" oninput="setChirurgieAnnee_c(${i}, this.value)" style="width:120px;padding:6px 10px;border-radius:999px;border:1.5px solid var(--taupe);font-size:12px;font-family:inherit;color:var(--ardoise)">` : ''}
+      <button type="button" onclick="renderChirPopup('${safeType}')" style="padding:7px 12px;border-radius:999px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;border:1.5px solid var(--taupe);background:var(--blanc);color:var(--gris)" title="Détails de l'intervention">✎ Détails</button>
+      <button type="button" onclick="removeChirurgieConsultation(${i})" style="background:transparent;border:none;cursor:pointer;color:var(--gris);font-size:15px;padding:4px 6px" title="Supprimer">✕</button>
+      ${c.ressenti ? `<div style="width:100%;font-size:12.5px;color:var(--gris)">${c.ressenti}</div>` : ''}
+      <div style="width:100%">
+        <label class="fl" style="font-size:10px">Évolution actuelle</label>
+        <select class="fi" style="padding:6px 10px;font-size:12px" onchange="setChirurgieEvolution_c(${i}, this.value)">
+          <option value="" ${!c.evolution?'selected':''}>— À préciser —</option>
+          ${evoOptions}
+        </select>
       </div>
-      <button type="button" onclick="event.stopPropagation();removeChirurgieConsultation(${i})" style="background:transparent;border:none;cursor:pointer;color:var(--gris);font-size:15px;padding:4px 6px" title="Supprimer">✕</button>
     </div>
-  `).join('');
+  `;
+  }).join('');
+}
+// Widget statut/évolution INTÉGRÉ dans le popup d'intervention (13/09/2026, demande de Sabrina) —
+// même principe que renderPopupStatutWidget pour les diagnostics : avant, ce popup n'affichait
+// que date + effets ressentis, sans permettre de fixer le statut ni l'évolution depuis là.
+function renderPopupChirStatutWidget(nom) {
+  const wrap = document.getElementById('brief-modal-statut');
+  if (!wrap || !nom) return;
+  const idx = chirurgiesListeConsultation.findIndex(c => c.type === nom);
+  if (idx === -1) { wrap.innerHTML = ''; return; }
+  const c = chirurgiesListeConsultation[idx];
+  const evoOptions = CHIR_EVOLUTIONS.map(e => `<option ${c.evolution===e?'selected':''}>${e}</option>`).join('');
+  wrap.innerHTML = `
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 14px;border:1.5px solid var(--sable);background:var(--or-clair);border-radius:14px;margin-bottom:14px">
+      <span style="font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--gris);width:100%">Statut de cette intervention</span>
+      <button type="button" onclick="setChirurgieStatut_c(${idx},'actif')" style="padding:7px 14px;border-radius:999px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;border:1.5px solid ${c.statut==='actif'?'var(--rouge)':'var(--taupe)'};background:${c.statut==='actif'?'var(--rouge-clair)':'var(--blanc)'};color:${c.statut==='actif'?'var(--rouge)':'var(--gris)'}">${ICO_ACTIF} Suites actives</button>
+      <button type="button" onclick="setChirurgieStatut_c(${idx},'resolu')" style="padding:7px 14px;border-radius:999px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;border:1.5px solid ${c.statut==='resolu'?'var(--ocre)':'var(--taupe)'};background:${c.statut==='resolu'?'var(--or-clair)':'var(--blanc)'};color:${c.statut==='resolu'?'var(--or)':'var(--gris)'}">${ICO_RESOLU} Bien cicatrisée / résolue</button>
+      ${c.statut==='resolu' ? `<input type="text" inputmode="numeric" placeholder="Année (ex : 2019)" value="${c.annee||''}" oninput="setChirurgieAnnee_c(${idx}, this.value)" style="width:120px;padding:6px 10px;border-radius:999px;border:1.5px solid var(--taupe);font-size:12px;font-family:inherit;color:var(--ardoise)">` : ''}
+      <div style="width:100%;margin-top:8px">
+        <label class="fl" style="font-size:10px">Évolution actuelle</label>
+        <select class="fi" style="padding:7px 10px;font-size:12.5px" onchange="setChirurgieEvolution_c(${idx}, this.value)">
+          <option value="" ${!c.evolution?'selected':''}>— À préciser —</option>
+          ${evoOptions}
+        </select>
+      </div>
+      <button type="button" onclick="fermerBriefPopup()" style="margin-left:auto;padding:8px 18px;border-radius:999px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;border:none;background:var(--ardoise);color:var(--blanc)">Valider ✓</button>
+    </div>`;
 }
 function ajouterFrereSoeur() {
   const div = document.createElement('div');
