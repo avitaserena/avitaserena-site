@@ -691,7 +691,7 @@ select.fi.answered{background:var(--off)}
       <textarea class="fi" id="phrase-ouverture" style="min-height:80px" placeholder="Notez ses mots tels quels, sans les reformuler. Ex. : « C'était intense, j'ai eu du mal à tout tenir. » / « Beaucoup mieux sur le ventre, mais la fatigue est restée. » / « J'ai craqué sur l'alimentation la 2e semaine, je me suis sentie nulle. » / « Honnêtement j'ai un peu oublié les compléments le matin. » → ce verbatim est cliniquement précieux : il dit où elle en est vraiment."></textarea>
       <label class="fl" style="margin-top:12px">Ressenti global sur la période (1 = très difficile · 10 = j'ai traversé ça avec sérénité)</label>
       <div style="display:flex;align-items:center;gap:14px;padding:8px 0">
-        <input type="range" id="global-slider" min="1" max="10" value="5" style="flex:1;accent-color:var(--acc);height:4px" oninput="document.getElementById('global-val').textContent=this.value;updateCounter()">
+        <input type="range" id="global-slider" min="1" max="10" value="5" style="flex:1;height:4px" oninput="svSuivi(this,'global-val')">
         <div id="global-val" style="width:34px;height:34px;border-radius:50%;background:var(--ardoise);color:white;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px">5</div>
       </div>
     </div>
@@ -855,6 +855,25 @@ select.fi.answered{background:var(--off)}
       <div id="score-summary" style="display:none;margin-top:14px">
         <div class="divider-label">Synthèse visuelle des scores</div>
         <div class="score-resume-grid" id="score-resume-grid"></div>
+      </div>
+      <div id="douleur-zones-group-suivi" style="margin-top:18px">
+        <label class="fl">Localisation des douleurs — cochez ce qui s'applique aujourd'hui</label>
+        <div class="chip-wrap">
+          <button type="button" class="chip" onclick="this.classList.toggle('on')">Tête / migraines</button>
+          <button type="button" class="chip" onclick="this.classList.toggle('on')">Gorge / thyroïde</button>
+          <button type="button" class="chip" onclick="this.classList.toggle('on')">Poitrine</button>
+          <button type="button" class="chip" onclick="this.classList.toggle('on')">Foie / hypochondre droit</button>
+          <button type="button" class="chip" onclick="this.classList.toggle('on')">Estomac / plexus</button>
+          <button type="button" class="chip" onclick="this.classList.toggle('on')">Bas-ventre / pelvis</button>
+          <button type="button" class="chip" onclick="this.classList.toggle('on')">Bas du dos / lombaires</button>
+          <button type="button" class="chip" onclick="this.classList.toggle('on')">Hanches</button>
+          <button type="button" class="chip" onclick="this.classList.toggle('on')">Mains / poignets</button>
+          <button type="button" class="chip" onclick="this.classList.toggle('on')">Genoux</button>
+        </div>
+        <p class="field-hint" style="margin-top:6px;font-size:11.5px;color:var(--gris)">Mêmes zones que le questionnaire de consultation, pour comparer facilement d'une séance à l'autre.</p>
+        <div style="margin-top:10px"><label class="fl" style="font-size:10px">Autre localisation — non listée ci-dessus</label>
+          <textarea class="fi" id="douleur-localisation-notes-suivi" style="min-height:44px" placeholder="Uniquement si rien ci-dessus ne correspond…"></textarea>
+        </div>
       </div>
     </div>
   </div>
@@ -1599,7 +1618,7 @@ select.fi.answered{background:var(--off)}
       <div style="margin-top:12px">
         <label class="fl">Auto-évaluation observance alimentaire (1 = rien changé · 10 = suivi à la lettre)</label>
         <div style="display:flex;align-items:center;gap:14px;padding:8px 0">
-          <input type="range" id="obs-alim-slider" min="1" max="10" value="5" style="flex:1;accent-color:var(--acc);height:4px" oninput="document.getElementById('obs-alim-val').textContent=this.value;updateCounter()">
+          <input type="range" id="obs-alim-slider" min="1" max="10" value="5" style="flex:1;height:4px" oninput="svSuivi(this,'obs-alim-val')">
           <div id="obs-alim-val" style="width:34px;height:34px;border-radius:50%;background:var(--ardoise);color:white;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px">5</div>
         </div>
       </div>
@@ -3039,12 +3058,36 @@ function buildScores() {
   AXES.forEach(a => updateScore(a.id));
 }
 
+// Même dégradé rouge → vert que les scores d'axes, pour les 2 curseurs isolés (ressenti global,
+// observance alimentaire) —14/09/2026, demande de Sabrina.
+function svSuivi(input, vid) {
+  const v = parseInt(input.value);
+  const el = document.getElementById(vid);
+  el.textContent = v;
+  const t = (v - 1) / 9;
+  const r = Math.round(181 - t * 57);
+  const g = Math.round(83 + t * 65);
+  const b = Math.round(58 + t * 57);
+  const couleur = `rgb(${r},${g},${b})`;
+  el.style.background = couleur;
+  input.style.accentColor = couleur;
+}
+
 function updateScore(id) {
-  const v = parseInt(document.getElementById('now-'+id).value);
-  const colors = ['#8B3A3A','#A04A2A','#9B5E20','#9B7230','#7A8020','#4A8A2A','#3A8A40','#2A7A50','#206A6A','#1E5A7A'];
+  const input = document.getElementById('now-'+id);
+  const v = parseInt(input.value);
   const b = document.getElementById('bubble-'+id);
   b.textContent = v;
-  b.style.background = colors[v-1]||colors[4];
+  // Dégradé rouge → vert (14/09/2026, demande de Sabrina, même principe que côté consultation) —
+  // remplace l'ancien dégradé multi-teintes qui finissait sur du bleu, peu lisible comme signal
+  // "c'est bien / ce n'est pas bien". 1 = mauvais (rouge), 10 = bon (vert).
+  const t = (v - 1) / 9;
+  const r = Math.round(181 - t * 57);
+  const g = Math.round(83 + t * 65);
+  const bl = Math.round(58 + t * 57);
+  const couleur = `rgb(${r},${g},${bl})`;
+  b.style.background = couleur;
+  input.style.accentColor = couleur;
   updateDelta(id);
 }
 
@@ -3572,6 +3615,14 @@ function updateBadge() {
 ══════════════════════════════════════════════════════ */
 function updateCounter() {
   let n=0;
+  // Couleur des curseurs de score toujours synchronisée avec leur valeur actuelle (14/09/2026,
+  // même principe que côté consultation) — reste correcte même après restauration d'un brouillon.
+  const gs = document.getElementById('global-slider'); if (gs) svSuivi(gs, 'global-val');
+  const os = document.getElementById('obs-alim-slider'); if (os) svSuivi(os, 'obs-alim-val');
+  document.querySelectorAll('.sc-now input[type="range"]').forEach(inp => {
+    const id = inp.id.replace('now-', '');
+    if (document.getElementById('bubble-'+id)) updateScore(id);
+  });
   document.querySelectorAll('textarea.fi, input.fi[type=text], input.fi[type=number], input[type=text], input[type=number]').forEach(el => { if(el.value.trim().length>2) n++; });
   document.querySelectorAll('.chip.on').forEach(()=>n++);
   document.querySelectorAll('.evol-btn.sel-up,.evol-btn.sel-same,.evol-btn.sel-down').forEach(()=>n++);
@@ -5255,6 +5306,13 @@ function collectData() {
   // Événements de vie
   d.evenementsVie = [...document.querySelectorAll('.chip.on')].map(c=>c.textContent.replace('✓','').trim()).filter(Boolean);
 
+  // Localisation des douleurs (14/09/2026, même principe que côté consultation) — extraite à
+  // part pour que le générateur sache explicitement qu'il s'agit de zones douloureuses.
+  const zonesDouleurSuivi = [...document.querySelectorAll('#douleur-zones-group-suivi .chip.on')].map(c => c.textContent.trim());
+  const autreDouleurSuivi = document.getElementById('douleur-localisation-notes-suivi')?.value?.trim();
+  if (autreDouleurSuivi) zonesDouleurSuivi.push(autreDouleurSuivi);
+  d.douleursLocalisation = zonesDouleurSuivi.join(', ');
+
   // Date de la consultation initiale — purement contextuel mais capturé pour ne rien laisser de côté.
   d.dateInitiale = document.getElementById('date-initiale')?.value || '';
 
@@ -5761,6 +5819,7 @@ function finalise() {
     // symptomes_coches dans le prompt final plutôt que noyés dans les notes libres.
     relances_suivi: relancesStr,
     evenements_vie: evenementsVieStr,
+    douleurs_localisation: d.douleursLocalisation,
     suivi_traitements: suiviTraitementsStr,
     proto_initial_complet: protoInitialStr,
     bilans_initiaux: d.bilansInitiaux,
