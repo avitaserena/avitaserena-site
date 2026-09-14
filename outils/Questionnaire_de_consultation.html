@@ -8780,10 +8780,17 @@ function updateNavProgress() {
       q.querySelector('select.fi, input.fi[type=text], input.fi[type=number], input.fi[type=date], input.fi[type=time], input[type=range], .chip[data-diag], .chip[data-chir], .check-item, .trig-check, .porte-opts, .bilan-card') !== null;
       if (!structureExiste) return; // question uniquement composée de champ(s) libre(s) — exclue
       total++;
+      // (14/09/2026) Un diagnostic ou une intervention ajouté par recherche libre (le mode d'ajout
+      // le plus courant) ne coche aucune puce data-diag/data-chir prédéfinie — la carte restait donc
+      // marquée "non répondue" même remplie, dès qu'aucun diagnostic saisi ne correspondait à une
+      // puce toute faite. On regarde maintenant aussi directement les listes réelles.
+      const aUnDiagnosticReel = q.id === 'diagnostics-antecedents-card' && Array.isArray(diagnosticsList) && diagnosticsList.length > 0;
+      const aUneChirurgieReelle = q.id === 'chirurgies-antecedents-card' && Array.isArray(chirurgiesListeConsultation) && chirurgiesListeConsultation.length > 0;
       const has =
         [...q.querySelectorAll('input.fi[type=text], input.fi[type=number], input.fi[type=date], input.fi[type=time]')].some(el => el.value.trim().length > 0) ||
         [...q.querySelectorAll('select.fi')].some(el => el.value) ||
         [...q.querySelectorAll('input[type=range]')].some(el => el.dataset.touched === '1') ||
+        aUnDiagnosticReel || aUneChirurgieReelle ||
         !!q.querySelector('.chip.on, .check-item.checked, .trig-check.checked, .porte-opt.sel, .bilan-card.checked');
       if (has) answered++;
     });
