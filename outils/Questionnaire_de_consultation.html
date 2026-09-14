@@ -694,6 +694,9 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
     </div>
     <button class="btn-pause" onclick="nouvelleCliente()" title="Effacer et démarrer un nouveau questionnaire" style="background:var(--ocre);border-color:var(--ocre);color:var(--blanc);font-weight:700">✦ Nouvelle cliente</button>
     <button class="btn-pause" onclick="ouvrirPause()" title="Mettre en pause et reprendre plus tard"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px" aria-hidden="true"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg> Pause</button>
+    <button class="btn-pause" onclick="exporterProgression()" title="Télécharger vos réponses dans un fichier séparé — pour les reprendre sur n'importe quelle version future de ce questionnaire, même sous un autre nom de fichier"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M4 21h16"/></svg> Exporter</button>
+    <button class="btn-pause" onclick="document.getElementById('import-progression-input').click()" title="Recharger un fichier de progression exporté précédemment"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px" aria-hidden="true"><path d="M12 21V9M7 14l5-5 5 5M4 3h16"/></svg> Importer</button>
+    <input type="file" id="import-progression-input" accept=".json" style="display:none" onchange="importerProgression(event)">
     <div class="hdr-counter" id="hdr-counter" title="Champs remplis">0 notes</div>
     <button onclick="configurerCleAPI()" title="Configurer la clé API Anthropic (nécessaire pour le résumé narratif automatique en fiche cliente)" style="background:none;border:1px solid var(--taupe);color:var(--gris);border-radius:99px;padding:6px 12px;font-size:11px;cursor:pointer;font-family:'Inter',sans-serif;display:flex;align-items:center;gap:5px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7.5" cy="15.5" r="5.5"/><path d="M21 2l-9.6 9.6M15.5 7.5l3 3L22 7l-3-3"/></svg> Clé API</button>
     <div id="spec-alert" title="Ce repérage précoce s'appuie uniquement sur les réponses déjà données — le détail apparaîtra en encadré, plus loin, dans la section thématique concernée." style="display:none;font-size:11px;font-weight:700;background:var(--ocre);color:var(--blanc);padding:5px 13px;border-radius:99px;animation:pulseAlert 2s infinite"></div>
@@ -7472,6 +7475,56 @@ function renderDiagnosticsList() {
 /* ══════════════════════════════════════
    PAUSE — MODALE
 ══════════════════════════════════════ */
+// ═══ EXPORT / IMPORT DE PROGRESSION (14/09/2026, demande de Sabrina) ═══
+// Le bouton "Pause" sauvegarde dans le navigateur, lié au fichier HTML précis ouvert — si Sabrina
+// télécharge une nouvelle version du questionnaire (nouveau fichier, autre nom ou autre dossier),
+// cette sauvegarde ne suit pas, et tout semblait perdu alors que rien n'était de sa faute. Cet
+// export/import contourne complètement ce problème : un vrai fichier séparé, indépendant du nom
+// ou de l'emplacement du questionnaire, à réimporter sur n'importe quelle version future.
+function exporterProgression() {
+  try {
+    const snapshot = captureSnapshot();
+    const payload = { ts: Date.now(), data: snapshot };
+    const prenom = document.getElementById('prenom')?.value?.trim() || 'cliente';
+    const nom = document.getElementById('nom')?.value?.trim() || '';
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const nomFichier = 'progression_' + [prenom, nom].filter(Boolean).join('_').replace(/[^a-zA-Z0-9_-]/g, '_') + '_' + dateStr + '.json';
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = nomFichier;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('✓ Progression exportée — ' + nomFichier);
+  } catch (e) {
+    console.warn('[Export] Échec :', e);
+    showToast('⚠️ Export impossible — voir la console pour le détail');
+  }
+}
+function importerProgression(event) {
+  const fichier = event.target.files?.[0];
+  if (!fichier) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const parsed = JSON.parse(reader.result);
+      if (!parsed || !parsed.data) throw new Error('Fichier de progression invalide — la clé "data" est manquante.');
+      restoreSnapshot(parsed.data);
+      updateCounter();
+      updateNavProgress();
+      showToast('✓ Progression importée — vérifiez que tout est bien revenu avant de continuer');
+    } catch (e) {
+      console.warn('[Import] Échec :', e);
+      showToast('⚠️ Ce fichier ne peut pas être importé — vérifiez que c\'est bien un export de ce questionnaire');
+    }
+  };
+  reader.readAsText(fichier);
+  event.target.value = ''; // permet de réimporter le même fichier une seconde fois si besoin
+}
+
 function ouvrirPause() {
   // Mettre à jour l'info de sauvegarde
   try {
