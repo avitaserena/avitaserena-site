@@ -9096,13 +9096,30 @@ function collectAllData() {
     'sommeil-reveil-freq','sommeil-reveil-heure','secu-grossesse','secu-cancer',
     'diag-manual-input','diag-manual-endocrino','diag-manual-digestif','diag-manual-gyneco','diag-manual-autoimmune','diag-manual-neuropsy',
     'tl-annee','tl-event','client-key']);
+  // ── FAILLE CORRIGÉE (14/09/2026, signalée par Sabrina en vérifiant l'hérédité) : la recherche
+  // d'étiquette pour les select/textarea remontait jusqu'au label du conteneur "qinput" englobant
+  // TOUTE la question — dès qu'une question contenait plusieurs champs (Mère/Père/Grand-mères/
+  // Grands-pères/Frères/Sœurs, par exemple), tous héritaient silencieusement du PREMIER label
+  // rencontré ("Mère" pour les 8 champs de la carte Hérédité). Remonte maintenant ancêtre par
+  // ancêtre et s'arrête au premier label trouvé comme enfant direct — c'est-à-dire celui qui
+  // appartient réellement à CE champ précis — sans jamais dépasser le conteneur qinput.
+  function labelForField(el) {
+    let node = el.parentElement;
+    while (node) {
+      const lbl = [...node.children].find(c => c.tagName === 'LABEL');
+      if (lbl) return lbl.textContent.trim();
+      if (node.classList && node.classList.contains('qinput')) break;
+      node = node.parentElement;
+    }
+    return '';
+  }
   document.querySelectorAll('input.fi[type="text"], input.fi[type="number"], input.fi[type="date"]').forEach(inp => {
     if (DEJA_CAPTURES.has(inp.id)) return;
     if (inp.readOnly) return;
     if (inp.closest('.tl-year')) return; // dates liées à un trig-check déjà couvertes par son propre texte
     const val = inp.value?.trim();
     if (!val) return;
-    const lbl = inp.closest('div')?.querySelector('label')?.textContent?.trim() || inp.placeholder || inp.id || 'Champ';
+    const lbl = labelForField(inp) || inp.placeholder || inp.id || 'Champ';
     ajouterLigne(inp, `${lbl} : ${val}`);
   });
   const chips = [...document.querySelectorAll('.chip.on')].map(c => c.textContent.replace('✓','').trim());
@@ -9110,7 +9127,7 @@ function collectAllData() {
   const selects = [...document.querySelectorAll('select.fi')];
   const selectData = [];
   selects.forEach(s => {
-    const lbl = s.closest('.qinput, .g2, .g3, .g4')?.querySelector('label')?.textContent?.trim() || s.id || '';
+    const lbl = labelForField(s) || s.id || '';
     if (s.value && s.value !== '--' && s.value !== '') {
       selectData.push(`${lbl}: ${s.value}`);
       ajouterLigne(s, `${lbl} : ${s.value}`);
@@ -9121,7 +9138,7 @@ function collectAllData() {
   const taData = [];
   tas.forEach(ta => {
     if (ta.value.trim().length > 2) {
-      const lbl = ta.closest('.qinput')?.querySelector('label')?.textContent?.trim() || ta.closest('.field-full, .g2, .g3')?.querySelector('label')?.textContent?.trim() || '';
+      const lbl = labelForField(ta) || '';
       taData.push(`${lbl || 'Note'}: ${ta.value.trim()}`);
       ajouterLigne(ta, `${lbl || 'Note'} : ${ta.value.trim()}`);
     }
