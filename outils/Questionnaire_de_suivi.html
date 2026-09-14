@@ -4106,7 +4106,18 @@ function captureSnapshot() {
   document.querySelectorAll('.chip.on').forEach(c=>chips.push(c.textContent.replace('✓','').trim()));
   snap._chips=JSON.stringify(chips);
   const checks=[];
-  document.querySelectorAll('.check-item').forEach((c,i)=>{if(c.classList.contains('checked'))checks.push(i);});
+  document.querySelectorAll('.check-item').forEach((c)=>{
+    if(!c.classList.contains('checked')) return;
+    const contentDiv = c.children[1];
+    let label = '';
+    if (contentDiv) {
+      for (const node of contentDiv.childNodes) {
+        if (node.nodeType === 3 && node.textContent.trim()) { label = node.textContent.trim(); break; }
+      }
+    }
+    if (!label) label = c.textContent.replace('✓','').trim();
+    if (label) checks.push(label);
+  });
   snap._checks=JSON.stringify(checks);
   const evols={};
   document.querySelectorAll('.evol-btn[class*=sel-]').forEach(b=>{
@@ -4240,7 +4251,19 @@ function restaurerDraft() {
       if (v) el.value = v;
     });
     if(snap._chips) try{ const chips=JSON.parse(snap._chips); document.querySelectorAll('.chip').forEach(c=>{ if(chips.includes(c.textContent.replace('✓','').trim())) c.classList.add('on'); }); }catch(e){}
-    if(snap._checks) try{ const checks=JSON.parse(snap._checks); document.querySelectorAll('.check-item').forEach((c,i)=>{ if(checks.includes(i)) c.classList.add('checked'); }); }catch(e){}
+    // 14/09/2026, même correctif que côté consultation (bug remonté par Sabrina) : repéré par le
+    // texte de la question plutôt que sa position, pour survivre à une réorganisation du questionnaire.
+    if(snap._checks) try{ const checks=JSON.parse(snap._checks); document.querySelectorAll('.check-item').forEach((c)=>{
+      const contentDiv = c.children[1];
+      let label = '';
+      if (contentDiv) {
+        for (const node of contentDiv.childNodes) {
+          if (node.nodeType === 3 && node.textContent.trim()) { label = node.textContent.trim(); break; }
+        }
+      }
+      if (!label) label = c.textContent.replace('✓','').trim();
+      if (label && checks.includes(label)) c.classList.add('checked');
+    }); }catch(e){}
     if(snap._diagnostics_list) try{ diagnosticsList = JSON.parse(snap._diagnostics_list); renderDiagnosticsList(); syncDiagChipsState(); }catch(e){}
     if(snap._chirurgies_list) try{ chirurgiesList = JSON.parse(snap._chirurgies_list); renderChirurgiesList(); syncChirChipsState(); }catch(e){}
     updateSpecialtyBlocks();

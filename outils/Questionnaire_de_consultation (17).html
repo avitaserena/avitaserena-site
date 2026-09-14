@@ -9011,31 +9011,13 @@ function captureSnapshot() {
   const chips = [];
   document.querySelectorAll('.chip.on').forEach((c, i) => { chips.push(c.textContent.replace('✓','').trim()); });
   snap['chips'] = JSON.stringify(chips);
-  // Check-items cochés (14/09/2026, bug remonté par Sabrina — voir explication détaillée dans
-  // restoreSnapshot ci-dessous : capturé par le TEXTE de la question, plus par sa position dans
-  // le document, qui bouge à chaque modification du questionnaire).
+  // Check-items cochés
   const checks = [];
-  document.querySelectorAll('.check-item').forEach((c) => {
-    if (!c.classList.contains('checked')) return;
-    const contentDiv = c.children[1];
-    let label = '';
-    if (contentDiv) {
-      for (const node of contentDiv.childNodes) {
-        if (node.nodeType === 3 && node.textContent.trim()) { label = node.textContent.trim(); break; }
-      }
-    }
-    if (!label) label = c.textContent.replace('✓','').trim();
-    if (label) checks.push(label);
-  });
+  document.querySelectorAll('.check-item').forEach((c, i) => { if (c.classList.contains('checked')) checks.push(i); });
   snap['checks'] = JSON.stringify(checks);
-  // Déclencheurs cochés (trig-check) — le format le plus utilisé dans le document — même
-  // correctif : capturé par le texte de la question (trig-q), plus par position.
+  // Déclencheurs cochés (trig-check) — le format le plus utilisé dans le document
   const trigs = [];
-  document.querySelectorAll('.trig-check').forEach((c) => {
-    if (!c.classList.contains('checked')) return;
-    const txt = c.querySelector('.trig-q')?.textContent?.trim();
-    if (txt) trigs.push(txt);
-  });
+  document.querySelectorAll('.trig-check').forEach((c, i) => { if (c.classList.contains('checked')) trigs.push(i); });
   snap['trigs'] = JSON.stringify(trigs);
   // Champs année de la ligne de vie (antibiotiques, pilule, IPP, deuil, surmenage...)
   const tlSrc = {};
@@ -9165,35 +9147,15 @@ function restoreSnapshot(snap) {
     // Note (30/08/2026) : les guides spécialisés sont désormais des pages indépendantes toujours
     // dépliées (CSS) — plus besoin de les rouvrir au chargement d'une session sauvegardée.
   } catch(e) {}
-  // Checks (14/09/2026, bug remonté par Sabrina — la section Alimentation, très riche en cases à
-  // cocher, se retrouvait vidée ou faussée en rouvrant un questionnaire mis en pause après une
-  // mise à jour du fichier entre-temps. Cause : les cases étaient repérées par leur POSITION dans
-  // le document (1ère, 2e, 3e...), pas par leur contenu. Ajouter, retirer ou déplacer UNE SEULE
-  // question ailleurs dans tout le questionnaire décale la position de toutes celles qui suivent
-  // — et une case cochée se retrouvait donc restaurée sur une tout autre question, sans lien avec
-  // celle réellement cochée. On repère maintenant chaque case par le texte de sa question, qui ne
-  // bouge jamais même si le questionnaire est réorganisé autour d'elle.
+  // Checks
   try {
     const checks = JSON.parse(snap['checks'] || '[]');
-    document.querySelectorAll('.check-item').forEach((c) => {
-      const contentDiv = c.children[1];
-      let label = '';
-      if (contentDiv) {
-        for (const node of contentDiv.childNodes) {
-          if (node.nodeType === 3 && node.textContent.trim()) { label = node.textContent.trim(); break; }
-        }
-      }
-      if (!label) label = c.textContent.replace('✓','').trim();
-      if (label && checks.includes(label)) c.classList.add('checked');
-    });
+    document.querySelectorAll('.check-item').forEach((c, i) => { if (checks.includes(i)) c.classList.add('checked'); });
   } catch(e) {}
-  // Déclencheurs cochés (trig-check) — même correctif, par texte de question (trig-q).
+  // Déclencheurs cochés (trig-check)
   try {
     const trigs = JSON.parse(snap['trigs'] || '[]');
-    document.querySelectorAll('.trig-check').forEach((c) => {
-      const txt = c.querySelector('.trig-q')?.textContent?.trim();
-      if (txt && trigs.includes(txt)) c.classList.add('checked');
-    });
+    document.querySelectorAll('.trig-check').forEach((c, i) => { if (trigs.includes(i)) c.classList.add('checked'); });
   } catch(e) {}
   // Champs année de la ligne de vie
   try {
