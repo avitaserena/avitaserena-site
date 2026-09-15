@@ -1631,7 +1631,7 @@ a,button{-webkit-tap-highlight-color:transparent}
           </div>
         </a>
 
-        <a href="/outils/fiche-vesicule-biliaire" class="fiche-card">
+        <a href="/ressources-espace-cliente/fiche-vesicule-biliaire" class="fiche-card">
           <div class="fiche-icon"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="4" ry="6"/><path d="M12 6C12 4 14 2 17 2M12 18c0 2-2 4-5 4"/></svg></div>
           <div class="fiche-title">Soutien vésicule biliaire</div>
           <div class="fiche-desc">Le rôle de la bile dans la digestion des graisses et le soutien du protocole SIBO.</div>
@@ -1641,7 +1641,7 @@ a,button{-webkit-tap-highlight-color:transparent}
           </div>
         </a>
 
-        <a href="/outils/fiche-microbiote" class="fiche-card">
+        <a href="/ressources-espace-cliente/fiche-microbiote" class="fiche-card">
           <div class="fiche-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg></div>
           <div class="fiche-title">Comprendre votre microbiote</div>
           <div class="fiche-desc">Dysbiose, perméabilité intestinale, axe intestin-cerveau. Les bases pour soutenir votre terrain.</div>
@@ -1850,7 +1850,7 @@ a,button{-webkit-tap-highlight-color:transparent}
 
       <div class="fiches-grid" style="margin-top:32px">
 
-        <a href="/outils/fiche-sommeil-circadien" class="fiche-card">
+        <a href="/ressources-espace-cliente/fiche-sommeil-circadien" class="fiche-card">
           <div class="fiche-icon"><svg viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></div>
           <div class="fiche-title">Sommeil & rythme circadien</div>
           <div class="fiche-desc">Comprendre vos hormones nocturnes (mélatonine, cortisol) et les leviers simples pour retrouver un sommeil réparateur.</div>
@@ -3571,7 +3571,7 @@ async function gardienEnvoyerFinal(data){
   if(!session.key || !accessToken){ serenaAddBubble('Session expirée — merci de vous reconnecter.', 'serena'); return; }
 
   try {
-    await fetch(SUPA_URL + '/rest/v1/messages_client', {
+    var resEnvoi = await fetch(SUPA_URL + '/rest/v1/messages_client', {
       method: 'POST',
       headers: {
         'apikey': SUPA_KEY,
@@ -3595,6 +3595,17 @@ async function gardienEnvoyerFinal(data){
         urgence: data.urgence || null
       })
     });
+
+    // CORRIGÉ (15/09/2026) : fetch() ne rejette jamais sur un statut HTTP non-2xx — sans cette
+    // vérification, une écriture refusée par le serveur affichait quand même "votre message a
+    // bien été transmis", alors que Sabrina ne recevait jamais rien. C'est la promesse même
+    // d'A Luma ("je vous réponds sous 24h") : elle ne doit jamais paraître tenue par erreur.
+    if (!resEnvoi.ok) {
+      var errTxt = await resEnvoi.text();
+      console.error('Envoi du message refusé par le serveur (' + resEnvoi.status + ') :', errTxt);
+      serenaAddBubble("Une erreur est survenue à l'envoi — votre message n'est pas parti. Réessayez dans un instant, ou contactez Sabrina directement si ça persiste.", 'serena').classList.add('gardien-msg');
+      return;
+    }
 
     if(!data.trivial){
       serenaAddBubble('Votre message a bien été transmis à Sabrina — elle vous répond personnellement sous 24h.', 'serena').classList.add('gardien-msg');
@@ -4254,7 +4265,10 @@ var FICHES_CATALOGUE = {
   'thyroide':              { url:'/fiches/hashimoto.html',              label:'Comprendre sa thyroïde (Hashimoto)' },
   'hashimoto-pratique':     { url:'/fiches/hashimoto-pratique.html',       label:'Thyroïde — guide iode/sélénium au quotidien' },
   'surrenales':            { url:'/fiches/fatigue-surrenalienne.html',  label:'Comprendre sa fatigue surrénalienne' },
-  'fatigue-surrenalienne-pratique':   { url:'/fiches/fatigue-surrenalienne-pratique.html',     label:'Fatigue surrénalienne — guide rythme cortisol' }
+  'fatigue-surrenalienne-pratique':   { url:'/fiches/fatigue-surrenalienne-pratique.html',     label:'Fatigue surrénalienne — guide rythme cortisol' },
+  'alimentation-mediterraneenne': { url:'/fiches/alimentation-mediterraneenne.html', label:'L\'alimentation méditerranéenne' },
+  'assiette-fonctionnelle':       { url:'/fiches/assiette-fonctionnelle.html',       label:'L\'assiette fonctionnelle' },
+  'foie-detox-oestrogenes':       { url:'/fiches/foie-detox-oestrogenes.html',       label:'Foie & détoxification des œstrogènes' }
 };
 // Lit la sélection MANUELLE faite par Sabrina dans generateur.html (cases à cocher,
 // présélectionnées mais toujours confirmées avant l'ouverture du protocole), stockée
@@ -5524,11 +5538,16 @@ async function sauvegarderSymptomes() {
 
   // Persistance serveur — upsert sur (client_key, date) pour ne jamais dupliquer
   // l'entrée du jour, quel que soit l'appareil utilisé pour la remplir.
+  // CORRIGÉ (15/09/2026) : même bug que saveCheckinRapide (corrigé le 26/08/2026) mais jamais
+  // reporté ici — un conflit sur (client_key, date) ne fait jamais échouer fetch() lui-même
+  // (pas d'exception sur un statut HTTP non-2xx), donc l'enregistrement pouvait échouer en
+  // silence pendant que l'écran affichait confettis et courbe mise à jour comme si tout avait
+  // été sauvegardé. On vérifie désormais réellement la réponse.
   try {
     var session = avsGetSession();
     if(!session.key) return;
     var token = await Auth.getValidAccessToken();
-    await fetch(SUPA_URL + '/rest/v1/journal_entries?on_conflict=client_key,date', {
+    var resSave = await fetch(SUPA_URL + '/rest/v1/journal_entries?on_conflict=client_key,date', {
       method: 'POST',
       headers: {
         'apikey': SUPA_KEY,
@@ -5549,8 +5568,14 @@ async function sauvegarderSymptomes() {
         reponses: reponsesFinal
       })
     });
+    if (!resSave.ok) {
+      var errTxt = await resSave.text();
+      console.error('Enregistrement du jour refusé par le serveur (' + resSave.status + ') :', errTxt);
+      toastSimple("Votre suivi est gardé sur cet appareil, mais n'a pas pu être envoyé à Sabrina — réessayez avec une bonne connexion.");
+    }
   } catch(e){
     console.warn('Questionnaire du jour non synchronisé (conservé localement) :', e);
+    toastSimple("Votre suivi est gardé sur cet appareil, mais n'a pas pu être envoyé à Sabrina — réessayez avec une bonne connexion.");
   }
 }
 
