@@ -432,7 +432,7 @@ async function chargerClientes() {
     //    détection de palier, et derniers scores cliniques posés par Sabrina en Suivi.
     var checkinsByKey = {};
     _journalStatsByKey = {}; _journalHistoByKey = {}; _suiviByKey = {};
-    var keys = _clientes.map(function(c){ return c.key || (c.prenom+'-'+c.nom+'-'+(c.ddn||'')).toLowerCase(); }).filter(Boolean);
+    var keys = _clientes.map(function(c){ return c.id; }).filter(Boolean);
 
     if (keys.length) {
       var inList = '(' + keys.map(function(k){ return '"' + String(k).replace(/"/g,'') + '"'; }).join(',') + ')';
@@ -504,7 +504,7 @@ function renderClientes(checkinsByKey) {
 
   var envoyes = 0;
   list.innerHTML = _clientes.map(function(c) {
-    var key = c.key || (c.prenom + '-' + c.nom + '-' + (c.ddn||'')).toLowerCase();
+    var key = c.id;
     var sent = !!_synthesesEnvoyees[key];
     if(sent) envoyes++;
     var prog = c.programme || (c.a_luma ? 'luma' : '');
@@ -574,7 +574,7 @@ function ouvrirPanneau(cliente) {
     memosEl.style.display = 'none';
   }
 
-  var key = _currentCliente.key || (prenom + '-' + (_currentCliente.nom||'') + '-' + (_currentCliente.ddn||'')).toLowerCase();
+  var key = _currentCliente.id;
 
   // Vraies stats de check-in de la semaine affichée
   var stats = _journalStatsByKey[key] || { energie: [], humeur: [], sommeil: [] };
@@ -638,7 +638,7 @@ async function genererBrouillon() {
 
   var c = _currentCliente;
   var prenom = c.prenom || 'la cliente';
-  var key = c.key || (prenom + '-' + (c.nom||'') + '-' + (c.ddn||'')).toLowerCase();
+  var key = c.id;
   var memos = c.notes || c.memo || 'Aucun mémo disponible.';
 
   var stats = _journalStatsByKey[key] || { energie: [], humeur: [], sommeil: [] };
@@ -775,7 +775,7 @@ async function envoyerSynthese() {
   btn.innerHTML = '<span class="spinner" style="border-color:rgba(255,255,255,.3);border-top-color:#fff;width:16px;height:16px"></span> Envoi…';
 
   var semaine = getSemaineInfo(_offsetSemaine);
-  var key = _currentCliente.key || (_currentCliente.prenom+'-'+_currentCliente.nom+'-'+(_currentCliente.ddn||'')).toLowerCase();
+  var key = _currentCliente.id;
 
   try {
     var r = await supa('POST', '/rest/v1/caminu_syntheses', {

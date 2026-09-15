@@ -154,6 +154,13 @@ function aromatherapieFiltrer(liste, profil) {
     if ((profil.grossesse || profil.allaitement) && (ci.grossesse || ci.allaitement)) return false;
     if (profil.cancer_hormonodependant && (ci.cancer_hormonodependant || ci.mastose)) return false;
     if (profil.epilepsie && ci.epilepsie) return false;
+    // CORRIGÉ (15/09/2026, audit pré-lancement) : profilAroma.asthme est calculé avec soin
+    // dans generateur.html (distingue asthme sans avis allergologue vs avis déjà obtenu) mais
+    // n'était jamais utilisé ici pour exclure — alors que la quasi-totalité des huiles
+    // essentielles portent une contre-indication asthme ("avis allergologue"). Seule la mention
+    // de précaution restait affichée, sans blocage automatique. Alignée sur le même principe
+    // que les autres vigilances (grossesse, épilepsie...).
+    if (profil.asthme && ci.asthme) return false;
     if (profil.anticoagulants && (ci.anticoagulants || ci.troubles_coagulation)) return false;
     if (profil.insuffisance_renale && ci.insuffisance_renale) return false;
     if (profil.insuffisance_hepatique && (ci.insuffisance_hepatique || ci.hepatite)) return false;

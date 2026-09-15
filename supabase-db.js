@@ -183,12 +183,24 @@ const DB = {
 
   // Clé unique cliente : format canonique partagé par tout le système (CRM, questionnaires,
   // générateur, espace cliente) : prenom-nom-AAAAMMJJ, identique à clientes.id dans le CRM.
+  // CORRIGÉ (15/09/2026, audit pré-lancement) : cette formule ne retirait pas les accents et
+  // conservait les tirets/espaces internes aux noms (ex: "Zoé" restait "zoé", "Marie-Claire"
+  // gardait son tiret interne, créant une ambiguïté avec le tiret séparateur prénom/nom) —
+  // elle produisait donc un identifiant DIFFÉRENT de clientes.id pour tout nom accentué ou
+  // composé, malgré un commentaire affirmant (à tort) être alignée sur idCanoniqueCliente().
+  // Alignée ici sur la vraie formule canonique (normalizeIdPart, crm.html/agenda.html/
+  // stripe-webhook) : accents supprimés, tout caractère non alphanumérique → underscore.
   clientKey(prenom, nom, ddn) {
-    const normalize = s => (s||'').toLowerCase()
-      .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-      .replace(/[^a-z0-9]/g,'');
-    const dateDigits = (ddn||'').replace(/[^0-9]/g,''); // AAAAMMJJ, sans séparateurs
-    return [normalize(prenom), normalize(nom), dateDigits].filter(Boolean).join('-');
+    const normalize = s => (s||'')
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .trim().toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '');
+    const p = normalize(prenom);
+    const n = normalize(nom);
+    const dateDigits = (ddn||'').replace(/-/g,'');
+    if (!p || !dateDigits) return null;
+    return p + (n ? '-' + n : '') + '-' + dateDigits;
   },
 
   async savePHVMemo(prenom, nom, ddn, payload) {
@@ -239,7 +251,8 @@ const DB = {
         plan_type:     payload.planType || null,     // ex: 'premier_rdv', 'suivi', 'sibo', 'sopk', 'endometriose', 'menopause', 'spm'
         plan_label:    payload.planLabel || null,     // libellé lisible affiché dans la CRM
         date_consultation: payload.dateConsultation || null,
-        resume_md:     payload.resumeMd || '',         // résumé structuré, en markdown
+        resume_md:     payload.resumeMd || '',         // résumé structuré interne, en markdown
+        resume_client_md: payload.resumeClientMd || null, // résumé chaleureux destiné à l'espace personnel de la cliente
         transcript_brute: payload.transcriptBrute || null, // conservée uniquement si Sabrina le souhaite, jamais utilisée par le générateur
         created_at:    new Date().toISOString(),
         updated_at:    new Date().toISOString()
@@ -288,11 +301,27 @@ const DB = {
 
     const merged = { ...existing, protocolData, blocks, savedAt: new Date().toISOString() };
 
-    return await supaFetch('protocoles_client?on_conflict=client_id', {
+    const result = await supaFetch('protocoles_client?on_conflict=client_id', {
       method: 'POST',
       headers: { 'Prefer': 'return=representation,resolution=merge-duplicates' },
       body: { client_id: client_key, data: merged, updated_at: new Date().toISOString() }
     });
+
+    // Ferme la boucle CRM : met à jour clientes.phv_url avec le lien direct et partageable
+    // vers ce protocole, pour que la fiche cliente affiche "Disponible" sans copier-coller
+    // manuel. Ce lien est le même que celui envoyé par email (phv-print.html?client=...).
+    try {
+      const phvUrl = 'https://avitaserena.com/outils/phv-print.html?client=' + encodeURIComponent(client_key);
+      await supaFetch('clientes?id=eq.' + encodeURIComponent(client_key), {
+        method: 'PATCH',
+        prefer: '',
+        body: { phv_url: phvUrl, updated_at: new Date().toISOString() }
+      });
+    } catch(e) {
+      console.warn('⚠ Protocole enregistré, mais impossible de mettre à jour phv_url sur la fiche cliente (peut-être une fiche introuvable pour cet id) :', e);
+    }
+
+    return result;
   },
 
   async getProtocoleClient(client_key) {

@@ -470,9 +470,15 @@ function buildKey() {
 }
 
 function norm(s) {
+  // CORRIGÉ (15/09/2026, audit pré-lancement) : remplaçait les espaces par un tiret
+  // (au lieu d'un underscore) et ne touchait pas du tout les apostrophes — un nom composé
+  // ("Anne Sophie") ou avec apostrophe ("O'Brien") produisait un identifiant différent de
+  // la vraie fiche cliente (clientes.id). Alignée sur la formule canonique normalizeIdPart
+  // (crm.html/agenda.html/stripe-webhook) : tout caractère non alphanumérique → underscore.
   return s.trim().toLowerCase()
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .replace(/\s+/g, '-');
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
 }
 
 function calcAge() {

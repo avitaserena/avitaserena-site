@@ -3773,6 +3773,19 @@ function afficherBandeauDossier(row, historique) {
     {lbl:'Compléments', val: snap.supplements ? ''+snap.supplements.split('\n').filter(Boolean).length+' prescrits' : '—'},
   ];
   grid.innerHTML = items.map(i=>`<div class="pb-item"><div class="pb-item-lbl">${i.lbl}</div><div class="pb-item-val">${i.val}</div></div>`).join('');
+  // FAILLE CORRIGÉE (15/09/2026, audit pré-lancement) : le nombre de suivis déjà enregistrés
+  // était calculé et affiché ici, mais jamais utilisé pour préremplir le N° de suivi — un menu
+  // manuel que la praticienne doit changer elle-même. Comme l'identifiant de sauvegarde est
+  // déterministe (suivi_<numéro>_<clé cliente>), oublier de l'avancer écrasait silencieusement
+  // un suivi précédent portant le même numéro. On le préremplit désormais automatiquement au
+  // numéro suivant (plafonné à 5, qui représente "5e suivi et plus"), sans jamais écraser un
+  // choix déjà fait manuellement dans ce formulaire.
+  const numSuiviEl = document.getElementById('num-suivi');
+  if (numSuiviEl && !numSuiviEl.value && nbSuivis !== null) {
+    const prochainNum = Math.min(nbSuivis + 1, 5);
+    numSuiviEl.value = String(prochainNum);
+    updateBadge();
+  }
   // Pré-remplir motifs si vide
   const mi = document.getElementById('motifs-initiaux');
   if (mi && !mi.value && snap.motifs) mi.value = snap.motifs;

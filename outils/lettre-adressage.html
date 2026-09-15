@@ -763,15 +763,33 @@ function render(){
 /* ══════════════════════════════
    SAUVEGARDE SUPABASE
 ══════════════════════════════ */
+// Même formule que normalizeIdPart()/computeClientKey() partout ailleurs dans le système
+// (crm.html, agenda.html, questionnaires, stripe-webhook...) — corrige une 3e formule
+// différente trouvée ici le 15/09/2026 (audit pré-lancement), qui ne retirait ni les
+// accents ni les espaces/tirets internes aux noms, produisant un identifiant différent
+// de la vraie fiche cliente pour tout nom composé, accentué ou avec apostrophe.
+function normalizeIdPartLettre(s) {
+  return (s || '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .trim().toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+}
+function computeClientKeyLettre(prenom, nom, ddn) {
+  const p = normalizeIdPartLettre(prenom);
+  const n = normalizeIdPartLettre(nom);
+  const dateDigits = (ddn || '').replace(/-/g, '');
+  if (!p || !dateDigits) return null;
+  return p + (n ? '-' + n : '') + '-' + dateDigits;
+}
+
 async function sauvegarder(){
   const c = client || {};
   const payload = {
     prenom           : c.prenom||'',
     nom              : c.nom||'',
     ddn              : c.ddn||null,
-    client_key       : c.prenom&&c.nom&&c.ddn
-                         ? (c.prenom+'-'+c.nom+'-'+c.ddn.replace(/-/g,'')).toLowerCase()
-                         : null,
+    client_key       : computeClientKeyLettre(c.prenom, c.nom, c.ddn),
     medecin_titre    : document.getElementById('d-titre').value,
     medecin_nom      : document.getElementById('d-nom').value.trim(),
     medecin_prenom   : document.getElementById('d-prenom').value.trim(),

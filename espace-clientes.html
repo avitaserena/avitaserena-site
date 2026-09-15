@@ -2302,8 +2302,12 @@ function normalize(s) {
 
 function clientId(prenom, nom, ddn) {
   // Format identique au CRM : prenom-nom-AAAAMMJJ
-  var p = (prenom||'').toLowerCase().replace(/[\s']/g,'_');
-  var n = (nom||'').toLowerCase().replace(/[\s']/g,'_');
+  // CORRIGÉ (15/09/2026, audit pré-lancement) : utilisait un normalisateur différent de
+  // normalize() juste au-dessus (accents non retirés, tirets internes conservés) — fonction
+  // actuellement inutilisée dans ce fichier, corrigée par précaution pour rester alignée
+  // si elle est un jour réutilisée.
+  var p = normalize(prenom);
+  var n = normalize(nom);
   var d = (ddn||'').replace(/-/g,'');
   return p + (n ? '-' + n : '') + '-' + d;
 }
