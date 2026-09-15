@@ -1187,6 +1187,10 @@ a,button{-webkit-tap-highlight-color:transparent}
       <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
       Bien-être
     </button>
+    <button class="tab-btn" id="tabBtnSettimana" onclick="switchTab('settimana',this)" style="display:none">
+      <svg viewBox="0 0 24 24"><path d="M4 21V8a2 2 0 0 1 2-2h3l2-3 2 3h3a2 2 0 0 1 2 2v13"/><path d="M9 21v-6h6v6"/></svg>
+      A Settimana
+    </button>
     <button class="tab-btn" onclick="switchTab('recettes',this)">
       <svg viewBox="0 0 24 24"><path d="M3 2v7c0 1.1.9 2 2 2h1v11M11 2v20M15 2c-1.5 3-1.5 6 0 9s1.5 6 0 9"/></svg>
       Recettes
@@ -1878,7 +1882,18 @@ a,button{-webkit-tap-highlight-color:transparent}
     </div>
 
     <!-- ─── RECETTES ─── -->
+    <!-- ─── A SETTIMANA — synthèses hebdomadaires rédigées par Sabrina ─── -->
+    <div class="tab-content" id="tab-settimana">
+      <div class="section-eyebrow">A Settimana · votre semaine</div>
+      <h2 class="section-h2">Le chemin, vu par<br>Sabrina, semaine après semaine.</h2>
+      <p class="section-sub">Chaque semaine, Sabrina prend le temps de regarder votre suivi et de vous laisser un mot personnel.</p>
+
+      <div id="settimanaList" style="display:flex;flex-direction:column;gap:12px"></div>
+      <div id="settimanaEmpty" class="proto-block-empty" style="display:none">Aucune synthèse reçue pour le moment — revenez la semaine prochaine.</div>
+    </div>
+
     <div class="tab-content" id="tab-recettes">
+
       <div class="section-eyebrow">Bibliothèque de recettes</div>
       <h2 class="section-h2">Manger simple,<br>manger juste pour vous.</h2>
       <p class="section-sub">Des recettes choisies selon votre profil digestif et hormonal — pas de recette générique, uniquement ce qui vous convient.</p>
@@ -2388,8 +2403,8 @@ async function tryAutoLogin() {
     const rows = await DB_getOwnClientRow();
     if (rows && rows.length > 0) {
       const c = rows[0];
-      localStorage.setItem('avs_client', JSON.stringify({ prenom: c.prenom, nom: c.nom, email: c.email, ok: true, key: c.id, programme: c.programme || '', chatAddonActif: !!c.chat_addon_actif, chatAddonDebut: c.chat_addon_debut || null, axes: c.axes || '', motifs: c.motifs || '', suiviSpecialites: (typeof c.suivi_specialites === 'string') ? c.suivi_specialites : null, dateProtocole: c.date_protocole || null, date1: c.date1 || null }));
-      openSpace(c.prenom, c.programme, c.chat_addon_actif);
+      localStorage.setItem('avs_client', JSON.stringify({ prenom: c.prenom, nom: c.nom, email: c.email, ok: true, key: c.id, programme: c.programme || '', chatAddonActif: !!c.chat_addon_actif, chatAddonSource: c.chat_addon_source || '', chatAddonDebut: c.chat_addon_debut || null, axes: c.axes || '', motifs: c.motifs || '', suiviSpecialites: (typeof c.suivi_specialites === 'string') ? c.suivi_specialites : null, dateProtocole: c.date_protocole || null, date1: c.date1 || null }));
+      openSpace(c.prenom, c.programme, c.chat_addon_actif, c.chat_addon_source);
       return true;
     } else {
       document.getElementById('loginError').textContent = "Votre email est confirmé, mais aucune fiche cliente n'y est associée. Contactez Sabrina.";
@@ -2404,7 +2419,7 @@ async function tryAutoLogin() {
 
 async function DB_getOwnClientRow() {
   const token = await Auth.getValidAccessToken();
-  const res = await fetch(SUPA_URL + '/rest/v1/clientes?select=id,prenom,nom,email,programme,chat_addon_actif,chat_addon_renouvellement,chat_addon_debut,axes,motifs,suivi_specialites,date_protocole,date1', {
+  const res = await fetch(SUPA_URL + '/rest/v1/clientes?select=id,prenom,nom,email,programme,chat_addon_actif,chat_addon_source,chat_addon_renouvellement,chat_addon_debut,axes,motifs,suivi_specialites,date_protocole,date1', {
     headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + token }
   });
   if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -2547,7 +2562,7 @@ function appliquerNiveauDecouverte(enParcours) {
   });
 }
 
-function appliquerAccesSerena(programme, chatAddonActif) {
+function appliquerAccesSerena(programme, chatAddonActif, chatAddonSource) {
   const enParcours = programme && PARCOURS_AVEC_SERENA.indexOf(String(programme).toLowerCase()) > -1;
   const aAccesChat = !!chatAddonActif;
   window._clientEnParcours = !!enParcours; // lu par souscrireALuma() comme garde-fou
@@ -2559,6 +2574,13 @@ function appliquerAccesSerena(programme, chatAddonActif) {
   const unlockedBlock = document.getElementById('serenaUnlocked');
   if (lockedBlock) lockedBlock.style.display = aAccesChat ? 'none' : 'block';
   if (unlockedBlock) unlockedBlock.style.display = aAccesChat ? 'block' : 'none';
+
+  // Bouton "Gérer l'abonnement" masqué pour les activations manuelles (offertes, sans
+  // paiement Stripe réel derrière) — 15/09/2026. Sans ça, cliquer dessus renvoyait
+  // "Aucun abonnement A Luma actif" alors même que l'accès est bien débloqué à l'écran,
+  // ce qui pouvait dérouter une amie à qui l'accès a été offert.
+  const lumaGererBtn = document.getElementById('lumaGererBtn');
+  if (lumaGererBtn) lumaGererBtn.style.display = (aAccesChat && chatAddonSource !== 'manuel') ? '' : 'none';
 
   // Dans l'état verrouillé : bouton d'abonnement uniquement si la cliente est en
   // parcours (Alba/Aria/Ora). Hors parcours (Bilan seul, Suivi seul, ou pas d'acte
@@ -2579,9 +2601,15 @@ function appliquerAccesSerena(programme, chatAddonActif) {
   if (contenuRdv && !enParcours) contenuRdv.classList.remove('active');
 
   if (enParcours) { window._clientProgramme = String(programme).toLowerCase(); }
+
+  // A Settimana (synthèses hebdomadaires) : réservée à A Luma (suivi payant et personnalisé),
+  // jamais incluse automatiquement avec un parcours seul — décision du 15/09/2026.
+  const eligibleSettimana = aAccesChat;
+  const tabBtnSettimana = document.getElementById('tabBtnSettimana');
+  if (tabBtnSettimana) tabBtnSettimana.style.display = eligibleSettimana ? '' : 'none';
 }
 
-function openSpace(prenom, programme, chatAddonActif){
+function openSpace(prenom, programme, chatAddonActif, chatAddonSource){
   document.getElementById('loginScreen').style.display='none';
   document.getElementById('mainContent').style.display='block';
   document.getElementById('heroPrenom').textContent = prenom;
@@ -2614,7 +2642,7 @@ function openSpace(prenom, programme, chatAddonActif){
     suiviBtn.textContent = 'Réserver un échange avec Sabrina →';
   }
 
-  appliquerAccesSerena(programme, chatAddonActif);
+  appliquerAccesSerena(programme, chatAddonActif, chatAddonSource);
   // Protocole affiché directement dans l'onglet (iframe) — outils/phv-print.html gère lui-même
   // le délai de 24h après la consultation, la checklist, et le PDF. Le lien "plein écran /
   // imprimer" pointe vers la même URL, pour le cas où la cliente préfère sortir de l'iframe
@@ -2650,7 +2678,7 @@ window.addEventListener('DOMContentLoaded', async function(){
 
   // 2. Session déjà active sur cet appareil
   var saved = localStorage.getItem('avs_client') || sessionStorage.getItem('avs_client');
-  if(saved){ try{ var c=JSON.parse(saved); if(c.ok) openSpace(c.prenom, c.programme, c.chatAddonActif); }catch(e){} }
+  if(saved){ try{ var c=JSON.parse(saved); if(c.ok) openSpace(c.prenom, c.programme, c.chatAddonActif, c.chatAddonSource); }catch(e){} }
 });
 
 // ── ONGLETS ──
@@ -2669,6 +2697,7 @@ function switchTab(id, btn){
   if(id === 'rdv') initTabRdv();
   if(id === 'capsules'){ initCapsules(); }
   if(id === 'serena'){ gardienLoadHistory(); marquerReponsesVues(); }
+  if(id === 'settimana') loadSettimanaSyntheses();
   if(id === 'recettes' && !recettesLoaded) loadRecettes();
   if(id === 'protocole'){ loadBilans(); loadSeances(); renderFichesProtocole(); }
   if(id === 'journal') loadJournalHistory();
@@ -2686,7 +2715,7 @@ function fermerPlusSheet(){
 
 function openTabFromHash(){
   var hash = window.location.hash.replace('#','');
-  var valid = ['dashboard','protocole','journal','digestion','hormones','bienetre','rdv','serena','recettes'];
+  var valid = ['dashboard','protocole','journal','digestion','hormones','bienetre','rdv','serena','recettes','settimana'];
   if(hash && valid.indexOf(hash) > -1){
     switchTab(hash);
   }
@@ -4830,6 +4859,36 @@ async function loadSeances(){
     }).join('');
   } catch(e){
     console.warn('Séances non chargées :', e);
+    empty.style.display='block';
+  }
+}
+
+async function loadSettimanaSyntheses(){
+  var session = avsGetSession();
+  var list = document.getElementById('settimanaList');
+  var empty = document.getElementById('settimanaEmpty');
+  if(!session.key || !list) return;
+  try {
+    var token = await Auth.getValidAccessToken();
+    var res = await fetch(SUPA_URL + '/rest/v1/caminu_syntheses?client_key=eq.' + encodeURIComponent(session.key) + '&order=created_at.desc', {
+      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (token || SUPA_KEY) }
+    });
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    var rows = await res.json();
+    if(!rows.length){ list.innerHTML=''; empty.style.display='block'; return; }
+    empty.style.display='none';
+    list.innerHTML = rows.map(function(s){
+      var d = s.created_at ? new Date(s.created_at).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}) : '';
+      var cadeauHtml = s.suggestion_cadeau ? '<div style="margin-top:12px;padding:12px 14px;background:var(--or-clair,#FDEEF3);border-radius:10px;font-size:13px;color:var(--ardoise)">🎁 Un geste qui compte : vous pouvez offrir un premier Bilan de vitalité à une amie ou une proche — parlez-en à Sabrina.</div>' : '';
+      return '<div style="background:var(--blanc);border:1px solid var(--taupe);border-radius:12px;padding:18px 20px">' +
+        '<div style="font-size:11px;font-weight:600;color:var(--ocre);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">'+d+'</div>' +
+        '<div style="font-size:15px;font-weight:600;color:var(--ardoise);margin-bottom:8px">'+escHtml(s.titre||'Votre semaine')+'</div>' +
+        '<div style="font-size:13.5px;color:var(--ardoise);line-height:1.75;white-space:pre-wrap">'+escHtml(s.contenu||'')+'</div>' +
+        cadeauHtml +
+      '</div>';
+    }).join('');
+  } catch(e){
+    console.warn('Synthèses A Settimana non chargées :', e);
     empty.style.display='block';
   }
 }
