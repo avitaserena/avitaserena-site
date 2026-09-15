@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>U Caminu — Envoi hebdomadaire | A Vita Serena</title>
+<title>A Settimana — Envoi hebdomadaire | A Vita Serena</title>
 <meta name="robots" content="noindex,nofollow">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -174,14 +174,14 @@ body{font-family:'Be Vietnam Pro',sans-serif;background:var(--ivoire);color:var(
     <div class="sb-label" style="margin-top:8px">Communication</div>
     <a href="#" class="sb-item active">
       <svg width="16" height="16" viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-10"/><circle cx="19" cy="5" r="2"/></svg>
-      U Caminu
+      A Settimana
     </a>
   </div>
 </aside>
 
 <!-- MAIN -->
 <main class="main">
-  <div class="page-eyebrow">U Caminu · [u ka-MI-nu] · « Le chemin »</div>
+  <div class="page-eyebrow">A Settimana · [a sett-ti-MA-na] · « La semaine »</div>
   <h1 class="page-title">Synthèses hebdomadaires</h1>
   <p class="page-sub">Chaque dimanche, rédigez et envoyez une synthèse personnalisée à chaque abonnée. L'outil rassemble les check-ins, les mémos et les données de la semaine pour vous — vous rédigez, vous validez, vous envoyez.</p>
 
@@ -227,7 +227,7 @@ body{font-family:'Be Vietnam Pro',sans-serif;background:var(--ivoire);color:var(
         <div class="wp-avatar" id="wpAvatar">—</div>
         <div>
           <div class="wp-name" id="wpName">—</div>
-          <div class="wp-sub" id="wpSub">U Caminu · semaine en cours</div>
+          <div class="wp-sub" id="wpSub">A Settimana · semaine en cours</div>
         </div>
       </div>
       <button class="wp-close" onclick="fermerPanneau()">×</button>
@@ -313,7 +313,7 @@ body{font-family:'Be Vietnam Pro',sans-serif;background:var(--ivoire);color:var(
     </div>
     <div class="wp-footer">
       <div class="wp-footer-info">
-        Envoi immédiat dans l'espace cliente · visible dans U Caminu
+        Envoi immédiat dans l'espace cliente · visible dans A Settimana
       </div>
       <button class="wp-send-btn" id="wpSendBtn" onclick="envoyerSynthese()" disabled>
         <svg width="15" height="15" viewBox="0 0 24 24"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7z"/></svg>
@@ -420,7 +420,7 @@ async function chargerClientes() {
   var semaine = getSemaineInfo(_offsetSemaine);
   try {
     // 1. Clientes avec A Luma ou parcours Aria/Ora
-    var r1 = await supa('GET', '/rest/v1/clientes?or=(chat_addon_actif.eq.true,programme.eq.aria,programme.eq.ora)&order=prenom.asc&select=*');
+    var r1 = await supa('GET', '/rest/v1/clientes?chat_addon_actif=eq.true&order=prenom.asc&select=*');
     _clientes = r1 || [];
 
     // 2. Synthèses déjà envoyées cette semaine
@@ -553,7 +553,7 @@ function ouvrirPanneau(cliente) {
   var prenom = _currentCliente.prenom || '';
   document.getElementById('wpAvatar').textContent = prenom.charAt(0).toUpperCase();
   document.getElementById('wpName').textContent = prenom + ' ' + (_currentCliente.nom || '');
-  document.getElementById('wpSub').textContent = 'U Caminu · ' + getSemaineInfo(_offsetSemaine).label;
+  document.getElementById('wpSub').textContent = 'A Settimana · ' + getSemaineInfo(_offsetSemaine).label;
   document.getElementById('wpSendPrenom').textContent = prenom;
   document.getElementById('wpTitre').value = '';
   document.getElementById('wpContenu').value = '';
@@ -641,6 +641,28 @@ async function genererBrouillon() {
   var key = c.id;
   var memos = c.notes || c.memo || 'Aucun mémo disponible.';
 
+  // Échanges de la semaine via A Luma (messages_client) — pour que la synthèse montre
+  // un vrai suivi du dossier ("lundi vous m'avez écrit que...") et pas seulement les
+  // chiffres du journal. Bornes de la semaine affichée, pas uniquement "cette semaine".
+  var semaineInfo = getSemaineInfo(_offsetSemaine);
+  var echangesTxt = 'Aucun échange via A Luma cette semaine.';
+  try {
+    var msgs = await supa('GET', '/rest/v1/messages_client?client_key=eq.' + encodeURIComponent(key) +
+      '&created_at=gte.' + encodeURIComponent(semaineInfo.isoLundi + 'T00:00:00') +
+      '&created_at=lte.' + encodeURIComponent(semaineInfo.isoDimanche + 'T23:59:59') +
+      '&select=message,reponse,created_at&order=created_at.asc');
+    if (msgs && msgs.length) {
+      var joursFr = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
+      echangesTxt = msgs.map(function(m) {
+        var jour = joursFr[new Date(m.created_at).getDay()];
+        var bloc = jour.charAt(0).toUpperCase() + jour.slice(1) + ' — elle a écrit : "' + (m.message || '') + '"';
+        if (m.reponse) bloc += ' / Votre réponse : "' + m.reponse + '"';
+        else bloc += ' / (pas encore répondu)';
+        return bloc;
+      }).join('\n');
+    }
+  } catch (e) { console.warn('Échanges A Luma non chargés :', e); }
+
   var stats = _journalStatsByKey[key] || { energie: [], humeur: [], sommeil: [] };
   var moyE = _moy(stats.energie), moyH = _moy(stats.humeur), moyS = _moy(stats.sommeil);
   var nJours = Math.max(stats.energie.length, stats.humeur.length, stats.sommeil.length, 0);
@@ -668,12 +690,15 @@ async function genererBrouillon() {
   var prompt = [
     'Tu es l\'assistante de rédaction de Sabrina Castelli, naturopathe spécialisée en SIBO et hormonal (A Vita Serena, Porto-Vecchio).',
     '',
-    'Rédige une synthèse hebdomadaire U Caminu pour ' + prenom + '.',
+    'Rédige une synthèse hebdomadaire A Settimana pour ' + prenom + '.',
     '',
     'DONNÉES DE LA SEMAINE (journal quotidien de ' + prenom + ') :',
     checkins,
     '',
     pointClinique ? 'POINT CLINIQUE :\n' + pointClinique : '',
+    '',
+    'ÉCHANGES VIA A LUMA CETTE SEMAINE (chat direct entre elle et Sabrina) :',
+    echangesTxt,
     '',
     'MÉMOS DE LA FICHE CLIENTE (informations confidentielles confiées à Sabrina) :',
     memos,
@@ -682,6 +707,7 @@ async function genererBrouillon() {
     '- Vouvoiement obligatoire',
     '- 150 à 220 mots maximum',
     '- Mentionner AU MOINS UN élément issu des mémos (voyage, travail, famille, peur, espoir confié)',
+    '- Si des échanges A Luma existent cette semaine, reprends-en explicitement au moins un, en nommant le jour ("Lundi, vous m\'avez écrit que...") et en rappelant brièvement ce qui a été dit ou décidé ensemble — c\'est la preuve concrète que le suivi avance, pas un simple résumé de chiffres. N\'invente jamais un échange qui n\'a pas eu lieu.',
     '- Expliquer POURQUOI ce qui a été noté se produit dans le corps (posture pédagogique)',
     '- Pas de formule générique comme "prenez soin de vous" ou "continuez ainsi"',
     '- Ton : chaleureux, direct, expert — comme une lettre de quelqu\'un qui vous connaît vraiment',
