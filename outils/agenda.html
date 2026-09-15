@@ -445,9 +445,18 @@ body.is-embed .app{min-height:100vh}
   <div class="modal" onclick="event.stopPropagation()">
     <div class="modal-title" id="rdvModalTitle">Nouveau rendez-vous</div>
     <div class="modal-grid">
-      <div class="modal-field">
-        <label>Prénom Nom</label>
-        <input type="text" id="rdvName" placeholder="Marie Dupont">
+      <div class="modal-field full" style="position:relative">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div>
+            <label>Prénom</label>
+            <input type="text" id="rdvPrenom" placeholder="Marie" autocomplete="off" oninput="chercherClientRdv()">
+          </div>
+          <div>
+            <label>Nom</label>
+            <input type="text" id="rdvNom" placeholder="Dupont" autocomplete="off" oninput="chercherClientRdv()">
+          </div>
+        </div>
+        <div id="rdvClientSuggestions" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:50;background:var(--blanc);border:1px solid var(--taupe);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.14);margin-top:4px;max-height:240px;overflow-y:auto"></div>
       </div>
       <div class="modal-field">
         <label>Email</label>
@@ -1683,7 +1692,11 @@ function renderMois() {
 function openAddModal() {
   state.editingId = null;
   document.getElementById('rdvModalTitle').textContent = 'Nouveau rendez-vous';
-  document.getElementById('rdvName').value = '';
+  document.getElementById('rdvPrenom').value = '';
+  document.getElementById('rdvNom').value = '';
+  _rdvSelectedClientId = null;
+  masquerSuggestionsClientRdv();
+  chargerClientsCacheRdv();
   document.getElementById('rdvEmail').value = '';
   document.getElementById('rdvPhone').value = '';
   document.getElementById('rdvDdn').value = '';
@@ -1711,7 +1724,11 @@ function openEditModal(id) {
   }
   state.editingId = id;
   document.getElementById('rdvModalTitle').textContent = rdv.name;
-  document.getElementById('rdvName').value = rdv.name;
+  const { prenom: editPrenom, nom: editNom } = splitRdvName(rdv.name);
+  document.getElementById('rdvPrenom').value = editPrenom;
+  document.getElementById('rdvNom').value = editNom;
+  _rdvSelectedClientId = rdv.client_key || null;
+  masquerSuggestionsClientRdv();
   document.getElementById('rdvEmail').value = rdv.email;
   document.getElementById('rdvPhone').value = rdv.phone || '';
   document.getElementById('rdvDdn').value = rdv.ddn || '';
@@ -1773,6 +1790,76 @@ avitaserena.com`;
   document.getElementById('rdvModal').classList.add('open');
 }
 
+/* ══════════════════════════════════════
+   AUTOCOMPLÉTION CLIENTE — pendant la saisie d'un nouveau RDV, propose les
+   fiches existantes correspondantes (insensible accents/casse/tirets/espaces,
+   même formule que normalizeIdPart ci-dessous). Fonctionne même sans date de
+   naissance connue : la recherche porte sur le nom, la fiabilisation du
+   rattachement (client_key) se fera avec la DDN une fois connue.
+══════════════════════════════════════ */
+let _rdvSelectedClientId = null;
+let _clientsCacheRdv = null;
+
+async function chargerClientsCacheRdv() {
+  try {
+    let authToken = SUPA_KEY;
+    if (typeof Auth !== 'undefined') {
+      const token = await Auth.getValidAccessToken();
+      if (token) authToken = token;
+    }
+    const res = await fetch(SUPA_URL + '/rest/v1/clientes?select=id,prenom,nom,email,tel,ddn', {
+      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + authToken }
+    });
+    _clientsCacheRdv = res.ok ? await res.json() : [];
+  } catch (e) { console.warn('[Agenda] Chargement clientes (autocomplétion) échoué :', e); _clientsCacheRdv = []; }
+}
+
+function masquerSuggestionsClientRdv() {
+  const el = document.getElementById('rdvClientSuggestions');
+  if (el) { el.style.display = 'none'; el.innerHTML = ''; }
+}
+
+function chercherClientRdv() {
+  _rdvSelectedClientId = null; // toute frappe manuelle invalide une sélection précédente
+  const box = document.getElementById('rdvClientSuggestions');
+  if (!box) return;
+  const pTyped = normalizeIdPart(document.getElementById('rdvPrenom').value);
+  const nTyped = normalizeIdPart(document.getElementById('rdvNom').value);
+  if (!pTyped && !nTyped) { masquerSuggestionsClientRdv(); return; }
+  if ((pTyped + nTyped).length < 2 || !_clientsCacheRdv) { masquerSuggestionsClientRdv(); return; }
+
+  const matches = _clientsCacheRdv.filter(c => {
+    const cp = normalizeIdPart(c.prenom || '');
+    const cn = normalizeIdPart(c.nom || '');
+    const okP = !pTyped || cp.indexOf(pTyped) === 0;
+    const okN = !nTyped || cn.indexOf(nTyped) === 0;
+    return okP && okN;
+  }).slice(0, 6);
+
+  if (!matches.length) { masquerSuggestionsClientRdv(); return; }
+
+  box.innerHTML = matches.map(c => {
+    const ddnTxt = c.ddn ? new Date(c.ddn).toLocaleDateString('fr-FR', { day:'numeric', month:'long', year:'numeric' }) : 'date de naissance inconnue';
+    return '<div onclick="selectionnerClientRdv(\'' + c.id.replace(/'/g,"\\'") + '\')" style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--taupe);font-size:13px" onmouseover="this.style.background=\'var(--gold-lt)\'" onmouseout="this.style.background=\'\'">'
+      + '<div style="font-weight:700;color:var(--ardoise)">' + escHtmlWk(((c.prenom||'') + ' ' + (c.nom||'')).trim()) + '</div>'
+      + '<div style="color:var(--gris);font-size:11.5px">' + escHtmlWk(ddnTxt) + (c.email ? ' · ' + escHtmlWk(c.email) : '') + '</div>'
+      + '</div>';
+  }).join('');
+  box.style.display = 'block';
+}
+
+function selectionnerClientRdv(id) {
+  const c = (_clientsCacheRdv || []).find(x => x.id === id);
+  if (!c) return;
+  document.getElementById('rdvPrenom').value = c.prenom || '';
+  document.getElementById('rdvNom').value = c.nom || '';
+  if (c.email) document.getElementById('rdvEmail').value = c.email;
+  if (c.tel) document.getElementById('rdvPhone').value = c.tel;
+  if (c.ddn) document.getElementById('rdvDdn').value = c.ddn;
+  _rdvSelectedClientId = c.id;
+  masquerSuggestionsClientRdv();
+}
+
 function splitRdvName(name) {
   name = (name||'').trim();
   const i = name.indexOf(' ');
@@ -1800,8 +1887,10 @@ function computeClientKey(prenom, nom, ddn) {
 }
 
 function saveRdv() {
+  const prenomSaisi = document.getElementById('rdvPrenom').value.trim();
+  const nomSaisi = document.getElementById('rdvNom').value.trim();
   const rdv = {
-    name: document.getElementById('rdvName').value,
+    name: (prenomSaisi + (nomSaisi ? ' ' + nomSaisi : '')).trim(),
     email: document.getElementById('rdvEmail').value,
     phone: document.getElementById('rdvPhone').value || null,
     ddn: document.getElementById('rdvDdn').value || null,
@@ -1812,11 +1901,15 @@ function saveRdv() {
     notes: document.getElementById('rdvNotes').value,
     parcours: document.getElementById('rdvParcours').value,
   };
-  if (!rdv.name || !rdv.date || !rdv.time) return;
+  if (!prenomSaisi || !rdv.date || !rdv.time) return;
 
-  if (rdv.ddn) {
-    const { prenom, nom } = splitRdvName(rdv.name);
-    rdv.client_key = computeClientKey(prenom, nom, rdv.ddn);
+  // Rattachement fiable : si une fiche a été choisie dans les suggestions, on
+  // l'utilise directement (fonctionne même sans DDN) — sinon on retombe sur le
+  // calcul habituel par prénom+nom+DDN (nécessite la DDN, comme avant).
+  if (_rdvSelectedClientId) {
+    rdv.client_key = _rdvSelectedClientId;
+  } else if (rdv.ddn) {
+    rdv.client_key = computeClientKey(prenomSaisi, nomSaisi, rdv.ddn);
   }
 
   // Empêche de superposer deux RDV sur le même créneau (durée + temps de préparation)
@@ -2066,9 +2159,18 @@ async function syncToCRM(rdv) {
     };
     const evt = { type: 'rdv', rdv_id: rdv.id, title: 'RDV ' + getTypeLabel(rdv.type) + ' — ' + rdv.date, icon: 'rdv', date: new Date().toISOString().slice(0,10) };
 
-    // Cliente déjà connue (recherche par email) : on ajoute le RDV à son historique
+    // Cliente déjà connue : priorité au rattachement exact (client_key — vient soit
+    // d'une sélection dans l'autocomplétion, soit du calcul prénom+nom+DDN), l'email
+    // ne sert plus qu'en repli si aucun client_key n'a pu être déterminé.
     let existing = null;
-    if (rdv.email) {
+    if (rdv.client_key) {
+      const res = await fetch(SUPA_URL + '/rest/v1/clientes?id=eq.' + encodeURIComponent(rdv.client_key) + '&select=id,timeline,tel,ddn', { headers });
+      if (res.ok) {
+        const rows = await res.json();
+        if (rows.length) existing = rows[0];
+      }
+    }
+    if (!existing && rdv.email) {
       const res = await fetch(SUPA_URL + '/rest/v1/clientes?email=eq.' + encodeURIComponent(rdv.email) + '&select=id,timeline,tel,ddn', { headers });
       if (res.ok) {
         const rows = await res.json();
@@ -2090,12 +2192,19 @@ async function syncToCRM(rdv) {
       return;
     }
 
-    // Nouvelle fiche cliente
+    // Nouvelle fiche cliente — même format d'identifiant que partout ailleurs
+    // (prénom-nom-AAAAMMJJ) dès que la DDN est connue, pour ne jamais créer une
+    // fiche "orpheline" qu'il faudrait fusionner manuellement par la suite.
+    // Sans DDN, on garde le format provisoire horodaté (repris ensuite par
+    // migrerIdCliente() côté CRM une fois la DDN renseignée).
     var parts = rdv.name.split(' ');
     var prenom = parts[0] || rdv.name;
     var nom = parts.slice(1).join(' ') || '';
-    var slug = function(s) { return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'') || 'x'; };
-    var id = slug(prenom) + (nom ? '-' + slug(nom) : '') + '-' + Date.now();
+    var id = rdv.ddn ? computeClientKey(prenom, nom, rdv.ddn) : null;
+    if (!id) {
+      var slug = function(s) { return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'') || 'x'; };
+      id = slug(prenom) + (nom ? '-' + slug(nom) : '') + '-' + Date.now();
+    }
 
     await fetch(SUPA_URL + '/rest/v1/clientes', {
       method: 'POST',
