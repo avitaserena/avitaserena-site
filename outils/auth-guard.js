@@ -21,28 +21,6 @@ const Auth = {
     return true;
   },
 
-  /* ── Connexion praticienne par mot de passe unique (12/09/2026) ──
-     Le mot de passe n'est JAMAIS comparé ici : on l'envoie tel quel à la
-     fonction serveur praticienne-login, qui seule connaît la valeur attendue
-     et renvoie une vraie session Supabase (compatible RLS is_praticien()). */
-  async loginPraticienne(password) {
-    const res = await fetch(SUPA_URL + '/functions/v1/praticienne-login', {
-      method: 'POST',
-      headers: { 'apikey': SUPA_KEY, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password })
-    });
-    const data = await res.json();
-    if (!res.ok || !data.access_token) throw new Error(data.error || 'Mot de passe incorrect');
-
-    const session = {
-      access_token: data.access_token,
-      refresh_token: data.refresh_token,
-      expires_at: Date.now() + (data.expires_in || 3600) * 1000
-    };
-    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
-    return true;
-  },
-
   /* ── Vérifier un code à 6 chiffres reçu par email (contourne le pré-clic des scanners) ── */
   async verifyOtp(email, token) {
     const res = await fetch(SUPA_URL + '/auth/v1/verify', {
@@ -142,59 +120,24 @@ function showAuthGate(profil, onSuccess) {
   const overlay = document.createElement('div');
   overlay.id = 'auth-gate-overlay';
   overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#1E1E1C;display:flex;align-items:center;justify-content:center;padding:24px;font-family:"Be Vietnam Pro",Arial,sans-serif';
-
-  // ── Praticienne (12/09/2026) : mot de passe unique, plus d'email/OTP pour cet accès ──
-  if (isPraticienne) {
-    overlay.innerHTML = `
-      <div style="max-width:380px;width:100%;background:#F7F6F4;border-radius:16px;padding:40px 32px;text-align:center">
-        <div style="font-family:Georgia,serif;font-size:22px;font-style:italic;color:#1E1E1C;margin-bottom:8px">A Vita Serena</div>
-        <p style="font-size:13px;color:#6B6560;margin-bottom:24px">Connexion praticienne</p>
-        <input id="auth-pwd-input" type="password" placeholder="Mot de passe" style="width:100%;padding:12px 14px;border:1px solid #D5CFC6;border-radius:8px;font-size:14px;margin-bottom:12px;box-sizing:border-box">
-        <button id="auth-pwd-btn" style="width:100%;background:#1E1E1C;color:#fff;border:none;padding:13px;border-radius:99px;font-size:13px;font-weight:600;cursor:pointer">Se connecter →</button>
-        <p id="auth-status-msg" style="font-size:12px;color:#6B6560;margin-top:16px;line-height:1.6"></p>
-      </div>`;
-    document.body.appendChild(overlay);
-
-    const doLogin = async () => {
-      const password = document.getElementById('auth-pwd-input').value;
-      const btn = document.getElementById('auth-pwd-btn');
-      const msg = document.getElementById('auth-status-msg');
-      if (!password) { msg.textContent = 'Merci de renseigner le mot de passe.'; msg.style.color = '#C0392B'; return; }
-      btn.disabled = true; btn.textContent = 'Connexion…';
-      try {
-        await Auth.loginPraticienne(password);
-        onSuccess();
-      } catch(e) {
-        msg.style.color = '#C0392B';
-        msg.textContent = 'Mot de passe incorrect.';
-        btn.disabled = false; btn.textContent = 'Se connecter →';
-        console.error(e);
-      }
-    };
-    document.getElementById('auth-pwd-btn').onclick = doLogin;
-    document.getElementById('auth-pwd-input').onkeydown = (e) => { if (e.key === 'Enter') doLogin(); };
-    return;
-  }
-
-  // ── Cliente : parcours email + code inchangé ──
   overlay.innerHTML = `
     <div style="max-width:380px;width:100%;background:#F7F6F4;border-radius:16px;padding:40px 32px;text-align:center">
       <div style="font-family:Georgia,serif;font-size:22px;font-style:italic;color:#1E1E1C;margin-bottom:8px">A Vita Serena</div>
-      <p style="font-size:13px;color:#6B6560;margin-bottom:24px">Connectez-vous pour accéder à votre espace</p>
+      <p style="font-size:13px;color:#6B6560;margin-bottom:24px">${isPraticienne ? 'Connexion praticienne' : 'Connectez-vous pour accéder à votre espace'}</p>
       <input id="auth-email-input" type="email" placeholder="Votre email" style="width:100%;padding:12px 14px;border:1px solid #D5CFC6;border-radius:8px;font-size:14px;margin-bottom:12px;box-sizing:border-box">
       <button id="auth-submit-btn" style="width:100%;background:#1E1E1C;color:#fff;border:none;padding:13px;border-radius:99px;font-size:13px;font-weight:600;cursor:pointer">Recevoir un code de connexion →</button>
       <p id="auth-status-msg" style="font-size:12px;color:#6B6560;margin-top:16px;line-height:1.6"></p>
 
       <div id="auth-code-block" style="display:none;margin-top:18px;padding-top:18px;border-top:1px solid #E4DFD8">
-        <p style="font-size:12px;color:#6B6560;margin-bottom:10px">Entrez le code reçu par email :</p>
-        <input id="auth-code-input" type="text" inputmode="numeric" maxlength="12" placeholder="Votre code" style="width:100%;padding:12px 14px;border:1px solid #D5CFC6;border-radius:8px;font-size:18px;letter-spacing:.15em;text-align:center;margin-bottom:12px;box-sizing:border-box">
+        <p style="font-size:12px;color:#6B6560;margin-bottom:10px">Entrez le code à 6 chiffres reçu par email :</p>
+        <input id="auth-code-input" type="text" inputmode="numeric" maxlength="6" placeholder="000000" style="width:100%;padding:12px 14px;border:1px solid #D5CFC6;border-radius:8px;font-size:20px;letter-spacing:.3em;text-align:center;margin-bottom:12px;box-sizing:border-box">
         <button id="auth-verify-btn" style="width:100%;background:var(--ocre,#B4906A);color:#fff;border:none;padding:13px;border-radius:99px;font-size:13px;font-weight:600;cursor:pointer">Valider le code →</button>
       </div>
     </div>`;
   document.body.appendChild(overlay);
 
   document.getElementById('auth-submit-btn').onclick = async () => {
-    const email = document.getElementById('auth-email-input').value.trim();
+    const email = document.getElementById('auth-email-input').value.trim().toLowerCase();
     const btn = document.getElementById('auth-submit-btn');
     const msg = document.getElementById('auth-status-msg');
     if (!email) { msg.textContent = 'Merci de renseigner un email.'; msg.style.color = '#C0392B'; return; }
@@ -215,11 +158,11 @@ function showAuthGate(profil, onSuccess) {
   };
 
   document.getElementById('auth-verify-btn').onclick = async () => {
-    const email = document.getElementById('auth-email-input').value.trim();
+    const email = document.getElementById('auth-email-input').value.trim().toLowerCase();
     const code = document.getElementById('auth-code-input').value.trim();
     const btn = document.getElementById('auth-verify-btn');
     const msg = document.getElementById('auth-status-msg');
-    if (!code || code.length < 4) { msg.textContent = 'Entrez le code complet.'; msg.style.color = '#C0392B'; return; }
+    if (!code || code.length < 6) { msg.textContent = 'Entrez le code à 6 chiffres complet.'; msg.style.color = '#C0392B'; return; }
     btn.disabled = true; btn.textContent = 'Vérification…';
     try {
       await Auth.verifyOtp(email, code);
