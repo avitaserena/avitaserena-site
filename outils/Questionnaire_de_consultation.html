@@ -758,6 +758,18 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
     </div>
   </div>
 
+  <!-- Bloc Préparation visio — rempli automatiquement si la cliente a répondu au questionnaire envoyé avant le RDV -->
+  <div id="bloc-prep-visio" style="display:none;background:var(--or-clair);border:1px solid var(--ocre);border-radius:16px;padding:22px 26px;margin-bottom:26px">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px">
+      <div style="font-family:'Inter',sans-serif;font-weight:700;font-size:16px;color:var(--or)">📋 Questionnaire de préparation visio</div>
+      <button type="button" id="btn-regen-prep-visio" onclick="genererPrepVisioSynthese(true)" style="display:none;background:none;border:1px solid var(--ocre);color:var(--or);border-radius:99px;padding:5px 12px;font-size:11.5px;font-weight:600;cursor:pointer;white-space:nowrap">↻ Régénérer</button>
+    </div>
+    <div style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--or);opacity:.8;margin-bottom:6px">Ce qu'elle a répondu avant la visio</div>
+    <div id="prep-visio-faits" style="font-size:14px;color:var(--ardoise);line-height:1.6;margin-bottom:16px"></div>
+    <div style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--or);opacity:.8;margin-bottom:6px">Généré par IA — à vérifier en entretien</div>
+    <div id="prep-visio-ia" style="font-size:14px;color:var(--ardoise);line-height:1.6"><div style="opacity:.7">Génération en cours…</div></div>
+  </div>
+
   <!-- Q1 -->
   <div class="qcard">
     <div class="qcard-top">
@@ -10275,6 +10287,92 @@ async function sbFetch(path, opts={}) {
   return t ? JSON.parse(t) : [];
 }
 
+async function callEdgeFunction(slug, payload) {
+  let authToken = SUPA_KEY;
+  if (typeof Auth !== 'undefined') {
+    const token = await Auth.getValidAccessToken();
+    if (token) authToken = token;
+  }
+  const r = await fetch(SUPA_URL + '/functions/v1/' + slug, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken, 'apikey': SUPA_KEY },
+    body: JSON.stringify(payload)
+  });
+  const t = await r.text();
+  const data = t ? JSON.parse(t) : {};
+  if (!r.ok) throw new Error(data.error || 'Erreur serveur');
+  return data;
+}
+
+/* ══════════════════════════════════════
+   BLOC PRÉPARATION VISIO — récap des réponses pré-visio + synthèse IA
+   (généré une fois par cliente, mis en cache côté Supabase, régénérable)
+══════════════════════════════════════ */
+async function chargerPrepVisio() {
+  if (!crmClientId) return; // pas d'arrivée depuis une fiche cliente connue
+  try {
+    const rows = await sbFetch('questionnaires?client_id=eq.' + encodeURIComponent(crmClientId) + '&type=eq.visio&select=snapshot,synthese_ia&order=created_at.desc&limit=1');
+    const row = rows && rows[0];
+    if (!row) return; // aucune préparation visio pour cette cliente
+
+    const bloc = document.getElementById('bloc-prep-visio');
+    if (!bloc) return;
+    bloc.style.display = 'block';
+    renderPrepVisioFaits(row.snapshot || {});
+
+    if (row.synthese_ia) { renderPrepVisioSynthese(row.synthese_ia); }
+    else { genererPrepVisioSynthese(false); }
+  } catch (e) { console.warn('[Prep visio] Chargement échoué :', e); }
+}
+
+function renderPrepVisioFaits(s) {
+  const el = document.getElementById('prep-visio-faits');
+  if (!el) return;
+  const esc = (v) => String(v).replace(/</g, '&lt;');
+  const lignes = [];
+  if (s.motif) lignes.push(['Ce qui pèse', s.motif]);
+  if (s.duree) lignes.push(['Depuis', s.duree]);
+  if (s.scores && s.scores.energieGenerale) lignes.push(['Énergie ressentie', s.scores.energieGenerale + '/10']);
+  if (s.objectif) lignes.push(['Objectif à 6 mois', s.objectif]);
+  if (s.libre) lignes.push(['Message libre', s.libre]);
+  el.innerHTML = lignes.length
+    ? lignes.map(([l, v]) => '<div style="margin-bottom:8px"><span style="font-weight:700;color:var(--or)">' + esc(l) + ' — </span><span>' + esc(v) + '</span></div>').join('')
+    : '<div style="opacity:.7">Aucune réponse détaillée transmise.</div>';
+}
+
+function renderPrepVisioSynthese(d) {
+  const el = document.getElementById('prep-visio-ia');
+  const btn = document.getElementById('btn-regen-prep-visio');
+  if (!el) return;
+  const esc = (v) => String(v || '').replace(/</g, '&lt;');
+  if (d.donnees_insuffisantes && !d.recap) {
+    el.innerHTML = '<div style="opacity:.7">Pas assez de réponses pour une synthèse utile.</div>';
+  } else {
+    const pistes = (d.pistes || []).map((p) => '<li>' + esc(p) + '</li>').join('');
+    el.innerHTML =
+      '<div style="margin-bottom:10px">' + esc(d.recap) + '</div>' +
+      (pistes ? '<ul style="margin:0 0 12px 18px;padding:0">' + pistes + '</ul>' : '') +
+      '<div style="font-style:italic;padding:10px 12px;background:#fff;border-radius:10px;border-left:3px solid var(--ocre)">« ' + esc(d.phrase_accroche) + ' »</div>';
+  }
+  if (btn) btn.style.display = 'inline-flex';
+}
+
+async function genererPrepVisioSynthese(force) {
+  const el = document.getElementById('prep-visio-ia');
+  const btn = document.getElementById('btn-regen-prep-visio');
+  if (el) el.innerHTML = '<div style="opacity:.7">Génération en cours…</div>';
+  if (btn) btn.disabled = true;
+  try {
+    const data = await callEdgeFunction('generate-synthese-prep-visio', { client_id: crmClientId, force: !!force });
+    renderPrepVisioSynthese(data);
+  } catch (e) {
+    if (el) el.innerHTML = '<div style="opacity:.7">⚠ Synthèse indisponible pour le moment.</div>';
+    console.warn('[Prep visio] Génération échouée :', e);
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
 /* Tables portant une référence à clientes.id — utilisées lors d'une migration
    d'identifiant (voir migrerIdCliente ci-dessous). Liste identique à celle du CRM. */
 const CLIENT_REF_TABLES=[
@@ -11500,7 +11598,7 @@ async function prefillFromCRM() {
 (function init() {
   updateCounter();
   renderDiagnosticsList();
-  prefillFromCRM();
+  prefillFromCRM().then(chargerPrepVisio);
   // Vérifier s'il y a une session sauvegardée
   try {
     const saved = localStorage.getItem(SAVE_KEY);
