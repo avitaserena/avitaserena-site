@@ -137,7 +137,7 @@ function showAuthGate(profil, onSuccess) {
   document.body.appendChild(overlay);
 
   document.getElementById('auth-submit-btn').onclick = async () => {
-    const email = document.getElementById('auth-email-input').value.trim();
+    const email = document.getElementById('auth-email-input').value.trim().toLowerCase();
     const btn = document.getElementById('auth-submit-btn');
     const msg = document.getElementById('auth-status-msg');
     if (!email) { msg.textContent = 'Merci de renseigner un email.'; msg.style.color = '#C0392B'; return; }
@@ -158,7 +158,7 @@ function showAuthGate(profil, onSuccess) {
   };
 
   document.getElementById('auth-verify-btn').onclick = async () => {
-    const email = document.getElementById('auth-email-input').value.trim();
+    const email = document.getElementById('auth-email-input').value.trim().toLowerCase();
     const code = document.getElementById('auth-code-input').value.trim();
     const btn = document.getElementById('auth-verify-btn');
     const msg = document.getElementById('auth-status-msg');

@@ -183,11 +183,19 @@ const DB = {
 
   // Clé unique cliente : format canonique partagé par tout le système (CRM, questionnaires,
   // générateur, espace cliente) : prenom-nom-AAAAMMJJ, identique à clientes.id dans le CRM.
-  // Formule strictement alignée sur idCanoniqueCliente() (Questionnaire_de_consultation.html)
-  // et clientId() (espace-clientes.html) : espaces et apostrophes → underscore, tirets
-  // CONSERVÉS (prénoms composés type "Anne-Sophie"), accents conservés tels quels.
+  // CORRIGÉ (15/09/2026, audit pré-lancement) : cette formule ne retirait pas les accents et
+  // conservait les tirets/espaces internes aux noms (ex: "Zoé" restait "zoé", "Marie-Claire"
+  // gardait son tiret interne, créant une ambiguïté avec le tiret séparateur prénom/nom) —
+  // elle produisait donc un identifiant DIFFÉRENT de clientes.id pour tout nom accentué ou
+  // composé, malgré un commentaire affirmant (à tort) être alignée sur idCanoniqueCliente().
+  // Alignée ici sur la vraie formule canonique (normalizeIdPart, crm.html/agenda.html/
+  // stripe-webhook) : accents supprimés, tout caractère non alphanumérique → underscore.
   clientKey(prenom, nom, ddn) {
-    const normalize = s => (s||'').trim().toLowerCase().replace(/[\s']/g,'_');
+    const normalize = s => (s||'')
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .trim().toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '');
     const p = normalize(prenom);
     const n = normalize(nom);
     const dateDigits = (ddn||'').replace(/-/g,'');
