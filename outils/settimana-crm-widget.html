@@ -300,6 +300,10 @@ body{font-family:'Be Vietnam Pro',sans-serif;background:var(--ivoire);color:var(
         <div id="genericWarn" style="display:none;background:rgba(193,105,79,.08);border:1px solid rgba(193,105,79,.25);border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--terracotta)">
           <strong>⚠ Attention :</strong> ce message semble générique. Vérifiez qu'il contient au moins un détail issu de la fiche ou des mémos de cette cliente.
         </div>
+        <!-- Garde-fou double envoi -->
+        <div id="wpDejaEnvoyee" style="display:none;background:rgba(180,144,106,.1);border:1px solid rgba(180,144,106,.3);border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--ocre)">
+          <strong>⚠ Déjà envoyée cette semaine.</strong> Une confirmation vous sera demandée avant tout nouvel envoi.
+        </div>
       </div>
 
       <!-- Bouton brouillon IA si pas encore généré -->
@@ -564,6 +568,14 @@ function ouvrirPanneau(cliente) {
   document.getElementById('genericWarn').style.display = 'none';
   document.getElementById('wpSendBtn').disabled = true;
 
+  // Garde-fou contre le double envoi (14/09/2026) : le badge "Envoyé" dans la liste n'était
+  // que visuel — rien n'empêchait de rouvrir la fiche et de renvoyer, ce qui provoquait une
+  // erreur technique brute (contrainte d'unicité en base) plutôt qu'un message clair.
+  var dejaEnvoyeeBanner = document.getElementById('wpDejaEnvoyee');
+  if (dejaEnvoyeeBanner) {
+    dejaEnvoyeeBanner.style.display = _synthesesEnvoyees[_currentCliente.id] ? 'block' : 'none';
+  }
+
   // Afficher les mémos de la fiche
   var memos = _currentCliente.notes || _currentCliente.memo || '';
   var memosEl = document.getElementById('wpMemos');
@@ -794,6 +806,11 @@ async function envoyerSynthese() {
   if (!titre || !contenu) { toast('Renseignez le titre et le message.', false); return; }
   if (contenu.split(/\s+/).length < 50) { toast('Message trop court — minimum 50 mots.', false); return; }
 
+  if (_synthesesEnvoyees[_currentCliente.id]) {
+    var confirme = confirm('Une synthèse a déjà été envoyée à ' + (_currentCliente.prenom || 'cette cliente') + ' cette semaine. La remplacer par ce nouveau texte ?');
+    if (!confirme) return;
+  }
+
   var btn = document.getElementById('wpSendBtn');
   btn.disabled = true;
   btn.querySelector('span').previousSibling;
@@ -804,14 +821,30 @@ async function envoyerSynthese() {
   var key = _currentCliente.id;
 
   try {
-    var r = await supa('POST', '/rest/v1/caminu_syntheses', {
-      client_key: key,
-      titre: titre,
-      contenu: contenu,
-      semaine_iso: semaine.iso,
-      suggestion_cadeau: !!document.getElementById('includeCadeau').checked
+    // CORRIGÉ (15/09/2026) : simple POST avant — un deuxième envoi la même semaine
+    // provoquait une erreur brute (contrainte d'unicité client_key+semaine_iso). Passé en
+    // upsert : un deuxième envoi remplace proprement le contenu existant de la semaine,
+    // au lieu d'échouer.
+    var resp = await fetch(SUPA_URL + '/rest/v1/caminu_syntheses?on_conflict=client_key,semaine_iso', {
+      method: 'POST',
+      headers: {
+        'apikey': SUPA_KEY,
+        'Authorization': 'Bearer ' + SUPA_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates,return=minimal'
+      },
+      body: JSON.stringify({
+        client_key: key,
+        titre: titre,
+        contenu: contenu,
+        semaine_iso: semaine.iso,
+        suggestion_cadeau: !!document.getElementById('includeCadeau').checked
+      })
     });
-    if (r && r.error) throw new Error(r.error.message || JSON.stringify(r.error));
+    if (!resp.ok) {
+      var errBody = await resp.text();
+      throw new Error('Envoi refusé par le serveur (' + resp.status + ')');
+    }
 
     _synthesesEnvoyees[key] = true;
     toast('Synthèse envoyée à ' + (_currentCliente.prenom||'la cliente') + ' ✓', true);
