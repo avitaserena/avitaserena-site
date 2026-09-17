@@ -4631,6 +4631,11 @@ async function saveCheckinRapide(){
     var body = Object.assign({ client_key: session.key, date: todayISO, note: noteVal }, colVals);
     if(Object.keys(jsonVals).length) body.reponses = reponsesFinal;
 
+    // Même alerte automatique que le drawer mobile — vérifiée sur les valeurs
+    // qui viennent d'être fusionnées, avant l'enregistrement.
+    var _alerteMotifRapide = detecterAlerteCycle(reponsesFinal);
+    if(_alerteMotifRapide) envoyerAlerteCycle(_alerteMotifRapide);
+
     var res = await fetch(SUPA_URL + '/rest/v1/journal_entries?on_conflict=client_key,date', {
       method: 'POST',
       headers: Object.assign({ 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal' }, headers),
@@ -4642,6 +4647,10 @@ async function saveCheckinRapide(){
     loadJalons();
     initProgressChart();
     if(typeof loadJournalHistory === 'function') loadJournalHistory();
+    // Message client volontairement retiré (17/09/2026, sur demande de Sabrina) : l'alerte
+    // remonte silencieusement dans son CRM via envoyerAlerteCycle() ci-dessus, sans rien
+    // afficher à la cliente — les seuils de déclenchement sont en cours de retravail pour
+    // ne jamais alarmer une cliente sur un symptôme chronique attendu pour sa pathologie.
   } catch(e){
     console.warn('Check-in rapide non enregistré :', e);
     if(btn){ btn.disabled=false; btn.textContent='Réessayer →'; }
@@ -5483,6 +5492,48 @@ function toggleChip(btn, id) {
   _selectedChips[id] = btn.classList.contains('selected');
 }
 
+// ═══════════════════════════════════════
+// ALERTE MÉDICALE AUTOMATIQUE SUR LE QUOTIDIEN (17/09/2026)
+// Certaines réponses (douleur invalidante, saignement abondant) remontent
+// automatiquement dans le feed urgent du CRM — même table messages_client
+// que le gardien conversationnel (source distincte 'checkin' pour la
+// traçabilité) — et affichent tout de suite un message à la cliente
+// l'invitant à consulter sans attendre la réponse de Sabrina.
+// ═══════════════════════════════════════
+function detecterAlerteCycle(reponses){
+  if(!reponses) return null;
+  if(reponses.douleur_cycle === 'Invalidantes') return 'Douleur signalée comme invalidante dans le suivi quotidien.';
+  if(reponses.saignement === 'Abondant') return 'Saignement signalé comme abondant dans le suivi quotidien.';
+  return null;
+}
+
+async function envoyerAlerteCycle(motif){
+  var session = avsGetSession();
+  if(!session.key) return;
+  try {
+    var token = await Auth.getValidAccessToken();
+    await fetch(SUPA_URL + '/rest/v1/messages_client', {
+      method: 'POST',
+      headers: {
+        'apikey': SUPA_KEY,
+        'Authorization': 'Bearer ' + (token || SUPA_KEY),
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify({
+        client_key: session.key,
+        prenom: session.prenom || '',
+        nom: session.nom || '',
+        source: 'checkin',
+        message: motif,
+        urgence: 'haute'
+      })
+    });
+  } catch(e){
+    console.warn('Alerte cycle non transmise :', e);
+  }
+}
+
 async function sauvegarderSymptomes() {
   var today = localISO();
   var note = (document.getElementById('drawerNote')||{}).value || '';
@@ -5524,6 +5575,12 @@ async function sauvegarderSymptomes() {
     reponses: reponsesFinal
   };
 
+  // Alerte médicale automatique — vérifiée avant tout le reste, sur les
+  // valeurs qui viennent d'être saisies (fire-and-forget, ne bloque jamais
+  // la fermeture du drawer ni l'enregistrement normal du suivi).
+  var _alerteMotif = detecterAlerteCycle(reponsesFinal);
+  if(_alerteMotif) envoyerAlerteCycle(_alerteMotif);
+
   // Cache local — alimente l'historique, la mini-courbe et le bilan même hors-ligne,
   // même clé que le check-in desktop pour ne jamais dédoubler la donnée du jour.
   localStorage.setItem('avs_journal_'+today, JSON.stringify(entry));
@@ -5533,6 +5590,10 @@ async function sauvegarderSymptomes() {
   renderTodayCard();
   afficherSymptomesToday();
   lancerConfettis();
+  // Message client volontairement retiré (17/09/2026, sur demande de Sabrina) : l'alerte
+  // remonte silencieusement dans son CRM via envoyerAlerteCycle() ci-dessus, sans rien
+  // afficher à la cliente — les seuils de déclenchement sont en cours de retravail pour
+  // ne jamais alarmer une cliente sur un symptôme chronique attendu pour sa pathologie.
   if(typeof initProgressChart === 'function') initProgressChart();
   if(typeof loadJalons === 'function') loadJalons();
   afficherBilan(_bilanJoursActifs, null);
