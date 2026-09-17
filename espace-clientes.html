@@ -1017,20 +1017,25 @@ a,button{-webkit-tap-highlight-color:transparent}
   .bottom-nav{display:none !important}
 }
 
-/* Animation « namaste » de validation du quotidien (17/09/2026, épurée le 17/09/2026) */
-.namaste-overlay{position:fixed;inset:0;z-index:3000;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(30,30,28,.55);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);opacity:0;animation:namasteFade 3.1s ease forwards;pointer-events:none}
-@keyframes namasteFade{0%{opacity:0}8%{opacity:1}84%{opacity:1}100%{opacity:0}}
-.namaste-ring{position:absolute;border-radius:50%;border:1px solid rgba(212,196,168,.4);animation:namasteRipple 2.4s ease-out forwards}
-.namaste-ring.r2{animation-delay:.3s}
-@keyframes namasteRipple{0%{width:14px;height:14px;opacity:.7}100%{width:220px;height:220px;opacity:0}}
-.namaste-flower{width:88px;height:88px;opacity:0;transform:scale(.4);animation:namasteBloom 1.05s cubic-bezier(.22,.61,.36,1) .1s forwards;filter:drop-shadow(0 3px 10px rgba(0,0,0,.18))}
-@keyframes namasteBloom{0%{transform:scale(.4);opacity:0}100%{transform:scale(1);opacity:1}}
-.namaste-petal-fly{transform-origin:32px 24px;animation:petalFly .7s ease-in forwards}
-.namaste-petal-fly.p1{animation-delay:1.15s}
-.namaste-petal-fly.p2{animation-delay:1.42s}
-.namaste-petal-fly.p3{animation-delay:1.69s}
-@keyframes petalFly{0%{transform:translateY(0) rotate(0deg);opacity:1}100%{transform:translateY(-48px) rotate(22deg);opacity:0}}
-.namaste-msg{font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:400;font-size:21px;color:#fff;margin-top:22px;text-align:center;max-width:80vw;opacity:0;animation:namasteMsgIn .9s ease .5s forwards}
+/* Animation « namaste » de validation du quotidien (v3, lente et épurée — 17/09/2026) */
+.namaste-overlay{position:fixed;inset:0;z-index:3000;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(28,28,26,.6);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);opacity:0;animation:namasteFade 6.2s ease forwards;pointer-events:none}
+@keyframes namasteFade{0%{opacity:0}6%{opacity:1}88%{opacity:1}100%{opacity:0}}
+.namaste-flower{width:132px;height:132px;overflow:visible}
+.namaste-petal{transform-origin:32px 32px;transform:scale(0);opacity:0;animation:namastePetalGrow 1.1s cubic-bezier(.33,1,.68,1) forwards}
+.namaste-petal.p0{animation-delay:.35s}
+.namaste-petal.p1{animation-delay:.72s}
+.namaste-petal.p2{animation-delay:1.09s}
+.namaste-petal.p3{animation-delay:1.46s}
+.namaste-petal.p4{animation-delay:1.83s}
+.namaste-petal.p5{animation-delay:2.2s}
+.namaste-petal.p6{animation-delay:2.57s}
+.namaste-petal.p7{animation-delay:2.94s}
+@keyframes namastePetalGrow{0%{transform:scale(0);opacity:0}100%{transform:scale(1);opacity:1}}
+.namaste-center{opacity:0;transform:scale(.4);transform-origin:32px 32px;animation:namasteCenterIn 1.2s ease-out 3.15s forwards}
+@keyframes namasteCenterIn{to{opacity:1;transform:scale(1)}}
+.namaste-halo{opacity:0;transform-origin:32px 32px;animation:namasteHalo 3s ease-in-out 3.6s forwards}
+@keyframes namasteHalo{0%{opacity:0;transform:scale(.85)}30%{opacity:.55;transform:scale(1.18)}65%{opacity:.15;transform:scale(1.32)}100%{opacity:0;transform:scale(1.4)}}
+.namaste-msg{font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:300;font-size:20px;letter-spacing:.01em;color:rgba(255,255,255,.92);margin-top:26px;text-align:center;max-width:78vw;opacity:0;animation:namasteMsgIn 1.4s ease 3.9s forwards}
 @keyframes namasteMsgIn{to{opacity:1}}
 </style>
 
@@ -5895,23 +5900,23 @@ function lancerNamaste() {
   var overlay = document.createElement('div');
   overlay.className = 'namaste-overlay';
   var msg = NAMASTE_MESSAGES[Math.floor(Math.random()*NAMASTE_MESSAGES.length)];
-  // Fleur épurée, un seul ton (ivoire/ocre) : 6 pétales, dont 3 (à 0°, 120°, 240°)
-  // s'envolent l'un après l'autre une fois la fleur éclose, pour rester bref et élégant.
-  var petal = function(angle, flyClass){
-    var inner = '<ellipse cx="32" cy="24" rx="6.5" ry="15" fill="rgba(251,250,247,.92)" stroke="#B4906A" stroke-width="1.1"/>';
-    if(flyClass) return '<g transform="rotate('+angle+' 32 32)"><g class="namaste-petal-fly '+flyClass+'">'+inner+'</g></g>';
-    return '<g transform="rotate('+angle+' 32 32)">'+inner+'</g>';
+  // Fleur fine et lente, un seul ton (ivoire/ocre) : 8 pétales fins (forme de goutte),
+  // qui apparaissent un par un, doucement, avant qu'un halo respire au centre.
+  var petalPath = 'M32,32 C29,23 29,9 32,3 C35,9 35,23 32,32 Z';
+  var petal = function(angle, idx){
+    return '<g transform="rotate('+angle+' 32 32)"><path class="namaste-petal p'+idx+'" d="'+petalPath+'" fill="rgba(251,250,247,.88)" stroke="#B4906A" stroke-width="0.9"/></g>';
   };
+  var petalsHtml = '';
+  for(var i=0;i<8;i++){ petalsHtml += petal(i*45, i); }
   overlay.innerHTML =
-    '<div class="namaste-ring r1"></div><div class="namaste-ring r2"></div>' +
     '<svg class="namaste-flower" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">' +
-      petal(0,'p1') + petal(60,null) + petal(120,'p2') + petal(180,null) + petal(240,'p3') + petal(300,null) +
-      '<circle cx="32" cy="32" r="5.5" fill="#9B7230"/>' +
-      '<circle cx="32" cy="32" r="8" fill="none" stroke="rgba(155,114,48,.35)" stroke-width="1"/>' +
+      '<circle class="namaste-halo" cx="32" cy="32" r="18" fill="none" stroke="rgba(180,144,106,.5)" stroke-width="0.8"/>' +
+      petalsHtml +
+      '<circle class="namaste-center" cx="32" cy="32" r="4" fill="#9B7230"/>' +
     '</svg>' +
     '<div class="namaste-msg">'+msg+'</div>';
   document.body.appendChild(overlay);
-  setTimeout(function(){ overlay.remove(); }, 3100);
+  setTimeout(function(){ overlay.remove(); }, 6200);
 }
 
 function lancerConfettis() {
