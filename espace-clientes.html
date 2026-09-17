@@ -973,7 +973,9 @@ a,button{-webkit-tap-highlight-color:transparent}
   user-select:none;
 }
 .symptome-chip:active{transform:scale(.95)}
-.symptome-chip.selected{background:var(--ardoise);border-color:var(--ardoise);color:#fff}
+.symptome-chip:hover{border-color:var(--ocre);transform:translateY(-1px)}
+.symptome-chip.selected{background:linear-gradient(135deg,var(--ocre),var(--or));border-color:var(--or);color:#fff;box-shadow:0 3px 10px rgba(155,114,48,.28);animation:chipPop .35s cubic-bezier(.34,1.56,.64,1)}
+@keyframes chipPop{0%{transform:scale(.9)}55%{transform:scale(1.08)}100%{transform:scale(1)}}
 .symptome-chip svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;flex-shrink:0}
 /* Note libre */
 .drawer-note-lbl{font-size:12px;font-weight:600;color:var(--gris);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px;margin-top:4px}
@@ -1015,6 +1017,17 @@ a,button{-webkit-tap-highlight-color:transparent}
   .bottom-nav{display:none !important}
 }
 
+/* Animation « namaste » de validation du quotidien (17/09/2026) */
+.namaste-overlay{position:fixed;inset:0;z-index:3000;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(30,30,28,.55);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);opacity:0;animation:namasteFade 2.6s ease forwards;pointer-events:none}
+@keyframes namasteFade{0%{opacity:0}10%{opacity:1}80%{opacity:1}100%{opacity:0}}
+.namaste-ring{position:absolute;border-radius:50%;border:1.5px solid rgba(196,169,125,.55);animation:namasteRipple 2.3s ease-out forwards}
+.namaste-ring.r2{animation-delay:.28s}
+.namaste-ring.r3{animation-delay:.56s}
+@keyframes namasteRipple{0%{width:16px;height:16px;opacity:.9}100%{width:280px;height:280px;opacity:0}}
+.namaste-lotus{width:68px;height:68px;transform:scale(.4) rotate(-8deg);opacity:0;animation:namasteBloom 1.3s cubic-bezier(.34,1.56,.64,1) .15s forwards;filter:drop-shadow(0 4px 14px rgba(0,0,0,.25))}
+@keyframes namasteBloom{0%{transform:scale(.4) rotate(-8deg);opacity:0}60%{transform:scale(1.1) rotate(3deg);opacity:1}100%{transform:scale(1) rotate(0);opacity:1}}
+.namaste-msg{font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:400;font-size:21px;color:#fff;margin-top:20px;text-align:center;max-width:80vw;opacity:0;animation:namasteMsgIn .9s ease .55s forwards}
+@keyframes namasteMsgIn{to{opacity:1}}
 </style>
 
 </head>
@@ -1402,66 +1415,126 @@ a,button{-webkit-tap-highlight-color:transparent}
         <p class="drawer-intro" id="drawerIntro">Quatre gestes, dix secondes — Sabrina suit votre progression sur ces bilans, semaine après semaine.</p>
 
         <div class="chip-category">
-          <div class="chip-cat-title">Énergie</div>
+          <div class="chip-cat-title">⚡ Énergie</div>
           <div class="chips-row" id="pills-energie"></div>
         </div>
         <div class="chip-category">
-          <div class="chip-cat-title">Par rapport à hier</div>
+          <div class="chip-cat-title">🌤️ Par rapport à hier</div>
           <div class="checkin-slider-wrap">
             <input type="range" class="checkin-slider" id="drawerSliderMieuxHier" min="-3" max="3" step="1" value="0" oninput="_drawerPills.mieux_hier=this.value">
             <div class="checkin-slider-lbls"><span>Moins bien</span><span>Pareil</span><span>Mieux</span></div>
           </div>
         </div>
         <div class="chip-category" id="rowDouleurAbdo" style="display:none">
-          <div class="chip-cat-title">Douleurs abdominales</div>
+          <div class="chip-cat-title">🌿 Douleurs abdominales</div>
           <div class="chips-row" id="pills-douleur_abdo"></div>
         </div>
         <div class="chip-category" id="rowAntalgiques" style="display:none">
-          <div class="chip-cat-title">Antalgiques pris</div>
+          <div class="chip-cat-title">💊 Antalgiques pris</div>
           <div class="chips-row" id="pills-antalgiques"></div>
         </div>
         <div class="chip-category" id="rowFringales" style="display:none">
-          <div class="chip-cat-title">Fringales sucrées</div>
+          <div class="chip-cat-title">🍫 Fringales sucrées</div>
           <div class="chips-row" id="pills-fringales"></div>
         </div>
         <div class="chip-category" id="rowBouffees" style="display:none">
-          <div class="chip-cat-title">Bouffées de chaleur</div>
+          <div class="chip-cat-title">🔥 Bouffées de chaleur</div>
           <div class="chips-row" id="pills-bouffees"></div>
         </div>
+        <div class="chip-category" id="rowSaignementMeno" style="display:none">
+          <div class="chip-cat-title">🌸 Saignement inattendu aujourd'hui</div>
+          <div class="chips-row" id="pills-saignement-meno"></div>
+        </div>
         <div class="chip-category" id="rowFrilosite" style="display:none">
-          <div class="chip-cat-title">Frilosité</div>
+          <div class="chip-cat-title">❄️ Frilosité</div>
           <div class="chips-row" id="pills-frilosite"></div>
         </div>
         <div class="chip-category" id="rowCoupDeBarre" style="display:none">
-          <div class="chip-cat-title">Coup de barre</div>
+          <div class="chip-cat-title">🔋 Coup de barre</div>
           <div class="chips-row" id="pills-coupdebarre"></div>
         </div>
         <div class="chip-category" id="rowSommeil">
-          <div class="chip-cat-title">Sommeil</div>
+          <div class="chip-cat-title">🌙 Sommeil</div>
           <div class="chips-row" id="pills-sommeil"></div>
         </div>
         <div class="chip-category" id="rowTransit">
-          <div class="chip-cat-title">Transit</div>
+          <div class="chip-cat-title">🌊 Transit</div>
           <div class="chips-row" id="pills-transit"></div>
         </div>
         <div class="chip-category" id="rowBallonnements">
-          <div class="chip-cat-title">Ballonnements</div>
+          <div class="chip-cat-title">🌀 Ballonnements</div>
           <div class="chips-row" id="pills-ballonnements"></div>
         </div>
         <div class="chip-category" id="rowDouleur" style="display:none">
-          <div class="chip-cat-title">Douleurs (cycle)</div>
+          <div class="chip-cat-title">🌷 Douleurs (cycle)</div>
           <div class="chips-row" id="pills-douleur"></div>
         </div>
         <div class="chip-category" id="rowSaignement" style="display:none">
-          <div class="chip-cat-title">Saignement aujourd'hui</div>
+          <div class="chip-cat-title">🩸 Saignement aujourd'hui</div>
           <div class="chips-row" id="pills-saignement"></div>
         </div>
+        <div class="chip-category" id="rowDyspareunie" style="display:none">
+          <div class="chip-cat-title">💗 Douleurs pendant les rapports</div>
+          <div class="chips-row" id="pills-dyspareunie"></div>
+        </div>
+        <div class="chip-category" id="rowAcne" style="display:none">
+          <div class="chip-cat-title">✨ Poussée d'acné</div>
+          <div class="chips-row" id="pills-acne"></div>
+        </div>
+        <div class="chip-category" id="rowTensionSeins" style="display:none">
+          <div class="chip-cat-title">🎈 Tension des seins</div>
+          <div class="chips-row" id="pills-tension_seins"></div>
+        </div>
+        <div class="chip-category" id="rowRetentionEau" style="display:none">
+          <div class="chip-cat-title">💧 Rétention d'eau</div>
+          <div class="chips-row" id="pills-retention_eau"></div>
+        </div>
+        <div class="chip-category" id="rowMauxTete" style="display:none">
+          <div class="chip-cat-title">🌩️ Maux de tête</div>
+          <div class="chips-row" id="pills-maux_tete"></div>
+        </div>
+        <div class="chip-category" id="rowSueursNocturnes" style="display:none">
+          <div class="chip-cat-title">🌙 Sueurs nocturnes</div>
+          <div class="chips-row" id="pills-sueurs_nocturnes"></div>
+        </div>
+        <div class="chip-category" id="rowSommeilMeno" style="display:none">
+          <div class="chip-cat-title">😴 Sommeil</div>
+          <div class="chips-row" id="pills-sommeil_meno"></div>
+        </div>
+        <div class="chip-category" id="rowPalpitations" style="display:none">
+          <div class="chip-cat-title">💓 Palpitations</div>
+          <div class="chips-row" id="pills-palpitations"></div>
+        </div>
+        <div class="chip-category" id="rowBrouillardMental" style="display:none">
+          <div class="chip-cat-title">🌫️ Brouillard mental</div>
+          <div class="chips-row" id="pills-brouillard_mental"></div>
+        </div>
+        <div class="chip-category" id="rowReveilDifficile" style="display:none">
+          <div class="chip-cat-title">⏰ Réveil difficile</div>
+          <div class="chips-row" id="pills-reveil_difficile"></div>
+        </div>
+        <div class="chip-category" id="rowRegainSoir" style="display:none">
+          <div class="chip-cat-title">🌆 Regain en soirée</div>
+          <div class="chips-row" id="pills-regain_soir"></div>
+        </div>
+        <div class="chip-category" id="rowGaz" style="display:none">
+          <div class="chip-cat-title">💨 Gaz / flatulences</div>
+          <div class="chips-row" id="pills-gaz"></div>
+        </div>
+        <div class="chip-category" id="rowSangSelles" style="display:none">
+          <div class="chip-cat-title">⚠️ Sang ou glaires dans les selles</div>
+          <div class="chips-row" id="pills-sang_selles"></div>
+        </div>
+        <div class="chip-category" id="rowDouleurGenerale" style="display:none">
+          <div class="chip-cat-title">🌿 Douleur physique</div>
+          <div class="chips-row" id="pills-douleur_generale"></div>
+        </div>
         <div class="chip-category" id="rowStress" style="display:none">
-          <div class="chip-cat-title">Stress / tension</div>
+          <div class="chip-cat-title">🌊 Stress / tension</div>
           <div class="chips-row" id="pills-stress"></div>
         </div>
         <div class="chip-category">
-          <div class="chip-cat-title">Humeur</div>
+          <div class="chip-cat-title">💫 Humeur</div>
           <div class="chips-row" id="pills-humeur"></div>
         </div>
 
@@ -4154,8 +4227,23 @@ var CHECKIN_DOULEURABDO_OPTS = ['Absentes','Légères','Modérées','Fortes','In
 var CHECKIN_ANTALGIQUES_OPTS = ['Non','Oui, ponctuel','Oui, plusieurs prises'];
 var CHECKIN_FRINGALES_OPTS = ['Aucune','Légères','Modérées','Fortes','Incontrôlables'];
 var CHECKIN_BOUFFEES_OPTS = ['Aucune','1 à 2','3 à 5','Plus de 5','En continu'];
+var CHECKIN_SAIGNEMENT_MENO_OPTS = ['Non','Oui'];
 var CHECKIN_FRILOSITE_OPTS = ['Non','Un peu','Modérée','Marquée','Je ne me réchauffe pas'];
 var CHECKIN_COUPDEBARRE_OPTS = ['Non','Léger','Net vers 15-16h','Net dès le matin','Toute la journée'];
+var CHECKIN_DYSPAREUNIE_OPTS = ["Non concerné(e)","Aucune douleur","Légère","Modérée","Forte"];
+var CHECKIN_ACNE_OPTS = ['Non','Légère','Modérée','Marquée'];
+var CHECKIN_TENSION_SEINS_OPTS = ['Absente','Légère','Modérée','Forte'];
+var CHECKIN_RETENTION_EAU_OPTS = ['Absente','Légère','Modérée','Forte'];
+var CHECKIN_MAUX_TETE_OPTS = ['Non','Légers','Modérés','Forts'];
+var CHECKIN_SUEURS_NOCTURNES_OPTS = ['Aucune','Légères','Modérées','Importantes'];
+var CHECKIN_SOMMEIL_MENO_OPTS = ['Aucun trouble',"Endormissement difficile",'Réveils fréquents','Insomnie marquée'];
+var CHECKIN_PALPITATIONS_OPTS = ['Normal','Accéléré','Palpitations ressenties'];
+var CHECKIN_BROUILLARD_OPTS = ['Non','Léger','Marqué'];
+var CHECKIN_REVEIL_DIFFICILE_OPTS = ['Non','Oui'];
+var CHECKIN_REGAIN_SOIR_OPTS = ['Non','Oui'];
+var CHECKIN_GAZ_OPTS = ['Absents','Légers','Modérés','Importants'];
+var CHECKIN_SANG_SELLES_OPTS = ['Non','Oui'];
+var CHECKIN_DOULEUR_GENERALE_OPTS = ['Absente','Légère','Modérée','Forte','Invalidante'];
 
 /* ── SUIVI PERSONNALISÉ PAR SPÉCIALITÉ (30/08/2026, révisé) ───────────────
    Source de vérité : les cases à cocher "Espace cliente" en fin de
@@ -4212,6 +4300,21 @@ var CHECKIN_DIMENSIONS = {
   antalgiques:   { label:'Antalgiques pris',      options: CHECKIN_ANTALGIQUES_OPTS,     jsonKey:'antalgiques' },
   fringales:     { label:'Fringales sucrées',     options: CHECKIN_FRINGALES_OPTS,       jsonKey:'fringales_sucre' },
   bouffees:      { label:'Bouffées de chaleur',   options: CHECKIN_BOUFFEES_OPTS,        jsonKey:'bouffees_chaleur' },
+  saignement_meno: { label:'Saignement inattendu', options: CHECKIN_SAIGNEMENT_MENO_OPTS, jsonKey:'saignement_meno' },
+  dyspareunie:   { label:'Douleurs pendant les rapports', options: CHECKIN_DYSPAREUNIE_OPTS,   jsonKey:'dyspareunie' },
+  acne:          { label:"Poussée d'acné",                options: CHECKIN_ACNE_OPTS,           jsonKey:'acne' },
+  tension_seins: { label:'Tension des seins',              options: CHECKIN_TENSION_SEINS_OPTS,  jsonKey:'tension_seins' },
+  retention_eau: { label:"Rétention d'eau",                options: CHECKIN_RETENTION_EAU_OPTS,  jsonKey:'retention_eau' },
+  maux_tete:     { label:'Maux de tête',                   options: CHECKIN_MAUX_TETE_OPTS,      jsonKey:'maux_tete' },
+  sueurs_nocturnes: { label:'Sueurs nocturnes',            options: CHECKIN_SUEURS_NOCTURNES_OPTS, jsonKey:'sueurs_nocturnes' },
+  sommeil_meno:  { label:'Sommeil (ménopause)',            options: CHECKIN_SOMMEIL_MENO_OPTS,   jsonKey:'sommeil_meno' },
+  palpitations:  { label:'Palpitations',                   options: CHECKIN_PALPITATIONS_OPTS,   jsonKey:'palpitations' },
+  brouillard_mental: { label:'Brouillard mental',          options: CHECKIN_BROUILLARD_OPTS,     jsonKey:'brouillard_mental' },
+  reveil_difficile: { label:'Réveil difficile',            options: CHECKIN_REVEIL_DIFFICILE_OPTS, jsonKey:'reveil_difficile' },
+  regain_soir:   { label:'Regain en soirée',               options: CHECKIN_REGAIN_SOIR_OPTS,    jsonKey:'regain_soir' },
+  gaz:           { label:'Gaz / flatulences',              options: CHECKIN_GAZ_OPTS,             jsonKey:'gaz' },
+  sang_selles:   { label:'Sang ou glaires dans les selles', options: CHECKIN_SANG_SELLES_OPTS,   jsonKey:'sang_selles' },
+  douleur_generale: { label:'Douleur physique générale',   options: CHECKIN_DOULEUR_GENERALE_OPTS, jsonKey:'douleur_generale' },
   frilosite:     { label:'Frilosité',             options: CHECKIN_FRILOSITE_OPTS,       jsonKey:'frilosite' },
   coupdebarre:   { label:'Coup de barre',         options: CHECKIN_COUPDEBARRE_OPTS,     jsonKey:'coup_de_barre' },
   humeur:        { label:'Humeur',                options: CHECKIN_HUMEUR_OPTS,         column:'humeur' }
@@ -4219,17 +4322,17 @@ var CHECKIN_DIMENSIONS = {
 // Dimensions propres à chaque profil, hors piliers communs (énergie/mieux hier/humeur,
 // ajoutés une seule fois quel que soit le nombre de profils actifs pour ne jamais les dupliquer).
 var CHECKIN_PROFILE_DIMS = {
-  digestif:     ['transit','ballonnements','douleur_abdo'],
-  sibo:         ['transit','ballonnements','douleur_abdo'],
-  sii:          ['transit','ballonnements','douleur_abdo'],
-  permeabilite: ['transit','ballonnements','douleur_abdo'],
-  endometriose: ['douleur','saignement','antalgiques'],
-  sopk:         ['douleur','saignement','fringales'],
-  spm:          ['douleur','saignement','fringales'],
-  menopause:    ['bouffees'],
-  thyroide:     ['frilosite'],
-  surrenales:   ['coupdebarre'],
-  general:      ['sommeil','stress']
+  digestif:     ['transit','ballonnements','douleur_abdo','gaz','sang_selles'],
+  sibo:         ['transit','ballonnements','douleur_abdo','gaz','sang_selles'],
+  sii:          ['transit','ballonnements','douleur_abdo','gaz','sang_selles'],
+  permeabilite: ['transit','ballonnements','douleur_abdo','gaz','sang_selles'],
+  endometriose: ['douleur','saignement','antalgiques','ballonnements','transit','dyspareunie'],
+  sopk:         ['douleur','saignement','fringales','acne','ballonnements'],
+  spm:          ['douleur','saignement','fringales','tension_seins','retention_eau','maux_tete'],
+  menopause:    ['bouffees','saignement_meno','sueurs_nocturnes','sommeil_meno'],
+  thyroide:     ['frilosite','palpitations','brouillard_mental'],
+  surrenales:   ['coupdebarre','reveil_difficile','regain_soir'],
+  general:      ['sommeil','stress','douleur_generale']
 };
 
 /* ── FICHES REPÈRES PAR SPÉCIALITÉ (08/09/2026, mis à jour) ────────────────
@@ -5398,31 +5501,71 @@ function ouvrirDrawerSymptomes() {
     frilosite: todayReponses.frilosite || null,
     coupdebarre: todayReponses.coup_de_barre || null,
     mieux_hier: (todayEntry.mieux_hier !== undefined && todayEntry.mieux_hier !== null) ? String(todayEntry.mieux_hier) : null,
-    humeur: todayEntry.humeur || null
+    humeur: todayEntry.humeur || null,
+    saignement_meno: todayReponses.saignement_meno || null,
+    dyspareunie: todayReponses.dyspareunie || null,
+    acne: todayReponses.acne || null,
+    tension_seins: todayReponses.tension_seins || null,
+    retention_eau: todayReponses.retention_eau || null,
+    maux_tete: todayReponses.maux_tete || null,
+    sueurs_nocturnes: todayReponses.sueurs_nocturnes || null,
+    sommeil_meno: todayReponses.sommeil_meno || null,
+    palpitations: todayReponses.palpitations || null,
+    brouillard_mental: todayReponses.brouillard_mental || null,
+    reveil_difficile: todayReponses.reveil_difficile || null,
+    regain_soir: todayReponses.regain_soir || null,
+    gaz: todayReponses.gaz || null,
+    sang_selles: todayReponses.sang_selles || null,
+    douleur_generale: todayReponses.douleur_generale || null
   };
 
   // ── Suivi personnalisé, une ligne par profil actif (union, jamais exclusif) ──
   var profiles = getCheckinProfileKeys();
-  var hasDig = profiles.indexOf('digestif') > -1;
+  // CORRIGÉ (17/09/2026) : hasDig et hasCycle ne reconnaissaient que les anciennes
+  // catégories 'digestif'/'cycle' (repli mots-clés), jamais les cases granulaires
+  // sibo/sii/permeabilite/spm actuellement cochées — les lignes Transit/Ballonnements/
+  // Douleurs abdo et Douleurs/Saignement (cycle) restaient invisibles dans ce drawer
+  // mobile pour ces clientes, même si le check-in rapide desktop les affichait bien
+  // (lui lit directement CHECKIN_PROFILE_DIMS, sans cette variable).
+  var hasSibo = profiles.indexOf('sibo') > -1;
+  var hasSii = profiles.indexOf('sii') > -1;
+  var hasPerm = profiles.indexOf('permeabilite') > -1;
+  var hasDig = hasSibo || hasSii || hasPerm || profiles.indexOf('digestif') > -1;
   var hasEndo = profiles.indexOf('endometriose') > -1;
   var hasSopk = profiles.indexOf('sopk') > -1;
-  var hasCycle = hasEndo || hasSopk;
+  var hasSpm = profiles.indexOf('spm') > -1;
+  var hasCycle = hasEndo || hasSopk || hasSpm;
   var hasMeno = profiles.indexOf('menopause') > -1;
   var hasThyroide = profiles.indexOf('thyroide') > -1;
   var hasSurrenales = profiles.indexOf('surrenales') > -1;
   var hasGeneral = profiles.indexOf('general') > -1;
-  document.getElementById('rowTransit').style.display = hasDig ? '' : 'none';
-  document.getElementById('rowBallonnements').style.display = hasDig ? '' : 'none';
+  document.getElementById('rowTransit').style.display = (hasDig || hasEndo) ? '' : 'none';
+  document.getElementById('rowBallonnements').style.display = (hasDig || hasEndo || hasSopk) ? '' : 'none';
   document.getElementById('rowDouleurAbdo').style.display = hasDig ? '' : 'none';
   document.getElementById('rowDouleur').style.display = hasCycle ? '' : 'none';
   document.getElementById('rowSaignement').style.display = hasCycle ? '' : 'none';
   document.getElementById('rowAntalgiques').style.display = hasEndo ? '' : 'none';
-  document.getElementById('rowFringales').style.display = hasSopk ? '' : 'none';
+  document.getElementById('rowFringales').style.display = (hasSopk || hasSpm) ? '' : 'none';
   document.getElementById('rowBouffees').style.display = hasMeno ? '' : 'none';
+  document.getElementById('rowSaignementMeno').style.display = hasMeno ? '' : 'none';
   document.getElementById('rowFrilosite').style.display = hasThyroide ? '' : 'none';
   document.getElementById('rowCoupDeBarre').style.display = hasSurrenales ? '' : 'none';
   document.getElementById('rowSommeil').style.display = hasGeneral ? '' : 'none';
   document.getElementById('rowStress').style.display = hasGeneral ? '' : 'none';
+  document.getElementById('rowDyspareunie').style.display = hasEndo ? '' : 'none';
+  document.getElementById('rowAcne').style.display = hasSopk ? '' : 'none';
+  document.getElementById('rowTensionSeins').style.display = hasSpm ? '' : 'none';
+  document.getElementById('rowRetentionEau').style.display = hasSpm ? '' : 'none';
+  document.getElementById('rowMauxTete').style.display = hasSpm ? '' : 'none';
+  document.getElementById('rowSueursNocturnes').style.display = hasMeno ? '' : 'none';
+  document.getElementById('rowSommeilMeno').style.display = hasMeno ? '' : 'none';
+  document.getElementById('rowPalpitations').style.display = hasThyroide ? '' : 'none';
+  document.getElementById('rowBrouillardMental').style.display = hasThyroide ? '' : 'none';
+  document.getElementById('rowReveilDifficile').style.display = hasSurrenales ? '' : 'none';
+  document.getElementById('rowRegainSoir').style.display = hasSurrenales ? '' : 'none';
+  document.getElementById('rowGaz').style.display = hasDig ? '' : 'none';
+  document.getElementById('rowSangSelles').style.display = hasDig ? '' : 'none';
+  document.getElementById('rowDouleurGenerale').style.display = hasGeneral ? '' : 'none';
   var introEl = document.getElementById('drawerIntro');
   if(introEl) introEl.textContent = profiles.length > 1
     ? 'Quelques gestes, dix secondes — pensés pour votre suivi, semaine après semaine.'
@@ -5444,6 +5587,21 @@ function ouvrirDrawerSymptomes() {
   _renderDrawerPillRow('pills-antalgiques', 'antalgiques', CHECKIN_ANTALGIQUES_OPTS, _drawerPills.antalgiques);
   _renderDrawerPillRow('pills-fringales', 'fringales', CHECKIN_FRINGALES_OPTS, _drawerPills.fringales);
   _renderDrawerPillRow('pills-bouffees', 'bouffees', CHECKIN_BOUFFEES_OPTS, _drawerPills.bouffees);
+  _renderDrawerPillRow('pills-saignement-meno', 'saignement_meno', CHECKIN_SAIGNEMENT_MENO_OPTS, _drawerPills.saignement_meno);
+  _renderDrawerPillRow('pills-dyspareunie', 'dyspareunie', CHECKIN_DYSPAREUNIE_OPTS, _drawerPills.dyspareunie);
+  _renderDrawerPillRow('pills-acne', 'acne', CHECKIN_ACNE_OPTS, _drawerPills.acne);
+  _renderDrawerPillRow('pills-tension_seins', 'tension_seins', CHECKIN_TENSION_SEINS_OPTS, _drawerPills.tension_seins);
+  _renderDrawerPillRow('pills-retention_eau', 'retention_eau', CHECKIN_RETENTION_EAU_OPTS, _drawerPills.retention_eau);
+  _renderDrawerPillRow('pills-maux_tete', 'maux_tete', CHECKIN_MAUX_TETE_OPTS, _drawerPills.maux_tete);
+  _renderDrawerPillRow('pills-sueurs_nocturnes', 'sueurs_nocturnes', CHECKIN_SUEURS_NOCTURNES_OPTS, _drawerPills.sueurs_nocturnes);
+  _renderDrawerPillRow('pills-sommeil_meno', 'sommeil_meno', CHECKIN_SOMMEIL_MENO_OPTS, _drawerPills.sommeil_meno);
+  _renderDrawerPillRow('pills-palpitations', 'palpitations', CHECKIN_PALPITATIONS_OPTS, _drawerPills.palpitations);
+  _renderDrawerPillRow('pills-brouillard_mental', 'brouillard_mental', CHECKIN_BROUILLARD_OPTS, _drawerPills.brouillard_mental);
+  _renderDrawerPillRow('pills-reveil_difficile', 'reveil_difficile', CHECKIN_REVEIL_DIFFICILE_OPTS, _drawerPills.reveil_difficile);
+  _renderDrawerPillRow('pills-regain_soir', 'regain_soir', CHECKIN_REGAIN_SOIR_OPTS, _drawerPills.regain_soir);
+  _renderDrawerPillRow('pills-gaz', 'gaz', CHECKIN_GAZ_OPTS, _drawerPills.gaz);
+  _renderDrawerPillRow('pills-sang_selles', 'sang_selles', CHECKIN_SANG_SELLES_OPTS, _drawerPills.sang_selles);
+  _renderDrawerPillRow('pills-douleur_generale', 'douleur_generale', CHECKIN_DOULEUR_GENERALE_OPTS, _drawerPills.douleur_generale);
   _renderDrawerPillRow('pills-frilosite', 'frilosite', CHECKIN_FRILOSITE_OPTS, _drawerPills.frilosite);
   _renderDrawerPillRow('pills-coupdebarre', 'coupdebarre', CHECKIN_COUPDEBARRE_OPTS, _drawerPills.coupdebarre);
   _renderDrawerPillRow('pills-stress', 'stress', CHECKIN_STRESS_OPTS, _drawerPills.stress);
@@ -5502,6 +5660,8 @@ function toggleChip(btn, id) {
 // ═══════════════════════════════════════
 function detecterAlerteCycle(reponses){
   if(!reponses) return null;
+  if(reponses.saignement_meno === 'Oui') return "Saignement inattendu signalé par une cliente suivie en ménopause/périménopause.";
+  if(reponses.sang_selles === 'Oui') return "Sang ou glaires dans les selles signalé dans le suivi quotidien.";
   if(reponses.douleur_cycle === 'Invalidantes') return 'Douleur signalée comme invalidante dans le suivi quotidien.';
   if(reponses.saignement === 'Abondant') return 'Saignement signalé comme abondant dans le suivi quotidien.';
   return null;
@@ -5553,6 +5713,21 @@ async function sauvegarderSymptomes() {
   if(_drawerPills.antalgiques) reponsesFinal.antalgiques = _drawerPills.antalgiques;
   if(_drawerPills.fringales) reponsesFinal.fringales_sucre = _drawerPills.fringales;
   if(_drawerPills.bouffees) reponsesFinal.bouffees_chaleur = _drawerPills.bouffees;
+  if(_drawerPills.saignement_meno) reponsesFinal.saignement_meno = _drawerPills.saignement_meno;
+  if(_drawerPills.dyspareunie) reponsesFinal.dyspareunie = _drawerPills.dyspareunie;
+  if(_drawerPills.acne) reponsesFinal.acne = _drawerPills.acne;
+  if(_drawerPills.tension_seins) reponsesFinal.tension_seins = _drawerPills.tension_seins;
+  if(_drawerPills.retention_eau) reponsesFinal.retention_eau = _drawerPills.retention_eau;
+  if(_drawerPills.maux_tete) reponsesFinal.maux_tete = _drawerPills.maux_tete;
+  if(_drawerPills.sueurs_nocturnes) reponsesFinal.sueurs_nocturnes = _drawerPills.sueurs_nocturnes;
+  if(_drawerPills.sommeil_meno) reponsesFinal.sommeil_meno = _drawerPills.sommeil_meno;
+  if(_drawerPills.palpitations) reponsesFinal.palpitations = _drawerPills.palpitations;
+  if(_drawerPills.brouillard_mental) reponsesFinal.brouillard_mental = _drawerPills.brouillard_mental;
+  if(_drawerPills.reveil_difficile) reponsesFinal.reveil_difficile = _drawerPills.reveil_difficile;
+  if(_drawerPills.regain_soir) reponsesFinal.regain_soir = _drawerPills.regain_soir;
+  if(_drawerPills.gaz) reponsesFinal.gaz = _drawerPills.gaz;
+  if(_drawerPills.sang_selles) reponsesFinal.sang_selles = _drawerPills.sang_selles;
+  if(_drawerPills.douleur_generale) reponsesFinal.douleur_generale = _drawerPills.douleur_generale;
   if(_drawerPills.frilosite) reponsesFinal.frilosite = _drawerPills.frilosite;
   if(_drawerPills.coupdebarre) reponsesFinal.coup_de_barre = _drawerPills.coupdebarre;
 
@@ -5589,7 +5764,7 @@ async function sauvegarderSymptomes() {
   fermerDrawer();
   renderTodayCard();
   afficherSymptomesToday();
-  lancerConfettis();
+  lancerNamaste();
   // Message client volontairement retiré (17/09/2026, sur demande de Sabrina) : l'alerte
   // remonte silencieusement dans son CRM via envoyerAlerteCycle() ci-dessus, sans rien
   // afficher à la cliente — les seuils de déclenchement sont en cours de retravail pour
@@ -5705,6 +5880,37 @@ function renderTodayCard(){
 }
 
 // ── CONFETTIS ─────────────────────────────────────────────
+var NAMASTE_MESSAGES = [
+  "Merci d'avoir pris un instant pour vous aujourd'hui.",
+  "Un geste de plus vers vous-même — c'est déjà beaucoup.",
+  "Votre corps vous remercie de l'avoir écouté.",
+  "Prendre soin de soi, un jour à la fois.",
+  "C'est noté, avec douceur."
+];
+function lancerNamaste() {
+  var overlay = document.createElement('div');
+  overlay.className = 'namaste-overlay';
+  var msg = NAMASTE_MESSAGES[Math.floor(Math.random()*NAMASTE_MESSAGES.length)];
+  overlay.innerHTML =
+    '<div class="namaste-ring r1"></div><div class="namaste-ring r2"></div><div class="namaste-ring r3"></div>' +
+    '<svg class="namaste-lotus" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+      '<g>' +
+        '<ellipse cx="32" cy="18" rx="7" ry="15" fill="#C4A882" opacity=".92"/>' +
+        '<ellipse cx="32" cy="18" rx="7" ry="15" fill="#B4906A" opacity=".82" transform="rotate(45 32 32)"/>' +
+        '<ellipse cx="32" cy="18" rx="7" ry="15" fill="#8A9A82" opacity=".8" transform="rotate(90 32 32)"/>' +
+        '<ellipse cx="32" cy="18" rx="7" ry="15" fill="#B4906A" opacity=".82" transform="rotate(135 32 32)"/>' +
+        '<ellipse cx="32" cy="18" rx="7" ry="15" fill="#C4A882" opacity=".92" transform="rotate(180 32 32)"/>' +
+        '<ellipse cx="32" cy="18" rx="7" ry="15" fill="#B4906A" opacity=".82" transform="rotate(225 32 32)"/>' +
+        '<ellipse cx="32" cy="18" rx="7" ry="15" fill="#8A9A82" opacity=".8" transform="rotate(270 32 32)"/>' +
+        '<ellipse cx="32" cy="18" rx="7" ry="15" fill="#B4906A" opacity=".82" transform="rotate(315 32 32)"/>' +
+        '<circle cx="32" cy="32" r="6.5" fill="#9B7230"/>' +
+      '</g>' +
+    '</svg>' +
+    '<div class="namaste-msg">'+msg+'</div>';
+  document.body.appendChild(overlay);
+  setTimeout(function(){ overlay.remove(); }, 2600);
+}
+
 function lancerConfettis() {
   var colors = ['#B4906A','#C4A882','#8A9A82','#6B4A5C','#C1694F','#FAF8F4'];
   var container = document.createElement('div');
