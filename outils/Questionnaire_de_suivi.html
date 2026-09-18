@@ -5172,7 +5172,13 @@ function chirEtatWidgetHtml(idx) {
   if (!c) return '';
   return `
     <label class="fl" style="font-size:10px">Date de réalisation</label>
-    <input class="fi" type="text" placeholder="ex : mars 2022" value="${c.moisAnnee||''}" oninput="setChirurgieDate(${idx}, this.value)" style="margin-bottom:12px">
+    <select class="fi" onchange="setChirurgieDate(${idx}, this.value)" style="margin-bottom:12px">
+      <option value="">—</option>
+      <option${c.moisAnnee==="Moins d'1 an"?' selected':''}>Moins d'1 an</option>
+      <option${c.moisAnnee==="1 à 5 ans"?' selected':''}>1 à 5 ans</option>
+      <option${c.moisAnnee==="Plus de 5 ans"?' selected':''}>Plus de 5 ans</option>
+      <option${c.moisAnnee==="Ne sait pas"?' selected':''}>Ne sait pas</option>
+    </select>
     <span style="font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--gris);width:100%;display:block;margin-bottom:8px">État actuel</span>
     <div style="display:flex;gap:8px;flex-wrap:wrap">${chirEtatChipsHtml(idx, c)}</div>`;
 }
@@ -5185,11 +5191,14 @@ function ouvrirChirPopup(nom) {
   const entry = chirurgiesList[idx] || {};
   const estDepistage = /^(échographie pelvienne|irm pelvienne|test salivaire|cœlioscopie diagnostique)/i.test(nom);
   const champLabel = estDepistage ? 'Résultat / ce que l\'examen a révélé' : 'Effets ressentis';
-  const champPlaceholder = estDepistage ? "ex : confirme endométriose stade III, lésions ovaires + ligaments utéro-sacrés / RAS, rien de visible..." : "ex : bien tolérée, amélioration nette / effets secondaires…";
+  const champOptions = estDepistage
+    ? ['Confirme le diagnostic suspecté','RAS / rien de visible','Résultat partiel ou ambigu','Ne sait pas encore']
+    : ['Bien tolérée, nette amélioration','Partiellement efficace','Peu ou pas d\'effet','Mal tolérée / effets secondaires','Ne sait pas'];
+  const champOptionsHtml = champOptions.map(o => `<option${entry.ressenti===o?' selected':''}>${o}</option>`).join('');
   document.getElementById('chir-popup-body').innerHTML = `
     <div style="padding:12px 14px;border:1.5px solid var(--sable);background:var(--or-clair);border-radius:14px;margin-bottom:14px" id="chir-popup-statut">${idx > -1 ? chirEtatWidgetHtml(idx) : ''}</div>
     ${chirBriefCardHtml(nom)}
-    <div style="margin-top:10px"><label class="fl">${champLabel}</label><input class="fi" type="text" id="chir-popup-ressenti" placeholder="${champPlaceholder}" value="${entry.ressenti||''}"></div>
+    <div style="margin-top:10px"><label class="fl">${champLabel}</label><select class="fi" id="chir-popup-ressenti"><option value="">—</option>${champOptionsHtml}</select></div>
   `;
   document.getElementById('chir-popup-overlay').style.display = 'flex';
 }
@@ -5226,7 +5235,13 @@ function renderChirurgiesList() {
     <div style="display:flex;flex-direction:column;gap:8px;padding:10px 14px;border:1px solid var(--taupe);border-radius:14px;background:var(--blanc)">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <span style="flex:1;min-width:140px;font-size:14px;color:var(--ardoise);font-weight:500;cursor:pointer" onclick="ouvrirChirPopup('${safeType}')" title="Ouvrir les détails">${c.type}</span>
-        <input type="text" placeholder="Date (ex : mars 2022)" value="${c.moisAnnee||''}" oninput="setChirurgieDate(${i}, this.value)" style="width:160px;padding:6px 10px;border-radius:999px;border:1.5px solid var(--taupe);font-size:12px;font-family:inherit;color:var(--ardoise)">
+        <select onchange="setChirurgieDate(${i}, this.value)" style="width:160px;padding:6px 10px;border-radius:999px;border:1.5px solid var(--taupe);font-size:12px;font-family:inherit;color:var(--ardoise)">
+          <option value="">Date —</option>
+          <option${c.moisAnnee==="Moins d'1 an"?' selected':''}>Moins d'1 an</option>
+          <option${c.moisAnnee==="1 à 5 ans"?' selected':''}>1 à 5 ans</option>
+          <option${c.moisAnnee==="Plus de 5 ans"?' selected':''}>Plus de 5 ans</option>
+          <option${c.moisAnnee==="Ne sait pas"?' selected':''}>Ne sait pas</option>
+        </select>
         <button type="button" onclick="ouvrirChirPopup('${safeType}')" style="padding:7px 12px;border-radius:999px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;border:1.5px solid var(--taupe);background:var(--blanc);color:var(--gris)" title="En quoi ça consiste / effets ressentis">✎ Détails</button>
         <button type="button" onclick="removeChirurgie(${i})" style="background:transparent;border:none;cursor:pointer;color:var(--gris);font-size:15px;padding:4px 6px" title="Supprimer">✕</button>
       </div>
