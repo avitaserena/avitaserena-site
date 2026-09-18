@@ -878,9 +878,18 @@ select.fi.answered{background:var(--off)}
           <button type="button" class="chip" onclick="this.classList.toggle('on')">Estomac / plexus</button>
           <button type="button" class="chip" onclick="this.classList.toggle('on')">Bas-ventre / pelvis</button>
           <button type="button" class="chip" onclick="this.classList.toggle('on')">Bas du dos / lombaires</button>
-          <button type="button" class="chip" onclick="this.classList.toggle('on')">Hanches</button>
-          <button type="button" class="chip" onclick="this.classList.toggle('on')">Mains / poignets</button>
-          <button type="button" class="chip" onclick="this.classList.toggle('on')">Genoux</button>
+          <button type="button" class="chip" onclick="this.classList.toggle('on')">Épaule gauche</button>
+          <button type="button" class="chip" onclick="this.classList.toggle('on')">Épaule droite</button>
+          <button type="button" class="chip" onclick="this.classList.toggle('on')">Coude gauche</button>
+          <button type="button" class="chip" onclick="this.classList.toggle('on')">Coude droit</button>
+          <button type="button" class="chip" onclick="this.classList.toggle('on')">Hanche gauche</button>
+          <button type="button" class="chip" onclick="this.classList.toggle('on')">Hanche droite</button>
+          <button type="button" class="chip" onclick="this.classList.toggle('on')">Main / poignet gauche</button>
+          <button type="button" class="chip" onclick="this.classList.toggle('on')">Main / poignet droit</button>
+          <button type="button" class="chip" onclick="this.classList.toggle('on')">Genou gauche</button>
+          <button type="button" class="chip" onclick="this.classList.toggle('on')">Genou droit</button>
+          <button type="button" class="chip" onclick="this.classList.toggle('on')">Cheville gauche</button>
+          <button type="button" class="chip" onclick="this.classList.toggle('on')">Cheville droite</button>
         </div>
         <p class="field-hint" style="margin-top:6px;font-size:11.5px;color:var(--gris)">Mêmes zones que le questionnaire de consultation, pour comparer facilement d'une séance à l'autre.</p>
         <div style="margin-top:10px"><label class="fl" style="font-size:10px">Autre localisation — non listée ci-dessus</label>
@@ -3046,6 +3055,51 @@ function showToast(msg) {
 }
 
 /* ══════════════════════════════════════════════════════
+   INTENSITÉ PAR ZONE — panneau partagé pour le schéma du bassin (18/09/2026)
+   Même principe que côté consultation : l'intensité se saisit directement
+   au clic sur chaque zone, dans l'écran du schéma lui-même.
+══════════════════════════════════════════════════════ */
+const ZONE_INTENSITE_LABELS = {
+  0:'Aucune douleur', 1:'Très légère sensation', 2:'Presque rien', 3:'Légère gêne',
+  4:'Gêne présente mais supportable', 5:'Douleur modérée', 6:'Douleur marquée',
+  7:'Douleur intense', 8:'Douleur très intense', 9:'Douleur extrême', 10:'Douleur invalidante'
+};
+let bassinIntensites = {};
+let ziContexteActuel = null;
+let ziZoneActuelle = null;
+
+function majZoneIntensiteAffichage() {
+  const v = parseInt(document.getElementById('zi-slider').value, 10);
+  document.getElementById('zi-num').textContent = v;
+  document.getElementById('zi-lbl').textContent = ZONE_INTENSITE_LABELS[v];
+}
+
+function ouvrirIntensitePourZone(zoneId, zoneLabel, contexte) {
+  ziContexteActuel = contexte;
+  ziZoneActuelle = zoneId;
+  document.getElementById('zi-zone-label').textContent = zoneLabel;
+  const slider = document.getElementById('zi-slider');
+  slider.value = bassinIntensites[zoneId] != null ? bassinIntensites[zoneId] : 5;
+  slider.removeEventListener('input', majZoneIntensiteAffichage);
+  slider.addEventListener('input', majZoneIntensiteAffichage);
+  majZoneIntensiteAffichage();
+  document.getElementById('zone-intensite-overlay').style.display = 'flex';
+}
+
+function fermerZoneIntensite(valider) {
+  if (valider) {
+    bassinIntensites[ziZoneActuelle] = parseInt(document.getElementById('zi-slider').value, 10);
+  } else {
+    delete bassinIntensites[ziZoneActuelle];
+    bassinActives.delete(ziZoneActuelle);
+    if (bassinBuilt) majBassin();
+  }
+  document.getElementById('zone-intensite-overlay').style.display = 'none';
+  majChipsZonesBassin_c();
+  formTouched = true;
+}
+
+/* ══════════════════════════════════════════════════════
    BASSIN — localisation précise des douleurs d'endométriose (15/09/2026)
 ══════════════════════════════════════════════════════ */
 const ZONES_BASSIN = [
@@ -3067,8 +3121,8 @@ function construireBassin() {
     c.classList.add('bas-zone');
     c.dataset.id = z.id; c.dataset.lbl = z.lbl;
     c.addEventListener('click', () => {
-      if (bassinActives.has(z.id)) bassinActives.delete(z.id); else bassinActives.add(z.id);
-      majBassin();
+      if (!bassinActives.has(z.id)) { bassinActives.add(z.id); majBassin(); }
+      ouvrirIntensitePourZone(z.id, z.lbl, 'bassin');
     });
     svg.appendChild(c);
   });
@@ -3086,12 +3140,23 @@ function majBassin() {
 }
 function majChipsZonesBassin_c() {
   document.querySelectorAll('#endo-zones-group-c .chip[data-zone]').forEach(chip => {
-    chip.classList.toggle('on', bassinActives.has(chip.dataset.zone));
+    const zoneId = chip.dataset.zone;
+    const zone = ZONES_BASSIN.find(z => z.id === zoneId);
+    if (!zone) return;
+    const actif = bassinActives.has(zoneId);
+    chip.classList.toggle('on', actif);
+    const val = bassinIntensites[zoneId];
+    chip.textContent = (actif && val != null) ? `${zone.lbl} (${val}/10)` : zone.lbl;
   });
 }
 function toggleZoneBassin_c(btn) {
   const zone = btn.dataset.zone;
-  if (bassinActives.has(zone)) bassinActives.delete(zone); else bassinActives.add(zone);
+  if (bassinActives.has(zone)) {
+    bassinActives.delete(zone);
+    delete bassinIntensites[zone];
+  } else {
+    bassinActives.add(zone);
+  }
   majChipsZonesBassin_c();
   if (bassinBuilt) majBassin();
   formTouched = true;
@@ -5649,6 +5714,12 @@ function collectData() {
   d.douleursLocalisation = zonesDouleurSuivi.join(', ');
   d.douleurAlerte = document.getElementById('douleur-alerte-item-suivi')?.classList.contains('checked') || false;
 
+  // Localisation précise du bassin (endométriose, 18/09/2026) — n'était encore captée par
+  // aucun mécanisme côté suivi ; même principe que côté consultation, intensité par zone
+  // déjà incluse dans le texte des chips (chip.textContent contient le "(x/10)").
+  const zonesBassinSuivi = [...document.querySelectorAll('#endo-zones-group-c .chip.on')].map(c => c.textContent.trim());
+  d.endoLocalisation = zonesBassinSuivi.join(', ');
+
   // Date de la consultation initiale — purement contextuel mais capturé pour ne rien laisser de côté.
   d.dateInitiale = document.getElementById('date-initiale')?.value || '';
 
@@ -6157,6 +6228,7 @@ function finalise() {
     evenements_vie: evenementsVieStr,
     douleurs_localisation: d.douleursLocalisation,
     douleur_alerte: d.douleurAlerte,
+    endo_localisation: d.endoLocalisation,
     suivi_traitements: suiviTraitementsStr,
     proto_initial_complet: protoInitialStr,
     bilans_initiaux: d.bilansInitiaux,
@@ -6237,6 +6309,27 @@ async function majTimelineClient(clientId, d) {
   } catch(e) { console.warn('[Timeline suivi] Échec de mise à jour', e); }
 }
 </script>
+
+<!-- ══════════════════════════════════════════════════════
+     MINI-PANNEAU INTENSITÉ PAR ZONE — apparaît directement au clic sur une
+     zone dans le schéma du bassin (18/09/2026)
+══════════════════════════════════════════════════════ -->
+<div id="zone-intensite-overlay" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(26,26,26,.55);align-items:center;justify-content:center">
+  <div style="background:#FDF4F8;border-radius:20px;padding:32px 28px;width:min(360px,86vw);text-align:center;font-family:'Be Vietnam Pro',Inter,sans-serif">
+    <div style="font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#D6336C;margin-bottom:6px">A VITA SERENA</div>
+    <div id="zi-zone-label" style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:22px;color:#1A1A1A;margin-bottom:18px">Zone</div>
+    <div id="zi-num" style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:48px;color:#1A1A1A;line-height:1">5</div>
+    <div id="zi-lbl" style="font-size:13px;font-weight:600;color:#99244F;margin:4px 0 22px;min-height:18px">Douleur modérée</div>
+    <input type="range" id="zi-slider" min="0" max="10" value="5" style="width:100%;margin-bottom:6px">
+    <div style="display:flex;justify-content:space-between;font-size:10.5px;color:rgba(26,26,26,.45);margin:0 2px 26px">
+      <span>0 — Aucune douleur</span><span>10 — Invalidante</span>
+    </div>
+    <div style="display:flex;justify-content:center;gap:10px">
+      <button type="button" onclick="fermerZoneIntensite(false)" style="font-family:'Be Vietnam Pro',sans-serif;font-size:13px;font-weight:600;padding:11px 22px;border-radius:99px;border:1.5px solid rgba(26,26,26,.15);background:none;color:rgba(26,26,26,.6);cursor:pointer">Retirer cette zone</button>
+      <button type="button" onclick="fermerZoneIntensite(true)" style="font-family:'Be Vietnam Pro',sans-serif;font-size:13px;font-weight:600;padding:11px 22px;border-radius:99px;border:none;background:#1A1A1A;color:#FDF4F8;cursor:pointer">Valider</button>
+    </div>
+  </div>
+</div>
 
 <!-- ══════════════════════════════════════════════════════
      ÉCRAN BASSIN PLEIN ÉCRAN — localisation précise endométriose (15/09/2026)
