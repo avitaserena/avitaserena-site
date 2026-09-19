@@ -4288,7 +4288,15 @@ const FICHES_DISPONIBLES = [
   { code:'alimentation-mediterraneenne', label:'L\'alimentation méditerranéenne', url:'https://avitaserena.com/fiches/alimentation-mediterraneenne.html', groupe:'pratique' },
   { code:'assiette-fonctionnelle',       label:'L\'assiette fonctionnelle',       url:'https://avitaserena.com/fiches/assiette-fonctionnelle.html', groupe:'pratique' },
   { code:'foie-detox-oestrogenes',       label:'Foie & détoxification des œstrogènes', url:'https://avitaserena.com/fiches/foie-detox-oestrogenes.html', groupe:'mecanisme' },
+  { code:'foie-detox-oestrogenes-pratique', label:'Foie & œstrogènes — guide pratique au quotidien', url:'https://avitaserena.com/fiches/foie-detox-oestrogenes-pratique.html', groupe:'pratique' },
+  { code:'permeabilite-pratique', label:'Perméabilité intestinale — guide pratique de réparation', url:'https://avitaserena.com/fiches/permeabilite-intestinale-pratique.html', groupe:'pratique' },
   { code:'perturbateurs-endocriniens-pratique', label:'Perturbateurs endocriniens — réduire son exposition au quotidien', url:'https://avitaserena.com/fiches/perturbateurs-endocriniens-pratique.html', groupe:'pratique' },
+  { code:'produits-menagers-maison', label:'Faire soi-même ses produits ménagers', url:'https://avitaserena.com/fiches/produits-menagers-maison-pratique.html', groupe:'pratique' },
+  { code:'sommeil-hormones', label:'Sommeil et hormones — guide pratique', url:'https://avitaserena.com/fiches/sommeil-hormones-pratique.html', groupe:'pratique' },
+  { code:'vivre-avec-son-cycle', label:'Vivre avec les 4 phases de son cycle', url:'https://avitaserena.com/fiches/vivre-avec-son-cycle-pratique.html', groupe:'pratique' },
+  { code:'sport-cycle-feminin', label:'Sport et cycle féminin — guide pratique', url:'https://avitaserena.com/fiches/sport-cycle-feminin-pratique.html', groupe:'pratique' },
+  { code:'preconception-pratique', label:'Préconception — préparer son corps 3 mois avant', url:'https://avitaserena.com/fiches/preconception-pratique.html', groupe:'pratique' },
+  { code:'arret-pilule-pratique', label:'Après l\'arrêt de la pilule — guide pratique', url:'https://avitaserena.com/fiches/arret-pilule-pratique.html', groupe:'pratique' },
 ];
 
 // Codes présélectionnés (Set) à partir des axes retenus pour CE protocole et des
@@ -4309,7 +4317,11 @@ function suggererFichesCodes() {
 
   // Perméabilité intestinale — puce dédiée désormais disponible (plus fiable que
   // l'ancien repli sur l'axe large "Digestif & microbiote").
-  if (diagCoche('Hyperperméabilité intestinale (leaky gut)')) { suggested.add('permeabilite'); }
+  if (diagCoche('Hyperperméabilité intestinale (leaky gut)')) { suggested.add('permeabilite'); suggested.add('permeabilite-pratique'); }
+
+  // Foie & détox des œstrogènes — sur l'axe de travail dédié (aucun diagnostic
+  // formel n'existe pour l'hyperoestrogénie, c'est un tableau clinique, pas une maladie).
+  if (axes.includes('Foie & détox')) { suggested.add('foie-detox-oestrogenes'); suggested.add('foie-detox-oestrogenes-pratique'); }
 
   // Stress / nerf vague — reste sur les axes, pas de diagnostic dédié pertinent ici.
   if (axes.includes('Stress & système nerveux') || axes.includes('Surrénales & énergie') || diagCoche('Fatigue surrénalienne / burn-out')) { suggested.add('coherence-nerf-vague'); }
@@ -4333,6 +4345,15 @@ function suggererFichesCodes() {
   if (axes.includes('SPM')) { suggested.add('spm'); suggested.add('spm-pratique'); }
 
   if (/\bipp\b/i.test(d.traitements_vigilance || '')) { suggested.add('sevrage-ipp'); }
+
+  // Préconception — signal fiable et déjà structuré : le champ grossesse/désir de grossesse
+  // importé du questionnaire de consultation (d.secu_grossesse).
+  if ((d.secu_grossesse || '').includes('Désir de grossesse')) { suggested.add('preconception-pratique'); }
+
+  // Arrêt de la pilule — signal fiable et déjà structuré : le champ de changement de
+  // contraception importé du questionnaire de suivi (d.modifContraception).
+  if ((d.modifContraception || '') === 'Arrêt de la pilule') { suggested.add('arret-pilule-pratique'); }
+
   return suggested;
 }
 
