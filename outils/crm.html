@@ -1845,6 +1845,7 @@ function saveL(d){localStorage.setItem(LKEY,JSON.stringify(d))}
 
 let db={clients:[],factures:[],settings:null};
 let sourcesDecouverte=[]; // table dédiée sources_decouverte — réponses au micro-sondage de la page de réservation
+let seoStats=[]; // table seo_search_console_daily — synchronisée chaque nuit par la fonction sync-search-console
 let taches=[],rdvs=[],emailCtx=null,curTab='msg',curSearch='',curFilter='all';
 let memoAlerts=[];
 let memoHistoryAll=[]; // tous les mémos PHV, sans dédoublonnage — historique complet par cliente
@@ -1925,7 +1926,8 @@ async function init(){
     loadSettingsFromSupabase(),
     loadPilotage(),
     loadCheckinsToday(),
-    loadSourcesDecouverte()
+    loadSourcesDecouverte(),
+    loadSeoStats()
   ]);
 
   if(titleEl) titleEl.textContent="Aujourd'hui";
@@ -1970,6 +1972,17 @@ async function loadSourcesDecouverte(){
   }catch(e){
     console.error('[CRM] ✗ Sources de découverte:', e.message);
     sourcesDecouverte=[];
+  }
+}
+
+async function loadSeoStats(){
+  try{
+    const r=await sb('seo_search_console_daily?order=date.asc&limit=400');
+    seoStats=r;
+    console.log('[CRM] ✓ Search Console:', seoStats.length);
+  }catch(e){
+    console.error('[CRM] ✗ Search Console:', e.message);
+    seoStats=[];
   }
 }
 
@@ -6449,6 +6462,18 @@ function renderStats(){
   const sourceEntries=Object.entries(sourceMap).sort((a,b)=>b[1]-a[1]);
   const sourceTotal=sourceEntries.reduce((s,[,v])=>s+v,0);
 
+  // Search Console (référencement Google) — synchronisé chaque nuit par sync-search-console.
+  // Décalage de 2-3 jours assumé côté Google : on affiche la dernière synchro pour que ce soit clair.
+  const impMap={};const clickMap={};keys.forEach(k=>{impMap[k]=0;clickMap[k]=0;});
+  seoStats.forEach(s=>{const k=bucketKeyFor(s.date,granularity);if(k in impMap){impMap[k]+=(s.impressions||0);clickMap[k]+=(s.clicks||0);}});
+  const impSeries=keys.map(k=>impMap[k]);
+  const impPeriodTotal=impSeries.reduce((s,v)=>s+v,0);
+  const clickSeries=keys.map(k=>clickMap[k]);
+  const clickPeriodTotal=clickSeries.reduce((s,v)=>s+v,0);
+  const posValues=seoStats.filter(s=>keys.includes(bucketKeyFor(s.date,granularity))&&s.impressions>0).map(s=>s.position);
+  const avgPosition=posValues.length?(posValues.reduce((a,b)=>a+b,0)/posValues.length):null;
+  const seoLastSync=seoStats.length?seoStats[seoStats.length-1].date:null;
+
   _statsLastBuckets={keys,labels,caSeries,rdvSeries,durSeries};
 
   const periodLbl={semaine:'7 derniers jours',mois:'30 derniers jours',annee:'12 derniers mois',tout:'12 derniers mois'}[statsPeriod];
@@ -6572,7 +6597,25 @@ function renderStats(){
     <div class="card-body">
       ${sourceAutreDetails.map(d=>`<div style="font-size:13px;color:var(--ink);padding:8px 0;border-bottom:1px solid var(--border)"><strong>${d.prenom||'—'}</strong> · ${d.date} — ${d.texte}</div>`).join('')}
     </div>
-  </div>`:''}`;
+  </div>`:''}
+
+  <div class="card" style="margin-top:14px">
+    <div class="card-head">
+      <div class="card-title"><div class="card-dot" style="background:#0E9384"></div>Référencement Google (Search Console) — ${periodLbl}</div>
+      ${seoLastSync?`<div style="font-size:11px;color:var(--muted)">Dernière synchro : ${new Date(seoLastSync).toLocaleDateString('fr-FR')}</div>`:''}
+    </div>
+    <div class="card-body">
+      ${seoStats.length?`
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">
+        ${statCard('<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" stroke="currentColor" stroke-width="2.2"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2.2"/></svg>',impPeriodTotal,'Impressions Google · '+periodLbl,'#0E9384')}
+        ${statCard('<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',clickPeriodTotal,'Clics · '+periodLbl,'#0E9384')}
+        ${statCard('<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2.2"/><path d="M12 7v5l3.5 2" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>',avgPosition!=null?avgPosition.toFixed(1):'—','Position moyenne','#0E9384')}
+      </div>
+      ${svgAreaChart(impSeries,labels,'#0E9384',120)}
+      <div style="font-size:11px;color:var(--muted);margin-top:8px">Impressions dans les résultats Google — données Search Console, synchronisées chaque nuit (délai de 2-3 jours côté Google avant finalisation des chiffres).</div>
+      `:'<div style="font-size:13px;color:var(--muted);font-style:italic">Aucune donnée Search Console synchronisée pour l\'instant</div>'}
+    </div>
+  </div>`;
 }
 
 function exportStatsCSV(){
