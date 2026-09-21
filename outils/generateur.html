@@ -1804,6 +1804,7 @@ Analyse l'intégralité des données de séance ci-dessous et propose les bilans
 6. Explication cliente ("explication_cliente") = 1 à 2 phrases, en vouvoiement, dans un langage accessible SANS jargon médical, qui expliquent à la cliente POURQUOI cet examen est proposé pour SON profil — c'est le texte qui accompagnera la recommandation d'analyses qu'elle recevra. Toujours ancrer l'explication dans ce qu'elle vit concrètement (ex : "Comme vos fatigues reviennent surtout en fin de journée et que vos règles sont abondantes, ce bilan permet de vérifier si vos réserves de fer sont en cause — c'est un point simple à corriger une fois identifié."). Jamais de ton alarmiste, jamais de nom de maladie non confirmée par un médecin.
 7. Si des résultats de bilans déjà réalisés sont fournis ci-dessous, ne resuggère pas un examen déjà fait récemment sauf si un contrôle de suivi est cliniquement pertinent (auquel cas le préciser dans la justification : "à recontrôler").
 8. Si les données sont trop pauvres pour identifier un axe clair, dis-le honnêtement plutôt que d'inventer des priorités.
+8bis. ⚠️ SÉCURITÉ CONTRACEPTION HORMONALE (cohérent avec la RÈGLE N°19 point 4 du protocole principal) : si "Contraception actuelle" indique une pilule, un DIU hormonal, un implant ou tout autre traitement hormonal en cours, les dosages d'œstradiol, de progestérone, de FSH et de LH ne sont PAS interprétables dans ce contexte (l'axe hormonal naturel est mis au repos) — ne propose donc PAS "Bilan hormonal J3 (FSH, LH, Estradiol) + Progestérone J21" ni le volet hormonal du "Bilan SOPK" dans ce cas, sauf si la cliente a mentionné un projet d'arrêt déjà décidé. Restent pertinents et à proposer normalement si le contexte clinique le justifie : les protéines de transport (SHBG, CBG, TBG), la fonction thyroïdienne (TSH/T3L/T4L), et les déficits micronutritionnels (ferritine, B12, B9, magnésium, zinc, sélénium, vitamine D).
 9. Réponds UNIQUEMENT en JSON valide, sans texte avant ni après, sans balises markdown, selon ce format exact :
 {"intro": "1 phrase de synthèse du profil clinique dominant qui motive ces choix", "bilans": [{"nom": "Nom exact du bilan", "priorite": 1, "justification": "1 phrase précise, usage interne", "explication_cliente": "1-2 phrases en vouvoiement, pour la cliente"}]}
 
@@ -1825,6 +1826,7 @@ Signaux cochés en séance : ${d.symptomes_coches}
 Puces & chips cochées : ${d.chips}
 Alimentation & mode de vie : ${d.alimentation}
 Cycle, gynécologie, thyroïde : ${d.gyneco}
+Contraception actuelle : ${d.contraception || 'Non renseignée'}
 ⚠️ Médicaments & allergies : ${d.medics_allergies || 'Non renseigné'}
 Terrains CHANBIO repérés en séance (Dr Claude Lagarde / Nutergia — repérage clinique, pas une conclusion figée) : ${d.chanbio_terrains || '— Aucun terrain coché'}${d.chanbio_notes ? ' · Précisions : ' + d.chanbio_notes : ''}
 
@@ -2172,6 +2174,8 @@ ${lignesTxt}
 Cliente : ${d?.prenom || 'Non renseignée'}${d?.age ? ', ' + d.age + ' ans' : ''}
 Diagnostics confirmés : ${d?.diagnostics_confirmes || '—'}${d?.diagnostics_evolution ? ' (évolution : ' + d.diagnostics_evolution.replace(/\n/g,' · ') + ')' : ''}
 Motifs & symptômes : ${d?.motifs || '—'} · ${d?.symptomes_coches || '—'}
+Contraception actuelle : ${d?.contraception || 'Non renseignée'} — ⚠️ SÉCURITÉ (cohérent avec la RÈGLE N°19 point 4 du protocole principal) : si une pilule, un DIU hormonal ou un implant est en cours, les valeurs d'œstradiol, de progestérone, de FSH et de LH ne sont PAS interprétables comme reflet du fonctionnement hormonal propre de la cliente (l'axe naturel est mis au repos) — dis-le explicitement pour ces marqueurs précis plutôt que d'en donner une lecture physiologique normale ; les autres marqueurs (thyroïde, martial, micronutriments, etc.) restent interprétables normalement.
+Médicaments & allergies : ${d?.medics_allergies || 'Non renseigné'}
 Alimentation & mode de vie : ${d?.alimentation || '—'}`;
 }
 

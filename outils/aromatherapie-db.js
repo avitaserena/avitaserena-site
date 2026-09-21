@@ -140,11 +140,12 @@ const CI_LABELS = {
      anticoagulants:bool, insuffisance_renale:bool, insuffisance_hepatique:bool,
      gastrite_ulcere:bool, troubles_cardiovasculaires:bool,
      allergie_fruits_coque:bool, allergies_he:bool }
-   NOTE ASTHME : ci.asthme vaut toujours la chaîne "avis_allergologue" (jamais
-   un booléen d'exclusion stricte) — volontaire, car l'asthme ne contre-indique
-   pas systématiquement une huile mais impose une vigilance. Cette vigilance
-   n'exclut donc jamais une huile de la liste, mais elle est TOUJOURS affichée
-   via formatCIComplet() ci-dessous, jamais silencieuse.
+   NOTE ASTHME (MISE À JOUR 20/09/2026, Claude) : ci.asthme vaut toujours la chaîne
+   "avis_allergologue" sur quasi toutes les huiles essentielles (54/55). Un correctif du
+   15/09/2026 a fait de cette mention un motif d'EXCLUSION STRICTE (comme grossesse/épilepsie),
+   pas seulement une vigilance affichée — confirmé et validé par Sabrina le 20/09/2026 : c'est
+   le comportement voulu (prudence maximale), quitte à ce qu'une cliente asthmatique se voie
+   proposer 0 huile essentielle (les huiles végétales et hydrolats restent proposés normalement).
    -------------------------------------------------------------------------- */
 function aromatherapieFiltrer(liste, profil) {
   return liste.filter(item => {
