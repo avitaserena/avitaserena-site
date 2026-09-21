@@ -1290,6 +1290,39 @@ function prefillParams() {
     const el = document.getElementById(elId);
     if (el && !el.value && sessionData[key]) el.value = sessionData[key];
   });
+  // AJOUTÉ (20/09/2026, Claude, demande Sabrina, audit complet du fichier) : tous les champs
+  // ci-dessous étaient soit jamais collectés côté questionnaire (corrigé dans consultation.html
+  // le même jour), soit collectés mais jamais réimportés ici — la praticienne devait deviner ou
+  // ressaisir seule, une fois raccroché, des réponses qui ne peuvent venir que de la cliente.
+  // Groupe A : selects avec option vide par défaut → même schéma prudent que seMap ci-dessus
+  // (ne jamais écraser une valeur déjà choisie manuellement).
+  const seMapB = { 'sibo-type': 'sibo_type', 'selenium-statut': 'selenium_statut', 'candidose-profil': 'candidose_profil', 'anticoag-type': 'anticoag_type' };
+  Object.entries(seMapB).forEach(([elId, key]) => {
+    const el = document.getElementById(elId);
+    if (el && !el.value && sessionData[key]) el.value = sessionData[key];
+  });
+  const approchesEl = document.getElementById('approches-testees');
+  if (approchesEl && !approchesEl.value && sessionData.approches_testees) approchesEl.value = sessionData.approches_testees;
+  // Groupe B : selects SANS option vide par défaut (leur première option est déjà un choix
+  // clinique, jamais un placeholder) — le contrôle "!el.value" du groupe A ne fonctionnerait pas
+  // ici puisque .value n'est jamais vide. Cette fonction ne s'exécute qu'une fois, juste après le
+  // chargement de la session et avant toute interaction de la praticienne : les définir sans
+  // condition ne risque donc jamais d'écraser une saisie manuelle.
+  ['contraintes-alim', 'niveau-sport'].forEach(elId => {
+    const key = elId.replace(/-/g, '_');
+    const el = document.getElementById(elId);
+    if (el && sessionData[key]) el.value = sessionData[key];
+  });
+  // motiv-alim/sport/compl/stress/entourage ne sont pas des clés séparées dans la session : le
+  // questionnaire les combine dans une seule chaîne sessionData.motivation ("Alimentation: X |
+  // Sport: Y | ..."), à reparser ici — même regex que le fallback déjà utilisé plus bas dans
+  // buildClientData().
+  const motivRegexMap = { 'motiv-alim': 'Alimentation', 'motiv-sport': 'Sport', 'motiv-compl': 'Budget compléments', 'motiv-stress': 'Gestion stress', 'motiv-entourage': 'Entourage' };
+  Object.entries(motivRegexMap).forEach(([elId, label]) => {
+    const el = document.getElementById(elId);
+    const match = sessionData.motivation?.match(new RegExp(label + ': ([^|]+)'));
+    if (el && match) el.value = match[1].trim();
+  });
   // FAILLE CORRIGÉE (04/09/2026, audit pré-lancement) : le programme (Alba/Aria/Ora) choisi à la
   // consultation initiale n'était jamais repris en suivi — la praticienne devait le resélectionner
   // manuellement à chaque séance, avec un risque réel d'incohérence si la durée diffère par erreur.
@@ -1598,7 +1631,7 @@ function buildClientData() {
       } catch(e) { console.warn('Filtre aromathérapie indisponible:', e); return ''; }
     })(),
     traitements_vigilance: traitementsVigilance,
-    anticoag_type: gv('anticoag-type'),
+    anticoag_type: gv('anticoag-type') || s.anticoag_type || '',
     allergies_alim: allergiesAlim,
     // ── Diagnostics confirmés ──
     diagnostics_confirmes: diagnosticsConfirmes,
@@ -1617,12 +1650,12 @@ function buildClientData() {
     douleurs_localisation: sessionData?.douleurs_localisation || '',
     douleur_alerte: sessionData?.douleur_alerte || false,
     endo_localisation: sessionData?.endo_localisation || '',
-    sibo_type: gv('sibo-type'),
-    candidose_profil: gv('candidose-profil'),
-    selenium_statut: gv('selenium-statut'),
+    sibo_type: gv('sibo-type') || s.sibo_type || '',
+    candidose_profil: gv('candidose-profil') || s.candidose_profil || '',
+    selenium_statut: gv('selenium-statut') || s.selenium_statut || '',
     antecedents_resolus: gv('antecedents-resolus'),
     // ── Approches déjà testées ──
-    approches_testees: gv('approches-testees'),
+    approches_testees: gv('approches-testees') || s.approches_testees || '',
     // ── Terrains CHANBIO (Dr Claude Lagarde / Nutergia), importés du questionnaire de
     // consultation (01/09/2026) — jusque-là collectés côté questionnaire mais jamais lus ici.
     // Usage strictement interne (RÈGLE existante) : jamais de valeur ou de nom d'examen dans
@@ -1643,11 +1676,11 @@ function buildClientData() {
     profil: gv('profil'),
     // Alimentation
     motiv_alim: gv('motiv-alim') || s.motivation?.match(/Alimentation: ([^|]+)/)?.[1]?.trim() || '',
-    contraintes_alim: gv('contraintes-alim'),
+    contraintes_alim: gv('contraintes-alim') || s.contraintes_alim || '',
     gestes_alim: gestesAlim,
     // Sport
     motiv_sport: gv('motiv-sport') || s.motivation?.match(/Sport: ([^|]+)/)?.[1]?.trim() || '',
-    niveau_sport: gv('niveau-sport'),
+    niveau_sport: gv('niveau-sport') || s.niveau_sport || '',
     // Compléments
     motiv_compl: gv('motiv-compl') || s.motivation?.match(/Budget compléments: ([^|]+)/)?.[1]?.trim() || '',
     compl_en_cours: gv('compl-en-cours') || (s.textes_libres?.match(/(?:complément|supplément|vitamine|magnésium|probiotique)[^\n]*/gi) || []).join(', '),
