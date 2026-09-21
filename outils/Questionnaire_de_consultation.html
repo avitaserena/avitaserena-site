@@ -1900,6 +1900,15 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
               </select>
             </div>
           </div>
+          <!-- AJOUTÉ (20/09/2026, Claude, demande Sabrina) : signal d'alerte médicale, posé
+               uniquement ici puisque c'est l'endroit où la question a un sens évident. -->
+          <div style="margin-top:14px;background:#FBEAEA;border:1.5px solid #C0392B;border-radius:12px;padding:12px 14px">
+            <label style="display:flex;align-items:flex-start;gap:8px;font-size:12.5px;color:#6B3535;cursor:pointer">
+              <input type="checkbox" id="signal-dysphagie" style="margin-top:2px">
+              <span>Difficulté à avaler (dysphagie) — sensation de blocage des aliments</span>
+            </label>
+            <div style="font-size:11px;color:#8B5555;margin-top:6px;padding-left:22px">Une dysphagie n'est jamais un simple signe digestif fonctionnel à traiter en naturopathie — elle doit toujours être investiguée médicalement en premier (cause mécanique ou neurologique à écarter).</div>
+          </div>
           <div style="margin-top:10px"><label class="fl">Précisions cliniques (facultatif — date, sévérité, traitement… inutile de re-saisir le nom déjà coché ci-dessus)</label>
             <textarea class="fi" id="digestif-cliente" placeholder="Ex : SIBO H₂ confirmé par test en 2022, traité rifaximine, rechute…"></textarea>
           </div>
@@ -10111,6 +10120,21 @@ function collectAllData() {
   if (autreDouleur) zonesDouleur.push(autreDouleur);
   d.douleurs_localisation = zonesDouleur.join(', ');
   d.douleur_alerte = document.getElementById('douleur-alerte-item-c')?.classList.contains('checked') || false;
+  // AJOUTÉ (20/09/2026, Claude, demande Sabrina) : signaux d'alerte médicale cochés sur la
+  // silhouette (poitrine/épaules → cardiaque, tête → méningite) — jamais un simple symptôme de
+  // plus, à faire ressortir clairement pour vous, pas seulement noyé dans les zones de douleur.
+  const alertesTxt = Object.entries(silhouetteAlertes).map(([zoneId, a]) => {
+    const zone = ZONES_SILHOUETTE.find(z => z.id === zoneId);
+    const lbl = zone ? zone.lbl : zoneId;
+    const signes = [];
+    if (a.cardiaque) signes.push('douleur brutale/oppressante avec essoufflement ou sueurs');
+    if (a.fievre) signes.push('douleur brutale avec fièvre' + (a.nuqueRaide ? ' + nuque douloureuse/bloquée' : ''));
+    return signes.length ? `${lbl} : ${signes.join(' ; ')}` : '';
+  }).filter(Boolean);
+  d.alertes_medicales = alertesTxt.join('\n');
+  if (document.getElementById('signal-dysphagie')?.checked) {
+    d.alertes_medicales = [d.alertes_medicales, 'Dysphagie (difficulté à avaler, sensation de blocage)'].filter(Boolean).join('\n');
+  }
 
   // Localisation précise du bassin (endométriose, 18/09/2026, demande de Sabrina) — même
   // principe que la localisation des douleurs ci-dessus, avec l'intensité par zone reportée
@@ -10751,6 +10775,9 @@ const ZONE_INTENSITE_LABELS = {
   7:'Douleur intense', 8:'Douleur très intense', 9:'Douleur extrême', 10:'Douleur invalidante'
 };
 let silhouetteIntensites = {};
+// AJOUTÉ (20/09/2026, Claude, demande Sabrina) : store des signaux d'alerte par zone, séparé des
+// intensités de douleur — { zoneId: { cardiaque: bool, fievre: bool, nuqueRaide: bool } }.
+let silhouetteAlertes = {};
 let bassinIntensites = {};
 let ziContexteActuel = null;
 let ziZoneActuelle = null;
@@ -10771,16 +10798,48 @@ function ouvrirIntensitePourZone(zoneId, zoneLabel, contexte) {
   slider.removeEventListener('input', majZoneIntensiteAffichage);
   slider.addEventListener('input', majZoneIntensiteAffichage);
   majZoneIntensiteAffichage();
+  // AJOUTÉ (20/09/2026, Claude, demande Sabrina) : signaux d'alerte, uniquement pour les zones
+  // où ils ont un sens clinique (jamais posés hors contexte, jamais comme bloc générique à part).
+  const estZoneCardiaque = ['poitrine', 'epaule-g', 'epaule-d'].includes(zoneId);
+  const estZoneTete = zoneId === 'tete';
+  document.getElementById('zi-alerte-cardiaque').style.display = estZoneCardiaque ? 'block' : 'none';
+  document.getElementById('zi-alerte-meningite').style.display = estZoneTete ? 'block' : 'none';
+  const alerteStore = silhouetteAlertes[zoneId] || {};
+  document.getElementById('zi-cb-cardiaque').checked = !!alerteStore.cardiaque;
+  document.getElementById('zi-cb-meningite').checked = !!alerteStore.fievre;
+  document.getElementById('zi-cb-nuque-raide').checked = !!alerteStore.nuqueRaide;
+  document.getElementById('zi-meningite-test').style.display = alerteStore.fievre ? 'block' : 'none';
   document.getElementById('zone-intensite-overlay').style.display = 'flex';
 }
+
+// Affiche le test de nuque uniquement si la fièvre est cochée — jamais posé sans ce premier signal.
+document.addEventListener('DOMContentLoaded', () => {
+  const cbFievre = document.getElementById('zi-cb-meningite');
+  if (cbFievre) cbFievre.addEventListener('change', () => {
+    document.getElementById('zi-meningite-test').style.display = cbFievre.checked ? 'block' : 'none';
+  });
+});
 
 function fermerZoneIntensite(valider) {
   const estBassin = ziContexteActuel === 'bassin';
   const store = estBassin ? bassinIntensites : silhouetteIntensites;
   if (valider) {
     store[ziZoneActuelle] = parseInt(document.getElementById('zi-slider').value, 10);
+    // AJOUTÉ (20/09/2026, Claude, demande Sabrina) : sauvegarde des signaux d'alerte pour cette
+    // zone (uniquement pertinent côté silhouette générale, jamais côté bassin).
+    if (!estBassin) {
+      const cardiaque = document.getElementById('zi-cb-cardiaque').checked;
+      const fievre = document.getElementById('zi-cb-meningite').checked;
+      const nuqueRaide = document.getElementById('zi-cb-nuque-raide').checked;
+      if (cardiaque || fievre || nuqueRaide) {
+        silhouetteAlertes[ziZoneActuelle] = { cardiaque, fievre, nuqueRaide };
+      } else {
+        delete silhouetteAlertes[ziZoneActuelle];
+      }
+    }
   } else {
     delete store[ziZoneActuelle];
+    delete silhouetteAlertes[ziZoneActuelle];
     if (estBassin) bassinActives.delete(ziZoneActuelle);
     else silhouetteActives.delete(ziZoneActuelle);
     if (estBassin && bassinBuilt) majBassin();
@@ -12599,6 +12658,30 @@ document.addEventListener('DOMContentLoaded', () => { showAuthGate('praticienne'
     <input type="range" id="zi-slider" min="0" max="10" value="5" style="width:100%;margin-bottom:6px">
     <div style="display:flex;justify-content:space-between;font-size:10.5px;color:rgba(26,26,26,.45);margin:0 2px 26px">
       <span>0 — Aucune douleur</span><span>10 — Invalidante</span>
+    </div>
+    <!-- AJOUTÉ (20/09/2026, Claude, demande Sabrina) : signaux d'alerte médicale, affichés
+         uniquement pour les zones où ils ont un sens clinique réel (poitrine/épaules → cardiaque,
+         tête → méningite) — jamais posés hors contexte, jamais comme un bloc à part. -->
+    <div id="zi-alerte-cardiaque" style="display:none;text-align:left;background:#FBEAEA;border:1.5px solid #C0392B;border-radius:12px;padding:12px 14px;margin-bottom:20px">
+      <label style="display:flex;align-items:flex-start;gap:8px;font-size:12.5px;color:#6B3535;cursor:pointer">
+        <input type="checkbox" id="zi-cb-cardiaque" style="margin-top:2px">
+        <span>Apparue brutalement, oppressante, avec essoufflement ou sueurs ?</span>
+      </label>
+      <div style="font-size:11px;color:#8B5555;margin-top:6px;padding-left:22px">Cette association peut évoquer une origine cardiaque — c'est un motif de consultation médicale urgente, jamais un axe naturopathique.</div>
+    </div>
+    <div id="zi-alerte-meningite" style="display:none;text-align:left;background:#FBEAEA;border:1.5px solid #C0392B;border-radius:12px;padding:12px 14px;margin-bottom:20px">
+      <label style="display:flex;align-items:flex-start;gap:8px;font-size:12.5px;color:#6B3535;cursor:pointer">
+        <input type="checkbox" id="zi-cb-meningite" style="margin-top:2px">
+        <span>Apparue brutalement, avec de la fièvre ?</span>
+      </label>
+      <div id="zi-meningite-test" style="display:none;margin-top:8px;padding-left:22px">
+        <div style="font-size:11px;color:#8B5555;margin-bottom:4px">À faire faire à l'écran : "Penchez la tête en avant, menton vers la poitrine — est-ce douloureux ou bloqué ?"</div>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#6B3535;cursor:pointer">
+          <input type="checkbox" id="zi-cb-nuque-raide">
+          <span>Douloureux / bloqué</span>
+        </label>
+      </div>
+      <div style="font-size:11px;color:#8B5555;margin-top:6px;padding-left:22px">Cette association peut évoquer une méningite — urgence médicale absolue, à orienter immédiatement vers les urgences.</div>
     </div>
     <div style="display:flex;justify-content:center;gap:10px">
       <button type="button" onclick="fermerZoneIntensite(false)" style="font-family:'Be Vietnam Pro',sans-serif;font-size:13px;font-weight:600;padding:11px 22px;border-radius:99px;border:1.5px solid rgba(26,26,26,.15);background:none;color:rgba(26,26,26,.6);cursor:pointer">Retirer cette zone</button>
