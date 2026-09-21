@@ -1448,6 +1448,20 @@ function buildClientData() {
       s.notes_libres_axes && `Notes libres par axe (séance de suivi) : ${s.notes_libres_axes}`,
       s.modif_hormonale && `Modification contraception/hormones depuis la dernière séance : ${s.modif_hormonale}${s.impact_hormonal ? ' — impact perçu : ' + s.impact_hormonal : ''}`,
     ].filter(Boolean).join('\n');
+    // ── FAILLE CORRIGÉE (20/09/2026, Claude, audit) : le statut de contraception n'était jamais
+    // reversé vers s.contraception_actuelle en séance de suivi — ce champ n'existe que côté
+    // consultation initiale (s.contraception_actuelle, cf. ligne ~1543 plus bas). La sécurité
+    // pilule de la RÈGLE N°19 (lue par buildPrompt/buildPromptBilans/buildPromptInterpretationBilan)
+    // recevait donc TOUJOURS "Non renseignée" lors d'une régénération en suivi — y compris juste
+    // après qu'une cliente ait signalé l'arrêt de sa pilule, exactement le moment où cette
+    // sécurité compte le plus. Reconstruit ici à partir des 2 seuls signaux réellement collectés
+    // par le questionnaire de suivi ; si aucun des deux n'est renseigné, on ne force rien plutôt
+    // que d'inventer un statut non confirmé.
+    if (s.contexte_pas_pilule) {
+      s.contraception_actuelle = 'Aucune (mise à jour en suivi)' + (s.modif_hormonale ? ' — ' + s.modif_hormonale : '');
+    } else if (s.modif_hormonale) {
+      s.contraception_actuelle = s.modif_hormonale;
+    }
     // ── FAILLE CORRIGÉE (12/09/2026, audit approfondi) : le questionnaire de suivi capture
     // bien les chips génériques (dont les exemples de réponses convertis en chips) et les 365
     // questions de relance ("Puisque ça empire...") dans s.evenements_vie / s.relances_suivi,
@@ -1737,8 +1751,16 @@ const TARIFS_BILANS = [
 // plutôt que d'inventer un chiffre.
 function estimerPrixBilan(nomBilan) {
   const n = (nomBilan || '').toLowerCase();
-  const match = TARIFS_BILANS.find(t => n.includes(t.motCle));
-  return match ? match.prix : null;
+  // CORRECTIF 20/09/2026 (Claude) : .find() prenait le PREMIER mot-clé correspondant dans
+  // l'ordre du tableau, pas le plus pertinent — ex. "Thyroïde complète (TSH...)" matchait
+  // 'tsh' (6,75€) avant d'atteindre 'thyroïde complète' (60€) plus bas dans la liste, et
+  // "Bilan du stress oxydatif (...zinc/sélénium...)" matchait 'zinc' (8€) au lieu de 'stress
+  // oxydatif' (130€) — sous-évaluait le budget annoncé à la cliente de plus de 100€ dans ce
+  // cas. On prend désormais TOUS les mots-clés correspondants et on garde le plus long
+  // (le plus spécifique), quel que soit son ordre de déclaration dans TARIFS_BILANS.
+  const candidats = TARIFS_BILANS.filter(t => n.includes(t.motCle));
+  if (!candidats.length) return null;
+  return candidats.reduce((a, b) => b.motCle.length > a.motCle.length ? b : a).prix;
 }
 
 // Récupère depuis Supabase les derniers résultats de bilans biologiques déjà saisis dans le CRM
