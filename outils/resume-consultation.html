@@ -96,6 +96,14 @@ input.mf:focus,select.mf:focus,textarea.mf:focus{border-color:var(--ocre);backgr
 .verif-item .vi-heard{font-family:ui-monospace,Menlo,monospace;font-size:13px;color:#5A4A30}
 .verif-item .vi-why{font-size:12.5px;color:var(--gris);margin-top:3px}
 .verif-ok{background:var(--vert-clair);border:1px solid #C9D8C3;border-radius:14px;padding:14px 20px;margin-bottom:18px;font-size:14px;color:var(--vert)}
+.crois-box{background:var(--bleu-clair);border:1.5px solid #BCD3E6;border-radius:14px;padding:20px 24px;margin-bottom:18px}
+.crois-box h4{font-size:15px;font-weight:700;color:var(--bleu);margin-bottom:2px}
+.crois-box .cb-sub{font-size:13px;color:#3A4A58;margin-bottom:10px}
+.crois-box .cb-grp{margin-top:10px}
+.crois-box .cb-t{font-size:13px;font-weight:700;color:var(--ardoise);margin-bottom:4px}
+.crois-box ul{margin:0 0 0 18px}
+.crois-box li{font-size:14px;color:#2A2620;margin-bottom:3px}
+.crois-box .cb-none{font-size:14px;color:var(--vert)}
 .sec-edit{margin-bottom:6px}
 .sec-edit textarea{width:100%;border:1px solid transparent;border-radius:8px;padding:8px 10px;margin-left:-10px;font-family:inherit;font-size:14.5px;line-height:1.6;color:#2A2620;background:transparent;resize:none;overflow:hidden;outline:none;transition:border-color .15s,background .15s}
 .sec-edit textarea:hover{border-color:var(--taupe)}
@@ -137,7 +145,7 @@ input.mf:focus,select.mf:focus,textarea.mf:focus{border-color:var(--ocre);backgr
 
   <div class="intro">
     <h2>Résumé structuré post-consultation</h2>
-    <p>Importez le fichier .txt produit par Buzz (ou collez la transcription), choisissez le plan adapté, puis générez. Les termes mal transcrits sont corrigés à l'aide du glossaire du cabinet ; les médicaments, doses et chiffres incertains ne sont jamais corrigés en silence : ils apparaissent en orange « à vérifier ». Le résumé sera enregistré dans Supabase et visible dans la fiche cliente de la CRM. La transcription brute n'est jamais conservée — seul le résumé structuré est sauvegardé.</p>
+    <p>Importez le fichier .txt produit par Buzz (ou collez la transcription), choisissez le plan adapté, puis générez. L'outil croise automatiquement la séance avec le dernier questionnaire de la cliente. Les termes mal transcrits sont corrigés à l'aide du glossaire du cabinet ; les médicaments, doses et chiffres incertains ne sont jamais corrigés en silence : ils apparaissent en orange « à vérifier ». Le résumé sera enregistré dans Supabase et visible dans la fiche cliente de la CRM. La transcription brute n'est jamais conservée — seul le résumé structuré est sauvegardé.</p>
   </div>
 
   <div class="card">
@@ -197,6 +205,7 @@ input.mf:focus,select.mf:focus,textarea.mf:focus{border-color:var(--ocre);backgr
       </div>
     </div>
     <div id="verif-wrap"></div>
+    <div id="crois-wrap"></div>
     <p class="edit-hint">Chaque section est modifiable : cliquez dans le texte pour corriger, puis retirez la mention « [à vérifier] » une fois le point contrôlé.</p>
     <div class="resume-box" id="resume-box"></div>
     <div class="resume-box" id="resume-client-box" style="border-color:var(--ocre)"></div>
@@ -391,7 +400,7 @@ function initDepuisCRM() {
 /* ══════════════════════════════════════════════
    CONSTRUCTION DU PROMPT
    ══════════════════════════════════════════════ */
-function buildPrompt(plan, transcript, prenom) {
+function buildPrompt(plan, transcript, prenom, dossierTxt) {
   const sectionsListe = plan.sections.map((s, i) => `${i + 1}. ${s}`).join('\n');
 
   return `Tu es l'assistant de Sabrina Castelli, naturopathe diplômée (A VITA SERENA, Porto-Vecchio, Corse), spécialisée en santé digestive et équilibre hormonal féminin. Tu rédiges un résumé structuré et synthétique d'une consultation, à partir de sa retranscription brute, pour que Sabrina puisse s'y référer rapidement plus tard.
@@ -413,7 +422,14 @@ function buildPrompt(plan, transcript, prenom) {
    - Terme courant sans enjeu (pathologie, symptôme, vocabulaire naturopathique) dont la correction est évidente : écris directement le bon terme.
    - Nom de médicament, de complément ou de marque, dose, unité, fréquence de prise, chiffre de biologie, date de début ou d'arrêt de traitement, nom d'intervention : si le mot transcrit est déformé, ambigu, absent du glossaire, ou si la valeur est incohérente (dose invraisemblable, mauvaise unité — ex. Levothyrox exprimé en mg au lieu de µg), NE CORRIGE JAMAIS EN SILENCE. Écris dans la section le terme ou la valeur la plus probable suivi de « [à vérifier] », et ajoute une entrée dans "a_verifier".
    - Une information entendue mais incompréhensible n'est jamais devinée : signale-la dans "a_verifier" avec la proposition "incompréhensible".
+9bis. Si le médicament figure tel quel dans le DOSSIER DE LA CLIENTE ci-dessous, tu peux rétablir son nom sans le signaler ; une dose ou un chiffre incohérent, ou différent de celui du dossier, reste toujours « [à vérifier] ».
 9. "a_verifier" liste chaque point incertain : "entendu" = le passage exact tel qu'il apparaît dans la transcription (court), "proposition" = ce que tu penses qu'il fallait comprendre, "raison" = pourquoi c'est à vérifier (en une phrase). Liste vide [] si tout est clair.
+
+10. CROISEMENT AVEC LE DOSSIER : ${dossierTxt ? `le dossier ci-dessous contient les questionnaires déjà remplis pour cette cliente. Les sections du résumé documentent uniquement ce qui a été dit en séance : n'y recopie pas le dossier. Utilise le dossier seulement pour remplir "croisement" :
+   - "contradictions" : une information dite en séance qui diffère du dossier (traitement, dose, date, symptôme, habitude…), formulée « En séance : … / Dans le questionnaire : … ».
+   - "nouveautes" : une information importante dite en séance et absente du dossier (nouveau symptôme, traitement, événement de vie, examen…).
+   - "non_explores" : un point marquant du dossier (symptôme important, piste, signal de vigilance) qui n'a pas été abordé à l'oral et mériterait d'être repris à la prochaine séance.
+   Chaque élément tient en une phrase courte et factuelle. Listes vides [] si rien de significatif. N'invente aucun écart : en cas de doute, n'en mets pas.` : `aucun dossier n'est disponible pour cette cliente : renvoie "croisement" avec trois listes vides.`}
 
 ━━ GLOSSAIRE DU CABINET ━━
 ${GLOSSAIRE}
@@ -434,12 +450,60 @@ Réponds UNIQUEMENT en JSON valide, structure exacte suivante, sans aucun texte 
   "resume_client": "Le résumé chaleureux en vouvoiement, adressé directement à la cliente, décrit à la règle 7 ci-dessus.",
   "a_verifier": [
     { "entendu": "passage exact de la transcription", "proposition": "interprétation probable", "raison": "pourquoi c'est à vérifier" }
-  ]
+  ],
+  "croisement": { "contradictions": [], "nouveautes": [], "non_explores": [] }
 }
 Utilise exactement les libellés de section listés ci-dessus, dans le même ordre. Le champ "contenu" peut utiliser des puces sous la forme "- élément" séparées par des retours à la ligne \\n si plusieurs points distincts, ou une simple phrase/paragraphe sinon.
 
-━━ RETRANSCRIPTION DE LA CONSULTATION ━━
+${dossierTxt ? `━━ DOSSIER DE LA CLIENTE (questionnaires déjà enregistrés — référence pour le croisement uniquement) ━━
+${dossierTxt}
+
+` : ''}━━ RETRANSCRIPTION DE LA CONSULTATION ━━
 ${transcript}`;
+}
+
+
+/* ══════════════════════════════════════════════
+   DOSSIER DE LA CLIENTE — dernier questionnaire de consultation (+ dernier suivi)
+   pour le croisement séance / questionnaire
+   ══════════════════════════════════════════════ */
+const DOSSIER_MAX = 24000; // caractères envoyés au maximum par questionnaire (maîtrise du coût)
+
+function texteSnapshot(snap) {
+  if (Array.isArray(snap?._resume_sections)) {
+    return snap._resume_sections.map(s => `## ${s.titre}\n${(s.contenu || '').trim() || 'Non renseigné'}`).join('\n\n');
+  }
+  return Object.entries(snap || {})
+    .filter(([k, v]) => v !== null && v !== undefined && String(v).trim() !== '' && !k.startsWith('_'))
+    .map(([k, v]) => `${k} : ${typeof v === 'object' ? JSON.stringify(v) : v}`).join('\n');
+}
+
+function dateFr(iso) {
+  return iso ? new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(iso)) : '';
+}
+
+async function chargerDossier(cid) {
+  const res = { texte: '', libelle: 'Aucun questionnaire trouvé pour cette cliente : résumé sans croisement.' };
+  if (!cid || typeof DB === 'undefined' || !DB.getQuestionnaires) return res;
+  try {
+    const qs = (await DB.getQuestionnaires(cid)) || [];
+    const consult = qs.find(q => q.type === 'consultation');
+    const suivi = qs.find(q => q.type === 'suivi');
+    const blocs = [], lib = [];
+    [[consult, 'QUESTIONNAIRE DE CONSULTATION'], [suivi, 'DERNIER QUESTIONNAIRE DE SUIVI']].forEach(([q, titre]) => {
+      if (!q) return;
+      let t = texteSnapshot(q.snapshot);
+      if (!t.trim()) return;
+      if (t.length > DOSSIER_MAX) t = t.slice(0, DOSSIER_MAX) + '\n[… tronqué]';
+      blocs.push(`### ${titre} — rempli le ${dateFr(q.created_at)}\n${t}`);
+      lib.push(titre.toLowerCase().replace('questionnaire de ', 'questionnaire de ').replace('dernier questionnaire de suivi', 'dernier suivi') + ' du ' + dateFr(q.created_at));
+    });
+    if (blocs.length) { res.texte = blocs.join('\n\n'); res.libelle = 'Croisé avec : ' + lib.join(' et ') + '.'; }
+  } catch (e) {
+    console.error('[Résumé] Dossier non chargé :', e.message);
+    res.libelle = 'Le dossier de la cliente n\'a pas pu être chargé : résumé sans croisement.';
+  }
+  return res;
 }
 
 /* ══════════════════════════════════════════════
@@ -476,6 +540,9 @@ async function generate() {
   }, 3500);
 
   try {
+    document.getElementById('loading-msg').textContent = 'Recherche du dossier de la cliente…';
+    const cid = new URLSearchParams(window.location.search).get('client_id') || (typeof DB !== 'undefined' && DB.clientKey ? DB.clientKey(prenom, nom, ddn) : null);
+    const dossier = await chargerDossier(cid);
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -487,7 +554,7 @@ async function generate() {
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
         max_tokens: 6000,
-        messages: [{ role: 'user', content: buildPrompt(plan, transcript, prenom) }]
+        messages: [{ role: 'user', content: buildPrompt(plan, transcript, prenom, dossier.texte) }]
       })
     });
 
@@ -502,7 +569,7 @@ async function generate() {
     const raw = result.content[0].text.replace(/```json|```/g, '').trim();
     generatedResume = JSON.parse(raw);
     generatedResume._meta = { prenom, nom, ddn, planKey: selectedPlan, planLabel: plan.label,
-      dateConsultation: document.getElementById('c-date-consult').value || null };
+      dateConsultation: document.getElementById('c-date-consult').value || null, dossierLibelle: dossier.libelle };
 
     renderPreview();
 
@@ -540,6 +607,7 @@ function renderPreview() {
   document.getElementById('prev-sub').textContent = m.planLabel + (m.dateConsultation ? ' · ' + new Date(m.dateConsultation).toLocaleDateString('fr-FR') : '');
 
   renderVerif();
+  renderCroisement();
   const box = document.getElementById('resume-box');
   box.innerHTML = (generatedResume.sections || []).map((s, i) =>
     '<h4>' + escH(s.label) + '</h4><div class="sec-edit"><textarea data-sec="' + i + '" rows="2" oninput="autoGrow(this)">' + escH(s.contenu || '') + '</textarea></div>'
@@ -578,6 +646,28 @@ function renderVerif() {
     '<p class="vb-sub">La transcription automatique peut déformer les noms de médicaments et les chiffres. Ces éléments n\'ont pas été corrigés d\'office : contrôlez-les avec votre souvenir de la séance ou vos notes.</p>' +
     items.map(v => '<div class="verif-item"><div><span class="vi-heard">« ' + escH(v.entendu || '') + ' »</span> → <strong>' + escH(v.proposition || '?') + '</strong></div>' +
       (v.raison ? '<div class="vi-why">' + escH(v.raison) + '</div>' : '') + '</div>').join('') + '</div>';
+}
+
+
+function croisementListes() {
+  const c = generatedResume.croisement || {};
+  const clean = a => Array.isArray(a) ? a.map(x => String(x || '').trim()).filter(Boolean) : [];
+  return [
+    ['Écarts avec le questionnaire', clean(c.contradictions)],
+    ['Nouveau depuis le questionnaire', clean(c.nouveautes)],
+    ['À reprendre à la prochaine séance', clean(c.non_explores)]
+  ];
+}
+
+function renderCroisement() {
+  const wrap = document.getElementById('crois-wrap');
+  const lib = (generatedResume._meta && generatedResume._meta.dossierLibelle) || '';
+  const listes = croisementListes().filter(([, l]) => l.length);
+  wrap.innerHTML = '<div class="crois-box"><h4>Croisement avec le dossier</h4><p class="cb-sub">' + escH(lib) + '</p>' +
+    (listes.length
+      ? listes.map(([t, l]) => '<div class="cb-grp"><div class="cb-t">' + escH(t) + '</div><ul>' + l.map(x => '<li>' + escH(x) + '</li>').join('') + '</ul></div>').join('')
+      : (/Croisé avec/.test(lib) ? '<p class="cb-none">Aucun écart, aucune nouveauté ni point oublié significatif repéré.</p>' : '')) +
+    '</div>';
 }
 
 function sectionsEditees() {
@@ -626,6 +716,12 @@ function resumeToMarkdown() {
     md += (s.contenu || '') + '\n\n';
   });
   const verif = Array.isArray(generatedResume.a_verifier) ? generatedResume.a_verifier.filter(v => v && (v.entendu || v.proposition)) : [];
+  const crois = croisementListes().filter(([, l]) => l.length);
+  crois.forEach(([t, l]) => {
+    md += '## ' + t + '\n\n';
+    l.forEach(x => { md += '- ' + x + '\n'; });
+    md += '\n';
+  });
   if (verif.length) {
     md += '## Points relevés à la transcription\n\n';
     verif.forEach(v => { md += '- « ' + (v.entendu || '') + ' » → ' + (v.proposition || '?') + (v.raison ? ' (' + v.raison + ')' : '') + '\n'; });
