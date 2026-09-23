@@ -341,7 +341,7 @@ function selectPlan(key) {
   document.getElementById('plan-' + key).classList.add('on');
 }
 
-showAuthGate('praticienne', () => { removeAuthGate(); renderPlanGrid(); });
+showAuthGate('praticienne', () => { removeAuthGate(); renderPlanGrid(); initDepuisCRM(); });
 
 /* ══════════════════════════════════════════════
    CLÉ API
@@ -353,7 +353,39 @@ function saveKey() {
     return;
   }
   apiKey = k;
+  try { localStorage.setItem('avs_akey', k); } catch(e) {}
   document.getElementById('key-status').innerHTML = '<span style="color:#3D6B2C">✓ Enregistrée</span>';
+}
+
+/* ══════════════════════════════════════════════
+   OUVERTURE DEPUIS LA FICHE CLIENTE DU CRM
+   URL : resume-consultation.html?client_id=…&prenom=…&nom=…&ddn=…
+   + clé API partagée avec le CRM et les questionnaires (localStorage 'avs_akey')
+   ══════════════════════════════════════════════ */
+function initDepuisCRM() {
+  const p = new URLSearchParams(window.location.search);
+  const champs = { 'c-prenom': p.get('prenom'), 'c-nom': p.get('nom'), 'c-ddn': p.get('ddn') };
+  let depuisCRM = false;
+  Object.entries(champs).forEach(([id, v]) => {
+    const el = document.getElementById(id);
+    if (el && v) { el.value = v; depuisCRM = true; }
+  });
+  const dc = document.getElementById('c-date-consult');
+  if (dc && !dc.value) dc.value = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date());
+  if (depuisCRM) {
+    const card = document.getElementById('c-prenom').closest('.card');
+    if (card) card.querySelector('h3').textContent = 'Cliente (depuis sa fiche CRM)';
+  }
+  let k = '';
+  try { k = localStorage.getItem('avs_akey') || sessionStorage.getItem('avs_akey') || ''; } catch(e) {}
+  if (k && k.startsWith('sk-ant')) {
+    apiKey = k;
+    const input = document.getElementById('api-key');
+    if (input) input.value = k;
+    document.getElementById('key-status').innerHTML = '<span style="color:#3D6B2C">✓ Clé déjà configurée dans le CRM</span>';
+    const card = input && input.closest('.card');
+    if (card) card.style.display = 'none';
+  }
 }
 
 /* ══════════════════════════════════════════════

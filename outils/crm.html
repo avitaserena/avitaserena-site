@@ -5213,6 +5213,13 @@ function renderFiche(c){
     {icon:ic('file'),bg:'var(--orange-lt)',name:'Questionnaire de consultation',meta:qConsult.length?'Complété le '+fmtDate(qConsult[0].created_at):'Non rempli',st:qConsult.length?'ok':'missing',stl:qConsult.length?'Complété':'À faire',al:'Ouvrir',ac:qConsult.length?'':'primary',fn:`ouvrirQuestionnaireCliente('${cid}','consultation')`},
     {icon:ic('refresh'),bg:'var(--green-lt)',name:'Questionnaire de suivi',meta:qSuivi.length?qSuivi.length+' suivi(s) enregistré(s) · dernier le '+fmtDate(qSuivi[0].created_at):'Aucun suivi enregistré',st:qSuivi.length?'ok':'missing',stl:qSuivi.length?qSuivi.length+' au total':'Aucun',al:'Nouveau suivi',ac:'',fn:`ouvrirQuestionnaireCliente('${cid}','suivi')`},
     (()=>{
+      // Comptes rendus issus d'un enregistrement de séance (resume-consultation.html) — hors résumés automatiques de questionnaire
+      const crs=(consultationSummariesClient[cid]||[]).filter(x=>x.plan_type!=='questionnaire_consultation');
+      return {icon:ic('file'),bg:'var(--orange-lt)',name:'Compte rendu de séance (enregistrement)',
+        meta:crs.length?crs.length+' compte(s) rendu(s) · dernier le '+fmtDate(crs[0].created_at):'Transcription Buzz → compte rendu relu et enregistré dans la fiche',
+        st:crs.length?'ok':'missing',stl:crs.length?crs.length+' au total':'Aucun',al:'Nouveau compte rendu',ac:'',fn:`ouvrirResumeConsultation('${cid}')`};
+    })(),
+    (()=>{
       // Envoyé automatiquement par send-auto-emails la veille du RDV (8h-9h, heure de Paris).
       if(qVisio.length) return {icon:ic('spark'),bg:'var(--violet-lt)',name:'Questionnaire de préparation visio',meta:'Répondu le '+fmtDate(qVisio[0].created_at),st:'ok',stl:'Répondu',al:'Voir les réponses',ac:'',fn:`voirReponsesVisio('${cid}')`};
       if(prochainRdv) return {icon:ic('spark'),bg:'var(--violet-lt)',name:'Questionnaire de préparation visio',meta:'Envoi automatique prévu la veille du '+fmtDate(prochainRdv.date)+' (pas encore reçu)',st:'missing',stl:'En attente',al:'—',ac:'',fn:''};
@@ -7329,6 +7336,16 @@ function ouvrirQuestionnaireCliente(clientId, type){
     email: c.email||'', tel: c.tel||''
   });
   window.open(fichier + '?' + params.toString(), '_blank');
+}
+
+// ── Ouvrir l'outil de compte rendu de séance (transcription Buzz) pré-rempli pour une cliente ──
+function ouvrirResumeConsultation(clientId){
+  const c = db.clients.find(x=>x.id===clientId);
+  if(!c){ toast('Cliente introuvable','err'); return; }
+  const params = new URLSearchParams({
+    client_id: c.id, prenom: c.prenom||'', nom: c.nom||'', ddn: c.ddn||''
+  });
+  window.open('resume-consultation.html?' + params.toString(), '_blank');
 }
 
 // ── Aperçu manuel du questionnaire de préparation visio, pré-rempli et rattaché
