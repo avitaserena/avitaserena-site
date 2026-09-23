@@ -454,6 +454,16 @@ select.fi.answered{background:var(--off)}
 @media (max-width:760px){.rec-reminder{margin:14px 14px 0;flex-wrap:wrap}.rec-reminder-txt{flex-basis:calc(100% - 56px)}}
 @media (prefers-reduced-motion:reduce){.rec-reminder-mic::after{animation:none}}
 @media print{.rec-reminder{display:none!important}}
+.pb-reprendre{margin-top:14px;background:var(--blanc);border:1.5px solid var(--sable);border-radius:14px;padding:16px 18px}
+.pb-reprendre .rp-head{font-size:14px;font-weight:700;color:var(--ardoise);margin-bottom:6px}
+.pb-reprendre .rp-head span{font-size:12px;font-weight:500;color:var(--gris);margin-left:6px}
+.pb-reprendre .rp-grp{margin-top:10px}
+.pb-reprendre .rp-t{font-size:12.5px;font-weight:700;color:var(--or);margin-bottom:4px}
+.pb-reprendre .rp-prio .rp-t{color:var(--ocre)}
+.pb-reprendre .rp-verif .rp-t{color:#9A5B00}
+.pb-reprendre ul{margin:0 0 0 18px}
+.pb-reprendre li{font-size:13.5px;color:var(--ardoise);line-height:1.55;margin-bottom:3px}
+.pb-reprendre .rp-none{font-size:13px;color:var(--gris)}
 </style>
 <script src="auth-guard.js"></script>
 <script src="ai-client.js"></script>
@@ -788,6 +798,7 @@ function recStop(){ recLaunch('Arrêter l’enregistrement'); recSetState('done'
       <div class="pb-name" id="pb-nom">—</div>
       <div class="pb-obj" id="pb-obj">—</div>
       <div class="pb-grid" id="pb-grid"></div>
+      <div id="pb-reprendre"></div>
       <div class="pb-actions">
         <button class="pb-btn" onclick="voirProtocoleComplet()"><svg class="picto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><rect x="9" y="2" width="6" height="4" rx="1"/><line x1="8" y1="11" x2="16" y2="11"/><line x1="8" y1="15" x2="16" y2="15"/></svg> Protocole complet</button>
         <button class="pb-btn primary" onclick="goSection(1)">Continuer →</button>
@@ -4321,6 +4332,75 @@ function afficherBandeauDossier(row, historique) {
   // doit prioriser la pathologie déjà suivie plutôt que de repartir d'une case vide à chaque
   // séance. Coche les chips correspondants et ouvre directement leur(s) guide(s).
   importerSpecialitesDepuisSnapshot(snap);
+  // Reprendre les points laissés en suspens par le dernier compte rendu de séance (23/09/2026)
+  chargerDerniereSeance(document.getElementById('client-key')?.value?.trim());
+}
+
+/* ══════════════════════════════════════════════════════
+   DEPUIS LA DERNIÈRE SÉANCE (23/09/2026)
+   Lit le dernier compte rendu de séance issu d'un enregistrement (resume-consultation.html,
+   table consultation_summaries, hors résumés automatiques de questionnaire) et affiche dans
+   le bandeau du dossier ce qui doit être repris aujourd'hui : points non explorés, écarts avec
+   le questionnaire, nouveautés, points de transcription à vérifier, prochaine étape convenue.
+   Affichage seul : aucune donnée du suivi n'est modifiée, rien n'est envoyé au générateur.
+══════════════════════════════════════════════════════ */
+const REPRENDRE_SECTIONS = [
+  { test: /^À reprendre à la prochaine séance/i, titre: 'À reprendre aujourd\'hui', cls: 'rp-prio' },
+  { test: /^Prochaine étape/i,                    titre: 'Prochaine étape convenue la dernière fois', cls: '' },
+  { test: /^Écarts avec le questionnaire/i,       titre: 'Écarts relevés avec le questionnaire', cls: '' },
+  { test: /^Nouveau depuis le questionnaire/i,    titre: 'Éléments nouveaux apparus en séance', cls: '' },
+  { test: /^Points relevés à la transcription/i,  titre: 'Points de transcription à confirmer avec elle', cls: 'rp-verif' }
+];
+
+function sectionsDuMarkdown(md) {
+  const out = [];
+  let cur = null;
+  (md || '').split('\n').forEach(l => {
+    const h = l.match(/^##\s+(.+)/);
+    if (h) { cur = { label: h[1].trim(), lignes: [] }; out.push(cur); return; }
+    if (cur && l.trim() && !/^---$/.test(l.trim())) cur.lignes.push(l.trim().replace(/^[-•]\s*/, ''));
+  });
+  return out;
+}
+
+function escSuivi(t) {
+  return String(t || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+async function chargerDerniereSeance(key) {
+  const zone = document.getElementById('pb-reprendre');
+  if (!zone || !key) return;
+  zone.innerHTML = '';
+  try {
+    let authToken = SUPA_KEY;
+    if (typeof Auth !== 'undefined') {
+      const token = await Auth.getValidAccessToken();
+      if (token) authToken = token;
+    }
+    const r = await fetch(SUPA_URL + '/rest/v1/consultation_summaries?client_key=eq.' + encodeURIComponent(key)
+      + '&plan_type=neq.questionnaire_consultation&select=plan_label,date_consultation,resume_md,created_at&order=created_at.desc&limit=1',
+      { headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + authToken } });
+    if (!r.ok) return;
+    const rows = await r.json();
+    const cr = rows && rows[0];
+    if (!cr) return;
+    const secs = sectionsDuMarkdown(cr.resume_md);
+    const blocs = [];
+    REPRENDRE_SECTIONS.forEach(def => {
+      const sec = secs.find(x => def.test.test(x.label));
+      const lignes = sec ? sec.lignes.filter(l => !/^Non évoqué en séance\.?$/i.test(l)) : [];
+      if (lignes.length) blocs.push('<div class="rp-grp ' + def.cls + '"><div class="rp-t">' + escSuivi(def.titre) + '</div><ul>'
+        + lignes.map(l => '<li>' + escSuivi(l) + '</li>').join('') + '</ul></div>');
+    });
+    const dateRef = cr.date_consultation || (cr.created_at || '').slice(0, 10);
+    const dateTxt = dateRef ? new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(dateRef + (dateRef.length === 10 ? 'T12:00:00' : ''))) : '';
+    zone.innerHTML = '<div class="pb-reprendre"><div class="rp-head">Depuis la dernière séance'
+      + (dateTxt ? ' <span>compte rendu du ' + escSuivi(dateTxt) + '</span>' : '') + '</div>'
+      + (blocs.length ? blocs.join('') : '<p class="rp-none">Le dernier compte rendu ne signale aucun point à reprendre.</p>')
+      + '</div>';
+  } catch (e) {
+    console.warn('[Suivi] Dernier compte rendu non chargé :', e);
+  }
 }
 
 const SPHERE_PAR_DIAGNOSTIC = {
