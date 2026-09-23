@@ -1751,6 +1751,14 @@ const LABOS_PARTENAIRES = [
   { nom: 'Synlab', contact: 'À compléter (email de commande)', modalites: "Vous identifie explicitement comme praticienne habilitée à prescrire ces bilans. Plus de 700 centres en France — utile pour un prélèvement en présentiel plutôt qu'un kit à domicile." },
 ];
 
+// ── Texte fixe Simplycure ────────────────────────────────────────────────
+// Bloc figé (jamais généré ni reformulé par l'IA), inséré programmatiquement
+// juste avant la première apparition des compléments dans le document (Phase 1
+// uniquement — voir phases.forEach plus bas). Formulation validée par Sabrina
+// le 22/09/2026 : explicite sur le statut "réservé aux professionnels de santé"
+// de la plateforme et sur l'affiliation, comme demandé.
+const INTRO_SIMPLYCURE = "Les compléments de ce protocole sont choisis un par un — pas par habitude de marque, mais parce que leur dosage, leur forme et leur formule correspondent précisément à ce dont votre corps a besoin actuellement. Je vous les propose via Simplycure, une plateforme réservée aux professionnels de santé à laquelle je suis affiliée : les références que vous y trouverez ne sont pas commercialisées en pharmacie ni en grande distribution, car elles sont réservées à la prescription par les praticiens. Une seule commande regroupe tout votre protocole, avec un tarif préférentiel appliqué automatiquement.";
+
 // ── Grille tarifaire indicative ──────────────────────────────────────────
 // Estimations reprises des exemples chiffrés du cours DFM Duo Pratik (Module 2, 2020) —
 // À VÉRIFIER et mettre à jour dès que Sabrina a les tarifs 2026 réels de LIMS-MBnext,
@@ -4005,7 +4013,12 @@ async function generate() {
     phases.forEach((ph, i) => {
       const axesTxt = Array.isArray(ph.axes) ? ph.axes.join(' + ') : (ph.axes || '');
       const titre = `Phase ${ph.numero || (i + 1)} — ${ph.duree_mois || ''}${axesTxt ? ' : ' + axesTxt : ''}`;
-      const contenu = [stripMd(ph.pourquoi_cliente || ''), stripMd(ph.complements || '')].filter(Boolean).join('\n\n');
+      const complementsTxt = stripMd(ph.complements || '');
+      // Bloc fixe Simplycure : inséré juste avant la liste des compléments, une seule fois,
+      // à sa toute première apparition dans le document (i===0), jamais répété dans les phases
+      // suivantes. Texte figé (INTRO_SIMPLYCURE, défini plus haut), jamais généré par l'IA.
+      const introSimplycure = (i === 0 && complementsTxt) ? INTRO_SIMPLYCURE : '';
+      const contenu = [stripMd(ph.pourquoi_cliente || ''), introSimplycure, complementsTxt].filter(Boolean).join('\n\n');
       blocks.push({ id: 'ph' + (ph.numero || (i + 1)), title: titre, pilier: 'feuille_route', content: contenu });
     });
     blocks.push({ id:'s3', title:'Vos 3 piliers du quotidien', pilier:'complements', content: stripMd(generatedData.s3_protocole || '') });
