@@ -609,6 +609,26 @@ select.fi.answered{background:var(--off)}
 .ex-body{display:none;padding:4px 14px 12px;font-size:12px;line-height:1.85;color:var(--gris);white-space:pre-wrap}
 .ex-body.open{display:block}
 
+
+/* ── RAPPEL ENREGISTREMENT DICTAPHONE ── */
+.rec-reminder{display:flex;align-items:center;gap:16px;margin:18px 40px 0;padding:14px 18px;background:var(--or-clair,#FDEEF3);border:1px solid var(--sable,#F3B6CE);border-radius:16px;font-family:'Inter',-apple-system,sans-serif;transition:background .25s,border-color .25s}
+.rec-reminder-mic{position:relative;flex:0 0 40px;width:40px;height:40px;border-radius:50%;background:var(--ocre,#D6336C);color:#fff;display:flex;align-items:center;justify-content:center}
+.rec-reminder-mic::after{content:"";position:absolute;inset:-5px;border-radius:50%;border:2px solid var(--ocre,#D6336C);opacity:.5;animation:recPulse 1.8s ease-out infinite}
+@keyframes recPulse{0%{transform:scale(.85);opacity:.6}100%{transform:scale(1.35);opacity:0}}
+.rec-reminder-txt{flex:1;min-width:0}
+.rec-reminder-title{font-size:15px;font-weight:700;color:var(--ardoise,#1A1A1A);margin:0}
+.rec-reminder-sub{font-size:13px;color:#5A4F54;margin:2px 0 0}
+.rec-reminder-btn{display:inline-flex;align-items:center;gap:7px;background:var(--ocre,#D6336C);color:#fff;border:none;border-radius:99px;padding:9px 16px;font-size:13px;font-weight:700;text-decoration:none;cursor:pointer;white-space:nowrap;transition:transform .15s,box-shadow .15s}
+.rec-reminder-btn:hover{transform:translateY(-1px);box-shadow:0 6px 16px rgba(214,51,108,.28)}
+.rec-reminder-btn:focus-visible,.rec-reminder-done:focus-visible{outline:2px solid var(--ardoise,#1A1A1A);outline-offset:2px}
+.rec-reminder-done{background:none;border:1px solid var(--sable,#F3B6CE);color:var(--or,#99244F);border-radius:99px;padding:8px 14px;font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:inherit}
+.rec-reminder.is-on{background:#EEF3EC;border-color:#C9D8C3}
+.rec-reminder.is-on .rec-reminder-mic{background:#7C9473}
+.rec-reminder.is-on .rec-reminder-mic::after{border-color:#7C9473}
+.rec-reminder.is-on .rec-reminder-btn,.rec-reminder.is-on .rec-reminder-done{display:none}
+@media (max-width:760px){.rec-reminder{margin:14px 14px 0;flex-wrap:wrap}.rec-reminder-txt{flex-basis:calc(100% - 56px)}}
+@media (prefers-reduced-motion:reduce){.rec-reminder-mic::after{animation:none}}
+@media print{.rec-reminder{display:none!important}}
 </style>
 <script>
 var SUPA_URL = 'https://bqhkdndwldwqacrrbbig.supabase.co';
@@ -703,6 +723,25 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
   </div>
 </div>
 <div class="hdr-stripe"></div>
+
+<!-- ── RAPPEL ENREGISTREMENT : ouvre le Dictaphone via le raccourci macOS « Dictaphone consultation » ── -->
+<div class="rec-reminder" id="rec-reminder" role="region" aria-label="Rappel d'enregistrement de la consultation">
+  <div class="rec-reminder-mic" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><line x1="12" y1="17" x2="12" y2="22"/></svg></div>
+  <div class="rec-reminder-txt">
+    <p class="rec-reminder-title" id="rec-reminder-title">Lancez l'enregistrement de la consultation</p>
+    <p class="rec-reminder-sub" id="rec-reminder-sub">Demandez d'abord l'accord de la cliente, puis ouvrez le Dictaphone et appuyez sur le bouton rouge.</p>
+  </div>
+  <a class="rec-reminder-btn" href="shortcuts://run-shortcut?name=Dictaphone%20consultation" title="Ouvre l'application Dictaphone du Mac (via le raccourci « Dictaphone consultation »)">Ouvrir le Dictaphone</a>
+  <button type="button" class="rec-reminder-done" onclick="recReminderOn()">L'enregistrement est lancé</button>
+</div>
+<script>
+function recReminderOn(){
+  var b=document.getElementById('rec-reminder');if(!b)return;
+  b.classList.add('is-on');
+  document.getElementById('rec-reminder-title').textContent="Enregistrement en cours";
+  document.getElementById('rec-reminder-sub').textContent="Pensez à l'arrêter en fin de consultation, puis à déposer le fichier dans « Consultations à transcrire ».";
+}
+</script>
 
 <div class="layout">
 <!-- ═══ NAV ═══ -->
