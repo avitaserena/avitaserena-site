@@ -655,8 +655,7 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 </head>
 <body>
 <div id="alerte-cle-ia" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9998;background:var(--ardoise);color:#fff;padding:12px 20px;font-size:13px;font-family:'Inter',sans-serif;align-items:center;justify-content:center;gap:14px;box-shadow:0 2px 10px rgba(0,0,0,.15)">
-  <span>⚠ Le résumé narratif IA n'a pas pu être généré pour cette cliente. <strong>Vos réponses sont bien enregistrées</strong>, seul ce résumé automatique manque dans la fiche — cause la plus fréquente : clé API absente ou invalide.</span>
-  <button onclick="configurerCleAPI()" style="background:var(--sable);color:var(--ardoise);border:none;padding:7px 14px;border-radius:99px;font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap">Vérifier la clé →</button>
+  <span>⚠ Le résumé narratif IA n'a pas pu être généré pour cette cliente. <strong>Vos réponses sont bien enregistrées</strong>, seul ce résumé automatique manque dans la fiche — cause la plus fréquente : connexion interrompue ou service IA momentanément indisponible. Vous pouvez le générer depuis la fiche cliente du CRM.</span>
   <button onclick="document.getElementById('alerte-cle-ia').style.display='none'" style="background:none;border:none;color:rgba(255,255,255,.65);font-size:18px;cursor:pointer;padding:0 4px" title="Fermer">×</button>
 </div>
 <div id="float-stack">
@@ -726,7 +725,6 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
     <button class="btn-pause" onclick="document.getElementById('import-progression-input').click()" title="Recharger un fichier de progression exporté précédemment"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px" aria-hidden="true"><path d="M12 21V9M7 14l5-5 5 5M4 3h16"/></svg> Importer</button>
     <input type="file" id="import-progression-input" accept=".json" style="display:none" onchange="importerProgression(event)">
     <div class="hdr-counter" id="hdr-counter" title="Champs remplis">0 notes</div>
-    <button onclick="configurerCleAPI()" title="Configurer la clé API Anthropic (nécessaire pour le résumé narratif automatique en fiche cliente)" style="background:none;border:1px solid var(--taupe);color:var(--gris);border-radius:99px;padding:6px 12px;font-size:11px;cursor:pointer;font-family:'Inter',sans-serif;display:flex;align-items:center;gap:5px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7.5" cy="15.5" r="5.5"/><path d="M21 2l-9.6 9.6M15.5 7.5l3 3L22 7l-3-3"/></svg> Clé API</button>
     <div id="spec-alert" title="Ce repérage précoce s'appuie uniquement sur les réponses déjà données — le détail apparaîtra en encadré, plus loin, dans la section thématique concernée." style="display:none;font-size:11px;font-weight:700;background:var(--ocre);color:var(--blanc);padding:5px 13px;border-radius:99px;animation:pulseAlert 2s infinite"></div>
   </div>
 </div>
@@ -10404,11 +10402,7 @@ ${donnees}`;
 
 async function preparerTexteCloture(force) {
   if (clotureEnCours) return;
-  const apiKey = localStorage.getItem('avs_akey') || sessionStorage.getItem('avs_akey') || '';
-  if (!apiKey || !apiKey.startsWith('sk-ant')) {
-    statutCloture('⚠ Clé API absente — le texte ne peut pas être préparé.', '#C0392B');
-    return;
-  }
+  const apiKey = 'relais-securise'; // clé gardée côté serveur (crm-proxy) — plus rien à configurer ici
   let ctx, donnees;
   try {
     ctx = contexteCloture();
@@ -10424,7 +10418,7 @@ async function preparerTexteCloture(force) {
   if (btn) btn.disabled = true;
   statutCloture('Préparation du texte… (quelques secondes)', '#99244F');
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await proxyAnthropicFetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -11347,23 +11341,35 @@ async function bridgeCRM_questionnaire(d) {
    Déclenché en tâche de fond à la finalisation — silencieux et non-bloquant :
    si aucune clé API n'est disponible dans le navigateur, on n'interrompt jamais
    la praticienne avec une invite, on se contente de ne pas générer (elle peut
-   toujours le faire manuellement depuis la fiche cliente du CRM). La clé est
-   partagée en localStorage avec crm.html (clé 'avs_akey') — une fois saisie
-   une fois dans n'importe quel outil, elle est disponible partout.
+   toujours le faire manuellement depuis la fiche cliente du CRM). Depuis le 23/09/2026, aucune clé
+   n'est stockée dans le navigateur : l'appel passe par le relais sécurisé crm-proxy.
 ══════════════════════════════════════ */
 // ── Clé API Anthropic (26/08/2026) — configurable directement depuis ce fichier, sans
 //    dépendre d'être déjà passée par crm.html sur le même navigateur au préalable.
-//    Partagée en localStorage (clé 'avs_akey') avec crm.html. ──
+//    Remplacée le 23/09/2026 par le relais sécurisé crm-proxy (plus de clé locale). ──
+/* ── Appels IA via le relais sécurisé crm-proxy (23/09/2026) ──
+   La clé Anthropic n'est plus stockée dans le navigateur : elle reste sur le serveur
+   (secret Supabase) et seule la praticienne connectée peut utiliser le relais.
+   Même mécanisme que crm.html. Les erreurs du relais sont remises au format
+   { error: { message } } attendu par le code existant. */
+async function proxyAnthropicFetch(url, opts){
+  let token = SUPA_KEY;
+  if (typeof Auth !== 'undefined') { try { const t = await Auth.getValidAccessToken(); if (t) token = t; } catch(e) {} }
+  let payload = {}; try { payload = JSON.parse((opts && opts.body) || '{}'); } catch(e) {}
+  const r = await fetch(SUPA_URL + '/functions/v1/crm-proxy', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + token },
+    body: JSON.stringify({ service: 'anthropic', payload })
+  });
+  if (r.ok) return r;
+  let msg = 'HTTP ' + r.status;
+  try { const j = await r.json(); msg = (j.error && j.error.message) || j.message || msg; } catch(e) {}
+  return new Response(JSON.stringify({ error: { message: msg } }), { status: r.status, headers: { 'Content-Type': 'application/json' } });
+}
+
 function configurerCleAPI() {
-  const actuelle = localStorage.getItem('avs_akey') || '';
-  const k = prompt('Clé API Anthropic (sk-ant-…) :', actuelle) || '';
-  if (k.startsWith('sk-ant')) {
-    localStorage.setItem('avs_akey', k);
-    document.getElementById('alerte-cle-ia').style.display = 'none';
-    showToast('✓ Clé API enregistrée');
-  } else if (k) {
-    showToast('⚠ Format de clé invalide (doit commencer par sk-ant)');
-  }
+  // Depuis le 23/09/2026 : plus de clé à saisir, l'IA passe par le relais sécurisé crm-proxy.
+  showToast('✓ Plus de clé à configurer : l\'IA passe par le relais sécurisé');
 }
 function afficherAlerteCleManquante() {
   const el = document.getElementById('alerte-cle-ia');
@@ -11372,8 +11378,8 @@ function afficherAlerteCleManquante() {
 
 async function genererResumeNarratifAuto(d, clientId) {
   try {
-    const apiKey = localStorage.getItem('avs_akey') || sessionStorage.getItem('avs_akey') || '';
-    if (!apiKey || !apiKey.startsWith('sk-ant') || !clientId) {
+    const apiKey = 'relais-securise'; // clé gardée côté serveur (crm-proxy) — plus rien à configurer ici
+    if (!clientId) {
       console.log('[Résumé IA] Clé API non disponible — résumé narratif non généré automatiquement (génération manuelle possible depuis la fiche cliente).');
       afficherAlerteCleManquante();
       return;
@@ -11405,7 +11411,7 @@ Choisis toi-même les libellés de section les plus pertinents au vu des donnée
 ━━ DONNÉES DU QUESTIONNAIRE ━━
 ${donnees}`;
 
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await proxyAnthropicFetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
