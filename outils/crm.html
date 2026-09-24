@@ -57,6 +57,11 @@
   --blue-lt: #E8F0F5;
   --violet:  #9C5FA0;
   --violet-lt:#F3E7F3;
+  /* Couleurs de l'ancienne charte encore appelées par des alertes, boutons et
+     fenêtres (e-mail, alternatives) — redéclarées le 23/09/2026 : sans elles,
+     les boutons « Fiche » / « Envoyer » étaient blancs sur fond transparent. */
+  --ardoise: #1E1E1C; --ocre: #B4906A; --grege: #EDE9E1; --taupe: #D5CFC6;
+  --off: #F7F6F4; --rouge: #B8323A; --vert: #4C8B5C; --bg2: #F7F7FA;
 
   /* ── Programmes ── */
   --alba:    #D98C2B;
@@ -757,6 +762,7 @@ body {
 .stag.orange { background: var(--orange-lt); color: var(--orange) }
 .stag.red { background: var(--red-lt); color: var(--red) }
 .stag.gray { background: var(--surface); color: var(--muted) }
+.stag.violet { background: var(--violet-lt); color: var(--violet) }
 .cc-prog { padding: 0 16px 12px; display: flex; align-items: center; gap: 12px }
 .cc-plbl { font-size: 12px; font-weight: 600; color: var(--ink); text-transform: none; letter-spacing: 0; margin-bottom: 0 }
 .cc-psub { font-size: 11px; color: var(--muted); margin-top: 2px }
@@ -1791,6 +1797,11 @@ body {
 .wg-mini b { display: block; font-size: 24px; font-weight: 800; color: var(--c); letter-spacing: -.02em; font-variant-numeric: tabular-nums }
 .wg-mini span { display: block; font-size: 12px; color: var(--ink3); margin-top: 2px; line-height: 1.35 }
 .wg-mini .ch-trend { display: inline-block; margin-left: 4px }
+.ap-list { display: flex; flex-direction: column; gap: 6px }
+.ap-row { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 14px; background: #FAF8FC; flex-wrap: wrap; animation: insIn .5s cubic-bezier(.22,1.25,.36,1) both }
+.ap-z { font-size: 10.5px; font-weight: 800; color: var(--c); background: color-mix(in srgb, var(--c) 13%, white); padding: 3px 9px; border-radius: 99px; white-space: nowrap }
+.ap-n { font-size: 13px; font-weight: 700; color: var(--ink) }
+.ap-m { font-size: 12px; color: var(--ink3); flex: 1; min-width: 180px }
 
 .ch-trend { font-size: 11px; font-weight: 800; padding: 3px 9px; border-radius: 99px; white-space: nowrap; animation: chPop .5s .6s cubic-bezier(.34,1.56,.64,1) both }
 .ch-trend.up { color: #2E7D46; background: #E3F4E8 }
@@ -1960,6 +1971,17 @@ const KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6
 const SUPA_URL = SB;
 const SUPA_KEY = KEY;
 
+/* Lecture paginée : récupère TOUTES les lignes (par paquets de 1000) au lieu d'une
+   limite fixe qui tronquait silencieusement les statistiques (ex. 200 derniers RDV). */
+async function sbAll(path,pageSize=1000,maxPages=50){
+  const sep=path.includes('?')?'&':'?';let out=[];
+  for(let i=0;i<maxPages;i++){
+    const rows=await sb(path+sep+'limit='+pageSize+'&offset='+(i*pageSize));
+    out=out.concat(rows);
+    if(rows.length<pageSize)break;
+  }
+  return out;
+}
 async function sb(path,opts={}){
   let authToken = KEY;
   if (typeof Auth !== 'undefined') {
@@ -2089,7 +2111,7 @@ async function init(){
 
 async function loadClients(){
   try{
-    const r=await sb('clientes?order=created_at.desc&limit=500');
+    const r=await sbAll('clientes?order=created_at.desc');
     db.clients=r.map(mapC);
     console.log('[CRM] ✓ Clientes:', db.clients.length);
   }catch(e){
@@ -2102,7 +2124,7 @@ async function loadClients(){
 
 async function loadSourcesDecouverte(){
   try{
-    const r=await sb('sources_decouverte?order=created_at.desc&limit=1000');
+    const r=await sbAll('sources_decouverte?order=created_at.desc');
     sourcesDecouverte=r;
     console.log('[CRM] ✓ Sources de découverte:', sourcesDecouverte.length);
   }catch(e){
@@ -2113,7 +2135,7 @@ async function loadSourcesDecouverte(){
 
 async function loadSeoStats(){
   try{
-    const r=await sb('seo_search_console_daily?order=date.asc&limit=400');
+    const r=await sbAll('seo_search_console_daily?order=date.asc');
     seoStats=r;
     console.log('[CRM] ✓ Search Console:', seoStats.length);
   }catch(e){
@@ -2124,7 +2146,7 @@ async function loadSeoStats(){
 
 async function loadFactures(){
   try{
-    const r=await sb('factures?order=date.desc&limit=500');
+    const r=await sbAll('factures?order=date.desc');
     db.factures=r.map(f=>({id:f.id,num:f.num,clientId:f.client_id,date:f.date,prestation:f.prestation,prestationLabel:f.prestation_label,montant:parseFloat(f.montant)||0,paiement:f.paiement,paiementLabel:f.paiement_label,statut:f.statut,deuxFois:f.deux_fois,montantRembourse:f.montant_rembourse!=null?parseFloat(f.montant_rembourse):0,rembourseLe:f.rembourse_le||null,indySaisie:!!f.indy_saisie,indySaisieLe:f.indy_saisie_le||null}));
     console.log('[CRM] ✓ Factures:', db.factures.length);
   }catch(e){
@@ -2136,7 +2158,7 @@ async function loadFactures(){
 async function loadTaches(){
   try{
     // Syntaxe PostgREST correcte pour exclure plusieurs valeurs : not.in.(val1,val2)
-    const r=await sb('taches?statut=not.in.(done,archive)&order=echeance.asc.nullslast&limit=200');
+    const r=await sbAll('taches?statut=not.in.(done,archive)&order=echeance.asc.nullslast');
     taches=r;
     console.log('[CRM] ✓ Tâches:', taches.length);
   }catch(e){
@@ -2147,7 +2169,7 @@ async function loadTaches(){
 
 async function loadRdvs(){
   try{
-    rdvs=await sb('rendez_vous?order=date.desc&limit=200');
+    rdvs=await sbAll('rendez_vous?order=date.desc');
     console.log('[CRM] ✓ RDV:', rdvs.length);
   }catch(e){
     console.error('[CRM] ✗ RDV:', e.message);
@@ -2993,7 +3015,7 @@ async function sendMailRdv(rdvId, key, tplId, subject, email, name, heure='', da
       });
     }
 
-    const res = await fetch('https://api.brevo.com/v3/smtp/email',{
+    const res = await proxyFetch('https://api.brevo.com/v3/smtp/email',{
       method:'POST',
       headers:{'Content-Type':'application/json','api-key':apiKey},
       body
@@ -3054,8 +3076,8 @@ async function loadMemoAlerts(){
   try{
     // Charger en parallèle les mémos et les alternatives déjà envoyées
     const [memoRows, altRows] = await Promise.all([
-      sb('phv_memos?order=created_at.desc&limit=1000'),
-      sb('alternatives?select=client_id,prenom,nom,refus_texte,alternative_text&order=sent_at.desc&limit=1000')
+      sbAll('phv_memos?order=created_at.desc'),
+      sbAll('alternatives?select=client_id,prenom,nom,refus_texte,alternative_text&order=sent_at.desc')
     ]);
 
     // Index des alternatives déjà envoyées (13/09/2026, sécurité identité) : clé primaire sur
@@ -3130,7 +3152,7 @@ async function loadMemoAlerts(){
 
 async function loadClientMessages(){
   try{
-    const r = await sb('messages_client?order=created_at.desc&limit=200');
+    const r = await sbAll('messages_client?order=created_at.desc');
     clientMessages = r;
     console.log('[CRM] ✓ Messages clientes:', clientMessages.length);
   }catch(e){
@@ -3148,7 +3170,7 @@ let pilotageTasks=[];
 
 async function loadPilotage(){
   try{
-    pilotageTasks = await sb('pilotage?order=echeance.asc.nullslast,created_at.asc&limit=300');
+    pilotageTasks = await sbAll('pilotage?order=echeance.asc.nullslast,created_at.asc');
     console.log('[CRM] ✓ Pilotage:', pilotageTasks.length);
   }catch(e){
     console.error('[CRM] ✗ Pilotage:', e.message);
@@ -3832,7 +3854,9 @@ async function deleteRecette(id){
   }catch(e){ toast('Erreur : '+e.message,'err'); }
 }
 
-function mapC(r){return{id:r.id,prenom:r.prenom,nom:r.nom,email:r.email,tel:r.tel,age:r.age,ddn:r.ddn,motifs:r.motifs,axes:r.axes,notes:r.notes,programme:r.programme,dureeTtt:r.duree_ttt,date1:r.date1,dateProtocole:r.date_protocole,phv_url:r.phv_url||'',timeline:r.timeline||[],workflowDone:r.workflow_done||{},createdAt:r.created_at,chat_addon_actif:!!r.chat_addon_actif,chat_addon_prix:r.chat_addon_prix||45,chat_addon_debut:r.chat_addon_debut||'',chat_addon_renouvellement:r.chat_addon_renouvellement||'',chat_addon_source:r.chat_addon_source||'',propositionParcoursEnvoyeeLe:r.proposition_parcours_envoyee_le||null,propositionParcoursProgramme:r.proposition_parcours_programme||null,suiviSpecialites:(typeof r.suivi_specialites==='string')?r.suivi_specialites:null};}
+/* Montant réellement encaissé d'une facture : montant moins remboursement éventuel */
+function caNet(f){return Math.max(0,(Number(f.montant)||0)-(Number(f.montantRembourse)||0));}
+function mapC(r){return{id:r.id,prenom:r.prenom,nom:r.nom,email:r.email,tel:r.tel,age:r.age,ddn:r.ddn,motifs:r.motifs,axes:r.axes,notes:r.notes,programme:r.programme,dureeTtt:r.duree_ttt,date1:r.date1,dateProtocole:r.date_protocole,phv_url:r.phv_url||'',timeline:r.timeline||[],workflowDone:r.workflow_done||{},createdAt:r.created_at,chat_addon_actif:!!r.chat_addon_actif,chat_addon_prix:r.chat_addon_prix||45,chatPrixRenseigne:r.chat_addon_prix!=null,chatAnnulationPrevueLe:r.chat_addon_annulation_prevue_le||null,chat_addon_debut:r.chat_addon_debut||'',chat_addon_renouvellement:r.chat_addon_renouvellement||'',chat_addon_source:r.chat_addon_source||'',propositionParcoursEnvoyeeLe:r.proposition_parcours_envoyee_le||null,propositionParcoursProgramme:r.proposition_parcours_programme||null,suiviSpecialites:(typeof r.suivi_specialites==='string')?r.suivi_specialites:null};}
 
 /* Date AAAA-MM-JJ à l'heure de Paris (toISOString donne l'heure UTC → décalage d'un jour entre 0h et 2h) */
 function _ymdParis(d){return (_ymdParis.f||(_ymdParis.f=new Intl.DateTimeFormat('fr-CA',{timeZone:'Europe/Paris',year:'numeric',month:'2-digit',day:'2-digit'}))).format(d);}
@@ -3979,6 +4003,21 @@ function nav(name,el){
 }
 
 function pDur(p){return p==='alba'?90:p==='aria'?180:p==='ora'?270:0;}
+/* Statut du parcours (23/09/2026) : le champ « programme » reste rempli après la fin
+   du parcours → on calcule la date de fin (début + durée) pour distinguer
+   « en cours » de « terminé » (et donc du suivi après programme).
+   etat : 'aucun' | 'en_cours' | 'termine' ; joursDepuisFin / dernierContact en jours. */
+function progInfo(c){
+  if(!c||!c.programme)return{etat:'aucun',fin:null,joursDepuisFin:null,dernierContact:null};
+  const dur=pDur(c.programme),start=c.dateProtocole||c.date1;
+  const last=c.timeline?.[c.timeline.length-1]?.date||c.date1;
+  const dernierContact=last?diffD(last):null;
+  if(!dur||!start)return{etat:'en_cours',fin:null,joursDepuisFin:null,dernierContact};
+  const fin=addD(start,dur),j=diffD(fin);
+  return j>0?{etat:'termine',fin,joursDepuisFin:j,dernierContact}:{etat:'en_cours',fin,joursDepuisFin:null,dernierContact};
+}
+const enProgrammeEnCours=c=>progInfo(c).etat==='en_cours';
+const aTermineProgramme=c=>progInfo(c).etat==='termine';
 function pCls(p){return p==='aria'?'aria':p==='ora'?'ora':'alba';}
 function pLbl(p){return p==='aria'?'Aria · 6 mois':p==='ora'?'Ora · 9 mois':p==='alba'?'Alba · 3 mois':'Consultation';}
 
@@ -4025,7 +4064,9 @@ function getStatus(c){
   if(al.some(a=>a.isOvd))return{label:'Action requise',cl:'red'};
   if(sil!==null&&sil>30)return{label:'Silence > 30j',cl:'orange'};
   if(al.some(a=>a.isSoon))return{label:'À contacter',cl:'orange'};
-  if(c.programme)return{label:'En programme',cl:'green'};
+  const pi=progInfo(c);
+  if(pi.etat==='en_cours')return{label:'En programme',cl:'green'};
+  if(pi.etat==='termine')return{label:'Après programme',cl:'violet'};
   return{label:'Consultée',cl:'gray'};
 }
 // ── Rattachement RDV ↔ fiche cliente ────────────────────────────────────────
@@ -4222,7 +4263,7 @@ async function marquerFactureRemboursee(factureId){
         const rdvAssocie = rdvs.find(r=>r.facture_id===factureId);
         const dateSeance = rdvAssocie?.date ? new Date(rdvAssocie.date+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'}) : '';
         try{
-          const res = await fetch('https://api.brevo.com/v3/smtp/email',{
+          const res = await proxyFetch('https://api.brevo.com/v3/smtp/email',{
             method:'POST', headers:{'Content-Type':'application/json','api-key':apiKey},
             body: JSON.stringify({
               sender:{name:'Sabrina · A Vita Serena',email:'sabrina@avitaserena.com'},
@@ -4502,7 +4543,7 @@ Règles strictes :
 - Ignore tout ce qui n'est pas un résultat mesurable (identité, adresse du laboratoire, mentions légales)
 - Si le document ne contient aucun résultat exploitable, réponds {"marqueurs":[]}`;
 
-    const res=await fetch('https://api.anthropic.com/v1/messages', {
+    const res=await proxyFetch('https://api.anthropic.com/v1/messages', {
       method:'POST',
       headers:{
         'Content-Type':'application/json',
@@ -4617,7 +4658,7 @@ async function interpreterMarqueursAvantEnregistrement(retenus, laboratoire, cid
   if(!apiKey) return null; // pas bloquant : l'enregistrement continue sans interprétation
   const c=db.clients.find(x=>x.id===cid) || null;
   try{
-    const res=await fetch('https://api.anthropic.com/v1/messages', {
+    const res=await proxyFetch('https://api.anthropic.com/v1/messages', {
       method:'POST',
       headers:{ 'Content-Type':'application/json', 'x-api-key':apiKey, 'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' },
       body:JSON.stringify({
@@ -4719,21 +4760,21 @@ function renderDashboard(){
   const now=new Date();
   const curMk=mk(now.toISOString());
   const tdyStr=today();
-  const actives=db.clients.filter(c=>c.programme);
+  const actives=db.clients.filter(enProgrammeEnCours); // parcours réellement en cours (les terminés passent en « Après programme »)
   const allAl=db.clients.flatMap(c=>getAlerts(c).map(a=>({client:c,alert:a})));
   const fMois=db.factures.filter(f=>f.statut==='payee'&&f.date&&mk(f.date)===curMk);
-  const caM=fMois.reduce((s,f)=>s+(f.montant||0),0);
+  const caM=fMois.reduce((s,f)=>s+caNet(f),0);
   const rdvM=rdvs.filter(r=>r.date&&mk(r.date)===curMk && !isRdvPerso(r));
   const sils=db.clients.filter(c=>{const l=c.timeline?.[c.timeline.length-1]?.date||c.date1;return l&&diffD(l)>30;});
 
   // ── CA jour / semaine / tendance vs mois précédent ──
   const startOfWeek=new Date(now); const dow=(startOfWeek.getDay()+6)%7; startOfWeek.setDate(startOfWeek.getDate()-dow); startOfWeek.setHours(0,0,0,0);
   const startWeekStr=_ymdParis(startOfWeek); // lundi à l'heure de Paris (toISOString renvoyait le dimanche précédent)
-  const caJour=db.factures.filter(f=>f.statut==='payee'&&f.date===tdyStr).reduce((s,f)=>s+(f.montant||0),0);
-  const caSem=db.factures.filter(f=>f.statut==='payee'&&f.date&&f.date>=startWeekStr).reduce((s,f)=>s+(f.montant||0),0);
+  const caJour=db.factures.filter(f=>f.statut==='payee'&&f.date===tdyStr).reduce((s,f)=>s+caNet(f),0);
+  const caSem=db.factures.filter(f=>f.statut==='payee'&&f.date&&f.date>=startWeekStr).reduce((s,f)=>s+caNet(f),0);
   const prevMonthDate=new Date(now.getFullYear(),now.getMonth()-1,15);
   const prevMk=mk(prevMonthDate.toISOString());
-  const caPrev=db.factures.filter(f=>f.statut==='payee'&&f.date&&mk(f.date)===prevMk).reduce((s,f)=>s+(f.montant||0),0);
+  const caPrev=db.factures.filter(f=>f.statut==='payee'&&f.date&&mk(f.date)===prevMk).reduce((s,f)=>s+caNet(f),0);
   const hcaJourEl=document.getElementById('hca-jour'); if(hcaJourEl) hcaJourEl.textContent=caJour>0?caJour.toFixed(0)+' €':'0 €';
   const hcaSemEl=document.getElementById('hca-sem'); if(hcaSemEl) hcaSemEl.textContent=caSem>0?caSem.toFixed(0)+' €':'0 €';
   const hcaMoisEl=document.getElementById('hca-mois'); if(hcaMoisEl) hcaMoisEl.textContent=caM>0?caM.toFixed(0)+' €':'0 €';
@@ -4962,7 +5003,7 @@ function renderCA(){
     const d=new Date(now.getFullYear(),now.getMonth()-i,1);
     const key=mk(d.toISOString());
     const lbl=d.toLocaleDateString('fr-FR',{month:'short'}).slice(0,3);
-    const tot=db.factures.filter(f=>f.statut==='payee'&&f.date&&mk(f.date)===key).reduce((s,f)=>s+(f.montant||0),0);
+    const tot=db.factures.filter(f=>f.statut==='payee'&&f.date&&mk(f.date)===key).reduce((s,f)=>s+caNet(f),0);
     months.push({lbl,tot,cur:i===0});
   }
   const maxV=Math.max(...months.map(m=>m.tot),1);
@@ -4973,7 +5014,7 @@ function renderCA(){
     return "<div class='ca-col'><div class='ca-bar' style='height:"+h+"%;background:"+bg+";' title='"+m.tot+" €'></div><div class='ca-lbl'>"+m.lbl+"</div></div>";
   }).join('');
   const yr=now.getFullYear()+'';
-  const totAn=db.factures.filter(f=>f.statut==='payee'&&f.date&&f.date.startsWith(yr)).reduce((s,f)=>s+(f.montant||0),0);
+  const totAn=db.factures.filter(f=>f.statut==='payee'&&f.date&&f.date.startsWith(yr)).reduce((s,f)=>s+caNet(f),0);
   if(tl)tl.textContent=totAn>0?totAn.toFixed(0)+' € cette année':'';
 }
 
@@ -5020,7 +5061,8 @@ function renderClients(){
   const tbody=document.getElementById('clients-tbody');const cnt=document.getElementById('c-count');if(!tbody)return;
   let list=db.clients;
   if(curSearch){const q=curSearch.toLowerCase();list=list.filter(c=>(c.prenom||'').toLowerCase().includes(q)||(c.nom||'').toLowerCase().includes(q)||(c.motifs||'').toLowerCase().includes(q)||(c.programme||'').toLowerCase().includes(q));}
-  if(curFilter==='programme')list=list.filter(c=>c.programme);
+  if(curFilter==='programme')list=list.filter(enProgrammeEnCours);
+  if(curFilter==='apres')list=list.filter(aTermineProgramme);
   if(curFilter==='alerte')list=list.filter(c=>getAlerts(c).length>0);
   if(curFilter==='silence')list=list.filter(c=>{const l=c.timeline?.[c.timeline.length-1]?.date||c.date1;return l&&diffD(l)>30;});
   cnt.textContent=list.length+(list.length===1?' cliente':' clientes');
@@ -5202,7 +5244,7 @@ function renderFiche(c){
   const hasMemoHistory=clientMemosAll.length>0;
   const dm=docsMedicaux[cid]||[];
   const docsCount=[hasPHV,c.timeline?.some(t=>t.title?.includes('Lettre')),c.timeline?.some(t=>t.title?.includes('Bilan'))].filter(Boolean).length + dm.length;
-  const caTotal=db.factures.filter(f=>f.clientId===cid&&f.statut==='payee').reduce((s,f)=>s+(f.montant||0),0);
+  const caTotal=db.factures.filter(f=>f.clientId===cid&&f.statut==='payee').reduce((s,f)=>s+caNet(f),0);
   const facturesDeCetteCliente=db.factures.filter(f=>f.clientId===cid).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
 
   // Helper — bouton sans problème de quotes
@@ -5300,8 +5342,8 @@ function renderFiche(c){
       <div class="prog-card-head"><div class="ic-title">${ic('chart')} Progression du programme</div><span style="font-size:11px;color:var(--muted)">${pLbl(c.programme)}</span></div>
       <div class="prog-card-body">
         <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:10px">
-          <div style="display:flex;align-items:center;gap:12px">${svgRing(pct,heroAccent,70,9)}<div class="prog-pct-lbl">Complété</div></div>
-          ${daysLeft!==null?`<div style="text-align:right"><div style="font-size:17px;font-weight:800;color:var(--ink)">${daysLeft}</div><div style="font-size:10px;color:var(--muted)">jours restants</div></div>`:''}
+          <div style="display:flex;align-items:center;gap:12px">${svgRing(pct,heroAccent,70,9)}<div class="prog-pct-lbl">${progInfo(c).etat==='termine'?'Programme terminé':'Complété'}</div></div>
+          ${progInfo(c).etat==='termine'?`<div style="text-align:right"><div style="font-size:17px;font-weight:800;color:var(--violet)">${progInfo(c).joursDepuisFin} j</div><div style="font-size:10px;color:var(--muted)">depuis la fin</div></div>`:daysLeft!==null?`<div style="text-align:right"><div style="font-size:17px;font-weight:800;color:var(--ink)">${daysLeft}</div><div style="font-size:10px;color:var(--muted)">jours restants</div></div>`:''}
         </div>
         <div class="prog-dates"><span>Début ${fmtShort(started)}</span><span>Fin ${fmtShort(addD(started,dur))}</span></div>
         <div class="prog-bar-wrap"><div class="pbar"><div class="pfill" style="width:${pct}%;background:${heroAccent}"></div></div></div>
@@ -5949,13 +5991,22 @@ async function sendBrevoFiche(id){
   if(c) ouvrirMailModal(id,'suivi');
 }
 
-function getBrevoKey(){
-  let k = localStorage.getItem('avs_brevo') || '';
-  if(!k){
-    k = prompt('Clé API Brevo (xkeysib-…) — sera mémorisée :') || '';
-    if(k) localStorage.setItem('avs_brevo', k);
-  }
-  return k;
+/* ── Clés API : depuis le 23/09/2026, plus aucune clé Brevo/Anthropic n'est stockée
+   dans le navigateur. Tous les appels passent par la fonction Supabase crm-proxy,
+   qui garde les clés côté serveur et vérifie que c'est bien la praticienne.
+   getBrevoKey()/getAnthropicKey() restent pour ne pas toucher aux appelants. ── */
+function getBrevoKey(){ try{ localStorage.removeItem('avs_brevo'); }catch(e){} return 'relais-securise'; }
+async function proxyFetch(url, opts={}){
+  const service = String(url).includes('api.anthropic.com') ? 'anthropic' : String(url).includes('api.brevo.com') ? 'brevo' : null;
+  if(!service) throw new Error('Service externe non autorisé : '+url);
+  let token = KEY;
+  if(typeof Auth!=='undefined'){ try{ const t=await Auth.getValidAccessToken(); if(t) token=t; }catch(e){} }
+  let payload={}; try{ payload=JSON.parse(opts.body||'{}'); }catch(e){}
+  return fetch(SB+'/functions/v1/crm-proxy',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','apikey':KEY,'Authorization':'Bearer '+token},
+    body:JSON.stringify({service,payload})
+  });
 }
 
 function ouvrirMailModal(clientId, tplKey){
@@ -6028,7 +6079,7 @@ function ouvrirMailModal(clientId, tplKey){
     if(!apiKeyBrevo){ toast('Clé Brevo requise','warn'); return; }
     btnSend.disabled = true; btnSend.textContent = '\u23f3 Envoi...';
     try{
-      const res = await fetch('https://api.brevo.com/v3/smtp/email',{
+      const res = await proxyFetch('https://api.brevo.com/v3/smtp/email',{
         method:'POST',
         headers:{'Content-Type':'application/json','api-key':apiKeyBrevo},
         body: JSON.stringify({
@@ -6154,7 +6205,7 @@ async function toggleChatAddon(cid, actif, el){
     return;
   }
   const patch = actif
-    ? { chat_addon_actif:true, chat_addon_source:'manuel', chat_addon_debut: c.chat_addon_debut||today(), chat_addon_renouvellement: (function(){ const d=new Date(); d.setMonth(d.getMonth()+1); return d.toISOString().split('T')[0]; })() }
+    ? { chat_addon_actif:true, chat_addon_source:'manuel', chat_addon_debut: c.chat_addon_debut||today(), chat_addon_renouvellement: (function(){ const d=new Date(); d.setMonth(d.getMonth()+1); return _ymdParis(d); })() }
     : { chat_addon_actif:false };
   try{
     await sb('clientes?id=eq.'+cid,{method:'PATCH',body:JSON.stringify(patch)});
@@ -6769,7 +6820,23 @@ function statsBuckets(period,offset=0){
     for(let i=len-1;i>=0;i--){const d=new Date(now);d.setDate(now.getDate()-i);keys.push(_ymdParis(d));labels.push(period==='semaine'?d.toLocaleDateString('fr-FR',{weekday:'short'}).replace('.',''):String(d.getDate()));}
     return{keys,labels,granularity:'day'};
   }
-  // année & tout → 12 mois glissants
+  if(period==='tout'){
+    // Historique complet : du premier mois où une donnée existe (facture, RDV, première
+    // consultation) jusqu'au mois en cours. Pas de « période précédente » à comparer.
+    if(offset)return{keys:[],labels:[],granularity:'month'};
+    const dates=[...(db.factures||[]).map(f=>f.date),
+      ...(typeof rdvs!=='undefined'?rdvs:[]).filter(r=>!(typeof isRdvPerso==='function'&&isRdvPerso(r))).map(r=>r.date),
+      ...(db.clients||[]).map(c=>c.date1)].filter(d=>d&&/^\d{4}-\d{2}/.test(String(d))&&String(d).slice(0,7)<=_ymdParis(now).slice(0,7)).map(d=>String(d).slice(0,7)).sort();
+    const first=dates[0]||_ymdParis(new Date(now.getFullYear(),now.getMonth()-11,15)).slice(0,7);
+    let d=new Date(+first.slice(0,4),+first.slice(5,7)-1,1);
+    const end=new Date(now.getFullYear(),now.getMonth(),1);
+    if((end.getFullYear()-d.getFullYear())*12+end.getMonth()-d.getMonth()<1)d=new Date(end.getFullYear(),end.getMonth()-1,1); // au moins 2 mois pour tracer une courbe
+    const multiAns=d.getFullYear()!==end.getFullYear();
+    let guard=0;
+    while(d<=end&&guard++<240){keys.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'));labels.push(d.toLocaleDateString('fr-FR',{month:'short'}).replace('.','').slice(0,4)+(multiAns?' '+String(d.getFullYear()).slice(2):''));d=new Date(d.getFullYear(),d.getMonth()+1,1);}
+    return{keys,labels,granularity:'month'};
+  }
+  // année → 12 mois glissants
   for(let i=11;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i-12*offset,1);keys.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'));labels.push(d.toLocaleDateString('fr-FR',{month:'short'}).replace('.','').slice(0,4));}
   return{keys,labels,granularity:'month'};
 }
@@ -6790,6 +6857,7 @@ function renderStats(){
 
   const {keys,labels,granularity}=statsBuckets(statsPeriod);
   const prevKeys=statsBuckets(statsPeriod,1).keys;
+  const hasPrev=prevKeys.length>0; // « Tout » n'a pas de période précédente
   const keySet=new Set(keys);
   const sum=a=>a.reduce((s,v)=>s+v,0);
   const seriesOf=(ks,items,dateFn,valFn)=>{const m={};ks.forEach(k=>m[k]=0);items.forEach(it=>{const k=bucketKeyFor(dateFn(it),granularity);if(k in m)m[k]+=valFn(it);});return ks.map(k=>m[k]);};
@@ -6800,7 +6868,7 @@ function renderStats(){
   const annulRdvs=allRdvs.filter(r=>r.status==='annule');
   const payees=factures.filter(f=>f.statut==='payee');
 
-  const caSeries=seriesOf(keys,payees,f=>f.date,f=>f.montant||0), caPrev=seriesOf(prevKeys,payees,f=>f.date,f=>f.montant||0);
+  const caSeries=seriesOf(keys,payees,f=>f.date,caNet), caPrev=seriesOf(prevKeys,payees,f=>f.date,caNet);
   const nbF=sum(seriesOf(keys,payees,f=>f.date,()=>1)), nbFPrev=sum(seriesOf(prevKeys,payees,f=>f.date,()=>1));
   const rdvSeries=seriesOf(keys,periodRdvs,r=>r.date,()=>1), rdvPrev=seriesOf(prevKeys,periodRdvs,r=>r.date,()=>1);
   const durSeries=seriesOf(keys,periodRdvs,r=>r.date,r=>r.type==='suivi'?45:90), durPrev=seriesOf(prevKeys,periodRdvs,r=>r.date,r=>r.type==='suivi'?45:90);
@@ -6820,17 +6888,27 @@ function renderStats(){
 
   // Moyens de paiement sur la période
   const payMap={};
-  payees.filter(f=>keySet.has(bucketKeyFor(f.date,granularity))).forEach(f=>{const p=f.paiementLabel||f.paiement||'Autre';payMap[p]=(payMap[p]||0)+(f.montant||0);});
+  payees.filter(f=>keySet.has(bucketKeyFor(f.date,granularity))).forEach(f=>{const p=f.paiementLabel||f.paiement||'Autre';payMap[p]=(payMap[p]||0)+caNet(f);});
   const payEntries=Object.entries(payMap).sort((a,b)=>b[1]-a[1]);
 
   // CA annuel par prestation (vision structurelle de l'année civile, indépendante de la période)
   const caByProg={bilan:0,suivi:0,alba:0,aria:0,ora:0,autre:0};
   const prestas={bilan:'bilan',suivi:'suivi',alba:'alba',aria:'aria',ora:'ora'};
-  payees.filter(f=>f.date&&String(f.date).startsWith(yr+'')).forEach(f=>{caByProg[prestas[f.prestation]||'autre']+=(f.montant||0);});
+  payees.filter(f=>f.date&&String(f.date).startsWith(yr+'')).forEach(f=>{caByProg[prestas[f.prestation]||'autre']+=caNet(f);});
 
-  const byProg={alba:0,aria:0,ora:0,consult:0};
-  clients.forEach(c=>{if(c.programme)byProg[c.programme]=(byProg[c.programme]||0)+1;else byProg.consult++;});
-  const enProg=clients.filter(c=>c.programme).length;
+  // Programmes : « en cours » seulement (le champ reste rempli une fois le parcours fini)
+  const byProg={alba:0,aria:0,ora:0,consult:0,termine:0};
+  const apresProg=[];
+  clients.forEach(c=>{const pi=progInfo(c);
+    if(pi.etat==='en_cours')byProg[c.programme]=(byProg[c.programme]||0)+1;
+    else if(pi.etat==='termine'){byProg.termine++;apresProg.push({c,...pi});}
+    else byProg.consult++;});
+  const enProg=clients.filter(enProgrammeEnCours).length;
+  // Suivi après programme — 3 temps : bilan de fin (0-30 j), prise de nouvelles (1-3 mois), entretien (3 mois +)
+  const zoneApres=j=>j<=30?0:j<=90?1:2;
+  const apresZones=[0,0,0];apresProg.forEach(a=>apresZones[zoneApres(a.joursDepuisFin)]++);
+  const apresSansContact=apresProg.filter(a=>a.dernierContact!=null&&a.dernierContact>30);
+  apresProg.sort((a,b)=>(b.dernierContact??0)-(a.dernierContact??0));
   const txProg=clients.length>0?Math.round(enProg/clients.length*100):0;
 
   const motifCount={};
@@ -6864,13 +6942,20 @@ function renderStats(){
   const chatMsgCounts=chatAdopters.map(c=>msgCountByClient[c.id]||0);
   const chatMsgMoyen=chatMsgCounts.length?sum(chatMsgCounts)/chatMsgCounts.length:0;
   const chatJamaisUtilise=chatAdopters.filter(c=>!msgCountByClient[c.id]).length;
-  const caRecurrentMensuel=chatAdoptersPayants.reduce((s,c)=>s+(c.chat_addon_prix||45),0);
+  // Abonnements qui continueront le mois prochain : résiliation programmée exclue
+  const chatReconduits=chatAdoptersPayants.filter(c=>!c.chatAnnulationPrevueLe);
+  const chatResilies=chatAdoptersPayants.length-chatReconduits.length;
+  const chatPrixManquants=chatReconduits.filter(c=>c.chatPrixRenseigne===false).length;
+  const caRecurrentMensuel=chatReconduits.filter(c=>c.chatPrixRenseigne!==false).reduce((s,c)=>s+(Number(c.chat_addon_prix)||0),0);
   const txChat=clients.length?Math.round(chatAdopters.length/clients.length*100):0;
 
-  _statsLastBuckets={keys,labels,caSeries,rdvSeries,durSeries};
+  _statsLastBuckets={keys,labels,caSeries,rdvSeries,durSeries,
+    nbFSeries:seriesOf(keys,payees,f=>f.date,()=>1),
+    annulSeries:seriesOf(keys,annulRdvs,r=>r.date,()=>1),
+    impSeries,clickSeries};
 
-  const periodLbl={semaine:'7 derniers jours',mois:'30 derniers jours',annee:'12 derniers mois',tout:'12 derniers mois'}[statsPeriod];
-  const prevLbl={semaine:'7 jours précédents',mois:'30 jours précédents',annee:'12 mois précédents',tout:'12 mois précédents'}[statsPeriod];
+  const periodLbl={semaine:'7 derniers jours',mois:'30 derniers jours',annee:'12 derniers mois',tout:'depuis le début'}[statsPeriod];
+  const prevLbl={semaine:'7 jours précédents',mois:'30 jours précédents',annee:'12 mois précédents',tout:null}[statsPeriod];
   const tipLabels=keys.map(k=>granularity==='day'
     ?new Date(k+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})
     :new Date(k+'-15T12:00:00').toLocaleDateString('fr-FR',{month:'long',year:'numeric'}));
@@ -6888,13 +6973,15 @@ function renderStats(){
       ${o.sub?`<div class="wg-sub">${o.sub}</div>`:''}
       <div class="wg-b">${o.body||''}</div>
     </div>`;
-  const vsTxt=(v)=>`${prevLbl} : ${v}`;
+  const vsTxt=(v)=>hasPrev?`${prevLbl} : ${v}`:'';
+  const vsSep=(v)=>hasPrev?` · ${prevLbl} : ${v}`:'';
 
   // ── Ce que disent vos chiffres : constats automatiques, du plus utile au plus secondaire ──
   const ins=[];
+  if(apresSansContact.length)ins.push({tone:'warn',icon:'heart',txt:`<b>${apresSansContact.length}</b> cliente${apresSansContact.length>1?'s ont':' a'} terminé son programme sans contact depuis plus d'un mois : c'est la période où les anciennes habitudes reviennent, un message de suivi aide à consolider les acquis.`});
   if(caPrevTotal>0){const p=Math.round((caPeriodTotal-caPrevTotal)/caPrevTotal*100);
     if(p!==0)ins.push({tone:p>0?'up':'down',icon:'chart',txt:`Votre chiffre d'affaires est en ${p>0?'hausse':'baisse'} de <b>${Math.abs(p)} %</b> par rapport aux ${prevLbl} (${_chFmt(caPrevTotal)} € → ${_chFmt(caPeriodTotal)} €).`});}
-  else if(caPeriodTotal>0)ins.push({tone:'up',icon:'spark',txt:`<b>${_chFmt(caPeriodTotal)} €</b> encaissés, contre aucun encaissement sur les ${prevLbl}.`});
+  else if(hasPrev&&caPeriodTotal>0)ins.push({tone:'up',icon:'spark',txt:`<b>${_chFmt(caPeriodTotal)} €</b> encaissés, contre aucun encaissement sur les ${prevLbl}.`});
   if(sum(wd)>=3){const i=wd.indexOf(Math.max(...wd));ins.push({tone:'info',icon:'calendar',txt:`Vos rendez-vous tombent surtout le <b>${JOURS[i]}</b> (${Math.round(wd[i]/sum(wd)*100)} %) : c'est le jour où ouvrir des créneaux supplémentaires a le plus de chances d'être rempli.`});}
   if(sourceTotal>=3){const[s,n]=sourceEntries[0];ins.push({tone:'info',icon:'trophy',txt:`<b>${escH(s)}</b> vous amène ${Math.round(n/sourceTotal*100)} % des réservations : c'est votre canal n°1, celui qui mérite le plus de temps.`});}
   if(annulRate>=15&&(rdvPeriodTotal+annul)>=4)ins.push({tone:'warn',icon:'warn',txt:`<b>${Math.round(annulRate)} %</b> des rendez-vous ont été annulés sur la période : un rappel la veille réduit en général ce taux.`});
@@ -6908,37 +6995,50 @@ function renderStats(){
 
   // ── Widgets chiffres clés ──
   const kpis=[
-    W({cls:'wg-kpi',color:C1,icon:ic('cash'),title:"Chiffre d'affaires",trend:chTrend(caPeriodTotal,caPrevTotal),value:_chFmt(caPeriodTotal)+' €',count:caPeriodTotal,fmt:'eur',sub:vsTxt(_chFmt(caPrevTotal)+' €'),body:svgSpark(caSeries,C1)}),
-    W({cls:'wg-kpi',color:C2,icon:ic('calendar'),title:'Rendez-vous',trend:chTrend(rdvPeriodTotal,rdvPrevTotal),value:rdvPeriodTotal,count:rdvPeriodTotal,sub:vsTxt(rdvPrevTotal),body:svgSpark(rdvSeries,C2)}),
-    W({cls:'wg-kpi',color:C3,icon:ic('trophy'),title:'Panier moyen',trend:chTrend(panier,panierPrev),value:_chFmt(panier)+' €',count:Math.round(panier),fmt:'eur',sub:`${nbF} facture${nbF>1?'s':''} payée${nbF>1?'s':''} · ${vsTxt(_chFmt(panierPrev)+' €')}`,body:''}),
-    W({cls:'wg-kpi',color:BLUE,icon:ic('timer'),title:'Temps en consultation',trend:chTrend(durPeriodTotal,durPrevTotal),value:Math.round(durPeriodTotal/60)+' h',count:Math.round(durPeriodTotal/60),fmt:'h',sub:vsTxt(Math.round(durPrevTotal/60)+' h'),body:svgSpark(durSeries,BLUE)}),
-    W({cls:'wg-kpi',color:annulRate>=15?'#D1553A':GREEN,icon:ic('warn'),title:'Annulations',trend:chTrend(annulRate,annulRatePrev,true),value:Math.round(annulRate)+' %',count:Math.round(annulRate),fmt:'pct',sub:`${annul} RDV annulé${annul>1?'s':''} · ${vsTxt(Math.round(annulRatePrev)+' %')}`,body:''})
+    W({cls:'wg-kpi',color:C1,icon:ic('cash'),title:"Chiffre d'affaires",trend:hasPrev&&chTrend(caPeriodTotal,caPrevTotal),value:_chFmt(caPeriodTotal)+' €',count:caPeriodTotal,fmt:'eur',sub:vsTxt(_chFmt(caPrevTotal)+' €'),body:svgSpark(caSeries,C1)}),
+    W({cls:'wg-kpi',color:C2,icon:ic('calendar'),title:'Rendez-vous',trend:hasPrev&&chTrend(rdvPeriodTotal,rdvPrevTotal),value:rdvPeriodTotal,count:rdvPeriodTotal,sub:vsTxt(rdvPrevTotal),body:svgSpark(rdvSeries,C2)}),
+    W({cls:'wg-kpi',color:C3,icon:ic('trophy'),title:'Panier moyen',trend:hasPrev&&chTrend(panier,panierPrev),value:_chFmt(panier)+' €',count:Math.round(panier),fmt:'eur',sub:`${nbF} facture${nbF>1?'s':''} payée${nbF>1?'s':''}${vsSep(_chFmt(panierPrev)+' €')}`,body:''}),
+    W({cls:'wg-kpi',color:BLUE,icon:ic('timer'),title:'Temps en consultation (estimé)',trend:hasPrev&&chTrend(durPeriodTotal,durPrevTotal),value:Math.round(durPeriodTotal/60)+' h',count:Math.round(durPeriodTotal/60),fmt:'h',sub:'Base : 1 h 30 par bilan, 45 min par suivi'+vsSep(Math.round(durPrevTotal/60)+' h'),body:svgSpark(durSeries,BLUE)}),
+    W({cls:'wg-kpi',color:annulRate>=15?'#D1553A':GREEN,icon:ic('warn'),title:'Annulations',trend:hasPrev&&chTrend(annulRate,annulRatePrev,true),value:Math.round(annulRate)+' %',count:Math.round(annulRate),fmt:'pct',sub:`${annul} RDV annulé${annul>1?'s':''}${vsSep(Math.round(annulRatePrev)+' %')}`,body:''})
   ].join('');
 
   const caChart=(caPeriodTotal>0||caPrevTotal>0)
-    ?svgAreaChart(caSeries,labels,C1,330,{w:960,unit:' €',tipLabels,name:'CA',compare:caPrev})+`<div class="ch-leg-inline"><span class="li-cur" style="--c:${C1}">${periodLbl}</span><span class="li-prev">${prevLbl}</span></div>`
+    ?svgAreaChart(caSeries,labels,C1,330,{w:960,unit:' €',tipLabels,name:'CA',compare:caPrev})+`<div class="ch-leg-inline"><span class="li-cur" style="--c:${C1}">${periodLbl}</span>${hasPrev?`<span class="li-prev">${prevLbl}</span>`:''}</div>`
     :emptyMsg('Aucun encaissement sur cette période');
 
   el.innerHTML=`
   <div class="wg-kpis">${kpis}</div>
   <div class="wg-grid">
-    ${W({cls:'span2',color:C1,icon:ic('chart'),title:"Évolution du chiffre d'affaires — "+periodLbl,value:_chFmt(caPeriodTotal)+' €',count:caPeriodTotal,fmt:'eur',trend:chTrend(caPeriodTotal,caPrevTotal),body:caChart})}
+    ${W({cls:'span2',color:C1,icon:ic('chart'),title:"Évolution du chiffre d'affaires — "+periodLbl,value:_chFmt(caPeriodTotal)+' €',count:caPeriodTotal,fmt:'eur',trend:hasPrev&&chTrend(caPeriodTotal,caPrevTotal),body:caChart})}
     ${W({cls:'wg-ins',color:C2,icon:ic('spark'),title:'Ce que disent vos chiffres',body:insHtml})}
 
     ${W({color:C2,icon:ic('calendar'),title:'Rendez-vous — '+periodLbl,value:rdvPeriodTotal+' RDV',body:rdvPeriodTotal>0?svgBarChart(rdvSeries,labels,C2,230,{w:460,tipLabels,unit:' RDV'}):emptyMsg('Aucun rendez-vous sur cette période')})}
     ${W({color:C3,icon:ic('pin'),title:'Vos jours les plus demandés',value:sum(wd)?cap(JOURS[wd.indexOf(Math.max(...wd))]):'—',body:sum(wd)?svgBarChart(wd,['lun','mar','mer','jeu','ven','sam','dim'],C3,230,{w:460,barMax:40,tipLabels:JOURS.map(cap),unit:' RDV'}):emptyMsg('Aucun rendez-vous sur cette période')})}
     ${W({color:TEAL,icon:ic('cash'),title:'Moyens de paiement — '+periodLbl,value:_chFmt(sum(payEntries.map(e=>e[1])))+' €',count:Math.round(sum(payEntries.map(e=>e[1]))),fmt:'eur',body:svgDonut(payEntries.map(([p,v],i)=>({label:cap(p),value:Math.round(v),color:[TEAL,C2,C3,C1,BLUE,GREEN][i%6]})),{unit:' €',centerLabel:'Encaissé',empty:emptyMsg('Aucun paiement sur cette période')})})}
 
-    ${W({color:GREEN,icon:ic('leaf'),title:'Clientes en programme',value:enProg+' / '+clients.length,body:svgHalfGauge(txProg,'#9CD3A6',GREEN,{w:230,label:'de vos clientes suivent un parcours',count:txProg,fmt:'pct'})})}
-    ${W({color:C2,icon:ic('user'),title:'Répartition par programme',body:svgHalfDonut([{label:'Alba · 3 mois',value:byProg.alba,color:gMaps.alba},{label:'Aria · 6 mois',value:byProg.aria,color:gMaps.aria},{label:'Ora · 9 mois',value:byProg.ora,color:gMaps.ora},{label:'Ponctuelle',value:byProg.consult,color:'#C7C0D6'}],{w:220,centerLabel:'clientes',centerColor:C2,empty:emptyMsg('Aucune cliente enregistrée')})})}
+    ${W({color:GREEN,icon:ic('leaf'),title:'Clientes en programme',value:enProg+' / '+clients.length,body:svgHalfGauge(txProg,'#9CD3A6',GREEN,{w:230,label:'de vos clientes sont en parcours en ce moment',count:txProg,fmt:'pct'})})}
+    ${W({color:C2,icon:ic('user'),title:'Répartition par programme',body:svgHalfDonut([{label:'Alba · 3 mois',value:byProg.alba,color:gMaps.alba},{label:'Aria · 6 mois',value:byProg.aria,color:gMaps.aria},{label:'Ora · 9 mois',value:byProg.ora,color:gMaps.ora},{label:'Programme terminé',value:byProg.termine,color:'#8E7CC3'},{label:'Ponctuelle',value:byProg.consult,color:'#C7C0D6'}],{w:220,centerLabel:'clientes',centerColor:C2,empty:emptyMsg('Aucune cliente enregistrée')})})}
     ${W({color:C3,icon:ic('chart'),title:'CA par prestation — '+yr,value:_chFmt(sum(Object.values(caByProg)))+' €',count:Math.round(sum(Object.values(caByProg))),fmt:'eur',body:svgDonut([{label:'Bilan de vitalité',value:caByProg.bilan,color:gMaps.bilan},{label:'Consultation de suivi',value:caByProg.suivi,color:gMaps.suivi},{label:'Alba',value:caByProg.alba,color:gMaps.alba},{label:'Aria',value:caByProg.aria,color:gMaps.aria},{label:'Ora',value:caByProg.ora,color:gMaps.ora},{label:'Autres',value:caByProg.autre,color:'#A1A1A8'}],{unit:' €',centerLabel:'CA '+yr,empty:emptyMsg('Aucune facture payée en '+yr)})})}
 
+    ${W({cls:'span3',color:'#8E7CC3',icon:ic('heart'),title:'Suivi après programme',value:apresProg.length?apresProg.length+' cliente'+(apresProg.length>1?'s':'')+' en fin de parcours':null,
+      sub:'Un parcours terminé n\'est pas une fin : c\'est le moment où les acquis doivent tenir sans cadre. Ces trois temps permettent de vérifier qu\'ils tiennent, et d\'intervenir avant une rechute.',
+      body:apresProg.length?`<div class="wg-minis wg-minis-4" style="margin-bottom:14px">
+        <div class="wg-mini" style="--c:${GREEN}"><b data-count="${apresZones[0]}">${apresZones[0]}</b><span>Bilan de fin · 0 à 30 jours</span></div>
+        <div class="wg-mini" style="--c:${C3}"><b data-count="${apresZones[1]}">${apresZones[1]}</b><span>Prise de nouvelles · 1 à 3 mois</span></div>
+        <div class="wg-mini" style="--c:${C2}"><b data-count="${apresZones[2]}">${apresZones[2]}</b><span>Consultation d'entretien · 3 mois et plus</span></div>
+        <div class="wg-mini" style="--c:${apresSansContact.length?'#D1553A':GREEN}"><b data-count="${apresSansContact.length}">${apresSansContact.length}</b><span>sans contact depuis plus de 30 jours</span></div>
+      </div>
+      <div class="ap-list">${apresProg.slice(0,8).map(a=>{const z=zoneApres(a.joursDepuisFin);const zl=['Bilan de fin','Prise de nouvelles','Entretien'][z];const zc=[GREEN,C3,C2][z];
+        return `<div class="ap-row"><span class="ap-z" style="--c:${zc}">${zl}</span><span class="ap-n">${escH(a.c.prenom||'')} ${escH(a.c.nom||'')}</span><span class="ap-m">${escH(cap(a.c.programme))} terminé il y a ${a.joursDepuisFin} j${a.dernierContact!=null?` · dernier contact il y a <b style="color:${a.dernierContact>30?'#D1553A':'inherit'}">${a.dernierContact} j</b>`:''}</span>
+          <button class="btn btn-ghost btn-xs" onclick="openFiche('${escH(a.c.id)}')">Fiche</button><button class="btn btn-ghost btn-xs" onclick="openEmail('${escH(a.c.id)}','relance')">Email</button></div>`;}).join('')}
+        ${apresProg.length>8?`<div class="wg-foot"><a href="#" onclick="nav('clients',null);setTimeout(()=>setFilter('apres',document.getElementById('fc-apres')),60);return false">Voir les ${apresProg.length} clientes en « Après programme » →</a></div>`:''}</div>`
+      :emptyMsg('Aucune cliente n\'a encore terminé son programme.')})}
     ${W({color:C2,icon:ic('message'),title:'Option chat — adoption',value:chatAdopters.length+' cliente'+(chatAdopters.length>1?'s':''),body:svgHalfGauge(txChat,'#D9B8E6',C2,{w:230,label:'de vos clientes ont l\'option',count:txChat,fmt:'pct'})})}
     ${W({color:BLUE,icon:ic('message'),title:'Option chat — usage',body:`<div class="wg-minis">
         <div class="wg-mini" style="--c:${BLUE}"><b data-count="${chatMsgMoyen}" data-fmt="dec1">${chatMsgMoyen.toFixed(1).replace('.',',')}</b><span>messages par cliente en moyenne</span></div>
         <div class="wg-mini" style="--c:${chatJamaisUtilise?C3:GREEN}"><b data-count="${chatJamaisUtilise}">${chatJamaisUtilise}</b><span>cliente${chatJamaisUtilise>1?'s':''} n'${chatJamaisUtilise>1?'ont':'a'} jamais écrit</span></div>
       </div>`})}
-    ${W({color:GREEN,icon:ic('cash'),title:'CA récurrent (option chat)',value:_chFmt(caRecurrentMensuel)+' € / mois',body:`<div class="ch-note">Prévision du mois prochain, basée sur les <b>${chatAdoptersPayants.length}</b> abonnement${chatAdoptersPayants.length>1?'s':''} payant${chatAdoptersPayants.length>1?'s':''} actif${chatAdoptersPayants.length>1?'s':''} aujourd'hui, à prix inchangé. Ce montant revient chaque mois, contrairement au CA des programmes et consultations qui repart de zéro — il ne tient pas compte d'éventuelles résiliations avant renouvellement.</div>`})}
+    ${W({color:GREEN,icon:ic('cash'),title:'CA récurrent (option chat)',value:_chFmt(caRecurrentMensuel)+' € / mois',body:`<div class="ch-note">Prévision du mois prochain : <b>${chatReconduits.length}</b> abonnement${chatReconduits.length>1?'s':''} payant${chatReconduits.length>1?'s':''} qui se renouvelle${chatReconduits.length>1?'nt':''}, au prix enregistré sur chaque fiche.${chatResilies?` <b>${chatResilies}</b> résiliation${chatResilies>1?'s':''} programmée${chatResilies>1?'s':''} déjà retirée${chatResilies>1?'s':''} du calcul.`:''}${chatPrixManquants?` <span style="color:#B86A10"><b>${chatPrixManquants}</b> abonnement${chatPrixManquants>1?'s':''} sans prix renseigné, non compté${chatPrixManquants>1?'s':''} — à compléter sur la fiche.</span>`:''} Ce montant revient chaque mois, contrairement au CA des programmes et consultations qui repart de zéro.</div>`})}
 
     ${W({color:'#B4906A',icon:ic('link'),title:'Comment elles vous trouvent — '+periodLbl,value:sourceTotal?sourceTotal+' réponse'+(sourceTotal>1?'s':''):null,body:sourceEntries.length?chRankBars(sourceEntries,PALETTE,''):emptyMsg('Aucune réponse sur cette période')})}
     ${W({color:C1,icon:ic('heart'),title:'Motifs les plus fréquents',body:topMotifs.length?chRankBars(topMotifs.map(([m,n])=>[cap(m),n]),[C1,'#E36A8F',C2,C3,BLUE,TEAL],''):emptyMsg('Aucun motif renseigné')})}
@@ -6946,12 +7046,12 @@ function renderStats(){
 
     ${W({cls:'span3',color:TEAL,icon:ic('eye'),title:'Référencement Google — '+periodLbl,right:seoLastSync?`<span class="wg-meta">Dernière synchro : ${new Date(seoLastSync).toLocaleDateString('fr-FR')}</span>`:'',body:seo.length?`
       <div class="wg-minis wg-minis-4">
-        <div class="wg-mini" style="--c:${TEAL}"><b data-count="${impPeriodTotal}">${_chFmt(impPeriodTotal)}</b><span>impressions ${chTrend(impPeriodTotal,impPrevTotal)}</span></div>
+        <div class="wg-mini" style="--c:${TEAL}"><b data-count="${impPeriodTotal}">${_chFmt(impPeriodTotal)}</b><span>impressions ${hasPrev?chTrend(impPeriodTotal,impPrevTotal):''}</span></div>
         <div class="wg-mini" style="--c:${C1}"><b data-count="${clickPeriodTotal}">${clickPeriodTotal}</b><span>clics</span></div>
         <div class="wg-mini" style="--c:${BLUE}"><b>${avgPosition!=null?avgPosition.toFixed(1).replace('.',','):'—'}</b><span>position moyenne</span></div>
         <div class="wg-mini" style="--c:${C3}"><b>${ctr.toFixed(1).replace('.',',')} %</b><span>taux de clic</span></div>
       </div>
-      ${impPeriodTotal||impPrevTotal?svgAreaChart(impSeries,labels,TEAL,220,{w:1100,tipLabels,name:'Impressions',compare:impPrev})+`<div class="ch-leg-inline"><span class="li-cur" style="--c:${TEAL}">${periodLbl}</span><span class="li-prev">${prevLbl}</span></div>`:''}
+      ${impPeriodTotal||impPrevTotal?svgAreaChart(impSeries,labels,TEAL,220,{w:1100,tipLabels,name:'Impressions',compare:impPrev})+`<div class="ch-leg-inline"><span class="li-cur" style="--c:${TEAL}">${periodLbl}</span>${hasPrev?`<span class="li-prev">${prevLbl}</span>`:''}</div>`:''}
       <div class="wg-foot">Données Search Console synchronisées chaque nuit — Google finalise ses chiffres avec 2 à 3 jours de décalage.</div>`
       :emptyMsg("Aucune donnée Search Console synchronisée pour l'instant")})}
     ${sourceAutreDetails.length?W({cls:'span3',color:'#B4906A',icon:ic('message'),title:'Réponses « Autre » détaillées',body:sourceAutreDetails.map(d=>`<div class="wg-row"><strong>${escH(d.prenom)||'—'}</strong> · ${escH(d.date)} — ${escH(d.texte)}</div>`).join('')}):''}
@@ -6961,13 +7061,14 @@ function renderStats(){
 
 function exportStatsCSV(){
   if(!_statsLastBuckets){toast('Statistiques non chargées','warn');return;}
-  const{keys,labels,caSeries,rdvSeries,durSeries}=_statsLastBuckets;
-  const headers=['Période','CA (€)','RDV','Durée cumulée (min)'];
-  const rows=keys.map((k,i)=>[labels[i],caSeries[i].toFixed(2),rdvSeries[i],durSeries[i]].map(v=>'"'+String(v).replace(/"/g,'""')+'"'));
-  const csv=[headers.map(h=>'"'+h+'"').join(','),...rows.map(r=>r.join(','))].join('\n');
+  const B=_statsLastBuckets;
+  const headers=['Période','CA net encaissé (€)','Factures payées','Panier moyen (€)','RDV réalisés/prévus','RDV annulés','Temps en consultation estimé (min)','Impressions Google','Clics Google'];
+  const rows=B.keys.map((k,i)=>{const nb=B.nbFSeries[i]||0;return [k,B.caSeries[i].toFixed(2),nb,nb?(B.caSeries[i]/nb).toFixed(2):'',B.rdvSeries[i],B.annulSeries[i]||0,B.durSeries[i],B.impSeries[i]||0,B.clickSeries[i]||0]
+    .map(v=>'"'+String(v).replace(/"/g,'""')+'"');});
+  const csv=[headers.map(h=>'"'+h+'"').join(';'),...rows.map(r=>r.join(';'))].join('\n');
   const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
   const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');a.href=url;a.download='avitaserena-stats-'+statsPeriod+'-'+today()+'.csv';a.click();URL.revokeObjectURL(url);
+  const a=document.createElement('a');a.href=url;a.download='a-vita-serena-stats-'+statsPeriod+'-'+today()+'.csv';a.click();URL.revokeObjectURL(url);
   toast('Export CSV téléchargé','ok');
 }
 
@@ -7281,7 +7382,7 @@ async function envoyerProtocole(clientId){
   const prenom=c.prenom||''; const ddnF=c.ddn?c.ddn.split('-').reverse().join('/'):'—';
   const fichesCodes = await getFichesJointesCRM(clientId);
   try{
-    const res=await fetch('https://api.brevo.com/v3/smtp/email',{
+    const res=await proxyFetch('https://api.brevo.com/v3/smtp/email',{
       method:'POST',
       headers:{'Content-Type':'application/json','api-key':apiKey},
       body:JSON.stringify({
@@ -7491,7 +7592,7 @@ ${contexte}`;
 
   try{
     if(!silencieux) toast('Génération du pense-bête en cours…','ok');
-    const res=await fetch('https://api.anthropic.com/v1/messages',{
+    const res=await proxyFetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
       headers:{
         'Content-Type':'application/json',
@@ -7569,7 +7670,7 @@ Choisis toi-même les libellés de section les plus pertinents au vu des donnée
 ${donnees}`;
 
   try{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{
+    const res=await proxyFetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
       headers:{
         'Content-Type':'application/json',
@@ -7740,14 +7841,7 @@ function ouvrirLettreClinique(clientId){
 // ── Clé API Anthropic (saisie une fois par session) ──
 // ── Clé API Anthropic (saisie une fois, conservée en localStorage — partagée avec
 //    Questionnaire_de_consultation.html pour la génération automatique du résumé narratif) ──
-function getAnthropicKey(){
-  let k = localStorage.getItem('avs_akey') || sessionStorage.getItem('avs_akey') || '';
-  if(!k || !k.startsWith('sk-ant')){
-    k = prompt('Clé API Anthropic (sk-ant-…) :') || '';
-    if(k.startsWith('sk-ant')) localStorage.setItem('avs_akey', k);
-  }
-  return k;
-}
+function getAnthropicKey(){ return 'relais-securise'; } // clé gardée côté serveur (crm-proxy) — l'ancienne clé locale reste pour Questionnaire_de_consultation.html tant qu'il n'est pas migré
 
 // ── Modale "Proposer une alternative" ──
 function ouvrirAlternativesModal(prenomEnc, nomEnc, ddnEnc, refusIdx){
@@ -7896,7 +7990,7 @@ ${raison ? `\nRaison donnée par la cliente : "${raison}"` : ''}
 
 Propose une alternative concrète, bienveillante et réaliste en 2-3 phrases maximum. Tu tutvoies jamais la cliente — utilise toujours le vouvoiement. Ne commence pas par "Je vous propose" mais directement par la suggestion. Tiens compte de la raison si elle est donnée.`;
 
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await proxyFetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -7927,124 +8021,134 @@ async function sauvegarderAlternatives(prenom, nom, ddn, email, refusIdx, envoye
   if(!m){ toast('Mémo introuvable','err'); return; }
   const refuses = refusIdx >= 0 ? [m.refuses[refusIdx]] : m.refuses;
 
-  const SBURL = 'https://bqhkdndwldwqacrrbbig.supabase.co/rest/v1/alternatives';
-  const KEY   = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxaGtkbmR3bGR3cWFjcnJiYmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MzAyNTIsImV4cCI6MjA5NjMwNjI1Mn0.nH2UktMAVKYwng4L3SvW5F0fluV_sObGV0f3Mk1dnOY';
+  // CORRECTIF 23/09/2026 : identifiant de la fiche existante (sinon format canonique
+  // prénom-nom-AAAAMMJJ). L'ancien code construisait nom-prénom-date → alternatives
+  // invisibles côté cliente (RLS client_id = current_client_key()).
+  const fiche = (db.clients||[]).find(c => memeCliente(c, {prenom, nom, ddn}) === true);
+  const clientId = fiche?.id || idCanoniqueCliente(prenom, nom, ddn);
+  if(!clientId){ toast('Impossible d\'identifier la cliente (date de naissance manquante)','err'); return; }
 
-  const clientId = `${(nom||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'-')}-${(prenom||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'-')}-${(ddn||'').replace(/-/g,'')}`;
-
-  let saved = 0;
+  let saved = 0, echecs = 0;
   const altTextes = [];
   for(let i=0; i<refuses.length; i++){
     const ta = document.getElementById('alt-text-'+i);
     const altText = ta?.value?.trim();
     if(!altText) continue;
-    altTextes.push({ refus: refuses[i].texte, alt: altText });
-    await fetch(SBURL, {
-      method:'POST',
-      headers:{'apikey':KEY,'Authorization':'Bearer '+KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
-      body: JSON.stringify({
+    // CORRECTIF 23/09/2026 : enregistrement via sb() (jeton de la praticienne). L'ancien
+    // code utilisait la clé publique, refusée par la base, sans vérifier la réponse :
+    // rien n'était jamais enregistré malgré le message de confirmation.
+    try{
+      await sb('alternatives', { method:'POST', prefer:'resolution=merge-duplicates,return=minimal', body: JSON.stringify({
         client_id: clientId, prenom, nom, ddn,
         refus_texte: refuses[i].texte,
         raison: refuses[i].raison || '',
         alternative_text: altText,
         sent_at: envoyer ? new Date().toISOString() : null
-      })
-    });
-    saved++;
+      })});
+      altTextes.push({ refus: refuses[i].texte, alt: altText });
+      saved++;
+    }catch(e){ console.error('[CRM] Alternative non enregistrée :', e.message); echecs++; }
   }
 
+  if(echecs && !saved){ toast('Échec de l\'enregistrement des alternatives — rien n\'a été envoyé','err'); return; }
   if(!saved){ toast('Aucune alternative saisie','warn'); return; }
 
   if(envoyer && email && altTextes.length){
     try{
-      const apiKeyBrevo = getBrevoKey();
-      if(!apiKeyBrevo){ toast('Clé Brevo requise pour l\'envoi','warn'); return; }
+      const esc = t => String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      const LOGO_URL = 'https://bqhkdndwldwqacrrbbig.supabase.co/storage/v1/object/public/email-assets/logo-avita-serena.png';
+      // Lien vers LE protocole de la cliente (l'ancien lien ouvrait une page PHV vide)
+      const lienProtocole = fiche?.phv_url || 'https://avitaserena.com/espace-clientes.html';
 
-      // Construire les blocs HTML pour chaque refus/alternative
       const blocksHtml = altTextes.map(a => `
-        <div style="margin-bottom:24px;background:#FAFAF8;border-radius:12px;overflow:hidden;border:1px solid #E8E4DE">
-          <div style="padding:14px 18px;background:#F5F0E8;border-bottom:1px solid #E8E4DE">
-            <p style="margin:0;font-size:12px;font-weight:700;color:#8B6F47;text-transform:uppercase;letter-spacing:.08em">Ce que vous avez trouvé difficile</p>
-            <p style="margin:6px 0 0;font-size:13px;color:#3A3228;line-height:1.6;font-style:italic">${a.refus.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</p>
-          </div>
-          <div style="padding:16px 18px">
-            <p style="margin:0 0 6px;font-size:12px;font-weight:700;color:#C4A97D;text-transform:uppercase;letter-spacing:.08em">Alternative proposée</p>
-            <p style="margin:0;font-size:14px;color:#3A3228;line-height:1.7">${a.alt.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')}</p>
-          </div>
-        </div>`).join('');
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px 0;background-color:#F4F1EC;">
+                <tr><td style="border-left:3px solid #B4906A;padding:16px 20px 6px 20px;">
+                  <p style="margin:0 0 6px 0;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#B4906A;">Ce que vous avez trouvé difficile</p>
+                  <p class="titre-serif" style="margin:0;font-size:16px;line-height:24px;color:rgba(30,30,28,.8);font-style:italic;">${esc(a.refus)}</p>
+                </td></tr>
+                <tr><td style="border-left:3px solid #B4906A;padding:10px 20px 18px 20px;">
+                  <p style="margin:0 0 6px 0;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#B4906A;">Ce que je vous propose à la place</p>
+                  <p style="margin:0;font-size:15px;line-height:24px;color:rgba(30,30,28,.85);">${esc(a.alt).replace(/\n/g,'<br>')}</p>
+                </td></tr>
+              </table>`).join('');
 
+      // Gabarit harmonisé style #26 (ardoise / liseré ocre / ivoire, vrai logo, « Prenez soin de vous »)
       const htmlContent = `<!DOCTYPE html>
 <html lang="fr">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#F5F0E8;font-family:'Helvetica Neue',Arial,sans-serif">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F5F0E8;padding:32px 16px">
-    <tr><td align="center">
-      <table width="100%" style="max-width:580px;background:white;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(58,50,40,.08)">
-
-        <!-- Header ardoise -->
-        <tr><td style="background:#3A3228;padding:32px 36px 28px;text-align:center">
-          <p style="margin:0 0 4px;font-size:10px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.7)">A Vita Serena</p>
-          <p style="margin:0;font-family:Georgia,serif;font-size:26px;font-weight:400;color:white;line-height:1.3">Une adaptation<br>pour votre protocole</p>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Une adaptation pour votre protocole — A Vita Serena</title>
+<style>
+  body, table, td { font-family: 'Be Vietnam Pro', Helvetica, Arial, sans-serif; }
+  body { margin:0; padding:0; background-color:#F4F1EC; -webkit-text-size-adjust:100%; }
+  table { border-collapse:collapse; }
+  img { border:0; display:block; }
+  a { text-decoration:none; }
+  .titre-serif { font-family:'Cormorant Garamond', Georgia, 'Times New Roman', serif; }
+  @media only screen and (max-width:600px) { .conteneur { width:100% !important; } .pad-mobile { padding-left:24px !important; padding-right:24px !important; } }
+</style>
+</head>
+<body style="margin:0;padding:0;background-color:#F4F1EC;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#F4F1EC;">
+    <tr><td align="center" style="padding:40px 16px;">
+      <table role="presentation" class="conteneur" width="600" cellpadding="0" cellspacing="0" style="width:600px;max-width:600px;background-color:#FFFFFF;">
+        <tr><td align="center" style="background-color:#1E1E1C;padding:40px 40px 36px 40px;">
+          <img src="${LOGO_URL}" alt="A Vita Serena" width="180" height="52" style="width:180px;height:auto;display:block;">
+          <p style="margin:14px 0 0 0;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.65);">Votre protocole, ajusté</p>
         </td></tr>
-
-        <!-- Intro -->
-        <tr><td style="padding:28px 36px 20px">
-          <p style="margin:0;font-size:15px;color:#3A3228;line-height:1.8">Bonjour <strong>${prenom}</strong>,</p>
-          <p style="margin:12px 0 0;font-size:14px;color:#5A5248;line-height:1.8">Suite à vos retours sur votre Protocole d'Hygiène Vitale, voici des adaptations pensées spécialement pour vous. Ces alternatives tiennent compte de ce que vous m'avez partagé.</p>
+        <tr><td style="background-color:#B4906A;height:4px;line-height:4px;font-size:1px;">&nbsp;</td></tr>
+        <tr><td class="pad-mobile" style="padding:48px 48px 8px 48px;">
+          <p class="titre-serif" style="margin:0 0 24px 0;font-size:28px;line-height:36px;color:#1E1E1C;font-weight:600;">Une adaptation pour votre protocole</p>
         </td></tr>
-
-        <!-- Séparateur ocre -->
-        <tr><td style="padding:0 36px"><div style="height:2px;background:linear-gradient(90deg,#C4A97D,#E8D5B0)"></div></td></tr>
-
-        <!-- Blocs refus/alternatives -->
-        <tr><td style="padding:24px 36px">${blocksHtml}</td></tr>
-
-        <!-- Bouton PHV -->
-        <tr><td style="padding:4px 36px 28px;text-align:center">
-          <p style="margin:0 0 16px;font-size:13px;color:#8B8078">Retrouvez l'ensemble de votre protocole en cliquant ci-dessous :</p>
-          <a href="https://avitaserena.com/outils/phv-print" style="display:inline-block;background:#3A3228;color:white;text-decoration:none;font-size:13px;font-weight:700;padding:13px 28px;border-radius:99px;letter-spacing:.04em">Consulter mon protocole →</a>
+        <tr><td class="pad-mobile" style="padding:0 48px;">
+          <p style="margin:0 0 20px 0;font-size:15px;line-height:24px;color:rgba(30,30,28,.85);">Bonjour ${esc(prenom)},</p>
+          <p style="margin:0 0 28px 0;font-size:15px;line-height:24px;color:rgba(30,30,28,.85);">Merci pour vos retours sur votre Protocole d'Hygiène Vitale. Un conseil qui ne s'intègre pas dans votre quotidien ne peut pas agir sur votre corps : c'est la régularité qui permet à votre organisme de changer. Voici donc des adaptations pensées pour vous, qui visent le même effet par un autre chemin.</p>
         </td></tr>
-
-        <!-- Séparateur -->
-        <tr><td style="padding:0 36px"><div style="height:1px;background:#F0EBE3"></div></td></tr>
-
-        <!-- Signature -->
-        <tr><td style="padding:24px 36px 32px">
-          <p style="margin:0;font-size:13px;color:#5A5248;line-height:1.8">N'hésitez pas à me contacter si vous avez des questions ou si vous souhaitez ajuster d'autres points de votre protocole.</p>
-          <p style="margin:16px 0 0;font-size:14px;color:#3A3228;line-height:1.6">Avec bienveillance,<br><strong>Sabrina Castelli</strong><br><span style="color:#C4A97D;font-size:12px">Naturopathe · A Vita Serena</span></p>
+        <tr><td class="pad-mobile" style="padding:0 48px 12px 48px;">${blocksHtml}</td></tr>
+        <tr><td class="pad-mobile" align="center" style="padding:8px 48px 32px 48px;">
+          <table role="presentation" cellpadding="0" cellspacing="0"><tr><td align="center" style="background-color:#1E1E1C;">
+            <a href="${esc(lienProtocole)}" target="_blank" style="display:inline-block;padding:16px 36px;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:#FFFFFF;">Consulter mon protocole →</a>
+          </td></tr></table>
         </td></tr>
-
-        <!-- Footer -->
-        <tr><td style="background:#3A3228;padding:16px 36px;text-align:center">
-          <p style="margin:0;font-size:11px;color:rgba(255,255,255,.7)">A Vita Serena · Naturopathie · Porto-Vecchio, Corse · avitaserena.com</p>
+        <tr><td class="pad-mobile" style="padding:0 48px;">
+          <p style="margin:0;font-size:14px;line-height:22px;color:rgba(30,30,28,.75);">N'hésitez pas à me répondre si une adaptation ne vous convient toujours pas : nous chercherons ensemble.</p>
         </td></tr>
-
+        <tr><td style="padding:32px 48px 0 48px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td style="border-top:1px solid rgba(30,30,28,.1);font-size:1px;line-height:1px;">&nbsp;</td></tr></table></td></tr>
+        <tr><td class="pad-mobile" style="padding:32px 48px 48px 48px;">
+          <p style="margin:0;font-size:14px;line-height:22px;color:rgba(30,30,28,.75);">Prenez soin de vous,</p>
+          <p class="titre-serif" style="margin:8px 0 0 0;font-size:19px;line-height:24px;color:#1E1E1C;">Sabrina Castelli</p>
+          <p style="margin:2px 0 0 0;font-size:12px;line-height:18px;color:rgba(30,30,28,.65);">Naturopathe · A Vita Serena</p>
+        </td></tr>
+        <tr><td align="center" style="background-color:#1E1E1C;padding:28px 40px;">
+          <p style="margin:0;font-size:11px;line-height:18px;color:rgba(255,255,255,.65);">A Vita Serena · Sabrina Castelli · Porto-Vecchio, Corse</p>
+        </td></tr>
       </table>
     </td></tr>
   </table>
 </body>
 </html>`;
 
-      const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+      const res = await proxyFetch('https://api.brevo.com/v3/smtp/email', {
         method:'POST',
-        headers:{'Content-Type':'application/json','api-key': apiKeyBrevo},
+        headers:{'Content-Type':'application/json'},
         body: JSON.stringify({
           sender:{ name:'Sabrina · A Vita Serena', email:'sabrina@avitaserena.com' },
-          to:[{ email, name: prenom+' '+nom }],
+          to:[{ email, name: (prenom+' '+(nom||'')).trim() }],
           subject: `${prenom}, voici des adaptations pour votre protocole`,
           htmlContent
         })
       });
       if(!res.ok){
-        const err = await res.json();
-        throw new Error(err.message || res.status);
+        let msg=res.status; try{ const err=await res.json(); msg=err.message||msg; }catch(e){}
+        throw new Error(msg);
       }
       toast(`Email envoyé à ${email}`, 'ok');
     }catch(e){
       toast('Alternatives enregistrées · Email échoué : '+e.message, 'warn');
     }
   } else {
-    toast(`${saved} alternative(s) enregistrée(s)`, 'ok');
+    toast(`${saved} alternative(s) enregistrée(s)`+(echecs?` · ${echecs} en échec`:''), echecs?'warn':'ok');
   }
 
   document.getElementById('modal-alternatives')?.remove();
@@ -8065,11 +8169,11 @@ async function envoyerCheckinBrevoTpl(clientId){
   const confirmed = confirm('Envoyer le lien check-in a ' + c.prenom + ' (' + c.email + ') ?');
   if(!confirmed) return;
   try{
-    const res = await fetch('https://api.brevo.com/v3/smtp/email',{
+    const res = await proxyFetch('https://api.brevo.com/v3/smtp/email',{
       method:'POST',
       headers:{'Content-Type':'application/json','api-key':apiKeyBrevo},
       body: JSON.stringify({
-        sender:{ name:'Sabrina - A VITA SERENA', email:'sabrina@avitaserena.com' },
+        sender:{ name:'Sabrina · A Vita Serena', email:'sabrina@avitaserena.com' },
         to:[{ email: c.email, name: (c.prenom||'') + ' ' + (c.nom||'') }],
         templateId: 38, // MAJ 11/09/2026 (Claude) — ex-20, harmonisé style #26
         params:{ LIEN_CHECKIN: lienCheckin }
@@ -8150,9 +8254,12 @@ async function envoyerRapportProgression(clientId, lettreId){
   if(!contenu){ toast('Le rapport est vide','err'); return; }
 
   try{
+    // Jeton de la praticienne connectée (la fonction refuse la clé publique depuis le 23/09/2026)
+    let authToken = KEY;
+    if(typeof Auth!=='undefined'){ try{ const t=await Auth.getValidAccessToken(); if(t) authToken=t; }catch(e){} }
     const res = await fetch(SB+'/functions/v1/send-lettre-clinique', {
       method:'POST',
-      headers:{ 'apikey':KEY, 'Authorization':'Bearer '+KEY, 'Content-Type':'application/json' },
+      headers:{ 'apikey':KEY, 'Authorization':'Bearer '+authToken, 'Content-Type':'application/json' },
       body: JSON.stringify({ to_email:c.email, to_name:c.prenom||'', contenu_lettre:contenu })
     });
     const data = await res.json();
@@ -8447,6 +8554,7 @@ function ouvrirBilanEntree(clientId, mode){
       <div class="fchips">
         <div class="fchip on" id="fc-all" onclick="setFilter('all',this)">Toutes</div>
         <div class="fchip" id="fc-prog" onclick="setFilter('programme',this)">En programme</div>
+        <div class="fchip" id="fc-apres" onclick="setFilter('apres',this)">Après programme</div>
         <div class="fchip" id="fc-al" onclick="setFilter('alerte',this)">Échéances</div>
         <div class="fchip" id="fc-sil" onclick="setFilter('silence',this)">Silences</div>
       </div>
