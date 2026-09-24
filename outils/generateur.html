@@ -1411,7 +1411,12 @@ function buildClientData() {
     alim: mf('m-alim'), notes: mf('m-notes'), lifeline: mf('m-lifeline'), ddn: mf('m-ddn'),
   };
   const hasManual = Object.values(manual).some(v => v.length > 1);
-  const s = sessionData || {};
+  // ── FAILLE CORRIGÉE (24/09/2026) : `s` pointait directement sur sessionData, que le bloc
+  // « suivi » ci-dessous modifie (entête ajoutée, champs concaténés). Chaque nouvel appel
+  // (suggestion de bilans, interprétation, génération du PHV…) ré-empilait
+  // donc l'entête et les évolutions une fois de plus dans les données envoyées à l'IA.
+  // On travaille désormais sur une copie : sessionData reste intact entre deux appels. ──
+  const s = sessionData ? JSON.parse(JSON.stringify(sessionData)) : {};
 
   // ── FAILLE CORRIGÉE (25/08/2026) : une session issue du questionnaire de SUIVI (pas la
   // consultation initiale) a une forme de données complètement différente — scores_evolution,
@@ -1593,6 +1598,8 @@ function buildClientData() {
     contraception: manual.contra || s.contraception_actuelle || s.selects?.match(/(?:Contraception|Pilule|DIU|Implant|contraceptif)[^\n]*/gi)?.join(', ') || '',
     motifs: manual.motifs || [s.motifs, s.mots_cles].filter(Boolean).join(', '),
     objectif_6mois: s.objectif_6mois || '',
+    // Texte de clôture lu à la cliente en fin de séance (généré dans le questionnaire, 24/09/2026)
+    texte_cloture: s.texte_cloture || '',
     scores: manual.scores || s.scores || '',
     symptomes_coches: manual.checks || s.symptomes_coches || '',
     chips: s.chips_coches || '',
@@ -3509,7 +3516,11 @@ ${d.lifeline || '— Non renseigné'}
 
 🔬 ANALYSE CAUSALE PRATICIEN (cascade des premiers dominos) :
 ${d.notes_praticien || '— Non renseigné'}
-
+${d.texte_cloture ? `
+🗣️ CE QUE SABRINA A DIT À LA CLIENTE EN FIN DE SÉANCE (pistes annoncées à voix haute) :
+${d.texte_cloture}
+→ Le PHV doit rester cohérent avec ces pistes : la cliente s'attend à retrouver, expliqué plus en détail, ce qui lui a été annoncé. Si l'analyse complète conduit à nuancer ou réorienter une piste, fais-le explicitement et avec douceur (« comme je vous l'ai dit en fin de séance… et en étudiant vos réponses en détail, j'ai aussi constaté… »), jamais en contradiction silencieuse.
+` : ''}
 ━━ PARAMÈTRES DU PROTOCOLE (définis par le praticien après séance) ━━
 🎯 Axes de travail prioritaires : ${d.axes_prioritaires}
 ⏱ Durée du programme : ${d.duree_prog}
