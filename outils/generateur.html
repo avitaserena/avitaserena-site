@@ -260,13 +260,12 @@ input.fi[readonly]{background:var(--taupe);cursor:default;opacity:.75}
 
 <!-- API -->
 <div class="api-box">
-  <label class="fl">Clé PHV plafonnée (génération du protocole uniquement)</label>
+  <label class="fl">Clé API Anthropic</label>
   <div class="api-row">
-    <input class="fi" type="password" id="api-key" placeholder="sk-ant-api03-… (espace « Générateur PHV »)" autocomplete="off">
+    <input class="fi" type="password" id="api-key" placeholder="sk-ant-api03-…">
     <button class="api-btn" onclick="saveKey()">Enregistrer</button>
   </div>
   <span id="key-status" style="font-size:13px"></span>
-  <div style="font-size:12px;line-height:1.55;color:var(--gris,#6B6560);margin-top:6px">Pourquoi une clé ici ? La génération du PHV dure plusieurs minutes, trop longtemps pour le relais sécurisé. Elle utilise donc une clé dédiée, créée dans un espace de travail Anthropic avec une limite de dépenses : si elle fuitait, la perte serait plafonnée. Les suggestions et interprétations de bilans, elles, passent par le relais sans aucune clé.</div>
 </div>
 
 <!-- SESSION IMPORTÉE -->
@@ -1131,24 +1130,21 @@ function toggleAnticoagulant(btn) {
   document.getElementById('anticoag-type-wrap').classList.toggle('open', btn.classList.contains('on'));
 }
 
-// ── Clé PHV plafonnée (24/09/2026) — seule clé encore stockée localement, pour la
-//    génération du PHV uniquement (voir ai-client.js). ──
+// ── Clé API (partagée via AIClient / localStorage entre tous les outils) ──
 function saveKey() {
-  const input = document.getElementById('api-key');
-  const k = input.value.trim();
+  const k = document.getElementById('api-key').value.trim();
   if (!AIClient.saveKey(k)) {
-    document.getElementById('key-status').innerHTML = '<span style="color:#8B3A3A">Clé invalide (elle doit commencer par sk-ant)</span>';
+    document.getElementById('key-status').innerHTML = '<span style="color:#8B3A3A">Clé invalide</span>';
     return;
   }
-  input.value = ''; // ne pas laisser la clé affichée dans le champ
-  document.getElementById('key-status').innerHTML = '<span style="color:#3D6B2C">✓ Clé PHV enregistrée dans ce navigateur</span>';
+  document.getElementById('key-status').innerHTML = '<span style="color:#3D6B2C">✓ Enregistrée — mémorisée pour tous les outils</span>';
 }
 
-// Indique si la clé PHV est déjà mémorisée dans ce navigateur
+// Préremplit l'indicateur si une clé est déjà mémorisée (générateur, questionnaires…)
 function prefillKeyStatus() {
-  document.getElementById('key-status').innerHTML = AIClient.hasKey()
-    ? '<span style="color:#3D6B2C">✓ Clé PHV déjà mémorisée dans ce navigateur</span>'
-    : '<span style="color:#8B3A3A">Aucune clé PHV — nécessaire uniquement pour générer le protocole</span>';
+  if (AIClient.hasKey()) {
+    document.getElementById('key-status').innerHTML = '<span style="color:#3D6B2C">✓ Clé déjà mémorisée dans ce navigateur</span>';
+  }
 }
 
 // ── Session depuis localStorage ──
@@ -1922,7 +1918,7 @@ ${d.lifeline || '— Non renseigné'}`;
 }
 
 async function suggererBilans() {
-  // Depuis le 24/09/2026 : passe par le relais sécurisé (aucune clé requise dans le navigateur)
+  if (!AIClient.hasKey()) { alert('Veuillez d\'abord entrer votre clé API Anthropic.'); return; }
   const d = buildClientData();
   d.bilans_biologiques_resultats = await fetchDerniersMarqueurs(d.client_id);
 
@@ -2258,7 +2254,7 @@ Alimentation & mode de vie : ${d?.alimentation || '—'}`;
 }
 
 async function interpreterBilanValeurs() {
-  // Depuis le 24/09/2026 : passe par le relais sécurisé (aucune clé requise dans le navigateur)
+  if (!AIClient.hasKey()) { alert('Veuillez d\'abord entrer votre clé API Anthropic.'); return; }
   const lignes = lignesInterpretation.filter(l => (l.marqueur || '').trim() && (l.valeur || '').toString().trim() !== '');
   if (!lignes.length) { alert('Ajoutez au moins une ligne avec un marqueur et une valeur.'); return; }
   const labo = document.getElementById('interpret-labo').value.trim();
@@ -3975,13 +3971,7 @@ function afficherSignauxAlarme(signaux) {
 }
 
 async function generate() {
-  // Seule génération encore en appel direct (trop longue pour le relais, coupé à 150 s) —
-  // avec la clé PHV dédiée et plafonnée (voir ai-client.js).
-  if (!AIClient.hasKey()) {
-    alert('Veuillez d\'abord enregistrer votre clé PHV plafonnée en haut de la page.');
-    document.getElementById('api-key')?.focus();
-    return;
-  }
+  if (!AIClient.hasKey()) { alert('Veuillez d\'abord entrer votre clé API Anthropic.'); return; }
   const d = buildClientData();
   if (!d.prenom || d.prenom === 'Cliente') {
     if (!confirm('Aucun prénom détecté. Continuer quand même ?')) return;
@@ -4006,7 +3996,7 @@ async function generate() {
   }, 4000);
 
   try {
-    const raw = (await AIClient.generate(buildPrompt(d), { maxTokens: 32000, direct: true })).replace(/```json|```/g, '').trim();
+    const raw = (await AIClient.generate(buildPrompt(d), { maxTokens: 32000 })).replace(/```json|```/g, '').trim();
     clearInterval(interval);
     generatedData = parseJSONRobuste(raw);
     generatedData._client = d;
