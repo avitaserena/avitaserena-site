@@ -5293,6 +5293,17 @@ function renderFiche(c){
     ['Problématique principale', c.motifs?`<strong style="color:var(--ink)">${escH(c.motifs)}</strong>`:`<span style='color:var(--red);display:inline-flex;align-items:center;gap:4px'>${ic('warn','ico-xs')} Non renseignée</span>`],
     ['Email', c.email?`<a href="mailto:${escH(c.email)}" style="color:var(--violet);text-decoration:none">${escH(c.email)}</a>`:`<span style='color:var(--red);font-weight:700;display:inline-flex;align-items:center;gap:4px'>${ic('warn','ico-xs')} Manquant</span>`],
     ['Téléphone', c.tel?`<a href="tel:${escH(c.tel)}" style="color:var(--ink);text-decoration:none">${escH(c.tel)}</a>`:'—'],
+    // Orientation médicale (25/09/2026) — lue dans le questionnaire de consultation le plus récent,
+    // pour pouvoir faire un retour courtois au médecin qui a orienté la cliente.
+    ...(()=>{
+      const qc=(questionnairesClient[cid]||[]).find(q=>q.type==='consultation');
+      const o=qc?.snapshot?.orientation_medecin;
+      if(!o) return [];
+      const nom=qc.snapshot.medecin_referent;
+      return [['Orientée par', o==='Oui'
+        ? (nom?`<strong style="color:var(--ink)">${escH(nom)}</strong>`:`<span style="color:var(--ink)">Un médecin (nom non précisé)</span>`)
+        : `<span style="color:var(--muted)">Venue d'elle-même</span>`]];
+    })(),
     ['Date de naissance', c.ddn?(fmtDate(c.ddn)+(age?` · <span style="color:var(--muted)">${age} ans</span>`:'')):'—'],
     ['Programme', c.programme?`<span class="prog-badge pb-${pCls(c.programme)}">${pLbl(c.programme)}</span>`:"<span style='color:var(--muted)'>Consultation ponctuelle</span>"],
     ['A Luma', chatAddonHtml],
