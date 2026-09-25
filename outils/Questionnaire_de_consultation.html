@@ -899,8 +899,8 @@ function recStop(){ recLaunch('Arrêter l’enregistrement'); recSetState('done'
         <label class="fl">Êtes-vous orientée vers moi par un médecin ou un spécialiste ?</label>
         <div style="font-size:11px;line-height:1.5;color:var(--gris);margin-top:2px;margin-bottom:6px;font-style:italic">Je vous pose cette question pour pouvoir, si vous le souhaitez, faire un retour courtois à ce médecin sur notre travail commun, et parce que ça m'indique parfois qu'une piste diagnostique a déjà été évoquée de son côté.</div>
         <div class="chip-wrap" id="orientation-medecin">
-          <button type="button" class="chip" onclick="toggleOrientationMedecin(this,true)">Oui</button>
-          <button type="button" class="chip on" onclick="toggleOrientationMedecin(this,false)">Non</button>
+          <button type="button" class="chip" onclick="toggleOrientationMedecin(this,true)">Oui, orientée par un médecin</button>
+          <button type="button" class="chip on" onclick="toggleOrientationMedecin(this,false)">Non, venue d'elle-même</button>
         </div>
         <div id="medecin-referent-wrap" style="display:none;margin-top:10px">
           <label class="fl">Nom du médecin ou du spécialiste (facultatif)</label>
@@ -9804,6 +9804,17 @@ function restoreSnapshot(snap) {
     // Note (30/08/2026) : les guides spécialisés sont désormais des pages indépendantes toujours
     // dépliées (CSS) — plus besoin de les rouvrir au chargement d'une session sauvegardée.
   } catch(e) {}
+  // Orientation médicale (25/09/2026) : un seul bouton actif, et champ du nom réaffiché si « Oui »
+  try {
+    const oriOui = [...document.querySelectorAll('#orientation-medecin .chip')].find(c => c.textContent.trim().startsWith('Oui'));
+    const oriNon = [...document.querySelectorAll('#orientation-medecin .chip')].find(c => c.textContent.trim().startsWith('Non'));
+    if (oriOui && oriNon) {
+      const oui = oriOui.classList.contains('on');
+      oriNon.classList.toggle('on', !oui);
+      const wrapMed = document.getElementById('medecin-referent-wrap');
+      if (wrapMed) wrapMed.style.display = oui ? 'block' : 'none';
+    }
+  } catch(e) {}
   // Checks (14/09/2026, bug remonté par Sabrina — la section Alimentation, très riche en cases à
   // cocher, se retrouvait vidée ou faussée en rouvrant un questionnaire mis en pause après une
   // mise à jour du fichier entre-temps. Cause : les cases étaient repérées par leur POSITION dans
@@ -10055,6 +10066,11 @@ function collectAllData() {
       l: el.querySelector('.trig-q')?.textContent?.trim() || el.textContent.replace('✓','').trim().slice(0, 140)
     }))
   ].filter(x => x.l && x.s !== 'sec-11'));
+
+  // ── ORIENTATION MÉDICALE (bug corrigé 25/09/2026) : la question était posée mais la réponse
+  // n'était enregistrée nulle part. Elle part désormais avec le questionnaire (fiche cliente).
+  d.orientation_medecin = document.querySelector('#orientation-medecin .chip.on')?.textContent?.trim()?.startsWith('Oui') ? 'Oui' : 'Non';
+  d.medecin_referent = d.orientation_medecin === 'Oui' ? (document.getElementById('medecin-referent')?.value?.trim() || '') : '';
 
   // ── Réponses du moteur entonnoire (choix fermés de rebond) : rattachées à la question
   // de rebond qui les a posées, sous la même section, pour donner au générateur le niveau
