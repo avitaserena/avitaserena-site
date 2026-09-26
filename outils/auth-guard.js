@@ -4,13 +4,21 @@
    entre tous les outils (praticienne) et l'espace clientes.
    Inclure APRÈS supabase-db.js (ou avant, l'ordre n'importe pas,
    mais AVANT tout code qui appelle DB.* / sb()).
+
+   CORRECTIF 26/09/2026 (Claude) : la praticienne se connectait par
+   code à 6 chiffres reçu par email, source de frictions répétées
+   (code à 8 chiffres reçu, champ limité à 6, expiration rapide).
+   Remplacé par un mot de passe fixe, vérifié côté serveur par la
+   fonction Edge `praticienne-login` (qui renvoie une vraie session
+   Supabase compatible RLS is_praticien()). Le flux par email/code
+   reste inchangé pour l'espace clientes (profil "cliente").
    ═══════════════════════════════════════════════════════════ */
 
 const AUTH_STORAGE_KEY = 'avs_auth_session';
 
 const Auth = {
 
-  /* ── Demander un lien magique ── */
+  /* ── Demander un lien magique (espace clientes uniquement) ── */
   async requestMagicLink(email, redirectTo) {
     const res = await fetch(SUPA_URL + '/auth/v1/otp', {
       method: 'POST',
@@ -21,7 +29,7 @@ const Auth = {
     return true;
   },
 
-  /* ── Vérifier un code à 6 chiffres reçu par email (contourne le pré-clic des scanners) ── */
+  /* ── Vérifier un code à 6 chiffres reçu par email (espace clientes uniquement) ── */
   async verifyOtp(email, token) {
     const res = await fetch(SUPA_URL + '/auth/v1/verify', {
       method: 'POST',
@@ -31,6 +39,25 @@ const Auth = {
     if (!res.ok) throw new Error('Code invalide ou expiré : ' + (await res.text()));
     const data = await res.json();
     if (!data.access_token) throw new Error('Réponse invalide du serveur');
+
+    const session = {
+      access_token: data.access_token,
+      refresh_token: data.refresh_token,
+      expires_at: Date.now() + (data.expires_in || 3600) * 1000
+    };
+    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
+    return true;
+  },
+
+  /* ── Connexion praticienne par mot de passe fixe, vérifié côté serveur ── */
+  async loginWithPassword(password) {
+    const res = await fetch(SUPA_URL + '/functions/v1/praticienne-login', {
+      method: 'POST',
+      headers: { 'apikey': SUPA_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.access_token) throw new Error(data.error || 'Mot de passe incorrect');
 
     const session = {
       access_token: data.access_token,
@@ -106,7 +133,9 @@ const Auth = {
 };
 
 /* ── Écran de connexion réutilisable (overlay plein écran) ──
-   appelPar : "praticienne" ou "cliente" — change juste le texte affiché.
+   appelPar : "praticienne" ou "cliente" — change tout l'écran :
+   la praticienne se connecte par mot de passe fixe, la cliente par
+   email + code reçu (inchangé).
    onSuccess : callback appelé une fois la session confirmée valide. */
 function showAuthGate(profil, onSuccess) {
   Auth.handleRedirect();
@@ -120,10 +149,43 @@ function showAuthGate(profil, onSuccess) {
   const overlay = document.createElement('div');
   overlay.id = 'auth-gate-overlay';
   overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#1E1E1C;display:flex;align-items:center;justify-content:center;padding:24px;font-family:"Be Vietnam Pro",Arial,sans-serif';
+
+  if (isPraticienne) {
+    overlay.innerHTML = `
+      <div style="max-width:380px;width:100%;background:#F7F6F4;border-radius:16px;padding:40px 32px;text-align:center">
+        <div style="font-family:Georgia,serif;font-size:22px;font-style:italic;color:#1E1E1C;margin-bottom:8px">A Vita Serena</div>
+        <p style="font-size:13px;color:#6B6560;margin-bottom:24px">Connexion praticienne</p>
+        <input id="auth-password-input" type="password" placeholder="Mot de passe" autofocus style="width:100%;padding:12px 14px;border:1px solid #D5CFC6;border-radius:8px;font-size:14px;margin-bottom:12px;box-sizing:border-box">
+        <button id="auth-password-btn" style="width:100%;background:#1E1E1C;color:#fff;border:none;padding:13px;border-radius:99px;font-size:13px;font-weight:600;cursor:pointer">Se connecter →</button>
+        <p id="auth-status-msg" style="font-size:12px;color:#6B6560;margin-top:16px;line-height:1.6"></p>
+      </div>`;
+    document.body.appendChild(overlay);
+
+    const submit = async () => {
+      const password = document.getElementById('auth-password-input').value;
+      const btn = document.getElementById('auth-password-btn');
+      const msg = document.getElementById('auth-status-msg');
+      if (!password) { msg.textContent = 'Entrez le mot de passe.'; msg.style.color = '#C0392B'; return; }
+      btn.disabled = true; btn.textContent = 'Connexion…';
+      try {
+        await Auth.loginWithPassword(password);
+        onSuccess();
+      } catch(e) {
+        msg.style.color = '#C0392B';
+        msg.textContent = 'Mot de passe incorrect.';
+        btn.disabled = false; btn.textContent = 'Se connecter →';
+        console.error(e);
+      }
+    };
+    document.getElementById('auth-password-btn').onclick = submit;
+    document.getElementById('auth-password-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') submit(); });
+    return;
+  }
+
   overlay.innerHTML = `
     <div style="max-width:380px;width:100%;background:#F7F6F4;border-radius:16px;padding:40px 32px;text-align:center">
       <div style="font-family:Georgia,serif;font-size:22px;font-style:italic;color:#1E1E1C;margin-bottom:8px">A Vita Serena</div>
-      <p style="font-size:13px;color:#6B6560;margin-bottom:24px">${isPraticienne ? 'Connexion praticienne' : 'Connectez-vous pour accéder à votre espace'}</p>
+      <p style="font-size:13px;color:#6B6560;margin-bottom:24px">Connectez-vous pour accéder à votre espace</p>
       <input id="auth-email-input" type="email" placeholder="Votre email" style="width:100%;padding:12px 14px;border:1px solid #D5CFC6;border-radius:8px;font-size:14px;margin-bottom:12px;box-sizing:border-box">
       <button id="auth-submit-btn" style="width:100%;background:#1E1E1C;color:#fff;border:none;padding:13px;border-radius:99px;font-size:13px;font-weight:600;cursor:pointer">Recevoir un code de connexion →</button>
       <p id="auth-status-msg" style="font-size:12px;color:#6B6560;margin-top:16px;line-height:1.6"></p>
