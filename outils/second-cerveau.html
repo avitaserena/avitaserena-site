@@ -81,11 +81,22 @@ textarea:focus, input[type=text]:focus { outline: none; border-color: var(--gold
 .skip-list { max-height: 200px; overflow-y: auto; border-top: 1px solid var(--border); padding-top: 10px; margin-top: 10px }
 .skip-item { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; font-size: 12.5px; color: var(--ink3); border-bottom: 1px dashed var(--border) }
 .skip-item .name { color: var(--ink); flex: 1 }
-.answer { margin-top: 18px; white-space: pre-wrap; font-size: 14.5px; line-height: 1.65 }
+.answer { margin-top: 18px; font-size: 14.5px; line-height: 1.65 }
+.answer p { margin: 0 0 10px }
+.answer p:last-child { margin-bottom: 0 }
+.answer h3 { font-family: var(--serif); font-size: 18px; font-weight: 600; margin: 18px 0 8px }
+.answer h3:first-child { margin-top: 0 }
+.answer h4 { font-size: 14.5px; font-weight: 700; margin: 14px 0 6px }
+.answer ul, .answer ol { margin: 0 0 10px 20px }
+.answer li { margin-bottom: 4px }
+.answer b, .answer strong { font-weight: 700; color: var(--ink) }
+.answer .cite { display: inline-flex; align-items: center; justify-content: center; min-width: 16px; height: 16px; padding: 0 4px; background: var(--gold-lt); color: var(--gold-dk); font-size: 10.5px; font-weight: 700; border-radius: var(--r99); margin: 0 1px; vertical-align: 1px }
 .sources { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border) }
 .sources h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 8px }
-.source-item { font-size: 12.5px; color: var(--ink3); padding: 4px 0 }
+.source-item { display: flex; gap: 8px; align-items: flex-start; font-size: 12.5px; color: var(--ink3); padding: 5px 0 }
 .source-item b { color: var(--ink); font-weight: 600 }
+.source-nums { flex-shrink: 0; display: flex; gap: 3px; flex-wrap: wrap; margin-top: 1px }
+.source-nums span { display: inline-flex; align-items: center; justify-content: center; min-width: 16px; height: 16px; padding: 0 4px; background: var(--surface); border: 1px solid var(--border); color: var(--ink3); font-size: 10px; font-weight: 700; border-radius: var(--r99) }
 .error-box { background: var(--red-lt); color: var(--red); border-radius: var(--r8); padding: 10px 14px; font-size: 13px; margin-top: 12px }
 .empty { color: var(--muted); font-size: 13px; font-style: italic; text-align: center; padding: 20px 0 }
 </style>
@@ -154,11 +165,27 @@ async function poserQuestion() {
   zone.innerHTML = '<div class="empty">Recherche en cours…</div>';
   try {
     const data = await callFn('second-cerveau-query', { question: q });
-    let html = '<div class="answer">' + escH(data.answer) + '</div>';
+    let html = '<div class="answer">' + renderAnswer(data.answer) + '</div>';
     if (data.sources && data.sources.length) {
       html += '<div class="sources"><h3>Sources consultées</h3>';
-      for (const s of data.sources) {
-        html += '<div class="source-item"><b>' + escH(s.source_name) + '</b> — ' + escH(s.source_type) + (s.date_source ? ' · ' + escH(s.date_source) : '') + '</div>';
+      // Regrouper les sources par document : chaque document n'apparaît qu'une
+      // fois, avec la liste des numéros (correspondant aux citations "Source N"
+      // dans le texte de la réponse) qui le référencent.
+      const groups = [];
+      const byName = {};
+      data.sources.forEach(function(s, i) {
+        const num = i + 1;
+        const key = s.source_name;
+        if (byName[key] === undefined) {
+          byName[key] = groups.length;
+          groups.push({ source_name: s.source_name, source_type: s.source_type, date_source: s.date_source, nums: [] });
+        }
+        groups[byName[key]].nums.push(num);
+      });
+      for (const g of groups) {
+        html += '<div class="source-item"><span class="source-nums">' +
+          g.nums.map(function(n) { return '<span>' + n + '</span>'; }).join('') +
+          '</span><span><b>' + escH(g.source_name) + '</b> — ' + escH(g.source_type) + (g.date_source ? ' · ' + escH(g.date_source) : '') + '</span></div>';
       }
       html += '</div>';
     }
@@ -174,6 +201,62 @@ function escH(s) {
   return String(s || '').replace(/[&<>"']/g, function(c) {
     return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
   });
+}
+
+// Rendu markdown minimal pour la réponse du second cerveau : titres (###/####),
+// gras (**...**), listes (- / 1.), paragraphes, et mise en valeur des citations
+// numériques ("Source 6", "Sources 4 et 6") pour qu'elles ressortent visuellement
+// et correspondent visuellement à la numérotation de la liste des sources.
+function renderAnswer(raw) {
+  const text = escH(raw);
+  const lines = text.split('\n');
+  let html = '';
+  let listOpen = null; // 'ul' | 'ol' | null
+  let paraBuf = [];
+
+  function inline(s) {
+    s = s.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+    s = s.replace(/\b([Ss]ources?\s+(?:n°\s*)?\d+(?:\s*(?:,|et|à|-)\s*\d+)*)/g, function(m) {
+      return '<span class="cite">' + m + '</span>';
+    });
+    return s;
+  }
+
+  function flushPara() {
+    if (paraBuf.length) {
+      html += '<p>' + inline(paraBuf.join(' ')) + '</p>';
+      paraBuf = [];
+    }
+  }
+  function closeList() {
+    if (listOpen) { html += '</' + listOpen + '>'; listOpen = null; }
+  }
+
+  for (let line of lines) {
+    line = line.trim();
+    if (!line) { flushPara(); closeList(); continue; }
+
+    let m;
+    if ((m = line.match(/^####\s+(.*)$/))) { flushPara(); closeList(); html += '<h4>' + inline(m[1]) + '</h4>'; continue; }
+    if ((m = line.match(/^###\s+(.*)$/))) { flushPara(); closeList(); html += '<h3>' + inline(m[1]) + '</h3>'; continue; }
+    if ((m = line.match(/^(?:-|\*)\s+(.*)$/))) {
+      flushPara();
+      if (listOpen !== 'ul') { closeList(); html += '<ul>'; listOpen = 'ul'; }
+      html += '<li>' + inline(m[1]) + '</li>';
+      continue;
+    }
+    if ((m = line.match(/^\d+\.\s+(.*)$/))) {
+      flushPara();
+      if (listOpen !== 'ol') { closeList(); html += '<ol>'; listOpen = 'ol'; }
+      html += '<li>' + inline(m[1]) + '</li>';
+      continue;
+    }
+    closeList();
+    paraBuf.push(line);
+  }
+  flushPara();
+  closeList();
+  return html;
 }
 
 document.addEventListener('DOMContentLoaded', function() {
