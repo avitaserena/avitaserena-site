@@ -902,6 +902,26 @@ body {
   border-color: rgba(214,51,108,.25);
   font-weight: 600;
 }
+
+/* ── CARTE « COUP D'ŒIL » HORMONAL (02/10/2026) — en haut de la fiche cliente ── */
+.fh-card{margin-top:12px;border:1px solid var(--border);border-radius:12px;background:var(--white);overflow:hidden;max-width:100%}
+.fh-empty{padding:10px 14px;font-size:12px;color:var(--muted);font-style:italic}
+.fh-blk{padding:10px 14px;border-top:1px solid var(--border)}
+.fh-blk:first-child{border-top:none}
+.fh-ttl{font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--ink3);margin-bottom:7px}
+.fh-row{display:flex;flex-wrap:wrap;gap:6px}
+.fh-p{display:inline-flex;flex-direction:column;padding:6px 10px;border-radius:9px;background:var(--surface);border:1px solid var(--border);min-width:84px;max-width:100%}
+.fh-p .k{font-size:10px;color:var(--ink3);font-weight:600;letter-spacing:.03em}
+.fh-p .v{font-size:13.5px;font-weight:700;color:var(--ink);line-height:1.35;overflow-wrap:anywhere}
+.fh-p.na .v{color:var(--muted);font-weight:500}
+.fh-p.warn{background:var(--orange-lt);border-color:rgba(217,140,43,.45)}
+.fh-p.alert{background:var(--red-lt);border-color:rgba(209,85,58,.5)}
+.fh-p.alert .v,.fh-p.alert .k{color:var(--red)}
+.fh-p.ok{background:var(--green-lt);border-color:rgba(76,139,92,.4)}
+.fh-p.wide{flex:1 1 220px}
+.fh-note{font-size:12px;color:var(--ink3);margin-top:6px;line-height:1.5}
+.fh-evol{display:inline-flex;gap:5px;align-items:center;font-size:12.5px;font-weight:600;padding:4px 9px;border-radius:999px;border:1px solid var(--border);background:var(--surface)}
+.fh-evol.up{background:var(--green-lt);color:var(--green)}.fh-evol.down{background:var(--red-lt);color:var(--red)}
 .fv2-brief {
   margin-top: 12px;
   padding: 12px 14px;
@@ -5159,6 +5179,124 @@ async function loadProtocolesHistory(cid){
   }
 }
 
+
+// ── Carte « coup d'œil » hormonal (02/10/2026) ──────────────────────────────────────────────
+// Lit le dernier questionnaire de consultation (valeurs structurées) et le dernier suivi
+// (poids actuel, dernières règles, évolutions) : la fiche se complète toute seule, séance après séance.
+function parseDateFlex(v){
+  if(!v) return null;
+  const m=String(v).trim().match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})$/);
+  if(m){ let y=+m[3]; if(y<100) y+=2000; const d=new Date(y,+m[2]-1,+m[1]); return isNaN(d)?null:d; }
+  const d=new Date(v); return isNaN(d)?null:d;
+}
+function buildFicheHormonale(c, age, cr){
+  const cid=c.id;
+  const qList=questionnairesClient[cid]||[];
+  const qc=qList.find(q=>q.type==='consultation');
+  const qs=qList.find(q=>q.type==='suivi');
+  const sn=(qc&&qc.snapshot)||{}, ss=(qs&&qs.snapshot)||{};
+  const E=escH;
+  const num=v=>{const n=parseFloat(String(v||'').replace(',','.'));return isFinite(n)?n:null;};
+  const P=(k,v,cls,extra)=>{
+    const vide=(v===undefined||v===null||v===''||v==='—');
+    return `<div class="fh-p ${vide?'na':(cls||'')} ${extra||''}"><span class="k">${E(k)}</span><span class="v">${vide?'à renseigner':v}</span></div>`;
+  };
+  const blk=(t,inner,note)=>`<div class="fh-blk"><div class="fh-ttl">${t}</div><div class="fh-row">${inner}</div>${note?`<div class="fh-note">${note}</div>`:''}</div>`;
+
+  // 1. Qui est-elle
+  const taille=num(sn.taille_cm), poidsC=num(sn.poids_kg), poidsS=num(ss['suivi-poids']);
+  const poids=poidsS||poidsC;
+  const imc=(taille&&poids)?(poids/Math.pow(taille/100,2)):null;
+  const poidsTxt=poids?(poids+' kg'):'';
+  const poidsK=poidsS?'Poids (dernier suivi)':'Poids';
+  const imcCls=imc?(imc<18.5||imc>=30?'warn':''):'';
+  const orient=sn.orientation_medecin==='Oui'?(sn.medecin_referent?E(sn.medecin_referent):'Un médecin'):(sn.orientation_medecin==='Non'?'Venue d\'elle-même':'');
+  const b1=blk('Qui est-elle',
+    P('Âge',age?age+' ans':'')+
+    P('Taille',taille?taille+' cm':'')+
+    P(poidsK,poidsTxt)+
+    P('IMC',imc?imc.toFixed(1):'',imcCls)+
+    P('Motif principal',c.motifs?E(c.motifs):'', '', 'wide')+
+    P('Orientée par',orient)+
+    P('Programme',c.programme?pLbl(c.programme):'Consultation ponctuelle'));
+
+  // 2. Contexte hormonal
+  const nbE=sn.nb_enfants;
+  const enfants=(nbE===0||nbE==='0')?'Aucun':(nbE?String(nbE):(sn.enfants_oui_non==='Non'?'Aucun':''));
+  const gross=sn.secu_grossesse||'';
+  const grossCls=/enceinte|allait|désir/i.test(gross)?'warn':'';
+  let contra=sn.contraception_actuelle||'';
+  const modifContra=(ss['suivi-modif-contraception']||'').trim();
+  const contraCls=/pilule|diu hormonal|implant/i.test(contra)?'warn':'';
+  const mAge=num(ss['suivi-menarche']||sn.age_premieres_regles);
+  const anneesDepuis=(mAge&&age)?(age-mAge):null;
+  const regles=mAge?(mAge+' ans'+(anneesDepuis!==null&&anneesDepuis>=0?' · il y a '+anneesDepuis+' ans':'')):'';
+  const reg=[sn.cycle_regularite, sn.cycle_duree_j?sn.cycle_duree_j+' j':'', sn.regles_duree_j?('règles '+sn.regles_duree_j+' j'):'', sn.regles_abondance].filter(Boolean).join(' · ');
+  const regCls=/irr|absent|aménorr/i.test(sn.cycle_regularite||'')?'warn':'';
+  const ddrRaw=ss['suivi-ddr']||sn.dernieres_regles||'';
+  const ddrD=parseDateFlex(ddrRaw);
+  let ddrTxt='';
+  if(ddrD){ const j=Math.floor((new Date()-ddrD)/86400000)+1; ddrTxt=ddrD.toLocaleDateString('fr-FR',{day:'numeric',month:'short'})+((j>=1&&j<=120)?' · J'+j:''); }
+  const diagTxt=(sn.diagnostics_actifs||'');
+  let stade='';
+  if(/périménopause/i.test(diagTxt)) stade='Périménopause';
+  else if(/ménopause/i.test(diagTxt)) stade='Ménopause';
+  const pilJeune=sn.pilule_jeune_cycles_inconnus==='oui'||ss.pilule_jeune_cycles_inconnus==='oui';
+  const b2=blk('Contexte hormonal',
+    P('Enfants',enfants)+
+    P('Grossesse / projet',gross&&gross!=='Non concernée'?E(gross):(gross?'Non concernée':''),grossCls)+
+    P('Contraception',contra?E(contra)+(modifContra?' <span style="font-weight:500">(modif. signalée au suivi)</span>':''):'',contraCls)+
+    (pilJeune?P('Pilule prise jeune','Cycles naturels jamais observés','warn'):'')+
+    P('Premières règles',regles)+
+    P('Cycle',E(reg),regCls,'wide')+
+    P('Dernières règles',ddrTxt)+
+    (stade?P('Stade',stade,'warn'):''),
+    modifContra?('Modification de contraception signalée au dernier suivi : '+E(modifContra)):'');
+
+  // 3. Diagnostics & bilans
+  const jeuneDiag=/moins de 8 ans/i.test(sn.premieres_regles_resume||ss.premieres_regles_resume||'');
+  const bilans=(sn.bilans_recommandes||'').trim();
+  const b3=blk('Diagnostics &amp; bilans',
+    P('Diagnostics posés',diagTxt?E(diagTxt):'','', 'wide')+
+    (jeuneDiag?P('À reconsidérer','Diagnostic de SOPK posé moins de 8 ans après les premières règles','alert','wide'):'')+
+    P('Profil dominant SOPK',sn.sopk_profil_dominant?E(sn.sopk_profil_dominant):'')+
+    P('Bilans à demander',bilans?E(bilans):'','', 'wide'));
+
+  // 4. Sécurité
+  const secuDefs=[['secu_cancer','Cancer hormono-dépendant'],['secu_epilepsie','Épilepsie'],['secu_asthme','Asthme'],['secu_renal','Rénal'],['secu_hepatique','Hépatique'],['secu_gastrite','Gastrite / ulcère'],['secu_cardiovasculaire','Cardiovasculaire'],['secu_allergie_he','Allergie huiles essentielles']];
+  const secuAlertes=secuDefs.filter(([k])=>sn[k]&&!/^(non|non concern)/i.test(sn[k])).map(([k,l])=>P(l,E(sn[k]),'alert'));
+  const nonRenseignes=secuDefs.filter(([k])=>!sn[k]).length;
+  let b4In='';
+  if(sn.alertes_medicales) b4In+=P('Alerte médicale',E(String(sn.alertes_medicales).replace(/\n/g,' · ')),'alert','wide');
+  b4In+=secuAlertes.join('');
+  if(sn.traitements_vigilance) b4In+=P('Traitements à surveiller',E(sn.traitements_vigilance),'alert','wide');
+  if(sn.allergies_alim) b4In+=P('Allergies alimentaires',E(sn.allergies_alim),'warn','wide');
+  if(!b4In) b4In=qc?(nonRenseignes>=secuDefs.length?P('Sécurité','',''):P('Sécurité','Aucun point de vigilance déclaré','ok')):P('Sécurité','','');
+  const b4=blk('Sécurité — à ne jamais rater',b4In,(qc&&nonRenseignes>0&&nonRenseignes<secuDefs.length)?(nonRenseignes+' question(s) de sécurité non renseignée(s) en consultation.'):'');
+
+  // 5. Évolution
+  let evols={}; try{ evols=JSON.parse(ss._evols||'{}'); }catch(e){}
+  const evChip=(re,label)=>{
+    const k=Object.keys(evols).find(x=>re.test(x)); if(!k) return '';
+    const v=evols[k], sym=v==='up'?'↑ mieux':v==='down'?'↓ moins bien':'→ stable';
+    return `<span class="fh-evol ${v}">${E(label)} : ${sym}</span>`;
+  };
+  const evHtml=[evChip(/cycle|règles/i,'Cycles'),evChip(/sommeil/i,'Sommeil'),evChip(/énergie|fatigue/i,'Énergie'),evChip(/poids|taille/i,'Poids / tour de taille')].join('');
+  const today=new Date(); today.setHours(0,0,0,0);
+  const futurs=(cr||[]).filter(r=>r.status!=='annule'&&r.date&&new Date(r.date)>=today).sort((a,b)=>new Date(a.date)-new Date(b.date));
+  const dernierSuivi=qs?fmtDate(qs.created_at):'';
+  const tx=(sn.traitements_recus||'').split('\n').filter(Boolean).map(l=>l.replace(/^\[[^\]]*\]\s*/,'')).slice(0,6).join(' · ');
+  const b5=blk('Évolution &amp; suite',
+    P('Prochain RDV',futurs[0]?fmtDate(futurs[0].date):'')+
+    P('Dernier suivi',dernierSuivi)+
+    P('Traitements déclarés (consultation)',tx?E(tx):'','', 'wide')+
+    (evHtml?`<div style="flex:1 1 100%;display:flex;flex-wrap:wrap;gap:6px">${evHtml}</div>`:P('Évolution depuis le dernier suivi','')));
+
+  const entete=qc?'':`<div class="fh-empty">Aucun questionnaire de consultation rattaché à cette fiche : la carte se remplit automatiquement dès qu'un questionnaire est enregistré.</div>`;
+  const secuEnPremier=/fh-p alert/.test(b4);
+  return `<div class="fh-card" id="fiche-hormonale">${entete}${secuEnPremier?b4:''}${b1}${b2}${b3}${secuEnPremier?'':b4}${b5}</div>`;
+}
+
 async function loadQuestionnaires(cid){
   try{
     const r=await sb('questionnaires?client_id=eq.'+encodeURIComponent(cid)+'&order=created_at.desc&select=id,type,prenom,snapshot,created_at');
@@ -5683,6 +5821,7 @@ function renderFiche(c){
             ${c.tel?`<span>${escH(c.tel)}</span>`:''}
           </div>
           <div class="fv2-tags">${tagHtml}</div>
+          ${buildFicheHormonale(c, age, cr)}
           ${briefHtml}
         </div>
         <div class="fv2-actions">

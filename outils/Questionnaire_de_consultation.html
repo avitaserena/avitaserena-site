@@ -4465,6 +4465,16 @@ function recStop(){ recLaunch('Arrêter l’enregistrement'); recSetState('done'
           </select>
         </div>
       </div>
+      <!-- DATE DES DERNIÈRES RÈGLES (02/10/2026) : champ « fi2 » (hors sauvegarde positionnelle), sauvegardé sous « ddr » ;
+           affiché dans la carte « coup d'œil » de la fiche cliente du CRM. -->
+      <div class="g3" style="margin-top:6px">
+        <div><label class="fl" for="ddr">Date des dernières règles (1er jour)</label>
+          <input class="fi2" type="date" id="ddr" onchange="majJourCycleDDR()" oninput="majJourCycleDDR()">
+        </div>
+        <div><label class="fl">Jour du cycle (calculé)</label>
+          <div id="ddr-jour" style="padding:11px 15px;font-size:15px;color:var(--ardoise)">—</div>
+        </div>
+      </div>
       <div><label class="fl">Douleurs, SPM, détails libres</label>
         <textarea class="fi" placeholder="Saisissez vos notes…"></textarea>
 <div class="ex-chips" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px"><button type="button" class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Dysménorrhée invalidante J1-J2 (7/10) → irradiation lombes + cuisses + nausées, arrêts de travail réguliers → endométriose à explorer.</button><button type="button" class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> SPM sévère : irritabilité + pleurs + seins gonflés + gonflement corps J-7 à J-1 (disparaît dès J1 des règles) → insuffisance lutéale probable + dominance œstrogénique.</button><button type="button" class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Règles abondantes avec caillots &gt; 7 cm → ferritine basse ? fibrome utérin ?</button><button type="button" class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Cycles courts (&lt; 25 j) → insuffisance en phase lutéale.</button><button type="button" class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Cycles irréguliers (25-45 j) → SOPK ?</button></div>
@@ -9721,6 +9731,7 @@ function captureSnapshot() {
   document.querySelectorAll('.chip.on').forEach((c, i) => { chips.push(c.textContent.replace('✓','').trim()); });
   snap['chips'] = JSON.stringify(chips);
   snap['menarche'] = (document.getElementById('menarche-ado')?.value || document.getElementById('menarche-sopk')?.value || '');
+  snap['ddr'] = document.getElementById('ddr')?.value || '';
   // Check-items cochés (14/09/2026, bug remonté par Sabrina — voir explication détaillée dans
   // restoreSnapshot ci-dessous : capturé par le TEXTE de la question, plus par sa position dans
   // le document, qui bouge à chaque modification du questionnaire).
@@ -9866,6 +9877,7 @@ function restoreSnapshot(snap) {
   document.querySelectorAll('input.fi').forEach((el, i) => { const v = snap['input_' + (el.id || i)]; if (v !== undefined) el.value = v; });
   document.querySelectorAll('select.fi').forEach((el, i) => { const v = snap['select_' + (el.id || i)]; if (v) el.value = v; });
   document.querySelectorAll('textarea.fi').forEach((el, i) => { const v = snap['ta_' + (el.id || i)]; if (v !== undefined) el.value = v; });
+  try { const ddrEl = document.getElementById('ddr'); if (ddrEl && snap['ddr']) { ddrEl.value = snap['ddr']; majJourCycleDDR(); } } catch(e) {}
   try { if (snap['menarche'] !== undefined) { ['menarche-ado','menarche-sopk'].forEach(id => { const e = document.getElementById(id); if (e) e.value = snap['menarche']; }); } } catch(e) {}
   // Chips
   try {
@@ -10025,6 +10037,21 @@ function collectAllData() {
   // ci-dessous (risque de mauvais étiquetage si un autre label précède dans le même bloc).
   d.tabac_fumeuse = document.getElementById('tabac-consult')?.value || '';
   // Âge des premières règles + lecture de la pilule prise jeune (02/10/2026) : repris par le suivi et le générateur
+  // ── Carte « coup d'œil » de la fiche cliente (CRM, 02/10/2026) : valeurs structurées, lues telles quelles par le CRM ──
+  d.taille_cm = document.getElementById('taille')?.value || '';
+  d.poids_kg = document.getElementById('poids')?.value || '';
+  d.imc = document.getElementById('imc')?.value || '';
+  d.orientation_medecin = document.getElementById('orientation-medecin')?.querySelector('.chip.on')?.textContent?.trim() || '';
+  d.medecin_referent = document.getElementById('medecin-referent')?.value?.trim() || '';
+  d.enfants_oui_non = document.getElementById('enfants-oui-non')?.querySelector('.chip.on')?.textContent?.trim() || '';
+  d.nb_enfants = d.enfants_oui_non === 'Oui' ? document.querySelectorAll('.enfant-row').length : (d.enfants_oui_non === 'Non' ? 0 : '');
+  const _valLbl = (txt, scope) => { const l = [...(scope || document).querySelectorAll('label.fl')].find(x => x.textContent.trim() === txt); const c = l && l.parentElement ? l.parentElement.querySelector('select, input') : null; return c ? (c.value || '').trim() : ''; };
+  d.cycle_regularite = _valLbl('Régularité');
+  d.cycle_duree_j = _valLbl('Durée du cycle (j)');
+  d.regles_duree_j = _valLbl('Durée règles (j)');
+  d.regles_abondance = _valLbl('Abondance');
+  d.dernieres_regles = document.getElementById('ddr')?.value || '';
+  d.sopk_profil_dominant = _valLbl('Profil dominant', document.getElementById('sec-spec-sopk'));
   d.age_premieres_regles = (document.getElementById('menarche-ado')?.value || document.getElementById('menarche-sopk')?.value || '').trim();
   d.pilule_jeune_cycles_inconnus = document.querySelector('.trig-check[data-funnel="pilule-jeune-ado"].checked') ? 'oui' : '';
   d.premieres_regles_resume = (document.getElementById('menarche-sopk-calc')?.textContent || document.getElementById('menarche-ado-calc')?.textContent || '').trim();
@@ -13123,6 +13150,14 @@ function syncMenarche(src){
   var a=document.getElementById('menarche-ado'), b=document.getElementById('menarche-sopk');
   if(src===a&&b) b.value=a.value; else if(src===b&&a) a.value=b.value;
   majMenarche();
+}
+
+function majJourCycleDDR(){
+  var el=document.getElementById('ddr'), out=document.getElementById('ddr-jour');
+  if(!el||!out) return;
+  if(!el.value){ out.textContent='—'; return; }
+  var d0=new Date(el.value+'T00:00:00'), n=Math.floor((new Date()-d0)/86400000)+1;
+  out.textContent=(n>=1&&n<=120)?('J'+n+' (à la date du jour)'):'Date à vérifier';
 }
 function majMenarche(){
   var a=document.getElementById('menarche-ado'), b=document.getElementById('menarche-sopk');

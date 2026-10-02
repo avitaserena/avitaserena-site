@@ -617,6 +617,19 @@ function recStop(){ recLaunch('Arrêter l’enregistrement'); recSetState('done'
     <p style="font-size:11px;color:var(--gris);margin-top:4px;line-height:1.5">Le tabac augmente les besoins en vitamine C et en antioxydants, et entretient le stress oxydatif déjà travaillé sur d'autres axes — utile à signaler ici pour que ce soit repris dans le protocole.</p>
   </div>
 
+  <!-- MISE À JOUR DE LA FICHE CLIENTE (02/10/2026) : ces deux valeurs alimentent la carte « coup d'œil » du CRM
+       (poids actuel, dernières règles). Champs « fi2 » de type « search » : hors sauvegarde positionnelle des autres
+       champs ; sauvegardés sous leur id (voir captureSnapshot). Laisser vide si inchangé. -->
+  <div style="margin:14px 0 4px;padding:12px 16px;border-left:3px solid var(--ocre);background:var(--off);border-radius:10px">
+    <div class="g2">
+      <div><label class="fl" style="margin-top:0" for="suivi-poids">Poids actuel (kg) — si pesée</label>
+        <input class="fi2" type="search" id="suivi-poids" inputmode="decimal" placeholder="ex : 62,5" style="max-width:240px"></div>
+      <div><label class="fl" style="margin-top:0" for="suivi-ddr">Dernières règles (1er jour)</label>
+        <input class="fi2" type="search" id="suivi-ddr" placeholder="JJ/MM/AAAA" style="max-width:240px"></div>
+    </div>
+    <p style="font-size:11px;color:var(--gris);margin-top:6px;line-height:1.5">Ces deux valeurs mettent à jour la carte « coup d'œil » de la fiche cliente dans le CRM. Laissez vide si rien n'a changé.</p>
+  </div>
+
   <!-- AJOUTÉ (20/09/2026, Claude, demande Sabrina) : même logique que côté consultation initiale
        (audit complet du 20/09) — ces réponses ne peuvent venir que de la cliente en direct, donc
        jamais à ressaisir seule dans le générateur une fois raccroché. Préremplies depuis la
@@ -4773,6 +4786,8 @@ function captureSnapshot() {
   snap._consult_sympt=JSON.stringify(consultSymptListe||[]);
   snap._ts=Date.now();
   snap['suivi-menarche']=(document.getElementById('suivi-menarche')||{}).value||'';
+  snap['suivi-poids']=(document.getElementById('suivi-poids')||{}).value||'';
+  snap['suivi-ddr']=(document.getElementById('suivi-ddr')||{}).value||'';
   snap._section=currentSection;
   try { snap._ai_panel = JSON.stringify(window.AIPanel ? window.AIPanel.getEntries() : []); } catch (e) {}
   snap._diagnostics_list = JSON.stringify(diagnosticsList);
@@ -6420,6 +6435,8 @@ function collectData() {
 
   // Âge des premières règles et pilule prise jeune (02/10/2026) — transmis au générateur
   d.agePremieresRegles = (document.getElementById('suivi-menarche')?.value || '').trim();
+  d.poidsActuel = (document.getElementById('suivi-poids')?.value || '').trim();
+  d.dernieresReglesSuivi = (document.getElementById('suivi-ddr')?.value || '').trim();
   d.piluleJeuneCyclesInconnus = document.getElementById('suivi-pilule-jeune')?.classList.contains('checked') ? 'oui' : '';
   d.premieresReglesResume = (document.getElementById('suivi-menarche-resume')?.textContent || '').trim();
 
@@ -6847,6 +6864,8 @@ function finalise() {
     nouveaux_elements_axes: d.nouveauxElementsParAxe,
     notes_libres_axes: d.notesLibresParAxe,
     age_premieres_regles: d.agePremieresRegles,
+    poids_actuel: d.poidsActuel,
+    dernieres_regles: d.dernieresReglesSuivi,
     pilule_jeune_cycles_inconnus: d.piluleJeuneCyclesInconnus,
     premieres_regles_resume: d.premieresReglesResume,
     modif_hormonale: d.modifHormonale,
