@@ -2008,6 +2008,12 @@ a,button{-webkit-tap-highlight-color:transparent}
            (affiche son propre message d'attente si trop tôt), l'affichage des recommandations,
            et désormais uniquement un bouton "Refuser" par recommandation (plus de "Valider" —
            décision du 26/08/2026 : le silence de la cliente vaut acceptation). -->
+      <!-- MES CURES EN COURS (02/10/2026) : alimenté par la date de début que la cliente saisit sous chaque
+           complément de son protocole (table cures_complements) ; masqué tant qu'aucune date n'est saisie. -->
+      <div id="curesEnCours" style="display:none;margin-bottom:20px;padding:18px 22px;border-radius:16px;border:1px solid rgba(33,28,22,.08);background:#fff">
+        <div style="font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--gris);margin-bottom:10px">Mes compléments en cours</div>
+        <div id="curesEnCoursListe"></div>
+      </div>
       <div style="margin-bottom:20px;border-radius:16px;overflow:hidden;border:1px solid rgba(33,28,22,.08);background:var(--ardoise)">
         <iframe id="protocoleFrame" src="" title="Votre protocole personnalisé" style="width:100%;height:680px;border:none;display:block;background:var(--ardoise)"></iframe>
       </div>
@@ -2739,6 +2745,7 @@ function openSpace(prenom, programme, chatAddonActif, chatAddonSource){
   }
   // Initialiser le dashboard
   setTimeout(function(){
+    chargerCuresEspace();
     initDashboard();
     openTabFromHash();
     loadJournalHistory();
@@ -6113,6 +6120,38 @@ function initAppMobile() {
   afficherBilan(30, null);
 }
 
+
+/* ── MES CURES EN COURS (02/10/2026) ── */
+async function chargerCuresEspace(){
+  var session = avsGetSession();
+  var box = document.getElementById('curesEnCours'), liste = document.getElementById('curesEnCoursListe');
+  if(!session.key || !box || !liste) return;
+  try {
+    var token = await Auth.getValidAccessToken();
+    var res = await fetch(SUPA_URL + '/rest/v1/cures_complements?client_key=eq.' + encodeURIComponent(session.key) + '&statut=neq.arretee&select=complement,duree_mois,date_debut,date_fin,statut&order=date_debut.desc', {
+      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (token || SUPA_KEY) }
+    });
+    if(!res.ok) return;
+    var rows = (await res.json()).filter(function(r){ return r.date_debut; }).slice(0,8);
+    if(!rows.length){ box.style.display = 'none'; return; }
+    var fmt = function(iso){ return new Date(iso + 'T12:00:00').toLocaleDateString('fr-FR', { day:'numeric', month:'long', year:'numeric' }); };
+    var now = new Date();
+    liste.innerHTML = rows.map(function(r){
+      var txt;
+      if(!r.duree_mois || !r.date_fin){ txt = 'commencé le ' + fmt(r.date_debut); }
+      else {
+        var total = Math.round(r.duree_mois * 30.4375), j = Math.floor((now - new Date(r.date_debut + 'T12:00:00')) / 86400000) + 1;
+        txt = (r.date_fin <= now.toISOString().slice(0,10)) ? 'cure terminée le ' + fmt(r.date_fin) : (j < 1 ? 'débute le ' + fmt(r.date_debut) : 'jour ' + j + ' sur ' + total + ' · fin prévue le ' + fmt(r.date_fin));
+      }
+      var nom = String(r.complement || '').replace(/</g,'&lt;');
+      return '<div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:8px 0;border-top:1px solid rgba(33,28,22,.06);font-size:15px;line-height:1.5"><span style="font-weight:600;color:var(--ardoise)">' + nom + '</span><span style="color:var(--gris)">' + txt + '</span></div>';
+    }).join('');
+    box.style.display = '';
+  } catch(e){ console.warn('Cures non chargées :', e); }
+}
+window.addEventListener('message', function(ev){
+  if(ev.origin === location.origin && ev.data && ev.data.type === 'avs-cures-maj') chargerCuresEspace();
+});
 </script>
 </body>
 </html>

@@ -2026,6 +2026,7 @@ let sourcesDecouverte=[]; // table dédiée sources_decouverte — réponses au 
 let seoStats=[]; // table seo_search_console_daily — synchronisée chaque nuit par la fonction sync-search-console
 let taches=[],rdvs=[],emailCtx=null,curTab='msg',curSearch='',curFilter='all';
 let memoAlerts=[];
+let curesAll=[]; // cures de compléments (table cures_complements) — date de début saisie par la cliente dans son protocole
 let memoHistoryAll=[]; // tous les mémos PHV, sans dédoublonnage — historique complet par cliente
 let clientMessages=[];
 let clientErrorLogs=[];
@@ -2099,6 +2100,7 @@ async function init(){
     loadTaches(),
     loadRdvs(),
     loadMemoAlerts(),
+    loadCures(),
     loadClientMessages(),
     loadErreurs(),
     loadSettingsFromSupabase(),
@@ -2906,6 +2908,30 @@ function renderActionsJour(){
       '</div>'});
   });
 
+  // 5bis) Cures de compléments TERMINÉES — alerte uniquement à la fin de la cure (jamais avant)
+  const curesParCliente={};
+  curesFinies().forEach(cu=>{ (curesParCliente[cu.client_key]=curesParCliente[cu.client_key]||[]).push(cu); });
+  Object.entries(curesParCliente).forEach(([ck,list])=>{
+    const client=db.clients.find(c=>c.id===ck);
+    const nomC=client?(client.prenom+' '+(client.nom||'')):(((list[0].prenom||'')+' '+(list[0].nom||'')).trim()||'Cliente');
+    const noms=[...new Set(list.map(x=>x.complement))].join(', ');
+    const finMax=list.map(x=>x.date_fin).sort().slice(-1)[0];
+    const jours=Math.max(0,Math.floor((new Date(tdy+'T12:00:00')-new Date(finMax+'T12:00:00'))/86400000));
+    items.push({u:3, html:
+      '<div class="feed-item feed-tache">'+
+        '<div class="feed-ic">'+ic('check')+'</div>'+
+        '<div class="feed-body">'+
+          '<div class="feed-title">'+escH(nomC)+' <span class="feed-tag tag-tache">Cure terminée</span></div>'+
+          '<div class="feed-text">'+escH(noms)+' · terminée '+(jours===0?"aujourd'hui":'depuis '+jours+' jour'+(jours>1?'s':''))+' (fin prévue le '+fmtDate(finMax)+')</div>'+
+        '</div>'+
+        '<div class="feed-actions">'+
+          (client?'<button class="feed-btn feed-btn-ghost" data-ck="'+escH(ck)+'" onclick="openFiche(this.dataset.ck)">Fiche</button>':'')+
+          '<button class="feed-btn feed-btn-ghost" data-ck="'+escH(ck)+'" onclick="cureTraitee(this.dataset.ck)">Traité</button>'+
+          '<button class="feed-btn" data-ck="'+escH(ck)+'" onclick="ouvrirMailCure(this.dataset.ck)" '+(client&&client.email?'':'disabled title="Email manquant sur la fiche"')+'>'+ic('mail')+' Préparer le mail</button>'+
+        '</div>'+
+      '</div>'});
+  });
+
   // 6) Tâches clientes échéance aujourd'hui
   const tachesJour = (typeof taches!=='undefined'?taches:[]).filter(t=>t.echeance===tdy && t.statut!=='done' && t.statut!=='archive');
   [...tachesJour].sort((a,b)=>(a.heure||'99:99').localeCompare(b.heure||'99:99')).forEach(t=>{
@@ -3168,6 +3194,61 @@ async function loadMemoAlerts(){
     console.error('[CRM] Erreur loadMemoAlerts:', e.message);
     memoAlerts = [];
   }
+}
+
+
+// ── CURES DE COMPLÉMENTS (02/10/2026) ───────────────────────────────────────────────────────
+// La cliente indique dans son protocole la date de début de chaque complément ; la durée de la cure (en mois)
+// vient du protocole. À la FIN de la cure (date de fin atteinte), une alerte apparaît dans « Aujourd'hui »
+// avec un bouton « Préparer le mail » (modifiable avant envoi). Aucune alerte avant la fin.
+async function loadCures(){
+  try{
+    curesAll = await sbAll('cures_complements?order=date_fin.asc');
+    console.log('[CRM] ✓ Cures de compléments:', curesAll.length);
+  }catch(e){
+    console.error('[CRM] ✗ Cures de compléments:', e.message);
+    curesAll = [];
+  }
+}
+function curesFinies(){
+  const t=today();
+  return (curesAll||[]).filter(c=>c.statut==='en_cours' && c.date_fin && c.date_fin<=t && !c.alerte_traitee && !c.mail_envoye_le);
+}
+function addJoursISO(iso,n){ const d=new Date(iso+'T12:00:00'); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); }
+function ouvrirMailCure(ck){
+  const c=db.clients.find(x=>x.id===ck);
+  if(!c){ toast('Cliente introuvable','err'); return; }
+  const list=curesFinies().filter(x=>x.client_key===ck);
+  if(!list.length){ toast('Plus aucune cure terminée à traiter','warn'); return; }
+  const p=c.prenom||'vous', st=db.settings||defSettings();
+  const noms=[...new Set(list.map(x=>x.complement))];
+  const intro = noms.length===1
+    ? 'Votre cure de '+noms[0]+' est arrivée à son terme.'
+    : 'Vos cures suivantes sont arrivées à leur terme :\n'+noms.map(n=>'- '+n).join('\n');
+  const sub = noms.length===1 ? 'Votre cure de '+noms[0]+' : comment cela s’est-il passé ?' : 'Vos cures de compléments : comment cela s’est-il passé ?';
+  const body='Bonjour '+p+',\n\n'+intro+'\n\nJe voulais prendre de vos nouvelles : comment cela s’est-il passé ? Avez-vous remarqué des changements depuis le début (énergie, digestion, sommeil, cycle…) ? Y a-t-il eu des difficultés ou des inconforts ?\n\nVos retours me permettent d’ajuster la suite de votre accompagnement au plus juste. Avant de modifier quoi que ce soit, nous en parlerons ensemble. Vous pouvez répondre directement à ce mail.\n\nAvec bienveillance,\n'+st.nom+'\nA VITA SERENA';
+  ouvrirMailModal(ck,'cure',{ tpl:{sub,body}, onSent: async ()=>{
+    await Promise.allSettled(list.map(x=>sb('cures_complements?id=eq.'+x.id,{method:'PATCH',body:JSON.stringify({mail_envoye_le:new Date().toISOString(),statut:'terminee',updated_at:new Date().toISOString()})})));
+    await loadCures(); renderActionsJour();
+  }});
+}
+async function cureTraitee(ck){
+  const list=curesFinies().filter(x=>x.client_key===ck);
+  try{
+    await Promise.all(list.map(x=>sb('cures_complements?id=eq.'+x.id,{method:'PATCH',body:JSON.stringify({alerte_traitee:true,updated_at:new Date().toISOString()})})));
+    await loadCures(); renderActionsJour(); toast('Alerte marquée comme traitée','ok');
+  }catch(e){ toast('Erreur : '+e.message,'err'); }
+}
+async function definirDureeCure(id){
+  const inp=document.getElementById('cd-'+id); const m=parseFloat(String(inp?.value||'').replace(',','.'));
+  const cu=curesAll.find(x=>String(x.id)===String(id));
+  if(!cu||!m||m<=0){ toast('Indiquez une durée en mois','warn'); return; }
+  try{
+    await sb('cures_complements?id=eq.'+id,{method:'PATCH',body:JSON.stringify({duree_mois:m,date_fin:addJoursISO(cu.date_debut,Math.round(m*30.4375)),updated_at:new Date().toISOString()})});
+    await loadCures();
+    const c=db.clients.find(x=>x.id===cu.client_key); if(c) renderFiche(c);
+    renderActionsJour(); toast('Durée enregistrée','ok');
+  }catch(e){ toast('Erreur : '+e.message,'err'); }
 }
 
 async function loadClientMessages(){
@@ -5292,9 +5373,26 @@ function buildFicheHormonale(c, age, cr){
     P('Traitements déclarés (consultation)',tx?E(tx):'','', 'wide')+
     (evHtml?`<div style="flex:1 1 100%;display:flex;flex-wrap:wrap;gap:6px">${evHtml}</div>`:P('Évolution depuis le dernier suivi','')));
 
+  // 6. Compléments en cours (dates de début saisies par la cliente dans son protocole)
+  const curesC=(typeof curesAll!=='undefined'?curesAll:[]).filter(x=>x.client_key===cid && x.statut!=='arretee').sort((a,b)=>(b.date_debut||'').localeCompare(a.date_debut||'')).slice(0,10);
+  const tdyC=new Date().toISOString().slice(0,10); // (pas today() : variable locale « today » déclarée plus haut dans cette fonction)
+  const cureP=curesC.map(x=>{
+    let txt='', cls='';
+    if(!x.duree_mois){
+      txt='début '+fmtDate(x.date_debut)+' · durée à saisir : <input id="cd-'+x.id+'" type="number" step="0.5" min="0.5" style="width:56px"> mois <button type="button" class="feed-btn" onclick="definirDureeCure(\''+x.id+'\')">OK</button>'; cls='warn';
+    } else if(x.date_fin<=tdyC){
+      txt='terminée le '+fmtDate(x.date_fin)+(x.mail_envoye_le?' · mail envoyé le '+fmtDate(x.mail_envoye_le):' · mail à envoyer'); cls=x.mail_envoye_le?'ok':'alert';
+    } else {
+      const tot=Math.round(x.duree_mois*30.4375), j=Math.floor((new Date(tdyC+'T12:00:00')-new Date(x.date_debut+'T12:00:00'))/86400000)+1;
+      txt=(j<1?'débute le '+fmtDate(x.date_debut):'jour '+j+' sur '+tot)+' · fin le '+fmtDate(x.date_fin);
+    }
+    return P(x.complement+(x.duree_mois?' · '+String(x.duree_mois).replace('.',',')+' mois':''),txt,cls,'wide');
+  }).join('');
+  const b6=blk('Compléments en cours',cureP||P('Dates de début','','', 'wide'),curesC.length?'':'Aucune date de début saisie par la cliente pour le moment (elle la renseigne sous chaque complément de son protocole).');
+
   const entete=qc?'':`<div class="fh-empty">Aucun questionnaire de consultation rattaché à cette fiche : la carte se remplit automatiquement dès qu'un questionnaire est enregistré.</div>`;
   const secuEnPremier=/fh-p alert/.test(b4);
-  return `<div class="fh-card" id="fiche-hormonale">${entete}${secuEnPremier?b4:''}${b1}${b2}${b3}${secuEnPremier?'':b4}${b5}</div>`;
+  return `<div class="fh-card" id="fiche-hormonale">${entete}${secuEnPremier?b4:''}${b1}${b2}${b3}${secuEnPremier?'':b4}${b5}${b6}</div>`;
 }
 
 async function loadQuestionnaires(cid){
@@ -6159,11 +6257,24 @@ async function proxyFetch(url, opts={}){
   });
 }
 
-function ouvrirMailModal(clientId, tplKey){
+
+// Contenu d'un mail libre préparé depuis le CRM : si une signature est enregistrée (Mon cabinet),
+// elle est ajoutée à la fin (HTML) et remplace la formule « Prénom Nom / A VITA SERENA » des modèles ;
+// sinon le texte part tel quel (texte brut), comme avant.
+function contenuMailAvecSignature(msg){
+  const sig=((db.settings&&db.settings.signature)||'').trim();
+  if(!sig) return { textContent: msg };
+  const nom=((db.settings&&db.settings.nom)||'Sabrina Castelli').replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  const corps=msg.replace(new RegExp('\\n+\\s*(?:'+nom+'\\s*\\n+\\s*)?A VITA SERENA\\s*$','i'),'').replace(new RegExp('\\n+\\s*'+nom+'\\s*$','i'),'').trimEnd();
+  const html='<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;color:#1E1E1C">'+escH(corps).replace(/\n/g,'<br>')+'</div><br>'+(/<[a-z][\s\S]*>/i.test(sig)?sig:escH(sig).replace(/\n/g,'<br>'));
+  return { htmlContent: html };
+}
+
+function ouvrirMailModal(clientId, tplKey, opts){
   const c = db.clients.find(x=>x.id===clientId);
   if(!c){ toast('Cliente introuvable','err'); return; }
   const t = tpls(c);
-  const tpl = t[tplKey] || { sub:'', body:'' };
+  const tpl = (opts && opts.tpl) || t[tplKey] || { sub:'', body:'' };
   const email = c.email || '';
 
   document.getElementById('modal-mail')?.remove();
@@ -6209,6 +6320,9 @@ function ouvrirMailModal(clientId, tplKey){
   ta.style.cssText = 'width:100%;box-sizing:border-box;border:1.5px solid var(--taupe);border-radius:8px;padding:10px;font-family:"Be Vietnam Pro",sans-serif;font-size:13px;color:var(--ardoise);resize:vertical;outline:none;line-height:1.7';
 
   body.appendChild(toRow); body.appendChild(subRow); body.appendChild(ta);
+  const sigNote=document.createElement('div'); sigNote.style.cssText='font-size:11.5px;color:var(--muted)';
+  sigNote.textContent=((db.settings&&db.settings.signature)||'').trim()?'Envoyé depuis sabrina@avitaserena.com — votre signature sera ajoutée automatiquement à la fin du mail.':'Envoyé depuis sabrina@avitaserena.com. Aucune signature enregistrée : ajoutez-la dans « Mon cabinet » pour qu\u2019elle soit jointe automatiquement.';
+  body.appendChild(sigNote);
 
   const footer = document.createElement('div');
   footer.style.cssText = 'padding:14px 24px;border-top:1px solid var(--grege);display:flex;justify-content:flex-end;gap:10px;flex-shrink:0';
@@ -6235,7 +6349,8 @@ function ouvrirMailModal(clientId, tplKey){
         body: JSON.stringify({
           sender:{ name:'Sabrina \u00b7 A Vita Serena', email:'sabrina@avitaserena.com' },
           to:[{ email:to, name:c.prenom+' '+(c.nom||'') }],
-          subject: sub, textContent: msg
+          replyTo:{ email:'sabrina@avitaserena.com', name:'Sabrina \u00b7 A Vita Serena' },
+          subject: sub, ...contenuMailAvecSignature(msg)
         })
       });
       if(!res.ok){ const e=await res.json(); throw new Error(e.message||res.status); }
@@ -6245,6 +6360,7 @@ function ouvrirMailModal(clientId, tplKey){
       // Le template J+21 est celui qui propose un parcours (voir tpls() plus haut) — on marque
       // automatiquement la proposition comme envoyée pour le suivi "propositions sans suite".
       if(tplKey==='j21'){ await marquerPropositionEnvoyee(c.id); }
+      if(opts && opts.onSent){ try{ await opts.onSent(); }catch(e){ console.warn('[CRM] onSent :', e); } }
       toast('Email envoy\u00e9 \u00e0 '+to+' \u2713','ok');
       modal.remove();
       renderFiche(c);
@@ -6609,7 +6725,7 @@ async function exportFacturesMois(){
   }
 }
 
-function defSettings(){return{nom:'Sabrina Castelli',titre:'Naturopathe',adresse:'Porto-Vecchio, Corse',email:'sabrina@avitaserena.com',tel:'',siret:'',adeli:''};}
+function defSettings(){return{nom:'Sabrina Castelli',titre:'Naturopathe',adresse:'Porto-Vecchio, Corse',email:'sabrina@avitaserena.com',tel:'',siret:'',adeli:'',signature:''};}
 // Source de vérité = Supabase (table settings, id='praticien', colonne data jsonb).
 // Le localStorage ne sert plus que de cache d'affichage instantané pendant le chargement réseau —
 // jamais de donnée définitive écrite uniquement là, pour ne plus jamais perdre une saisie en silence.
@@ -6624,9 +6740,9 @@ async function loadSettingsFromSupabase(){
     console.error('Chargement Mon cabinet (Supabase) échoué, utilisation du cache local', e);
   }
 }
-function loadSettings(){const s=db.settings||defSettings();['nom','titre','adresse','email','tel','siret','adeli'].forEach(k=>{const el=document.getElementById('s-'+k);if(el)el.value=s[k]||'';});}
+function loadSettings(){const s=db.settings||defSettings();['nom','titre','adresse','email','tel','siret','adeli','signature'].forEach(k=>{const el=document.getElementById('s-'+k);if(el)el.value=s[k]||'';});}
 async function saveSettings(){
-  const data={nom:document.getElementById('s-nom')?.value||'',titre:document.getElementById('s-titre')?.value||'',adresse:document.getElementById('s-adresse')?.value||'',email:document.getElementById('s-email')?.value||'',tel:document.getElementById('s-tel')?.value||'',siret:document.getElementById('s-siret')?.value||'',adeli:document.getElementById('s-adeli')?.value||''};
+  const data={nom:document.getElementById('s-nom')?.value||'',titre:document.getElementById('s-titre')?.value||'',adresse:document.getElementById('s-adresse')?.value||'',email:document.getElementById('s-email')?.value||'',tel:document.getElementById('s-tel')?.value||'',siret:document.getElementById('s-siret')?.value||'',adeli:document.getElementById('s-adeli')?.value||'',signature:document.getElementById('s-signature')?.value||''};
   const btn=document.querySelector('#page-settings button[onclick="saveSettings()"]');
   if(btn){btn.disabled=true;btn.textContent='Enregistrement…';}
   try{
@@ -8806,6 +8922,7 @@ function ouvrirBilanEntree(clientId, mode){
           <div class="fg"><label class="fl">Adresse</label><input class="fi" id="s-adresse" value="Porto-Vecchio, Corse"></div>
           <div class="fg2"><div class="fg"><label class="fl">Email</label><input class="fi" id="s-email" value="sabrina@avitaserena.com"></div><div class="fg"><label class="fl">Téléphone</label><input class="fi" id="s-tel"></div></div>
           <div class="fg2"><div class="fg"><label class="fl">SIRET</label><input class="fi" id="s-siret"></div><div class="fg"><label class="fl">N° ADELI</label><input class="fi" id="s-adeli"></div></div>
+          <div class="fg"><label class="fl">Signature de mes emails</label><textarea class="fi" id="s-signature" rows="6" placeholder="Collez ici votre signature (texte ou code HTML, avec votre logo si besoin). Elle est ajoutée automatiquement à la fin des mails préparés depuis le CRM (cure terminée, suivi, relance…)."></textarea><div style="font-size:11.5px;color:var(--muted);margin-top:4px">Les mails partent depuis sabrina@avitaserena.com. Si ce champ est rempli, la signature est ajoutée à la fin de chaque mail et remplace la formule « Prénom Nom / A VITA SERENA » des modèles.</div></div>
           <button class="btn btn-primary" onclick="saveSettings()">Enregistrer</button>
         </div>
       </div>

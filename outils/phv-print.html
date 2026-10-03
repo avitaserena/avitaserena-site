@@ -173,6 +173,19 @@ body.pdf-export-mode .sec-page-logo svg{height:100%;width:auto;display:block}
 .reco-btn.active-ok{background:var(--vert);border-color:var(--vert);color:#fff}
 .reco-btn.active-non{background:#B8323A;border-color:#B8323A;color:#fff}
 
+
+/* ── SUIVI DES CURES DE COMPLÉMENTS (02/10/2026) : la cliente indique la date de début de chaque complément ── */
+.cure-box{margin-top:10px;padding:11px 14px;border-radius:11px;background:var(--off);border:1px dashed var(--taupe)}
+.cure-box .cure-dur{font-size:13px;font-weight:600;color:var(--ardoise)}
+.cure-box .cure-form{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:8px}
+.cure-box label{font-size:13.5px;color:#4A453E;display:flex;align-items:center;gap:8px}
+.cure-box input[type=date]{border:1px solid var(--taupe);border-radius:8px;padding:6px 9px;font-size:14px;font-family:'Be Vietnam Pro',sans-serif;color:var(--ardoise);background:#fff}
+.cure-box .cure-btn{padding:6px 16px;border-radius:99px;border:none;background:var(--ardoise);color:#fff;font-size:12.5px;font-weight:600;cursor:pointer;font-family:'Be Vietnam Pro',sans-serif}
+.cure-box .cure-btn:disabled{opacity:.55;cursor:default}
+.cure-box .cure-msg{margin-top:7px;font-size:13px;color:#4A453E;line-height:1.5}
+.cure-box.is-set{border-style:solid;border-color:var(--vert-cl);background:var(--vert-bg)}
+.reco-card-items .cure-box{margin:0 0 8px}
+
 /* En-tête non-interactif (pilier "bilan" — analyse, pas de recommandation à cocher) */
 .sec-body p.reco-header-plain{font-weight:700;font-size:16px;margin:22px 0 8px}
 .sec-body p.reco-header-plain:first-child{margin-top:0}
@@ -497,8 +510,11 @@ function parseContent(raw, accentColor, pilier) {
   let html = '';
   let card = null; // { title, introHtml, itemsHtml, listOpen, hasCheckable, stepNum }
   let leadUsed = false;
+  let lastReco = null; // dernière recommandation cochable créée (pour lui rattacher ses ◦ : posologie, durée…)
+  function addDet(t){ if(lastReco && recoState[lastReco]) recoState[lastReco].details += ' · ' + t; }
 
   function newCard(title){
+    lastReco = null;
     return { title: title, introHtml: '', itemsHtml: '', listOpen: false, hasCheckable: false, hasBulletDetail: false, stepNum: 0 };
   }
   function isEmpty(c){ return !c.introHtml && !c.itemsHtml; }
@@ -522,7 +538,7 @@ function parseContent(raw, accentColor, pilier) {
       head = `<div class="reco-card-head reco-card-head-plain"><div class="reco-card-title">${escH(card.title)}</div></div>`;
     } else {
       const itemId = 'reco' + (recoCounter++);
-      recoState[itemId] = { pilier: pilier, texte: card.title, etat: null, raison: '' };
+      recoState[itemId] = { pilier: pilier, texte: card.title, etat: null, raison: '', details: card.title + ' · ' + (card.introHtml + ' ' + card.itemsHtml).replace(/<[^>]*>/g,' ').replace(/\s+/g,' ') };
       head = `<div class="reco-card-head" id="li-${itemId}"><div class="reco-card-title" style="color:${bulletCol}">${escH(card.title)}</div><span class="reco-controls"><button type="button" class="reco-btn reco-btn-refuser" id="${itemId}-non" onclick="recoDecider('${itemId}')" title="Refuser cette recommandation">Refuser</button></span></div>`;
     }
     html += `<div class="reco-card">${head}${introBlock}${itemsBlock}</div>`;
@@ -537,6 +553,7 @@ function parseContent(raw, accentColor, pilier) {
     // Signal fiable à 100% pour les protocoles générés après cette mise à jour — pas de devinette nécessaire.
     if (/^◦/.test(l)) {
       const texte = l.replace(/^◦\s*/,'').trim();
+      if (texte) addDet(texte);
       if (texte && card) {
         card.hasBulletDetail = true;
         const c = classifyBullet(texte); // ne sert plus qu'à choisir l'HABILLAGE visuel (étape numérotée / libellé gras / puce simple)
@@ -564,12 +581,14 @@ function parseContent(raw, accentColor, pilier) {
 
       if (card) {
         const c = classifyBullet(texte);
+        if (c.kind !== 'check') addDet(texte);
         if (c.kind === 'check') {
           closeList(card);
           card.hasCheckable = true;
           card.hasBulletDetail = true;
           const itemId = 'reco' + (recoCounter++);
-          recoState[itemId] = { pilier: pilier, texte: texte, etat: null, raison: '' };
+          recoState[itemId] = { pilier: pilier, texte: texte, etat: null, raison: '', details: texte };
+          lastReco = itemId;
           card.itemsHtml += `<div class="reco-subcheck" id="li-${itemId}"><span class="txt">${escH(texte)}</span><span class="reco-controls"><button type="button" class="reco-btn reco-btn-refuser" id="${itemId}-non" onclick="recoDecider('${itemId}')" title="Refuser cette recommandation">Refuser</button></span></div>`;
         } else if (c.kind === 'step') {
           openList(card);
@@ -587,7 +606,8 @@ function parseContent(raw, accentColor, pilier) {
       } else {
         // puce isolée, sans titre au-dessus : elle est elle-même une recommandation à part entière
         const itemId = 'reco' + (recoCounter++);
-        recoState[itemId] = { pilier: pilier, texte: texte, etat: null, raison: '' };
+        recoState[itemId] = { pilier: pilier, texte: texte, etat: null, raison: '', details: texte };
+        lastReco = itemId;
         html += `<div class="reco-chip" id="li-${itemId}"><span class="reco-chip-txt">${escH(texte)}</span><span class="reco-controls"><button type="button" class="reco-btn reco-btn-refuser" id="${itemId}-non" onclick="recoDecider('${itemId}')" title="Refuser cette recommandation">Refuser</button></span></div>`;
       }
       continue;
@@ -664,6 +684,7 @@ function recoDecider(itemId){
     if(btnNon){ btnNon.classList.remove('active-non'); btnNon.textContent = 'Refuser'; }
     fermerRaisonBox(itemId);
     majBarreReco();
+    majCureVis();
     return;
   }
 
@@ -703,6 +724,114 @@ function confirmerRefus(itemId){
   if(btnNon){ btnNon.classList.add('active-non'); btnNon.textContent = 'Refusé — modifier'; }
   fermerRaisonBox(itemId);
   majBarreReco();
+  majCureVis();
+}
+
+
+/* ══════════════════════════════════════
+   SUIVI DES CURES DE COMPLÉMENTS (02/10/2026)
+   Sous chaque complément : durée de la cure (lue dans la posologie) + date de début saisie par la
+   cliente → table cures_complements, lue par le CRM (alerte à la FIN de la cure) et par l'espace cliente.
+══════════════════════════════════════ */
+let protocoleRef = '';
+const curesDB = {}; // itemId -> ligne enregistrée
+function cleCompl(t){ return String(t||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,' ').trim().slice(0,80); }
+function nomCompl(t){ const n = String(t||'').split(/\s[—–-]\s|\s*[:(]/)[0].trim(); return (n || String(t||'')).slice(0,70); }
+function parseDureeMois(txt){
+  const t = String(txt||'').toLowerCase().replace(/ /g,' ');
+  const num = '(\\d+(?:[.,]\\d+)?)(?:\\s*(?:à|a|-|–|ou)\\s*(\\d+(?:[.,]\\d+)?))?';
+  const toMois = (a,b,u) => {
+    let n = parseFloat(String(b||a).replace(',','.'));
+    if(/^sem/.test(u)) n = n/4.345; else if(/^j/.test(u)) n = n/30.44;
+    return Math.round(n*2)/2 || null;
+  };
+  let m = t.match(new RegExp('(?:dur[ée]e|cure|pendant|durant|minimum|sur)\\D{0,40}?'+num+'\\s*(mois|semaines?|sem\\b|jours?)'));
+  if(m) return toMois(m[1],m[2],m[3]);
+  m = t.match(new RegExp(num+'\\s*(mois)'));
+  if(m) return toMois(m[1],m[2],m[3]);
+  return null;
+}
+function addJours(iso, n){ const d = new Date(iso+'T12:00:00'); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); }
+function fmtJour(iso){ return new Date(iso+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}); }
+function cureMsg(itemId){
+  const box = document.getElementById('cure-'+itemId); if(!box) return;
+  const msg = box.querySelector('.cure-msg'), dateEl = box.querySelector('.cure-date');
+  const duree = parseFloat(box.dataset.duree) || null;
+  if(!dateEl.value){ msg.textContent=''; box.classList.remove('is-set'); return; }
+  box.classList.add('is-set');
+  if(!duree){ msg.textContent = 'Début enregistré le '+fmtJour(dateEl.value)+'. Sabrina précisera avec vous la durée de cette cure.'; return; }
+  const jours = Math.round(duree*30.4375), fin = addJours(dateEl.value, jours);
+  const j = Math.floor((new Date() - new Date(dateEl.value+'T12:00:00'))/86400000) + 1;
+  msg.textContent = (j<1 ? 'Début prévu le '+fmtJour(dateEl.value) : j>jours ? 'Cure terminée depuis le '+fmtJour(fin) : 'Jour '+j+' sur '+jours) + ' · fin prévue le ' + fmtJour(fin);
+}
+function majCureVis(){
+  document.querySelectorAll('.cure-box').forEach(b => { const st = recoState[b.dataset.item]; b.style.display = (st && st.etat==='non') ? 'none' : ''; });
+}
+function initCures(){
+  if(!currentClientKey) return;
+  Object.keys(recoState).forEach(itemId => {
+    const st = recoState[itemId];
+    if(!st || st.pilier !== 'complements') return;
+    const li = document.getElementById('li-'+itemId); if(!li) return;
+    const duree = parseDureeMois(st.details);
+    const durTxt = duree ? 'Durée de la cure : '+(duree===1?'1 mois':String(duree).replace('.',',')+' mois') : 'Durée de la cure : à confirmer avec Sabrina';
+    const html = '<div class="cure-box" id="cure-'+itemId+'" data-item="'+itemId+'" data-duree="'+(duree||'')+'">'+
+      '<div class="cure-dur">'+escH(durTxt)+'</div>'+
+      '<div class="cure-form"><label>J’ai commencé ce complément le <input type="date" class="cure-date" onchange="cureMsg(\''+itemId+'\')"></label>'+
+      '<button type="button" class="cure-btn" onclick="cureSauver(\''+itemId+'\')">Enregistrer</button></div>'+
+      '<div class="cure-msg"></div></div>';
+    const host = li.classList.contains('reco-card-head') ? li.closest('.reco-card') : li;
+    if(host){ if(li.classList.contains('reco-card-head')) host.insertAdjacentHTML('beforeend', html); else host.insertAdjacentHTML('afterend', html); }
+  });
+  chargerCures();
+}
+async function chargerCures(){
+  try{
+    const token = await Auth.getValidAccessToken();
+    const r = await fetch(SUPA_URL+'/rest/v1/cures_complements?client_key=eq.'+encodeURIComponent(currentClientKey)+'&protocole_ref=eq.'+encodeURIComponent(protocoleRef)+'&select=*', { headers:{ 'apikey':SUPA_KEY, 'Authorization':'Bearer '+(token||SUPA_KEY) } });
+    if(!r.ok) return;
+    const rows = await r.json();
+    Object.keys(recoState).forEach(itemId => {
+      const st = recoState[itemId]; if(!st || st.pilier!=='complements') return;
+      const row = rows.find(x => x.cle === cleCompl(nomCompl(st.texte)));
+      const box = document.getElementById('cure-'+itemId); if(!row || !box) return;
+      curesDB[itemId] = row;
+      box.querySelector('.cure-date').value = row.date_debut || '';
+      if(row.duree_mois && !box.dataset.duree) box.dataset.duree = row.duree_mois;
+      cureMsg(itemId);
+    });
+    majCureVis();
+  }catch(e){ console.warn('Cures non chargées :', e); }
+}
+async function cureSauver(itemId){
+  const box = document.getElementById('cure-'+itemId); if(!box) return;
+  const dateEl = box.querySelector('.cure-date'), btn = box.querySelector('.cure-btn'), msg = box.querySelector('.cure-msg');
+  if(!dateEl.value){ msg.textContent = 'Choisissez d’abord la date à laquelle vous avez commencé ce complément.'; return; }
+  const st = recoState[itemId]; const duree = parseFloat(box.dataset.duree) || null;
+  btn.disabled = true; btn.textContent = 'Enregistrement…';
+  try{
+    const token = await Auth.getValidAccessToken();
+    const body = {
+      client_key: currentClientKey, prenom: clientIdentity.prenom, nom: clientIdentity.nom,
+      protocole_ref: protocoleRef, cle: cleCompl(nomCompl(st.texte)), complement: nomCompl(st.texte),
+      duree_mois: duree, date_debut: dateEl.value, date_fin: duree ? addJours(dateEl.value, Math.round(duree*30.4375)) : null,
+      statut: 'en_cours', alerte_traitee: false, mail_envoye_le: null, updated_at: new Date().toISOString()
+    };
+    const r = await fetch(SUPA_URL+'/rest/v1/cures_complements?on_conflict=client_key,protocole_ref,cle', {
+      method:'POST',
+      headers:{ 'apikey':SUPA_KEY, 'Authorization':'Bearer '+(token||SUPA_KEY), 'Content-Type':'application/json', 'Prefer':'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify(body)
+    });
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    btn.textContent = '✓ Enregistré';
+    cureMsg(itemId);
+    try{ parent.postMessage({ type:'avs-cures-maj' }, location.origin); }catch(e){}
+    setTimeout(()=>{ btn.disabled=false; btn.textContent='Enregistrer'; }, 1800);
+  }catch(e){
+    console.warn('Cure non enregistrée :', e);
+    btn.disabled = false; btn.textContent = 'Enregistrer';
+    msg.textContent = 'Impossible d’enregistrer pour le moment. Réessayez dans un instant.';
+  }
 }
 
 function majBarreReco(){
@@ -1106,7 +1235,9 @@ async function chargerProtocoleCliente(clientKey) {
     if (!pd || !bl || !bl.length) throw new Error('no data');
     data = pd;
     blocks = bl;
+    protocoleRef = String(row?.created_at || row?.id || ('p' + JSON.stringify(bl).length));
     buildImmersive();
+    initCures();
     document.getElementById('loading').classList.add('done');
   } catch(e) {
     document.getElementById('loading').innerHTML = `
