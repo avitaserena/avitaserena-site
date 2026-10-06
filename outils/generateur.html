@@ -417,6 +417,9 @@ input.fi[readonly]{background:var(--taupe);cursor:default;opacity:.75}
       <button class="p-toggle" data-val="ISRS / antidépresseurs" onclick="this.classList.toggle('on')">ISRS / antidépresseurs</button>
       <button class="p-toggle" data-val="Pilule ou THM (traitement hormonal)" onclick="this.classList.toggle('on')">Pilule ou THM</button>
       <button class="p-toggle" data-val="Lévothyrox / thyroïdien" onclick="this.classList.toggle('on')">Lévothyrox / thyroïdien</button>
+      <button class="p-toggle" data-val="Ryeqo / Yselty (antagoniste du GnRH)" onclick="this.classList.toggle('on')">Ryeqo / Yselty (antagoniste du GnRH)</button>
+      <button class="p-toggle" data-val="Veoza / Lynkuet (bouffées de chaleur)" onclick="this.classList.toggle('on')">Veoza / Lynkuet (bouffées de chaleur)</button>
+      <button class="p-toggle" data-val="GLP-1 (Ozempic, Wegovy, Mounjaro)" onclick="this.classList.toggle('on')">GLP-1 (Ozempic, Wegovy, Mounjaro)</button>
       <button class="p-toggle" data-val="Aucun de ces traitements" onclick="this.classList.toggle('on')">Aucun de ces traitements</button>
     </div>
     <div style="margin-top:10px">
@@ -1479,7 +1482,7 @@ function buildClientData() {
       s.bilans_a_venir && `Bilans à venir déjà prévus : ${s.bilans_a_venir}`,
       s.objectif_actuel && `Objectif actuel de la cliente : ${s.objectif_actuel}`,
       s.questions_prochaine && `À vérifier à la prochaine séance : ${s.questions_prochaine}`,
-      s.medicaments_nouveaux && `Nouveaux médicaments prescrits depuis la dernière séance (RÈGLE N°48 si IPP/metformine) : ${s.medicaments_nouveaux}`,
+      s.medicaments_nouveaux && `Nouveaux médicaments prescrits depuis la dernière séance (RÈGLE N°48 si IPP/metformine ; RÈGLE N°53 si GLP-1, antagoniste du GnRH, fézolinétant/élinzanétant) : ${s.medicaments_nouveaux}`,
       s.medicaments_arretes && `Médicaments arrêtés depuis la dernière séance : ${s.medicaments_arretes}`,
       s.contexte_tabac_change && `Changement de statut tabac depuis la consultation initiale : ${s.contexte_tabac_change}`,
       // ── ÉLARGI (04/09/2026) : nouveau examen/chirurgie/événement de vie signalé dans un bloc
@@ -2795,6 +2798,9 @@ ${(d.secu_cancer !== 'Non') ? '⛔️ Antécédent de cancer hormono-dépendant 
 ${d.allergies_alim && !/aucune/i.test(d.allergies_alim) ? '⛔️ Ne JAMAIS recommander un aliment, une recette ou un complément contenant : ' + d.allergies_alim + '.' : ''}
 ${d.traitements_vigilance.includes('Anticoagulants') ? (!d.anticoag_type || d.anticoag_type === '' || d.anticoag_type.startsWith('AVK') || d.anticoag_type === 'Autre / ne sait pas' ? '⛔️ Anticoagulant de type AVK (ou non précisé, donc traité par prudence comme un AVK) : Vitamine K2 INTERDITE (voir RÈGLE N°9), proposer une Vitamine D3 seule si un soutien vitamine D est retenu.' : '✅ Anticoagulant de type ' + d.anticoag_type + ' — la contre-indication à la Vitamine K2 (RÈGLE N°9) ne s\'applique qu\'aux AVK, donc D3+K2 reste envisageable ici si aucune autre CI ; rester prudente sur les autres points de vigilance anticoagulants (oméga-3 >2g/j, millepertuis, gingko, RÈGLE N°6).') : ''}
 ${d.traitements_vigilance.includes('Lévothyrox') ? '⚠️ Cette cliente est sous Lévothyrox/traitement thyroïdien : si fer, calcium, magnésium, zinc ou un IPP sont recommandés dans ce protocole, la ligne "◦ Précaution" de CHACUN de ces compléments DOIT contenir la phrase nominative "Puisque vous êtes sous Lévothyrox, veillez à espacer la prise de votre [complément] d\'au moins 4h." (RÈGLE N°5quinquies/N°6) — ne jamais l\'omettre, ne jamais réduire ce délai à 2h.' : ''}
+${/Ryeqo|Yselty/i.test(d.traitements_vigilance) ? '⚠️ Cette cliente est sous antagoniste oral du GnRH (Ryeqo / Yselty) : la traiter comme une cliente sous traitement hormonal en cours — jamais de gattilier, de phytoestrogènes ni de DHEA, jamais de suggestion de modifier le traitement, et appliquer la RÈGLE N°53 point 2.' : ''}
+${/Veoza|Lynkuet/i.test(d.traitements_vigilance) ? '⚠️ Cette cliente est sous fézolinétant ou élinzanétant (Veoza / Lynkuet), avec surveillance du foie : AUCUN actif à risque hépatique (notamment actée à grappes), aucun second actif ciblant les bouffées de chaleur sans avis médical, et appliquer la RÈGLE N°53 point 3.' : ''}
+${/GLP-1|Ozempic|Wegovy|Mounjaro|Saxenda|Victoza/i.test(d.traitements_vigilance) ? '⚠️ Cette cliente est sous agoniste du GLP-1 : digestion et quantités mangées modifiées — adapter la forme et le nombre de compléments, vérifier que l\'alimentation reste suffisante, et appliquer la RÈGLE N°53 point 4.' : ''}
 
 ━━ RÈGLE N°6bis — CONFLITS CROISÉS ENTRE AXES (à vérifier UNIQUEMENT quand PLUSIEURS axes se déclenchent ensemble chez la même cliente — chaque actif pris isolément est déjà sécurisé par sa propre RÈGLE, ce qui suit couvre les combinaisons qui n'apparaissent que lorsque deux axes se superposent) ━━
 1. SÉROTONINERGIQUES CUMULÉS SOUS ISRS/ANTIDÉPRESSEUR : si la cliente est sous ISRS/antidépresseur (voir statut ci-dessus), l'interdiction ne se limite pas au millepertuis (RÈGLE N°6) — elle couvre TOUT précurseur sérotoninergique proposé par n'importe quelle branche : Griffonia/5-HTP (Branche Neurotransmetteurs RÈGLE N°28, Branche Actée-Griffonia ménopause RÈGLE N°13/27, Branche CMM digestif RÈGLE N°24 si Safran+Griffonia combinés), L-Tryptophane (RÈGLE N°28). Si deux branches différentes proposent chacune un précurseur sérotoninergique pour deux axes distincts (ex. ménopause ET sommeil), c'est un cumul, pas deux recommandations indépendantes — l'interdiction s'applique aux deux à la fois.
@@ -3932,6 +3938,33 @@ Cette RÈGLE porte uniquement sur LA LECTURE d'un bilan de neuroinflammation qua
 
 5. Toujours nommer explicitement à la cliente que ce protocole vient en complément de son suivi gastro-entérologique, jamais en alternative — rappeler qu'aucune adaptation du traitement médical ne doit être décidée sans son médecin.
 
+━━ RÈGLE N°53 — TRAITEMENTS MÉDICAUX RÉCENTS (ANTAGONISTES ORAUX DU GnRH, FÉZOLINÉTANT / ÉLINZANÉTANT, AGONISTES DU GLP-1, RIFAXIMINE) : GARDE-FOUS ET EXPLICATION DU POURQUOI — ORIENTATION ET SOUTIEN, JAMAIS UNE MODIFICATION DU TRAITEMENT ━━
+
+1. CADRE ABSOLU : ces traitements sont prescrits et suivis par un médecin. Ne JAMAIS suggérer de les arrêter, de les réduire, de les remplacer ni de les présenter comme inefficaces ou dangereux (garde-fou RÈGLE N°6). La naturopathie intervient en soutien, à côté du traitement. Ne jamais citer de chiffres d'essais ni de valeur biologique à la cliente. À chaque fois, expliquer le pourquoi en langage accessible : pourquoi ce traitement agit ainsi, pourquoi une précaution s'impose, pourquoi tel soutien est proposé. Cette règle s'applique que le traitement figure dans les puces de sécurité, dans les médicaments déclarés ou dans les traitements cochés dans les guides spécialisés.
+
+2. ANTAGONISTES ORAUX DU GnRH (Ryeqo, Yselty — endométriose ou fibromes) :
+   - Mécanisme : ils bloquent le signal qui commande aux ovaires de produire des œstrogènes, dont dépendent les lésions — d'où la baisse des douleurs. Ce manque d'œstrogènes peut provoquer des bouffées de chaleur et fragiliser un peu les os ; une faible dose d'hormones est souvent associée et le médecin prévoit un suivi de la densité osseuse.
+   - Traiter la cliente comme étant sous traitement hormonal en cours : jamais de gattilier (Vitex agnus-castus), jamais de phytoestrogènes (soja, houblon, sauge, trèfle rouge), jamais de DHEA ni de prégnénolone, quelle que soit la pertinence apparente pour l'axe hormonal. Ne rien proposer qui prétende agir sur les œstrogènes ou sur les hormones ovariennes.
+   - Soutien osseux : s'en tenir au calcium alimentaire et à la vitamine D/magnésium déjà prévus RÈGLE N°9, sans dupliquer si un axe vitamine D est déjà retenu. Rappeler que le suivi de la densité osseuse relève du médecin.
+   - Expliquer à la cliente : « Votre traitement met volontairement vos ovaires au repos pour calmer l'endométriose ; c'est ce repos qui peut donner des bouffées de chaleur et demander une attention à vos os. C'est pour cela que je reste très prudente sur tout ce qui agit sur les hormones, et que je vous propose un soutien simple pour votre confort et votre squelette. »
+
+3. FÉZOLINÉTANT / ÉLINZANÉTANT (Veoza, Lynkuet — bouffées de chaleur de la ménopause ou liées à une hormonothérapie du cancer du sein) :
+   - Mécanisme : à la ménopause, la baisse des œstrogènes dérègle des neurones de l'hypothalamus qui commandent la température du corps ; ces médicaments bloquent leurs récepteurs sans apporter d'hormones.
+   - Le médecin impose une surveillance du foie par prise de sang. En conséquence : AUCUN complément ni plante à risque hépatique reconnu, en particulier l'actée à grappes (Cimicifuga) ; en cas de doute sur le profil hépatique d'un actif, ne pas le proposer et orienter vers le médecin ou le pharmacien.
+   - Ne jamais proposer en parallèle un second actif présenté comme traitant les bouffées de chaleur (actée à grappes, sauge, isoflavones de soja…) : ne pas superposer deux approches sur la même plainte sans avis médical. Soutenir plutôt le terrain (sommeil, gestion du stress, stabilité glycémique) selon les axes déjà retenus.
+   - Signes d'alerte hépatique à nommer simplement et à faire remonter au médecin sans attendre : fatigue inhabituelle, démangeaisons, jaunissement de la peau ou des yeux, urines foncées, selles pâles, douleur abdominale.
+   - Expliquer à la cliente : « Ce traitement agit sur le thermostat de votre cerveau et non sur vos hormones. Comme le foie est surveillé, j'évite tout ce qui pourrait le solliciter. »
+
+4. AGONISTES DU GLP-1 (Ozempic, Wegovy, Mounjaro, Saxenda, Victoza) :
+   - Mécanisme : ils diminuent l'appétit et ralentissent la vidange de l'estomac. La digestion, le confort après les repas et la quantité réellement mangée changent.
+   - Adapter les propositions : formes simples et bien tolérées, petites prises, éviter de multiplier les compléments (plafond de la RÈGLE N°5), et vérifier que l'alimentation, même réduite, reste suffisante en protéines et en micronutriments — orientation nutritionnelle uniquement, jamais un régime restrictif supplémentaire.
+   - Ne jamais commenter la pertinence de la prescription ni suggérer de l'arrêter. En contexte SOPK, aucune AMM n'existe dans cette indication en France : ne rien en dire à la cliente, se limiter à l'adaptation du soutien.
+   - Expliquer à la cliente : « Votre traitement coupe un peu la faim et ralentit la sortie des aliments de l'estomac ; je simplifie donc votre soutien et je veille à ce que ce que vous mangez vous apporte l'essentiel. »
+
+5. RIFAXIMINE (antibiotique ciblé du SIBO, coché dans le guide SIBO) : tant que la cure est en cours, ne jamais empiler un protocole antimicrobien à base de plantes ou d'huiles sans l'accord du médecin prescripteur. La phase naturopathique porte sur la cause de fond (motilité, acidité, adhérences, terrain) et sur l'accompagnement après la cure. Expliquer pourquoi la rechute est fréquente après une cure d'antibiotique si la cause de fond n'est pas travaillée, et que le test respiratoire se lit avec les symptômes et le transit (un test seul ne prouve rien).
+
+6. Ces soutiens font partie de la liste complète des soutiens pertinents (RÈGLE N°5) : les situer dans la phrase de priorité budgétaire si plusieurs axes sont retenus, sans reconsidérer la priorisation globale du protocole.
+
 ━━ RÈGLE N°1quater — SÉCURITÉ JSON (IMPÉRATIF, NE JAMAIS ENFREINDRE) ━━
 Le texte que tu rédiges est intégré tel quel dans des valeurs de chaîne JSON. Pour que le document ne casse JAMAIS techniquement :
 1. N'utilise JAMAIS le guillemet droit " à l'intérieur du texte que tu rédiges (citations, discours rapporté, emphase). Utilise TOUJOURS les guillemets français « » à la place.
@@ -4280,6 +4313,16 @@ function afficherAlertesConformite(blocksArr) {
     if (/gingko|ginkgo/i.test(texte)) {
       alertes.push('Anticoagulant en cours (ou statut jamais vérifié) : "gingko" détecté — interaction à vérifier immédiatement.');
     }
+  }
+
+  // AJOUTÉ (06/10/2026) — RÈGLE N°53 : traitements médicaux récents. Mêmes filets de sécurité que les
+  // anticoagulants ci-dessus : l'IA peut oublier une consigne, ce contrôle JS est le dernier garde-fou.
+  const vigTx = dSec.traitements_vigilance || '';
+  if (/Veoza|Lynkuet/i.test(vigTx) && /actée|cimicifuga|black\s*cohosh/i.test(texte)) {
+    alertes.push('Cliente sous Veoza/Lynkuet (surveillance du foie) : « actée à grappes » détectée dans le protocole — plante à risque hépatique signalé, à retirer et à vérifier immédiatement.');
+  }
+  if (/Ryeqo|Yselty/i.test(vigTx) && /gattilier|vitex|phyto-?œstrog|phyto-?estrog|isoflavone|soja|houblon|sauge|trèfle rouge|trefle rouge|DHEA|prégnénolone|pregnenolone/i.test(texte)) {
+    alertes.push('Cliente sous Ryeqo/Yselty (traitement hormonal en cours) : gattilier, phytoestrogène, DHEA ou prégnénolone détecté dans le protocole — à retirer et à vérifier immédiatement.');
   }
 
   if (dSec.allergies_alim && !/aucune/i.test(dSec.allergies_alim)) {
