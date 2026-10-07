@@ -616,6 +616,13 @@ input.fi[readonly]{background:var(--taupe);cursor:default;opacity:.75}
     <button class="p-toggle" data-val="SIBO / dysbiose" onclick="toggleAxe(this)"><span class="priority-badge"></span><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px;margin-right:5px;flex-shrink:0"><path d="M9 22h9M11 22a5 5 0 1 1 3-9V6a2 2 0 0 1 2-2h2M14 6h4"/></svg>SIBO / dysbiose</button>
     <button class="p-toggle" data-val="Fertilité / désir de grossesse" onclick="toggleAxe(this)"><span class="priority-badge"></span><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px;margin-right:5px;flex-shrink:0"><path d="M12 20V10M12 10C8 10 6 7 6 4c4 0 7 2 7 6M12 10c4 0 6-3 6-6-4 0-7 2-7 6"/></svg>Fertilité</button>
     <button class="p-toggle" data-val="Périménopause / ménopause" onclick="toggleAxe(this)"><span class="priority-badge"></span><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px;margin-right:5px;flex-shrink:0"><path d="M14 4a2 2 0 0 0-4 0v10.5a4 4 0 1 0 4 0Z"/></svg>Périménopause</button>
+    <button class="p-toggle" data-val="Santé globale / prévention" onclick="toggleAxe(this)"><span class="priority-badge"></span><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px;margin-right:5px;flex-shrink:0"><path d="M12 21s-7-4.5-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 11c0 5.5-7 10-7 10z"/></svg>Santé globale &amp; prévention</button>
+    <button class="p-toggle" data-val="Autre problématique (hors spécialités)" onclick="toggleAxe(this)"><span class="priority-badge"></span><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px;margin-right:5px;flex-shrink:0"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>Autre problématique</button>
+  </div>
+  <div id="axe-autre-wrap" style="display:none;margin-top:14px">
+    <label class="fl" for="axe-autre-precision">Autre problématique — précisez le motif (hors spécialités)</label>
+    <textarea class="fi" id="axe-autre-precision" style="min-height:64px" placeholder="Ex. : migraines, douleurs articulaires, sevrage tabagique, fatigue de la rentrée…"></textarea>
+    <p class="field-hint">Ce texte est transmis à l'IA tel quel. Sans règle dédiée pour ce motif, le générateur raisonne à partir des principes généraux du document, n'utilise que les compléments de la banque validée, et vous signale dans la partie praticienne les points que vous devez valider.</p>
   </div>
   <input type="hidden" id="axes-selectionnes" value="">
 </div>
@@ -689,6 +696,7 @@ input.fi[readonly]{background:var(--taupe);cursor:default;opacity:.75}
     <div class="obj-category">
       <div class="obj-cat-lbl"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px;margin-right:5px;flex-shrink:0"><path d="M3 8.5c1.5-2 3-2 4.5 0s3 2 4.5 0 3-2 4.5 0"/><path d="M3 12.5c1.5-2 3-2 4.5 0s3 2 4.5 0 3-2 4.5 0"/></svg>Bien-être global</div>
       <div class="p-toggle-group">
+        <button class="p-toggle obj-toggle" data-val="Rester en bonne santé" onclick="toggleObjectif(this)"><span class="priority-badge"></span>Rester en bonne santé</button>
         <button class="p-toggle obj-toggle" data-val="Me reconnecter à mon corps et mon intuition" onclick="toggleObjectif(this)"><span class="priority-badge"></span>Me reconnecter à mon corps et mon intuition</button>
         <button class="p-toggle obj-toggle" data-val="Arrêter / réduire un traitement sous suivi médical" onclick="toggleObjectif(this)"><span class="priority-badge"></span>Arrêter / réduire un traitement sous suivi médical</button>
       </div>
@@ -1080,6 +1088,9 @@ function refreshAxesBadges() {
   });
   const axesStr = axesOrder.map((v, i) => `${i+1}. ${v}`).join(' | ');
   document.getElementById('axes-selectionnes').value = axesStr;
+  // Champ de précision « Autre problématique » : visible uniquement quand l'axe est actif
+  const wrapAutre = document.getElementById('axe-autre-wrap');
+  if (wrapAutre) wrapAutre.style.display = axesOrder.includes('Autre problématique (hors spécialités)') ? 'block' : 'none';
 }
 
 // ── Toggle objectifs prioritaires — 3 maximum, ordre de clic = priorité ──
@@ -1225,8 +1236,13 @@ function prefillParams() {
   if (/foie|hépatique|détox|acné menton|réveil 2h|3h/i.test(checks)) autoAxes.push('Foie & détox');
   if (/thyroïde|TSH|Hashimoto|frilosité|lévothyrox/i.test(checks)) autoAxes.push('Thyroïde');
   if (/stress|anxiété|burn.out|charge mentale/i.test(checks)) autoAxes.push('Stress & système nerveux');
-  if (/glycémie|insuline|sucre|prise de poids|résistance|silhouette|poids de forme/i.test(checks)) autoAxes.push('Glycémie, insuline & poids');
+  if (/glycémie|insuline|sucre|prise de poids|perdre du poids|perte de poids|maigrir|minceur|kilos|surpoids|résistance|silhouette|poids de forme/i.test(checks)) autoAxes.push('Glycémie, insuline & poids');
   if (/peau|acné|eczéma|psoriasis|urticaire|vitiligo|pelade|alopécie|chute de cheveux|cheveux|immunité|immunitaire|histamine|flush|rougeur soudaine/i.test(checks)) autoAxes.push('Peau, cheveux & immunité');
+
+  if (/Autre motif \(hors spécialités\)/i.test(checks)) autoAxes.push('Autre problématique (hors spécialités)');
+  // Santé globale / prévention : proposée UNIQUEMENT quand rien d'autre n'a été détecté — jamais
+  // ajoutée en plus d'un axe de problème (la praticienne peut toujours la cocher à la main).
+  if (!autoAxes.length && /bilan préventif|bilan de prévention|prévention|bonne santé|santé globale|rester en forme/i.test(checks)) autoAxes.push('Santé globale / prévention');
 
   document.querySelectorAll('#axes-group .p-toggle').forEach(btn => {
     if (autoAxes.includes(btn.dataset.val)) {
@@ -1389,7 +1405,8 @@ function prefillParams() {
       "Réduire l'inflammation chronique": /inflammation/i,
       "Mieux dormir et récupérer": /sommeil|insomnie|réveil nocturne/i,
       "Gérer mon stress & charge mentale": /stress|anxiété|charge mentale/i,
-      "Perdre du poids durablement": /perdre du poids|surpoids/i,
+      "Perdre du poids durablement": /perdre du poids|perte de poids|maigrir|minceur|kilos|surpoids/i,
+      "Rester en bonne santé": /bonne santé|bilan préventif|prévention|santé globale|rester en forme/i,
       "Réduire ma dépendance au sucre / compulsions": /sucre|compulsion/i,
       "Améliorer ma peau (acné, eczéma, psoriasis)": /acné|eczéma|psoriasis|peau/i,
       "Renforcer mon immunité": /immunité|infections? récidivantes?/i,
@@ -1705,6 +1722,8 @@ function buildClientData() {
     diag_traitements: s.diag_traitements || '',
     // Paramètres du protocole
     axes_prioritaires: axesSelectionnes,
+    // Transmis seulement si l'axe « Autre problématique » est réellement actif (le champ garde sa valeur une fois l'axe décoché)
+    axe_autre_precision: axesSelectionnes.includes('Autre problématique (hors spécialités)') ? (document.getElementById('axe-autre-precision')?.value || '').trim() : '',
     duree_prog: gv('duree-prog'),
     obj_1: objOrder[0] || '',
     obj_2: objOrder[1] || '',
@@ -2498,6 +2517,56 @@ function buildReglesSiboMethane(siboMethaneAvere, d) {
   ].join('\n');
 }
 
+const REGLE_PREVENTION_SANTE_GLOBALE = `
+━━ RÈGLE N°56 — SANTÉ GLOBALE / PRÉVENTION : CLIENTE SANS PROBLÈME PARTICULIER QUI VEUT RESTER EN BONNE SANTÉ ━━
+Cette règle s'applique parce que l'axe « Santé globale / prévention » ou l'objectif « Rester en bonne santé » a été retenu.
+1. PRINCIPE : pas de problème à traiter, donc pas de problème à inventer. Ne JAMAIS fabriquer un axe à partir de petits signes isolés cochés dans le questionnaire (une nuit agitée, un ballonnement occasionnel, une baisse d'énergie passagère). Si la praticienne a retenu d'autres axes en plus, ceux-ci gardent leurs règles propres et ce volet ne s'ajoute qu'à l'esprit général du protocole.
+2. LES « AXES » DE CE PROTOCOLE SONT 1 À 3 FONDATIONS, pas davantage, choisies parmi : digestion et transit, sommeil et rythmes, gestion du stress et récupération, stabilité de l'énergie dans la journée (répartition des repas, protéines au petit-déjeuner), activité physique, exposition à la lumière et vitamine D selon la saison (RÈGLE N°9 point 7). Retiens celles qui sont les plus fragiles chez CETTE cliente d'après ses réponses réelles (scores de vitalité, sommeil, stress, transit, alimentation, activité, âge et étape de vie), jamais une liste générique identique pour toutes. Pas d'ordre de sévérité à construire : l'ordre est celui de ce qui sera le plus facile à ancrer et le plus utile.
+3. s1_corps ET s2_axes : le « constat » n'est pas un symptôme mais ce qui fonctionne déjà bien et ce qui rend son équilibre plus fragile. Le « mécanisme » explique comment le corps se maintient en équilibre et pourquoi chaque fondation compte (exemples d'images : un sommeil régulier cale l'horloge qui commande les hormones et la digestion ; les fibres et la variété alimentaire nourrissent la flore intestinale, qui à son tour soutient l'immunité et l'humeur ; le muscle utilise le sucre du sang et soutient le métabolisme). Toujours le « pourquoi », jamais une simple liste de bonnes habitudes. Ton valorisant : « votre corps fonctionne bien, voici ce qui l'aide à le rester ».
+4. INTERDIT : suggérer un risque, une maladie à venir ou une urgence d'agir. Ne nomme JAMAIS de pathologie que l'accompagnement « préviendrait » ou « éviterait » (RÈGLE N°10 point 2) : reste sur « soutenir votre équilibre et votre vitalité ». Aucun bilan biologique proposé par réflexe : seulement si l'âge ou des antécédents familiaux déjà rapportés dans le dossier le justifient clairement (voir BILANS_REFERENCE, jamais pour « faire un check-up »).
+5. LES 3 PILIERS PORTENT LE PROTOCOLE : alimentation = 2 à 3 gestes AJOUTÉS (variété de légumes, fibres, bon gras, protéines au petit-déjeuner, hydratation) plutôt que des restrictions ; aucun régime, aucune éviction (pas de gluten ni de lait sans signe digestif réel). Psychologie = une seule pratique, orientée vers « l'espace Bien-être de votre espace cliente » (RÈGLE N°1ter / pilier 2). Activité = marche régulière et un peu de mobilité ou de renforcement sans matériel, avec fréquence et durée précises.
+6. COMPLÉMENTS : par défaut AUCUN. Un protocole sans complément est un résultat légitime ici, à assumer et à expliquer (les 3 piliers suffisent). Au maximum 1 complément, 2 exceptionnellement, et seulement s'il répond à un signal réel dans son dossier (ex. soutien de prévention hivernale du terrain immunitaire de la banque RÈGLE N°5 avec ses contre-indications et sa durée, magnésium si stress réel). VITAMINE D : jamais en complément ici sans carence objectivée, la posologie d'attaque de la banque ne s'applique pas à une cliente sans carence ; reste sur l'exposition à la lumière et l'alimentation (RÈGLE N°9 point 7). Uniquement des entrées de la banque RÈGLE N°5 avec posologie complète, jamais un produit ou un dosage inventé. Si aucun complément n'est retenu, laisse la valeur « complements » de la phase vide ("") et « complements_rappel » à une liste vide plutôt que d'en inventer un pour remplir.
+7. PHASES ET DURÉE : UNE SEULE phase (RÈGLE N°10bis), 1 mois pour une demande très ponctuelle, 2 mois en général (le temps d'ancrer 2 à 3 habitudes). Jamais un parcours Alba, Aria ou Ora pour ce seul axe. Dans « parcours_pourquoi », explique honnêtement qu'un accompagnement court est adapté parce que son corps n'a pas de déséquilibre à reconstruire, jamais pour la pousser vers plus long.
+8. « pourquoi_lie » reste une chaîne vide (RÈGLE N°49). Si, en analysant le dossier, un signe persistant ou inhabituel ressort, ce n'est plus de la prévention : applique la RÈGLE N°6 (orientation médicale si nécessaire) et traite ce signe via l'axe correspondant plutôt que de le noyer dans ce volet.
+`;
+const REGLE_PERTE_DE_POIDS = `
+━━ RÈGLE N°57 — PERTE DE POIDS : CADRE GÉNÉRAL, NON CULPABILISANT, AVEC OU SANS RÉSISTANCE À L'INSULINE ━━
+Cette règle s'applique parce que l'objectif de la cliente concerne son poids (perdre du poids, retrouver un poids de forme).
+1. VÉRIFICATIONS DE SÉCURITÉ, AVANT TOUT OBJECTIF DE PERTE (priorité absolue) :
+   a) IMC inférieur à 18,5 (ou poids et taille qui y conduisent), perte de poids récente et rapide, aménorrhée, signes de restriction, de compulsions avec culpabilité ou de rapport tourmenté à l'alimentation : AUCUN déficit alimentaire, AUCUN objectif de poids ni de kilos. Reformule l'objectif en énergie, sérénité avec l'alimentation et stabilité (voir RÈGLE N°26 pour la balance énergétique), et oriente avec douceur vers le médecin traitant.
+   b) IMC normal : le sujet n'est pas « perdre X kilos » mais le tour de taille, la composition corporelle (muscle) et l'énergie (cohérent avec RÈGLE N°55 point 4). Aucun déficit énergétique.
+   c) Grossesse ou allaitement : aucun protocole de perte de poids, uniquement la qualité nutritionnelle. Mineure : RÈGLE N°47, aucune consigne de perte de poids.
+   d) Traitement qui influence le poids (GLP-1 : RÈGLE N°53 ; corticoïdes, certains antidépresseurs, pilule, thyroïde non stabilisée) : ne suggère jamais de modifier le traitement, oriente vers le médecin si la piste paraît pertinente. Une prise de poids récente avec fatigue, frilosité ou constipation fait d'abord penser à vérifier la thyroïde (RÈGLE N°11) avant de conclure à un problème alimentaire.
+2. SI UN AUTRE AXE EXPLIQUE LA PRISE DE POIDS (ménopause RÈGLE N°13, thyroïde RÈGLE N°11, SOPK RÈGLE N°14, cortisol RÈGLE N°12), le poids est travaillé DANS cet axe, jamais comme un protocole séparé.
+3. CADRE GÉNÉRAL : aucun régime, aucun comptage calorique (RÈGLE N°4), aucun jeûne strict, aucune culpabilisation. Dis clairement à la cliente que ce n'est pas un manque de volonté : le poids est la conséquence d'un terrain (sommeil, stress, rythme des repas, muscle, hormones). Vocabulaire : « poids de forme », « silhouette », « énergie » ; jamais « obésité », « gros », « régime ».
+4. LES 4 LEVIERS, À EXPLIQUER AVEC LE « POURQUOI » : a) STRUCTURE DES REPAS ET SATIÉTÉ : protéines et fibres à chaque repas, bons gras, ordre des aliments, repas réguliers sans grignotage ; reprends sans les dupliquer la chronobiologie et les stratégies de la RÈGLE N°29 points 5 et 7. b) SOMMEIL ET STRESS : le manque de sommeil augmente la faim et les envies sucrées, le cortisol chronique favorise le stockage abdominal (RÈGLE N°12, RÈGLE N°32). c) MOUVEMENT : le muscle consomme le sucre du sang et soutient le métabolisme ; marche quotidienne progressive et renforcement au poids du corps 2 fois par semaine, sans matériel ni salle de sport (RÈGLE N°4). d) RAPPORT À L'ALIMENTATION : repérer faim physique et faim émotionnelle et les moments déclencheurs (le soir, le stress), avec une pause de respiration de « l'espace Bien-être de votre espace cliente » ; jamais d'aliment interdit.
+5. L'EXPLICATION PAR LA RÉSISTANCE À L'INSULINE (RÈGLE N°29, RÈGLE N°55) n'est donnée QUE si le tableau l'oriente (tour de taille élevé, fringales, coup de pompe après les repas, antécédents familiaux, SOPK) ; ne la plaque jamais par défaut sur une cliente dont le profil ne le montre pas.
+6. REPÈRES DE SUIVI SANS FIXATION SUR LA BALANCE : tour de taille, énergie, fringales, qualité du sommeil, façon dont les vêtements tombent ; pesée au plus une fois par semaine au même moment, ou pas du tout si le sujet est sensible. Aucun chiffre ni rythme de perte promis à la cliente dans le document (si un repère est utile, uniquement dans « pourquoi_praticien » : un rythme lent, de l'ordre d'un demi-kilo par semaine au plus).
+7. COMPLÉMENTS : jamais de « brûleur de graisse », coupe-faim, diurétique ni laxatif. Un complément ne fait pas maigrir : il n'est proposé que pour un besoin réel et distinct (banque RÈGLE N°5, magnésium, oméga-3, etc.), jamais comme levier de perte de poids.
+8. DURÉE : une perte de poids qui tient demande du temps et de la régularité. Les échecs de régimes antérieurs (effet yo-yo) pèsent dans la grille de la RÈGLE N°10, au même titre que les échecs de tentatives antérieures.
+`;
+const REGLE_AUTRE_PROBLEMATIQUE = `
+━━ RÈGLE N°58 — AUTRE PROBLÉMATIQUE, HORS DES SPÉCIALITÉS HABITUELLES (SANTÉ DIGESTIVE ET ÉQUILIBRE HORMONAL FÉMININ) ━━
+Cette règle s'applique parce que l'axe « Autre problématique (hors spécialités) » a été retenu ; le motif précis est donné dans « Problématique hors spécialités précisée par la praticienne » plus haut.
+1. PRINCIPE : Sabrina accompagne aussi des personnes dont le motif n'entre pas dans ses spécialités. Tu ne refuses pas et ne renvoies pas la cliente, mais tu ne simules JAMAIS une expertise : aucune règle dédiée n'existe pour ce motif, tu raisonnes donc à partir des principes généraux de ce document.
+2. MÉTHODE, DANS L'ORDRE : a) FILTRE DE SÉCURITÉ (RÈGLE N°6) : si le motif ou des signes associés relèvent du médecin, oriente explicitement et présente le protocole comme un soutien en complément, jamais en remplacement. b) CASCADE (RÈGLE N°2 et RÈGLE N°1bis point 0) : identifie le niveau de la cause réelle (corporel, émotionnel, systémique, énergétique) et remonte aux causes des causes en t'appuyant sur les terrains transversaux déjà décrits (digestion, sommeil, stress et cortisol, glycémie RÈGLE N°29, inflammation de bas grade RÈGLE N°30, carences et effets de traitements RÈGLE N°48). c) Les 3 PILIERS adaptés au motif, avec le « pourquoi » à chaque recommandation. d) COMPLÉMENTS, PLANTES ET HUILES ESSENTIELLES : UNIQUEMENT des entrées de la banque RÈGLE N°5 (et de la liste d'aromathérapie fournie) réellement pertinentes pour ce motif, avec posologie complète. Si rien dans la banque ne convient, ne propose AUCUN complément (« complements » vide, « complements_rappel » liste vide) : n'invente jamais un produit, une marque ou une posologie.
+3. TRANSPARENCE POUR LA PRATICIENNE : à la fin de « pourquoi_praticien » de la phase concernée, ajoute « ⚠️ À VALIDER PAR VOUS : » suivi d'1 à 3 points sur lesquels ton raisonnement est moins solide (extrapolation, absence de règle dédiée) et, si pertinent, d'une piste hors banque que la praticienne peut évaluer. Ce passage n'apparaît JAMAIS dans le texte destiné à la cliente.
+4. TON ENVERS LA CLIENTE : honnête sur ce que fait l'accompagnement (soutenir le terrain), sans promesse de résultat ; si le motif relève d'un suivi médical, le dire avec douceur.
+5. DURÉE : applique la grille de la RÈGLE N°10 normalement (un axe isolé reste court à moyen), sans gonfler la durée sous prétexte que le motif est moins familier. Mineure : RÈGLE N°47.
+`;
+
+// Règles N°56-58 (06/10/2026) : injectées uniquement quand elles s'appliquent, pour ne pas alourdir
+// le prompt ni influencer les clientes dont le profil est différent.
+function reglesParcoursGeneraux(d) {
+  const axes = d.axes_prioritaires || '';
+  const obj = d.obj_principal || '';
+  const parts = [];
+  if (/Santé globale \/ prévention/.test(axes) || /Rester en bonne santé/.test(obj)) parts.push(REGLE_PREVENTION_SANTE_GLOBALE);
+  if (/poids/i.test(obj) || /perdre du poids|perte de poids|maigrir|minceur|kilos/i.test(d.objectif_6mois || '')) parts.push(REGLE_PERTE_DE_POIDS);
+  if (/Autre problématique \(hors spécialités\)/.test(axes)) parts.push(REGLE_AUTRE_PROBLEMATIQUE);
+  return parts.join('\n');
+}
+
 function buildPrompt(d) {
   const siboMethaneAvere = detectSiboMethane(d);
   const reglesSiboMethane = buildReglesSiboMethane(siboMethaneAvere, d);
@@ -2582,7 +2651,7 @@ Repartir TOUJOURS de l'objectif exprimé par la cliente.
 1. ALIMENTATION — fondement de tout rééquilibrage du terrain
 2. PSYCHOLOGIE & ÉMOTIONS — gestion du stress, émotions, sommeil, rythmes de vie
 3. ACTIVITÉ PHYSIQUE — mouvement adapté, sans matériel, sans salle de sport
-4. Compléments ciblés — EN DERNIER, en soutien, organisés par phase dans le temps (voir RÈGLE N°10bis), MAXIMUM 2-3 ACTIFS À CHAQUE PHASE, SANS EXCEPTION
+4. Compléments ciblés — EN DERNIER, en soutien, organisés par phase dans le temps (voir RÈGLE N°10bis), CIBLE DE 2 À 3 ACTIFS PAR PHASE (jamais d'empilement : ce qui dépasse est reporté à la phase suivante, exception encadrée à 4 — voir RÈGLE N°5)
 
 Les 3 piliers (alimentation, psychologie, activité) sont le socle CONTINU de tout le parcours, du premier au dernier jour — ils ne se "phasent" pas comme les compléments. Un protocole d'hygiène vitale n'est PAS une liste de compléments. Les 3 piliers sont le cœur du document.
 
@@ -2597,7 +2666,13 @@ JAMAIS : homéopathie, hydrolats, sophrologie, salle de sport, matériel de fitn
 ⛔️ INTERDICTION ABSOLUE, SANS EXCEPTION : ne JAMAIS recommander de bouillon d'os (bone broth), sous quelque forme ou nom que ce soit. Cette interdiction prime sur toute autre règle de ce prompt, même si elle semblerait pertinente pour la barrière intestinale ou le collagène — proposer systématiquement une alternative (ex. collagène marin en poudre, gélatine, ou tout autre soutien autorisé).
 
 ━━ RÈGLE N°5 — COMPLÉMENTS : LISTER TOUS CEUX PERTINENTS PAR PHASE, AVEC UN ORDRE DE PRIORITÉ BUDGÉTAIRE ━━
-IMPORTANT (révisé 20/09/2026, demande Sabrina — remplace l'ancien plafond strict de 2-3) : à chaque phase du parcours (voir RÈGLE N°10bis), liste TOUS les compléments cliniquement pertinents pour les axes retenus dans cette phase — ne coupe plus arbitrairement à 2 ou 3 si le terrain en justifie davantage. Immédiatement après la liste des compléments, ajoute systématiquement une phrase d'ordre de priorité budgétaire, formulée ainsi : "Si vous ne pouvez pas démarrer l'ensemble en même temps, commencez par [complément A] puis [complément B] — [raison clinique brève de cet ordre], et ajoutez le reste dès que possible." Cet ordre doit toujours être justifié cliniquement (l'axe le plus invalidant ou le plus urgent en premier), jamais arbitraire. Reste néanmoins réaliste : ne liste jamais un complément dont la pertinence est marginale ou spéculative juste pour remplir — chaque entrée doit être justifiée par un signal clinique réel chez cette cliente précise. Un même actif ne doit toujours apparaître qu'UNE SEULE fois même s'il sert plusieurs axes (voir point 4 plus bas) — la levée du plafond ne change rien à cette règle de dédoublonnage.
+IMPORTANT (révisé 07/10/2026, décision Sabrina — remplace la règle du 20/09 « lister tous les compléments pertinents ») : à chaque phase du parcours (voir RÈGLE N°10bis), la CIBLE est de 2 à 3 compléments. Raison clinique : au-delà, l'observance baisse (la cliente en prend moins bien, voire arrête tout), le budget et l'absorption en pâtissent (les minéraux se font concurrence), les interactions se multiplient, et on ne peut plus savoir ce qui agit. Le séquençage par phases existe précisément pour ne pas empiler : on traite un axe avec ses 2-3 soutiens, puis le suivant.
+   a) Retiens pour la phase les 2-3 soutiens les plus utiles aux axes travaillés dans CETTE phase, le plus invalidant ou le plus urgent en premier.
+   b) Si davantage de compléments sont cliniquement pertinents, NE LES EMPILE PAS : reporte-les à la phase suivante quand le parcours en compte une, et liste-les à la fin de « pourquoi_praticien » de la phase concernée sous « Reportés à une phase ultérieure : … » avec la raison, pour que la praticienne voie ce qui a été écarté et puisse arbitrer. Si le parcours n'a qu'une phase, signale-les de la même façon, sans les afficher à la cliente.
+   c) EXCEPTION ENCADRÉE : un 4e complément n'est admis dans une même phase que si un signal clinique net l'exige et que le reporter serait contre-productif ou risqué (ex. complément de sécurité lié à un médicament, correction d'une carence objectivée). Il est alors inclus et signalé à la fin de « pourquoi_praticien » par « ⚠️ 4e complément : à valider par vous » suivi de la raison. Jamais plus de 4.
+   d) La praticienne relit le protocole et retire elle-même ce qui lui paraît superflu avant de l'envoyer : ne cherche donc jamais à « tout couvrir par précaution ».
+   Quand la phase compte au moins 2 compléments, ajoute immédiatement après la liste une phrase d'ordre de priorité budgétaire, formulée ainsi : "Si vous ne pouvez pas démarrer l'ensemble en même temps, commencez par [complément A] puis [complément B] — [raison clinique brève de cet ordre], et ajoutez le reste dès que possible." Cet ordre doit toujours être justifié cliniquement (l'axe le plus invalidant ou le plus urgent en premier), jamais arbitraire. Reste réaliste : ne retiens jamais un complément dont la pertinence est marginale ou spéculative juste pour remplir — chaque entrée doit être justifiée par un signal clinique réel chez cette cliente précise. Un même actif ne doit toujours apparaître qu'UNE SEULE fois même s'il sert plusieurs axes (voir point 4 plus bas).
+   Dans les autres RÈGLES de ce document, les formulations du type « liste complète des soutiens pertinents » ou « lister tous les soutiens » désignent l'ensemble des CANDIDATS dans lequel tu choisis, jamais ce qui est affiché à la cliente : la sélection finale obéit toujours à la présente règle (2-3 par phase, reportés au-delà).
 Les compléments viennent EN COMPLÉMENT des 3 piliers, jamais à la place.
 Marques autorisées : Pileje, Nutergia, Holistica, Nat & Form, Bionutrics, Novoma, Nutripure, Nutrixeal, Thérascience, Nutri-logics/Energetica Natura, Arkopharma, Herbalgem/Énergétique Nature (ponctuel)
 ⚠️ LIEN PRESCRIPTEUR PERSONNEL (09/09/2026) : pour TOUT complément Nutri-logics ou Energetica Natura recommandé dans le PHV, ajoute systématiquement le lien personnel de Sabrina (code prescripteur CASTELQO10) plutôt qu'un renvoi générique vers le site de la marque : https://supplentia.com/be/fr/promotion/supplentia-ref/CASTELQO10 — présente-le simplement comme "Pour commander : [lien]", jamais en insistant sur la commission perçue (reste invisible pour la cliente, c'est un point purement interne).
@@ -2872,6 +2947,7 @@ Traduis ensuite ce faisceau d'indices en une durée précise :
 — 3 mois (parcours Alba) : 1 axe clair, isolé, récent, sans échec de tentative antérieure.
 — 6 mois (parcours Aria) : 2 axes, OU 1 axe avec un diagnostic confirmé installé mais sans échecs multiples.
 — 9 mois (parcours Ora) : 3 axes ou plus, OU chronicité de plusieurs années, OU récidive/échecs de tentatives répétés, OU cumul de plusieurs diagnostics complexes.
+CAS PARTICULIER : si « Santé globale / prévention » est le SEUL axe retenu, la durée est de 1 à 2 mois, en une seule phase, jamais un parcours Aria/Ora (voir RÈGLE N°56 si elle figure plus bas).
 Retiens la durée qui correspond le mieux, et renvoie-la EXACTEMENT sous l'une de ces 5 formes dans le champ "duree_suggeree" (respecte l'orthographe et la ponctuation à l'identique) : "1 mois", "2 mois", "3 mois — programme Alba", "6 mois — programme Aria", "9 mois — programme Ora".` : `La praticienne a déjà tranché la durée d'accompagnement pour cette cliente : ${d.duree_prog}. Ne la remets JAMAIS en question ni ne la recalcule — recopie-la EXACTEMENT à l'identique (même orthographe, même ponctuation) dans le champ "duree_suggeree".`}
 Ta mission sur le texte est de convaincre, sincèrement et honnêtement — ce n'est PAS un texte informatif neutre qu'elle pourrait ignorer sans conséquence. C'est une conclusion clinique qui découle directement des axes prioritaires déjà expliqués en s1_corps/s2_axes, et tu dois lui donner envie d'aller au bout de ce qui est nécessaire pour elle, pas seulement le lui exposer.
 Rédige le champ « parcours_pourquoi » en 3 courts paragraphes :
@@ -3637,7 +3713,7 @@ ${d.texte_cloture}
 ` : ''}
 ━━ PARAMÈTRES DU PROTOCOLE (définis par le praticien après séance) ━━
 🎯 Axes de travail prioritaires : ${d.axes_prioritaires}
-⏱ Durée du programme : ${d.duree_prog}
+${d.axe_autre_precision ? '🔎 Problématique hors spécialités précisée par la praticienne : ' + d.axe_autre_precision + '\n' : ''}⏱ Durée du programme : ${d.duree_prog}
 ✨ Objectif principal retenu : ${d.obj_principal}
 
 🌿 ALIMENTATION
@@ -4017,6 +4093,7 @@ Cette RÈGLE porte uniquement sur LA LECTURE d'un bilan de neuroinflammation qua
 
 5. PILULE PRISE DEPUIS L'ADOLESCENCE (si le contexte l'indique) : expliquer que les signes d'avant (acné, poils, chute de cheveux, cycles irréguliers) peuvent revenir à l'arrêt, parfois plus visiblement, que ce n'est ni un échec ni une aggravation mais le terrain d'origine qui se montre ; que la pilule ne règle pas la question de l'insuline ni du poids. Ne jamais suggérer d'arrêter la pilule (décision médicale), ne jamais dire « on vous a menti ».
 
+${reglesParcoursGeneraux(d)}
 ━━ RÈGLE N°1quater — SÉCURITÉ JSON (IMPÉRATIF, NE JAMAIS ENFREINDRE) ━━
 Le texte que tu rédiges est intégré tel quel dans des valeurs de chaîne JSON. Pour que le document ne casse JAMAIS techniquement :
 1. N'utilise JAMAIS le guillemet droit " à l'intérieur du texte que tu rédiges (citations, discours rapporté, emphase). Utilise TOUJOURS les guillemets français « » à la place.
@@ -4711,6 +4788,55 @@ function getFichesJointesCochees() {
   return [...document.querySelectorAll('#fiches-a-joindre-list input[type=checkbox]:checked')].map(el => el.dataset.ficheCode);
 }
 
+// ── Rappel quotidien des compléments (espace cliente « Vos compléments aujourd'hui ») ──
+// Cette liste structurée est produite par l'IA, une seule fois, à la génération. L'espace cliente la lit
+// telle quelle, alors que le document du protocole (phv-print) est construit, lui, à partir des BLOCS relus
+// et édités par la praticienne. Sans resynchronisation, un complément retiré à la relecture continuait donc
+// d'apparaître dans le rappel quotidien de la cliente (corrigé le 07/10/2026). On part toujours de la liste
+// d'origine, pour qu'un complément remis dans le texte réapparaisse dans le rappel.
+const MARQUES_RAPPEL = new Set(['nutrixeal','nutergia','pileje','pranarom','bionutrics','energetica','natura','nutrilogics','nutri','logics','holistica','novoma','nutripure','therascience','arkopharma','herbalgem','vivomixx','vitalba','nat','form']);
+const MOTS_GENERIQUES_RAPPEL = new Set(['gelules','gelule','capsules','capsule','comprimes','comprime','poudre','extrait','complement','bio','gouttes','ampoule','sachets']);
+function normRappel(t) { return String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim(); }
+function complementPresentDansTexte(nom, texteNorm) {
+  const tokens = normRappel(nom).split(' ').filter(w => w.length >= 4 && !MOTS_GENERIQUES_RAPPEL.has(w));
+  const signif = tokens.filter(w => !MARQUES_RAPPEL.has(w));
+  const base = signif.length ? signif : tokens;   // la marque seule ne prouve rien : un autre produit de la même marque peut rester
+  if (!base.length) return true;                   // nom inexploitable : par prudence on le garde
+  const trouves = base.filter(w => texteNorm.includes(w)).length;
+  return trouves / base.length >= 0.6;
+}
+function resynchroniserRappelComplements() {
+  if (!generatedData) return { gardes: [], retires: [] };
+  if (!generatedData.complements_rappel_origine) {
+    generatedData.complements_rappel_origine = JSON.parse(JSON.stringify(Array.isArray(generatedData.complements_rappel) ? generatedData.complements_rappel : []));
+  }
+  const origine = generatedData.complements_rappel_origine;
+  // Le rappel ne concerne que ce qui démarre maintenant : la Phase 1
+  const phases = blocks.filter(b => /^ph\d+$/.test(b.id));
+  const phase1 = phases.find(b => b.id === 'ph1') || phases[0];
+  const source = phase1 ? phase1.content : blocks.map(b => b.content).join('\n');
+  const texteNorm = normRappel(source);
+  const gardes = [], retires = [];
+  origine.forEach(r => (complementPresentDansTexte(r && r.nom, texteNorm) ? gardes : retires).push(r));
+  generatedData.complements_rappel = gardes;
+  return { gardes, retires };
+}
+function afficherInfoRappelComplements(res) {
+  let el = document.getElementById('rappel-compl-info');
+  if (!el) {
+    const actions = document.querySelector('.prev-actions');
+    if (!actions) return;
+    el = document.createElement('div');
+    el.id = 'rappel-compl-info';
+    el.style.cssText = 'margin-top:10px;font-size:12px;line-height:1.55;color:var(--gris);background:var(--off);border:1px solid var(--taupe);border-radius:9px;padding:9px 13px';
+    actions.insertAdjacentElement('afterend', el);
+  }
+  const noms = l => [...new Set(l.map(r => r.nom))].join(', ');
+  el.innerHTML = '<strong>Rappel quotidien des compléments (espace cliente) :</strong> ' +
+    (res.gardes.length ? noms(res.gardes) : 'aucun complément') +
+    (res.retires.length ? '<br><strong>Retiré du rappel, car absent de la Phase 1 que vous avez relue :</strong> ' + noms(res.retires) : '');
+}
+
 // ── Ouvrir phv-print.html ──
 async function ouvrirProtocole() {
   if (!generatedData || !blocks.length) return;
@@ -4718,6 +4844,9 @@ async function ouvrirProtocole() {
   // Synchroniser le contenu édité dans generatedData
   const map = { s0:'pourquoi_lie', s1:'s1_corps', s2:'s2_axes', s3:'s3_protocole', s4:'s4_alimentation', s5:'s5_rituels', s6:'s6_signaux', s7:'s7_aromatherapie', sP:'parcours_pourquoi' };
   blocks.forEach(b => { if (map[b.id]) generatedData[map[b.id]] = b.content; });
+
+  // Rappel quotidien des compléments : suit ce que vous avez gardé à la relecture (voir plus haut)
+  afficherInfoRappelComplements(resynchroniserRappelComplements());
 
   // Fiches à joindre : uniquement celles cochées manuellement au moment de l'ouverture —
   // jamais un envoi automatique silencieux, cf. décision du 08/09/2026.
