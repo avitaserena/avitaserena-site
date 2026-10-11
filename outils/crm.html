@@ -5466,6 +5466,24 @@ async function openFiche(id){
   if(ficheBriefEstPerime(id)) genererBriefFicheIA(id,{silencieux:true});
 }
 
+// Lit les notes du RDV de réservation (« Motif : … · Durée symptômes : … · Message : … · Tél : … »)
+// et renvoie les lignes à afficher sur la fiche. null s'il n'y a rien d'exploitable.
+function resaInfosCliente(c){
+  const rdv=(cRdvs(c)||[]).filter(r=>r.notes&&/Motif :|Durée symptômes :|Message :/.test(r.notes)).sort((a,b)=>String(b.date).localeCompare(String(a.date)))[0];
+  if(!rdv) return null;
+  const re=/(Motif|Durée symptômes|Mots-clés|Objectif 6 mois|Message|Tél) : /g;
+  const marques=[...rdv.notes.matchAll(re)];
+  const champs={};
+  marques.forEach((m,i)=>{
+    const fin=i+1<marques.length?marques[i+1].index:rdv.notes.length;
+    champs[m[1]]=rdv.notes.slice(m.index+m[0].length,fin).replace(/\s*·\s*$/,'').trim();
+  });
+  const noms={'Motif':'Motif','Durée symptômes':'Depuis','Mots-clés':'Mots-clés','Objectif 6 mois':'Objectif','Message':'Message'};
+  const lignes=Object.keys(noms).filter(k=>champs[k]).map(k=>[noms[k],champs[k]]);
+  if(!lignes.length) return null;
+  return {date:rdv.date,lignes,motif:champs['Motif']||''};
+}
+
 function renderFiche(c){
   const el=document.getElementById('fiche-box');if(!el)return;
   const col=avColor(c.prenom);
@@ -5536,7 +5554,7 @@ function renderFiche(c){
 
   // Infos
   const infoRows=[
-    ['Problématique principale', c.motifs?`<strong style="color:var(--ink)">${escH(c.motifs)}</strong>`:`<span style='color:var(--red);display:inline-flex;align-items:center;gap:4px'>${ic('warn','ico-xs')} Non renseignée</span>`],
+    ['Problématique principale', c.motifs?`<strong style="color:var(--ink)">${escH(c.motifs)}</strong>`:((resaInfosCliente(c)||{}).motif?`<span style="color:var(--ink)">${escH(resaInfosCliente(c).motif)}</span> <span style="color:var(--muted);font-size:12px">(indiqué à la réservation)</span>`:`<span style='color:var(--red);display:inline-flex;align-items:center;gap:4px'>${ic('warn','ico-xs')} Non renseignée</span>`)],
     ['Email', c.email?`<a href="mailto:${escH(c.email)}" style="color:var(--violet);text-decoration:none">${escH(c.email)}</a>`:`<span style='color:var(--red);font-weight:700;display:inline-flex;align-items:center;gap:4px'>${ic('warn','ico-xs')} Manquant</span>`],
     ['Téléphone', c.tel?`<a href="tel:${escH(c.tel)}" style="color:var(--ink);text-decoration:none">${escH(c.tel)}</a>`:'—'],
     // Orientation médicale (25/09/2026) — lue dans le questionnaire de consultation le plus récent,
@@ -5871,6 +5889,15 @@ function renderFiche(c){
     </div>`;
   }
 
+  // « À la réservation » (11/10/2026) — ce que la cliente a indiqué sur le formulaire de réservation
+  // (motif, durée, message), repris des notes du RDV créé au paiement. Évite d'aller le chercher
+  // dans l'agenda Google, et rend visible par exemple un soin prévu la veille/le lendemain de la séance.
+  const resa=resaInfosCliente(c);
+  const resaHtml=resa?`<div class="fv2-brief" style="margin-top:10px;background:var(--off,#F7F6F4)">
+      <div style="font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">À la réservation · ${fmtDate(resa.date)}</div>
+      ${resa.lignes.map(([k,v])=>`<div class="fv2-brief-txt" style="margin-bottom:4px"><strong>${escH(k)} :</strong> ${escH(v)}</div>`).join('')}
+    </div>`:'';
+
   // Derniers messages échangés — ajouté 02/09/2026 : jusqu'ici invisible depuis la fiche,
   // il fallait aller sur la page Messages pour savoir ce qu'une cliente avait écrit en
   // dernier. Matching sécurisé (13/09/2026) : client_key en priorité ; à défaut, prénom+nom
@@ -5931,6 +5958,7 @@ function renderFiche(c){
           <div class="fv2-tags">${tagHtml}</div>
           ${buildFicheHormonale(c, age, cr)}
           ${briefHtml}
+          ${resaHtml}
         </div>
         <div class="fv2-actions">
           ${btn('fv2-btn',`emailHeroBtn(this); this.dataset.id='${cid}'`,ic('mail')+' Email')}

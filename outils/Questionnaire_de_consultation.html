@@ -11466,22 +11466,36 @@ async function chargerPrepVisio() {
     const bloc = document.getElementById('bloc-prep-visio');
     if (!bloc) return;
     bloc.style.display = 'block';
-    renderPrepVisioFaits(row.snapshot || {});
+    // Ce qu'elle a indiqué à la réservation (notes du RDV) — 11/10/2026
+    let resa = [];
+    try {
+      const rdvs = await sbFetch('rendez_vous?client_key=eq.' + encodeURIComponent(crmClientId) + '&select=notes,date&order=date.desc&limit=5');
+      const r = (rdvs || []).find((x) => x.notes && /Motif :|Durée symptômes :|Message :/.test(x.notes));
+      if (r) {
+        const re = /(Motif|Durée symptômes|Mots-clés|Objectif 6 mois|Message|Tél) : /g;
+        const ms = [...r.notes.matchAll(re)];
+        const ch = {};
+        ms.forEach((m, i) => { const fin = i + 1 < ms.length ? ms[i + 1].index : r.notes.length; ch[m[1]] = r.notes.slice(m.index + m[0].length, fin).replace(/\s*·\s*$/, '').trim(); });
+        resa = [['Motif choisi', ch['Motif']], ['Depuis (réservation)', ch['Durée symptômes']], ['Message', ch['Message']]].filter(([, v]) => v);
+      }
+    } catch (e) { console.warn('[Prep visio] Lecture réservation impossible :', e); }
+    renderPrepVisioFaits(row.snapshot || {}, resa);
 
     if (row.synthese_ia) { renderPrepVisioSynthese(row.synthese_ia); }
     else { genererPrepVisioSynthese(false); }
   } catch (e) { console.warn('[Prep visio] Chargement échoué :', e); }
 }
 
-function renderPrepVisioFaits(s) {
+function renderPrepVisioFaits(s, resa) {
   const el = document.getElementById('prep-visio-faits');
   if (!el) return;
   const esc = (v) => String(v).replace(/</g, '&lt;');
   const lignes = [];
+  (resa || []).forEach((l) => lignes.push(['À la réservation · ' + l[0], l[1]]));
   if (s.motif) lignes.push(['Ce qui pèse', s.motif]);
   if (s.duree) lignes.push(['Depuis', s.duree]);
   if (s.scores && s.scores.energieGenerale) lignes.push(['Énergie ressentie', s.scores.energieGenerale + '/10']);
-  if (s.objectif) lignes.push(['Objectif à 6 mois', s.objectif]);
+  if (s.objectif) lignes.push(['Comment elle aimerait se sentir (1 à 3 mois)', s.objectif]);
   if (s.libre) lignes.push(['Message libre', s.libre]);
   el.innerHTML = lignes.length
     ? lignes.map(([l, v]) => '<div style="margin-bottom:8px"><span style="font-weight:700;color:var(--or)">' + esc(l) + ' — </span><span>' + esc(v) + '</span></div>').join('')
