@@ -2387,7 +2387,7 @@ function getActionsJour(){
   const actions = [];
 
   rdvs.filter(r => r.status !== 'annule' && !isRdvPerso(r)).forEach(rdv => {
-    const d = diffD(rdv.date);
+    const d = -diffD(rdv.date); // jours jusqu'au RDV : +1 = demain, -1 = hier (diffD est positif quand la date est passée)
     const diffMin = d===0 ? diffMinutesRdv(rdv) : null; // écart en minutes, uniquement pertinent le jour même
     const done = rdv.mails_done || {};
     const client = matchClientForRdv(rdv);
@@ -3963,7 +3963,17 @@ function mapC(r){return{id:r.id,prenom:r.prenom,nom:r.nom,email:r.email,tel:r.te
 function _ymdParis(d){return (_ymdParis.f||(_ymdParis.f=new Intl.DateTimeFormat('fr-CA',{timeZone:'Europe/Paris',year:'numeric',month:'2-digit',day:'2-digit'}))).format(d);}
 function today(){return _ymdParis(new Date());} // date du jour à l'heure de Paris (toISOString = UTC → veille entre 0h et 2h)
 function addD(d,n){if(!d)return null;const dt=new Date(d);dt.setDate(dt.getDate()+n);return dt.toISOString().split('T')[0];}
-function diffD(d){if(!d)return null;return Math.round((new Date()-new Date(d))/86400000);}
+// CORRECTIF 11/10/2026 (Claude) : écart en JOURS CALENDAIRES (fuseau Paris), positif si la date est passée.
+// Avant : Math.round((maintenant - date UTC minuit)/86400000) → décalage d'un jour selon l'heure
+// (ex. RDV de demain vu comme "hier" à 10h11 → fausse alerte "Clôture en retard").
+function diffD(d){
+  if(!d)return null;
+  const s=String(d);
+  const ymd=s.length>10?_ymdParis(new Date(s)):s.slice(0,10);
+  const a=ymd.split('-').map(Number),b=today().split('-').map(Number);
+  if(a.length<3||isNaN(a[0])||isNaN(a[1])||isNaN(a[2]))return null;
+  return Math.round((Date.UTC(b[0],b[1]-1,b[2],12)-Date.UTC(a[0],a[1]-1,a[2],12))/86400000);
+}
 function fmtDate(d){if(!d)return'—';return new Date(d).toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'});}
 function fmtShort(d){if(!d)return'—';return new Date(d).toLocaleDateString('fr-FR',{day:'numeric',month:'short'});}
 function fmtDMY(d){if(!d)return'—';const dt=new Date(d);return String(dt.getDate()).padStart(2,'0')+'/'+String(dt.getMonth()+1).padStart(2,'0')+'/'+dt.getFullYear();}

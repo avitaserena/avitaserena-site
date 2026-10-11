@@ -563,6 +563,8 @@ body.is-embed .app{min-height:100vh}
 </div>
 
 <script>
+function todayParis(){return new Intl.DateTimeFormat('fr-CA',{timeZone:'Europe/Paris',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());} // CORRECTIF 11/10/2026 : « aujourd'hui » en heure de Paris (l'UTC donnait la veille entre 0h et 2h)
+
 // ════════════════════════════════
 // ÉTAT
 // ════════════════════════════════
@@ -584,7 +586,7 @@ let state = {
     {day:0, label:'Dim', from:'10:00', to:'12:00', on:false},
   ],
   prepTime: 10,
-  selectedDate: new Date().toISOString().slice(0,10),
+  selectedDate: todayParis(),
   currentMiniMonth: new Date().getMonth(),
   currentMiniYear: new Date().getFullYear(),
   currentMoisMonth: new Date().getMonth(),
@@ -916,7 +918,7 @@ function renderMiniCal() {
 
   const firstDay = new Date(y, m, 1).getDay();
   const days = new Date(y, m+1, 0).getDate();
-  const today = new Date().toISOString().slice(0,10);
+  const today = todayParis();
   const offset = firstDay === 0 ? 6 : firstDay - 1;
   const prevDays = new Date(y, m, 0).getDate();
 
@@ -1053,7 +1055,7 @@ function renderBlockedList() {
 }
 
 function openBlockModal() {
-  const today = new Date().toISOString().slice(0,10);
+  const today = todayParis();
   document.getElementById('blockStart').value = today;
   document.getElementById('blockEnd').value = today;
   document.getElementById('blockReason').value = '';
@@ -1097,7 +1099,7 @@ function getTypeLabelShort(t) { return t === 'suivi' ? 'Suivi' : 'Initiale'; }
 function renderAlertesAttente() {
   const box = document.getElementById('attenteAlertBox');
   if (!box) return;
-  const todayStr = new Date().toISOString().slice(0,10);
+  const todayStr = todayParis();
   const enAttente = state.rdvs
     .filter(r => r.status === 'attente' && r.date >= todayStr && !isEvenementPerso(r))
     .sort((a,b) => (a.date+a.time).localeCompare(b.date+b.time));
@@ -1164,7 +1166,7 @@ function renderAgenda() {
 
     const d = new Date(dateStr + 'T12:00:00');
     const isBlocked = isDateBlocked(dateStr);
-    const today = new Date().toISOString().slice(0,10);
+    const today = todayParis();
 
     const section = document.createElement('div');
     section.className = 'agenda-day';
@@ -1295,7 +1297,7 @@ function calculerChargeSemaine(days) {
 
 function weekNav(dir) {
   if (dir === 0) {
-    selectDate(new Date().toISOString().slice(0,10));
+    selectDate(todayParis());
     return;
   }
   const d = new Date(state.selectedDate + 'T12:00:00');
@@ -1319,7 +1321,7 @@ function renderSemaine() {
 
   const startD = days[0], endD = days[6];
   const s = new Date(startD+' '), e = new Date(endD+' ');
-  const todayStr = new Date().toISOString().slice(0,10);
+  const todayStr = todayParis();
 
   const DAY_START=8, DAY_END=20, hourH=56;
   const totalH=(DAY_END-DAY_START)*hourH;
@@ -1456,7 +1458,7 @@ function wkSlotDblClick(e, dateStr) {
 // type, parcours et aperçu des notes visibles directement sur la carte.
 // ════════════════════════════════
 function jourNav(dir) {
-  if (dir === 0) { selectDate(new Date().toISOString().slice(0,10)); return; }
+  if (dir === 0) { selectDate(todayParis()); return; }
   const d = new Date(state.selectedDate + 'T12:00:00');
   d.setDate(d.getDate() + dir);
   selectDate(d.toISOString().slice(0,10));
@@ -1483,7 +1485,7 @@ function renderJour() {
   if (!body) return;
   const dateStr = state.selectedDate;
   const d = new Date(dateStr + 'T12:00:00');
-  const todayStr = new Date().toISOString().slice(0,10);
+  const todayStr = todayParis();
   const isToday = dateStr === todayStr;
   const isBlocked = isDateBlocked(dateStr);
   const DAY_START = 8, DAY_END = 20, hourH = 72;
@@ -1592,7 +1594,7 @@ function renderMois() {
   const body = document.getElementById('moisBody');
   if (!body) return;
   const m = state.currentMoisMonth, y = state.currentMoisYear;
-  const today = new Date().toISOString().slice(0,10);
+  const today = todayParis();
 
   const firstDay = new Date(y, m, 1).getDay();
   const nbJours = new Date(y, m+1, 0).getDate();
@@ -2157,7 +2159,7 @@ async function syncToCRM(rdv) {
       'Authorization': 'Bearer ' + authToken,
       'Content-Type': 'application/json'
     };
-    const evt = { type: 'rdv', rdv_id: rdv.id, title: 'RDV ' + getTypeLabel(rdv.type) + ' — ' + rdv.date, icon: 'rdv', date: new Date().toISOString().slice(0,10) };
+    const evt = { type: 'rdv', rdv_id: rdv.id, title: 'RDV ' + getTypeLabel(rdv.type) + ' — ' + rdv.date, icon: 'rdv', date: todayParis() };
 
     // Cliente déjà connue : priorité au rattachement exact (client_key — vient soit
     // d'une sélection dans l'autocomplétion, soit du calcul prénom+nom+DDN), l'email
@@ -2404,7 +2406,7 @@ function initAgenda() {
   }
   load();
   loadEmailJSConfig();
-  selectDate(new Date().toISOString().slice(0,10));
+  selectDate(todayParis());
   updateStats();
   renderSlotsDisplay();
   renderBlockedList();
