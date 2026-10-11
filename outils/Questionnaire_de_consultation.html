@@ -821,14 +821,23 @@ function recStop(){ recLaunch('Arrêter l’enregistrement'); recSetState('done'
   </div>
 
   <!-- Bloc Préparation visio — rempli automatiquement si la cliente a répondu au questionnaire envoyé avant le RDV -->
-  <div id="bloc-prep-visio" style="display:none;background:var(--or-clair);border:1px solid var(--ocre);border-radius:16px;padding:22px 26px;margin-bottom:26px">
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px">
-      <div style="font-family:'Inter',sans-serif;font-weight:700;font-size:16px;color:var(--or)">📋 Questionnaire de préparation visio</div>
-      <button type="button" id="btn-regen-prep-visio" onclick="genererPrepVisioSynthese(true)" style="display:none;background:none;border:1px solid var(--ocre);color:var(--or);border-radius:99px;padding:5px 12px;font-size:11.5px;font-weight:600;cursor:pointer;white-space:nowrap">↻ Régénérer</button>
+  <div id="bloc-prep-visio" style="display:none;background:var(--or-clair);border:1px solid var(--ocre);border-radius:16px;padding:20px 22px;margin-bottom:26px">
+    <style>
+      .pv-grid{display:grid;grid-template-columns:1fr 1.5fr 1.1fr;gap:0;border:1px solid var(--ocre);border-radius:12px;overflow:hidden;background:#fff}
+      .pv-grid.pv-2{grid-template-columns:1fr 2.6fr}
+      .pv-h{font-size:11px;text-transform:uppercase;letter-spacing:.12em;font-weight:700;color:var(--or);background:#F7F6F4;padding:9px 14px;border-bottom:1px solid var(--ocre)}
+      .pv-c{padding:12px 14px;font-size:15px;line-height:1.55;color:var(--ardoise);border-bottom:1px solid #EDE9E1}
+      .pv-c.pv-dit{font-weight:700}
+      .pv-c.pv-moi{background:#F7F6F4;font-size:14px}
+      .pv-c.pv-parle{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:18px;line-height:1.5}
+      .pv-t{font-size:11px;text-transform:uppercase;letter-spacing:.12em;font-weight:700;color:var(--or);margin:16px 0 8px}
+      @media(max-width:720px){.pv-grid,.pv-grid.pv-2{grid-template-columns:1fr}.pv-h{display:none}.pv-c{border-bottom:none;padding:8px 14px}.pv-c.pv-moi{border-bottom:1px solid #EDE9E1}}
+    </style>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px">
+      <div style="font-weight:700;font-size:16px;color:var(--or)">📋 Avant la visio : ce qu'elle a dit → ce que je lui réponds</div>
+      <button type="button" id="btn-regen-prep-visio" onclick="genererPrepVisioSynthese(true)" style="display:none;background:none;border:1px solid var(--ocre);color:var(--or);border-radius:99px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap">↻ Régénérer</button>
     </div>
-    <div style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--or);opacity:.8;margin-bottom:6px">Ce qu'elle a répondu avant la visio</div>
-    <div id="prep-visio-faits" style="font-size:14px;color:var(--ardoise);line-height:1.6;margin-bottom:16px"></div>
-    <div style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--or);opacity:.8;margin-bottom:6px">Généré par IA — à vérifier en entretien</div>
+    <div id="prep-visio-faits" style="font-size:14px;color:var(--ardoise);line-height:1.6;margin-bottom:6px"></div>
     <div id="prep-visio-ia" style="font-size:14px;color:var(--ardoise);line-height:1.6"><div style="opacity:.7">Génération en cours…</div></div>
   </div>
 
@@ -11490,16 +11499,15 @@ function renderPrepVisioFaits(s, resa) {
   const el = document.getElementById('prep-visio-faits');
   if (!el) return;
   const esc = (v) => String(v).replace(/</g, '&lt;');
-  const lignes = [];
-  (resa || []).forEach((l) => lignes.push(['À la réservation · ' + l[0], l[1]]));
-  if (s.motif) lignes.push(['Ce qui pèse', s.motif]);
-  if (s.duree) lignes.push(['Depuis', s.duree]);
-  if (s.scores && s.scores.energieGenerale) lignes.push(['Énergie ressentie', s.scores.energieGenerale + '/10']);
-  if (s.objectif) lignes.push(['Comment elle aimerait se sentir (1 à 3 mois)', s.objectif]);
-  if (s.libre) lignes.push(['Message libre', s.libre]);
-  el.innerHTML = lignes.length
-    ? lignes.map(([l, v]) => '<div style="margin-bottom:8px"><span style="font-weight:700;color:var(--or)">' + esc(l) + ' — </span><span>' + esc(v) + '</span></div>').join('')
-    : '<div style="opacity:.7">Aucune réponse détaillée transmise.</div>';
+  const p = [];
+  if (s.age) p.push(esc(s.age) + ' ans');
+  if (s.duree) p.push('depuis ' + esc(s.duree));
+  if (s.scores && s.scores.energieGenerale) p.push('énergie ' + esc(s.scores.energieGenerale) + '/10');
+  const resaDuree = (resa || []).find((l) => l[0] === 'Depuis (réservation)');
+  if (resaDuree && s.duree && resaDuree[1] !== s.duree) p.push('à la réservation : « ' + esc(resaDuree[1]) + ' »');
+  const msg = [(resa || []).find((l) => l[0] === 'Message'), s.libre ? ['', s.libre] : null].filter(Boolean).map((l) => '« ' + esc(l[1]) + ' »');
+  el.innerHTML = (p.length ? '<div style="font-weight:600">' + p.join(' · ') + '</div>' : '') +
+    (msg.length ? '<div style="margin-top:4px">Son message : ' + msg.join(' / ') + '</div>' : '');
 }
 
 function renderPrepVisioSynthese(d) {
@@ -11507,38 +11515,29 @@ function renderPrepVisioSynthese(d) {
   const btn = document.getElementById('btn-regen-prep-visio');
   if (!el) return;
   const esc = (v) => String(v || '').replace(/</g, '&lt;');
-  const lbl = (t) => '<div style="font-size:10.5px;text-transform:uppercase;letter-spacing:.12em;color:var(--or);margin:14px 0 8px">' + t + '</div>';
-  const voix = (arr) => (arr || []).map((p) => '<div style="font-style:italic;padding:10px 14px;margin-bottom:8px;background:#fff;border-radius:10px;border-left:3px solid var(--ocre);line-height:1.65">« ' + esc(p) + ' »</div>').join('');
-  const aDire = d.a_dire || [], objectifs = d.objectifs || [];
-  // Bloc PRIVÉ — pistes pour la praticienne, jamais à dire à la cliente
-  const pp = d.pistes_praticienne || [];
-  const prive = pp.length
-    ? '<div style="margin-top:20px;padding:16px 18px;background:#F7F6F4;border:1.5px dashed var(--ocre);border-radius:12px">' +
-      '<div style="font-size:10.5px;text-transform:uppercase;letter-spacing:.12em;color:var(--or);font-weight:700;margin-bottom:10px">🔒 Pour moi seule — pistes de travail, à ne pas dire à la cliente</div>' +
-      pp.map((x, i) =>
-        '<div style="margin-bottom:' + (i < pp.length - 1 ? '14' : '0') + 'px;line-height:1.6">' +
-        '<div style="font-weight:700;color:var(--ardoise);font-size:15px">' + (i + 1) + '. ' + esc(x.piste) + '</div>' +
-        (x.pourquoi ? '<div style="font-size:14px;color:var(--ardoise);margin-top:3px">' + esc(x.pourquoi) + '</div>' : '') +
-        (x.a_verifier ? '<div style="font-size:14px;color:var(--ardoise);margin-top:4px"><span style="font-weight:700;color:var(--or)">À vérifier en entretien — </span>' + esc(x.a_verifier) + '</div>' : '') +
-        '</div>').join('') +
-      '</div>'
-    : '';
-  if (d.donnees_insuffisantes && !d.recap && !aDire.length && !objectifs.length) {
-    el.innerHTML = '<div style="opacity:.7">Pas assez de réponses pour une synthèse utile.</div>';
-  } else if (aDire.length || objectifs.length || pp.length) {
-    // Format « parlé » (11/10/2026) : la voix de Sabrina, à dire telle quelle
-    el.innerHTML =
-      (aDire.length ? lbl('Ce que j\'ai relevé — à lui dire') + voix(aDire) : '') +
-      (objectifs.length ? lbl('Ses objectifs, reformulés — et ce sur quoi on va travailler') + voix(objectifs) : '') +
-      (d.phrase_accroche ? lbl('Pour ouvrir l\'entretien') + voix([d.phrase_accroche]) : '') +
-      prive;
+  const lignes = Array.isArray(d.lignes) ? d.lignes : [];
+  const objectifs = Array.isArray(d.objectifs) && d.objectifs.length && d.objectifs[0] && typeof d.objectifs[0] === 'object' ? d.objectifs : [];
+  const notes = Array.isArray(d.a_noter) ? d.a_noter : [];
+  if (!lignes.length && !objectifs.length) {
+    el.innerHTML = d.donnees_insuffisantes
+      ? '<div style="opacity:.7">Pas assez de réponses pour un tableau utile.</div>'
+      : '<div style="opacity:.85">Ancien format enregistré. Cliquez sur « ↻ Régénérer » pour obtenir le tableau.</div>';
   } else {
-    // Ancien format (synthèses déjà enregistrées avant le 11/10/2026)
-    const pistes = (d.pistes || []).map((p) => '<li style="margin-bottom:6px">' + esc(p) + '</li>').join('');
-    el.innerHTML =
-      '<div style="margin-bottom:12px">' + esc(d.recap) + '</div>' +
-      (pistes ? lbl('Pistes à explorer — et pourquoi') + '<ul style="margin:0 0 12px 18px;padding:0">' + pistes + '</ul>' : '') +
-      (d.phrase_accroche ? voix([d.phrase_accroche]) : '');
+    let h = '';
+    if (lignes.length) {
+      h += '<div class="pv-grid"><div class="pv-h">Elle a dit</div><div class="pv-h">Je lui dis</div><div class="pv-h">Pour moi : à investiguer</div>' +
+        lignes.map((l) => '<div class="pv-c pv-dit">' + esc(l.elle_a_dit) + '</div><div class="pv-c pv-parle">« ' + esc(l.je_lui_dis) + ' »</div><div class="pv-c pv-moi">' + esc(l.a_investiguer) + '</div>').join('') +
+        '</div>';
+    }
+    if (objectifs.length) {
+      h += '<div class="pv-t">Ses objectifs : je les lui reformule</div><div class="pv-grid pv-2"><div class="pv-h">Elle a dit</div><div class="pv-h">Je lui dis</div>' +
+        objectifs.map((o) => '<div class="pv-c pv-dit">' + esc(o.elle_a_dit) + '</div><div class="pv-c pv-parle">« ' + esc(o.je_lui_dis) + ' »</div>').join('') +
+        '</div>';
+    }
+    if (notes.length) {
+      h += '<div class="pv-t">À noter</div><ul style="margin:0 0 0 18px;padding:0">' + notes.map((n) => '<li style="margin-bottom:4px">' + esc(n) + '</li>').join('') + '</ul>';
+    }
+    el.innerHTML = h;
   }
   if (btn) btn.style.display = 'inline-flex';
 }
