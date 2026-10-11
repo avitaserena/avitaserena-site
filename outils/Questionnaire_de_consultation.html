@@ -11496,9 +11496,12 @@ function renderPrepVisioSynthese(d) {
   if (d.donnees_insuffisantes && !d.recap) {
     el.innerHTML = '<div style="opacity:.7">Pas assez de réponses pour une synthèse utile.</div>';
   } else {
-    const pistes = (d.pistes || []).map((p) => '<li>' + esc(p) + '</li>').join('');
+    const pistes = (d.pistes || []).map((p) => '<li style="margin-bottom:6px">' + esc(p) + '</li>').join('');
+    const ressentis = (d.ressentis || []).map((p) => '<li style="margin-bottom:6px">' + esc(p) + '</li>').join('');
     el.innerHTML =
-      '<div style="margin-bottom:10px">' + esc(d.recap) + '</div>' +
+      '<div style="margin-bottom:12px">' + esc(d.recap) + '</div>' +
+      (ressentis ? '<div style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--or);margin-bottom:6px">Ce qu\'elle vit probablement — à lui dire pour qu\'elle se sente comprise (à vérifier)</div><ul style="margin:0 0 14px 18px;padding:0">' + ressentis + '</ul>' : '') +
+      (pistes ? '<div style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--or);margin-bottom:6px">Pistes à explorer — et pourquoi</div>' : '') +
       (pistes ? '<ul style="margin:0 0 12px 18px;padding:0">' + pistes + '</ul>' : '') +
       '<div style="font-style:italic;padding:10px 12px;background:#fff;border-radius:10px;border-left:3px solid var(--ocre)">« ' + esc(d.phrase_accroche) + ' »</div>';
   }
@@ -11514,7 +11517,8 @@ async function genererPrepVisioSynthese(force) {
     const data = await callEdgeFunction('generate-synthese-prep-visio', { client_id: crmClientId, force: !!force });
     renderPrepVisioSynthese(data);
   } catch (e) {
-    if (el) el.innerHTML = '<div style="opacity:.7">⚠ Synthèse indisponible pour le moment.</div>';
+    if (el) el.innerHTML = '<div style="opacity:.7">⚠ Synthèse indisponible pour le moment' + (e && e.message ? ' (' + String(e.message).replace(/</g,'&lt;').slice(0,120) + ')' : '') + '. Cliquez sur « Régénérer » pour réessayer.</div>';
+    if (btn) btn.style.display = 'inline-flex';
     console.warn('[Prep visio] Génération échouée :', e);
   } finally {
     if (btn) btn.disabled = false;
