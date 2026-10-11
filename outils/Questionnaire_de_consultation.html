@@ -11493,17 +11493,38 @@ function renderPrepVisioSynthese(d) {
   const btn = document.getElementById('btn-regen-prep-visio');
   if (!el) return;
   const esc = (v) => String(v || '').replace(/</g, '&lt;');
-  if (d.donnees_insuffisantes && !d.recap) {
+  const lbl = (t) => '<div style="font-size:10.5px;text-transform:uppercase;letter-spacing:.12em;color:var(--or);margin:14px 0 8px">' + t + '</div>';
+  const voix = (arr) => (arr || []).map((p) => '<div style="font-style:italic;padding:10px 14px;margin-bottom:8px;background:#fff;border-radius:10px;border-left:3px solid var(--ocre);line-height:1.65">« ' + esc(p) + ' »</div>').join('');
+  const aDire = d.a_dire || [], objectifs = d.objectifs || [];
+  // Bloc PRIVÉ — pistes pour la praticienne, jamais à dire à la cliente
+  const pp = d.pistes_praticienne || [];
+  const prive = pp.length
+    ? '<div style="margin-top:20px;padding:16px 18px;background:#F7F6F4;border:1.5px dashed var(--ocre);border-radius:12px">' +
+      '<div style="font-size:10.5px;text-transform:uppercase;letter-spacing:.12em;color:var(--or);font-weight:700;margin-bottom:10px">🔒 Pour moi seule — pistes de travail, à ne pas dire à la cliente</div>' +
+      pp.map((x, i) =>
+        '<div style="margin-bottom:' + (i < pp.length - 1 ? '14' : '0') + 'px;line-height:1.6">' +
+        '<div style="font-weight:700;color:var(--ardoise);font-size:15px">' + (i + 1) + '. ' + esc(x.piste) + '</div>' +
+        (x.pourquoi ? '<div style="font-size:14px;color:var(--ardoise);margin-top:3px">' + esc(x.pourquoi) + '</div>' : '') +
+        (x.a_verifier ? '<div style="font-size:14px;color:var(--ardoise);margin-top:4px"><span style="font-weight:700;color:var(--or)">À vérifier en entretien — </span>' + esc(x.a_verifier) + '</div>' : '') +
+        '</div>').join('') +
+      '</div>'
+    : '';
+  if (d.donnees_insuffisantes && !d.recap && !aDire.length && !objectifs.length) {
     el.innerHTML = '<div style="opacity:.7">Pas assez de réponses pour une synthèse utile.</div>';
+  } else if (aDire.length || objectifs.length || pp.length) {
+    // Format « parlé » (11/10/2026) : la voix de Sabrina, à dire telle quelle
+    el.innerHTML =
+      (aDire.length ? lbl('Ce que j\'ai relevé — à lui dire') + voix(aDire) : '') +
+      (objectifs.length ? lbl('Ses objectifs, reformulés — et ce sur quoi on va travailler') + voix(objectifs) : '') +
+      (d.phrase_accroche ? lbl('Pour ouvrir l\'entretien') + voix([d.phrase_accroche]) : '') +
+      prive;
   } else {
+    // Ancien format (synthèses déjà enregistrées avant le 11/10/2026)
     const pistes = (d.pistes || []).map((p) => '<li style="margin-bottom:6px">' + esc(p) + '</li>').join('');
-    const ressentis = (d.ressentis || []).map((p) => '<li style="margin-bottom:6px">' + esc(p) + '</li>').join('');
     el.innerHTML =
       '<div style="margin-bottom:12px">' + esc(d.recap) + '</div>' +
-      (ressentis ? '<div style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--or);margin-bottom:6px">Ce qu\'elle vit probablement — à lui dire pour qu\'elle se sente comprise (à vérifier)</div><ul style="margin:0 0 14px 18px;padding:0">' + ressentis + '</ul>' : '') +
-      (pistes ? '<div style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--or);margin-bottom:6px">Pistes à explorer — et pourquoi</div>' : '') +
-      (pistes ? '<ul style="margin:0 0 12px 18px;padding:0">' + pistes + '</ul>' : '') +
-      '<div style="font-style:italic;padding:10px 12px;background:#fff;border-radius:10px;border-left:3px solid var(--ocre)">« ' + esc(d.phrase_accroche) + ' »</div>';
+      (pistes ? lbl('Pistes à explorer — et pourquoi') + '<ul style="margin:0 0 12px 18px;padding:0">' + pistes + '</ul>' : '') +
+      (d.phrase_accroche ? voix([d.phrase_accroche]) : '');
   }
   if (btn) btn.style.display = 'inline-flex';
 }
