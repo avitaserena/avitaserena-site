@@ -7701,11 +7701,17 @@ function voirQuestionnaireArchive(clientId, qid){
   const snap = q.snapshot || {};
   const sections = Array.isArray(snap._resume_sections) ? snap._resume_sections : null;
 
+  // CORRECTIF 11/10/2026 : champs techniques masqués (ts, client_id…), libellés lisibles, scores en clair
+  const _techKeys = ['ts','client_id','email','prenom','nom'];
+  const _libelles = {age:'Âge',duree:'Depuis combien de temps',motif:'Ce qui pèse',objectif:'Objectif à 6 mois',libre:'Message libre',scores:'Scores'};
+  const _libScore = {energieGenerale:'Énergie générale'};
   const rawRows = Object.entries(snap)
-    .filter(([k,v]) => v !== null && v !== undefined && String(v).trim() !== '' && !k.startsWith('_'))
+    .filter(([k,v]) => v !== null && v !== undefined && String(v).trim() !== '' && !k.startsWith('_') && !(q.type==='visio' && _techKeys.includes(k)))
     .map(([k,v]) => {
-      const label = k.replace(/_/g,' ').replace(/([a-z])([A-Z])/g,'$1 $2').replace(/^./, s=>s.toUpperCase());
-      const val = typeof v === 'object' ? JSON.stringify(v) : String(v);
+      const label = (q.type==='visio' && _libelles[k]) ? _libelles[k] : k.replace(/_/g,' ').replace(/([a-z])([A-Z])/g,'$1 $2').replace(/^./, s=>s.toUpperCase());
+      const val = (k==='scores' && v && typeof v==='object')
+        ? Object.entries(v).map(([a,b])=>(_libScore[a]||a)+' : '+b+'/10').join(' · ')
+        : (typeof v === 'object' ? JSON.stringify(v) : String(v));
       return `<div style="padding:10px 0;border-bottom:1px solid var(--border)"><div style="font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:4px">${escH(label)}</div><div style="font-size:13px;color:var(--ink);white-space:pre-wrap;line-height:1.6">${escH(val)}</div></div>`;
     }).join('');
 
@@ -7734,7 +7740,7 @@ function voirQuestionnaireArchive(clientId, qid){
   modal.id='modal-voir-questionnaire';
   modal.innerHTML=`<div class="modal modal-lg">
     <div style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
-      <div style="font-size:16px;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:8px">${q.type==='suivi'?ic('refresh'):ic('file')} ${q.type==='suivi'?'Questionnaire de suivi':'Questionnaire de consultation'} — ${escH(q.prenom||'')} · ${fmtDate(q.created_at)}</div>
+      <div style="font-size:16px;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:8px">${q.type==='suivi'?ic('refresh'):ic('file')} ${q.type==='suivi'?'Questionnaire de suivi':(q.type==='visio'?'Questionnaire de préparation visio':'Questionnaire de consultation')} — ${escH(q.prenom||'')} · ${fmtDate(q.created_at)}</div>
       <button onclick="document.getElementById('modal-voir-questionnaire').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted)">×</button>
     </div>
     ${bodyHtml}
@@ -7778,7 +7784,8 @@ function ficheBriefSignature(cid){
   const dernierMemo=clientMemos[0]?.created_at||'';
   const wf=buildWF(c);
   const nextWF=wf.find(s=>!s.done);
-  return [dernierQ,dernierMemo,c.notes||'',c.motifs||'',c.axes||'',nextWF?.label||''].join('|');
+  const dernierVisio=(questionnairesClient[cid]||[]).filter(q=>q.type==='visio')[0]?.created_at||'';
+  return [dernierQ,dernierMemo,c.notes||'',c.motifs||'',c.axes||'',nextWF?.label||'',dernierVisio].join('|');
 }
 
 function ficheBriefEstPerime(cid){
@@ -7807,6 +7814,17 @@ function texteContexteBrief(cid){
     hasSignal=true;
   }
 
+  // Réponses au questionnaire de préparation visio (envoyé avant le RDV)
+  const qVisioB=(questionnairesClient[cid]||[]).filter(q=>q.type==='visio')[0];
+  if(qVisioB){
+    const sv=qVisioB.snapshot||{};
+    const lignesV=[['Âge',sv.age],['Ce qui pèse',sv.motif],['Depuis',sv.duree],['Énergie (/10)',sv.scores&&sv.scores.energieGenerale],['Objectif',sv.objectif],['Message libre',sv.libre]].filter(([,v])=>v);
+    if(lignesV.length){
+      blocs.push(`── Questionnaire de préparation visio (du ${fmtDate(qVisioB.created_at)}) ──\n`+lignesV.map(([k,v])=>`${k} : ${v}`).join('\n'));
+      hasSignal=true;
+    }
+  }
+
   // Dernier protocole PHV — ce qui a été mis en place, accepté, refusé
   const clientMemos=memoHistoryAll.filter(m=>memeCliente(c, m) === true).sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||''));
   if(clientMemos[0]){
@@ -7820,7 +7838,7 @@ function texteContexteBrief(cid){
   // Prochaine étape attendue (workflow)
   const wf=buildWF(c);
   const nextWF=wf.find(s=>!s.done);
-  if(nextWF){ blocs.push(`Prochaine étape prévue dans le suivi : ${nextWF.label}${nextWF.tgt?' (prévue le '+fmtDate(nextWF.tgt)+')':''}`); hasSignal=true; }
+  if(nextWF){ blocs.push(`Prochaine étape prévue dans le suivi : ${nextWF.label}${nextWF.tgt?' (prévue le '+fmtDate(nextWF.tgt)+')':''}`); } // CORRECTIF 11/10/2026 : l'étape de suivi seule ne compte plus comme « information » (le modèle comblait le vide)
 
   return {texte:blocs.join('\n\n'),hasSignal};
 }
@@ -7862,7 +7880,7 @@ async function genererBriefFicheIA(cid,{silencieux=false}={}){
 4. Troisième personne, écriture interne factuelle ("Contexte : ...", "A mis en place ...", "À voir cette fois : ..." ou en prose continue — au choix, tant que c'est court).
 5. Vocabulaire naturopathique courant, pas de jargon biologique lourd.
 6. Jamais de diagnostic médical de ta part — tu restitues ce qui a été dit/noté, tu n'interprètes pas.
-7. INTERDICTION ABSOLUE de couper un mot ou un groupe de mots dans un champ libre (texte tapé par Sabrina) au point d'en changer le sens — en particulier les liens de parenté et de filiation. Exemple concret à ne JAMAIS reproduire : la donnée "Père de mon fils Maladie de Charcot depuis 2018" ne doit JAMAIS devenir "père atteint de Charcot" (cela transforme le père de l'enfant de la cliente en le père de la cliente elle-même — une erreur factuelle grave). En cas de doute sur la formulation la plus courte possible sans risque de perte de sens, reprends la formulation du champ libre quasiment telle quelle plutôt que de la compresser.
+7. INTERDICTION ABSOLUE de couper un mot ou un groupe de mots dans un champ libre (texte tapé par Sabrina) au point d'en changer le sens — en particulier les liens de parenté et de filiation. Ne jamais transformer un lien de parenté exprimé dans le champ (par exemple « père de mon enfant », « mari de ma sœur ») en un lien avec la cliente elle-même, et ne jamais reprendre un exemple de ces consignes comme s'il s'agissait d'une donnée. En cas de doute sur la formulation la plus courte possible sans risque de perte de sens, reprends la formulation du champ libre quasiment telle quelle plutôt que de la compresser.
 
 ━━ FORMAT DE SORTIE ━━
 Réponds UNIQUEMENT avec le texte du pense-bête, sans JSON, sans guillemets, sans markdown, sans texte avant/après.
