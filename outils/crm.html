@@ -2169,7 +2169,7 @@ async function loadSeoStats(){
 async function loadFactures(){
   try{
     const r=await sbAll('factures?order=date.desc');
-    db.factures=r.map(f=>({id:f.id,num:f.num,clientId:f.client_id,date:f.date,prestation:f.prestation,prestationLabel:f.prestation_label,montant:parseFloat(f.montant)||0,paiement:f.paiement,paiementLabel:f.paiement_label,statut:f.statut,deuxFois:f.deux_fois,montantRembourse:f.montant_rembourse!=null?parseFloat(f.montant_rembourse):0,rembourseLe:f.rembourse_le||null,indySaisie:!!f.indy_saisie,indySaisieLe:f.indy_saisie_le||null}));
+    db.factures=r.map(f=>({id:f.id,num:f.num,clientId:f.client_id,date:f.date,prestation:f.prestation,prestationLabel:f.prestation_label,montant:parseFloat(f.montant)||0,paiement:f.paiement,paiementLabel:f.paiement_label,statut:f.statut,deuxFois:f.deux_fois,montantRembourse:f.montant_rembourse!=null?parseFloat(f.montant_rembourse):0,rembourseLe:f.rembourse_le||null,indySaisie:!!f.indy_saisie,indySaisieLe:f.indy_saisie_le||null,acheteurNom:f.acheteur_nom||'',acheteurEmail:f.acheteur_email||''}));
     console.log('[CRM] ✓ Factures:', db.factures.length);
   }catch(e){
     console.error('[CRM] ✗ Factures:', e.message);
@@ -3957,6 +3957,8 @@ async function deleteRecette(id){
 
 /* Montant réellement encaissé d'une facture : montant moins remboursement éventuel */
 function caNet(f){return Math.max(0,(Number(f.montant)||0)-(Number(f.montantRembourse)||0));}
+/* Guide SIBO (PDF) : facturé en série G-0001… et compté à part des consultations dans tous les chiffres d'affaires */
+function isGuide(f){return !!f&&f.prestation==='guide_sibo';}
 function mapC(r){return{id:r.id,prenom:r.prenom,nom:r.nom,email:r.email,tel:r.tel,age:r.age,ddn:r.ddn,motifs:r.motifs,axes:r.axes,notes:r.notes,programme:r.programme,dureeTtt:r.duree_ttt,date1:r.date1,dateProtocole:r.date_protocole,phv_url:r.phv_url||'',timeline:r.timeline||[],workflowDone:r.workflow_done||{},createdAt:r.created_at,chat_addon_actif:!!r.chat_addon_actif,chat_addon_prix:r.chat_addon_prix||45,chatPrixRenseigne:r.chat_addon_prix!=null,chatAnnulationPrevueLe:r.chat_addon_annulation_prevue_le||null,chat_addon_debut:r.chat_addon_debut||'',chat_addon_renouvellement:r.chat_addon_renouvellement||'',chat_addon_source:r.chat_addon_source||'',propositionParcoursEnvoyeeLe:r.proposition_parcours_envoyee_le||null,propositionParcoursProgramme:r.proposition_parcours_programme||null,suiviSpecialites:(typeof r.suivi_specialites==='string')?r.suivi_specialites:null};}
 
 /* Date AAAA-MM-JJ à l'heure de Paris (toISOString donne l'heure UTC → décalage d'un jour entre 0h et 2h) */
@@ -4873,7 +4875,7 @@ function renderDashboard(){
   const tdyStr=today();
   const actives=db.clients.filter(enProgrammeEnCours); // parcours réellement en cours (les terminés passent en « Après programme »)
   const allAl=db.clients.flatMap(c=>getAlerts(c).map(a=>({client:c,alert:a})));
-  const fMois=db.factures.filter(f=>f.statut==='payee'&&f.date&&mk(f.date)===curMk);
+  const fMois=db.factures.filter(f=>f.statut==='payee'&&!isGuide(f)&&f.date&&mk(f.date)===curMk);
   const caM=fMois.reduce((s,f)=>s+caNet(f),0);
   const rdvM=rdvs.filter(r=>r.date&&mk(r.date)===curMk && !isRdvPerso(r));
   const sils=db.clients.filter(c=>{const l=c.timeline?.[c.timeline.length-1]?.date||c.date1;return l&&diffD(l)>30;});
@@ -4881,14 +4883,16 @@ function renderDashboard(){
   // ── CA jour / semaine / tendance vs mois précédent ──
   const startOfWeek=new Date(now); const dow=(startOfWeek.getDay()+6)%7; startOfWeek.setDate(startOfWeek.getDate()-dow); startOfWeek.setHours(0,0,0,0);
   const startWeekStr=_ymdParis(startOfWeek); // lundi à l'heure de Paris (toISOString renvoyait le dimanche précédent)
-  const caJour=db.factures.filter(f=>f.statut==='payee'&&f.date===tdyStr).reduce((s,f)=>s+caNet(f),0);
-  const caSem=db.factures.filter(f=>f.statut==='payee'&&f.date&&f.date>=startWeekStr).reduce((s,f)=>s+caNet(f),0);
+  const caJour=db.factures.filter(f=>f.statut==='payee'&&!isGuide(f)&&f.date===tdyStr).reduce((s,f)=>s+caNet(f),0);
+  const caSem=db.factures.filter(f=>f.statut==='payee'&&!isGuide(f)&&f.date&&f.date>=startWeekStr).reduce((s,f)=>s+caNet(f),0);
   const prevMonthDate=new Date(now.getFullYear(),now.getMonth()-1,15);
   const prevMk=mk(prevMonthDate.toISOString());
-  const caPrev=db.factures.filter(f=>f.statut==='payee'&&f.date&&mk(f.date)===prevMk).reduce((s,f)=>s+caNet(f),0);
+  const caPrev=db.factures.filter(f=>f.statut==='payee'&&!isGuide(f)&&f.date&&mk(f.date)===prevMk).reduce((s,f)=>s+caNet(f),0);
   const hcaJourEl=document.getElementById('hca-jour'); if(hcaJourEl) hcaJourEl.textContent=caJour>0?caJour.toFixed(0)+' €':'0 €';
   const hcaSemEl=document.getElementById('hca-sem'); if(hcaSemEl) hcaSemEl.textContent=caSem>0?caSem.toFixed(0)+' €':'0 €';
   const hcaMoisEl=document.getElementById('hca-mois'); if(hcaMoisEl) hcaMoisEl.textContent=caM>0?caM.toFixed(0)+' €':'0 €';
+  const guideMois=db.factures.filter(f=>f.statut==='payee'&&isGuide(f)&&f.date&&mk(f.date)===curMk);
+  const hcaGuideEl=document.getElementById('hca-guide'); if(hcaGuideEl) hcaGuideEl.textContent=guideMois.reduce((s,f)=>s+caNet(f),0).toFixed(0)+' € · '+guideMois.length+' vente'+(guideMois.length>1?'s':'');
   const trendEl=document.getElementById('hca-trend');
   if(trendEl){
     if(caPrev>0){
@@ -5114,7 +5118,7 @@ function renderCA(){
     const d=new Date(now.getFullYear(),now.getMonth()-i,1);
     const key=mk(d.toISOString());
     const lbl=d.toLocaleDateString('fr-FR',{month:'short'}).slice(0,3);
-    const tot=db.factures.filter(f=>f.statut==='payee'&&f.date&&mk(f.date)===key).reduce((s,f)=>s+caNet(f),0);
+    const tot=db.factures.filter(f=>f.statut==='payee'&&!isGuide(f)&&f.date&&mk(f.date)===key).reduce((s,f)=>s+caNet(f),0);
     months.push({lbl,tot,cur:i===0});
   }
   const maxV=Math.max(...months.map(m=>m.tot),1);
@@ -5125,8 +5129,9 @@ function renderCA(){
     return "<div class='ca-col'><div class='ca-bar' style='height:"+h+"%;background:"+bg+";' title='"+m.tot+" €'></div><div class='ca-lbl'>"+m.lbl+"</div></div>";
   }).join('');
   const yr=now.getFullYear()+'';
-  const totAn=db.factures.filter(f=>f.statut==='payee'&&f.date&&f.date.startsWith(yr)).reduce((s,f)=>s+caNet(f),0);
-  if(tl)tl.textContent=totAn>0?totAn.toFixed(0)+' € cette année':'';
+  const totAn=db.factures.filter(f=>f.statut==='payee'&&!isGuide(f)&&f.date&&f.date.startsWith(yr)).reduce((s,f)=>s+caNet(f),0);
+  const totAnGuide=db.factures.filter(f=>f.statut==='payee'&&isGuide(f)&&f.date&&f.date.startsWith(yr)).reduce((s,f)=>s+caNet(f),0);
+  if(tl)tl.textContent=(totAn>0?totAn.toFixed(0)+' € cette année':'')+(totAnGuide>0?' · guide : '+totAnGuide.toFixed(0)+' €':'');
 }
 
 function renderTaches(){
@@ -6637,7 +6642,7 @@ function renderFactures(){
     const fstLbl=f.statut==='remboursee'?('Remboursée'+(f.montantRembourse&&f.montantRembourse<f.montant?' (partiel)':'')):(f.statut==='payee'?'Payée':'En attente');
     const indyCls=f.indySaisie?'findy on':'findy';
     const indyTitle=f.indySaisie?('Saisie dans Indy'+(f.indySaisieLe?(' le '+fmtShort(f.indySaisieLe)):'')+' — cliquer pour annuler'):'Pas encore saisie dans Indy — cliquer pour marquer comme fait';
-    return "<div class='fr'><span class='fnum'>N° "+escH(f.num||'')+"</span><div style='flex:1'><div class='fcl'>"+(c?escH(c.prenom+' '+(c.nom||'')):"<span style='color:var(--muted)'>—</span>")+"</div><div class='fpre'>"+escH(f.prestationLabel||f.prestation||'')+"</div></div><span class='fdat'>"+fmtShort(f.date)+"</span><span class='famt'>"+(f.montant||0).toFixed(0)+" €</span><span class='fst "+fstCls+"'>"+fstLbl+"</span><button class='"+indyCls+"' title=\""+indyTitle+"\" onclick=\"toggleIndySaisie('"+f.id+"')\">"+(f.indySaisie?ic('check'):'Indy')+"</button><button class='btn btn-ghost btn-xs' onclick=\"printF('"+f.id+"')\">"+ic('printer')+"</button></div>";
+    return "<div class='fr'><span class='fnum'>N° "+escH(f.num||'')+"</span><div style='flex:1'><div class='fcl'>"+(c?escH(c.prenom+' '+(c.nom||'')):(f.acheteurNom||f.acheteurEmail?escH(f.acheteurNom||f.acheteurEmail):"<span style='color:var(--muted)'>—</span>"))+"</div><div class='fpre'>"+escH(f.prestationLabel||f.prestation||'')+"</div></div><span class='fdat'>"+fmtShort(f.date)+"</span><span class='famt'>"+(f.montant||0).toFixed(0)+" €</span><span class='fst "+fstCls+"'>"+fstLbl+"</span><button class='"+indyCls+"' title=\""+indyTitle+"\" onclick=\"toggleIndySaisie('"+f.id+"')\">"+(f.indySaisie?ic('check'):'Indy')+"</button><button class='btn btn-ghost btn-xs' onclick=\"printF('"+f.id+"')\">"+ic('printer')+"</button></div>";
   }).join('');
 }
 
@@ -6685,7 +6690,7 @@ function factureHTML(f,c,s){
   "<div class='num'>Facture<strong>N° AVS-"+f.num+"</strong>"+fmtDate(f.date)+"</div></div>"+
   "<div class='body'><div class='parties'>"+
   "<div><div class='plbl'>Émettrice</div><div class='pval'><strong>"+(s.nom||'')+"</strong><br>"+(s.titre||'')+"<br>"+(s.adresse||'')+(s.email?"<br>"+s.email:'')+(s.siret?"<br>SIRET&nbsp;: "+s.siret:'')+(s.adeli?"<br>ADELI&nbsp;: "+s.adeli:'')+"</div></div>"+
-  "<div><div class='plbl'>Destinataire</div><div class='pval'><strong>"+(c?c.prenom+' '+(c.nom||''):'—')+"</strong>"+(c?.email?"<br>"+c.email:'')+"</div></div>"+
+  "<div><div class='plbl'>Destinataire</div><div class='pval'><strong>"+(c?c.prenom+' '+(c.nom||''):escH(f.acheteurNom||f.acheteurEmail||'—'))+"</strong>"+((c?.email||f.acheteurEmail)?"<br>"+escH(c?.email||f.acheteurEmail):'')+"</div></div>"+
   "</div><table><thead><tr><th>Prestation</th><th>Date</th><th>Paiement</th><th class=tdr>Montant</th></tr></thead><tbody>"+
   "<tr><td>"+escH(f.prestationLabel||'')+"</td><td>"+fmtDate(f.date)+"</td><td>"+escH(f.paiementLabel||f.paiement||'')+"</td><td class=tdr>"+(f.montant||0).toFixed(2)+" €</td></tr>"+
   "</tbody></table><div class=total><div class=tl>Total TTC</div><div class=tv>"+(f.montant||0).toFixed(2)+" €</div></div>"+
@@ -6742,7 +6747,7 @@ async function exportFacturesMois(){
         html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff'},
         jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}
       }).from(stage).outputPdf('blob');
-      const prenomSlug=(c?.prenom||'client').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-');
+      const prenomSlug=(c?.prenom||f.acheteurNom||'client').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-');
       const nomSlug=(c?.nom||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-');
       zip.file('AVS-'+f.num+'-'+prenomSlug+(nomSlug?'-'+nomSlug:'')+'.pdf',pdfBlob);
       done++;
@@ -7174,7 +7179,14 @@ function renderStats(){
   const allRdvs=(typeof rdvs!=='undefined'?rdvs:[]).filter(r=>r&&r.date&&!(typeof isRdvPerso==='function'&&isRdvPerso(r)));
   const periodRdvs=allRdvs.filter(r=>r.status!=='annule');
   const annulRdvs=allRdvs.filter(r=>r.status==='annule');
-  const payees=factures.filter(f=>f.statut==='payee');
+  const payeesAll=factures.filter(f=>f.statut==='payee');
+  const payees=payeesAll.filter(f=>!isGuide(f));          // consultations et parcours
+  const payeesGuide=payeesAll.filter(isGuide);            // guide SIBO (PDF), compté à part
+  const guideSeries=seriesOf(keys,payeesGuide,f=>f.date,caNet), guidePrevSeries=seriesOf(prevKeys,payeesGuide,f=>f.date,caNet);
+  const guideVentesSeries=seriesOf(keys,payeesGuide,f=>f.date,()=>1);
+  const guideTotal=sum(guideSeries), guidePrevTotal=sum(guidePrevSeries), nbGuide=sum(guideVentesSeries), nbGuidePrev=sum(seriesOf(prevKeys,payeesGuide,f=>f.date,()=>1));
+  const caAnConsult=sum(payees.filter(f=>f.date&&String(f.date).startsWith(String(yr))).map(caNet));
+  const caAnGuide=sum(payeesGuide.filter(f=>f.date&&String(f.date).startsWith(String(yr))).map(caNet));
 
   const caSeries=seriesOf(keys,payees,f=>f.date,caNet), caPrev=seriesOf(prevKeys,payees,f=>f.date,caNet);
   const nbF=sum(seriesOf(keys,payees,f=>f.date,()=>1)), nbFPrev=sum(seriesOf(prevKeys,payees,f=>f.date,()=>1));
@@ -7196,7 +7208,7 @@ function renderStats(){
 
   // Moyens de paiement sur la période
   const payMap={};
-  payees.filter(f=>keySet.has(bucketKeyFor(f.date,granularity))).forEach(f=>{const p=f.paiementLabel||f.paiement||'Autre';payMap[p]=(payMap[p]||0)+caNet(f);});
+  payeesAll.filter(f=>keySet.has(bucketKeyFor(f.date,granularity))).forEach(f=>{const p=f.paiementLabel||f.paiement||'Autre';payMap[p]=(payMap[p]||0)+caNet(f);});
   const payEntries=Object.entries(payMap).sort((a,b)=>b[1]-a[1]);
 
   // CA annuel par prestation (vision structurelle de l'année civile, indépendante de la période)
@@ -7258,7 +7270,7 @@ function renderStats(){
   const txChat=clients.length?Math.round(chatAdopters.length/clients.length*100):0;
 
   _statsLastBuckets={keys,labels,caSeries,rdvSeries,durSeries,
-    nbFSeries:seriesOf(keys,payees,f=>f.date,()=>1),
+    nbFSeries:seriesOf(keys,payees,f=>f.date,()=>1),guideSeries,guideVentesSeries,
     annulSeries:seriesOf(keys,annulRdvs,r=>r.date,()=>1),
     impSeries,clickSeries};
 
@@ -7303,7 +7315,8 @@ function renderStats(){
 
   // ── Widgets chiffres clés ──
   const kpis=[
-    W({cls:'wg-kpi',color:C1,icon:ic('cash'),title:"Chiffre d'affaires",trend:hasPrev&&chTrend(caPeriodTotal,caPrevTotal),value:_chFmt(caPeriodTotal)+' €',count:caPeriodTotal,fmt:'eur',sub:vsTxt(_chFmt(caPrevTotal)+' €'),body:svgSpark(caSeries,C1)}),
+    W({cls:'wg-kpi',color:C1,icon:ic('cash'),title:"CA consultations",trend:hasPrev&&chTrend(caPeriodTotal,caPrevTotal),value:_chFmt(caPeriodTotal)+' €',count:caPeriodTotal,fmt:'eur',sub:vsTxt(_chFmt(caPrevTotal)+' €'),body:svgSpark(caSeries,C1)}),
+    W({cls:'wg-kpi',color:GREEN,icon:ic('leaf'),title:'Guide SIBO',trend:hasPrev&&chTrend(guideTotal,guidePrevTotal),value:_chFmt(guideTotal)+' €',count:guideTotal,fmt:'eur',sub:`${nbGuide} vente${nbGuide>1?'s':''}${vsSep(nbGuidePrev+' vente'+(nbGuidePrev>1?'s':''))}`,body:svgSpark(guideSeries,GREEN)}),
     W({cls:'wg-kpi',color:C2,icon:ic('calendar'),title:'Rendez-vous',trend:hasPrev&&chTrend(rdvPeriodTotal,rdvPrevTotal),value:rdvPeriodTotal,count:rdvPeriodTotal,sub:vsTxt(rdvPrevTotal),body:svgSpark(rdvSeries,C2)}),
     W({cls:'wg-kpi',color:C3,icon:ic('trophy'),title:'Panier moyen',trend:hasPrev&&chTrend(panier,panierPrev),value:_chFmt(panier)+' €',count:Math.round(panier),fmt:'eur',sub:`${nbF} facture${nbF>1?'s':''} payée${nbF>1?'s':''}${vsSep(_chFmt(panierPrev)+' €')}`,body:''}),
     W({cls:'wg-kpi',color:BLUE,icon:ic('timer'),title:'Temps en consultation (estimé)',trend:hasPrev&&chTrend(durPeriodTotal,durPrevTotal),value:Math.round(durPeriodTotal/60)+' h',count:Math.round(durPeriodTotal/60),fmt:'h',sub:'Base : 1 h 30 par bilan, 45 min par suivi'+vsSep(Math.round(durPrevTotal/60)+' h'),body:svgSpark(durSeries,BLUE)}),
@@ -7317,7 +7330,7 @@ function renderStats(){
   el.innerHTML=`
   <div class="wg-kpis">${kpis}</div>
   <div class="wg-grid">
-    ${W({cls:'span2',color:C1,icon:ic('chart'),title:"Évolution du chiffre d'affaires — "+periodLbl,value:_chFmt(caPeriodTotal)+' €',count:caPeriodTotal,fmt:'eur',trend:hasPrev&&chTrend(caPeriodTotal,caPrevTotal),body:caChart})}
+    ${W({cls:'span2',color:C1,icon:ic('chart'),title:"Évolution du CA consultations — "+periodLbl,value:_chFmt(caPeriodTotal)+' €',count:caPeriodTotal,fmt:'eur',trend:hasPrev&&chTrend(caPeriodTotal,caPrevTotal),body:caChart})}
     ${W({cls:'wg-ins',color:C2,icon:ic('spark'),title:'Ce que disent vos chiffres',body:insHtml})}
 
     ${W({color:C2,icon:ic('calendar'),title:'Rendez-vous — '+periodLbl,value:rdvPeriodTotal+' RDV',body:rdvPeriodTotal>0?svgBarChart(rdvSeries,labels,C2,230,{w:460,tipLabels,unit:' RDV'}):emptyMsg('Aucun rendez-vous sur cette période')})}
@@ -7327,6 +7340,8 @@ function renderStats(){
     ${W({color:GREEN,icon:ic('leaf'),title:'Clientes en programme',value:enProg+' / '+clients.length,body:svgHalfGauge(txProg,'#9CD3A6',GREEN,{w:230,label:'de vos clientes sont en parcours en ce moment',count:txProg,fmt:'pct'})})}
     ${W({color:C2,icon:ic('user'),title:'Répartition par programme',body:svgHalfDonut([{label:'Alba · 3 mois',value:byProg.alba,color:gMaps.alba},{label:'Aria · 6 mois',value:byProg.aria,color:gMaps.aria},{label:'Ora · 9 mois',value:byProg.ora,color:gMaps.ora},{label:'Programme terminé',value:byProg.termine,color:'#8E7CC3'},{label:'Ponctuelle',value:byProg.consult,color:'#C7C0D6'}],{w:220,centerLabel:'clientes',centerColor:C2,empty:emptyMsg('Aucune cliente enregistrée')})})}
     ${W({color:C3,icon:ic('chart'),title:'CA par prestation — '+yr,value:_chFmt(sum(Object.values(caByProg)))+' €',count:Math.round(sum(Object.values(caByProg))),fmt:'eur',body:svgDonut([{label:'Bilan de vitalité',value:caByProg.bilan,color:gMaps.bilan},{label:'Consultation de suivi',value:caByProg.suivi,color:gMaps.suivi},{label:'Alba',value:caByProg.alba,color:gMaps.alba},{label:'Aria',value:caByProg.aria,color:gMaps.aria},{label:'Ora',value:caByProg.ora,color:gMaps.ora},{label:'Autres',value:caByProg.autre,color:'#A1A1A8'}],{unit:' €',centerLabel:'CA '+yr,empty:emptyMsg('Aucune facture payée en '+yr)})})}
+    ${W({color:GREEN,icon:ic('chart'),title:'Consultations et guide — '+yr,value:_chFmt(caAnConsult+caAnGuide)+' €',count:Math.round(caAnConsult+caAnGuide),fmt:'eur',body:svgDonut([{label:'Consultations et parcours',value:Math.round(caAnConsult),color:C3},{label:'Guide SIBO',value:Math.round(caAnGuide),color:GREEN}],{unit:' €',centerLabel:'CA '+yr,empty:emptyMsg('Aucune facture cette année')})})}
+    ${W({color:GREEN,icon:ic('leaf'),title:'Ventes du guide SIBO — '+periodLbl,value:nbGuide+' vente'+(nbGuide>1?'s':'')+' · '+_chFmt(guideTotal)+' €',body:nbGuide>0?svgBarChart(guideVentesSeries,labels,GREEN,230,{w:460,tipLabels,unit:' vente'}):emptyMsg('Aucune vente du guide sur cette période')})}
 
     ${W({cls:'span3',color:'#8E7CC3',icon:ic('heart'),title:'Suivi après programme',value:apresProg.length?apresProg.length+' cliente'+(apresProg.length>1?'s':'')+' en fin de parcours':null,
       sub:'Un parcours terminé n\'est pas une fin : c\'est le moment où les acquis doivent tenir sans cadre. Ces trois temps permettent de vérifier qu\'ils tiennent, et d\'intervenir avant une rechute.',
@@ -7370,8 +7385,8 @@ function renderStats(){
 function exportStatsCSV(){
   if(!_statsLastBuckets){toast('Statistiques non chargées','warn');return;}
   const B=_statsLastBuckets;
-  const headers=['Période','CA net encaissé (€)','Factures payées','Panier moyen (€)','RDV réalisés/prévus','RDV annulés','Temps en consultation estimé (min)','Impressions Google','Clics Google'];
-  const rows=B.keys.map((k,i)=>{const nb=B.nbFSeries[i]||0;return [k,B.caSeries[i].toFixed(2),nb,nb?(B.caSeries[i]/nb).toFixed(2):'',B.rdvSeries[i],B.annulSeries[i]||0,B.durSeries[i],B.impSeries[i]||0,B.clickSeries[i]||0]
+  const headers=['Période','CA net consultations (€)','Factures payées','Panier moyen (€)','CA guide SIBO (€)','Ventes guide SIBO','RDV réalisés/prévus','RDV annulés','Temps en consultation estimé (min)','Impressions Google','Clics Google'];
+  const rows=B.keys.map((k,i)=>{const nb=B.nbFSeries[i]||0;return [k,B.caSeries[i].toFixed(2),nb,nb?(B.caSeries[i]/nb).toFixed(2):'',(B.guideSeries[i]||0).toFixed(2),B.guideVentesSeries[i]||0,B.rdvSeries[i],B.annulSeries[i]||0,B.durSeries[i],B.impSeries[i]||0,B.clickSeries[i]||0]
     .map(v=>'"'+String(v).replace(/"/g,'""')+'"');});
   const csv=[headers.map(h=>'"'+h+'"').join(';'),...rows.map(r=>r.join(';'))].join('\n');
   const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
@@ -8765,8 +8780,9 @@ function ouvrirBilanEntree(clientId, mode){
       <div class="home-stat"><div class="home-stat-ic" style="color:var(--ink3)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="2.5"/><circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="2.5"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" stroke-width="2.5"/></svg></div><div class="home-stat-val" id="kv-total">—</div><div class="home-stat-lbl">Total clientes</div></div>
       <div class="home-stat"><div class="home-stat-ic" style="color:var(--ink3)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="home-stat-val" id="kv-actives">—</div><div class="home-stat-lbl">En programme</div></div>
       <div class="home-stat"><div class="home-stat-ic" style="color:var(--ink3)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" stroke-width="2.5"/><line x1="16" y1="2" x2="16" y2="6" stroke="currentColor" stroke-width="2.5"/><line x1="8" y1="2" x2="8" y2="6" stroke="currentColor" stroke-width="2.5"/><line x1="3" y1="10" x2="21" y2="10" stroke="currentColor" stroke-width="2.5"/></svg></div><div class="home-stat-val" id="kv-rdv">—</div><div class="home-stat-lbl">RDV ce mois</div></div>
-      <div class="home-stat"><div class="home-stat-ic" style="color:var(--gold-dk)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="2" y="6" width="20" height="12" rx="2" stroke="currentColor" stroke-width="2.5"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2.5"/><path d="M6 9v.01M18 15v.01" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg></div><div class="home-stat-val" id="hca-jour">—</div><div class="home-stat-lbl">CA aujourd'hui</div></div>
-      <div class="home-stat"><div class="home-stat-ic" style="color:var(--gold-dk)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 20V10M11 20V4M18 20v-7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg></div><div class="home-stat-val" id="hca-mois">—</div><div class="home-stat-lbl">CA ce mois</div><div class="hca-trend" id="hca-trend"></div></div>
+      <div class="home-stat"><div class="home-stat-ic" style="color:var(--gold-dk)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="2" y="6" width="20" height="12" rx="2" stroke="currentColor" stroke-width="2.5"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2.5"/><path d="M6 9v.01M18 15v.01" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg></div><div class="home-stat-val" id="hca-jour">—</div><div class="home-stat-lbl">CA consultations aujourd'hui</div></div>
+      <div class="home-stat"><div class="home-stat-ic" style="color:var(--gold-dk)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 20V10M11 20V4M18 20v-7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg></div><div class="home-stat-val" id="hca-mois">—</div><div class="home-stat-lbl">CA consultations ce mois</div><div class="hca-trend" id="hca-trend"></div></div>
+      <div class="home-stat"><div class="home-stat-ic" style="color:var(--gold-dk)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5v14Z" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/></svg></div><div class="home-stat-val" id="hca-guide">—</div><div class="home-stat-lbl">Guide SIBO ce mois</div></div>
     </div>
 
     <div class="home-grid">
@@ -8838,7 +8854,7 @@ function ouvrirBilanEntree(clientId, mode){
           <div class="card-body"><div id="checkins-box"></div></div>
         </div>
         <div class="card">
-          <div class="card-head"><div class="card-title"><div class="card-dot" style="background:#4C8B5C"></div>CA 6 mois</div><span id="ca-total-lbl" style="font-size:12px;font-weight:700;color:var(--ink)"></span></div>
+          <div class="card-head"><div class="card-title"><div class="card-dot" style="background:#4C8B5C"></div>CA consultations · 6 mois</div><span id="ca-total-lbl" style="font-size:12px;font-weight:700;color:var(--ink)"></span></div>
           <div class="card-body"><div class="ca-bars" id="ca-bars"></div></div>
         </div>
         <div class="card">
