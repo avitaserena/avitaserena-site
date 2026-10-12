@@ -6687,7 +6687,7 @@ function factureHTML(f,c,s){
   "@media print{body{background:#fff}}</style></head><body>"+
   "<div class='page'><div class='hdr'>"+
   "<svg class='logo' viewBox='0 0 402.52 116.56' fill='currentColor'>"+LOGO_AVS_PATHS+"</svg>"+
-  "<div class='num'>Facture<strong>N° AVS-"+f.num+"</strong>"+fmtDate(f.date)+"</div></div>"+
+  "<div class='num'>Facture<strong>N° "+(String(f.num).startsWith("G-")?"":"AVS-")+f.num+"</strong>"+fmtDate(f.date)+"</div></div>"+
   "<div class='body'><div class='parties'>"+
   "<div><div class='plbl'>Émettrice</div><div class='pval'><strong>"+(s.nom||'')+"</strong><br>"+(s.titre||'')+"<br>"+(s.adresse||'')+(s.email?"<br>"+s.email:'')+(s.siret?"<br>SIRET&nbsp;: "+s.siret:'')+(s.adeli?"<br>ADELI&nbsp;: "+s.adeli:'')+"</div></div>"+
   "<div><div class='plbl'>Destinataire</div><div class='pval'><strong>"+(c?c.prenom+' '+(c.nom||''):escH(f.acheteurNom||f.acheteurEmail||'—'))+"</strong>"+((c?.email||f.acheteurEmail)?"<br>"+escH(c?.email||f.acheteurEmail):'')+"</div></div>"+
@@ -7212,8 +7212,8 @@ function renderStats(){
   const payEntries=Object.entries(payMap).sort((a,b)=>b[1]-a[1]);
 
   // CA annuel par prestation (vision structurelle de l'année civile, indépendante de la période)
-  const caByProg={bilan:0,suivi:0,alba:0,aria:0,ora:0,autre:0};
-  const prestas={bilan:'bilan',suivi:'suivi',alba:'alba',aria:'aria',ora:'ora'};
+  const caByProg={bilan:0,suivi:0,alba:0,aria:0,ora:0,luma:0,autre:0};
+  const prestas={bilan:'bilan',suivi:'suivi',alba:'alba',aria:'aria',ora:'ora',luma:'luma'};
   payees.filter(f=>f.date&&String(f.date).startsWith(yr+'')).forEach(f=>{caByProg[prestas[f.prestation]||'autre']+=caNet(f);});
 
   // Programmes : « en cours » seulement (le champ reste rempli une fois le parcours fini)
@@ -7339,7 +7339,7 @@ function renderStats(){
 
     ${W({color:GREEN,icon:ic('leaf'),title:'Clientes en programme',value:enProg+' / '+clients.length,body:svgHalfGauge(txProg,'#9CD3A6',GREEN,{w:230,label:'de vos clientes sont en parcours en ce moment',count:txProg,fmt:'pct'})})}
     ${W({color:C2,icon:ic('user'),title:'Répartition par programme',body:svgHalfDonut([{label:'Alba · 3 mois',value:byProg.alba,color:gMaps.alba},{label:'Aria · 6 mois',value:byProg.aria,color:gMaps.aria},{label:'Ora · 9 mois',value:byProg.ora,color:gMaps.ora},{label:'Programme terminé',value:byProg.termine,color:'#8E7CC3'},{label:'Ponctuelle',value:byProg.consult,color:'#C7C0D6'}],{w:220,centerLabel:'clientes',centerColor:C2,empty:emptyMsg('Aucune cliente enregistrée')})})}
-    ${W({color:C3,icon:ic('chart'),title:'CA par prestation — '+yr,value:_chFmt(sum(Object.values(caByProg)))+' €',count:Math.round(sum(Object.values(caByProg))),fmt:'eur',body:svgDonut([{label:'Bilan de vitalité',value:caByProg.bilan,color:gMaps.bilan},{label:'Consultation de suivi',value:caByProg.suivi,color:gMaps.suivi},{label:'Alba',value:caByProg.alba,color:gMaps.alba},{label:'Aria',value:caByProg.aria,color:gMaps.aria},{label:'Ora',value:caByProg.ora,color:gMaps.ora},{label:'Autres',value:caByProg.autre,color:'#A1A1A8'}],{unit:' €',centerLabel:'CA '+yr,empty:emptyMsg('Aucune facture payée en '+yr)})})}
+    ${W({color:C3,icon:ic('chart'),title:'CA par prestation — '+yr,value:_chFmt(sum(Object.values(caByProg)))+' €',count:Math.round(sum(Object.values(caByProg))),fmt:'eur',body:svgDonut([{label:'Bilan de vitalité',value:caByProg.bilan,color:gMaps.bilan},{label:'Consultation de suivi',value:caByProg.suivi,color:gMaps.suivi},{label:'Alba',value:caByProg.alba,color:gMaps.alba},{label:'Aria',value:caByProg.aria,color:gMaps.aria},{label:'Ora',value:caByProg.ora,color:gMaps.ora},{label:'Option chat A Luma',value:caByProg.luma,color:'#8FA68E'},{label:'Autres',value:caByProg.autre,color:'#A1A1A8'}],{unit:' €',centerLabel:'CA '+yr,empty:emptyMsg('Aucune facture payée en '+yr)})})}
     ${W({color:GREEN,icon:ic('chart'),title:'Consultations et guide — '+yr,value:_chFmt(caAnConsult+caAnGuide)+' €',count:Math.round(caAnConsult+caAnGuide),fmt:'eur',body:svgDonut([{label:'Consultations et parcours',value:Math.round(caAnConsult),color:C3},{label:'Guide SIBO',value:Math.round(caAnGuide),color:GREEN}],{unit:' €',centerLabel:'CA '+yr,empty:emptyMsg('Aucune facture cette année')})})}
     ${W({color:GREEN,icon:ic('leaf'),title:'Ventes du guide SIBO — '+periodLbl,value:nbGuide+' vente'+(nbGuide>1?'s':'')+' · '+_chFmt(guideTotal)+' €',body:nbGuide>0?svgBarChart(guideVentesSeries,labels,GREEN,230,{w:460,tipLabels,unit:' vente'}):emptyMsg('Aucune vente du guide sur cette période')})}
 
