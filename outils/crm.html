@@ -2106,6 +2106,7 @@ async function init(){
     loadErreurs(),
     loadSettingsFromSupabase(),
     loadPilotage(),
+    loadFormalites(),
     loadCheckinsToday(),
     loadSourcesDecouverte(),
     loadSeoStats()
@@ -2957,6 +2958,7 @@ function renderActionsJour(){
     listEl.innerHTML = '<div class="feed-empty">'+ic('check')+' Rien à traiter pour le moment — tout est à jour.</div>';
     return;
   }
+  try{ formalitesFeedItems().forEach(x=>items.push(x)); }catch(e){ console.error('[CRM] formalités feed',e); }
   items.sort((a,b)=>b.u-a.u);
   // Cascade d'entrée légèrement décalée d'un item à l'autre — donne du mouvement
   // à la file sans surcharger visuellement (ajouté 02/09/2026, refonte dashboard).
@@ -3265,6 +3267,214 @@ async function loadClientMessages(){
 
 function unreadMessagesCount(){
   return clientMessages.filter(m => !m.lu).length;
+}
+
+/* ══════════════════════════════════════
+   FORMALITÉS — obligations légales et administratives (micro-entreprise)
+   Données personnelles (date de début, fréquence URSSAF, cases cochées) dans la table settings, id='formalites'.
+   Les dates ci-dessous viennent de service-public / impots.gouv / URSSAF : à revérifier une fois par an.
+   ══════════════════════════════════════ */
+let formalitesData={debut:'',freq:'mensuelle',done:{}};
+const FORM_LIENS={
+  urssaf:'https://www.autoentrepreneur.urssaf.fr',
+  impots:'https://www.impots.gouv.fr/professionnel',
+  guichet:'https://formalites.entreprises.gouv.fr',
+  cfe:'https://entreprendre.service-public.gouv.fr/vosdroits/F23999',
+  acre:'https://www.autoentrepreneur.urssaf.fr',
+  sp_micro:'https://entreprendre.service-public.gouv.fr/vosdroits/F23267',
+  indy:'https://app.indy.fr'
+};
+async function loadFormalites(){
+  try{
+    const rows=await sb('settings?id=eq.formalites&select=data');
+    if(rows&&rows[0]&&rows[0].data) formalitesData={debut:'',freq:'mensuelle',done:{},...rows[0].data};
+    if(!formalitesData.done) formalitesData.done={};
+  }catch(e){ console.error('[CRM] ✗ Formalités:',e.message); }
+  updateFormalitesBadge();
+}
+async function saveFormalites(){
+  try{
+    await sb('settings',{method:'POST',prefer:'resolution=merge-duplicates,return=minimal',body:JSON.stringify({id:'formalites',data:formalitesData,updated_at:new Date().toISOString()})});
+    return true;
+  }catch(e){ toast('Enregistrement impossible : '+e.message,'err'); return false; }
+}
+function _fD(s){return new Date(s+'T12:00:00');}
+function _fYmd(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function _fAddDays(s,n){const d=_fD(s);d.setDate(d.getDate()+n);return _fYmd(d);}
+function _fAddMonths(s,n){const d=_fD(s);d.setMonth(d.getMonth()+n);return _fYmd(d);}
+function _fOuvre(s){const d=_fD(s);while(d.getDay()===0||d.getDay()===6)d.setDate(d.getDate()+1);return _fYmd(d);} // week-end → lundi
+function _fDiff(s){return Math.round((_fD(s)-_fD(today()))/86400000);}
+function _fLastDay(y,m){return _fYmd(new Date(y,m+1,0,12));}
+function _fCA(deb,fin){return (db.factures||[]).filter(f=>f.statut==='payee'&&f.date&&f.date>=deb&&f.date<=fin).reduce((s,f)=>s+caNet(f),0);}
+function _fMoisFr(s){return _fD(s).toLocaleDateString('fr-FR',{month:'long',year:'numeric'});}
+
+function formalitesItems(){
+  const D=formalitesData.debut||'', T=today(), out=[];
+  const done=formalitesData.done||{};
+  const add=o=>{o.fait=!!done[o.key];o.faitLe=done[o.key]||'';out.push(o);};
+  const yD=D?+D.slice(0,4):null, yT=+T.slice(0,4);
+
+  if(D){
+    add({key:'espace-pro',titre:'Activer mon espace professionnel sur impots.gouv',
+      pourquoi:"Le code d'activation n'est envoyé que par courrier, à l'adresse de l'entreprise : c'est la preuve que c'est bien vous qui représentez l'entreprise. Sans lui, vous ne voyez pas votre avis de CFE (il n'est plus envoyé par papier) ni vos échéances fiscales. Sans nouvelles 3 semaines après la création, écrivez à votre Service des impôts des entreprises (SIE) pour demander un nouvel envoi : lui seul peut le renvoyer.",
+      echeance:_fAddDays(D,45),quand:'Dès réception du courrier (relance conseillée au bout de 3 semaines)',lien:FORM_LIENS.impots,lienLbl:'Espace professionnel impots.gouv'});
+    add({key:'acre',titre:"Vérifier ma demande d'ACRE (exonération partielle de cotisations)",
+      pourquoi:"L'ACRE réduit vos cotisations sociales la première année, mais elle n'est plus automatique depuis 2026 : il faut la demander dans les 60 jours après le début d'activité, et ce délai ne se rattrape pas. L'URSSAF répond sous 30 jours ; si la demande est acceptée, l'attestation apparaît dans « Mes attestations » de votre espace URSSAF. Vérifiez d'abord que vous remplissez bien une des conditions (demandeuse d'emploi, zone ZFRR, etc.) sur le site de l'URSSAF.",
+      echeance:_fAddDays(D,60),quand:"60 jours après le début d'activité",lien:FORM_LIENS.acre,lienLbl:'Site URSSAF auto-entrepreneur'});
+    add({key:'urssaf-premiere',titre:"Première déclaration de chiffre d'affaires à l'URSSAF",
+      pourquoi:"C'est elle qui déclenche le calcul de vos cotisations. Elle est obligatoire même si vous n'avez encore rien encaissé : vous déclarez alors 0 €. Une déclaration oubliée entraîne des pénalités. La date exacte est affichée dans votre espace URSSAF.",
+      echeance:_fAddMonths(D,3),quand:'Au plus tard 3 mois après le début (date exacte dans votre espace URSSAF)',lien:FORM_LIENS.urssaf,lienLbl:'Déclarer sur autoentrepreneur.urssaf.fr'});
+    add({key:'cfe-initiale-'+yD,titre:'Déclaration initiale de CFE (formulaire 1447-C-SD)',
+      pourquoi:"La CFE est la cotisation foncière des entreprises. Votre première année est exonérée, mais seulement si vous déposez cette déclaration avant le 31 décembre de l'année de création. Elle s'envoie par courrier à votre Service des impôts des entreprises (SIE). Ensuite, la CFE est réduite de moitié la 2e année, puis due en totalité.",
+      echeance:yD+'-12-31',quand:'Avant le 31 décembre '+yD,lien:FORM_LIENS.cfe,lienLbl:'Fiche service-public CFE'});
+  }
+
+  // Déclarations de CA récurrentes (mensuelles ou trimestrielles)
+  if(D){
+    const periodes=[];
+    const dd=_fD(D);
+    if(formalitesData.freq==='trimestrielle'){
+      let y=dd.getFullYear(),q=Math.floor(dd.getMonth()/3);
+      for(let i=0;i<14;i++){
+        const m0=q*3,deb=_fYmd(new Date(y,m0,1,12)),fin=_fLastDay(y,m0+2);
+        const echM=m0+3; const echY=y+(echM>11?1:0); const ech=_fOuvre(_fLastDay(echY,echM%12));
+        periodes.push({deb,fin,ech,lbl:'T'+(q+1)+' '+y});
+        q++; if(q>3){q=0;y++;}
+      }
+    }else{
+      let y=dd.getFullYear(),m=dd.getMonth();
+      for(let i=0;i<30;i++){
+        const deb=_fYmd(new Date(y,m,1,12)),fin=_fLastDay(y,m);
+        const echM=m+1; const echY=y+(echM>11?1:0);
+        const ech=_fOuvre(_fLastDay(echY,echM%12));
+        periodes.push({deb,fin,ech,lbl:_fMoisFr(deb)});
+        m++; if(m>11){m=0;y++;}
+      }
+    }
+    let upcomingShown=false;
+    periodes.forEach(p=>{
+      if(p.fin>=T) { // période pas encore terminée : on affiche seulement la période en cours / la prochaine échéance
+        if(upcomingShown) return;
+        upcomingShown=true;
+      } else if(p.ech>_fAddDays(T,45)) return;
+      const key='urssaf-'+p.deb;
+      if(done[key] && p.ech<_fAddDays(T,-60)) return;
+      const ca=_fCA(p.deb,p.fin);
+      add({key,titre:"Déclarer mon chiffre d'affaires de "+p.lbl+' à l’URSSAF',
+        pourquoi:"Vous déclarez ce que vous avez encaissé sur la période, et l'URSSAF calcule vos cotisations dessus. Chiffre encaissé d'après vos factures du CRM : "+ca.toFixed(2).replace('.',',')+" € (remboursements déduits)"+(p.fin>=T?' — la période n’est pas terminée, ce montant peut encore évoluer':'')+". Si vous n'avez rien encaissé, déclarez 0 € : l'oublier est sanctionné.",
+        echeance:p.ech,quand:'Avant le '+fmtDate(p.ech),lien:FORM_LIENS.urssaf,lienLbl:'Déclarer sur autoentrepreneur.urssaf.fr',recurrent:true});
+    });
+  }
+
+  // CFE annuelle (à partir de la 2e année civile)
+  if(D){
+    if(yT>=yD+1){
+      const y=yT;
+      add({key:'cfe-paiement-'+y,titre:'Payer ma CFE '+y,
+        pourquoi:"L'avis de CFE est uniquement disponible dans votre espace professionnel impots.gouv (plus de courrier papier). Si le montant est inférieur ou égal à 3 000 €, le paiement est dû au plus tard le 15 décembre. Si vous avez activé le prélèvement mensuel, il se fait de janvier à octobre. La taxe additionnelle CCI se paie séparément sur le site de l'URSSAF.",
+        echeance:_fOuvre(y+'-12-15'),quand:'Avant le 15 décembre '+y,lien:FORM_LIENS.impots,lienLbl:'Espace professionnel impots.gouv',recurrent:true});
+    }
+    // Déclaration annuelle de revenus (à partir de l'année suivant la création)
+    if(yT>=yD+1){
+      add({key:'ir-'+yT,titre:'Déclaration de revenus '+yT+' : reporter mon chiffre d\'affaires',
+        pourquoi:"Votre chiffre d'affaires de l'an dernier se reporte dans la déclaration de revenus (annexe 2042 C PRO, cases des BNC en micro). Le fisc applique ensuite un abattement forfaitaire. Les dates exactes sont publiées chaque printemps (elles varient selon le département) : l'alerte se déclenche début mai pour que vous n'attendiez pas la dernière semaine.",
+        echeance:yT+'-05-31',quand:'Printemps (dates officielles publiées par impots.gouv)',lien:'https://www.impots.gouv.fr',lienLbl:'impots.gouv.fr',recurrent:true});
+    }
+  }
+
+  // Envoi mensuel à Indy (habitude personnelle, pas une obligation légale)
+  {
+    const d=new Date(_fD(T)); d.setDate(1); d.setMonth(d.getMonth()-1);
+    const prev=_fYmd(d);
+    const ech=_fOuvre(T.slice(0,7)+'-05');
+    add({key:'indy-'+T.slice(0,7),titre:'Envoyer mes factures de '+_fMoisFr(prev)+' à Indy',
+      pourquoi:"Votre comptabilité doit être à jour pour la déclaration de CA et pour votre livre des recettes. Indy n'accepte pas l'import en masse : l'export du mois du CRM prépare un fichier par facture à glisser dans « Importer une facture ». Une facture remboursée le même mois n'y figure pas.",
+      echeance:ech,quand:'Chaque mois, avant le 5 (habitude personnelle)',lien:null,action:"nav('factures',null)",lienLbl:'Ouvrir les factures',recurrent:true,perso:true});
+  }
+  // Les très anciennes échéances ne sont plus affichées (supposées traitées) : sinon une activité créée il y a des années noierait la liste
+  return out.filter(i=>i.fait||!i.echeance||_fDiff(i.echeance)>=(i.recurrent?-60:-365));
+}
+const FORM_INFOS=[
+  {t:'Tenir un livre des recettes',p:"Obligatoire en micro-entreprise : il liste chaque encaissement avec date, client, montant et moyen de paiement. Il sert de preuve en cas de contrôle. Vos factures du CRM contiennent déjà ces informations, l'export du mois suffit à l'alimenter."},
+  {t:'Compte bancaire dédié',p:"Un compte distinct de votre compte personnel devient obligatoire si votre chiffre d'affaires dépasse 10 000 € deux années de suite. Il évite de mélanger les flux et simplifie la comptabilité."},
+  {t:'Franchise en base de TVA',p:"Vos factures portent « TVA non applicable, art. 293 B du CGI ». Tant que votre chiffre d'affaires reste sous le seuil de la franchise, vous ne facturez pas de TVA. Au-delà, vous devrez en facturer et en reverser : surveillez le seuil en vigueur sur service-public, il évolue."},
+  {t:"Assurance responsabilité civile professionnelle",p:"Elle n'est pas imposée par la loi pour une naturopathe, mais elle est vivement conseillée : elle vous protège si une cliente estime avoir subi un préjudice. Vérifiez que votre contrat couvre bien les consultations à distance."},
+  {t:'Conserver les justificatifs',p:"Gardez factures, relevés et pièces comptables au moins 10 ans, c'est la durée de conservation exigée pour les documents comptables."}
+];
+function formalitesUrgent(){
+  return formalitesItems().filter(i=>!i.fait&&i.echeance&&_fDiff(i.echeance)<=30);
+}
+function updateFormalitesBadge(){
+  const n=formalitesUrgent().length,b=document.getElementById('badge-form');
+  if(b){b.textContent=n;b.style.display=n>0?'':'none';}
+}
+async function toggleFormalite(key){
+  const f=formalitesData.done||(formalitesData.done={});
+  if(f[key]) delete f[key]; else f[key]=today();
+  renderFormalites();updateFormalitesBadge();
+  if(typeof renderActionsJour==='function'&&document.getElementById('page-dashboard')?.classList.contains('active')) renderActionsJour();
+  await saveFormalites();
+}
+async function saveFormalitesParams(){
+  formalitesData.debut=document.getElementById('form-debut').value||'';
+  formalitesData.freq=document.getElementById('form-freq').value||'mensuelle';
+  if(await saveFormalites()){toast('Enregistré','ok');}
+  renderFormalites();updateFormalitesBadge();
+}
+function _fBadge(i){
+  if(i.fait) return "<span class='feed-chip chip-green'>Fait le "+fmtDate(i.faitLe)+"</span>";
+  if(!i.echeance) return '';
+  const j=_fDiff(i.echeance);
+  if(j<0) return "<span class='feed-chip chip-red'>En retard de "+(-j)+" j</span>";
+  if(j===0) return "<span class='feed-chip chip-red'>Aujourd'hui</span>";
+  if(j<=30) return "<span class='feed-chip chip-orange'>Dans "+j+" j</span>";
+  return "<span class='feed-chip'>"+fmtDate(i.echeance)+"</span>";
+}
+function renderFormalites(){
+  const root=document.getElementById('formalites-root');if(!root)return;
+  const D=formalitesData.debut;
+  let h="<div class='card' style='padding:18px 20px;margin-bottom:16px'>"+
+    "<div style='display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end'>"+
+    "<div class='fg' style='min-width:200px'><label class='fl'>Date de début d'activité</label><input class='fi' type='date' id='form-debut' value='"+escH(D||'')+"'></div>"+
+    "<div class='fg' style='min-width:200px'><label class='fl'>Déclaration URSSAF</label><select class='fi' id='form-freq'><option value='mensuelle'"+(formalitesData.freq==='mensuelle'?' selected':'')+">Chaque mois</option><option value='trimestrielle'"+(formalitesData.freq==='trimestrielle'?' selected':'')+">Chaque trimestre</option></select></div>"+
+    "<button class='btn btn-primary' onclick='saveFormalitesParams()'>Enregistrer</button></div>"+
+    "<div style='font-size:12.5px;color:var(--muted);margin-top:10px;line-height:1.6'>La date de début figure sur votre avis de situation Sirene (ou votre courrier de l'INSEE). Toutes les échéances ci-dessous en sont calculées.</div></div>";
+  h+="<div style='display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px'>"+
+    [['URSSAF auto-entrepreneur',FORM_LIENS.urssaf],['Espace pro impots.gouv',FORM_LIENS.impots],['Guichet des formalités',FORM_LIENS.guichet],['Service-public : micro-entreprise',FORM_LIENS.sp_micro],['Indy',FORM_LIENS.indy]]
+      .map(([l,u])=>"<a class='btn btn-ghost btn-sm' href='"+u+"' target='_blank' rel='noopener'>"+l+" ↗</a>").join('')+"</div>";
+  if(!D) h+="<div class='card' style='padding:16px 20px;margin-bottom:16px;border-left:3px solid var(--orange)'><strong>Renseignez votre date de début d'activité</strong> pour afficher vos échéances (ACRE, CFE, URSSAF…).</div>";
+  const items=formalitesItems();
+  const todo=items.filter(i=>!i.fait).sort((a,b)=>(a.echeance||'9999').localeCompare(b.echeance||'9999'));
+  const faits=items.filter(i=>i.fait).sort((a,b)=>(b.faitLe||'').localeCompare(a.faitLe||''));
+  const carte=i=>"<div style='display:flex;gap:14px;align-items:flex-start;padding:16px 18px;border-bottom:1px solid var(--border)'>"+
+    "<div class='wf2-check' onclick=\"toggleFormalite('"+i.key+"')\" title='Marquer comme "+(i.fait?'à faire':'fait')+"'>"+(i.fait?ic('check'):'')+"</div>"+
+    "<div style='flex:1;min-width:0'>"+
+      "<div style='display:flex;gap:10px;align-items:center;flex-wrap:wrap'><span style='font-weight:600;font-size:15px'>"+escH(i.titre)+"</span>"+_fBadge(i)+"</div>"+
+      "<div style='font-size:12.5px;color:var(--muted);margin-top:3px'>"+escH(i.quand||'')+"</div>"+
+      "<div style='font-size:14px;line-height:1.7;margin-top:8px;color:var(--ink2,#2C2C2A)'>"+escH(i.pourquoi)+"</div>"+
+      (i.lien?"<a class='btn btn-ghost btn-sm' style='margin-top:10px' href='"+i.lien+"' target='_blank' rel='noopener'>"+escH(i.lienLbl||'Ouvrir')+" ↗</a>":(i.action?"<button class='btn btn-ghost btn-sm' style='margin-top:10px' onclick=\""+i.action+"\">"+escH(i.lienLbl||'Ouvrir')+"</button>":''))+
+    "</div></div>";
+  h+="<div class='card'><div style='padding:14px 18px;font-weight:700;border-bottom:1px solid var(--border)'>À faire ("+todo.length+")</div>"+(todo.length?todo.map(carte).join(''):"<div style='padding:24px;text-align:center;color:var(--muted)'>Rien à faire pour le moment.</div>")+"</div>";
+  h+="<div class='card' style='margin-top:16px'><div style='padding:14px 18px;font-weight:700;border-bottom:1px solid var(--border)'>À savoir en permanence</div>"+
+    FORM_INFOS.map(x=>"<div style='padding:14px 18px;border-bottom:1px solid var(--border)'><div style='font-weight:600'>"+escH(x.t)+"</div><div style='font-size:14px;line-height:1.7;margin-top:6px;color:var(--ink2,#2C2C2A)'>"+escH(x.p)+"</div></div>").join('')+"</div>";
+  if(faits.length) h+="<details class='card' style='margin-top:16px'><summary style='padding:14px 18px;font-weight:700;cursor:pointer'>Déjà fait ("+faits.length+")</summary>"+faits.map(carte).join('')+"</details>";
+  h+="<div style='font-size:12px;color:var(--muted);margin:16px 2px;line-height:1.6'>Informations issues de service-public.fr, impots.gouv.fr et de l'URSSAF, à revérifier chaque année : les règles et les dates évoluent. Ce n'est pas un conseil juridique ni comptable : en cas de doute, demandez à votre comptable.</div>";
+  root.innerHTML=h;
+}
+function formalitesFeedItems(){
+  return formalitesUrgent().map(i=>{
+    const j=_fDiff(i.echeance);
+    return {u:j<0?5:(j<=7?4:3),html:
+      '<div class="feed-item feed-tache">'+
+        '<div class="feed-ic">'+ic('warn')+'</div>'+
+        '<div class="feed-body">'+
+          '<div class="feed-title">'+escH(i.titre)+' <span class="feed-tag tag-tache">Formalité</span></div>'+
+          '<div class="feed-text">'+_fBadge(i)+' · '+escH(i.quand||'')+'</div>'+
+        '</div>'+
+        '<div class="feed-actions"><button class="feed-btn feed-btn-ghost" onclick="nav(\'formalites\',document.querySelector(\'.sb-item[onclick*=formalites]\'))">Détails</button>'+
+        '<button class="feed-btn" onclick="toggleFormalite(\''+i.key+'\')">Fait</button></div>'+
+      '</div>'};
+  });
 }
 
 /* ── CHECKLIST (table pilotage) ── */
@@ -4101,7 +4311,7 @@ function nav(name,el){
   document.querySelectorAll('.sb-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('page-'+name)?.classList.add('active');
   if(el)el.classList.add('active');
-  const titles={dashboard:"Aujourd'hui",agenda:'Agenda',clients:'Clientes',fiche:'Fiche cliente',factures:'Factures',stats:'Statistiques',settings:'Mon cabinet',messages:'Messages clientes',erreurs:'Erreurs techniques',recettes:'Recettes',pilotage:'Checklist'};
+  const titles={dashboard:"Aujourd'hui",agenda:'Agenda',clients:'Clientes',fiche:'Fiche cliente',factures:'Factures',stats:'Statistiques',settings:'Mon cabinet',messages:'Messages clientes',erreurs:'Erreurs techniques',recettes:'Recettes',pilotage:'Checklist',formalites:'Formalités'};
   document.getElementById('page-title').textContent=titles[name]||name;
   if(name==='dashboard')renderDashboard();
   if(name==='agenda'){
@@ -4116,6 +4326,7 @@ function nav(name,el){
   if(name==='erreurs')renderErreurs();
   if(name==='recettes')loadRecettesAdmin();
   if(name==='pilotage')loadPilotage();
+  if(name==='formalites')renderFormalites();
 }
 
 function pDur(p){return p==='alba'?90:p==='aria'?180:p==='ora'?270:0;}
@@ -8716,6 +8927,11 @@ function ouvrirBilanEntree(clientId, mode){
       <span class="sb-lbl">Statistiques</span>
     </div>
 
+    <div class="sb-item" onclick="nav('formalites',this)">
+      <div class="sb-ic" style="background:#E8F0F5;color:#4177A0"><svg width="13" height="13" fill="none" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 4.5-3.2 8-8 9-4.8-1-8-4.5-8-9V6l8-3z" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/><path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <span class="sb-lbl">Formalités</span>
+      <span class="sb-bdg" id="badge-form" style="display:none">0</span>
+    </div>
     <div class="sb-item" onclick="nav('pilotage',this)">
       <div class="sb-ic" style="background:#F3E8FF;color:#8B5CF6"><svg width="13" height="13" fill="none" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
       <span class="sb-lbl">Checklist</span>
@@ -8979,6 +9195,11 @@ function ouvrirBilanEntree(clientId, mode){
       <button class="btn btn-primary" onclick="showNewPilotageModal()">+ Nouvelle tâche</button>
     </div>
     <div class="card"><div id="pl-list"></div></div>
+  </div>
+
+  <!-- FORMALITÉS -->
+  <div class="page" id="page-formalites">
+    <div id="formalites-root"></div>
   </div>
 
   <!-- RECETTES -->
