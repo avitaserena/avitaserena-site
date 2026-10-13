@@ -2169,7 +2169,7 @@ async function loadSeoStats(){
 async function loadFactures(){
   try{
     const r=await sbAll('factures?order=date.desc');
-    db.factures=r.map(f=>({id:f.id,num:f.num,clientId:f.client_id,date:f.date,prestation:f.prestation,prestationLabel:f.prestation_label,montant:parseFloat(f.montant)||0,paiement:f.paiement,paiementLabel:f.paiement_label,statut:f.statut,deuxFois:f.deux_fois,montantRembourse:f.montant_rembourse!=null?parseFloat(f.montant_rembourse):0,rembourseLe:f.rembourse_le||null,indySaisie:!!f.indy_saisie,indySaisieLe:f.indy_saisie_le||null,acheteurNom:f.acheteur_nom||'',acheteurEmail:f.acheteur_email||''}));
+    db.factures=r.map(f=>({id:f.id,num:f.num,clientId:f.client_id,date:f.date,prestation:f.prestation,prestationLabel:f.prestation_label,montant:parseFloat(f.montant)||0,paiement:f.paiement,paiementLabel:f.paiement_label,statut:f.statut,deuxFois:f.deux_fois,montantRembourse:f.montant_rembourse!=null?parseFloat(f.montant_rembourse):0,rembourseLe:f.rembourse_le||null,indySaisie:!!f.indy_saisie,indySaisieLe:f.indy_saisie_le||null,acheteurNom:f.acheteur_nom||'',acheteurEmail:f.acheteur_email||'',mailStatut:f.mail_statut||''}));
     console.log('[CRM] ✓ Factures:', db.factures.length);
   }catch(e){
     console.error('[CRM] ✗ Factures:', e.message);
@@ -3959,6 +3959,8 @@ async function deleteRecette(id){
 function caNet(f){return Math.max(0,(Number(f.montant)||0)-(Number(f.montantRembourse)||0));}
 /* Guide SIBO (PDF) : facturé en série G-0001… et compté à part des consultations dans tous les chiffres d'affaires */
 function isGuide(f){return !!f&&f.prestation==='guide_sibo';}
+// Facture intégralement remboursée le même mois : elle ne génère aucun chiffre d'affaires, on ne l'envoie pas à Indy
+function annuleeMemeMois(f){return !!f&&f.statut==='remboursee'&&!!f.rembourseLe&&!!f.date&&String(f.rembourseLe).slice(0,7)===String(f.date).slice(0,7);}
 function mapC(r){return{id:r.id,prenom:r.prenom,nom:r.nom,email:r.email,tel:r.tel,age:r.age,ddn:r.ddn,motifs:r.motifs,axes:r.axes,notes:r.notes,programme:r.programme,dureeTtt:r.duree_ttt,date1:r.date1,dateProtocole:r.date_protocole,phv_url:r.phv_url||'',timeline:r.timeline||[],workflowDone:r.workflow_done||{},createdAt:r.created_at,chat_addon_actif:!!r.chat_addon_actif,chat_addon_prix:r.chat_addon_prix||45,chatPrixRenseigne:r.chat_addon_prix!=null,chatAnnulationPrevueLe:r.chat_addon_annulation_prevue_le||null,chat_addon_debut:r.chat_addon_debut||'',chat_addon_renouvellement:r.chat_addon_renouvellement||'',chat_addon_source:r.chat_addon_source||'',propositionParcoursEnvoyeeLe:r.proposition_parcours_envoyee_le||null,propositionParcoursProgramme:r.proposition_parcours_programme||null,suiviSpecialites:(typeof r.suivi_specialites==='string')?r.suivi_specialites:null};}
 
 /* Date AAAA-MM-JJ à l'heure de Paris (toISOString donne l'heure UTC → décalage d'un jour entre 0h et 2h) */
@@ -6629,7 +6631,7 @@ function renderFactures(){
   if(monthInput && !monthInput.value){const n=new Date();monthInput.value=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0');}
   const facs=[...db.factures].sort((a,b)=>new Date(b.date)-new Date(a.date));
   cnt.textContent=facs.length;
-  const pasEncoreIndy=facs.filter(f=>!f.indySaisie).length;
+  const pasEncoreIndy=facs.filter(f=>!f.indySaisie&&!annuleeMemeMois(f)).length;
   const indyCntEl=document.getElementById('f-indy-count');
   if(indyCntEl){
     indyCntEl.textContent=pasEncoreIndy>0?(pasEncoreIndy+' pas encore saisie'+(pasEncoreIndy>1?'s':'')+' dans Indy'):'Tout est à jour dans Indy';
@@ -6642,7 +6644,7 @@ function renderFactures(){
     const fstLbl=f.statut==='remboursee'?('Remboursée'+(f.montantRembourse&&f.montantRembourse<f.montant?' (partiel)':'')):(f.statut==='payee'?'Payée':'En attente');
     const indyCls=f.indySaisie?'findy on':'findy';
     const indyTitle=f.indySaisie?('Saisie dans Indy'+(f.indySaisieLe?(' le '+fmtShort(f.indySaisieLe)):'')+' — cliquer pour annuler'):'Pas encore saisie dans Indy — cliquer pour marquer comme fait';
-    return "<div class='fr'><span class='fnum'>N° "+escH(f.num||'')+"</span><div style='flex:1'><div class='fcl'>"+(c?escH(c.prenom+' '+(c.nom||'')):(f.acheteurNom||f.acheteurEmail?escH(f.acheteurNom||f.acheteurEmail):"<span style='color:var(--muted)'>—</span>"))+"</div><div class='fpre'>"+escH(f.prestationLabel||f.prestation||'')+"</div></div><span class='fdat'>"+fmtShort(f.date)+"</span><span class='famt'>"+(f.montant||0).toFixed(0)+" €</span><span class='fst "+fstCls+"'>"+fstLbl+"</span><button class='"+indyCls+"' title=\""+indyTitle+"\" onclick=\"toggleIndySaisie('"+f.id+"')\">"+(f.indySaisie?ic('check'):'Indy')+"</button><button class='btn btn-ghost btn-xs' onclick=\"printF('"+f.id+"')\">"+ic('printer')+"</button></div>";
+    return "<div class='fr'><span class='fnum'>N° "+escH(f.num||'')+"</span><div style='flex:1'><div class='fcl'>"+(c?escH(c.prenom+' '+(c.nom||'')):(f.acheteurNom||f.acheteurEmail?escH(f.acheteurNom||f.acheteurEmail):"<span style='color:var(--muted)'>—</span>"))+"</div><div class='fpre'>"+escH(f.prestationLabel||f.prestation||'')+(isGuide(f)?" · "+escH(f.acheteurEmail||'')+(f.mailStatut==='ok'?" · <span style='color:var(--green)'>e-mail envoyé</span>":" · <span style='color:var(--orange)' title='"+escH(f.mailStatut||'Aucune confirmation envoi enregistree')+"'>e-mail non confirmé</span>"):'')+"</div></div><span class='fdat'>"+fmtShort(f.date)+"</span><span class='famt'>"+(f.montant||0).toFixed(0)+" €</span><span class='fst "+fstCls+"'>"+fstLbl+"</span><button class='"+indyCls+"' title=\""+indyTitle+"\" onclick=\"toggleIndySaisie('"+f.id+"')\">"+(f.indySaisie?ic('check'):'Indy')+"</button><button class='btn btn-ghost btn-xs' onclick=\"printF('"+f.id+"')\">"+ic('printer')+"</button></div>";
   }).join('');
 }
 
@@ -6715,12 +6717,14 @@ async function exportFacturesMois(){
   const val=monthInput?.value; // format "YYYY-MM"
   if(!val){toast('Choisissez un mois','warn');return;}
   const [yyyy,mm]=val.split('-');
-  const facs=db.factures.filter(f=>{
+  const duMois=db.factures.filter(f=>{
     if(!f.date) return false;
     const d=String(f.date);
     return d.slice(0,4)===yyyy && d.slice(5,7)===mm;
   });
-  if(!facs.length){toast('Aucune facture pour ce mois','warn');return;}
+  const facs=duMois.filter(f=>!annuleeMemeMois(f));
+  const ecartees=duMois.length-facs.length;
+  if(!facs.length){toast(duMois.length?'Aucune facture à envoyer : toutes ont été remboursées dans le mois':'Aucune facture pour ce mois','warn');return;}
   if(typeof html2pdf==='undefined' || typeof JSZip==='undefined'){toast('Modules PDF/ZIP non chargés — vérifiez votre connexion et réessayez','err');return;}
 
   const btn=document.getElementById('f-export-btn');
@@ -6749,7 +6753,8 @@ async function exportFacturesMois(){
       }).from(stage).outputPdf('blob');
       const prenomSlug=(c?.prenom||f.acheteurNom||'client').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-');
       const nomSlug=(c?.nom||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-');
-      zip.file('AVS-'+f.num+'-'+prenomSlug+(nomSlug?'-'+nomSlug:'')+'.pdf',pdfBlob);
+      const suffixeRemb=f.statut==='remboursee'?'-REMBOURSEE':(f.montantRembourse>0?'-REMBOURSEMENT-PARTIEL':'');
+      zip.file((String(f.num).startsWith('G-')?'':'AVS-')+f.num+'-'+prenomSlug+(nomSlug?'-'+nomSlug:'')+suffixeRemb+'.pdf',pdfBlob);
       done++;
       btn.innerHTML='Génération… '+done+'/'+facs.length;
     }
@@ -6758,7 +6763,8 @@ async function exportFacturesMois(){
     const a=document.createElement('a');a.href=url;
     a.download='factures-avitaserena-'+yyyy+'-'+mm+'.zip';
     a.click();URL.revokeObjectURL(url);
-    toast(facs.length+' facture(s) exportée(s) — glissez-les une par une dans Indy','ok');
+    const nbRemb=facs.filter(f=>f.statut==='remboursee'||f.montantRembourse>0).length;
+    toast(facs.length+' facture(s) exportée(s) — glissez-les une par une dans Indy'+(ecartees?' · '+ecartees+' écartée(s) car remboursée(s) dans le mois':'')+(nbRemb?' · '+nbRemb+' remboursée(s) dans un autre mois (nom de fichier signalé)':''),'ok');
   }catch(e){
     console.error('Export ZIP factures échoué',e);
     toast('Erreur lors de l\'export — réessayez','err');
