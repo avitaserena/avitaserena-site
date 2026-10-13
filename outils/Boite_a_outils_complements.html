@@ -9,6 +9,7 @@
   * { box-sizing:border-box; }
   body { margin:0; background:var(--ivoire); color:var(--ardoise); font-family:'Be Vietnam Pro',Arial,sans-serif; font-size:14px; line-height:1.5; }
   h1,h2,h3 { font-family:'Cormorant Garamond',Georgia,serif; font-style:italic; color:var(--ardoise); }
+  html { scroll-padding-top:var(--hh,190px); scroll-behavior:smooth; }
   header { background:var(--ardoise); color:var(--ivoire); padding:26px 24px 0; position:sticky; top:0; z-index:50; }
   header h1 { margin:0 0 4px; font-size:24px; color:#fff; }
   header p.sub { margin:0 0 16px; color:rgba(255,255,255,.7); font-size:12.5px; max-width:760px; }
@@ -34,7 +35,7 @@
   table { width:100%; border-collapse:collapse; font-size:13px; }
   table th:last-child, table td:last-child { padding-right:20px; }
   .scroll-hint { font-size:11.5px; color:#8A8378; margin-bottom:8px; }
-  th { text-align:left; background:var(--ardoise); color:var(--ivoire); padding:8px 10px; font-weight:600; font-size:11.5px; position:sticky; top:0; }
+  th { text-align:left; background:var(--ardoise); color:var(--ivoire); padding:8px 10px; font-weight:600; font-size:11.5px; position:sticky; top:var(--hh,0px); }
   td { padding:9px 10px; border-bottom:1px solid rgba(30,30,28,.08); vertical-align:top; }
   tr.row-conseil td { background:var(--conseil-bg); }
   .col-forme { font-weight:600; min-width:160px; }
@@ -1777,6 +1778,15 @@
     count.textContent = q ? (visible + ' résultat(s) dans cet onglet') : '';
   }
   input.addEventListener('input', filter);
+
+  // L'en-tête reste collé en haut : on mesure sa hauteur pour que les liens
+  // (Zinc, Oméga-3…) arrêtent la page au début de la fiche, pas sous l'en-tête.
+  const hdr = document.querySelector('header');
+  function setHeaderHeight(){ document.documentElement.style.setProperty('--hh', (hdr.offsetHeight + 12) + 'px'); }
+  setHeaderHeight();
+  window.addEventListener('resize', setHeaderHeight);
+  window.addEventListener('load', setHeaderHeight);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(setHeaderHeight);
 </script>
 </body>
 </html>
