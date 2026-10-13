@@ -1429,21 +1429,22 @@ body {
 /* Grille de statistiques — refonte Apple (11/09/2026) : fond blanc uniforme, aucun
    lavis de couleur par carte ; seule l'icône et, quand c'est un vrai signal (messages
    non lus), la valeur elle-même portent une couleur — jamais le bloc entier. */
-.home-stat-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:16px; margin-bottom:28px }
+.home-stat-grid { display:grid; grid-template-columns:repeat(8,minmax(0,1fr)); gap:12px; margin-bottom:28px }
 .home-stat {
   position: relative;
   background: var(--white);
   border: 1px solid var(--border);
   border-radius: var(--r16);
-  padding: 22px 20px;
+  padding: 18px 14px;
+  min-width:0;
   transition: var(--t-fast);
 }
 .home-stat:hover { border-color: var(--ink); transform: translateY(-2px) }
 .home-stat-ic { width:20px; height:20px; display:flex; align-items:center; justify-content:center; margin-bottom:14px }
-.home-stat-val { font-family:'Fraunces',var(--serif); font-optical-sizing:auto; font-size:38px; font-weight:600; color:var(--ink); letter-spacing:-.02em; font-variant-numeric:tabular-nums }
-.home-stat-lbl { font-size:12px; font-weight:500; color:var(--muted); text-transform:none; letter-spacing:0; margin-top:4px }
+.home-stat-val { font-family:'Fraunces',var(--serif); font-optical-sizing:auto; font-size:clamp(24px,2.3vw,34px); white-space:nowrap; font-weight:600; color:var(--ink); letter-spacing:-.02em; font-variant-numeric:tabular-nums }
+.home-stat-lbl { font-size:12px; line-height:1.3; font-weight:500; color:var(--muted); text-transform:none; letter-spacing:0; margin-top:4px }
 .home-stat-soft { opacity: 1 }
-@media (max-width:1100px){ .home-stat-grid{ grid-template-columns:repeat(4,1fr) } }
+@media (max-width:1100px){ .home-stat-grid{ grid-template-columns:repeat(4,minmax(0,1fr)) } }
 @media (max-width:640px){ .home-stat-grid{ grid-template-columns:repeat(2,1fr) } }
 
 .home-grid { display:grid; grid-template-columns:1.15fr 1fr; gap:24px; margin-bottom:32px }
@@ -3266,7 +3267,7 @@ function unreadMessagesCount(){
   return clientMessages.filter(m => !m.lu).length;
 }
 
-/* ── PILOTAGE LANCEMENT ── */
+/* ── CHECKLIST (table pilotage) ── */
 let pilotageTasks=[];
 
 async function loadPilotage(){
@@ -3299,7 +3300,7 @@ function renderPilotage(){
   document.getElementById('pl-pct').textContent = pct+'%';
 
   if(total===0){
-    list.innerHTML = "<div style='padding:32px;text-align:center;color:var(--muted);font-size:13px'>Aucune tâche de lancement pour le moment. Ajoutez la première avec « + Nouvelle tâche ».</div>";
+    list.innerHTML = "<div style='padding:32px;text-align:center;color:var(--muted);font-size:13px'>Aucune tâche pour le moment. Ajoutez la première avec « + Nouvelle tâche ».</div>";
     return;
   }
 
@@ -3331,7 +3332,7 @@ function renderPilotage(){
 }
 
 function showNewPilotageModal(){
-  const label = prompt('Nouvelle tâche de lancement :');
+  const label = prompt('Nouvelle tâche :');
   if(!label || !label.trim()) return;
   const urgent = confirm('Marquer cette tâche comme urgente ?');
   const echRaw = prompt('Échéance (AAAA-MM-JJ) — laisser vide si aucune :','');
@@ -4100,7 +4101,7 @@ function nav(name,el){
   document.querySelectorAll('.sb-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('page-'+name)?.classList.add('active');
   if(el)el.classList.add('active');
-  const titles={dashboard:"Aujourd'hui",agenda:'Agenda',clients:'Clientes',fiche:'Fiche cliente',factures:'Factures',stats:'Statistiques',settings:'Mon cabinet',messages:'Messages clientes',erreurs:'Erreurs techniques',recettes:'Recettes',pilotage:'Pilotage lancement'};
+  const titles={dashboard:"Aujourd'hui",agenda:'Agenda',clients:'Clientes',fiche:'Fiche cliente',factures:'Factures',stats:'Statistiques',settings:'Mon cabinet',messages:'Messages clientes',erreurs:'Erreurs techniques',recettes:'Recettes',pilotage:'Checklist'};
   document.getElementById('page-title').textContent=titles[name]||name;
   if(name==='dashboard')renderDashboard();
   if(name==='agenda'){
@@ -4894,7 +4895,7 @@ function renderDashboard(){
   const hcaSemEl=document.getElementById('hca-sem'); if(hcaSemEl) hcaSemEl.textContent=caSem>0?caSem.toFixed(0)+' €':'0 €';
   const hcaMoisEl=document.getElementById('hca-mois'); if(hcaMoisEl) hcaMoisEl.textContent=caM>0?caM.toFixed(0)+' €':'0 €';
   const guideMois=db.factures.filter(f=>f.statut==='payee'&&isGuide(f)&&f.date&&mk(f.date)===curMk);
-  const hcaGuideEl=document.getElementById('hca-guide'); if(hcaGuideEl) hcaGuideEl.textContent=guideMois.reduce((s,f)=>s+caNet(f),0).toFixed(0)+' € · '+guideMois.length+' vente'+(guideMois.length>1?'s':'');
+  const hcaGuideEl=document.getElementById('hca-guide'); if(hcaGuideEl) {hcaGuideEl.textContent=guideMois.reduce((s,f)=>s+caNet(f),0).toFixed(0)+' €'; const gl=document.getElementById('hca-guide-lbl'); if(gl) gl.textContent='Guide SIBO ce mois · '+guideMois.length+' vente'+(guideMois.length>1?'s':'');}
   const trendEl=document.getElementById('hca-trend');
   if(trendEl){
     if(caPrev>0){
@@ -8669,94 +8670,94 @@ function ouvrirBilanEntree(clientId, mode){
     <div class="sb-pill">Espace praticien</div>
   </div>
   <nav class="sb-nav">
-    <div class="sb-sec">Vue générale</div>
+    <div class="sb-sec">Au quotidien</div>
     <div class="sb-item active" onclick="nav('dashboard',this)">
       <div class="sb-ic" style="background:#EDE8FF;color:#9C5FA0"><svg width="13" height="13" fill="none" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5" fill="currentColor"/><rect x="14" y="3" width="7" height="7" rx="1.5" fill="currentColor"/><rect x="3" y="14" width="7" height="7" rx="1.5" fill="currentColor"/><rect x="14" y="14" width="7" height="7" rx="1.5" fill="currentColor"/></svg></div>
       <span class="sb-lbl">Aujourd'hui</span>
       <span class="sb-bdg" id="badge-al">0</span>
     </div>
+
     <div class="sb-item" onclick="nav('agenda',this)">
       <div class="sb-ic" style="background:#FFE8F2;color:#FF4C8B"><svg width="13" height="13" fill="none" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" stroke-width="2.5"/><line x1="16" y1="2" x2="16" y2="6" stroke="currentColor" stroke-width="2.5"/><line x1="8" y1="2" x2="8" y2="6" stroke="currentColor" stroke-width="2.5"/><line x1="3" y1="10" x2="21" y2="10" stroke="currentColor" stroke-width="2.5"/></svg></div>
       <span class="sb-lbl">Agenda</span>
       <span class="sb-bdg" id="badge-reserv">0</span>
     </div>
+
     <div class="sb-item" onclick="nav('messages',this)">
       <div class="sb-ic" style="background:#FFE5EA;color:#D1553A"><svg width="13" height="13" fill="none" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="currentColor" stroke-width="2.5"/></svg></div>
       <span class="sb-lbl">Messages clientes</span>
       <span class="sb-bdg" id="badge-msg">0</span>
     </div>
-    <div class="sb-item" onclick="nav('erreurs',this)">
-      <div class="sb-ic" style="background:#FFF0DB;color:#FFA412"><svg width="13" height="13" fill="none" viewBox="0 0 24 24"><path d="M12 3 2 20h20L12 3z" stroke="currentColor" stroke-width="2.5"/><path d="M12 10v4M12 17h.01" stroke="currentColor" stroke-width="2.5"/></svg></div>
-      <span class="sb-lbl">Erreurs techniques</span>
-      <span class="sb-bdg" id="badge-erreurs">0</span>
-    </div>
+
     <div class="sb-sec">Clientes</div>
     <div class="sb-item" onclick="nav('clients',this)">
       <div class="sb-ic" style="background:#E0F2FF;color:#4177A0"><svg width="13" height="13" fill="none" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="2.5"/><circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="2.5"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" stroke-width="2.5"/></svg></div>
       <span class="sb-lbl">Toutes les clientes</span>
     </div>
+
     <div class="sb-item" onclick="nav('clients',this);setTimeout(()=>setFilter('programme',document.getElementById('fc-prog')),60)">
       <div class="sb-ic" style="background:#DCFFF0;color:#4C8B5C"><svg width="13" height="13" fill="none" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
       <span class="sb-lbl">En programme</span>
     </div>
+
     <div class="sb-item" onclick="nav('clients',this);setTimeout(()=>setFilter('alerte',document.getElementById('fc-al')),60)">
       <div class="sb-ic" style="background:#FFE5EA;color:#D1553A"><svg width="13" height="13" fill="none" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" stroke="currentColor" stroke-width="2.5"/></svg></div>
       <span class="sb-lbl">Échéances</span>
     </div>
-    <div class="sb-sec">Outils</div>
+
+    <div class="sb-sec">Activité</div>
     <div class="sb-item" onclick="nav('factures',this)">
       <div class="sb-ic" style="background:#FFF9DC;color:#8A6800"><svg width="13" height="13" fill="none" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="2.5"/><polyline points="14 2 14 8 20 8" stroke="currentColor" stroke-width="2.5"/><line x1="16" y1="13" x2="8" y2="13" stroke="currentColor" stroke-width="2.5"/></svg></div>
       <span class="sb-lbl">Factures</span>
     </div>
-    <div class="sb-item" onclick="nav('recettes',this)">
-      <div class="sb-ic" style="background:#E8F5E9;color:#2E7D32"><svg width="13" height="13" fill="none" viewBox="0 0 24 24"><path d="M3 2v7c0 1.1.9 2 2 2h1v11M11 2v20M15 2c-1.5 3-1.5 6 0 9s1.5 6 0 9" stroke="currentColor" stroke-width="2"/></svg></div>
-      <span class="sb-lbl">Recettes</span>
+
+    <div class="sb-item" onclick="nav('stats',this)">
+      <div class="sb-ic" style="background:#EDE8FF;color:#9C5FA0"><svg width="13" height="13" fill="none" viewBox="0 0 24 24"><path d="M3 3v18h18" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><path d="M7 15l4-5 3 3 5-7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <span class="sb-lbl">Statistiques</span>
     </div>
+
     <div class="sb-item" onclick="nav('pilotage',this)">
       <div class="sb-ic" style="background:#F3E8FF;color:#8B5CF6"><svg width="13" height="13" fill="none" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-      <span class="sb-lbl">Pilotage lancement</span>
+      <span class="sb-lbl">Checklist</span>
       <span class="sb-bdg" id="badge-pilot">0</span>
     </div>
-    <div class="sb-item" onclick="window.open('generateur.html','_blank')">
-      <div class="sb-ic" style="background:#DCFBFF;color:#00A0C4"><svg width="13" height="13" fill="none" viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" stroke="currentColor" stroke-width="2.5"/></svg></div>
-      <span class="sb-lbl">Générateur PHV ↗</span>
-    </div>
-    <div class="sb-item" onclick="window.open('settimana-crm-widget.html','_blank')">
-      <div class="sb-ic" style="background:#FBEEDB;color:#B4906A"><svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M4 21V8a2 2 0 0 1 2-2h3l2-3 2 3h3a2 2 0 0 1 2 2v13"/><path d="M9 21v-6h6v6"/></svg></div>
-      <span class="sb-lbl">A Settimana ↗</span>
-    </div>
-    <div class="sb-item" onclick="window.open('agenda.html','_blank')">
-      <div class="sb-ic" style="background:#FDEEF3;color:#7A1F3D"><svg width="13" height="13" fill="none" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" stroke-width="2.5"/><line x1="3" y1="10" x2="21" y2="10" stroke="currentColor" stroke-width="2.5"/><line x1="8" y1="3" x2="8" y2="7" stroke="currentColor" stroke-width="2.5"/><line x1="16" y1="3" x2="16" y2="7" stroke="currentColor" stroke-width="2.5"/></svg></div>
-      <span class="sb-lbl">Agenda (plein écran) ↗</span>
-    </div>
-    <div class="sb-item" onclick="window.open('Questionnaire_de_consultation.html','_blank')">
-      <div class="sb-ic" style="background:#E8F0F5;color:#4177A0"><svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M4 4 L20 4 L20 16 L9 16 L4 20 Z"/></svg></div>
-      <span class="sb-lbl">Consultation initiale ↗</span>
-    </div>
-    <div class="sb-item" onclick="window.open('Questionnaire_de_suivi.html','_blank')">
-      <div class="sb-ic" style="background:#E7F1E7;color:#4C8B5C"><svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M3 12l6 6 12-12"/></svg></div>
-      <span class="sb-lbl">Questionnaire de suivi ↗</span>
-    </div>
-    <div class="sb-item" onclick="window.open('espace-clientes.html','_blank')">
-      <div class="sb-ic" style="background:#FBEEDB;color:#D98C2B"><svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18.01"/></svg></div>
-      <span class="sb-lbl">Espace clientes ↗</span>
-    </div>
+
+    <div class="sb-sec">Ressources</div>
     <div class="sb-item" onclick="window.open('Boite_a_outils_complements.html','_blank')">
       <div class="sb-ic" style="background:#FBEAE3;color:#D1553A"><svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M10.5 20.5a2.5 2.5 0 0 1-2.5-2.5v-6l-2-3V5.5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2V9l-2 3v6a2.5 2.5 0 0 1-2.5 2.5Z"/><line x1="8" y1="14" x2="16" y2="14"/></svg></div>
       <span class="sb-lbl">Compléments &amp; aromathérapie ↗</span>
     </div>
+
+    <div class="sb-item" onclick="nav('recettes',this)">
+      <div class="sb-ic" style="background:#E8F5E9;color:#2E7D32"><svg width="13" height="13" fill="none" viewBox="0 0 24 24"><path d="M3 2v7c0 1.1.9 2 2 2h1v11M11 2v20M15 2c-1.5 3-1.5 6 0 9s1.5 6 0 9" stroke="currentColor" stroke-width="2"/></svg></div>
+      <span class="sb-lbl">Recettes</span>
+    </div>
+
     <div class="sb-item" onclick="window.open('second-cerveau.html','_blank')">
       <div class="sb-ic" style="background:#FFF4E5;color:#B4790C"><svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v6c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 11v6c0 1.66 4.03 3 9 3s9-1.34 9-3v-6"/></svg></div>
       <span class="sb-lbl">Second cerveau ↗</span>
     </div>
+
+    <div class="sb-item" onclick="window.open('settimana-crm-widget.html','_blank')">
+      <div class="sb-ic" style="background:#FBEEDB;color:#B4906A"><svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M4 21V8a2 2 0 0 1 2-2h3l2-3 2 3h3a2 2 0 0 1 2 2v13"/><path d="M9 21v-6h6v6"/></svg></div>
+      <span class="sb-lbl">A Settimana ↗</span>
+    </div>
+
+    <div class="sb-item" onclick="window.open('espace-clientes.html','_blank')">
+      <div class="sb-ic" style="background:#FBEEDB;color:#D98C2B"><svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18.01"/></svg></div>
+      <span class="sb-lbl">Espace clientes ↗</span>
+    </div>
+
     <div class="sb-sec">Configuration</div>
     <div class="sb-item" onclick="nav('settings',this)">
       <div class="sb-ic"><svg width="13" height="13" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2.5"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" stroke="currentColor" stroke-width="2.5"/></svg></div>
       <span class="sb-lbl">Mon cabinet</span>
     </div>
-    <div class="sb-item" onclick="nav('stats',this)">
-      <div class="sb-ic" style="background:#EDE8FF;color:#9C5FA0"><svg width="13" height="13" fill="none" viewBox="0 0 24 24"><path d="M3 3v18h18" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><path d="M7 15l4-5 3 3 5-7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-      <span class="sb-lbl">Statistiques</span>
+
+    <div class="sb-item" onclick="nav('erreurs',this)">
+      <div class="sb-ic" style="background:#FFF0DB;color:#FFA412"><svg width="13" height="13" fill="none" viewBox="0 0 24 24"><path d="M12 3 2 20h20L12 3z" stroke="currentColor" stroke-width="2.5"/><path d="M12 10v4M12 17h.01" stroke="currentColor" stroke-width="2.5"/></svg></div>
+      <span class="sb-lbl">Erreurs techniques</span>
+      <span class="sb-bdg" id="badge-erreurs">0</span>
     </div>
   </nav>
   <div class="sb-foot">
@@ -8796,7 +8797,7 @@ function ouvrirBilanEntree(clientId, mode){
       <div class="home-stat"><div class="home-stat-ic" style="color:var(--ink3)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" stroke-width="2.5"/><line x1="16" y1="2" x2="16" y2="6" stroke="currentColor" stroke-width="2.5"/><line x1="8" y1="2" x2="8" y2="6" stroke="currentColor" stroke-width="2.5"/><line x1="3" y1="10" x2="21" y2="10" stroke="currentColor" stroke-width="2.5"/></svg></div><div class="home-stat-val" id="kv-rdv">—</div><div class="home-stat-lbl">RDV ce mois</div></div>
       <div class="home-stat"><div class="home-stat-ic" style="color:var(--gold-dk)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="2" y="6" width="20" height="12" rx="2" stroke="currentColor" stroke-width="2.5"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2.5"/><path d="M6 9v.01M18 15v.01" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg></div><div class="home-stat-val" id="hca-jour">—</div><div class="home-stat-lbl">CA consultations aujourd'hui</div></div>
       <div class="home-stat"><div class="home-stat-ic" style="color:var(--gold-dk)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 20V10M11 20V4M18 20v-7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg></div><div class="home-stat-val" id="hca-mois">—</div><div class="home-stat-lbl">CA consultations ce mois</div><div class="hca-trend" id="hca-trend"></div></div>
-      <div class="home-stat"><div class="home-stat-ic" style="color:var(--gold-dk)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5v14Z" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/></svg></div><div class="home-stat-val" id="hca-guide">—</div><div class="home-stat-lbl">Guide SIBO ce mois</div></div>
+      <div class="home-stat"><div class="home-stat-ic" style="color:var(--gold-dk)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5v14Z" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/></svg></div><div class="home-stat-val" id="hca-guide">—</div><div class="home-stat-lbl" id="hca-guide-lbl">Guide SIBO ce mois</div></div>
     </div>
 
     <div class="home-grid">
@@ -8965,7 +8966,7 @@ function ouvrirBilanEntree(clientId, mode){
     <div class="card"><div id="f-list"></div></div>
   </div>
 
-  <!-- PILOTAGE LANCEMENT -->
+  <!-- CHECKLIST -->
   <div class="page" id="page-pilotage">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;gap:14px;flex-wrap:wrap">
       <div style="display:flex;align-items:center;gap:14px">
