@@ -1912,6 +1912,35 @@ async function fetchDerniersMarqueurs(clientId) {
   }
 }
 
+
+// Bilans biologiques et profils TCA / IMC bas (ajout 15/10/2026) : injecté dans buildPromptBilans et buildPromptInterpretationBilan.
+function blocBilansProfilsSensibles(d) {
+  const p = detecterProfilsSensibles(d || {});
+  if (!p.tca && !p.imcBas) return '';
+  return `
+⛔️ PROFIL TCA / IMC BAS DÉTECTÉ — RÈGLES PRIORITAIRES POUR LES BILANS (elles priment sur les règles 3, 8quater et 8quinquies ci-dessus) :
+a) Un bilan biologique n'a pas ici pour but d'« optimiser » : il sert d'abord à vérifier la sécurité médicale. Les examens de sécurité (ionogramme avec potassium, magnésium, phosphore, glycémie, NFS, fonction rénale et hépatique, ECG) relèvent du médecin traitant : ne les inclus PAS comme bilan à prescrire, mais indique en première ligne de "intro" que la cliente doit en parler à son médecin avant tout bilan d'optimisation.
+b) Ne propose AUCUN examen qui exige un jeûne prolongé, un régime ou une préparation alimentaire restrictive : test respiratoire SIBO, HOMA / insuline à jeun couplés à une consigne de jeûne, T3 reverse, dosage glucidique. Une prise de sang à jeun de 8-12 h reste une prise de sang habituelle, mais ne la mets pas en avant comme « test métabolique ».
+c) Les dosages hormonaux (FSH, LH, œstradiol, progestérone, AMH, testostérone) ne sont pas interprétables en situation de restriction ou de poids bas (l'axe hormonal est ralenti par le manque d'énergie, ce n'est pas une pathologie en soi) : ne les propose pas, sauf demande du médecin.
+d) Dans "explication_cliente" : aucun chiffre de poids, d'IMC ou de calories, aucun mot culpabilisant (« mauvais », « interdit », « excès », « écart »), aucun lien implicite entre le résultat et l'alimentation à « corriger ». Parle de « vérifier vos réserves » ou de « comprendre votre fatigue ».
+e) Limite-toi à 3 bilans maximum, centrés sur les carences (ferritine, vitamine B12 et B9, vitamine D, zinc), et seulement s'ils sont justifiés par un symptôme cité. Si les données sont insuffisantes, ne propose rien : dis-le dans "intro" et renvoie vers le médecin.
+f) Si des résultats sont fournis et sont anormaux : ne les commente jamais comme un « levier d'alimentation » ; renvoie vers le médecin.
+g) Dans "justification" (usage interne), rappelle que la cliente est concernée par la RÈGLE N°59.
+`;
+}
+
+function filtrerBilansProfilsSensibles(parsed, d) {
+  const p = detecterProfilsSensibles(d || {});
+  if (!parsed || !Array.isArray(parsed.bilans) || (!p.tca && !p.imcBas)) return parsed;
+  const interdit = /homa|insuline|hormon|androg[èe]ne|sopk|dhea|cortisol|t3\s*reverse|reverse\s*t3|respiratoire|sibo|fsh|\blh\b|œstradiol|oestradiol|estradiol|progest[ée]rone|\bamh\b|testost[ée]rone|jeûne|jeune/i;
+  const gardes = parsed.bilans.filter(b => !interdit.test(b.nom || ''));
+  const retires = parsed.bilans.length - gardes.length;
+  gardes.forEach((b, i) => { b.priorite = i + 1; });
+  parsed.bilans = gardes.slice(0, 3);
+  if (retires > 0) parsed.intro = (parsed.intro || '') + ' ⚠️ ' + retires + ' bilan(s) retiré(s) automatiquement (profil TCA / IMC bas : examens à jeun, respiratoires ou hormonaux non adaptés).';
+  return parsed;
+}
+
 function buildPromptBilans(d) {
   return `Tu es l'assistante clinique interne de Sabrina Castelli, naturopathe diplômée (A VITA SERENA, Porto-Vecchio), spécialisée en SIBO/SII, endométriose, ménopause/périménopause, SOPK et thyroïde/Hashimoto, formée en micronutrition (DFM Duo Pratik). Ce que tu produis ici n'est JAMAIS lu par la cliente — c'est une aide de travail strictement interne, pour que Sabrina n'ait plus à cocher elle-même une liste de bilans après chaque séance.
 
@@ -1937,6 +1966,7 @@ Analyse l'intégralité des données de séance ci-dessous et propose les bilans
 8quinquies. BILAN THYROÏDIEN : si les signes d'hypothyroïdie persistent alors que la T3 paraît correcte, ajoute la T3 reverse au bilan thyroïdien. Ne le propose jamais pendant un jeûne, un régime très restrictif ou une période de sport intense (la thyroïde y ralentit volontairement, le résultat serait trompeur) : précise-le dans la justification et explique-le simplement à la cliente (« Ce bilan se fait à un moment où vous mangez normalement, car un corps qui manque d'énergie ralentit volontairement sa thyroïde et le résultat ne refléterait pas la réalité. »).
 9. Réponds UNIQUEMENT en JSON valide, sans texte avant ni après, sans balises markdown, selon ce format exact :
 {"intro": "1 phrase de synthèse du profil clinique dominant qui motive ces choix", "bilans": [{"nom": "Nom exact du bilan", "priorite": 1, "justification": "1 phrase précise, usage interne", "explication_cliente": "1-2 phrases en vouvoiement, pour la cliente"}]}
+${blocBilansProfilsSensibles(d)}
 
 🧪 RÉSULTATS DE BILANS DÉJÀ RÉALISÉS (si disponibles, ne pas re-suggérer sans raison de contrôle) :
 ${d.bilans_biologiques_resultats || '— Aucun résultat enregistré pour le moment'}
@@ -1988,7 +2018,7 @@ async function suggererBilans() {
 
   try {
     const raw = (await AIClient.generate(buildPromptBilans(d), { maxTokens: 3000 })).replace(/```json|```/g, '').trim();
-    const parsed = parseJSONRobuste(raw);
+    const parsed = filtrerBilansProfilsSensibles(parseJSONRobuste(raw), d);
     dernierResultatBilans = parsed;
     renderBilansSuggestion(parsed);
   } catch (err) {
@@ -2304,6 +2334,7 @@ Ajoute une synthèse globale (3 à 5 phrases) qui relie les marqueurs entre eux 
 4. Réponds UNIQUEMENT en JSON valide, sans texte avant ni après, sans balises markdown, selon ce format exact :
 {"synthese_globale": "3 à 5 phrases reliant les marqueurs entre eux si pertinent, sinon une phrase le disant honnêtement", "marqueurs": [{"marqueur": "nom exact tel que saisi", "explication": "2 à 4 phrases : mécanisme + hypothèses + éventuel marqueur témoin"}]}
 
+${d ? (detecterProfilsSensibles(d).tca || detecterProfilsSensibles(d).imcBas ? `⛔️ PROFIL TCA / IMC BAS : ne relie jamais une valeur à « ce qu'il faudrait manger », ne suggère aucune restriction ni aucun régime, aucun chiffre de poids ou de calories ; pour toute valeur anormale (potassium, magnésium, phosphore, glycémie, ferritine très basse…), indique que seul le médecin décide de la suite. Reste purement explicative.\n` : '') : ''}
 ━━ LABORATOIRE (informatif uniquement — ne sert JAMAIS à déduire une norme non fournie) ━━
 ${labo || 'Non renseigné'}
 
