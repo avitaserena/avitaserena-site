@@ -421,6 +421,9 @@ input.fi[readonly]{background:var(--taupe);cursor:default;opacity:.75}
       <button class="p-toggle" data-val="Veoza / Lynkuet (bouffées de chaleur)" onclick="this.classList.toggle('on')">Veoza / Lynkuet (bouffées de chaleur)</button>
       <button class="p-toggle" data-val="Androcur / cyprotérone (risque de méningiome)" onclick="this.classList.toggle('on')">Androcur / cyprotérone (risque de méningiome)</button>
       <button class="p-toggle" data-val="GLP-1 (Ozempic, Wegovy, Mounjaro)" onclick="this.classList.toggle('on')">GLP-1 (Ozempic, Wegovy, Mounjaro)</button>
+      <button class="p-toggle" data-val="Antidiabétiques (insuline, metformine, sulfamides…)" onclick="this.classList.toggle('on')">Antidiabétiques (insuline, metformine, sulfamides…)</button>
+      <button class="p-toggle" data-val="Lithium / antipsychotique / thymorégulateur" onclick="this.classList.toggle('on')">Lithium / antipsychotique / thymorégulateur</button>
+      <button class="p-toggle" data-val="Traitement anticancéreux en cours (chimiothérapie, radiothérapie, hormonothérapie)" onclick="this.classList.toggle('on')">Traitement anticancéreux en cours</button>
       <button class="p-toggle" data-val="Aucun de ces traitements" onclick="this.classList.toggle('on')">Aucun de ces traitements</button>
     </div>
     <div style="margin-top:10px">
@@ -2555,12 +2558,200 @@ Cette règle s'applique parce que l'axe « Autre problématique (hors spécialit
 5. DURÉE : applique la grille de la RÈGLE N°10 normalement (un axe isolé reste court à moyen), sans gonfler la durée sous prétexte que le motif est moins familier. Mineure : RÈGLE N°47.
 `;
 
+// ══════════════════════════════════════════════════════════════════════════════════════════
+// RÈGLES N°59-63 (15/10/2026) — PROFILS SENSIBLES : TCA, DIABÈTE TRAITÉ, SANTÉ MENTALE, CANCER EN
+// COURS, GROSSESSE/ALLAITEMENT. Injectées UNIQUEMENT quand le profil est détecté (voir
+// detecterProfilsSensibles), placées EN PREMIER dans le prompt, et déclarées prioritaires sur toute
+// autre règle qui proposerait une restriction ou un actif à risque. Un contrôle programmatique du
+// protocole généré (verifierGardeFousProfils) tourne ensuite, sans dépendre de l'IA.
+// ══════════════════════════════════════════════════════════════════════════════════════════
+const REGLE_TCA = `
+━━ RÈGLE N°59 — TROUBLES DU COMPORTEMENT ALIMENTAIRE (ANOREXIE MENTALE, BOULIMIE, HYPERPHAGIE BOULIMIQUE, ORTHOREXIE, ARFID) ET SIGNES ÉVOCATEURS — PRIORITÉ ABSOLUE SUR TOUTE AUTRE RÈGLE ━━
+Cette règle s'applique parce qu'un TCA est déclaré dans les diagnostics, ou qu'au moins un marqueur du repérage « Rapport à l'alimentation » a été coché dans le dossier. Elle PRÉVAUT sur les RÈGLES N°21, 22, 23, 24, 29, 50, 55, 56, 57 et sur toute règle qui proposerait une restriction, une éviction, un jeûne ou un drainage.
+1. CADRE : un TCA est une maladie qui se soigne avec une équipe (médecin, psychiatre ou psychologue, diététicien). La naturopathe repère, oriente et soutient le terrain EN PLUS de ce suivi, jamais à sa place et jamais en pilotant l'alimentation. Tu ne poses AUCUN diagnostic : si le TCA est seulement suspecté, dis-le avec douceur (« un rapport à l'alimentation qui mérite d'en parler à votre médecin traitant »), sans jamais écrire « vous avez un TCA ».
+2. ORIENTATION (obligatoire, dès le début du document, ton chaleureux, jamais culpabilisant) : médecin traitant en premier, puis équipe spécialisée ; si la cliente est déjà suivie, le protocole est coordonné avec cette équipe et ne la contredit jamais. En cas de vomissements provoqués, de laxatifs, de diurétiques, de malaises, de palpitations ou de perte de poids rapide : consultation médicale rapide (le potassium peut chuter et gêner le rythme du cœur).
+3. INTERDITS ABSOLUS, dans le protocole ET dans tout conseil alimentaire, même présentés comme « temporaires » ou « doux » : protocole FODMAP ; éviction ou réduction d'un aliment ou d'un groupe d'aliments (gluten, lactose, sucre, viande, fibres, etc.) ; jeûne, jeûne nocturne prolongé, fenêtre alimentaire, délais stricts entre les repas, mastication comptée ; comptage de calories, de grammes ou de macronutriments ; objectif de poids, d'IMC ou de tour de taille ; perte de poids ; pesées ; détox, drainage, nettoyage, cure minceur, coupe-faim, brûle-graisse ; laxatifs, même végétaux (séné, bourdaine, cascara, rhubarbe) ; plantes diurétiques (pissenlit, queue de cerise, reine-des-prés, piloselle, orthosiphon, bouleau) ; psyllium sans accord du médecin ; tout vocabulaire qui moralise la nourriture (« propre », « pur », « mauvais », « interdit », « triche »). Aucune liste d'aliments à éviter. Aucune règle alimentaire rigide.
+4. CE QUI RESTE POSSIBLE (le terrain, jamais l'alimentation) : sommeil, gestion du stress, respiration et cohérence cardiaque, mouvement doux (jamais un sport à visée de dépense calorique ; si un sport excessif est signalé, ne l'encourage pas), rapport au corps, lien social. Par défaut, ne propose AUCUN complément ni plante ; si un soutien te paraît indispensable (par exemple le magnésium bisglycinate pour le stress et le sommeil), formule-le comme « à valider avec votre médecin avant de commencer » (risque de déséquilibre en potassium et en électrolytes, interactions). Chaque recommandation garde son « pourquoi » physiologique (RÈGLE N°1bis).
+5. SI LE MOTIF DE CONSULTATION EST DIGESTIF (ballonnements, SIBO suspecté, côlon irritable, constipation, reflux) : n'écris pas de protocole alimentaire anti-SIBO et ne présente pas le SIBO comme établi. Explique que ces troubles digestifs sont très souvent une conséquence de la restriction, des crises ou des purges (vidange gastrique ralentie, constipation, reflux, ballonnements) et qu'ils s'améliorent surtout quand l'alimentation est régulière et encadrée par l'équipe de soins. Rassure : on ne cherche pas à « corriger » la digestion par l'alimentation.
+6. ORTHOREXIE (seul le marqueur « liste d'aliments interdits » est coché) : le protocole ALLÈGE les règles au lieu d'en ajouter. Dis avec douceur que la rigidité alimentaire peut devenir elle-même un problème de santé, propose d'en parler au médecin ou à un diététicien formé aux TCA, et ne remplace jamais une éviction par une autre.
+7. PARCOURS : court (RÈGLE N°10), aucune promesse de résultat, aucun parcours long proposé ; la praticienne revoit la cliente.
+8. TRANSPARENCE POUR LA PRATICIENNE : à la fin de « pourquoi_praticien » de la phase 1, ajoute « ⚠️ À VALIDER PAR VOUS : » suivi de la mention du TCA déclaré ou suspecté, des marqueurs relevés, et de ce que le protocole a volontairement NON proposé (FODMAP, jeûne, drainage…) à cause de cette règle. Ce passage n'apparaît JAMAIS dans le texte destiné à la cliente.
+`;
+const REGLE_DIABETE_TRAITE = `
+━━ RÈGLE N°60 — DIABÈTE TRAITÉ (TYPE 1, OU TYPE 2 SOUS INSULINE / METFORMINE / SULFAMIDES / AUTRES ANTIDIABÉTIQUES) : RISQUE D'HYPOGLYCÉMIE, JAMAIS TOUCHER AU TRAITEMENT ━━
+Cette règle s'applique parce qu'un diabète de type 1 ou un traitement antidiabétique est signalé. Elle PRÉVAUT sur les RÈGLES N°14, 29 et 55 pour tout actif qui agit sur la glycémie.
+1. CADRE : le diabète est suivi par un médecin (diabétologue, endocrinologue ou généraliste). Tu ne touches JAMAIS au traitement ni aux doses d'insuline, tu ne laisses JAMAIS entendre qu'on pourrait réduire ou arrêter un médicament, tu ne promets ni guérison ni « inversion » du diabète. Si l'alimentation, le poids ou l'activité changent, le médecin peut devoir ajuster le traitement : dis-le à la cliente, jamais un ajustement par elle-même.
+2. ACTIFS À POTENTIEL HYPOGLYCÉMIANT À NE PAS PROPOSER (risque de glycémie trop basse en s'ajoutant au traitement ; berbérine et metformine agissent en plus sur les mêmes mécanismes) : berbérine, cannelle en complément, chrome, acide alpha-lipoïque, ginseng, gymnema, fenugrec, momordique (melon amer), vinaigre à dose « médicamenteuse ». Si l'un d'eux paraît pertinent, ne l'écris pas dans le protocole : cite-le dans « pourquoi_praticien » comme piste à valider avec le médecin traitant.
+3. DIABÈTE DE TYPE 1 : JAMAIS de régime pauvre en glucides ou cétogène, de jeûne, de jeûne intermittent, de fenêtre alimentaire, de détox, de réduction des glucides ; jamais de suggestion d'adapter les doses d'insuline. Le protocole se limite au terrain (sommeil, stress, intestin, micronutriments sans effet sur la glycémie) en complément du suivi. Rappelle d'écouter les signes d'alerte et de consulter immédiatement en cas de soif intense, urines abondantes, nausées, douleur abdominale, haleine fruitée ou perte de poids rapide.
+4. DIABÈTE DE TYPE 2 SOUS TRAITEMENT : sous insuline ou sulfamides, aucun saut de repas, aucun jeûne, aucune forte restriction calorique ; sous metformine, applique la RÈGLE N°48 (vitamine B12) et n'ajoute pas de berbérine. Rappelle de surveiller la glycémie et d'en parler au médecin dès que les repas ou l'activité changent nettement.
+5. EXPLICATION À LA CLIENTE (RÈGLE N°1bis) : ses médicaments abaissent déjà la glycémie ; ajouter un actif de plus peut la faire chuter trop bas (sueurs, tremblements, malaise). C'est pour cela que certains soutiens courants sont volontairement absents de son protocole.
+`;
+const REGLE_SANTE_MENTALE = `
+━━ RÈGLE N°61 — SANTÉ MENTALE : RISQUE SUICIDAIRE, BIPOLARITÉ ET TRAITEMENTS PSYCHIATRIQUES, DÉPRESSION DIAGNOSTIQUÉE ━━
+Cette règle s'applique parce qu'un de ces éléments est signalé dans le dossier. Elle s'ajoute à la RÈGLE N°6 (millepertuis interdit sous antidépresseur) et à la RÈGLE N°6bis point 1 (précurseurs sérotoninergiques).
+1. CADRE : la naturopathie accompagne en complément du suivi (médecin, psychiatre, psychologue), jamais à sa place. Tu ne suggères JAMAIS d'arrêter, de réduire ou de « sevrer » un antidépresseur, un thymorégulateur ou un antipsychotique, même si la cliente le demande : tu l'invites à en parler à son médecin (un arrêt brutal expose à une rechute ou à un sevrage). Tu n'annonces jamais qu'un complément « soigne » la dépression.
+2. RISQUE SUICIDAIRE (marqueur « Moral — idées noires » coché ou idées suicidaires évoquées) : le protocole n'est PAS la priorité. Dès le début du document, avant tout autre contenu, écris un passage bienveillant et sans dramatisation : la cliente n'est pas seule, il existe de l'aide, parlez-en à votre médecin traitant dans les tout prochains jours ; le 3114 (numéro national de prévention du suicide, gratuit, 24h/24) ; en danger immédiat, le 15 ou le 112. Le reste du protocole est minimal : sommeil et rythme, repas réguliers et simples, lien avec un proche, lumière du jour. Aucun nouveau complément. Dans « pourquoi_praticien », ajoute « ⚠️ À TRAITER AVANT TOUT : » suivi du signal relevé et de l'orientation donnée. Ce passage n'apparaît JAMAIS dans le texte destiné à la cliente.
+3. BIPOLARITÉ (diagnostic, ou traitement par lithium, thymorégulateur ou antipsychotique) : un actif stimulant ou « antidépresseur naturel » peut déclencher un virage maniaque. JAMAIS : millepertuis, SAMe, 5-HTP et Griffonia, L-tryptophane, L-tyrosine, Mucuna, Rhodiola, ginseng, éleuthérocoque, ashwagandha, luminothérapie sans avis du psychiatre, caféine concentrée. Sous lithium : aucune plante diurétique et aucune variation brutale de l'apport en sel (cela change le taux de lithium dans le sang). Le pilier est la régularité du sommeil et des horaires (le manque de sommeil peut déclencher un épisode) ; le magnésium bisglycinate reste possible. Dans « pourquoi_praticien », signale que ces actifs ont été volontairement écartés.
+4. DÉPRESSION DIAGNOSTIQUÉE ET ANTIDÉPRESSEURS : un protocole chargé est contre-productif quand la fatigue décisionnelle est forte. Peu d'items, simples, réalistes, faciles à tenir, avec le « pourquoi » de chacun. Objectif : soutenir sommeil, intestin et carences éventuelles (vitamine D, magnésium, oméga-3, vitamines B) sans prétention thérapeutique.
+5. ANXIÉTÉ GÉNÉRALISÉE, TOC, TDAH : même cadre ; ne remplace ni ne modifie jamais le traitement, et reste prudente avec les stimulants (caféine, Rhodiola) en cas d'anxiété.
+`;
+const REGLE_CANCER_EN_COURS = `
+━━ RÈGLE N°62 — CANCER EN COURS DE TRAITEMENT (CHIMIOTHÉRAPIE, RADIOTHÉRAPIE, HORMONOTHÉRAPIE, IMMUNOTHÉRAPIE, THÉRAPIES CIBLÉES) OU SUIVI ONCOLOGIQUE ACTIF ━━
+Cette règle s'applique parce qu'un cancer en cours de traitement ou en suivi actif est signalé. Elle s'ajoute aux RÈGLES N°6, 8, 37, 41 (point 12) et 48, et PRÉVAUT sur toute règle qui proposerait un complément.
+1. CADRE ABSOLU : soutien du terrain en complément de l'équipe d'oncologie, jamais « contre le cancer ». Jamais de promesse sur la tumeur, jamais d'incitation à retarder, alléger ou arrêter un traitement ou un suivi, jamais de médecine « alternative » à la place, jamais de régime « anticancer ».
+2. COMPLÉMENTS : par défaut, AUCUN complément ni plante, sauf accord explicite de l'oncologue ou du pharmacien de l'équipe. Beaucoup de plantes et d'antioxydants modifient l'élimination ou l'efficacité des traitements (enzymes du foie, transporteurs). Si tu en évoques un, écris « à valider avec votre oncologue avant tout achat ».
+3. INTERDITS : millepertuis ; pamplemousse (fruit et jus) ; antioxydants à forte dose (vitamine C haute dose, vitamine E, bêta-carotène, curcuma et curcumine concentrés, thé vert concentré et EGCG, resvératrol, quercétine concentrée) ; immunostimulants (échinacée, etc.) ; phytoestrogènes en cas de cancer hormono-dépendant (RÈGLE N°6) ; soutien hépatique actif et détox (RÈGLE N°8) ; huiles essentielles par voie interne ; probiotiques en cas de baisse des défenses, sans avis médical ; CBD sans avis médical (RÈGLE N°37 point 3).
+4. ALIMENTATION : la priorité est de MAINTENIR l'apport (risque de dénutrition, de perte de muscle, de nausées, d'altération du goût). JAMAIS de jeûne, de régime cétogène, de restriction, d'éviction de groupes d'aliments, de détox. Alimentation douce, fractionnée, adaptée aux symptômes du moment (nausées, bouche sèche, goût métallique), riche en énergie et en protéines si l'appétit baisse. Le diététicien de l'équipe est prioritaire. Sécurité : viandes et œufs bien cuits, aliments crus bien lavés, selon les consignes de l'équipe.
+5. AXES POSSIBLES : sommeil, stress, activité physique adaptée avec l'accord de l'équipe, fatigue, gestes simples contre les nausées, soutien émotionnel. Oriente vers les soins de support de l'hôpital ou du centre (onco-psychologue, activité physique adaptée, diététicien, socio-esthéticienne).
+6. SIGNAUX À RAPPELER À LA CLIENTE : fièvre à 38 °C ou plus pendant une chimiothérapie, saignements, vomissements qui empêchent de boire, douleur thoracique ou essoufflement : appeler sans attendre l'équipe de soins ou le 15.
+7. SUIVI APRÈS TRAITEMENT : une hormonothérapie en cours (tamoxifène, inhibiteurs de l'aromatase) reste une contre-indication aux phytoestrogènes et impose la prudence sur tout actif hormonal ; applique la RÈGLE N°6 et renvoie les questions d'interaction au médecin.
+`;
+const REGLE_GROSSESSE_ALLAITEMENT = `
+━━ RÈGLE N°63 — GROSSESSE, ALLAITEMENT ET DÉSIR DE GROSSESSE : SÉCURITÉ ALIMENTAIRE ET ABSENCE DE RESTRICTION ━━
+Cette règle s'applique parce que le statut de sécurité indique une grossesse, un allaitement ou un désir de grossesse. Elle complète la RÈGLE N°6 (aucune huile essentielle par voie interne, vérification de chaque plante).
+1. AUCUNE RESTRICTION NI CURE : jamais de FODMAP, de jeûne, d'éviction de groupes d'aliments, de détox, de drainage, de régime ni de perte de poids. Pendant la grossesse et l'allaitement, les besoins augmentent et une restriction peut nuire au bébé.
+2. SUPPLÉMENTS : tout complément ou plante doit être validé par la sage-femme ou le gynécologue ; ne double ni ne remplace JAMAIS les folates et la vitamine D prescrits dans le suivi ; aucun complément de vitamine A sous forme de rétinol (risque pour le fœtus) ; aucune plante réputée emménagogue ou abortive.
+3. SÉCURITÉ ALIMENTAIRE (prévention de la listériose et de la toxoplasmose) en cas de grossesse : pas de lait ni de fromages au lait cru, pas de charcuterie crue, pas de poisson, coquillage, viande ou œuf cru, légumes et fruits bien lavés, viandes bien cuites ; limiter les gros poissons prédateurs (mercure) ; caféine limitée ; alcool : aucun.
+4. ALLAITEMENT : chaque plante est vérifiée pour son passage dans le lait et son effet sur la lactation (par exemple sauge et menthe poivrée en excès peuvent la réduire) ; aucune restriction calorique marquée.
+5. TON : rassurant et pédagogique, avec le « pourquoi » de chaque consigne ; la cliente reste suivie par son équipe obstétricale.
+`;
+
+function detecterProfilsSensibles(d) {
+  const diag = d.diagnostics_confirmes || '';
+  const tt = d.traitements_vigilance || '';
+  const texte = [d.symptomes_coches, d.textes_libres, d.chips, d.selects_complets, d.notes_praticien, d.motifs, d.scores, d.synthese_praticien]
+    .filter(Boolean).join(' \n ');
+  const imc = parseFloat(String(d.imc || '').replace(',', '.'));
+  const nbMarqueursTCA = (texte.match(/Rapport à l'alimentation\s*—/g) || []).length;
+  const tcaDeclare = /trouble des conduites alimentaires|anorexie|boulimie|hyperphagie|orthorexie|\bTCA\b/i.test(diag);
+  const antidiab = /antidiab|insuline|metformine|glucophage|stagid|sulfamide|diamicron|amarel|glibenclamide|gliptine|januvia|glifozine|jardiance|forxiga/i.test(tt);
+  const diabeteT1 = /diab[eè]te de type 1/i.test(diag);
+  const risqueSuicidaire = /id[ée]es? (noires|suicidaires)|envie de mourir|envie de ne plus (être|vivre)|passage [àa] l.acte/i.test(texte);
+  const bipolaire = /bipolar/i.test(diag + ' ' + texte) || /lithium|antipsychotique|thymor[ée]gulateur|abilify|aripiprazole|olanzapine|zyprexa|risperdal|risp[ée]ridone|qu[ée]tiapine|xeroquel|seroquel/i.test(tt);
+  const depression = /d[ée]pression/i.test(diag) || /ISRS|antid[ée]presseur/i.test(tt);
+  const autrePsy = /anxi[ée]t[ée] g[ée]n[ée]ralis[ée]e|\bTOC\b|\bTDAH\b/i.test(diag);
+  const cancerActif = /en cours/i.test(d.secu_cancer || '') || /chimioth|radioth|hormonoth|immunoth|th[ée]rapie cibl|anticanc|tamoxif|l[ée]trozole|anastrozole|exem[ée]stane|oncolog/i.test(tt + ' ' + diag);
+  const grossesse = /enceinte|allaitement|d[ée]sir de grossesse/i.test(d.secu_grossesse || '');
+  return {
+    tca: tcaDeclare || nbMarqueursTCA > 0, tcaDeclare, nbMarqueursTCA,
+    imcBas: !isNaN(imc) && imc > 0 && imc < 18.5,
+    diabeteTraite: diabeteT1 || antidiab, diabeteT1,
+    santeMentale: risqueSuicidaire || bipolaire || depression || autrePsy, risqueSuicidaire, bipolaire, depression,
+    cancerActif, grossesse,
+  };
+}
+
+// Règles injectées EN PREMIER (avant les règles de parcours) : l'ordre compte, le risque suicidaire
+// puis le TCA doivent être lus avant toute règle qui proposerait un protocole.
+function reglesProfilsSensibles(d) {
+  const p = detecterProfilsSensibles(d);
+  const out = [];
+  if (p.santeMentale) out.push(REGLE_SANTE_MENTALE);
+  if (p.tca) out.push(REGLE_TCA);
+  if (p.diabeteTraite) out.push(REGLE_DIABETE_TRAITE);
+  if (p.cancerActif) out.push(REGLE_CANCER_EN_COURS);
+  if (p.grossesse) out.push(REGLE_GROSSESSE_ALLAITEMENT);
+  return out;
+}
+
+// Bandeau ajouté au « statut de sécurité confirmé » : rappelle en une ligne chaque garde-fou actif.
+function bannerProfilsSensibles(d) {
+  const p = detecterProfilsSensibles(d);
+  const l = [];
+  if (p.risqueSuicidaire) l.push("⛔️ Idées noires signalées : appliquer la RÈGLE N°61 point 2 EN PREMIER (orientation médicale, 3114), protocole minimal, aucun nouveau complément.");
+  if (p.tca) l.push("⛔️ " + (p.tcaDeclare ? "TCA déclaré" : "Marqueur(s) de TCA relevé(s) (" + p.nbMarqueursTCA + ")") + " : appliquer la RÈGLE N°59 — aucun régime, aucune éviction, aucun FODMAP, aucun jeûne, aucun drainage, aucun chiffre ; orientation médicale ; cette règle PRÉVAUT sur toutes les autres.");
+  if (p.imcBas && !p.tca) l.push("⚠️ IMC inférieur à 18,5 : aucune restriction alimentaire (ni FODMAP, ni éviction, ni jeûne) sans accord médical ; vérifier le rapport à l'alimentation avec douceur (RÈGLE N°57 point 1a).");
+  if (p.bipolaire) l.push("⛔️ Bipolarité ou traitement thymorégulateur/antipsychotique : RÈGLE N°61 point 3 — aucun actif stimulant ni précurseur sérotoninergique ou dopaminergique.");
+  if (p.diabeteTraite) l.push("⛔️ " + (p.diabeteT1 ? "Diabète de type 1" : "Traitement antidiabétique") + " : RÈGLE N°60 — aucun actif hypoglycémiant, aucune restriction glucidique ni jeûne, jamais toucher au traitement.");
+  if (p.cancerActif) l.push("⛔️ Cancer en cours de traitement ou suivi actif : RÈGLE N°62 — aucun complément sans accord de l'oncologue, aucune restriction, aucun antioxydant à forte dose.");
+  if (p.grossesse) l.push("⛔️ Grossesse, allaitement ou désir de grossesse : RÈGLE N°63 — aucune restriction ni détox, sécurité alimentaire, tout complément validé par l'équipe obstétricale.");
+  return l.join('\n');
+}
+
+// Contrôle PROGRAMMATIQUE du protocole généré (15/10/2026) : ne dépend pas de l'IA. Cherche, dans
+// tout le texte destiné à la cliente (jamais « pourquoi_praticien »), les consignes que le profil
+// interdit, et les liste avec leur contexte pour que vous tranchiez en un coup d'œil. Un mot
+// précédé d'une négation proche (« pas de », « aucun », « jamais »…) est ignoré : c'est une
+// consigne de prudence, pas une recommandation.
+const GARDEFOUS_MOTS = {
+  tca: { label: 'TCA (RÈGLE N°59)', re: /FODMAP|\bjeûn\w*|\bjeun(e|er)\b|éviction\w*|exclusion|\bexclure\b|détox\w*|drainag\w*|drainant|draineur|nettoyage|minceur|coupe-faim|brûle-graisse|laxatif|séné|bourdaine|cascara|rhubarbe|diurétique|pissenlit|queue de cerise|reine[- ]des[- ]prés|piloselle|orthosiphon|konjac|glucomannane|calori\w*|kcal|macronutriment|déficit (calorique|énergétique)|perdre du poids|perte de poids|\brégime\w*|pesée|fenêtre alimentaire/gi },
+  diabete: { label: 'Diabète traité (RÈGLE N°60)', re: /berbérine|cannelle|chrome|lipoïque|ginseng|gymnema|fenugrec|momordique|melon amer|vinaigre|\bjeûn\w*|FODMAP|cétogène|low[- ]carb|pauvre en glucides|fenêtre alimentaire/gi },
+  bipolaire: { label: 'Bipolarité / psychotropes (RÈGLE N°61)', re: /millepertuis|\bSAMe\b|5-HTP|griffonia|tryptophane|tyrosine|mucuna|rhodiola|ginseng|éleuthérocoque|ashwagandha|luminoth\w*|diurétique/gi },
+  cancer: { label: 'Cancer en cours (RÈGLE N°62)', re: /millepertuis|pamplemousse|curcum\w*|EGCG|thé vert|resvératrol|quercétine|vitamine C|vitamine E|bêta-carotène|échinacée|chardon|artichaut|desmodium|radis noir|détox\w*|\bjeûn\w*|cétogène|huile essentielle|probiotique/gi },
+  grossesse: { label: 'Grossesse / allaitement (RÈGLE N°63)', re: /FODMAP|\bjeûn\w*|détox\w*|drainag\w*|\brégime\w*|éviction\w*|rétinol|vitamine A\b|perdre du poids|perte de poids/gi },
+};
+function collecterTextesClientes(obj, out, chemin) {
+  if (obj == null) return;
+  if (typeof obj === 'string') { out.push({ chemin, txt: obj }); return; }
+  if (Array.isArray(obj)) { obj.forEach((v, i) => collecterTextesClientes(v, out, chemin + '[' + i + ']')); return; }
+  if (typeof obj === 'object') {
+    Object.keys(obj).forEach(k => {
+      if (/praticien|^_client$|^_/.test(k)) return;
+      collecterTextesClientes(obj[k], out, chemin ? chemin + '.' + k : k);
+    });
+  }
+}
+function verifierGardeFousProfils(gen, d) {
+  const p = detecterProfilsSensibles(d);
+  const actifs = [];
+  if (p.tca || p.imcBas) actifs.push('tca');
+  if (p.diabeteTraite) actifs.push('diabete');
+  if (p.bipolaire) actifs.push('bipolaire');
+  if (p.cancerActif) actifs.push('cancer');
+  if (p.grossesse) actifs.push('grossesse');
+  const textes = []; collecterTextesClientes(gen, textes, '');
+  const hits = [];
+  const NEG = /(pas d[e']|aucun|aucune|jamais|sans|\bni\b|évit|n'est pas|ne sont pas|non )[^.\n]{0,50}$/i;
+  actifs.forEach(cle => {
+    const def = GARDEFOUS_MOTS[cle];
+    textes.forEach(t => {
+      def.re.lastIndex = 0;
+      let m;
+      while ((m = def.re.exec(t.txt)) !== null) {
+        const avant = t.txt.slice(Math.max(0, m.index - 60), m.index);
+        if (NEG.test(avant)) continue;
+        hits.push({ profil: def.label, mot: m[0], extrait: t.txt.slice(Math.max(0, m.index - 50), m.index + 70).replace(/\s+/g, ' '), chemin: t.chemin });
+      }
+    });
+  });
+  return { actifs, hits };
+}
+function afficherVerifGardeFous(gen, d) {
+  const p = detecterProfilsSensibles(d);
+  const anyProfil = p.tca || p.imcBas || p.diabeteTraite || p.bipolaire || p.cancerActif || p.grossesse || p.risqueSuicidaire;
+  let zone = document.getElementById('gardefous-profils');
+  if (!zone) {
+    zone = document.createElement('div'); zone.id = 'gardefous-profils';
+    const pw = document.getElementById('preview-wrap');
+    if (pw && pw.parentNode) pw.parentNode.insertBefore(zone, pw); else document.body.appendChild(zone);
+  }
+  if (!anyProfil) { zone.style.display = 'none'; zone.innerHTML = ''; return; }
+  const r = verifierGardeFousProfils(gen, d);
+  const noms = [];
+  if (p.risqueSuicidaire) noms.push('idées noires');
+  if (p.tca) noms.push(p.tcaDeclare ? 'TCA déclaré' : 'TCA suspecté');
+  if (p.imcBas && !p.tca) noms.push('IMC bas');
+  if (p.bipolaire) noms.push('bipolarité / psychotropes');
+  if (p.diabeteTraite) noms.push(p.diabeteT1 ? 'diabète de type 1' : 'antidiabétiques');
+  if (p.cancerActif) noms.push('cancer en cours');
+  if (p.grossesse) noms.push('grossesse / allaitement');
+  const ok = r.hits.length === 0;
+  const lignes = r.hits.slice(0, 14).map(h => '<li style="margin-bottom:6px"><strong>' + escH(h.mot) + '</strong> <span style="color:#6B5555">(' + escH(h.profil) + ')</span><br><span style="font-size:12px;color:#6B5555">…' + escH(h.extrait) + '…</span></li>').join('');
+  zone.style.display = 'block';
+  zone.innerHTML = '<div style="background:' + (ok ? '#EEF6EF' : '#FBEAEA') + ';border:1.5px solid ' + (ok ? '#5E9A68' : '#C0392B') + ';border-radius:14px;padding:16px 20px;margin:0 0 16px">'
+    + '<div style="font-weight:700;color:' + (ok ? '#2F6B3A' : '#8B3A3A') + ';margin-bottom:6px">Garde-fous actifs pour ce dossier : ' + escH(noms.join(', ')) + '</div>'
+    + (ok ? '<div style="font-size:13px;color:#2F5A38;line-height:1.6">Contrôle automatique du protocole généré : aucune consigne interdite détectée. Relisez tout de même avant envoi.</div>'
+          : '<div style="font-size:13px;color:#6B5555;line-height:1.6;margin-bottom:8px">Le contrôle automatique a trouvé ' + r.hits.length + ' passage(s) à vérifier avant d\'envoyer ce protocole (' + (r.hits.length > 14 ? 'les 14 premiers sont listés' : 'liste complète') + ') :</div><ul style="margin:0;padding-left:20px;font-size:13.5px;line-height:1.5">' + lignes + '</ul>')
+    + '</div>';
+  if (!ok) zone.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
 // Règles N°56-58 (06/10/2026) : injectées uniquement quand elles s'appliquent, pour ne pas alourdir
 // le prompt ni influencer les clientes dont le profil est différent.
 function reglesParcoursGeneraux(d) {
   const axes = d.axes_prioritaires || '';
   const obj = d.obj_principal || '';
-  const parts = [];
+  const parts = [...reglesProfilsSensibles(d)];
   if (/Santé globale \/ prévention/.test(axes) || /Rester en bonne santé/.test(obj)) parts.push(REGLE_PREVENTION_SANTE_GLOBALE);
   if (/poids/i.test(obj) || /perdre du poids|perte de poids|maigrir|minceur|kilos/i.test(d.objectif_6mois || '')) parts.push(REGLE_PERTE_DE_POIDS);
   if (/Autre problématique \(hors spécialités\)/.test(axes)) parts.push(REGLE_AUTRE_PROBLEMATIQUE);
@@ -2882,6 +3073,7 @@ Cancer hormonodépendant OU SOPK → JAMAIS orienter vers une supplémentation e
 - Antécédent de cancer hormono-dépendant : ${d.secu_cancer || 'Non renseigné'}
 - Traitements en cours nécessitant vigilance : ${d.traitements_vigilance || 'Non renseigné'}${d.traitements_vigilance.includes('Anticoagulants') ? ' · Type d\'anticoagulant précis : ' + (d.anticoag_type || 'non précisé — traiter par prudence comme un AVK potentiel') : ''}
 - Allergies / intolérances alimentaires connues : ${d.allergies_alim || 'Non renseigné'}
+${bannerProfilsSensibles(d)}
 ${(d.secu_grossesse !== 'Non concernée') ? '⛔️ Cette cliente est concernée par une grossesse, un allaitement, un désir de grossesse, ou ce point n\'a jamais été vérifié : AUCUNE huile essentielle par voie interne, vérifier CHAQUE plante et complément proposé pour sa compatibilité, écarter les phytoestrogènes.' : ''}
 ${(d.secu_cancer !== 'Non') ? '⛔️ Antécédent de cancer hormono-dépendant confirmé, ou ce point n\'a jamais été vérifié : JAMAIS de Feminabiane Ménopause ni de phytoestrogènes (soja, houblon, sauge), quelle que soit la pertinence apparente pour l\'axe hormonal.' : ''}
 ${d.allergies_alim && !/aucune/i.test(d.allergies_alim) ? '⛔️ Ne JAMAIS recommander un aliment, une recette ou un complément contenant : ' + d.allergies_alim + '.' : ''}
@@ -4194,7 +4386,8 @@ const SIGNAUX_ALARME = [
   { re: /perte\s+de\s+poids[^.\n]{0,40}(inexpliqu|sans\s+raison|rapide|soudaine)/i, label: 'Perte de poids rapide et inexpliquée' },
   { re: /pire\s+mal\s+de\s+t[eê]te|c[ée]phal[ée]e[^.\n]{0,40}(brutale|soudaine|intense|inhabituelle)/i, label: 'Céphalée brutale, intense ou inhabituelle' },
   { re: /essoufflement\s+soudain|difficult[ée]s?\s+(à|a)\s+respirer|dyspn[ée]e/i, label: 'Difficulté respiratoire soudaine' },
-  { re: /id[ée]es?\s+suicidaires|envie\s+de\s+mourir|envie\s+de\s+ne\s+plus\s+(être|vivre)|passage\s+à\s+l.?acte/i, label: 'Idées suicidaires ou détresse psychologique aiguë' },
+  { re: /id[ée]es?\s+(suicidaires|noires)|envie\s+de\s+mourir|envie\s+de\s+ne\s+plus\s+(être|vivre)|passage\s+à\s+l.?acte/i, label: 'Idées suicidaires ou détresse psychologique aiguë' },
+  { re: /Rapport à l.alimentation\s*—|trouble des conduites alimentaires|anorexie|boulimie|vomissements?\s+provoqu/i, label: "Rapport à l'alimentation en souffrance (TCA déclaré ou suspecté) — RÈGLE N°59 : aucun régime, aucune éviction, aucun jeûne, aucun drainage ; orientation médicale" },
   { re: /jaunisse|peau\s+jaune|yeux\s+jaunes|ict[eè]re/i, label: 'Jaunisse / ictère' },
   { re: /douleur\s+abdominale[^.\n]{0,40}(intense|brutale|soudaine|insupportable)/i, label: 'Douleur abdominale intense et soudaine' },
   { re: /gonflement[^.\n]{0,40}(gorge|visage|l[eè]vres)|urticaire\s+g[ée]n[ée]ralis[ée]e/i, label: "Signes évocateurs d'anaphylaxie (gonflement gorge/visage, urticaire généralisée)" },
@@ -4202,7 +4395,7 @@ const SIGNAUX_ALARME = [
 ];
 
 function detecterSignauxAlarme(d) {
-  const texteComplet = [d.symptomes_coches, d.textes_libres, d.chips, d.selects_complets, d.notes_praticien, d.motifs, d.scores]
+  const texteComplet = [d.diagnostics_confirmes, d.symptomes_coches, d.textes_libres, d.chips, d.selects_complets, d.notes_praticien, d.motifs, d.scores]
     .filter(Boolean).join(' \n ');
   return SIGNAUX_ALARME.filter(s => s.re.test(texteComplet)).map(s => s.label);
 }
@@ -4256,6 +4449,7 @@ async function generate() {
     clearInterval(interval);
     generatedData = parseJSONRobuste(raw);
     generatedData._client = d;
+    try { afficherVerifGardeFous(generatedData, d); } catch (e) { console.warn('[Garde-fous profils] contrôle non exécuté :', e); }
     generatedData.programme_cle = programmeCleFromDuree(generatedData.duree_suggeree || d.duree_prog);
 
     // Convertir les sections en blocs éditables
