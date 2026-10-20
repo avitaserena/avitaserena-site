@@ -592,6 +592,9 @@ button,input,select,textarea{font-family:inherit;color:inherit}
 @media(max-width:1080px){.fv2-two{grid-template-columns:1fr}}
 @media(max-width:640px){.fv2-tab span{display:none}.fv2-tab{padding:10px 14px}}
 .sb-bdg.late{background:var(--red)}
+.info-card .fh-card{border:none;border-radius:0;margin:0}
+.todo-pill{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;border-radius:99px;background:var(--gold);color:#fff;font-size:11.5px;font-weight:700;margin-left:6px;vertical-align:2px}
+.todo-pill.late{background:var(--red)}
 
 .ch-leg-inline{display:flex;gap:18px;justify-content:flex-end;font-size:12px;color:var(--ink3);margin-top:6px}.ch-leg-inline span{display:inline-flex;align-items:center;gap:6px}
 .ch-leg-inline .li-cur::before{content:"";width:16px;height:3px;border-radius:3px;background:var(--c)}.ch-leg-inline .li-prev::before{content:"";width:16px;height:0;border-top:2px dashed var(--border2)}
@@ -3738,6 +3741,7 @@ function renderDashboard(){
   const sem=allAl.filter(a=>!a.alert.isOvd&&a.alert.isSoon);
   renderMessagesFeed();
   renderAlerts('sem',urg,sem,memoUrgAl);
+  {const sb=document.getElementById('sem-badge');if(sb){sb.textContent=sem.length||'';sb.classList.toggle('red',false);}}
   renderPipeline(actives);
   renderCA();
   renderTaches();
@@ -4018,16 +4022,19 @@ function renderClients(){
 
   tbody.innerHTML=withMeta.map(({c,cr,age,firstDate,lastDate})=>{
     const status=getStatus(c);const col=avColor(c.prenom);const init=(c.prenom||'?')[0].toUpperCase();
-    const alertCount=getAlerts(c).length;
+    const alertsC=getAlerts(c);
+    const nMsgC=clientMessages.filter(m=>!m.lu&&m.client_key===c.id).length;
+    const alertCount=alertsC.length+nMsgC;
+    const alertLate=alertsC.some(a=>a.isOvd)||nMsgC>0;
     const g={alba:'var(--alba)',aria:'var(--aria)',ora:'var(--ora)'}[pCls(c.programme)]||'var(--alba)';
     const progH=c.programme?"<span class='ptag' style='--c:"+g+"'>"+pLbl(c.programme)+"</span>":"<span class='ptag-off'>—</span>";
     const contact=[c.email,c.tel].filter(Boolean).map(escH).join(' · ');
     const since=lastDate?Math.round(diffD(lastDate)):null;
     const sinceTxt=since==null?'':(since<=0?"aujourd'hui":since===1?'hier':'il y a '+since+' j');
     return "<tr onclick=\"openFiche('"+c.id+"')\">"+
-      "<td><div class='ctr-name'><div class='cc-av sm' style='background:"+col+"'>"+init+"</div><div><div class='ctr-nom'>"+escH(c.prenom)+" "+escH(c.nom||'')+(age?" <span style='font-weight:400;color:var(--muted);font-size:13px'>· "+age+" ans</span>":'')+"</div>"+(contact?"<div class='ctr-email'>"+contact+"</div>":'')+"</div></div></td>"+
+      "<td><div class='ctr-name'><div class='cc-av sm' style='background:"+col+"'>"+init+"</div><div><div class='ctr-nom'>"+escH(c.prenom)+" "+escH(c.nom||'')+(age?" <span style='font-weight:400;color:var(--muted);font-size:13px'>· "+age+" ans</span>":'')+(alertCount?" <span class='todo-pill"+(alertLate?" late":"")+"' title='"+alertCount+" chose(s) à faire'>"+alertCount+"</span>":'')+"</div>"+(contact?"<div class='ctr-email'>"+contact+"</div>":'')+"</div></div></td>"+
       "<td>"+progH+"</td>"+
-      "<td><span class='stag "+status.cl+"'>"+status.label+"</span>"+(alertCount?"<span class='ctr-alert' title='"+alertCount+" alerte(s)'><i data-lucide='bell' class='ico'></i></span>":'')+"</td>"+
+      "<td><span class='stag "+status.cl+"'>"+status.label+"</span>"+''+"</td>"+
       "<td><div class='cl-last'>"+fmtDMY(lastDate)+(sinceTxt?"<small>"+sinceTxt+"</small>":'')+"</div></td>"+
       "<td style='text-align:right;font-weight:600;color:var(--gold-dk)'>"+cr.length+"</td>"+
       "<td style='text-align:center' onclick=\"event.stopPropagation()\">"+lumaListToggle(c)+"</td>"+
@@ -4087,7 +4094,7 @@ function parseDateFlex(v){
   if(m){ let y=+m[3]; if(y<100) y+=2000; const d=new Date(y,+m[2]-1,+m[1]); return isNaN(d)?null:d; }
   const d=new Date(v); return isNaN(d)?null:d;
 }
-function buildFicheHormonale(c, age, cr){
+function buildFicheHormonale(c, age, cr, part){
   const cid=c.id;
   const qList=questionnairesClient[cid]||[];
   const qc=qList.find(q=>q.type==='consultation');
@@ -4117,6 +4124,15 @@ function buildFicheHormonale(c, age, cr){
     P('Motif principal',c.motifs?E(c.motifs):'', '', 'wide')+
     P('Orientée par',orient)+
     P('Programme',c.programme?pLbl(c.programme):'Consultation ponctuelle'));
+
+  // 1bis. Corps & motif (sans l'âge ni le programme : déjà dans « Informations générales »)
+  const txC=(sn.traitements_recus||'').split('\n').filter(Boolean).map(l=>l.replace(/^\[[^\]]*\]\s*/,'')).slice(0,6).join(' · ');
+  const b1c=blk('Corps &amp; motif',
+    P('Motif principal',c.motifs?E(c.motifs):'', '', 'wide')+
+    P('Taille',taille?taille+' cm':'')+
+    P(poidsK,poidsTxt)+
+    P('IMC',imc?imc.toFixed(1):'',imcCls)+
+    P('Traitements déjà reçus',txC?E(txC):'','', 'wide'));
 
   // 2. Contexte hormonal
   const nbE=sn.nb_enfants;
@@ -4184,6 +4200,10 @@ function buildFicheHormonale(c, age, cr){
   const futurs=(cr||[]).filter(r=>r.status!=='annule'&&r.date&&new Date(r.date)>=today).sort((a,b)=>new Date(a.date)-new Date(b.date));
   const dernierSuivi=qs?fmtDate(qs.created_at):'';
   const tx=(sn.traitements_recus||'').split('\n').filter(Boolean).map(l=>l.replace(/^\[[^\]]*\]\s*/,'')).slice(0,6).join(' · ');
+  const b5s=blk('Suivi',
+    P('Prochain RDV',futurs[0]?fmtDate(futurs[0].date):'')+
+    P('Dernier suivi',dernierSuivi)+
+    (evHtml?`<div style="flex:1 1 100%;display:flex;flex-wrap:wrap;gap:6px">${evHtml}</div>`:P('Évolution depuis le dernier suivi','')));
   const b5=blk('Évolution &amp; suite',
     P('Prochain RDV',futurs[0]?fmtDate(futurs[0].date):'')+
     P('Dernier suivi',dernierSuivi)+
@@ -4209,6 +4229,10 @@ function buildFicheHormonale(c, age, cr){
 
   const entete=qc?'':`<div class="fh-empty">Aucun questionnaire de consultation rattaché à cette fiche : la carte se remplit automatiquement dès qu'un questionnaire est enregistré.</div>`;
   const secuEnPremier=/fh-p alert/.test(b4);
+  const wrap=inner=>`<div class="fh-card" id="fiche-hormonale-${part||'all'}">${inner}</div>`;
+  if(part==='contexte') return wrap((qc?'':entete)+(secuEnPremier?b4:'')+b1c+b2+(secuEnPremier?'':b4));
+  if(part==='diag') return wrap(qc?b3:`<div class="fh-empty">Les diagnostics et bilans à demander se remplissent depuis le questionnaire de consultation.</div>`);
+  if(part==='suite') return wrap(b5s+b6);
   return `<div class="fh-card" id="fiche-hormonale">${entete}${secuEnPremier?b4:''}${b1}${b2}${b3}${secuEnPremier?'':b4}${b5}${b6}</div>`;
 }
 
@@ -4361,7 +4385,6 @@ function renderFiche(c){
 
   // Infos
   const infoRows=[
-    ['Problématique principale', c.motifs?`<strong style="color:var(--ink)">${escH(c.motifs)}</strong>`:((resaInfosCliente(c)||{}).motif?`<span style="color:var(--ink)">${escH(resaInfosCliente(c).motif)}</span> <span style="color:var(--muted);font-size:12px">(indiqué à la réservation)</span>`:`<span style='color:var(--red);display:inline-flex;align-items:center;gap:4px'>${ic('warn','ico-xs')} Non renseignée</span>`)],
     ['Email', c.email?`<a href="mailto:${escH(c.email)}" style="color:var(--violet);text-decoration:none">${escH(c.email)}</a>`:`<span style='color:var(--red);font-weight:700;display:inline-flex;align-items:center;gap:4px'>${ic('warn','ico-xs')} Manquant</span>`],
     ['Téléphone', c.tel?`<a href="tel:${escH(c.tel)}" style="color:var(--ink);text-decoration:none">${escH(c.tel)}</a>`:'—'],
     // Orientation médicale (25/09/2026) — lue dans le questionnaire de consultation le plus récent,
@@ -4748,12 +4771,13 @@ function renderFiche(c){
   if(window._ficheTabCid!==cid){window._ficheTabCid=cid;window._ficheTab='resume';}
   const tabNow=window._ficheTab||'resume';
   const nbRetard=wf.filter(s=>!s.done&&s.isOvd).length;
+  const nbAVenir=wf.filter(s=>!s.done&&(s.isOvd||s.isSoon)).length;
   const nbNonLus=clientMsgsAll.filter(m=>!m.lu).length;
   const tabDef=[
     ['resume','En résumé','sun',''],
     ['profil','Profil','user',''],
     ['aluma','A Luma','message-circle',nbNonLus?'<span class="fv2-tab-badge">'+nbNonLus+'</span>':(chatActif||enParcoursChat?'<span class="fv2-dot on" title="Application active"></span>':'<span class="fv2-dot" title="Application inactive"></span>')],
-    ['echeances','Échéances','alarm-clock',nbRetard?'<span class="fv2-tab-badge red">'+nbRetard+'</span>':''],
+    ['echeances','Échéances','alarm-clock',nbAVenir?'<span class="fv2-tab-badge'+(nbRetard?' red':'')+'">'+nbAVenir+'</span>':''],
     ['docs','Documents & bilans','droplet',dm.length?'<span class="fv2-tab-n">'+dm.length+'</span>':''],
     ['histo','Historique','history','']
   ];
@@ -4772,11 +4796,6 @@ function renderFiche(c){
         <div class="fv2-av" style="background:${heroAccent}">${init}</div>
         <div class="fv2-identity">
           <div class="fv2-name">${escH(c.prenom)} ${escH(c.nom||'')}</div>
-          <div class="fv2-sub">
-            ${age?`<span>${age} ans</span>`:''}
-            ${c.email?`<a href="mailto:${escH(c.email)}">${escH(c.email)}</a>`:''}
-            ${c.tel?`<span>${escH(c.tel)}</span>`:''}
-          </div>
           <div class="fv2-tags">${tagHtml}</div>
         </div>
         <div class="fv2-actions">
@@ -4819,10 +4838,10 @@ function renderFiche(c){
       </div>
       <div class="fv2-two">
         <div class="info-card">
-        <div class="ic-head"><div class="ic-title">${ic('user')} Informations</div>${btn('ic-edit',`ouvrirEditionCliente('${cid}')`, ic('edit')+' Modifier')}</div>
+        <div class="ic-head"><div class="ic-title">${ic('user')} Informations générales</div>${btn('ic-edit',`ouvrirEditionCliente('${cid}')`, ic('edit')+' Modifier')}</div>
         <div class="ic-body">${infoRows}</div>
       </div>
-        <div class="fv2-col">${sec('Qui est-elle ?','contexte, hormonal, sécurité')}${buildFicheHormonale(c, age, cr)}</div>
+        <div class="info-card"><div class="ic-head"><div class="ic-title">${ic('heart')} Contexte de santé</div></div><div class="ic-body">${buildFicheHormonale(c, age, cr, 'contexte')}</div></div>
       </div>`)}
 
     ${P('aluma',`
@@ -4840,19 +4859,19 @@ function renderFiche(c){
 
     ${P('echeances',`
       <div class="fv2-two">
-        <div class="info-card">
+        <div class="fv2-col"><div class="info-card">
           <div class="ic-head"><div class="ic-title">${ic('alarm')} Prochaines échéances</div><span style="font-size:11px;color:var(--muted)">${doneCount}/${totalWF} complétées</span></div>
           <div class="ic-body"><div class="wf2-list">${wfHtml||"<div style='padding:16px;font-size:13px;color:var(--muted);font-style:italic'>Aucune échéance de suivi (pas de programme en cours).</div>"}</div></div>
-        </div>
-        <div class="info-card">
+        </div></div>
+        <div class="fv2-col"><div class="info-card">
         <div class="ic-head"><div class="ic-title">${ic('calendar')} Rendez-vous</div>${cr.length>0?`<span style="font-size:11px;color:var(--muted)">${cr.length} au total</span>`:''}</div>
         <div class="ic-body">${rdvHtml}</div>
-      </div>
+      </div><div class="info-card"><div class="ic-head"><div class="ic-title">${ic('refresh')} Suivi &amp; compléments en cours</div></div><div class="ic-body">${buildFicheHormonale(c, age, cr, 'suite')}</div></div></div>
       </div>`)}
 
     ${P('docs',`
       <div class="fv2-two">
-        <div class="fv2-col"><div class="info-card">
+        <div class="fv2-col"><div class="info-card"><div class="ic-head"><div class="ic-title"><i data-lucide="stethoscope" class="ico"></i> Diagnostics &amp; bilans à demander</div></div><div class="ic-body">${buildFicheHormonale(c, age, cr, 'diag')}</div></div><div class="info-card">
           <div class="ic-head"><div class="ic-title">${ic('drop')} Documents médicaux <span style="font-weight:400;color:var(--muted);font-size:11px">(prises de sang, imagerie...)</span></div>${btn('ic-edit',`ouvrirAjoutDocMedical('${cid}')`,'+ Ajouter')}</div>
           <div class="ic-body"><div class="doc-list">${dmHtml}</div></div>
         </div><div class="info-card">
@@ -7623,7 +7642,7 @@ function ouvrirBilanEntree(clientId, mode){
         </div>
       </section>
       <section class="panel sm">
-        <div class="panel-head"><div class="panel-title">Cette semaine</div></div>
+        <div class="panel-head"><div class="panel-title">Cette semaine</div><span class="panel-badge" id="sem-badge"></span></div>
         <div class="panel-body"><div id="alerts-box"></div></div>
       </section>
       <section class="panel sm">
