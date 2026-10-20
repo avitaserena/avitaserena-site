@@ -563,6 +563,36 @@ button,input,select,textarea{font-family:inherit;color:inherit}
 @media print{.sidebar,.topbar{display:none}.page{padding:0}}
 .t-txt{min-width:0}.t-sub{display:flex;gap:8px;align-items:center;margin-top:3px;font-size:12.5px}
 
+/* ── Fiche cliente en onglets ── */
+.fv2-wrap{display:flex;flex-direction:column;min-height:calc(100vh - 150px)}
+.fv2-wrap>.fv2-panel{flex:1}
+.fv2-panel{padding-top:18px}
+.fv2-panel>*+*{margin-top:16px}
+.fv2-two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;align-items:start}
+.fv2-two>*{margin-top:0!important}
+.fv2-brief{max-width:none}
+.fv2-kpis-solo{background:var(--white);border:1px solid var(--border);border-radius:var(--r16)}
+.fv2-sec{display:flex;align-items:baseline;gap:12px;font-size:11.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-dk);padding-top:10px;border-top:1px solid var(--border)}
+.fv2-sec small{font-size:12.5px;font-weight:400;letter-spacing:0;text-transform:none;color:var(--muted)}
+.fv2-bottomnav{position:sticky;bottom:14px;z-index:60;display:flex;justify-content:center;margin-top:28px;pointer-events:none}
+.fv2-bottomnav .fv2-tabs{position:static;margin:0;pointer-events:auto;box-shadow:var(--sh2);border-color:var(--border2);gap:4px;padding:6px;max-width:100%}
+.fv2-tab{padding:10px 16px}
+.fv2-tab .ico{width:17px;height:17px}
+.fv2-tab-badge.red{background:var(--red)}
+.fv2-tab-n{font-size:11.5px;font-weight:600;color:var(--muted)}
+.fv2-dot{width:9px;height:9px;border-radius:50%;border:1.5px solid var(--border2);display:inline-block;flex-shrink:0}
+.fv2-dot.on{background:var(--green);border-color:var(--green)}
+.fv2-aluma-status{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:16px 20px;background:var(--white);border:1px solid var(--border);border-radius:var(--r12);font-size:15px}
+.fv2-aluma-opt{margin-left:auto;font-size:13.5px;color:var(--ink3)}
+.more{position:relative}
+.more>summary{list-style:none;cursor:pointer}.more>summary::-webkit-details-marker{display:none}
+.more-menu{position:absolute;right:0;top:42px;min-width:230px;background:var(--white);border:1px solid var(--border2);border-radius:var(--r12);box-shadow:var(--sh2);padding:6px;z-index:80;display:flex;flex-direction:column}
+.more-menu button{border:none;background:none;text-align:left;padding:10px 12px;border-radius:var(--r8);font-size:14px;cursor:pointer;display:flex;align-items:center;gap:9px;color:var(--ink)}
+.more-menu button:hover{background:var(--grege)}.more-menu button.danger{color:var(--red)}
+@media(max-width:1080px){.fv2-two{grid-template-columns:1fr}}
+@media(max-width:640px){.fv2-tab span{display:none}.fv2-tab{padding:10px 14px}}
+.sb-bdg.late{background:var(--red)}
+
 .ch-leg-inline{display:flex;gap:18px;justify-content:flex-end;font-size:12px;color:var(--ink3);margin-top:6px}.ch-leg-inline span{display:inline-flex;align-items:center;gap:6px}
 .ch-leg-inline .li-cur::before{content:"";width:16px;height:3px;border-radius:3px;background:var(--c)}.ch-leg-inline .li-prev::before{content:"";width:16px;height:0;border-top:2px dashed var(--border2)}
 .panel-badge:empty{display:none}
@@ -1518,7 +1548,6 @@ function renderActionsJour(){
       '</div>'});
   });
 
-  try{ formalitesFeedItems().forEach(x=>items.push(x)); }catch(e){ console.error('[CRM] formalités feed',e); }
   items.sort((a,b)=>b.u-a.u);
 
   // Compteurs : un seul chiffre, le même partout (indicateur, badge du menu, titre du panneau)
@@ -1989,8 +2018,10 @@ function formalitesUrgent(){
   return formalitesItems().filter(i=>!i.fait&&i.echeance&&_fDiff(i.echeance)<=30);
 }
 function updateFormalitesBadge(){
-  const n=formalitesUrgent().length,b=document.getElementById('badge-form');
-  if(b){b.textContent=n;b.style.display=n>0?'':'none';}
+  // Pastille du menu : nombre de formalités à faire (échéance dans les 30 jours ou dépassée).
+  // Elle devient rouge dès qu'une est en retard. Rien de tout cela ne remonte sur « Aujourd'hui ».
+  const list=formalitesUrgent(),n=list.length,b=document.getElementById('badge-form');
+  if(b){b.textContent=n;b.classList.toggle('show',n>0);b.classList.toggle('late',list.some(i=>_fDiff(i.echeance)<0));}
 }
 async function toggleFormalite(key){
   const f=formalitesData.done||(formalitesData.done={});
@@ -2079,7 +2110,7 @@ async function loadPilotage(){
 function updatePilotageBadge(){
   const restant = pilotageTasks.filter(t=>t.status!=='Terminé').length;
   const bdg = document.getElementById('badge-pilot');
-  if(bdg){ bdg.textContent = restant; bdg.style.display = restant>0 ? '' : 'none'; }
+  if(bdg){ bdg.textContent = restant; bdg.classList.toggle('show', restant>0); }
 }
 
 function renderPilotage(){
@@ -2851,20 +2882,6 @@ function lumaListToggle(c){
 function escH(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
 
-// ── Bascule "Suivi clinique & documents" sur la fiche cliente (ajouté 02/09/2026) ──
-// Même logique que le tableau de bord, mais l'état initial (ouvert/replié) est déjà
-// posé directement dans le HTML généré par renderFiche() à chaque ouverture de fiche
-// — cette fonction ne gère donc que le clic, pas la restauration au chargement.
-function toggleVueDetailleeFiche(){
-  const grid = document.getElementById('fiche-detail-grid');
-  const btn = document.getElementById('vd-toggle-fiche');
-  const txt = document.getElementById('vd-toggle-fiche-txt');
-  if(!grid || !btn) return;
-  const nowCollapsed = grid.classList.toggle('vd-collapsed');
-  btn.classList.toggle('open', !nowCollapsed);
-  if(txt) txt.textContent = nowCollapsed ? 'Afficher' : 'Masquer';
-  try{ localStorage.setItem('avs_vd_fiche_open', nowCollapsed ? '0' : '1'); }catch(e){}
-}
 
 
 // ── Recherche globale : une cliente en deux frappes, depuis n'importe quelle page ──
@@ -4699,7 +4716,7 @@ function renderFiche(c){
     if(normIdentite(m.prenom)!==normIdentite(c.prenom) || normIdentite(m.nom)!==normIdentite(c.nom)) return false;
     return db.clients.filter(x=>normIdentite(x.prenom)===normIdentite(c.prenom)&&normIdentite(x.nom)===normIdentite(c.nom)).length===1;
   }).sort((a,b) => new Date(b.created_at||0) - new Date(a.created_at||0));
-  const msgsHtml = clientMsgsAll.length ? clientMsgsAll.slice(0,4).map(m=>{
+  const msgsHtml = clientMsgsAll.length ? clientMsgsAll.slice(0,40).map(m=>{
     const txt = m.message || (m.image_url?'Photo envoyée':m.doc_url?'Document envoyé':'(message vide)');
     const d = m.created_at ? new Date(m.created_at) : null;
     const dateStr = d ? d.toLocaleDateString('fr-FR',{day:'numeric',month:'short'})+' · '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}) : '';
@@ -4727,12 +4744,28 @@ function renderFiche(c){
     ? commsBrevoClient.map(x=>commItemHtml(x,false)).join('')
     : `<div style='padding:16px 18px;font-size:13px;color:var(--muted);font-style:italic'>Aucun mail ou SMS enregistré pour le moment.</div>`;
 
-  // Section "Suivi clinique & documents" repliée par défaut (même logique que le tableau
-  // de bord) — préférence mémorisée globalement, pas par cliente.
-  const ficheVdOpen = (()=>{ try{ return localStorage.getItem('avs_vd_fiche_open')==='1'; }catch(e){ return false; } })();
+  // ── Onglets : on garde l'onglet courant quand la fiche se rafraîchit pour la même cliente ──
+  if(window._ficheTabCid!==cid){window._ficheTabCid=cid;window._ficheTab='resume';}
+  const tabNow=window._ficheTab||'resume';
+  const nbRetard=wf.filter(s=>!s.done&&s.isOvd).length;
+  const nbNonLus=clientMsgsAll.filter(m=>!m.lu).length;
+  const tabDef=[
+    ['resume','En résumé','sun',''],
+    ['profil','Profil','user',''],
+    ['aluma','A Luma','message-circle',nbNonLus?'<span class="fv2-tab-badge">'+nbNonLus+'</span>':(chatActif||enParcoursChat?'<span class="fv2-dot on" title="Application active"></span>':'<span class="fv2-dot" title="Application inactive"></span>')],
+    ['echeances','Échéances','alarm-clock',nbRetard?'<span class="fv2-tab-badge red">'+nbRetard+'</span>':''],
+    ['docs','Documents & bilans','droplet',dm.length?'<span class="fv2-tab-n">'+dm.length+'</span>':''],
+    ['histo','Historique','history','']
+  ];
+  const tabsHtml=tabDef.map(([k,l,i,b])=>'<div class="fv2-tab'+(k===tabNow?' active':'')+'" onclick="ficheSwitchTab(\''+k+'\',this)"><i data-lucide="'+i+'" class="ico"></i><span>'+l+'</span>'+b+'</div>').join('');
+  const P=(k,html)=>'<div class="fv2-panel'+(k===tabNow?' active':'')+'" id="panel-'+k+'">'+html+'</div>';
+  const sec=(t,sub)=>'<div class="fv2-sec"><span>'+t+'</span>'+(sub?'<small>'+sub+'</small>':'')+'</div>';
+  const alumaStatut=(enParcoursChat||chatActif)
+    ?'<span class="fv2-dot on"></span> Application <b>active</b>'
+    :'<span class="fv2-dot"></span> Application <b>inactive</b>';
 
-  // Rendu final
   el.innerHTML=`
+  <div class="fv2-wrap">
     <div class="fv2-header">
       <div class="fv2-prog-bar" style="background:${heroG}"></div>
       <div class="fv2-hero">
@@ -4741,102 +4774,114 @@ function renderFiche(c){
           <div class="fv2-name">${escH(c.prenom)} ${escH(c.nom||'')}</div>
           <div class="fv2-sub">
             ${age?`<span>${age} ans</span>`:''}
-            ${c.ddn?`<span>née le ${fmtDate(c.ddn)}</span>`:''}
             ${c.email?`<a href="mailto:${escH(c.email)}">${escH(c.email)}</a>`:''}
             ${c.tel?`<span>${escH(c.tel)}</span>`:''}
           </div>
           <div class="fv2-tags">${tagHtml}</div>
-          ${buildFicheHormonale(c, age, cr)}
-          ${briefHtml}
-          ${resaHtml}
         </div>
         <div class="fv2-actions">
+          ${btn('fv2-btn accent',`ouvrirNouveauRdv('${cid}')`, ic('calendar')+' Nouveau RDV')}
           ${btn('fv2-btn',`emailHeroBtn(this); this.dataset.id='${cid}'`,ic('mail')+' Email')}
-          ${hasPHV?btn('fv2-btn',`window.open('${c.phv_url?escH(c.phv_url):'phv-print.html?client='+encodeURIComponent(cid)}','_blank')`,ic('download')+' Voir le PHV'):''}
-          ${btn('fv2-btn',`ouvrirPHVCliente('${cid}')`, hasPHV?ic('refresh')+' Régénérer PHV':ic('spark')+' Générer PHV')}
-          ${btn('fv2-btn',`ouvrirLettreClinique('${cid}')`,ic('mail')+' Adressage')}
-          ${c.email?`<button class="fv2-btn" title="Ouvre son espace cliente (protocole, journal, check-ins) tel qu'elle le voit — pas cette fiche" onclick="voirCommeElle('${cid}')">${ic('eye')} Aperçu de son espace</button>`:''}
-          ${btn('fv2-btn',`ouvrirNouveauRdv('${cid}')`, ic('calendar')+' Nouveau RDV')}
-          ${btn('fv2-btn accent',`ouvrirEditionCliente('${cid}')`, ic('edit')+' Modifier')}
-          ${btn('fv2-btn danger',`ouvrirSuppressionCliente('${cid}')`, ic('trash')+' Supprimer')}
+          ${btn('fv2-btn',`ouvrirEditionCliente('${cid}')`, ic('edit')+' Modifier')}
+          <details class="more">
+            <summary class="fv2-btn">Plus <i data-lucide="chevron-down" class="ico"></i></summary>
+            <div class="more-menu">
+              ${hasPHV?btn('',`window.open('${c.phv_url?escH(c.phv_url):'phv-print.html?client='+encodeURIComponent(cid)}','_blank')`,ic('download')+' Voir le PHV'):''}
+              ${btn('',`ouvrirPHVCliente('${cid}')`, hasPHV?ic('refresh')+' Régénérer le PHV':ic('spark')+' Générer le PHV')}
+              ${btn('',`ouvrirLettreClinique('${cid}')`,ic('mail')+' Lettre d\'adressage')}
+              ${c.email?`<button onclick="voirCommeElle('${cid}')">${ic('eye')} Aperçu de son espace</button>`:''}
+              ${btn('danger',`ouvrirSuppressionCliente('${cid}')`, ic('trash')+' Supprimer la fiche')}
+            </div>
+          </details>
         </div>
       </div>
-      <div class="fv2-kpis">
+    </div>
+
+    ${P('resume',`
+      ${briefHtml}
+      ${resaHtml}
+      ${naHtml}
+      ${c.propositionParcoursEnvoyeeLe ? `<div class="next-action soon"><div class="na-icon">${ic('mail')}</div><div class="na-body"><div class="na-label">Proposition ${c.propositionParcoursProgramme?pLbl(c.propositionParcoursProgramme):'de parcours'} envoyée</div><div class="na-sub">Le ${fmtDate(c.propositionParcoursEnvoyeeLe)} — envoyée automatiquement par Brevo à J+21, sans confirmation depuis ${Math.round(diffD(c.propositionParcoursEnvoyeeLe))} jours</div></div><button class="feed-btn feed-btn-ghost" onclick="marquerPropositionAnnulee('${cid}')">Effacer</button></div>` : ''}
+      <div class="fv2-two">
+        ${progCardHtml}
+        <div class="fv2-observance">
+      ${buildMemoBlock(c)||`<div class="info-card"><div class="ic-head"><div class="ic-title">${ic('refresh')} Observance PHV</div></div><div class="ic-body" style="padding:14px 16px"><div style="font-size:13px;color:var(--muted);font-style:italic">Aucun protocole PHV envoyé pour le moment — les recommandations acceptées et refusées apparaîtront ici après l'envoi.</div></div></div>`}
+    </div>
+      </div>`)}
+
+    ${P('profil',`
+      <div class="fv2-kpis fv2-kpis-solo">
         <div class="fv2-kpi"><div class="fv2-kpi-val">${cr.length}</div><div class="fv2-kpi-lbl">Consultations</div></div>
         <div class="fv2-kpi"><div class="fv2-kpi-val sm">${fmtDate(lastR?.date||c.date1)}</div><div class="fv2-kpi-lbl">Dernière séance</div></div>
         <div class="fv2-kpi"><div class="fv2-kpi-val">${pct>0?pct+'%':'—'}</div><div class="fv2-kpi-lbl">${c.programme?'Programme':'Ponctuelle'}</div>${daysLeft!==null?`<div class="fv2-kpi-sub">${daysLeft}j restants</div>`:''}</div>
         <div class="fv2-kpi"><div class="fv2-kpi-val sm">${caTotal>0?caTotal.toFixed(0)+' €':'—'}</div><div class="fv2-kpi-lbl">CA généré</div></div>
         <div class="fv2-kpi"><div class="fv2-kpi-val">${docsCount}</div><div class="fv2-kpi-lbl">Documents</div></div>
       </div>
-    </div>
-    ${naHtml}
-    ${c.propositionParcoursEnvoyeeLe ? `<div class="next-action soon"><div class="na-icon">${ic('mail')}</div><div class="na-body"><div class="na-label">Proposition ${c.propositionParcoursProgramme?pLbl(c.propositionParcoursProgramme):'de parcours'} envoyée</div><div class="na-sub">Le ${fmtDate(c.propositionParcoursEnvoyeeLe)} — envoyée automatiquement par Brevo à J+21, sans confirmation depuis ${Math.round(diffD(c.propositionParcoursEnvoyeeLe))} jours</div></div><button class="feed-btn feed-btn-ghost" onclick="marquerPropositionAnnulee('${cid}')">Effacer</button></div>` : ''}
-    <div class="fv2-observance">
-      ${buildMemoBlock(c)||`<div class="info-card"><div class="ic-head"><div class="ic-title">${ic('refresh')} Observance PHV</div></div><div class="ic-body" style="padding:14px 16px"><div style="font-size:13px;color:var(--muted);font-style:italic">Aucun protocole PHV envoyé pour le moment — les recommandations acceptées et refusées apparaîtront ici après l'envoi.</div></div></div>`}
-    </div>
-    <div class="fv2-priority-grid">
-      <div class="info-card">
+      <div class="fv2-two">
+        <div class="info-card">
         <div class="ic-head"><div class="ic-title">${ic('user')} Informations</div>${btn('ic-edit',`ouvrirEditionCliente('${cid}')`, ic('edit')+' Modifier')}</div>
         <div class="ic-body">${infoRows}</div>
       </div>
-      ${progCardHtml}
-      <div class="info-card">
-        <div class="ic-head"><div class="ic-title">${ic('calendar')} Rendez-vous</div>${cr.length>0?`<span style="font-size:11px;color:var(--muted)">${cr.length} au total</span>`:''}</div>
-        <div class="ic-body">${rdvHtml}</div>
-      </div>
-      <div class="info-card">
+        <div class="fv2-col">${sec('Qui est-elle ?','contexte, hormonal, sécurité')}${buildFicheHormonale(c, age, cr)}</div>
+      </div>`)}
+
+    ${P('aluma',`
+      <div class="fv2-aluma-status">${alumaStatut}<span class="fv2-aluma-opt">${chatAddonHtml}</span></div>
+      <div class="fv2-two">
+        <div class="info-card">
         <div class="ic-head"><div class="ic-title">${ic('message')} Derniers messages</div>${clientMsgsAll.length>0?`<span style="font-size:11px;color:var(--muted)">${clientMsgsAll.length} au total</span>`:''}</div>
         <div class="ic-body"><div class="msg-mini-list">${msgsHtml}</div></div>
       </div>
-      <div class="info-card">
+        <div class="info-card">
         <div class="ic-head"><div class="ic-title">${ic('message')} A Luma <span style="font-weight:400;color:var(--muted);font-size:11px">(reçus &amp; réponses)</span></div>${commsALumaClient.length>0?`<span style="font-size:11px;color:var(--muted)">${commsALumaClient.length}</span>`:''}</div>
         <div class="ic-body" style="max-height:280px;overflow-y:auto">${commsALumaHtml}</div>
       </div>
-      <div class="info-card">
-        <div class="ic-head"><div class="ic-title">${ic('mail')} Mails &amp; SMS <span style="font-weight:400;color:var(--muted);font-size:11px">(Brevo)</span></div>${commsBrevoClient.length>0?`<span style="font-size:11px;color:var(--muted)">${commsBrevoClient.length}</span>`:''}</div>
-        <div class="ic-body" style="max-height:280px;overflow-y:auto">${commsBrevoHtml}</div>
-      </div>
-    </div>
+      </div>`)}
 
-    <div class="s-head">
-      <span class="s-head-label">Suivi clinique &amp; documents</span>
-      <div class="s-head-line"></div>
-      <button class="vd-toggle${ficheVdOpen?' open':''}" id="vd-toggle-fiche" onclick="toggleVueDetailleeFiche()">
-        <span id="vd-toggle-fiche-txt">${ficheVdOpen?'Masquer':'Afficher'}</span>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
-      </button>
-    </div>
-
-    <div class="fv2-detail-grid${ficheVdOpen?'':' vd-collapsed'}" id="fiche-detail-grid">
-      <div class="fv2-col">
+    ${P('echeances',`
+      <div class="fv2-two">
         <div class="info-card">
           <div class="ic-head"><div class="ic-title">${ic('alarm')} Prochaines échéances</div><span style="font-size:11px;color:var(--muted)">${doneCount}/${totalWF} complétées</span></div>
           <div class="ic-body"><div class="wf2-list">${wfHtml||"<div style='padding:16px;font-size:13px;color:var(--muted);font-style:italic'>Aucune échéance de suivi (pas de programme en cours).</div>"}</div></div>
         </div>
         <div class="info-card">
-          <div class="ic-head"><div class="ic-title">${ic('file')} Protocole & outils</div></div>
-          <div class="ic-body"><div class="doc-list">${docsHtml}</div></div>
-        </div>
-        <div class="info-card">
-          <div class="ic-head"><div class="ic-title">${ic('spark')} Historique des protocoles</div><span style="font-size:11px;color:var(--muted)">${protoHist.length} version(s)</span></div>
-          <div class="ic-body"><div class="doc-list">${protoHistHtml}</div></div>
-        </div>
+        <div class="ic-head"><div class="ic-title">${ic('calendar')} Rendez-vous</div>${cr.length>0?`<span style="font-size:11px;color:var(--muted)">${cr.length} au total</span>`:''}</div>
+        <div class="ic-body">${rdvHtml}</div>
       </div>
-      <div class="fv2-col">
-        <div class="info-card">
+      </div>`)}
+
+    ${P('docs',`
+      <div class="fv2-two">
+        <div class="fv2-col"><div class="info-card">
           <div class="ic-head"><div class="ic-title">${ic('drop')} Documents médicaux <span style="font-weight:400;color:var(--muted);font-size:11px">(prises de sang, imagerie...)</span></div>${btn('ic-edit',`ouvrirAjoutDocMedical('${cid}')`,'+ Ajouter')}</div>
           <div class="ic-body"><div class="doc-list">${dmHtml}</div></div>
-        </div>
-        <div class="info-card">
-          <div class="ic-head"><div class="ic-title">${ic('spark')} Bilans biologiques <span style="font-weight:400;color:var(--muted);font-size:11px">(marqueurs extraits, avant/après)</span></div><div style="display:flex;align-items:center;gap:10px">${totalInvestiBilans>0?`<span style="font-size:11px;color:var(--muted)">${totalInvestiBilans.toFixed(2)} € investis</span>`:''}${btn('ic-edit',`openM('m-valeurs-sante')`,'Valeurs santé de référence')}</div></div>
-          <div class="ic-body"><div style="display:flex;flex-direction:column;gap:6px;padding:10px 14px">${seuilsNotablesHtml}${bmHtml}</div></div>
-        </div>
-        <div class="info-card">
+        </div><div class="info-card">
           <div class="ic-head"><div class="ic-title">${ic('mail')} Recommandations d'analyses envoyées</div></div>
           <div class="ic-body"><div style="display:flex;flex-direction:column;gap:6px;padding:10px 14px">${raHtml}</div></div>
-        </div>
+        </div></div>
+        <div class="fv2-col"><div class="info-card">
+          <div class="ic-head"><div class="ic-title">${ic('spark')} Bilans biologiques <span style="font-weight:400;color:var(--muted);font-size:11px">(marqueurs extraits, avant/après)</span></div><div style="display:flex;align-items:center;gap:10px">${totalInvestiBilans>0?`<span style="font-size:11px;color:var(--muted)">${totalInvestiBilans.toFixed(2)} € investis</span>`:''}${btn('ic-edit',`openM('m-valeurs-sante')`,'Valeurs santé de référence')}</div></div>
+          <div class="ic-body"><div style="display:flex;flex-direction:column;gap:6px;padding:10px 14px">${seuilsNotablesHtml}${bmHtml}</div></div>
+        </div></div>
+      </div>`)}
+
+    ${P('histo',`
+      ${sec('Ce que nous avons fait ensemble')}
+      <div class="fv2-two">
+        <div class="fv2-col"><div class="info-card">
+          <div class="ic-head"><div class="ic-title">${ic('file')} Protocole & outils</div></div>
+          <div class="ic-body"><div class="doc-list">${docsHtml}</div></div>
+        </div><div class="info-card">
+          <div class="ic-head"><div class="ic-title">${ic('spark')} Historique des protocoles</div><span style="font-size:11px;color:var(--muted)">${protoHist.length} version(s)</span></div>
+          <div class="ic-body"><div class="doc-list">${protoHistHtml}</div></div>
+        </div></div>
+        <div class="fv2-col"><div class="info-card">
+          <div class="ic-head"><div class="ic-title">${ic('folder')} Historique des questionnaires</div></div>
+          <div class="ic-body"><div class="doc-list">${qHistHtml}</div></div>
+        </div>${buildJournalCard(c)}</div>
       </div>
-      <div class="fv2-col">
+      ${sec('Factures et envois')}
+      <div class="fv2-two">
         <div class="info-card">
           <div class="ic-head"><div class="ic-title">${ic('cash')} Factures</div><span style="font-size:11px;color:var(--muted)">${facturesDeCetteCliente.length} facture(s) · ${caTotal.toFixed(0)} € encaissés</span></div>
           <div class="ic-body"><div class="doc-list">${
@@ -4851,24 +4896,20 @@ function renderFiche(c){
           }</div></div>
         </div>
         <div class="info-card">
-          <div class="ic-head"><div class="ic-title">${ic('folder')} Historique des questionnaires</div></div>
-          <div class="ic-body"><div class="doc-list">${qHistHtml}</div></div>
-        </div>
-        ${buildJournalCard(c)}
-        <!-- Carte "A Settimana" retirée d'ici le 15/09/2026 : elle faisait doublon avec
-             caminu-crm-widget.html (même fonctionnalité, deux implémentations séparées écrivant
-             dans la même table caminu_syntheses). Le widget devient le seul outil pour rédiger
-             et envoyer les synthèses hebdomadaires — vue d'ensemble de toutes les abonnées A Luma
-             en un coup d'œil, ce que cette carte fiche-par-fiche ne permettait pas. -->
+        <div class="ic-head"><div class="ic-title">${ic('mail')} Mails &amp; SMS <span style="font-weight:400;color:var(--muted);font-size:11px">(Brevo)</span></div>${commsBrevoClient.length>0?`<span style="font-size:11px;color:var(--muted)">${commsBrevoClient.length}</span>`:''}</div>
+        <div class="ic-body" style="max-height:280px;overflow-y:auto">${commsBrevoHtml}</div>
       </div>
-    </div>`;
-}
+      </div>`)}
 
+    <nav class="fv2-bottomnav"><div class="fv2-tabs">${tabsHtml}</div></nav>
+  </div>`;
+}
 
 function ficheSwitchTab(name, el){
   document.querySelectorAll(".fv2-tab").forEach(t=>t.classList.remove("active"));
   document.querySelectorAll(".fv2-panel").forEach(p=>p.classList.remove("active"));
   if(el) el.classList.add("active");
+  window._ficheTab=name;
   const panel=document.getElementById("panel-"+name);
   if(panel) panel.classList.add("active");
 }
@@ -7475,7 +7516,7 @@ function ouvrirBilanEntree(clientId, mode){
 
     <div class="sb-sec">Cabinet</div>
     <div class="sb-item" onclick="nav('formalites',this)">
-      <div class="sb-ic"><i data-lucide="shield-check"></i></div><span class="sb-lbl">Formalités</span><span class="sb-bdg" id="badge-form" style="display:none">0</span>
+      <div class="sb-ic"><i data-lucide="shield-check"></i></div><span class="sb-lbl">Formalités</span><span class="sb-bdg" id="badge-form">0</span>
     </div>
     <div class="sb-item" onclick="nav('pilotage',this)">
       <div class="sb-ic"><i data-lucide="list-checks"></i></div><span class="sb-lbl">Checklist</span><span class="sb-bdg" id="badge-pilot">0</span>
