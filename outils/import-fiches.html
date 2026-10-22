@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Importer des fiches protégées | A VITA SERENA</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;1,400&family=Be+Vietnam+Pro:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--off:#F7F6F4;--grege:#EDE9E1;--taupe:#D5CFC6;--ocre:#B4906A;--ardoise:#1E1E1C;--gris:#6B6560}
+*{box-sizing:border-box}body{margin:0;background:var(--off);color:var(--ardoise);font-family:'Be Vietnam Pro',Arial,sans-serif;font-size:17px;line-height:1.75}
+main{max-width:760px;margin:0 auto;padding:48px 20px 80px}
+h1{font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:400;font-size:38px;line-height:1.15;margin:0 0 12px}
+p.sub{color:var(--gris);margin:0 0 28px}
+.card{background:#fff;border:1px solid var(--taupe);border-radius:16px;padding:24px;margin-bottom:20px}
+label{display:block;font-weight:600;margin-bottom:6px}
+select,input[type=file]{width:100%;padding:12px;border:1px solid var(--taupe);border-radius:10px;font-size:16px;background:#fff;margin-bottom:16px}
+button{background:var(--ocre);color:#fff;border:0;border-radius:99px;padding:14px 28px;font-size:16px;font-weight:600;cursor:pointer}
+button:disabled{opacity:.5;cursor:default}
+ul{list-style:none;padding:0;margin:16px 0 0}li{padding:8px 0;border-bottom:1px solid var(--grege);font-size:16px}
+.ok{color:#3D6B2C}.ko{color:#C0392B}
+</style>
+</head>
+<body>
+<main>
+  <h1>Importer des fiches protégées</h1>
+  <p class="sub">Sélectionnez vos fiches HTML : elles sont déposées dans la base sécurisée (lisibles uniquement par vos clientes connectées et par vous), puis je vous remets de petites pages de remplacement à mettre en ligne à la place des fiches publiques.</p>
+  <div class="card">
+    <label for="dossier">Dossier d'origine de ces fiches sur le site</label>
+    <select id="dossier">
+      <option value="fiches">/fiches</option>
+      <option value="ressources-espace-cliente">/ressources-espace-cliente</option>
+    </select>
+    <label for="fichiers">Fiches à importer (plusieurs possibles)</label>
+    <input id="fichiers" type="file" accept=".html" multiple>
+    <button id="go" disabled>Importer et préparer le zip →</button>
+    <ul id="journal"></ul>
+  </div>
+</main>
+<script>
+var SUPA_URL = 'https://bqhkdndwldwqacrrbbig.supabase.co';
+var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxaGtkbmR3bGR3cWFjcnJiYmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MzAyNTIsImV4cCI6MjA5NjMwNjI1Mn0.nH2UktMAVKYwng4L3SvW5F0fluV_sObGV0f3Mk1dnOY';
+</script>
+<script src="auth-guard.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+var LOGO_URL = '/images/logo-a-vita-serena-fiche.jpg';
+function stubPour(slug, titre){
+  return '<!DOCTYPE html>\n<html lang="fr">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n<meta name="robots" content="noindex, nofollow">\n<title>' + titre + ' | A VITA SERENA</title>\n<style>body{margin:0;background:#F7F6F4;font-family:"Be Vietnam Pro",Arial,sans-serif;color:#1E1E1C}#fiche-attente{padding:40px 24px;text-align:center;font-size:17px;line-height:1.75;color:#6B6560}</style>\n</head>\n<body>\n<p id="fiche-attente">Chargement de votre fiche…</p>\n<script>\nvar SUPA_URL = \'' + SUPA_URL + '\';\nvar SUPA_KEY = \'' + SUPA_KEY + '\';\nvar FICHE_SLUG = \'' + slug + '\';\n<\/script>\n<script src="/outils/auth-guard.js"><\/script>\n<script src="/outils/fiche-viewer.js"><\/script>\n</body>\n</html>\n';
+}
+function nettoyer(html){
+  return html.replace(/data:image\/(?:png|jpe?g);base64,[A-Za-z0-9+\/=]+/g, LOGO_URL).replace(/Avita Serena/g, 'A VITA SERENA');
+}
+function ligne(txt, cls){ var li=document.createElement('li'); li.className=cls||''; li.textContent=txt; document.getElementById('journal').appendChild(li); }
+async function importer(){
+  var files = document.getElementById('fichiers').files;
+  var dossier = document.getElementById('dossier').value;
+  if(!files.length) return;
+  var btn = document.getElementById('go'); btn.disabled = true;
+  document.getElementById('journal').innerHTML = '';
+  var token = await Auth.getValidAccessToken();
+  var zip = new JSZip(), nbOk = 0;
+  for(var i=0;i<files.length;i++){
+    var f = files[i];
+    var slug = f.name.replace(/\.html?$/i,'');
+    try{
+      var brut = await f.text();
+      var t = (brut.match(/<title>([\s\S]*?)<\/title>/i)||[])[1] || slug;
+      var titre = nettoyer(t).replace(/\s*[—|-]\s*A VITA SERENA\s*$/i,'').trim();
+      var res = await fetch(SUPA_URL + '/rest/v1/fiches_ressources?on_conflict=slug', {
+        method:'POST',
+        headers:{ 'apikey':SUPA_KEY, 'Authorization':'Bearer '+token, 'Content-Type':'application/json', 'Prefer':'resolution=merge-duplicates,return=minimal' },
+        body: JSON.stringify({ slug:slug, titre:titre, categorie:dossier, html:nettoyer(brut), updated_at:new Date().toISOString() })
+      });
+      if(!res.ok) throw new Error(res.status + ' ' + (await res.text()));
+      zip.file(dossier + '/' + slug + '.html', stubPour(slug, titre));
+      nbOk++; ligne('✓ ' + dossier + '/' + slug + '.html', 'ok');
+    }catch(e){ ligne('✗ ' + f.name + ' : ' + e.message, 'ko'); }
+  }
+  if(nbOk){
+    var blob = await zip.generateAsync({type:'blob'});
+    var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'fiches-protegees-' + dossier + '.zip'; a.click();
+    ligne(nbOk + ' fiche(s) importée(s). Le zip des pages de remplacement vient d\'être téléchargé : déposez son contenu sur le site à la place des anciens fichiers.', 'ok');
+  }
+  btn.disabled = false;
+}
+showAuthGate('praticienne', function(){
+  removeAuthGate();
+  var btn = document.getElementById('go'); btn.disabled = false; btn.onclick = importer;
+});
+</script>
+</body>
+</html>
