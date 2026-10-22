@@ -2790,7 +2790,7 @@ function caNet(f){return Math.max(0,(Number(f.montant)||0)-(Number(f.montantRemb
 function isGuide(f){return !!f&&f.prestation==='guide_sibo';}
 // Facture intégralement remboursée le même mois : elle ne génère aucun chiffre d'affaires, on ne l'envoie pas à Indy
 function annuleeMemeMois(f){return !!f&&f.statut==='remboursee'&&!!f.rembourseLe&&!!f.date&&String(f.rembourseLe).slice(0,7)===String(f.date).slice(0,7);}
-function mapC(r){return{id:r.id,prenom:r.prenom,nom:r.nom,email:r.email,tel:r.tel,age:r.age,ddn:r.ddn,motifs:r.motifs,axes:r.axes,notes:r.notes,programme:r.programme,dureeTtt:r.duree_ttt,date1:r.date1,dateProtocole:r.date_protocole,phv_url:r.phv_url||'',timeline:r.timeline||[],workflowDone:r.workflow_done||{},createdAt:r.created_at,chat_addon_actif:!!r.chat_addon_actif,chat_addon_prix:r.chat_addon_prix||45,chatPrixRenseigne:r.chat_addon_prix!=null,chatAnnulationPrevueLe:r.chat_addon_annulation_prevue_le||null,chat_addon_debut:r.chat_addon_debut||'',chat_addon_renouvellement:r.chat_addon_renouvellement||'',chat_addon_source:r.chat_addon_source||'',propositionParcoursEnvoyeeLe:r.proposition_parcours_envoyee_le||null,propositionParcoursProgramme:r.proposition_parcours_programme||null,suiviSpecialites:(typeof r.suivi_specialites==='string')?r.suivi_specialites:null};}
+function mapC(r){return{id:r.id,prenom:r.prenom,nom:r.nom,email:r.email,tel:r.tel,age:r.age,ddn:r.ddn,motifs:r.motifs,axes:r.axes,notes:r.notes,programme:r.programme,dureeTtt:r.duree_ttt,date1:r.date1,dateProtocole:r.date_protocole,phv_url:r.phv_url||'',timeline:r.timeline||[],workflowDone:r.workflow_done||{},createdAt:r.created_at,chat_addon_actif:!!r.chat_addon_actif,chat_addon_prix:r.chat_addon_prix||45,chatPrixRenseigne:r.chat_addon_prix!=null,chatAnnulationPrevueLe:r.chat_addon_annulation_prevue_le||null,chat_addon_debut:r.chat_addon_debut||'',chat_addon_renouvellement:r.chat_addon_renouvellement||'',chat_addon_source:r.chat_addon_source||'',chat_addon_stripe_sub_id:r.chat_addon_stripe_sub_id||'',luma_ora_rappel_fin_envoye_le:r.luma_ora_rappel_fin_envoye_le||'',propositionParcoursEnvoyeeLe:r.proposition_parcours_envoyee_le||null,propositionParcoursProgramme:r.proposition_parcours_programme||null,suiviSpecialites:(typeof r.suivi_specialites==='string')?r.suivi_specialites:null};}
 
 /* Date AAAA-MM-JJ à l'heure de Paris (toISOString donne l'heure UTC → décalage d'un jour entre 0h et 2h) */
 function _ymdParis(d){return (_ymdParis.f||(_ymdParis.f=new Intl.DateTimeFormat('fr-CA',{timeZone:'Europe/Paris',year:'numeric',month:'2-digit',day:'2-digit'}))).format(d);}
@@ -2877,7 +2877,7 @@ function chkBox(active,title){
 // parcours affiche le même message de refus, ça ne contourne rien.
 function lumaListToggle(c){
   const actif = !!c.chat_addon_actif;
-  return '<label style="display:inline-flex;cursor:pointer" title="'+(actif?'Option A Luma active — cliquer pour désactiver':'Cliquer pour activer A Luma (nécessite un parcours actif)')+'">'+
+  return '<label style="display:inline-flex;cursor:pointer" title="'+(actif?'Option A Luma active — cliquer pour désactiver':'Cliquer pour activer A Luma (geste manuel, sans paiement)')+'">'+
     '<input type="checkbox" '+(actif?'checked':'')+' onchange="toggleChatAddon(\''+c.id+'\',this.checked,this)" style="width:18px;height:18px;accent-color:#6E5A78;cursor:pointer">'+
   '</label>';
 }
@@ -4367,7 +4367,10 @@ function renderFiche(c){
   const enParcoursChat = c.programme && ['alba','aria','ora'].includes(String(c.programme).toLowerCase());
   const chatActif = !!c.chat_addon_actif;
   const chatRenouv = c.chat_addon_renouvellement ? fmtDate(c.chat_addon_renouvellement) : '';
-  const chatSourceLbl = c.chat_addon_source==='stripe' ? ' · payant (Stripe)' : c.chat_addon_source==='manuel' ? ' · activé manuellement' : '';
+  const chatSourceLbl = c.chat_addon_source==='stripe' ? ' · payant (Stripe)' : c.chat_addon_source==='manuel' ? ' · activé manuellement' : c.chat_addon_source==='ora_inclus' ? ' · incluse (parcours Ora)' : '';
+  // DÉCISION 22/10/2026 : A Luma est une option ouverte à toute cliente ; elle est INCLUSE (0 €) pendant les 9 mois du parcours Ora
+  // (chat_addon_source='ora_inclus', posée automatiquement par la base + stripe-webhook, qui remplace un éventuel abonnement payant).
+  const chatOraInclus = chatActif && c.chat_addon_source==='ora_inclus';
   // AJOUT (26/08/2026) : badge "résiliation programmée" — alimenté par stripe-webhook sur
   // customer.subscription.updated (cancel_at_period_end). La cliente garde A Luma jusqu'à
   // cette date (réglage Stripe portal "annuler à la fin de la période de facturation"), donc
@@ -4376,8 +4379,8 @@ function renderFiche(c){
   const chatAnnulationPrevue = c.chat_addon_annulation_prevue_le
     ? `<span style="color:var(--red);font-size:12px;margin-left:8px;font-weight:600">Résiliation programmée le ${fmtDate(c.chat_addon_annulation_prevue_le)}</span>`
     : '';
-  const chatAddonHtml = enParcoursChat
-    ? `<span style="color:var(--muted)">Inclus — parcours ${pLbl(c.programme)}</span>`
+  const chatAddonHtml = chatOraInclus
+    ? `<span style="color:var(--muted)">Incluse — parcours Ora${chatRenouv?` jusqu'au ${chatRenouv}`:''}${c.luma_ora_rappel_fin_envoye_le?` · rappel de fin envoyé le ${fmtDate(String(c.luma_ora_rappel_fin_envoye_le).slice(0,10))}`:''}</span>`
     : `<label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer">
         <input type="checkbox" ${chatActif?'checked':''} onchange="toggleChatAddon('${cid}',this.checked,this)">
         <span>${chatActif?'Active'+chatSourceLbl:'Inactive'}</span>
@@ -4776,7 +4779,7 @@ function renderFiche(c){
   const tabDef=[
     ['resume','En résumé','sun',''],
     ['profil','Profil','user',''],
-    ['aluma','A Luma','message-circle',nbNonLus?'<span class="fv2-tab-badge">'+nbNonLus+'</span>':(chatActif||enParcoursChat?'<span class="fv2-dot on" title="Application active"></span>':'<span class="fv2-dot" title="Application inactive"></span>')],
+    ['aluma','A Luma','message-circle',nbNonLus?'<span class="fv2-tab-badge">'+nbNonLus+'</span>':(chatActif?'<span class="fv2-dot on" title="Application active"></span>':'<span class="fv2-dot" title="Application inactive"></span>')],
     ['echeances','Échéances','alarm-clock',nbAVenir?'<span class="fv2-tab-badge'+(nbRetard?' red':'')+'">'+nbAVenir+'</span>':''],
     ['docs','Documents & bilans','droplet',dm.length?'<span class="fv2-tab-n">'+dm.length+'</span>':''],
     ['histo','Historique','history','']
@@ -4784,7 +4787,7 @@ function renderFiche(c){
   const tabsHtml=tabDef.map(([k,l,i,b])=>'<div class="fv2-tab'+(k===tabNow?' active':'')+'" onclick="ficheSwitchTab(\''+k+'\',this)"><i data-lucide="'+i+'" class="ico"></i><span>'+l+'</span>'+b+'</div>').join('');
   const P=(k,html)=>'<div class="fv2-panel'+(k===tabNow?' active':'')+'" id="panel-'+k+'">'+html+'</div>';
   const sec=(t,sub)=>'<div class="fv2-sec"><span>'+t+'</span>'+(sub?'<small>'+sub+'</small>':'')+'</div>';
-  const alumaStatut=(enParcoursChat||chatActif)
+  const alumaStatut=(chatActif)
     ?'<span class="fv2-dot on"></span> Application <b>active</b>'
     :'<span class="fv2-dot"></span> Application <b>inactive</b>';
 
@@ -5097,7 +5100,7 @@ function tpls(c){
   const p=c?.prenom||'vous';const s=db.settings||defSettings();
   return{
     j7:{sub:'Comment se passe votre protocole, '+p+' ?',body:'Bonjour '+p+',\n\nCela fait une semaine que vous avez reçu votre protocole, je voulais prendre de vos nouvelles.\n\nComment se passent les premiers jours ? Petit rappel : ce protocole est un point de départ, pas un document figé — il va évoluer avec vous, au fil de ce qui fonctionne ou non pour votre corps.\n\nAvec douceur,\n'+s.nom+'\nA VITA SERENA'},
-    j21:{sub:'Votre point à 3 semaines, '+p,body:'Bonjour '+p+',\n\nTrois semaines se sont écoulées. C\'est souvent à ce stade que les premiers effets se font sentir.\n\nComment vous sentez-vous ?\n\nSi ce que vous ressentez déjà vous donne envie d\'aller plus loin : mon travail ne s\'arrête pas à répondre à ce qui est déjà là, il consiste aussi à renforcer votre force vitale dans la durée, pour que les déséquilibres d\'aujourd\'hui n\'aient pas le temps de s\'installer. Si ça vous parle, voici comment poursuivre : https://avitaserena.com/reservation.html?confirmer='+encodeURIComponent(c.id||'')+'\n\nAvec bienveillance,\n'+s.nom+'\nA VITA SERENA'},
+    j21:{sub:'Votre point à 3 semaines, '+p,body:'Bonjour '+p+',\n\nTrois semaines se sont écoulées. C\'est souvent à ce stade que les premiers effets se font sentir.\n\nComment vous sentez-vous ?\n\nSi ce que vous ressentez déjà vous donne envie d\'aller plus loin : mon travail ne s\'arrête pas à répondre à ce qui est déjà là, il consiste aussi à renforcer votre force vitale dans la durée, pour que les déséquilibres d\'aujourd\'hui n\'aient pas le temps de s\'installer. Pour que vous ne soyez pas seule entre deux séances, sachez qu\'avec le parcours de 9 mois, A Luma (le lien direct avec moi depuis votre espace) est incluse sans supplément ; avec les autres durées, elle reste disponible en option. Si ça vous parle, voici comment poursuivre : https://avitaserena.com/reservation.html?confirmer='+encodeURIComponent(c.id||'')+'\n\nAvec bienveillance,\n'+s.nom+'\nA VITA SERENA'},
     suivi:{sub:'Votre consultation de suivi, '+p,body:'Bonjour '+p+',\n\nNous approchons du temps prévu pour votre consultation de suivi.\n\nSeriez-vous disponible pour une visio prochainement ?\n\nCordialement,\n'+s.nom+'\nA VITA SERENA'},
     fin_programme:{sub:'La suite de votre parcours, '+p,body:'Bonjour '+p+',\n\nNous arrivons à la fin de votre programme. Je suis fière du chemin parcouru.\n\nÊtes-vous disponible pour un bilan final ?\n\nAvec douceur,\n'+s.nom+'\nA VITA SERENA'},
     relance:{sub:'Je prends de vos nouvelles, '+p,body:'Bonjour '+p+',\n\nCela fait quelque temps que nous n\'avons pas échangé. Comment allez-vous ?\n\nAvec bienveillance,\n'+s.nom+'\nA VITA SERENA'},
@@ -5347,16 +5350,13 @@ async function marquerPropositionAnnulee(cid){
 // Interrupteur manuel de l'option chat (fiche cliente) — sert à la fois de test
 // pour la praticienne et de geste commercial ponctuel. Distinct d'un abonnement Stripe :
 // chat_addon_source reste 'manuel', donc ces activations ne comptent jamais dans le CA récurrent.
-// RÈGLE VERROUILLÉE (26/08/2026) : A Luma n'est jamais un achat/activation autonome — elle
-// suppose toujours un parcours actif (Alba/Aria/Ora). Bloqué ici pour éviter une incohérence
-// créée manuellement dans le CRM, y compris pour un test ponctuel.
+// DÉCISION (22/10/2026, remplace la règle du 26/08/2026) : A Luma est ouverte à TOUTE cliente
+// (option 45 €/mois sans engagement) et incluse sans supplément pendant le parcours Ora.
 const PARCOURS_ALUMA_OK = ['alba','aria','ora'];
 async function toggleChatAddon(cid, actif, el){
   const c=db.clients.find(x=>x.id===cid); if(!c) return;
-  if (actif && !PARCOURS_ALUMA_OK.includes(String(c.programme||'').toLowerCase())){
-    toast('Impossible : A Luma nécessite un parcours actif (Alba, Aria ou Ora) — cette cliente n\'y est pas.', 'warn');
-    if(el) el.checked = !actif; // la case native se coche avant l'onchange — on annule visuellement le refus
-    return;
+  if (!actif && c.chat_addon_source==='stripe' && c.chat_addon_stripe_sub_id){
+    if(!confirm('Cette cliente paie A Luma par abonnement Stripe. Désactiver ici ne stoppe PAS le prélèvement : il faut aussi annuler l\'abonnement dans Stripe. Continuer ?')){ if(el) el.checked=true; return; }
   }
   const patch = actif
     ? { chat_addon_actif:true, chat_addon_source:'manuel', chat_addon_debut: c.chat_addon_debut||today(), chat_addon_renouvellement: (function(){ const d=new Date(); d.setMonth(d.getMonth()+1); return _ymdParis(d); })() }
