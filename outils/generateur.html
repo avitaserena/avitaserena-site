@@ -1202,6 +1202,7 @@ function renderSessionCard() {
   const items = [
     ['Cliente', d.prenom ? `${[d.prenom, d.nom].filter(Boolean).join(' ')}${d.age ? ', ' + d.age + ' ans' : ''}` : '—'],
     ['Durée', d.duree_symptomes || '—'],
+    ['Ses mots à l\'arrivée', d.motif_libre || d.phrase_ouverture || '—'],
     ['Motifs & mots-clés', [d.motifs, d.mots_cles].filter(Boolean).join(' · ') || '—'],
     ['Scores vitalité', d.scores || '—'],
     ['Objectif 6 mois', d.objectif_6mois || '—'],
@@ -1211,7 +1212,7 @@ function renderSessionCard() {
   ];
   // Compter les champs réellement remplis (utiles)
   const richFields = ['prenom','age','duree_symptomes','motifs','mots_cles','objectif_6mois','scores',
-    'symptomes_coches','chips_coches','selects','textes_libres','synthese_praticien','bilans_recommandes','motivation','pathologies_pressenties'];
+    'symptomes_coches','chips_coches','selects','textes_libres','motif_libre','synthese_praticien','bilans_recommandes','motivation','pathologies_pressenties'];
   const filled = richFields.filter(k => d[k] && d[k].length > 2).length;
   const totalChars = Object.values(d).reduce((acc, v) => acc + (typeof v === 'string' ? v.length : 0), 0);
 
@@ -1225,7 +1226,7 @@ function renderSessionCard() {
 
 function prefillParams() {
   if (!sessionData) return;
-  const checks = (sessionData.symptomes_coches || '') + (sessionData.motifs || '') + (sessionData.chips_coches || '') + (sessionData.pathologies_pressenties || '') + (sessionData.textes_libres || '') + (sessionData.chanbio_terrains || '') + (sessionData.chanbio_notes || '');
+  const checks = (sessionData.symptomes_coches || '') + (sessionData.motifs || '') + (sessionData.chips_coches || '') + (sessionData.pathologies_pressenties || '') + (sessionData.textes_libres || '') + (sessionData.motif_libre || sessionData.phrase_ouverture || '') + (sessionData.chanbio_terrains || '') + (sessionData.chanbio_notes || '');
   // Auto-cocher les axes prioritaires selon les symptômes
   const autoAxes = [];
   // SIBO / dysbiose est détecté spécifiquement en premier : avant, il était noyé dans la
@@ -1646,6 +1647,12 @@ function buildClientData() {
     objectif_6mois: s.objectif_6mois || '',
     // Texte de clôture lu à la cliente en fin de séance (généré dans le questionnaire, 24/09/2026)
     texte_cloture: s.texte_cloture || '',
+    // Ouverture libre (22/10/2026) : les mots de la cliente à son arrivée (consultation : motif_libre ;
+    // suivi : phrase_ouverture, jusqu'ici capturée mais jamais lue ici) et ce que Sabrina lui a répondu.
+    motif_libre: s.motif_libre || s.phrase_ouverture || '',
+    lecture_preambule: s.lecture_preambule || '',
+    lecture_pistes: s.lecture_pistes || '',
+    lecture_vigilance: s.lecture_vigilance || '',
     scores: manual.scores || s.scores || '',
     symptomes_coches: manual.checks || s.symptomes_coches || '',
     chips: s.chips_coches || '',
@@ -1658,6 +1665,7 @@ function buildClientData() {
       s.immuno_terrain && `Terrain immunitaire (TH1/TH2/TH17/Treg) coché : ${s.immuno_terrain}${s.immuno_notes ? ' — ' + s.immuno_notes : ''}`,
       s.regime_viande && `Régime alimentaire déclaré : ${s.regime_viande}`,
       s.jour_cycle_consultation && `Jour du cycle au moment de la consultation : J${s.jour_cycle_consultation}`,
+      (s.motif_libre || s.phrase_ouverture) && `Ses mots à l'arrivée (tels que notés) : ${String(s.motif_libre || s.phrase_ouverture).replace(/\s*\n\s*/g, ' / ')}`,
     ].filter(Boolean).join('\n'),
     // Toutes les sélections (selects)
     selects_complets: s.selects || '',
@@ -3937,6 +3945,19 @@ ${d.lifeline || '— Non renseigné'}
 
 🔬 ANALYSE CAUSALE PRATICIEN (cascade des premiers dominos) :
 ${d.notes_praticien || '— Non renseigné'}
+${d.motif_libre ? `
+🗨️ SES MOTS À L'ARRIVÉE (ce que la cliente a dit en premier, tel que noté en séance) :
+${d.motif_libre}
+${d.lecture_preambule ? `
+🗣️ CE QUE SABRINA LUI A RÉPONDU EN OUVERTURE (orientation annoncée à voix haute) :
+${d.lecture_preambule}
+` : ''}${d.lecture_pistes ? `
+🔎 PISTES DE LECTURE POSÉES À L'OUVERTURE (hypothèses de travail de Sabrina, à confirmer ou écarter avec l'ensemble du dossier) :
+${d.lecture_pistes}
+` : ''}${d.lecture_vigilance ? `
+⚠️ POINTS À CLARIFIER RELEVÉS À L'OUVERTURE : ${d.lecture_vigilance}
+` : ''}→ La cliente s'attend à retrouver dans son protocole une réponse à CES mots-là, expliquée avec le même vocabulaire (sans les citer mot pour mot à chaque ligne). Si l'analyse complète du dossier infirme une piste annoncée à l'ouverture, dis-le avec tact plutôt que de l'ignorer.
+` : ''}
 ${d.texte_cloture ? `
 🗣️ CE QUE SABRINA A DIT À LA CLIENTE EN FIN DE SÉANCE (pistes annoncées à voix haute) :
 ${d.texte_cloture}

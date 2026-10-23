@@ -643,9 +643,42 @@ var SUPA_URL = 'https://bqhkdndwldwqacrrbbig.supabase.co';
 /* Version du questionnaire — à incrémenter (ex. 'v13') à chaque changement structurel
    (ajout/suppression/renommage de section ou de champ). Permet de savoir a posteriori
    quelle version une cliente a remplie, si le questionnaire évolue entre-temps. */
-var QUESTIONNAIRE_VERSION = 'consultation-v13-2026-08-21';
+var QUESTIONNAIRE_VERSION = 'consultation-v14-2026-10-22';
 var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxaGtkbmR3bGR3cWFjcnJiYmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MzAyNTIsImV4cCI6MjA5NjMwNjI1Mn0.nH2UktMAVKYwng4L3SvW5F0fluV_sObGV0f3Mk1dnOY';
 </script>
+<style id="ol-style">
+/* Ouverture libre — « Ce que me dit la cliente » (22/10/2026) */
+.ol-card{background:var(--blanc,#fff);border:1px solid var(--ocre,#D6336C);border-radius:18px;padding:22px 24px;margin:0 0 26px;box-shadow:0 10px 28px rgba(214,51,108,.10);position:relative}
+.ol-card.ol-inline{margin:14px 0 6px;padding:16px 18px;box-shadow:none;background:var(--or-clair,#FDEEF3)}
+.ol-head{font-weight:800;font-size:17px;color:var(--or,#99244F);margin-bottom:4px;letter-spacing:.01em}
+.ol-sub{font-size:13.5px;line-height:1.6;color:var(--ardoise,#1A1A1A);margin-bottom:12px}
+.ol-ta{width:100%;min-height:120px;border:1px solid var(--taupe,#E7E2E4);border-radius:12px;padding:12px 14px;font-size:15px;line-height:1.6;font-family:inherit;color:var(--ardoise,#1A1A1A);background:#fff;resize:vertical;box-sizing:border-box}
+.ol-ta:focus{outline:none;border-color:var(--ocre,#D6336C);box-shadow:0 0 0 4px rgba(214,51,108,.12)}
+.ol-actions{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin-top:12px}
+.ol-btn{background:var(--ocre,#D6336C);color:#fff;border:none;border-radius:99px;padding:11px 22px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:transform .18s,box-shadow .18s}
+.ol-btn:hover{transform:translateY(-1px);box-shadow:0 8px 18px rgba(214,51,108,.28)}
+.ol-btn[disabled]{opacity:.6;cursor:progress;transform:none;box-shadow:none}
+.ol-btn.ol-ghost{background:#fff;color:var(--or,#99244F);border:1px solid var(--ocre,#D6336C)}
+.ol-statut{font-size:13px;color:var(--ardoise,#1A1A1A)}
+.ol-statut.warn{color:#B5533A;font-weight:600}
+.ol-statut.ok{color:#4F7A5A;font-weight:600}
+.ol-res{margin-top:18px;animation:olIn .35s ease both}
+@keyframes olIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.ol-res{animation:none}.ol-btn{transition:none}}
+.ol-t{font-size:11px;text-transform:uppercase;letter-spacing:.14em;font-weight:800;color:var(--or,#99244F);margin:18px 0 8px}
+.ol-parle{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:20px;line-height:1.5;color:var(--ardoise,#1A1A1A);background:var(--or-clair,#FDEEF3);border-left:4px solid var(--ocre,#D6336C);border-radius:0 12px 12px 0;padding:14px 18px;white-space:pre-wrap}
+.ol-piste{border:1px solid var(--taupe,#E7E2E4);border-radius:12px;padding:11px 14px;margin-bottom:8px;background:#fff}
+.ol-piste b{font-size:15px;color:var(--ardoise,#1A1A1A)}
+.ol-piste p{margin:4px 0 0;font-size:14px;line-height:1.55;color:var(--ardoise,#1A1A1A)}
+.ol-piste .ol-conf{font-size:13px;color:var(--or,#99244F)}
+.ol-q{margin:0 0 8px;padding:0 0 0 22px;font-size:15px;line-height:1.55}
+.ol-q li{margin-bottom:7px}
+.ol-q small{display:block;font-size:13px;color:var(--or,#99244F);line-height:1.5}
+.ol-vig{background:var(--rouge-clair,#F5E4DE);border:1px solid #B5533A;border-radius:12px;padding:11px 16px;font-size:14px;line-height:1.55;color:#6B2E1F}
+.ol-vig ul{margin:6px 0 0 18px;padding:0}
+.ol-note{font-size:12.5px;line-height:1.5;color:var(--ardoise,#1A1A1A);margin-top:14px}
+@media print{.ol-card{display:none!important}}
+</style>
 <script src="auth-guard.js"></script>
 <script src="ai-client.js"></script>
 <!-- ai-explain-panel.js retiré (25/08/2026) : le bouton flottant "💬 Explications" faisait
@@ -810,6 +843,19 @@ function recStop(){ recLaunch('Arrêter l’enregistrement'); recSetState('done'
     <div class="sec-num">Section 01 · 12</div>
     <div class="sec-h">Accueil & motif de consultation</div>
     <div class="sec-sub">Ces premières questions posent la relation de confiance et orientent immédiatement l'ensemble du protocole. Prenez le temps de les poser à voix haute — ne vous contentez pas de remplir.</div>
+  </div>
+
+  <!-- ═══ OUVERTURE LIBRE (22/10/2026) : ce que la cliente dit en arrivant, avant toute question d'identité ═══ -->
+  <div class="ol-card" id="ol-card">
+    <div class="ol-head">Ce que me dit la cliente en arrivant</div>
+    <div class="ol-sub">Écoutez-la sans l'interrompre et notez en vrac, avec ses mots, dans l'ordre où elle raconte. L'analyse vous propose ensuite ce que vous pouvez lui répondre, avant même les questions. Inutile de noter son nom ou son numéro ici : ils sont retirés avant l'analyse.</div>
+    <textarea class="ol-ta" id="motif-libre" placeholder="Ex. : « Je digère mal, j'ai mal au ventre après les repas, mauvaise haleine, les selles qui sentent très fort… »"></textarea>
+    <input type="hidden" id="lecture-json" value="">
+    <div class="ol-actions">
+      <button type="button" class="ol-btn" id="ol-btn" onclick="olAnalyser()">Analyser ce qu'elle me dit</button>
+      <span class="ol-statut" id="ol-statut" role="status" aria-live="polite"></span>
+    </div>
+    <div class="ol-res" id="ol-result" style="display:none"></div>
   </div>
 
   <div style="background:linear-gradient(135deg,var(--or-clair),var(--grege));border:1px solid var(--sable);border-radius:16px;padding:24px 28px;margin-bottom:26px;display:flex;align-items:center;gap:20px">
@@ -9934,6 +9980,7 @@ function captureSnapshot() {
   document.querySelectorAll('select.fi').forEach((el, i) => { snap['select_' + (el.id || i)] = el.value; });
   // Textareas
   document.querySelectorAll('textarea.fi').forEach((el, i) => { snap['ta_' + (el.id || i)] = el.value; });
+  if (typeof olCapturer === 'function') olCapturer(snap); // ouverture libre (22/10/2026) — champ hors textarea.fi, capturé nommément
   // Chips cochées
   const chips = [];
   document.querySelectorAll('.chip.on').forEach((c, i) => { chips.push(c.textContent.replace('✓','').trim()); });
@@ -10163,6 +10210,7 @@ function restoreSnapshot(snap) {
   renderDiagnosticsList();
   syncDiagChipsState();
   if (typeof calcIMC === 'function') calcIMC();
+  if (typeof olRestaurer === 'function') olRestaurer(snap); // ouverture libre (22/10/2026)
   updateCounter();
 }
 
@@ -10219,6 +10267,8 @@ function collectAllData() {
   // capture désormais par id explicite, fiable quel que soit l'ordre du DOM.
   const mots = ['mot-cle-1','mot-cle-2','mot-cle-3'].map(id => document.getElementById(id)?.value?.trim() || '').filter(Boolean);
   d.mots_cles = mots.join(', ');
+  // Ouverture libre (22/10/2026) : ses mots à l'arrivée + lecture d'ouverture — lus par generateur.html
+  if (typeof olDonnees === 'function') Object.assign(d, olDonnees());
   // Champs de sécurité — transmis tels quels au générateur (Règle N°6), jamais à ressaisir
   d.secu_grossesse = document.getElementById('secu-grossesse')?.value || '';
   d.secu_cancer = document.getElementById('secu-cancer')?.value || '';
@@ -10867,6 +10917,7 @@ function construireSectionsSynthese(d) {
     .map(s => ({ icone: 'check', titre: s.titre, contenu: s.contenu }));
 
   return [
+    ...(typeof olSectionsSynthese === 'function' ? olSectionsSynthese(d) : []),
     { icone: 'user', titre: 'Identité & motif', contenu: [
       d.prenom ? `Prénom : ${d.prenom}` : '',
       d.age ? `Âge : ${d.age} ans` : '',
@@ -13516,6 +13567,285 @@ function homaCollect(){
 }
 document.addEventListener('DOMContentLoaded',function(){ setTimeout(homaMaj,600); });
 setInterval(homaMaj,4000);
+</script>
+<script>
+/* ═══════════════════════════════════════════════════════════════════
+   OUVERTURE LIBRE — « Ce que me dit la cliente » (22/10/2026)
+   Sabrina note en vrac, avec les mots de la cliente, ce qui l'amène. Le texte est analysé
+   par l'IA (via le relais Supabase crm-proxy : aucune clé dans le navigateur) et renvoie :
+   une phrase d'ouverture à dire à voix haute, des pistes pour elle seule, les questions à
+   creuser, d'éventuels signaux d'alerte. Tout est conservé dans le dossier et transmis au
+   générateur. Script isolé : s'il échoue, le reste du questionnaire n'est pas touché.
+   Confidentialité : seul ce texte part à l'analyse, prénom/nom/numéros/e-mails retirés avant.
+═══════════════════════════════════════════════════════════════════ */
+const OL_MODELE = 'claude-sonnet-5';
+const OL_JSON_ID = 'lecture-json';
+let olEnCours = false;
+
+const OL_FORMAT = 'FORMAT — JSON uniquement, sans markdown, sans texte autour :\n' +
+'{\n "preambule": "...",\n "pistes": [{"piste": "...", "pourquoi": "...", "a_confirmer": "..."}],\n' +
+' "questions": [{"question": "...", "pourquoi": "..."}],\n "vigilance": ["..."],\n "donnees_insuffisantes": false\n}\n\n';
+
+const OL_REGLES_COMMUNES =
+'RÈGLES POUR "pistes" (3 à 5, de la plus à la moins plausible) :\n' +
+'- "piste" : le nom de l\'hypothèse en termes de praticienne (ex. dysbiose ou SIBO, hyperperméabilité intestinale, insuffisance biliaire ou pancréatique, déséquilibre œstrogènes/progestérone, terrain thyroïdien, inflammation de bas grade, stress chronique…). Uniquement ce qui est réellement plausible au regard de CE que la cliente a dit.\n' +
+'- "pourquoi" : 30 mots maximum, comment les symptômes dits s\'expliquent par cette piste (le mécanisme dans le corps).\n' +
+'- "a_confirmer" : 20 mots maximum, ce qui permettrait de la confirmer ou de l\'écarter.\n' +
+'Ce sont des hypothèses de travail pour Sabrina seule, jamais un diagnostic.\n\n' +
+'RÈGLES POUR "questions" (4 à 6) : les questions à poser EN PRIORITÉ pour départager les pistes, formulées à voix haute, au vouvoiement. "pourquoi" = 20 mots maximum, la raison que Sabrina peut donner à la cliente pour expliquer pourquoi elle pose cette question. Pas de question d\'identité (âge, poids) sauf si elle départage vraiment les pistes. Pas de question dont la réponse est déjà dans le texte.\n\n' +
+'RÈGLES POUR "vigilance" (0 à 3, très court, factuel) : uniquement les signaux présents ou clairement suggérés dans le texte qui justifient d\'orienter vers un médecin ou un examen AVANT tout accompagnement (sang dans les selles, perte de poids involontaire, douleur nocturne ou intense, fièvre, vomissements répétés, difficulté à avaler, saignements anormaux, détresse psychique marquée…). Liste vide si rien.\n\n' +
+'INTERDITS ABSOLUS :\n' +
+'- Poser un diagnostic comme certain. Citer un complément, une plante, une marque, un dosage ou une valeur de laboratoire. Donner un conseil concret (aliment, geste, complément) : le conseil viendra plus tard, dans le protocole.\n' +
+'- Les banalités qui s\'appliquent à presque tout le monde (sédentarité, stress de la vie moderne, manque d\'eau…) : ne les relie JAMAIS à un symptôme sauf si la cliente l\'a elle-même relié.\n' +
+'- Les tournures vagues (« pourrait peut-être être à explorer »). Chaque phrase dit quelque chose de précis.\n' +
+'- Inventer un fait que la cliente n\'a pas dit. Si le texte est trop pauvre, mets "donnees_insuffisantes": true avec peu de contenu.';
+
+const OL = (function () {
+  const consult = !!document.getElementById('motif-libre');
+  if (consult) {
+    return {
+      mode: 'consultation', texteId: 'motif-libre',
+      systeme:
+'Tu aides Sabrina Castelli, naturopathe (A VITA SERENA) spécialisée en santé digestive (SIBO, SII) et en équilibre hormonal féminin, qui accompagne aussi des cas hors de ces spécialités. Une cliente vient d\'arriver en consultation visio et raconte avec ses mots ce qui l\'amène. Sabrina note ce qu\'elle entend, en vrac, avant tout questionnaire. Tu produis une première lecture. Le texte peut être désordonné, abrégé, avec des fautes : lis-le comme une praticienne attentive.\n\n' +
+OL_FORMAT +
+'RÈGLES POUR "preambule" : 4 à 6 phrases PARLÉES (110 mots maximum), à la première personne de Sabrina, au vouvoiement, ton oral, chaleureux et affirmé. Commence par montrer que la cliente est comprise en reprenant ses propres mots (« J\'ai bien noté que… »). Relie ensuite l\'ensemble de ses symptômes à un ou deux mécanismes du corps expliqués simplement : le POURQUOI physiologique est obligatoire (« Avec ce que vous me décrivez, je penche plutôt vers… parce que… »). Formule en orientation, jamais en diagnostic. Termine en annonçant qu\'on va vérifier cela ensemble avec quelques questions. Aucun conseil concret.\n\n' +
+OL_REGLES_COMMUNES
+    };
+  }
+  return {
+    mode: 'suivi', texteId: 'phrase-ouverture',
+    systeme:
+'Tu aides Sabrina Castelli, naturopathe (A VITA SERENA) spécialisée en santé digestive (SIBO, SII) et en équilibre hormonal féminin. Une cliente DÉJÀ ACCOMPAGNÉE vient d\'arriver à sa consultation de suivi et raconte, avec ses mots, comment s\'est passée la période depuis la dernière séance. Sabrina note ce qu\'elle entend, en vrac. Tu produis une première lecture avant le questionnaire de suivi. Le texte peut être désordonné ou abrégé.\n\n' +
+OL_FORMAT +
+'RÈGLES POUR "preambule" : 4 à 6 phrases PARLÉES (110 mots maximum), à la première personne de Sabrina, au vouvoiement, ton oral, chaleureux et affirmé. Reconnais d\'abord ce que la cliente dit en reprenant ses propres mots, ce qui va mieux comme ce qui résiste. Explique le POURQUOI physiologique de ce qu\'elle décrit (une amélioration qui s\'installe, un symptôme qui traîne, une rechute après un écart : ce que le corps est en train de faire). Si elle parle de difficultés à suivre le protocole, ne la juge jamais : c\'est une information utile. Termine en annonçant qu\'on va faire le point ensemble. Aucun nouveau conseil concret.\n\n' +
+'Pour le suivi, "pistes" = lectures de ce qu\'elle dit (amélioration intégrée, obstacle résiduel, observance, élément de vie qui interfère, symptôme à réexaminer), avec le même format : "piste", "pourquoi", "a_confirmer".\n\n' +
+OL_REGLES_COMMUNES
+  };
+})();
+
+function olEsc(t) { return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+function olVal(id) { var el = document.getElementById(id); return el && el.value ? String(el.value).trim() : ''; }
+function olSig(t) { var h = 0; for (var i = 0; i < t.length; i++) { h = ((h << 5) - h + t.charCodeAt(i)) | 0; } return h + ':' + t.length; }
+
+/* Retire ce qui identifie la cliente avant l'envoi : prénom/nom saisis dans le formulaire,
+   numéros de téléphone, e-mails. Le reste (symptômes, ses mots) est le contenu à analyser. */
+function olAnonymiser(texte) {
+  var s = String(texte || '');
+  ['prenom', 'nom'].forEach(function (id) {
+    var n = olVal(id);
+    if (n.length > 1) {
+      var motif = n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      try { s = s.replace(new RegExp('(?<![\\p{L}])' + motif + '(?![\\p{L}])', 'giu'), 'la cliente'); } catch (e) { /* navigateur ancien : on garde le texte */ }
+    }
+  });
+  s = s.replace(/[\w.+-]+@[\w-]+\.[\w.-]+/g, '[e-mail retiré]');
+  s = s.replace(/(?:\+?\d[\s.\-]?){9,14}\d/g, '[numéro retiré]');
+  return s;
+}
+
+function olContexte() {
+  var l = [];
+  if (OL.mode === 'consultation') {
+    if (olVal('age')) l.push('Âge : ' + olVal('age') + ' ans');
+    if (olVal('duree')) l.push('Durée des symptômes : ' + olVal('duree'));
+  } else {
+    if (olVal('num-suivi')) l.push('Suivi n° ' + olVal('num-suivi'));
+    if (olVal('programme-actuel')) l.push('Programme en cours : ' + olVal('programme-actuel'));
+    if (olVal('motifs-initiaux')) l.push('Motifs de la consultation initiale : ' + olVal('motifs-initiaux'));
+    if (olVal('objectif-initial')) l.push('Objectif initial : ' + olVal('objectif-initial'));
+    if (olVal('objectif-nouveau')) l.push('Objectif actualisé : ' + olVal('objectif-nouveau'));
+  }
+  return l.join('\n');
+}
+
+async function olAppelRelais(payload) {
+  var jeton = SUPA_KEY;
+  if (typeof Auth !== 'undefined') {
+    try { var t = await Auth.getValidAccessToken(); if (t) jeton = t; } catch (e) { /* on tente avec la clé publique */ }
+  }
+  var r = await fetch(SUPA_URL + '/functions/v1/crm-proxy', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + jeton, 'apikey': SUPA_KEY },
+    body: JSON.stringify({ service: 'anthropic', payload: payload })
+  });
+  var brut = await r.text();
+  var data = {};
+  try { data = brut ? JSON.parse(brut) : {}; } catch (e) { /* réponse non JSON */ }
+  if (!r.ok) {
+    var msg = data.message || (data.error && data.error.message) || ('erreur ' + r.status);
+    if (r.status === 403) msg = 'session praticienne expirée — reconnectez-vous puis réessayez';
+    throw new Error(msg);
+  }
+  return data;
+}
+
+function olExtraireJson(raw) {
+  var t = String(raw || '').replace(/```json|```/g, '').trim();
+  var a = t.indexOf('{'), b = t.lastIndexOf('}');
+  if (a === -1 || b <= a) return null;
+  try { return JSON.parse(t.slice(a, b + 1)); } catch (e) { return null; }
+}
+
+function olNettoyer(p) {
+  var tx = function (v) { return typeof v === 'string' ? v.trim() : ''; };
+  return {
+    preambule: tx(p.preambule),
+    pistes: (Array.isArray(p.pistes) ? p.pistes : []).map(function (x) { return { piste: tx(x && x.piste), pourquoi: tx(x && x.pourquoi), a_confirmer: tx(x && x.a_confirmer) }; }).filter(function (x) { return x.piste; }).slice(0, 6),
+    questions: (Array.isArray(p.questions) ? p.questions : []).map(function (x) { return { question: tx(x && x.question), pourquoi: tx(x && x.pourquoi) }; }).filter(function (x) { return x.question; }).slice(0, 8),
+    vigilance: (Array.isArray(p.vigilance) ? p.vigilance : []).map(tx).filter(Boolean).slice(0, 4),
+    donnees_insuffisantes: !!p.donnees_insuffisantes
+  };
+}
+
+function olStatut(msg, cls) {
+  var el = document.getElementById('ol-statut');
+  if (!el) return;
+  el.textContent = msg || '';
+  el.className = 'ol-statut' + (cls ? ' ' + cls : '');
+}
+
+async function olAnalyser() {
+  if (olEnCours) return;
+  var texte = olVal(OL.texteId);
+  if (texte.length < 15) { olStatut('Notez d\'abord ce que dit la cliente (quelques mots suffisent).', 'warn'); return; }
+  olEnCours = true;
+  var btn = document.getElementById('ol-btn');
+  if (btn) btn.disabled = true;
+  olStatut('Lecture en cours… (10 à 20 secondes)', '');
+  try {
+    var ctx = olContexte();
+    var envoye = olAnonymiser(texte);
+    var data = await olAppelRelais({
+      model: OL_MODELE,
+      max_tokens: 2500,
+      system: OL.systeme,
+      messages: [{ role: 'user', content: 'Ce que la cliente a dit (notes de Sabrina) :\n"""\n' + envoye + '\n"""' + (ctx ? '\n\nContexte déjà connu :\n' + ctx : '') }]
+    });
+    var brut = (data.content || []).filter(function (b) { return b.type === 'text'; }).map(function (b) { return b.text; }).join('\n').trim();
+    var parsed = olExtraireJson(brut);
+    if (!parsed) throw new Error('réponse illisible, réessayez');
+    var propre = olNettoyer(parsed);
+    if (!propre.preambule && !propre.pistes.length && !propre.donnees_insuffisantes) throw new Error('lecture vide, réessayez');
+    var rec = { v: 1, date: new Date().toISOString(), sig: olSig(texte), data: propre };
+    var holder = document.getElementById(OL_JSON_ID);
+    if (holder) holder.value = JSON.stringify(rec);
+    olRendre(rec);
+    if (typeof formTouched !== 'undefined') formTouched = true;
+    var h = new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit' }).format(new Date());
+    olStatut('✓ Lecture prête (' + h + ')', 'ok');
+  } catch (e) {
+    olStatut('⚠ Analyse impossible (' + (e && e.message ? e.message : 'erreur') + '). Votre texte est conservé, vous pouvez réessayer.', 'warn');
+  } finally {
+    olEnCours = false;
+    if (btn) btn.disabled = false;
+  }
+}
+
+function olLireRec() {
+  try {
+    var v = olVal(OL_JSON_ID);
+    if (!v) return null;
+    var rec = JSON.parse(v);
+    return rec && rec.data ? rec : null;
+  } catch (e) { return null; }
+}
+
+function olRendre(rec) {
+  var box = document.getElementById('ol-result');
+  if (!box || !rec || !rec.data) return;
+  var d = rec.data, h = '';
+  if (d.donnees_insuffisantes && !d.preambule && !d.pistes.length) {
+    h = '<div class="ol-note">Pas assez de matière pour une lecture utile : complétez les mots de la cliente puis relancez l\'analyse.</div>';
+  } else {
+    if (d.preambule) {
+      h += '<div class="ol-t">Ce que je peux lui répondre</div><div class="ol-parle" id="ol-preambule">' + olEsc(d.preambule) + '</div>' +
+        '<div class="ol-actions" style="margin-top:8px"><button type="button" class="ol-btn ol-ghost" onclick="olCopier()">Copier ce texte</button></div>';
+    }
+    if (d.vigilance.length) {
+      h += '<div class="ol-t">À vérifier avant tout</div><div class="ol-vig">Signaux à clarifier, avec une orientation médicale si besoin :<ul>' + d.vigilance.map(function (v) { return '<li>' + olEsc(v) + '</li>'; }).join('') + '</ul></div>';
+    }
+    if (d.pistes.length) {
+      h += '<div class="ol-t">Pour moi : pistes à vérifier</div>' + d.pistes.map(function (p) {
+        return '<div class="ol-piste"><b>' + olEsc(p.piste) + '</b>' + (p.pourquoi ? '<p>' + olEsc(p.pourquoi) + '</p>' : '') + (p.a_confirmer ? '<p class="ol-conf">Pour confirmer ou écarter : ' + olEsc(p.a_confirmer) + '</p>' : '') + '</div>';
+      }).join('');
+    }
+    if (d.questions.length) {
+      h += '<div class="ol-t">Questions à creuser en priorité</div><ol class="ol-q">' + d.questions.map(function (q) {
+        return '<li>' + olEsc(q.question) + (q.pourquoi ? '<small>Pourquoi je la pose : ' + olEsc(q.pourquoi) + '</small>' : '') + '</li>';
+      }).join('') + '</ol>';
+    }
+    h += '<div class="ol-note">Lecture d\'orientation pour vous, pas un diagnostic. Elle sera transmise au générateur avec les mots de la cliente.</div>';
+  }
+  box.innerHTML = h;
+  box.style.display = 'block';
+}
+
+function olCopier() {
+  var el = document.getElementById('ol-preambule');
+  if (!el) return;
+  var t = el.textContent || '';
+  var fin = function () { olStatut('✓ Texte copié', 'ok'); };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(fin, function () { olStatut('Copie impossible : sélectionnez le texte à la main.', 'warn'); });
+  else olStatut('Copie impossible : sélectionnez le texte à la main.', 'warn');
+}
+
+/* Texte modifié depuis la dernière analyse → on le signale (la lecture affichée n'est plus à jour) */
+function olVerifierObsolete() {
+  var rec = olLireRec();
+  if (!rec) return;
+  var courant = olVal(OL.texteId);
+  if (olSig(courant) !== rec.sig) olStatut('Le texte a changé depuis la dernière lecture : relancez l\'analyse pour la mettre à jour.', 'warn');
+}
+
+/* Restauration (reprise d'une séance sauvegardée) */
+function olRestaurer(snap) {
+  if (snap && OL.mode === 'consultation') {
+    var ta = document.getElementById('motif-libre');
+    if (ta && snap.ol_motif !== undefined) ta.value = snap.ol_motif;
+    var holder = document.getElementById(OL_JSON_ID);
+    if (holder && snap.ol_json !== undefined) holder.value = snap.ol_json;
+  }
+  var rec = olLireRec();
+  if (rec) { olRendre(rec); olVerifierObsolete(); }
+}
+
+/* Sauvegarde automatique (consultation : le champ n'est pas un textarea.fi, il est donc capturé ici) */
+function olCapturer(snap) {
+  if (OL.mode !== 'consultation' || !snap) return;
+  snap.ol_motif = olVal('motif-libre');
+  snap.ol_json = olVal(OL_JSON_ID);
+}
+
+/* Données transmises au générateur et au dossier cliente */
+function olDonnees() {
+  var rec = olLireRec();
+  var d = rec ? rec.data : null;
+  var pistes = d ? d.pistes.map(function (p) { return '- ' + p.piste + (p.pourquoi ? ' — ' + p.pourquoi : '') + (p.a_confirmer ? ' (à confirmer : ' + p.a_confirmer + ')' : ''); }).join('\n') : '';
+  var vig = d && d.vigilance.length ? d.vigilance.join(' ; ') : '';
+  return {
+    motif_libre: olVal(OL.texteId),
+    lecture_preambule: d ? d.preambule : '',
+    lecture_pistes: pistes,
+    lecture_vigilance: vig,
+    lecture_ouverture_json: olVal(OL_JSON_ID)
+  };
+}
+
+/* Sections ajoutées en tête de la synthèse de consultation (et donc du texte de clôture / fiche CRM) */
+function olSectionsSynthese(d) {
+  var out = [];
+  if (d.motif_libre) out.push({ icone: 'user', titre: 'Ses mots à l\'arrivée', contenu: d.motif_libre });
+  if (d.lecture_preambule) out.push({ icone: 'leaf', titre: 'Ce que je lui ai répondu en ouverture', contenu: d.lecture_preambule });
+  return out;
+}
+
+(function olInit() {
+  var ta = document.getElementById(OL.texteId);
+  if (ta) ta.addEventListener('input', olVerifierObsolete);
+  /* Suivi : le brouillon est restauré par id ; la lecture se redessine au chargement s'il y en a une */
+  if (OL.mode === 'suivi') setTimeout(function () { var rec = olLireRec(); if (rec) { olRendre(rec); } }, 600);
+})();
+
 </script>
 </body>
 </html>
