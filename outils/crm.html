@@ -4731,6 +4731,34 @@ function renderFiche(c){
       ${resa.lignes.map(([k,v])=>`<div class="fv2-brief-txt" style="margin-bottom:4px"><strong>${escH(k)} :</strong> ${escH(v)}</div>`).join('')}
     </div>`:'';
 
+  // « À l'arrivée » (23/10/2026) — ses mots notés en ouverture de la dernière consultation ou du dernier
+  // suivi, ce que Sabrina lui a répondu et les pistes posées (questionnaires : motif_libre / phrase_ouverture,
+  // lecture_preambule, lecture_pistes, lecture_vigilance). Aide à ne rien redemander et à reprendre le fil.
+  // Le suivi enregistre son brouillon par id de champ ('phrase-ouverture', 'lecture-json') ; la consultation, ses clés finales.
+  const lireOuv=q=>{
+    const s=q.snapshot||{}; let rec=null;
+    try{ const j=s.lecture_ouverture_json||s['lecture-json']||s.ol_json; rec=j?JSON.parse(j).data:null; }catch(e){}
+    return {
+      mots:s.motif_libre||s.phrase_ouverture||s['phrase-ouverture']||s.ol_motif||'',
+      preambule:s.lecture_preambule||(rec&&rec.preambule)||'',
+      pistes:s.lecture_pistes||(rec&&Array.isArray(rec.pistes)?rec.pistes.map(x=>'- '+x.piste+(x.pourquoi?' — '+x.pourquoi:'')+(x.a_confirmer?' (à confirmer : '+x.a_confirmer+')':'')).join('\n'):''),
+      vigilance:s.lecture_vigilance||(rec&&Array.isArray(rec.vigilance)?rec.vigilance.join(' ; '):'')
+    };
+  };
+  const qOuv=(questionnairesClient[cid]||[]).find(q=>(q.type==='consultation'||q.type==='suivi')&&q.snapshot&&(o=>o.mots||o.preambule)(lireOuv(q)));
+  let ouvertureHtml='';
+  if(qOuv){
+    const so=lireOuv(qOuv), mots=so.mots;
+    const lab=qOuv.type==='suivi'?'Ouverture du dernier suivi':'À l\'arrivée en consultation';
+    ouvertureHtml=`<div class="fv2-brief" style="margin-top:10px;background:var(--off,#F7F6F4)">
+      <div style="font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">${lab} · ${fmtDate(qOuv.created_at)}</div>
+      ${mots?`<div class="fv2-brief-txt" style="margin-bottom:6px;white-space:pre-wrap"><strong>Ses mots :</strong> ${escH(mots)}</div>`:''}
+      ${so.preambule?`<div class="fv2-brief-txt" style="margin-bottom:6px;white-space:pre-wrap"><strong>Ce que je lui ai répondu :</strong> ${escH(so.preambule)}</div>`:''}
+      ${so.vigilance?`<div class="fv2-brief-txt" style="margin-bottom:6px"><strong>À clarifier :</strong> ${escH(so.vigilance)}</div>`:''}
+      ${so.pistes?`<details style="margin-top:4px"><summary style="cursor:pointer;font-size:13px;font-weight:700">Pistes posées à l'ouverture</summary><div class="fv2-brief-txt" style="margin-top:6px;white-space:pre-wrap">${escH(so.pistes)}</div></details>`:''}
+    </div>`;
+  }
+
   // Derniers messages échangés — ajouté 02/09/2026 : jusqu'ici invisible depuis la fiche,
   // il fallait aller sur la page Messages pour savoir ce qu'une cliente avait écrit en
   // dernier. Matching sécurisé (13/09/2026) : client_key en priorité ; à défaut, prénom+nom
@@ -4822,6 +4850,7 @@ function renderFiche(c){
     ${P('resume',`
       ${briefHtml}
       ${resaHtml}
+      ${ouvertureHtml}
       ${naHtml}
       ${c.propositionParcoursEnvoyeeLe ? `<div class="next-action soon"><div class="na-icon">${ic('mail')}</div><div class="na-body"><div class="na-label">Proposition ${c.propositionParcoursProgramme?pLbl(c.propositionParcoursProgramme):'de parcours'} envoyée</div><div class="na-sub">Le ${fmtDate(c.propositionParcoursEnvoyeeLe)} — envoyée automatiquement par Brevo à J+21, sans confirmation depuis ${Math.round(diffD(c.propositionParcoursEnvoyeeLe))} jours</div></div><button class="feed-btn feed-btn-ghost" onclick="marquerPropositionAnnulee('${cid}')">Effacer</button></div>` : ''}
       <div class="fv2-two">
