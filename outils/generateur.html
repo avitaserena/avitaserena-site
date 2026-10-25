@@ -366,10 +366,11 @@ input.fi[readonly]{background:var(--taupe);cursor:default;opacity:.75}
   </div>
   <div class="g2">
     <div>
-      <label class="fl">Insuffisance rénale</label>
+      <label class="fl">Fonction rénale (DFG) / insuffisance rénale</label>
       <select class="fi" id="secu-renal">
         <option value="">— À préciser —</option>
         <option>Non</option>
+        <option>Fonction rénale diminuée (DFG inférieur à 90), sans insuffisance</option>
         <option>Oui</option>
       </select>
     </div>
@@ -407,7 +408,7 @@ input.fi[readonly]{background:var(--taupe);cursor:default;opacity:.75}
       <option>Non</option>
       <option>Oui</option>
     </select>
-    <p class="field-hint">Ces 7 champs (+ l'allergie aux fruits à coque déjà captée dans les allergies alimentaires) alimentent exclusivement le filtre de sécurité de la Règle N°7 — Aromathérapie (voir plus bas). Un champ laissé vide est traité comme "à vérifier", jamais comme "sans risque".</p>
+    <p class="field-hint">Ces 7 champs (+ l'allergie aux fruits à coque déjà captée dans les allergies alimentaires) alimentent le filtre de sécurité de la Règle N°7 — Aromathérapie ET sont transmis à l'IA pour vérifier chaque complément et chaque plante (bloc « Terrains de sécurité déclarés »). Un champ laissé vide est traité comme "à vérifier", jamais comme "sans risque".</p>
   </div>
 
   <div style="margin-top:16px">
@@ -415,7 +416,7 @@ input.fi[readonly]{background:var(--taupe);cursor:default;opacity:.75}
     <div class="chip-wrap alerte" id="secu-traitements-group">
       <button class="p-toggle" data-val="Anticoagulants" onclick="toggleAnticoagulant(this)">Anticoagulants</button>
       <button class="p-toggle" data-val="ISRS / antidépresseurs" onclick="this.classList.toggle('on')">ISRS / antidépresseurs</button>
-      <button class="p-toggle" data-val="Pilule ou THM (traitement hormonal)" onclick="this.classList.toggle('on')">Pilule ou THM</button>
+      <button class="p-toggle" data-val="Pilule ou THM (traitement hormonal)" onclick="this.classList.toggle('on')">Pilule, THM ou hormones locales (crème, progestérone)</button>
       <button class="p-toggle" data-val="Lévothyrox / thyroïdien" onclick="this.classList.toggle('on')">Lévothyrox / thyroïdien</button>
       <button class="p-toggle" data-val="Ryeqo / Yselty (antagoniste du GnRH)" onclick="this.classList.toggle('on')">Ryeqo / Yselty (antagoniste du GnRH)</button>
       <button class="p-toggle" data-val="Veoza / Lynkuet (bouffées de chaleur)" onclick="this.classList.toggle('on')">Veoza / Lynkuet (bouffées de chaleur)</button>
@@ -1208,7 +1209,7 @@ function renderSessionCard() {
     ['Objectif 6 mois', d.objectif_6mois || '—'],
     ['Pathologies pressenties (détectées)', d.pathologies_pressenties ? d.pathologies_pressenties.split('\n')[0] + (d.pathologies_pressenties.includes('\n') ? '…' : '') : '—'],
     ['Bilans recommandés', d.bilans_recommandes || '—'],
-    ['Sécurité importée', [d.secu_grossesse, d.secu_cancer, d.traitements_vigilance, d.allergies_alim, d.secu_epilepsie==='Oui'?'Épilepsie':'', d.secu_asthme && d.secu_asthme!=='Non'?'Asthme':'', d.secu_renal==='Oui'?'Insuff. rénale':'', d.secu_hepatique==='Oui'?'Insuff. hépatique':'', d.secu_gastrite==='Oui'?'Gastrite/ulcère':'', d.secu_cardiovasculaire==='Oui'?'Trouble cardiovasculaire':'', d.secu_allergie_he==='Oui'?'Allergie HE':''].filter(Boolean).join(' · ') || 'Aucune donnée de sécurité importée — à vérifier ci-dessous'],
+    ['Sécurité importée', [d.secu_grossesse, d.secu_cancer, d.traitements_vigilance, d.allergies_alim, d.secu_epilepsie==='Oui'?'Épilepsie':'', d.secu_asthme && d.secu_asthme!=='Non'?'Asthme':'', d.secu_renal==='Oui'?'Insuff. rénale':(/^Fonction/.test(d.secu_renal||'')?'Fonction rénale diminuée':''), d.secu_hepatique==='Oui'?'Insuff. hépatique':'', d.secu_gastrite==='Oui'?'Gastrite/ulcère':'', d.secu_cardiovasculaire==='Oui'?'Trouble cardiovasculaire':'', d.secu_allergie_he==='Oui'?'Allergie HE':''].filter(Boolean).join(' · ') || 'Aucune donnée de sécurité importée — à vérifier ci-dessous'],
   ];
   // Compter les champs réellement remplis (utiles)
   const richFields = ['prenom','age','duree_symptomes','motifs','mots_cles','objectif_6mois','scores',
@@ -2655,6 +2656,77 @@ Cette règle s'applique parce que le statut de sécurité indique une grossesse,
 5. TON : rassurant et pédagogique, avec le « pourquoi » de chaque consigne ; la cliente reste suivie par son équipe obstétricale.
 `;
 
+// ══════════════════════════════════════════════════════════════════════════════════════════
+// RÈGLES N°64-67 (25/10/2026) — TRAITEMENT HORMONAL / THM, RISQUE CARDIOVASCULAIRE DOCUMENTÉ, FONCTION
+// RÉNALE, EXTRAITS THYROÏDIENS. Même mécanisme que les règles N°59-63 : détection → injection en tête de
+// prompt → contrôle programmatique du protocole généré. Ces règles tracent la FRONTIÈRE du champ
+// naturopathique : indiquer, arrêter ou remplacer un médicament (THM, statine, hormone thyroïdienne)
+// relève du médecin, jamais du protocole.
+// ══════════════════════════════════════════════════════════════════════════════════════════
+const REGLE_THM = `
+━━ RÈGLE N°64 — TRAITEMENT HORMONAL (THM/THS, ŒSTROGÈNES OU PROGESTÉRONE, Y COMPRIS EN LOCAL) ET QUESTIONS « FAUT-IL EN PRENDRE ? » ━━
+Cette règle s'applique parce que la cliente suit un traitement hormonal, en évoque un, en a reçu un refus ou en a refusé un.
+1. DÉCISION MÉDICALE, JAMAIS NATUROPATHIQUE : démarrer, déconseiller, arrêter, remplacer ou ajuster un traitement hormonal relève du médecin (gynécologue, médecin de la ménopause, et cardiologue en cas de risque cardiovasculaire). Tu ne dis JAMAIS qu'un THM est « justifié », « injustifié », « dangereux » ou « indispensable », et jamais qu'un protocole naturopathique peut le remplacer ou le rendre inutile. Si la cliente ou la praticienne pose la question, réponds dans "pourquoi_praticien" que la balance bénéfice/risque dépend de l'âge, du délai depuis la ménopause, du profil cardiovasculaire, des antécédents, du type de traitement et de sa voie d'administration, et qu'elle se tranche avec le prescripteur ; en cas de refus ou de désaccord, la piste est un second avis médical (autre gynécologue, consultation spécialisée de ménopause), jamais un contournement. Côté cliente : une phrase douce l'invitant à en reparler avec son médecin, sans verdict.
+2. UN TRAITEMENT HORMONAL EN COURS EST UN CONTEXTE DE SÉCURITÉ : aucun phyto-œstrogène (houblon, sauge, trèfle rouge, soja concentré, Feminabiane Ménopause, Phytostandard), aucun gattilier, aucune DHEA ni prégnénolone, et pas d'actée à grappes noires sans l'accord du prescripteur ; le soutien œstrogénique par les plantes de la RÈGLE N°13 est donc exclu. Aucune suggestion de modifier la dose, la voie ou la durée. Ne propose pas de dosage d'œstradiol ou de progestérone pour « juger » le traitement : ils ne sont pas interprétables sous traitement.
+3. TRAITEMENT LOCAL (crème vaginale à l'œstriol, Trophicrème, ovule) : il agit sur la muqueuse et la flore locales, donc sur la sécheresse et sur les cystites qui surviennent après les rapports. Reconnais-le comme une vraie partie de la réponse, explique le mécanisme à la cliente, et construis ton protocole EN SOUTIEN (sommeil, énergie, hydratation, canneberge de la banque avec ses contre-indications si cystites récidivantes), jamais en remplacement.
+4. SANS TRAITEMENT HORMONAL : aucune pression, aucune culpabilisation ; ne présente jamais l'absence de THM comme une faute ni comme un danger imminent.
+5. Dans "explication_cliente" : aucun nom de marqueur ni valeur (œstradiol, taux), conformément à la RÈGLE N°6.
+`;
+
+const REGLE_CARDIO = `
+━━ RÈGLE N°65 — RISQUE CARDIOVASCULAIRE DOCUMENTÉ (ATHÉROME, SCORE CALCIQUE, PLAQUES, STENT, INFARCTUS, AVC) ET STATINE REFUSÉE OU EN COURS ━━
+Cette règle s'applique parce que le dossier mentionne un athérome, un score calcique, un antécédent cardiovasculaire ou une statine (prise, refusée ou proposée).
+1. LE SUIVI MÉDICAL PASSE AVANT : un score calcique non nul, des plaques coronaires ou carotidiennes, un LDL élevé relèvent du cardiologue et du médecin traitant. Le protocole ne « traite » pas ces lésions et ne promet jamais de les réduire, les dissoudre ou « nettoyer les artères ». Dans "pourquoi_praticien", rappelle que le suivi (cardiologue, contrôles prescrits) est le socle, et que le protocole accompagne le terrain autour.
+2. STATINES : si la cliente en refuse ou n'en prend pas, tu ne l'encourages ni ne la décourages, et tu ne proposes AUCUN équivalent « naturel » (levure de riz rouge et monacoline interdites : même principe actif qu'une statine). Invite-la, avec douceur, à reparler de sa décision et de ses chiffres avec son cardiologue : le choix éclairé lui appartient. Le garde-fou de la RÈGLE N°41 point 7 reste appliqué.
+3. CE QUE LE PROTOCOLE PEUT FAIRE : alimentation de type méditerranéen, fibres, poissons gras, activité physique régulière (dont du renforcement musculaire), sommeil, arrêt du tabac, modération de l'alcool, gestion du stress ; compléments uniquement dans la banque de la RÈGLE N°5 (oméga-3, magnésium…) avec leurs contre-indications, chacun présenté pour son mécanisme propre, JAMAIS comme une « protection vasculaire » ni un « protecteur des artères ». Aucun actif absent de la banque ; le resvératrol, la CoQ10 et les autres antioxydants de la banque ne sont proposés que si un autre axe les justifie (RÈGLE N°29), jamais au titre d'une « protection vasculaire ».
+4. Si la cliente signale douleur thoracique, essoufflement inhabituel, malaise ou palpitations : consigne claire de consulter sans attendre (15 en cas d'urgence).
+`;
+
+const REGLE_RENAL = `
+━━ RÈGLE N°66 — FONCTION RÉNALE DIMINUÉE OU INSUFFISANCE RÉNALE (CHAMP « FONCTION RÉNALE » OU DFG MENTIONNÉ) ━━
+Cette règle s'applique parce que la fonction rénale est signalée comme diminuée, en baisse, ou comme une insuffisance.
+1. SIGNAL MÉDICAL : une baisse du DFG, même modérée, mérite d'être signalée au médecin traitant pour en chercher la cause (néphrologue si besoin) ; tu ne l'interprètes pas et tu ne la commentes jamais chiffrée à la cliente. Rappelle de ne pas prendre d'anti-inflammatoires (ibuprofène, kétoprofène…) en automédication sans avis médical.
+2. COMPLÉMENTS PLUS PRUDENTS : uniquement la banque de la RÈGLE N°5, dans le bas de la fourchette de posologie, jamais le haut. Aucune dose d'attaque de vitamine D ; magnésium au bas de la fourchette et uniquement s'il est justifié ; pas de vitamine C à forte dose ; pas de créatine, de protéines en poudre, de spiruline, de chlorelle ni d'algues riches en iode ; aucune plante diurétique (orthosiphon, pissenlit, prêle, bouleau, queue de cerise) ni réglisse. Chaque complément conserve les contre-indications rénales déjà inscrites dans la banque.
+3. ALIMENTATION : aucun régime hyperprotéiné ; hydratation régulière, sans excès ; explique le « pourquoi » (les reins éliminent ce qu'on apporte en plus) sans alarmer.
+4. INSUFFISANCE RÉNALE DÉCLARÉE (« Oui ») : aucun complément ni plante sans l'accord du médecin ou du néphrologue ; le protocole se limite à l'alimentation, au sommeil, à l'activité et à la gestion du stress.
+`;
+
+const REGLE_EXTRAIT_THYROIDIEN = `
+━━ RÈGLE N°67 — EXTRAITS THYROÏDIENS, COMPLEXES « THYROÏDE » ET HORMONES THYROÏDIENNES EN COMPLÉMENT ALIMENTAIRE ━━
+Cette règle s'applique parce que la cliente prend, ou cite, un produit de ce type (Thironat, Suprathyroid, extrait de thyroïde, T3 de synthèse…).
+1. JAMAIS PROPOSÉS : aucun extrait thyroïdien ni complexe « thyroïde » n'est dans la banque ; tu n'en proposes, n'en valides et n'en dose jamais, et tu ne cherches jamais à « booster » la thyroïde (cohérent avec la RÈGLE N°11).
+2. SI LA CLIENTE EN PREND DÉJÀ : tu ne juges pas, tu ne lui dis pas d'arrêter (hors champ) et tu ne proposes aucune dose. Dans "pourquoi_praticien", signale que ces produits peuvent contenir des hormones thyroïdiennes actives : (a) une amélioration rapide de l'énergie ou du sommeil peut venir de cet effet hormonal et ne dit rien de l'état de la thyroïde elle-même ; (b) un bilan fait sous ce produit n'est pas lisible comme un terrain naturel (TSH freinée, T3 augmentée) ; (c) un excès se traduit par des palpitations, une insomnie ou une nervosité, avec un risque cardiaque et osseux à long terme, d'autant plus à surveiller si un risque cardiovasculaire est documenté. Oriente vers le médecin qui suit la thyroïde pour un contrôle (TSH, T4 libre, T3 libre). Côté cliente : explication simple et bienveillante, sans verdict.
+3. INTERACTIONS : même espacement de 4 h avec le fer, le calcium et le magnésium que pour la Lévothyrox (RÈGLE N°6).
+`;
+
+// Terrains de sécurité déclarés (25/10/2026) : épilepsie, asthme, hépatique, gastrite, cardiovasculaire
+// (+ rappel rénal). Avant cette date, ces champs ne servaient QU'AU filtre d'aromathérapie : l'IA ne les
+// voyait pas pour les compléments et les plantes. Ils sont maintenant transmis à l'IA et contrôlés après coup.
+function terrainsSecurite(d) {
+  const v = k => String((d && d[k]) || '').trim();
+  const oui = k => v(k) !== '' && v(k) !== 'Non';
+  return {
+    epilepsie: oui('secu_epilepsie'),
+    asthme: oui('secu_asthme'),
+    asthmeSansAvis: /sans avis/i.test(v('secu_asthme')),
+    hepatique: oui('secu_hepatique'),
+    gastrite: oui('secu_gastrite'),
+    cardiovasculaire: oui('secu_cardiovasculaire'),
+    nonRenseignes: ['secu_epilepsie','secu_asthme','secu_hepatique','secu_gastrite','secu_cardiovasculaire'].filter(k => v(k) === ''),
+  };
+}
+function blocTerrainsSecurite(d) {
+  const t = terrainsSecurite(d);
+  const l = [];
+  if (t.epilepsie) l.push("⛔️ Épilepsie ou antécédent de convulsions : applique strictement les contre-indications « épilepsie » de la banque et de la RÈGLE N°6 ; aucune huile essentielle par voie interne ; en cas de doute sur une plante ou un complément, ne le propose pas et signale-le dans \"pourquoi_praticien\".");
+  if (t.asthme) l.push("⛔️ Asthme" + (t.asthmeSansAvis ? " SANS avis allergologue : aucun produit de la ruche (propolis, gelée royale, pollen), aucune huile essentielle en diffusion ni par voie respiratoire, et prudence sur tout actif à risque allergique" : " (avis allergologue obtenu) : vigilance sur les produits de la ruche et les huiles essentielles respiratoires") + ".");
+  if (t.hepatique) l.push("⛔️ Insuffisance hépatique ou hépatite : applique strictement les contre-indications hépatiques de la banque (RÈGLE N°5) ; par prudence, aucun extrait concentré de thé vert (EGCG), de curcuma ou de kava, aucune mégadose de vitamine A ni de niacine, aucune huile essentielle d'origan ; aucun complément ni plante sans l'accord du médecin en cas d'insuffisance sévère.");
+  if (t.gastrite) l.push("⛔️ Gastrite ou ulcère actif : jamais d'HCl bétaïne ni d'enzymes digestives acides (voir RÈGLE N°11 point 9) ; pas de complément irritant pris à jeun (fer, zinc, forte dose de vitamine C, extraits concentrés d'ail ou de gingembre) : tout se prend en milieu de repas ; orientation vers le médecin si les douleurs persistent.");
+  if (t.cardiovasculaire) l.push("⛔️ Trouble cardiovasculaire (arythmie, HTA non stabilisée…) : jamais de réglisse (RÈGLE N°12), aucun stimulant (ginseng, éleuthérocoque, guarana, caféine concentrée, yohimbine) ; applique les contre-indications cardiovasculaires de la banque ; ne suggère jamais de modifier un traitement.");
+  if (t.nonRenseignes.length) l.push("⚠️ Terrains non renseignés (" + t.nonRenseignes.map(k => k.replace('secu_','')).join(', ') + ") : traite-les comme NON VÉRIFIÉS, jamais comme « sans risque » ; ajoute dans \"pourquoi_praticien\" qu'ils sont à confirmer avec la cliente avant de valider le protocole.");
+  return l.join('\n');
+}
+
 function detecterProfilsSensibles(d) {
   const diag = d.diagnostics_confirmes || '';
   const tt = d.traitements_vigilance || '';
@@ -2671,7 +2743,17 @@ function detecterProfilsSensibles(d) {
   const autrePsy = /anxi[ée]t[ée] g[ée]n[ée]ralis[ée]e|\bTOC\b|\bTDAH\b/i.test(diag);
   const cancerActif = /en cours/i.test(d.secu_cancer || '') || /chimioth|radioth|hormonoth|immunoth|th[ée]rapie cibl|anticanc|tamoxif|l[ée]trozole|anastrozole|exem[ée]stane|oncolog/i.test(tt + ' ' + diag);
   const grossesse = /enceinte|allaitement|d[ée]sir de grossesse/i.test(d.secu_grossesse || '');
+  // 25/10/2026 : règles N°64-67
+  const medics = d.medics_allergies || '';
+  const txTexte = [tt, medics, diag].join(' \n ');
+  const hormonal = /\bTHM\b|\bTHS\b|traitement hormonal|estradiol|[œo]estradiol|estriol|[œo]estriol|[œo]strogel|oestrogel|trophic|colpotrophine|gyn[ée]st|utrogestan|progest[ée]rone|duphaston|dydrogest|estreva|lenzetto|climara|vivelledot|divina|delidose/i.test([tt, medics].join(' \n '))
+    || /\bTHM\b|\bTHS\b|traitement hormonal (substitutif|de la m[ée]nopause)/i.test(texte);
+  const cardio = /score calcique|calcium score|ath[ée]rom|plaques? (d.ath|carotid|coronar)|\bstent\b|infarctus|\bAVC\b|accident vasculaire|coronaropathie|\bstatines?\b|rosuvastatine|atorvastatine|simvastatine|crestor|tahor/i.test([txTexte, texte].join(' \n '));
+  const renal = /^(Oui|Fonction)/.test(d.secu_renal || '') || /insuffisance r[ée]nale|maladie r[ée]nale|\bDFG\b/i.test(diag) || /\bDFG\b|clairance (de la )?cr[ée]atinine/i.test(texte + ' ' + medics);
+  const renalDeclaree = /^Oui/.test(d.secu_renal || '');
+  const extraitThyro = /thironat|suprathyro[ïi]d|extraits? (de |d.)?thyro|thyro[ïi]de (porcine|bovine|desséchée|dess[ée]ch[ée]e)|glandulaire|armour|np thyroid|liothyronine|cynomel|cytomel/i.test([txTexte, texte].join(' \n '));
   return {
+    hormonal, cardio, renal, renalDeclaree, extraitThyro,
     tca: tcaDeclare || nbMarqueursTCA > 0, tcaDeclare, nbMarqueursTCA,
     imcBas: !isNaN(imc) && imc > 0 && imc < 18.5,
     diabeteTraite: diabeteT1 || antidiab, diabeteT1,
@@ -2690,6 +2772,10 @@ function reglesProfilsSensibles(d) {
   if (p.diabeteTraite) out.push(REGLE_DIABETE_TRAITE);
   if (p.cancerActif) out.push(REGLE_CANCER_EN_COURS);
   if (p.grossesse) out.push(REGLE_GROSSESSE_ALLAITEMENT);
+  if (p.hormonal) out.push(REGLE_THM);
+  if (p.cardio) out.push(REGLE_CARDIO);
+  if (p.renal) out.push(REGLE_RENAL);
+  if (p.extraitThyro) out.push(REGLE_EXTRAIT_THYROIDIEN);
   return out;
 }
 
@@ -2704,6 +2790,10 @@ function bannerProfilsSensibles(d) {
   if (p.diabeteTraite) l.push("⛔️ " + (p.diabeteT1 ? "Diabète de type 1" : "Traitement antidiabétique") + " : RÈGLE N°60 — aucun actif hypoglycémiant, aucune restriction glucidique ni jeûne, jamais toucher au traitement.");
   if (p.cancerActif) l.push("⛔️ Cancer en cours de traitement ou suivi actif : RÈGLE N°62 — aucun complément sans accord de l'oncologue, aucune restriction, aucun antioxydant à forte dose.");
   if (p.grossesse) l.push("⛔️ Grossesse, allaitement ou désir de grossesse : RÈGLE N°63 — aucune restriction ni détox, sécurité alimentaire, tout complément validé par l'équipe obstétricale.");
+  if (p.hormonal) l.push("⚠️ Traitement hormonal en cours, évoqué ou refusé : RÈGLE N°64 — aucune position sur l'opportunité d'un THM (décision du médecin), aucun phyto-œstrogène ni gattilier ni DHEA, aucune modification de traitement.");
+  if (p.cardio) l.push("⚠️ Risque cardiovasculaire documenté / statine : RÈGLE N°65 — suivi médical d'abord, aucun « équivalent naturel » de statine, aucun complément présenté comme protection vasculaire.");
+  if (p.renal) l.push("⚠️ " + (p.renalDeclaree ? "Insuffisance rénale déclarée" : "Fonction rénale diminuée") + " : RÈGLE N°66 — compléments au bas de la fourchette, aucune dose d'attaque de vitamine D, aucune plante diurétique" + (p.renalDeclaree ? ", aucun complément sans accord médical." : "."));
+  if (p.extraitThyro) l.push("⚠️ Extrait thyroïdien / complexe « thyroïde » cité : RÈGLE N°67 — jamais proposé ni validé, aucune dose, orientation vers le médecin qui suit la thyroïde.");
   return l.join('\n');
 }
 
@@ -2717,6 +2807,14 @@ const GARDEFOUS_MOTS = {
   diabete: { label: 'Diabète traité (RÈGLE N°60)', re: /berbérine|cannelle|chrome|lipoïque|ginseng|gymnema|fenugrec|momordique|melon amer|vinaigre|\bjeûn\w*|FODMAP|cétogène|low[- ]carb|pauvre en glucides|fenêtre alimentaire/gi },
   bipolaire: { label: 'Bipolarité / psychotropes (RÈGLE N°61)', re: /millepertuis|\bSAMe\b|5-HTP|griffonia|tryptophane|tyrosine|mucuna|rhodiola|ginseng|éleuthérocoque|ashwagandha|luminoth\w*|diurétique/gi },
   cancer: { label: 'Cancer en cours (RÈGLE N°62)', re: /millepertuis|pamplemousse|curcum\w*|EGCG|thé vert|resvératrol|quercétine|vitamine C|vitamine E|bêta-carotène|échinacée|chardon|artichaut|desmodium|radis noir|détox\w*|\bjeûn\w*|cétogène|huile essentielle|probiotique/gi },
+  hormonal: { label: 'Traitement hormonal (RÈGLE N°64)', re: /houblon|\bsauge\b|feminabiane|phytostandard|phyto-?[œo]?estrog\w+|\bsoja\b|tr[èe]fle rouge|gattilier|\bvitex\b|\bDHEA\b|pr[ée]gn[ée]nolone|act[ée]e à grappes|cimicifuga|igname/gi },
+  cardio: { label: 'Risque cardiovasculaire / statine (RÈGLE N°65)', re: /levure de riz rouge|monacoline|protection vasculaire|prot[èe]ge (vos|les) (art[èe]res|vaisseaux)|prot[ée]ger (vos|les) (art[èe]res|vaisseaux)|dissoudre|dissolv\w+|d[ée]sobstru\w+|nettoy\w+ (vos |les )?art[èe]res/gi },
+  renal: { label: 'Fonction rénale (RÈGLE N°66)', re: /r[ée]glisse|orthosiphon|pissenlit|pr[êe]le|bouleau|queue de cerise|cr[ée]atine|spiruline|chlorelle|laminaire|fucus|dose d.attaque|\b(8|10|12) ?000 ?UI/gi },
+  extraitThyro: { label: 'Extrait thyroïdien (RÈGLE N°67)', re: /(ajout\w+|commenc\w+|d[ée]marr\w+|prendre|prenez|proposons|recommand\w+|compl[ée]t\w+)[^.\n]{0,45}(thironat|suprathyro[ïi]d|extraits? (de |d.)?thyro\w*|glandulaire)|booster[^.\n]{0,20}thyro\w*/gi },
+  asthme: { label: 'Asthme sans avis allergologue (terrains de sécurité)', re: /propolis|gel[ée]e royale|pollen/gi },
+  hepatique: { label: 'Insuffisance hépatique (terrains de sécurité)', re: /\bkava\b|EGCG|extraits? (concentr[ée] )?de th[ée] vert|origan|m[ée]gadose|niacine/gi },
+  gastrite: { label: 'Gastrite / ulcère actif (terrains de sécurité)', re: /\bHCl\b|b[ée]ta[ïi]ne|enzymes? digestives?/gi },
+  cardiovasc: { label: 'Trouble cardiovasculaire (terrains de sécurité)', re: /r[ée]glisse|ginseng|[ée]leuth[ée]rocoque|guarana|yohimbine|caf[ée]ine concentr[ée]e/gi },
   grossesse: { label: 'Grossesse / allaitement (RÈGLE N°63)', re: /FODMAP|\bjeûn\w*|détox\w*|drainag\w*|\brégime\w*|éviction\w*|rétinol|vitamine A\b|perdre du poids|perte de poids/gi },
 };
 function collecterTextesClientes(obj, out, chemin) {
@@ -2738,6 +2836,11 @@ function verifierGardeFousProfils(gen, d) {
   if (p.bipolaire) actifs.push('bipolaire');
   if (p.cancerActif) actifs.push('cancer');
   if (p.grossesse) actifs.push('grossesse');
+  if (p.hormonal) actifs.push('hormonal');
+  { const t = terrainsSecurite(d); if (t.asthmeSansAvis) actifs.push('asthme'); if (t.hepatique) actifs.push('hepatique'); if (t.gastrite) actifs.push('gastrite'); if (t.cardiovasculaire) actifs.push('cardiovasc'); }
+  if (p.cardio) actifs.push('cardio');
+  if (p.renal) actifs.push('renal');
+  if (p.extraitThyro) actifs.push('extraitThyro');
   const textes = []; collecterTextesClientes(gen, textes, '');
   const hits = [];
   const NEG = /(pas d[e']|aucun|aucune|jamais|sans|\bni\b|évit|n'est pas|ne sont pas|non )[^.\n]{0,50}$/i;
@@ -2757,7 +2860,8 @@ function verifierGardeFousProfils(gen, d) {
 }
 function afficherVerifGardeFous(gen, d) {
   const p = detecterProfilsSensibles(d);
-  const anyProfil = p.tca || p.imcBas || p.diabeteTraite || p.bipolaire || p.cancerActif || p.grossesse || p.risqueSuicidaire;
+  const tSec = terrainsSecurite(d);
+  const anyProfil = tSec.asthmeSansAvis || tSec.hepatique || tSec.gastrite || tSec.cardiovasculaire || p.tca || p.imcBas || p.diabeteTraite || p.bipolaire || p.cancerActif || p.grossesse || p.risqueSuicidaire || p.hormonal || p.cardio || p.renal || p.extraitThyro;
   let zone = document.getElementById('gardefous-profils');
   if (!zone) {
     zone = document.createElement('div'); zone.id = 'gardefous-profils';
@@ -2774,6 +2878,14 @@ function afficherVerifGardeFous(gen, d) {
   if (p.diabeteTraite) noms.push(p.diabeteT1 ? 'diabète de type 1' : 'antidiabétiques');
   if (p.cancerActif) noms.push('cancer en cours');
   if (p.grossesse) noms.push('grossesse / allaitement');
+  if (tSec.asthmeSansAvis) noms.push('asthme');
+  if (tSec.hepatique) noms.push('insuffisance hépatique');
+  if (tSec.gastrite) noms.push('gastrite / ulcère');
+  if (tSec.cardiovasculaire) noms.push('trouble cardiovasculaire');
+  if (p.hormonal) noms.push('traitement hormonal');
+  if (p.cardio) noms.push('risque cardiovasculaire');
+  if (p.renal) noms.push(p.renalDeclaree ? 'insuffisance rénale' : 'fonction rénale diminuée');
+  if (p.extraitThyro) noms.push('extrait thyroïdien');
   const ok = r.hits.length === 0;
   const lignes = r.hits.slice(0, 14).map(h => '<li style="margin-bottom:6px"><strong>' + escH(h.mot) + '</strong> <span style="color:#6B5555">(' + escH(h.profil) + ')</span><br><span style="font-size:12px;color:#6B5555">…' + escH(h.extrait) + '…</span></li>').join('');
   zone.style.display = 'block';
@@ -2899,7 +3011,8 @@ JAMAIS : homéopathie, hydrolats, sophrologie, salle de sport, matériel de fitn
 IMPORTANT (révisé 07/10/2026, décision Sabrina — remplace la règle du 20/09 « lister tous les compléments pertinents ») : à chaque phase du parcours (voir RÈGLE N°10bis), la CIBLE est de 2 à 3 compléments. Raison clinique : au-delà, l'observance baisse (la cliente en prend moins bien, voire arrête tout), le budget et l'absorption en pâtissent (les minéraux se font concurrence), les interactions se multiplient, et on ne peut plus savoir ce qui agit. Le séquençage par phases existe précisément pour ne pas empiler : on traite un axe avec ses 2-3 soutiens, puis le suivant.
    a) Retiens pour la phase les 2-3 soutiens les plus utiles aux axes travaillés dans CETTE phase, le plus invalidant ou le plus urgent en premier.
    b) Si davantage de compléments sont cliniquement pertinents, NE LES EMPILE PAS : reporte-les à la phase suivante quand le parcours en compte une, et liste-les à la fin de « pourquoi_praticien » de la phase concernée sous « Reportés à une phase ultérieure : … » avec la raison, pour que la praticienne voie ce qui a été écarté et puisse arbitrer. Si le parcours n'a qu'une phase, signale-les de la même façon, sans les afficher à la cliente.
-   c) EXCEPTION ENCADRÉE : un 4e complément n'est admis dans une même phase que si un signal clinique net l'exige et que le reporter serait contre-productif ou risqué (ex. complément de sécurité lié à un médicament, correction d'une carence objectivée). Il est alors inclus et signalé à la fin de « pourquoi_praticien » par « ⚠️ 4e complément : à valider par vous » suivi de la raison. Jamais plus de 4.
+   c0) DOSSIER VRAIMENT CHARGÉ (décision Sabrina 25/10/2026) : si la phase porte sur 3 axes ou plus, ou sur un diagnostic confirmé complexe, ou sur un terrain multiple (plusieurs désordres métaboliques, hormonaux et digestifs à la fois), une 4e ligne est admise EN PLUS des 3 compléments « cœur », à une seule condition : elle est présentée à la cliente comme OPTIONNELLE SELON LE BUDGET (« si votre budget le permet »), placée en dernier, citée en dernier dans la phrase d'ordre de priorité budgétaire, et jamais décrite comme nécessaire à l'efficacité du protocole. Dans ce cas, signale-la à la fin de « pourquoi_praticien » par « ⚠️ 4e ligne optionnelle (dossier chargé) : à valider par vous » avec la raison. Un dossier ordinaire (1-2 axes) reste à 2-3 compléments, sans 4e ligne.
+   c) EXCEPTION ENCADRÉE : un 4e complément n'est admis dans une même phase que si un signal clinique net l'exige et que le reporter serait contre-productif ou risqué (ex. complément de sécurité lié à un médicament, correction d'une carence objectivée). Il est alors inclus et signalé à la fin de « pourquoi_praticien » par « ⚠️ 4e complément : à valider par vous » suivi de la raison. Jamais plus de 4 (la 4e ligne optionnelle du point c0 et l'exception du point c ne se cumulent pas : 4 au total, pas 5).
    d) La praticienne relit le protocole et retire elle-même ce qui lui paraît superflu avant de l'envoyer : ne cherche donc jamais à « tout couvrir par précaution ».
    Quand la phase compte au moins 2 compléments, ajoute immédiatement après la liste une phrase d'ordre de priorité budgétaire, formulée ainsi : "Si vous ne pouvez pas démarrer l'ensemble en même temps, commencez par [complément A] puis [complément B] — [raison clinique brève de cet ordre], et ajoutez le reste dès que possible." Cet ordre doit toujours être justifié cliniquement (l'axe le plus invalidant ou le plus urgent en premier), jamais arbitraire. Reste réaliste : ne retiens jamais un complément dont la pertinence est marginale ou spéculative juste pour remplir — chaque entrée doit être justifiée par un signal clinique réel chez cette cliente précise. Un même actif ne doit toujours apparaître qu'UNE SEULE fois même s'il sert plusieurs axes (voir point 4 plus bas).
    Dans les autres RÈGLES de ce document, les formulations du type « liste complète des soutiens pertinents » ou « lister tous les soutiens » désignent l'ensemble des CANDIDATS dans lequel tu choisis, jamais ce qui est affiché à la cliente : la sélection finale obéit toujours à la présente règle (2-3 par phase, reportés au-delà).
@@ -3059,7 +3172,7 @@ Exemples concrets à adapter selon l'axe actif de la phase en cours (lister tous
 - Sélénium (Nutripure Sélénium ou équivalent, ou noix du Brésil fraîches 3 à 4/jour en alternative alimentaire) 55µg/j au repas du matin (meilleure tolérance digestive) — cofacteur antioxydant de l'enzyme glutathion peroxydase, terrain de faiblesse immunitaire (RÈGLE N°36) — même produit que celui déjà cité en soutien thyroïdien (RÈGLE N°11), ne jamais compter deux fois dans le total (RÈGLE N°5) si déjà retenu pour cet axe — pas de CI notable à cette dose
 - Vitamine C (acide ascorbique ou forme liposomale) 500mg à 1g/j en entretien, répartie en 2 prises matin et midi plutôt qu'en une seule fois (hydrosoluble, s'élimine vite dans les urines, une répartition maintient un taux sanguin plus stable ; éviter le soir par prudence sur un effet tonique léger chez certaines clientes), jusqu'à 125mg toutes les 2h en cure ponctuelle pendant un épisode infectieux aigu (jamais en continu prolongé au-delà de l'épisode) — antioxydante, recycle le glutathion, soutien de la réponse immunitaire en phase infectieuse, terrain de faiblesse immunitaire (RÈGLE N°36) — même produit que celui déjà cité en soutien surrénalien (RÈGLE N°12, 2g/j), ne jamais compter deux fois dans le total (RÈGLE N°5) si déjà retenu pour cet axe — prudence en cas d'antécédent de lithiase oxalocalcique (ne pas dépasser 1g/j en entretien dans ce cas)
 - Vitamine E (mélange de tocophérols naturels, jamais la forme synthétique alpha-tocophérol seule) 100 à 200mg/j au repas (vitamine liposoluble, absorption dépendante des graisses alimentaires) — antioxydante, protège spécifiquement les membranes cellulaires et les LDL de l'oxydation, régénérée par la vitamine C et le glutathion (RÈGLE N°40) — ⚠️ toujours interpréter un dosage biologique de vitamine E en le rapportant au cholestérol total de la cliente (rapport Vit E/cholestérol, valeur normale 5-8 mg/g) avant de conclure à une carence, jamais la valeur brute seule (RÈGLE N°40 point 3) — même actif que le complexe antioxydant déjà cité en RÈGLE N°9/N°31, ne jamais compter deux fois dans le total (RÈGLE N°5) — CI : traitement anticoagulant (prudence, effet fluidifiant additif à forte dose, en informer le médecin traitant)
-- Vitamine D3 (seule ou +K2 selon RÈGLE N°9), posologie d'attaque adulte : 8000 à 12000 UI/j pendant 2-3 mois, puis entretien 60 à 80 UI/kg/j (≈70 UI/kg/j en pratique) — chez l'enfant, entretien 1500 à 2000 UI/j — terrain immunitaire/inflammatoire de bas grade ou déficit confirmé (RÈGLE N°9/N°30/N°31) — prise le soir pendant ou juste après le dîner (meilleure absorption avec les graisses du repas) — même produit que celui déjà cité en RÈGLE N°9, ne jamais compter deux fois dans le total (RÈGLE N°5)
+- Vitamine D3 (seule ou +K2 selon RÈGLE N°9), posologie d'attaque adulte : 8000 à 12000 UI/j pendant 2-3 mois, puis entretien 60 à 80 UI/kg/j (≈70 UI/kg/j en pratique) — chez l'enfant, entretien 1500 à 2000 UI/j — terrain immunitaire/inflammatoire de bas grade ou déficit confirmé (RÈGLE N°9/N°30/N°31) — ⛔️ DOSE D'ATTAQUE UNIQUEMENT SI UN DÉFICIT EST OBJECTIVÉ : si un taux récent de vitamine D (25-OH) figure dans le dossier, les bilans ou les notes et qu'il est déjà dans la cible fonctionnelle (environ 40 à 60 ng/mL, soit 100 à 150 nmol/L), ne propose AUCUNE dose d'attaque ni forte dose — au mieux un entretien à dose modérée si l'exposition au soleil est faible, ou simplement lumière et alimentation (RÈGLE N°9 point 7) ; au-delà de 60 ng/mL, aucune supplémentation ; fonction rénale diminuée ou insuffisance rénale : jamais de dose d'attaque (RÈGLE N°66) — prise le soir pendant ou juste après le dîner (meilleure absorption avec les graisses du repas) — même produit que celui déjà cité en RÈGLE N°9, ne jamais compter deux fois dans le total (RÈGLE N°5)
 - Huile de foie de morue (source naturelle de vitamine A/rétinol), 1,5g/j au repas (vitamine liposoluble, absorption dépendante des graisses alimentaires) — EXCEPTION ENCADRÉE, UNIQUEMENT si un dosage biologique confirme une carence en vitamine A explicitement mentionnée dans les diagnostics/notes praticien (RÈGLE N°9 point 3, même logique que l'iode RÈGLE N°11) — jamais en première intention, jamais sans dosage confirmé, jamais reconduite au-delà de 2-3 mois sans nouveau contrôle — ⚠️ CI ABSOLUE : grossesse ou désir de grossesse (risque tératogène)
 ━━ Branche Détox métaux lourds & terrain neuro-inflammatoire (RÈGLE N°44) — leviers de soutien uniquement, jamais une chélation médicale ━━
 - Chlorella (algue, forme paroi cellulaire éclatée pour biodisponibilité) — dose selon la fiche du fabricant (dose non précisée dans le cours source, ex. produit de référence cité en formation type Detoxssentiel Métaux Lourds, Thérascience, qui associe chlorella/bétaïne/acide malique/curcumine/prêle/thé vert/spiruline/NAC/complexe zinc-calcium-magnésium-vitamines B-C-D3-E) — soutien de drainage des métaux lourds en complément des leviers de fond (RÈGLE N°44) — CI : maladie auto-immune active (prudence, effet immunostimulant), allergie aux algues
@@ -3106,6 +3219,7 @@ Grossesse → aucune HE par voie interne, vérifier chaque plante
 Chimiothérapie / radiothérapie en cours → aucun soutien détox hépatique actif (voir RÈGLE N°8), se limiter à l'alimentation douce
 HTA (connue ou tension limite/élevée signalée) → JAMAIS de réglisse (voir RÈGLE N°12)
 Cancer hormonodépendant OU SOPK → JAMAIS orienter vers une supplémentation en DHEA, quelle que soit la clinique (voir RÈGLE N°12)
+Extraits thyroïdiens ou glandulaires, complexes « thyroïde » (type Thironat, Suprathyroid…) → JAMAIS proposés, quelle que soit la clinique (voir RÈGLE N°67) ; levure de riz rouge / monacoline (même principe actif qu'une statine) → JAMAIS proposée (voir RÈGLE N°65)
 
 🚩 STATUT DE SÉCURITÉ CONFIRMÉ POUR CETTE CLIENTE (à appliquer concrètement, pas juste en théorie) :
 - Grossesse / allaitement / désir de grossesse : ${d.secu_grossesse || 'Non renseigné — considérer comme non écarté et rester prudente sur les HE et plantes emménagogues'}
@@ -3113,6 +3227,7 @@ Cancer hormonodépendant OU SOPK → JAMAIS orienter vers une supplémentation e
 - Traitements en cours nécessitant vigilance : ${d.traitements_vigilance || 'Non renseigné'}${d.traitements_vigilance.includes('Anticoagulants') ? ' · Type d\'anticoagulant précis : ' + (d.anticoag_type || 'non précisé — traiter par prudence comme un AVK potentiel') : ''}
 - Allergies / intolérances alimentaires connues : ${d.allergies_alim || 'Non renseigné'}
 ${bannerProfilsSensibles(d)}
+${blocTerrainsSecurite(d)}
 ${(d.secu_grossesse !== 'Non concernée') ? '⛔️ Cette cliente est concernée par une grossesse, un allaitement, un désir de grossesse, ou ce point n\'a jamais été vérifié : AUCUNE huile essentielle par voie interne, vérifier CHAQUE plante et complément proposé pour sa compatibilité, écarter les phytoestrogènes.' : ''}
 ${(d.secu_cancer !== 'Non') ? '⛔️ Antécédent de cancer hormono-dépendant confirmé, ou ce point n\'a jamais été vérifié : JAMAIS de Feminabiane Ménopause ni de phytoestrogènes (soja, houblon, sauge), quelle que soit la pertinence apparente pour l\'axe hormonal.' : ''}
 ${d.allergies_alim && !/aucune/i.test(d.allergies_alim) ? '⛔️ Ne JAMAIS recommander un aliment, une recette ou un complément contenant : ' + d.allergies_alim + '.' : ''}
@@ -4400,7 +4515,7 @@ Réponds UNIQUEMENT avec le JSON pur, sans markdown, sans backticks.
 
 RÈGLES IMPÉRATIVES :
 1. JAMAIS de vocabulaire médical ni de récapitulatif de séance dans le document
-2. Les 3 PILIERS sont le cœur du document et sont continus sur tout le parcours — les compléments ciblés viennent après, organisés par phase, jamais plus de 2-3 actifs en même temps
+2. Les 3 PILIERS sont le cœur du document et sont continus sur tout le parcours — les compléments ciblés viennent après, organisés par phase, jamais plus de 2-3 actifs en même temps (sauf dossier vraiment chargé : une 4e ligne OPTIONNELLE selon le budget, RÈGLE N°5 point c0)
 3. Repartir de l'objectif exprimé dès la section 1
 4. Posologies TOUJOURS complètes (marque, forme, dose, fréquence, moment)
 5. Vérifier les contre-indications selon médicaments déclarés
@@ -4734,6 +4849,12 @@ function afficherAlertesConformite(blocksArr) {
     const nbPuces = ((ph.complements || '').match(/^•\s/gm) || []).length;
     if (nbPuces >= 2 && !/budget/i.test(ph.complements || '')) {
       alertes.push(`${nbPuces} compléments détectés dans la Phase ${ph.numero || (i + 1)} sans phrase de priorité budgétaire visible — vérifiez qu'elle est bien présente (RÈGLE N°5).`);
+    }
+    if (nbPuces === 4 && !/(optionnel|si votre budget)/i.test(ph.complements || '')) {
+      alertes.push(`4 compléments dans la Phase ${ph.numero || (i + 1)} : la 4e ligne doit être présentée comme optionnelle selon le budget — vérifiez que c'est bien le cas, sinon retirez-la ou reportez-la (RÈGLE N°5 point c0).`);
+    }
+    if (nbPuces > 4) {
+      alertes.push(`${nbPuces} compléments dans la Phase ${ph.numero || (i + 1)} : le maximum est de 4 (dont 1 optionnelle selon le budget) — retirez ou reportez les compléments en trop (RÈGLE N°5).`);
     }
   });
 
