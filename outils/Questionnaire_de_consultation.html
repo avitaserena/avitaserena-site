@@ -729,9 +729,9 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 .mg-go:hover{transform:translateY(-1px)}
 .mg-go[disabled]{opacity:.4;cursor:default;transform:none;box-shadow:none}
 .mg-link{background:none;border:none;color:var(--or,#99244F);font-size:14px;font-weight:600;text-decoration:underline;text-underline-offset:3px;cursor:pointer;font-family:inherit;padding:6px 2px}
-.mg-why{margin-top:14px;font-size:14.5px;line-height:1.6}
-.mg-why summary{cursor:pointer;font-weight:700;color:var(--or,#99244F);font-size:13px;letter-spacing:.06em;text-transform:uppercase}
-.mg-why p{margin:8px 0 0}
+.mg-why{margin:6px 0 14px;padding:10px 14px;background:var(--off,#FDF4F8);border-radius:12px;font-size:15px;line-height:1.6}
+.mg-why-l{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--or,#99244F);margin-bottom:3px}
+.mg-why p{margin:0}
 .mg-trail{margin-top:18px;border-top:1px solid var(--taupe,#E7E2E4);padding-top:12px}
 .mg-trail-t{font-size:11px;text-transform:uppercase;letter-spacing:.14em;font-weight:800;color:var(--or,#99244F);margin-bottom:6px}
 .mg-edit{display:flex;gap:10px;align-items:baseline;width:100%;text-align:left;background:none;border:none;border-radius:10px;padding:7px 8px;font-family:inherit;font-size:14px;line-height:1.45;color:var(--ardoise,#1A1A1A);cursor:pointer}
@@ -14035,7 +14035,7 @@ function node(id, d) { d.id = id; N[id] = d; }
 node('motifs', { m: 'listen', multi: true, s: 'Ce qu\'elle décrit',
   q: "Qu'est-ce qui la gêne côté digestion ?",
   hint: "Elle vous le dit avec ses mots : cochez au fil de son récit, dans l'ordre où elle en parle. Chaque gêne ouvre ses questions, l'une après l'autre.",
-  why: "Je pars de ce que vous ressentez, pas d'un formulaire. Chaque gêne que vous décrivez m'indique où regarder en premier dans votre système digestif.",
+  why: "Je pars de ce que vous ressentez, pas d'un questionnaire : chaque gêne que vous décrivez correspond à un segment précis du tube digestif (estomac, intestin grêle, côlon, foie et vésicule). Votre description me dit par où commencer.",
   o: [
     { k: 'ball', l: "Ventre gonflé, ballonnements, gaz" },
     { k: 'haut', l: "Reflux, brûlures, estomac lourd, nausées" },
@@ -14049,7 +14049,7 @@ node('motifs', { m: 'listen', multi: true, s: 'Ce qu\'elle décrit',
 node('secu', { m: 'ask', multi: true, s: 'Signes de sécurité',
   q: "Un point de sécurité avant d'aller plus loin : avez-vous remarqué l'un de ces signes ?",
   hint: "Une seule question, posée naturellement. Si oui, notez-le : on continue, mais l'avis du médecin passe avant l'accompagnement.",
-  why: "Certains signes digestifs doivent d'abord être examinés par un médecin. Je préfère les écarter dès maintenant, avant de construire quoi que ce soit avec vous.",
+  why: "Certains signes (sang dans les selles, perte de poids inexpliquée, difficulté à avaler, fièvre) relèvent d'abord d'un examen médical. Je les écarte dès maintenant : un accompagnement naturopathique ne se construit qu'une fois ces causes exclues.",
   o: [
     { k: 'sang', l: "Du sang dans les selles, ou des selles noires", flag: "Sang dans les selles ou selles noires : avis médical rapide avant tout accompagnement." },
     { k: 'poids', l: "Une perte de poids sans l'avoir cherchée", flag: "Perte de poids involontaire : bilan médical avant tout accompagnement." },
@@ -14064,10 +14064,10 @@ node('secu', { m: 'ask', multi: true, s: 'Signes de sécurité',
   next: function (a) { return firstBr(a); } });
 
 /* ── Ballonnements / gaz ── */
-node('ball_quand', { m: 'ask', br: 'ball', s: 'Moment du gonflement',
-  q: "À quel moment votre ventre gonfle-t-il ?",
-  hint: "Le moment du gonflement par rapport au repas situe la zone concernée dans le tube digestif.",
-  why: "Après un repas, les aliments avancent : estomac d'abord, intestin grêle ensuite, côlon enfin. Savoir quand votre ventre gonfle me dit à quel endroit du trajet cela se passe.",
+node('ball_quand', { m: 'ask', multi: true, br: 'ball', s: 'Moment du gonflement',
+  q: "À quel moment votre ventre se met à gonfler ?",
+  hint: "Plusieurs réponses possibles.",
+  why: "Le moment du gonflement par rapport au repas situe la zone concernée : dans la première demi-heure le repas est encore dans l'estomac, ensuite il avance dans l'intestin grêle, plusieurs heures après il atteint le côlon, où vit l'essentiel de la flore. Un ventre déjà gonflé au réveil évoque plutôt un transit qui stagne ou un contexte hormonal. Les situations peuvent se cumuler, c'est pourquoi plusieurs réponses sont possibles.",
   o: [
     { k: 'immediat', l: "Tout de suite après le repas (dans la demi-heure)", f: "votre ventre gonfle tout de suite après le repas",
       say: "Quand le ventre gonfle tout de suite après le repas, cela se passe plutôt haut dans le tube digestif : l'estomac ou le début de l'intestin grêle. C'est là que la digestion démarre, avec l'acidité et les enzymes ; si elles manquent, les aliments fermentent trop tôt.",
@@ -14084,27 +14084,27 @@ node('ball_quand', { m: 'ask', br: 'ball', s: 'Moment du gonflement',
     { k: 'cycle', l: "Surtout avant les règles, ou selon le moment du cycle", f: "votre ventre gonfle surtout selon le moment du cycle",
       say: "Quand le ventre suit le cycle, les hormones y sont pour beaucoup : la progestérone ralentit le transit, et les œstrogènes favorisent la rétention d'eau et la sensibilité. On y reviendra plus loin avec votre cycle.",
       e: [['gyneco', 3, "ventre qui suit le cycle"], ['constip', 1, "transit ralenti selon le cycle"]] },
-    { k: 'irregulier', l: "Sans régularité, parfois sans raison", f: "votre ventre gonfle sans régularité",
+    { k: 'irregulier', x: true, l: "Sans régularité, parfois sans raison", f: "votre ventre gonfle sans régularité",
       say: "Un gonflement sans horaire ni déclencheur clair oriente plutôt vers un intestin sensible, qui réagit à beaucoup de choses, dont le stress et la fatigue.",
       e: [['sii', 2, "gonflement sans régularité"], ['axe', 1, "gonflement imprévisible"]] }
   ],
   next: function () { return 'ball_gaz'; } });
 
-node('ball_gaz', { m: 'ask', br: 'ball', s: 'Les gaz',
+node('ball_gaz', { m: 'ask', multi: true, br: 'ball', s: 'Les gaz',
   q: "Et côté gaz, comment cela se passe-t-il ?",
-  hint: "Quantité et odeur : c'est ce qui distingue la fermentation (hydrogène), la putréfaction (soufre) et l'air avalé.",
-  why: "La nature des gaz révèle ce que les bactéries ont fermenté et où : les gaz sans odeur et les gaz soufrés n'ont pas du tout la même origine.",
+  hint: "Plusieurs réponses possibles : les gaz peuvent être tantôt odorants, tantôt non, avec des rots.",
+  why: "La quantité et l'odeur des gaz racontent ce que les bactéries ont fermenté. Les glucides non digérés produisent surtout de l'hydrogène et du méthane, sans odeur ; les protéines mal digérées produisent des composés soufrés, à l'odeur d'œuf pourri ; les rots viennent de l'air avalé ou d'un estomac qui se vide lentement. Les gaz peuvent être tantôt odorants, tantôt non : plusieurs réponses sont possibles.",
   o: [
-    { k: 'tendu', l: "Peu de gaz, mais un ventre tendu, dur", f: "vous avez peu de gaz mais un ventre tendu",
+    { k: 'tendu', x: true, l: "Peu de gaz, mais un ventre tendu, dur", f: "vous avez peu de gaz mais un ventre tendu",
       say: "Un ventre tendu avec peu de gaz évoque plutôt un intestin hypersensible à l'étirement, ou un ventre qui se contracte, davantage qu'une vraie fermentation.",
       e: [['sii', 2, "ventre tendu avec peu de gaz"], ['axe', 1, "ventre contracté"]] },
     { k: 'inodore', l: "Beaucoup de gaz, peu odorants", f: "vous avez beaucoup de gaz peu odorants",
       say: "Des gaz abondants mais peu odorants viennent surtout de la fermentation des sucres et des fibres. Les bactéries se nourrissent de ce qui n'a pas été digéré plus haut.",
       e: [['fodmap', 2, "gaz abondants peu odorants"], ['sibo', 1, "fermentation de sucres"], ['dysbiose', 1, "gaz de fermentation"]] },
-    { k: 'soufre', l: "Beaucoup de gaz, très malodorants (œuf pourri)", f: "des gaz très malodorants",
+    { k: 'soufre', l: "Gaz très malodorants (œuf pourri)", f: "vous avez des gaz très malodorants",
       say: "Les gaz à odeur d'œuf pourri contiennent du soufre. Ils viennent de bactéries qui dégradent des protéines mal digérées. C'est le signe que des protéines arrivent jusqu'au côlon sans avoir été bien préparées plus haut.",
       e: [['dysbiose', 2, "gaz très malodorants"], ['hypochlor', 1, "protéines mal digérées"]] },
-    { k: 'rots', l: "Surtout des rots, de l'air qui remonte", f: "vous avez surtout des rots",
+    { k: 'rots', l: "Des rots, de l'air qui remonte", f: "vous avez surtout des rots",
       say: "Des rots fréquents traduisent soit de l'air avalé en mangeant vite, soit une digestion gastrique lente qui fait fermenter le repas dans l'estomac.",
       e: [['hypochlor', 2, "rots fréquents"], ['reflux', 1, "air qui remonte"]] }
   ],
@@ -14113,7 +14113,7 @@ node('ball_gaz', { m: 'ask', br: 'ball', s: 'Les gaz',
 node('ball_aliments', { m: 'ask', multi: true, br: 'ball', s: 'Aliments qui aggravent',
   q: "Y a-t-il des aliments qui font nettement monter la gêne ?",
   hint: "Plusieurs réponses possibles. Ne proposez pas d'éviction ici : on cherche seulement le motif.",
-  why: "Chaque famille d'aliments demande une enzyme ou une étape de digestion différente. Si certains aliments reviennent, cela me dit quelle étape est en difficulté.",
+  why: "Chaque famille d'aliments demande une étape ou une enzyme différente (amylase pour l'amidon, lactase pour le lait, bile et lipase pour les graisses). Quand un aliment revient systématiquement, il désigne l'étape en difficulté ou le substrat que les bactéries fermentent.",
   o: [
     { k: 'feculents', l: "Pain, pâtes, riz, féculents", f: "le pain et les féculents aggravent la gêne", e: [['fodmap', 1, "gêne avec le pain et les féculents"], ['sibo', 1, "gêne avec les féculents"]] },
     { k: 'legumes', l: "Oignon, ail, chou, légumineuses", f: "l'oignon, l'ail, le chou et les légumineuses aggravent la gêne",
@@ -14135,7 +14135,7 @@ node('ball_aliments', { m: 'ask', multi: true, br: 'ball', s: 'Aliments qui aggr
 node('haut_brulure', { m: 'ask', br: 'haut', s: 'Estomac',
   q: "Est-ce plutôt une brûlure qui remonte, ou un estomac lourd qui digère longtemps ?",
   hint: "Quatre profils différents : reflux, estomac irrité (à jeun), digestion lente, nausées.",
-  why: "Une brûlure, une lourdeur et une nausée n'ont pas la même cause. Je veux savoir laquelle de ces trois sensations domine pour regarder au bon endroit.",
+  why: "Une brûlure, une lourdeur et une nausée n'ont pas la même cause : la brûlure vient de l'acidité ou d'une muqueuse irritée, la lourdeur d'une vidange gastrique lente ou d'un manque de bile, la nausée d'une digestion des graisses difficile. Savoir laquelle domine me dit où regarder.",
   o: [
     { k: 'reflux', l: "Une brûlure qui remonte, surtout allongée ou après le repas", f: "vous avez une brûlure qui remonte",
       say: "Une brûlure qui remonte vient du contenu de l'estomac qui franchit le clapet situé juste au-dessus. Contrairement à une idée répandue, ce n'est pas toujours un excès d'acidité : un estomac qui se vide lentement ou un clapet qui se relâche suffisent.",
@@ -14155,7 +14155,7 @@ node('haut_brulure', { m: 'ask', br: 'haut', s: 'Estomac',
 node('haut_ipp', { m: 'ask', br: 'haut', s: 'Médicament pour l\'estomac',
   q: "Prenez-vous un médicament pour l'estomac, du type oméprazole, ou des anti-acides ?",
   hint: "Les IPP (oméprazole, ésoméprazole, pantoprazole…) réduisent l'acidité. Ne jamais proposer de les arrêter : c'est le médecin.",
-  why: "L'acidité de l'estomac est la première barrière contre les bactéries et la première étape de la digestion des protéines. Un médicament qui la réduit change la lecture de vos symptômes.",
+  why: "L'acidité gastrique est la première barrière contre les bactéries ingérées, et l'étape qui prépare la digestion des protéines et l'absorption du fer, de la B12 et du zinc. Un médicament qui la réduit change la lecture de vos symptômes et facilite la remontée des bactéries vers l'intestin grêle.",
   o: [
     { k: 'ipp_long', l: "Oui, depuis plus d'un an", f: "vous prenez un médicament pour l'estomac depuis plus d'un an",
       say: "Un médicament qui réduit l'acidité, pris longtemps, gêne la digestion des protéines et peut laisser les bactéries monter dans l'intestin grêle. Il ne faut jamais l'arrêter sans l'accord de votre médecin, et on verra ensemble comment accompagner la suite.",
@@ -14170,7 +14170,7 @@ node('haut_ipp', { m: 'ask', br: 'haut', s: 'Médicament pour l\'estomac',
 node('douleur_ou', { m: 'ask', br: 'douleur', s: 'Siège de la douleur',
   q: "Où avez-vous mal, exactement ? Montrez-moi avec la main.",
   hint: "Le siège de la douleur oriente : haut, droite, bas, gauche, bas-ventre lié au cycle.",
-  why: "Chaque organe a sa zone : l'estomac au creux du ventre, la vésicule en haut à droite, le côlon sur le pourtour. Le siège exact me dit lequel regarder.",
+  why: "Chaque organe a sa zone de douleur : l'estomac au creux du ventre, la vésicule en haut à droite, le côlon sur le pourtour, la sphère pelvienne en bas. Le siège exact me dit quel organe regarder en premier.",
   o: [
     { k: 'epigastre', l: "Le creux de l'estomac, en haut au milieu", f: "la douleur est dans le creux de l'estomac", e: [['gastrite', 2, "douleur au creux de l'estomac"], ['reflux', 1, "douleur épigastrique"], ['biliaire', 1, "douleur épigastrique"]] },
     { k: 'droite', l: "En haut à droite, sous les côtes", f: "la douleur est en haut à droite, sous les côtes",
@@ -14190,7 +14190,7 @@ node('douleur_ou', { m: 'ask', br: 'douleur', s: 'Siège de la douleur',
 node('douleur_quand', { m: 'ask', br: 'douleur', s: 'Moment de la douleur',
   q: "Quand cette douleur arrive-t-elle ?",
   hint: "Le soulagement par la selle est le critère le plus caractéristique du côlon irritable.",
-  why: "Le moment où la douleur survient et ce qui la calme montrent si elle vient d'une contraction de l'intestin, d'un repas ou d'une tension nerveuse.",
+  why: "Le moment de la douleur et ce qui la calme montrent son mécanisme : une douleur soulagée par la selle évoque un côlon hypersensible, une douleur qui suit le repas une digestion difficile, une douleur à jeun une muqueuse irritée.",
   o: [
     { k: 'avant_selle', l: "Elle monte avant d'aller à la selle et s'apaise après", f: "la douleur s'apaise après être allée à la selle",
       say: "Une douleur qui cède après la selle est le critère le plus caractéristique du côlon irritable : l'intestin se contracte trop fort, puis se relâche quand il se vide.",
@@ -14209,7 +14209,7 @@ node('douleur_quand', { m: 'ask', br: 'douleur', s: 'Moment de la douleur',
 node('transit_selles', { m: 'ask', br: 'transit', s: 'Aspect des selles',
   q: "Les selles, le plus souvent : plutôt dures, normales, molles ou liquides ?",
   hint: "Échelle de Bristol : types 1-2 durs, 3-4 normaux, 5-6 mous, 7 liquides.",
-  why: "La consistance des selles reflète la vitesse du transit. Trop dures, l'intestin a avancé trop lentement ; trop molles, trop vite.",
+  why: "La consistance des selles reflète la vitesse du transit : le côlon réabsorbe l'eau tout au long du trajet. Trop dures, le transit a été lent et l'eau trop réabsorbée ; trop molles ou liquides, le transit a été trop rapide.",
   o: [
     { k: 'dures', l: "Dures, en boulettes ou en saucisse craquelée (types 1-2)", f: "vos selles sont dures", e: [['constip', 3, "selles dures"]] },
     { k: 'normales', l: "Normales (types 3-4)", f: "vos selles sont normales" },
@@ -14228,7 +14228,7 @@ node('transit_selles', { m: 'ask', br: 'transit', s: 'Aspect des selles',
 node('const_detail', { m: 'ask', multi: true, br: 'transit', s: 'Constipation',
   q: "Quand vous allez à la selle, comment cela se passe-t-il ?",
   hint: "Plusieurs réponses possibles.",
-  why: "La façon dont les selles sortent m'indique si le problème est un transit lent, un signal qui ne part pas, ou un bas-ventre trop contracté.",
+  why: "La façon dont les selles sortent distingue un transit lent (côlon peu contractile), un défaut d'évacuation (signal rectal qui ne part pas, sensation de blocage) et un plancher pelvien trop contracté. Ce ne sont pas les mêmes pistes.",
   o: [
     { k: 'pousser', l: "Il faut pousser fort", f: "il faut pousser fort", e: [['constip', 2, "efforts de poussée"]] },
     { k: 'incomplet', l: "La sensation de ne jamais être vraiment vidée", f: "vous avez la sensation de ne jamais être vraiment vidée",
@@ -14247,7 +14247,7 @@ node('const_detail', { m: 'ask', multi: true, br: 'transit', s: 'Constipation',
 node('diar_detail', { m: 'ask', multi: true, br: 'transit', s: 'Selles molles',
   q: "Qu'est-ce qui accompagne ces selles molles ?",
   hint: "Plusieurs réponses possibles. Selles grasses ou diarrhée nocturne : point de vigilance.",
-  why: "Une diarrhée liée aux repas, au stress, aux graisses ou à la nuit n'a pas la même origine. C'est ce contexte qui m'oriente.",
+  why: "Une diarrhée qui suit le repas, le stress, les graisses, ou qui réveille la nuit, n'a pas la même origine : réflexe gastro-colique exagéré, mauvaise digestion des graisses, hypersensibilité du côlon ou cause organique. C'est ce contexte qui m'oriente.",
   o: [
     { k: 'urgence', l: "Un besoin urgent, impossible à retarder", f: "vous avez des urgences",
       say: "L'urgence, ce besoin impossible à retarder, traduit un côlon trop sensible et trop rapide. C'est typique d'un intestin irritable, au-delà d'un simple transit rapide.",
@@ -14266,7 +14266,7 @@ node('diar_detail', { m: 'ask', multi: true, br: 'transit', s: 'Selles molles',
 node('alim_react', { m: 'ask', multi: true, br: 'alim', s: 'Réactions aux aliments',
   q: "Quels aliments la dérangent, et comment ?",
   hint: "Plusieurs réponses possibles.",
-  why: "Chaque type de réaction (gaz, rougeurs, maux de tête, ventre gonflé) renvoie à un mécanisme différent : fermentation, histamine, enzyme manquante, muqueuse fragilisée.",
+  why: "Chaque réaction renvoie à un mécanisme différent : gaz et ballonnements (fermentation ou enzyme manquante), rougeurs, maux de tête ou nez bouché (histamine), fatigue après le repas (muqueuse plus perméable). Les décrire m'évite de les confondre.",
   o: [
     { k: 'histamine', l: "Vin, fromage affiné, charcuterie, plats réchauffés : rougeurs, maux de tête, ventre gonflé", f: "le vin, les fromages affinés et les plats réchauffés vous réveillent des symptômes",
       say: "Les aliments vieillis, fermentés ou réchauffés contiennent de l'histamine. Si l'enzyme qui la dégrade est en retard, elle s'accumule : rougeurs, maux de tête, ventre gonflé juste après.",
@@ -14289,7 +14289,7 @@ node('alim_react', { m: 'ask', multi: true, br: 'alim', s: 'Réactions aux alime
 node('autre_precis', { m: 'ask', multi: true, br: 'autre', s: 'Autres gênes',
   q: "Parmi ces gênes, lesquelles reconnaissez-vous ?",
   hint: "Plusieurs réponses possibles.",
-  why: "Ces signes, plus discrets, complètent le tableau : ils renseignent sur la digestion haute, la flore ou les carences.",
+  why: "Ces signes plus discrets complètent le tableau : ils renseignent sur la digestion haute (haleine, langue chargée), la flore ou d'éventuelles carences (fatigue, ongles, cheveux).",
   o: [
     { k: 'haleine', l: "Une mauvaise haleine, une langue chargée", f: "vous avez une mauvaise haleine",
       say: "Une mauvaise haleine tenace, y compris à jeun, vient souvent de la digestion plus bas : un estomac peu acide ou une flore qui fermente produisent des gaz qui remontent.",
@@ -14307,7 +14307,7 @@ node('autre_precis', { m: 'ask', multi: true, br: 'autre', s: 'Autres gênes',
 node('debut', { m: 'ask', s: 'Début des troubles',
   q: "Comment tout cela a-t-il commencé ?",
   hint: "C'est la question qui départage le mieux les pistes : le déclencheur.",
-  why: "Presque toujours, un événement précis a fait basculer la digestion. Le retrouver me dit par quel côté commencer.",
+  why: "Presque toujours, un événement précis fait basculer la digestion : gastro-entérite, antibiotiques, période de stress intense, grossesse. Le retrouver me dit par quel maillon de la chaîne commencer.",
   o: [
     { k: 'gastro', l: "Après une gastro-entérite, une intoxication alimentaire ou un voyage", f: "tout a commencé après une gastro ou une intoxication alimentaire",
       say: "Quand tout commence après une gastro, la toxine de certaines bactéries abîme les nerfs qui font avancer le contenu de l'intestin. Il se vide moins bien, les bactéries remontent : c'est la voie classique d'une pullulation du grêle ou d'un côlon irritable post-infectieux.",
@@ -14332,7 +14332,7 @@ node('debut', { m: 'ask', s: 'Début des troubles',
 node('soulage', { m: 'ask', s: 'Ce qui soulage',
   q: "Qu'est-ce qui vous soulage le plus ?",
   hint: "Le mieux à jeun oriente vers le grêle ; le mieux en vacances vers l'axe intestin-cerveau.",
-  why: "Ce qui apaise la gêne révèle son mécanisme : si ne pas manger la calme, c'est que le repas la déclenche ; si les vacances l'effacent, le système nerveux y joue un rôle.",
+  why: "Ce qui apaise la gêne révèle son mécanisme : si le jeûne la calme, c'est que le repas la déclenche ; si les vacances l'effacent, le système nerveux et le stress y jouent un rôle.",
   o: [
     { k: 'jeune', l: "Ne pas manger, jeûner", f: "vous allez mieux quand vous ne mangez pas",
       say: "Quand ne pas manger vous soulage, c'est que le repas déclenche la gêne : ce qui fermente ou stagne n'a plus de carburant.",
@@ -14349,7 +14349,7 @@ node('soulage', { m: 'ask', s: 'Ce qui soulage',
 node('stress_lien', { m: 'ask', s: 'Lien avec le stress',
   q: "Est-ce que cela empire quand vous êtes stressée ?",
   hint: "Sans la ramener à « votre stress » : on cherche seulement un lien dans le temps.",
-  why: "L'intestin et le cerveau sont reliés par le nerf vague. Savoir si les symptômes suivent vos tensions me dit si le système nerveux fait partie du problème.",
+  why: "L'intestin et le cerveau communiquent en permanence par le nerf vague : le stress ralentit la digestion gastrique et modifie la motricité et la sensibilité du côlon. Savoir si vos symptômes suivent vos tensions me dit si cet axe fait partie du problème.",
   o: [
     { k: 'oui', l: "Oui, nettement", f: "c'est nettement pire quand vous êtes stressée",
       say: "Intestin et cerveau sont reliés par le nerf vague et par un réseau de neurones propre à l'intestin. Sous stress, la motricité et la sensibilité de l'intestin changent immédiatement : ce que vous observez est un mécanisme physique, pas de l'imagination.",
@@ -14362,7 +14362,7 @@ node('stress_lien', { m: 'ask', s: 'Lien avec le stress',
 node('traitements', { m: 'ask', multi: true, s: 'Traitements pris',
   q: "Avez-vous pris, ou prenez-vous, l'un de ces traitements ?",
   hint: "Plusieurs réponses possibles. Le détail (noms, doses) se reprend dans la section Traitements.",
-  why: "Certains médicaments modifient directement la flore, la paroi de l'intestin ou la vitesse du transit. Je dois les connaître pour bien lire vos symptômes.",
+  why: "Certains médicaments modifient la flore (antibiotiques), l'acidité gastrique (IPP, anti-acides), la paroi intestinale (anti-inflammatoires) ou la vitesse du transit (opioïdes, certains antidépresseurs). Je dois les connaître pour bien lire vos symptômes.",
   o: [
     { k: 'antibio', l: "Des antibiotiques dans l'année écoulée", f: "vous avez pris des antibiotiques dans l'année", e: [['dysbiose', 2, "antibiotiques dans l'année"], ['sibo', 1, "antibiotiques récents"]] },
     { k: 'ains', l: "Des antidouleurs ou anti-inflammatoires réguliers (ibuprofène, aspirine…)", f: "vous prenez régulièrement des anti-inflammatoires",
@@ -14379,7 +14379,7 @@ node('traitements', { m: 'ask', multi: true, s: 'Traitements pris',
 node('examens', { m: 'ask', multi: true, s: 'Examens déjà faits',
   q: "Quels examens digestifs avez-vous déjà faits ?",
   hint: "Plusieurs réponses possibles. Ce qui manque s'affichera dans le récapitulatif, à discuter avec son médecin.",
-  why: "Je ne veux ni refaire ce qui existe déjà, ni passer à côté d'un examen utile avant de vous accompagner.",
+  why: "Je ne veux ni refaire un examen déjà fait, ni passer à côté d'un examen utile. Les résultats que vous avez déjà orientent directement la suite.",
   o: [
     { k: 'gastro', l: "Consulté un gastro-entérologue" },
     { k: 'coloscopie', l: "Une coloscopie" },
@@ -14553,13 +14553,12 @@ function questionHtml(id) {
   var n = N[id], cur = S.a[id], pend = S.p[id];
   var sel = n.multi ? (Array.isArray(pend) ? pend : (Array.isArray(cur) ? cur : [])) : [];
   var h = '<div class="mg-q" id="mg-q"><span class="mg-mode ' + n.m + '">' + (n.m === 'listen' ? "J'écoute" : 'Je demande') + '</span>' +
-    '<div class="mg-qt">' + esc(n.q) + '</div>' + (n.hint ? '<div class="mg-hint">' + esc(n.hint) + '</div>' : '') +
+    '<div class="mg-qt">' + esc(n.q) + '</div>' + (n.why ? '<div class="mg-why"><div class="mg-why-l">Pourquoi je vous pose cette question</div><p>' + esc(n.why) + '</p></div>' : '') + (n.hint ? '<div class="mg-hint">' + esc(n.hint) + '</div>' : '') +
     '<div class="mg-opts' + (n.o.length > 5 && !n.multi ? ' mg-cols' : '') + '">';
   n.o.forEach(function (o, i) { h += optHtml(n, o, i, n.multi ? sel.indexOf(o.k) >= 0 : cur === o.k); });
   h += '</div><div class="mg-act">';
   if (n.multi) h += '<button type="button" class="mg-go" data-mg="cont" data-n="' + id + '"' + (sel.length ? '' : ' disabled') + '>Continuer</button>';
   h += '<button type="button" class="mg-link" data-mg="skip" data-n="' + id + '">Pas évoqué, passer</button></div>';
-  if (n.why) h += '<details class="mg-why"><summary>Pourquoi je pose cette question</summary><p>' + esc(n.why) + '</p></details>';
   return h + '</div>';
 }
 function trailHtml(an) {
