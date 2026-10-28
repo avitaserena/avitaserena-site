@@ -3516,7 +3516,7 @@ const SAVE_KEY = 'avita_suivi_draft';
 const SUPA_URL = 'https://bqhkdndwldwqacrrbbig.supabase.co';
 /* Version du questionnaire de suivi — à incrémenter à chaque changement structurel,
    même principe que côté consultation (voir Questionnaire_de_consultation.html). */
-const QUESTIONNAIRE_VERSION = 'suivi-v12-2026-10-22';
+const QUESTIONNAIRE_VERSION = 'suivi-v13-2026-10-28';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxaGtkbmR3bGR3cWFjcnJiYmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MzAyNTIsImV4cCI6MjA5NjMwNjI1Mn0.nH2UktMAVKYwng4L3SvW5F0fluV_sObGV0f3Mk1dnOY';
 
 let formTouched = false;
@@ -7232,7 +7232,7 @@ var consultSymptListe = [];
 
 function normSympt(t){ return String(t||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').trim(); }
 
-function extraireSymptomesConsultation(snap){
+function extraireSymptomesConsultationBase(snap){
   if(!snap) return [];
   try { if(snap.symptomes_liste){ var l=JSON.parse(snap.symptomes_liste); if(Array.isArray(l)&&l.length) return l; } } catch(e){}
   // Consultations antérieures au 25/09/2026 : libellé et explication collés sans séparateur,
@@ -7243,6 +7243,21 @@ function extraireSymptomesConsultation(snap){
     if(c>8) t=t.slice(0,c+1);
     return { s:m[1], l:t.slice(0,160) };
   }).filter(function(x){ return x && x.l && x.s!=='sec-11'; });
+}
+
+/* Parcours par motif (28/10/2026) : les descripteurs digestifs relevés en consultation (moment du gonflement,
+   gaz, selles, douleur…) sont figés dans motif_guide_suivi au moment de la consultation et réévalués ici,
+   comme tous les autres signes (↑ mieux / = stable / ↓ pire). Le brouillon et le générateur les captent déjà. */
+function extraireSymptomesConsultation(snap){
+  var base = extraireSymptomesConsultationBase(snap) || [];
+  try {
+    var mg = snap && snap.motif_guide_suivi ? JSON.parse(snap.motif_guide_suivi) : [];
+    if (Array.isArray(mg)) {
+      var vus = {}; base.forEach(function(x){ vus[normSympt(x.l)] = 1; });
+      mg.forEach(function(x){ if (x && x.l && !vus[normSympt(x.l)]) { vus[normSympt(x.l)] = 1; base.push({ s: x.s || 'sec-4', l: String(x.l).slice(0,160) }); } });
+    }
+  } catch(e) { /* descripteurs illisibles : on garde les signes déjà extraits */ }
+  return base;
 }
 
 function ligneEvolConsult(item){

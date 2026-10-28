@@ -1204,6 +1204,7 @@ function renderSessionCard() {
     ['Cliente', d.prenom ? `${[d.prenom, d.nom].filter(Boolean).join(' ')}${d.age ? ', ' + d.age + ' ans' : ''}` : '—'],
     ['Durée', d.duree_symptomes || '—'],
     ['Ses mots à l\'arrivée', d.motif_libre || d.phrase_ouverture || '—'],
+    ['Parcours par motif (digestif)', d.motif_guide_recap || '—'],
     ['Motifs & mots-clés', [d.motifs, d.mots_cles].filter(Boolean).join(' · ') || '—'],
     ['Scores vitalité', d.scores || '—'],
     ['Objectif 6 mois', d.objectif_6mois || '—'],
@@ -1213,7 +1214,7 @@ function renderSessionCard() {
   ];
   // Compter les champs réellement remplis (utiles)
   const richFields = ['prenom','age','duree_symptomes','motifs','mots_cles','objectif_6mois','scores',
-    'symptomes_coches','chips_coches','selects','textes_libres','motif_libre','synthese_praticien','bilans_recommandes','motivation','pathologies_pressenties'];
+    'symptomes_coches','chips_coches','selects','textes_libres','motif_libre','synthese_praticien','bilans_recommandes','motivation','pathologies_pressenties','motif_guide_reponses'];
   const filled = richFields.filter(k => d[k] && d[k].length > 2).length;
   const totalChars = Object.values(d).reduce((acc, v) => acc + (typeof v === 'string' ? v.length : 0), 0);
 
@@ -1227,7 +1228,7 @@ function renderSessionCard() {
 
 function prefillParams() {
   if (!sessionData) return;
-  const checks = (sessionData.symptomes_coches || '') + (sessionData.motifs || '') + (sessionData.chips_coches || '') + (sessionData.pathologies_pressenties || '') + (sessionData.textes_libres || '') + (sessionData.motif_libre || sessionData.phrase_ouverture || '') + (sessionData.chanbio_terrains || '') + (sessionData.chanbio_notes || '');
+  const checks = (sessionData.symptomes_coches || '') + (sessionData.motifs || '') + (sessionData.chips_coches || '') + (sessionData.pathologies_pressenties || '') + (sessionData.motif_guide_titres || '') + (sessionData.motif_guide_reponses || '') + (sessionData.textes_libres || '') + (sessionData.motif_libre || sessionData.phrase_ouverture || '') + (sessionData.chanbio_terrains || '') + (sessionData.chanbio_notes || '');
   // Auto-cocher les axes prioritaires selon les symptômes
   const autoAxes = [];
   // SIBO / dysbiose est détecté spécifiquement en premier : avant, il était noyé dans la
@@ -1654,6 +1655,14 @@ function buildClientData() {
     lecture_preambule: s.lecture_preambule || '',
     lecture_pistes: s.lecture_pistes || '',
     lecture_vigilance: s.lecture_vigilance || '',
+    // Parcours par motif (28/10/2026) : questions posées une à une selon les réponses (module digestif)
+    motif_guide_theme: s.motif_guide_theme || '',
+    motif_guide_recap: s.motif_guide_recap || '',
+    motif_guide_reponses: s.motif_guide_reponses || '',
+    motif_guide_pistes: s.motif_guide_pistes || '',
+    motif_guide_vigilance: s.motif_guide_vigilance || '',
+    motif_guide_attention: s.motif_guide_attention || '',
+    motif_guide_examens: s.motif_guide_examens || '',
     scores: manual.scores || s.scores || '',
     symptomes_coches: manual.checks || s.symptomes_coches || '',
     chips: s.chips_coches || '',
@@ -4072,6 +4081,12 @@ ${d.lecture_pistes}
 ` : ''}${d.lecture_vigilance ? `
 ⚠️ POINTS À CLARIFIER RELEVÉS À L'OUVERTURE : ${d.lecture_vigilance}
 ` : ''}→ La cliente s'attend à retrouver dans son protocole une réponse à CES mots-là, expliquée avec le même vocabulaire (sans les citer mot pour mot à chaque ligne). Si l'analyse complète du dossier infirme une piste annoncée à l'ouverture, dis-le avec tact plutôt que de l'ignorer.
+` : ''}
+${d.motif_guide_reponses ? `
+🧭 PARCOURS PAR MOTIF (${d.motif_guide_theme || 'digestif'}) — questions posées une à une en séance, selon ses réponses :
+${d.motif_guide_recap ? 'Résumé dit à voix haute : ' + d.motif_guide_recap + '\n' : ''}Réponses de la cliente :
+${d.motif_guide_reponses}
+${d.motif_guide_pistes ? '\nHypothèses de travail (à confirmer ou écarter avec l\'ensemble du dossier) :\n' + d.motif_guide_pistes + '\n' : ''}${d.motif_guide_vigilance ? '\n⚠️ À clarifier avec son médecin avant tout : ' + d.motif_guide_vigilance + '\n' : ''}${d.motif_guide_attention ? '\nPoints d\'attention : ' + d.motif_guide_attention + '\n' : ''}${d.motif_guide_examens ? '\nExamens à discuter avec son médecin : ' + d.motif_guide_examens + '\n' : ''}→ Ces réponses précisent le tableau digestif (moment, déclencheurs, soulagement, transit, traitements). Explique à la cliente POURQUOI chaque signe se produit dans son corps, avec ses propres mots. Reste cohérent avec les hypothèses annoncées en séance ; si le dossier complet les infirme, dis-le avec douceur. Jamais de diagnostic : formule en pistes.
 ` : ''}
 ${d.texte_cloture ? `
 🗣️ CE QUE SABRINA A DIT À LA CLIENTE EN FIN DE SÉANCE (pistes annoncées à voix haute) :

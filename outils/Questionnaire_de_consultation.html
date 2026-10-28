@@ -643,7 +643,7 @@ var SUPA_URL = 'https://bqhkdndwldwqacrrbbig.supabase.co';
 /* Version du questionnaire — à incrémenter (ex. 'v13') à chaque changement structurel
    (ajout/suppression/renommage de section ou de champ). Permet de savoir a posteriori
    quelle version une cliente a remplie, si le questionnaire évolue entre-temps. */
-var QUESTIONNAIRE_VERSION = 'consultation-v14-2026-10-22';
+var QUESTIONNAIRE_VERSION = 'consultation-v15-2026-10-28';
 var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxaGtkbmR3bGR3cWFjcnJiYmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MzAyNTIsImV4cCI6MjA5NjMwNjI1Mn0.nH2UktMAVKYwng4L3SvW5F0fluV_sObGV0f3Mk1dnOY';
 </script>
 <style id="ol-style">
@@ -678,6 +678,95 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 .ol-vig ul{margin:6px 0 0 18px;padding:0}
 .ol-note{font-size:12.5px;line-height:1.5;color:var(--ardoise,#1A1A1A);margin-top:14px}
 @media print{.ol-card{display:none!important}}
+</style>
+<style id="mg-style">
+/* ═══ PARCOURS PAR MOTIF — module digestif (28/10/2026) ═══
+   Les questions apparaissent une à une, selon la réponse précédente.
+   Aucune classe .chip / .check-item / .trig-check / .fi ici : ces classes sont capturées
+   par la sauvegarde positionnelle du questionnaire, le module garde son propre état (#mg-json). */
+.mg-card{scroll-margin-top:96px;background:var(--blanc,#fff);border:1px solid var(--ocre,#D6336C);border-radius:20px;padding:22px 24px 20px;margin:0 0 26px;box-shadow:0 10px 28px rgba(214,51,108,.10);font-family:'Be Vietnam Pro','Inter',sans-serif;color:var(--ardoise,#1A1A1A)}
+.mg-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.mg-title{font-weight:800;font-size:18px;color:var(--or,#99244F);letter-spacing:.01em}
+.mg-sub{font-size:14px;line-height:1.55;margin-top:3px}
+.mg-tools{display:flex;gap:8px;flex-wrap:wrap}
+.mg-tbtn{background:#fff;color:var(--or,#99244F);border:1px solid var(--ocre,#D6336C);border-radius:99px;padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:transform .15s,box-shadow .15s}
+.mg-tbtn:hover{transform:translateY(-1px);box-shadow:0 6px 14px rgba(214,51,108,.18)}
+.mg-tbtn[disabled]{opacity:.4;cursor:default;transform:none;box-shadow:none}
+.mg-themes{display:flex;flex-wrap:wrap;gap:8px;margin:2px 0 14px}
+.mg-th{border:1.5px solid var(--taupe,#E7E2E4);background:#fff;border-radius:99px;padding:8px 15px;font-size:14px;font-weight:600;color:var(--ardoise,#1A1A1A);cursor:pointer;font-family:inherit;transition:all .15s}
+.mg-th:hover{border-color:var(--ocre,#D6336C)}
+.mg-th.on{background:var(--ocre,#D6336C);border-color:var(--ocre,#D6336C);color:#fff}
+.mg-th.soon{border-style:dashed;color:var(--ardoise,#1A1A1A)}
+.mg-soon{background:var(--or-clair,#FDEEF3);border-left:4px solid var(--ocre,#D6336C);border-radius:0 12px 12px 0;padding:12px 16px;font-size:14.5px;line-height:1.6;margin:0 0 14px}
+.mg-soon button{margin-top:8px}
+.mg-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:18px}
+@media(min-width:1080px){.mg-grid.mg-two{grid-template-columns:minmax(0,1fr) 290px}}
+.mg-alert{background:var(--rouge-clair,#F5E4DE);border:1.5px solid #B5533A;border-radius:14px;padding:12px 16px;font-size:15px;line-height:1.55;color:#6B2E1F;margin:0 0 14px}
+.mg-alert b{display:block;font-size:12px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px}
+.mg-alert ul{margin:4px 0 0 18px;padding:0}
+.mg-say{background:var(--or-clair,#FDEEF3);border-left:4px solid var(--ocre,#D6336C);border-radius:0 14px 14px 0;padding:14px 18px;margin:0 0 14px;animation:mgIn .25s ease both}
+.mg-say-l{font-size:11px;text-transform:uppercase;letter-spacing:.14em;font-weight:800;color:var(--or,#99244F);margin-bottom:6px}
+.mg-say-t{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:21px;line-height:1.5;color:var(--ardoise,#1A1A1A)}
+.mg-q{border:1px solid var(--taupe,#E7E2E4);border-radius:18px;padding:20px 22px;background:#fff;animation:mgIn .25s ease both}
+@keyframes mgIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.mg-q,.mg-say{animation:none}.mg-opt,.mg-th,.mg-tbtn{transition:none}}
+.mg-mode{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;border-radius:99px;padding:3px 11px;margin-bottom:10px}
+.mg-mode.listen{background:var(--vert-clair,#EEF3EC);color:#35502C}
+.mg-mode.ask{background:var(--or-clair,#FDEEF3);color:var(--or,#99244F)}
+.mg-qt{font-size:23px;line-height:1.4;font-weight:700;color:var(--ardoise,#1A1A1A);margin:0 0 6px}
+.mg-hint{font-size:14px;line-height:1.55;color:var(--ardoise,#1A1A1A);margin:0 0 14px}
+.mg-opts{display:grid;gap:9px;margin:14px 0 4px}
+@media(min-width:760px){.mg-opts.mg-cols{grid-template-columns:1fr 1fr}}
+.mg-opt{display:flex;align-items:center;gap:12px;text-align:left;width:100%;min-height:54px;padding:12px 16px;border:1.5px solid var(--taupe,#E7E2E4);border-radius:14px;background:#fff;font-size:16.5px;line-height:1.4;font-weight:500;color:var(--ardoise,#1A1A1A);cursor:pointer;font-family:inherit;transition:all .14s}
+.mg-opt:hover{border-color:var(--ocre,#D6336C);background:var(--off,#FDF4F8);transform:translateX(3px)}
+.mg-opt:focus-visible,.mg-tbtn:focus-visible,.mg-th:focus-visible,.mg-go:focus-visible,.mg-edit:focus-visible{outline:3px solid rgba(214,51,108,.45);outline-offset:2px}
+.mg-opt.on{border-color:var(--ocre,#D6336C);background:var(--or-clair,#FDEEF3);font-weight:600}
+.mg-key{flex-shrink:0;width:26px;height:26px;border-radius:8px;background:var(--grege,#F3F2F2);color:var(--ardoise,#1A1A1A);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.mg-opt.on .mg-key{background:var(--ocre,#D6336C);color:#fff}
+.mg-opt.none{border-style:dashed}
+.mg-act{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin-top:14px}
+.mg-go{background:linear-gradient(135deg,var(--ocre,#D6336C),var(--terracotta,#EA5C8C));color:#fff;border:none;border-radius:99px;padding:12px 26px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 6px 18px rgba(234,92,140,.28);transition:transform .15s}
+.mg-go:hover{transform:translateY(-1px)}
+.mg-go[disabled]{opacity:.4;cursor:default;transform:none;box-shadow:none}
+.mg-link{background:none;border:none;color:var(--or,#99244F);font-size:14px;font-weight:600;text-decoration:underline;text-underline-offset:3px;cursor:pointer;font-family:inherit;padding:6px 2px}
+.mg-why{margin-top:14px;font-size:14.5px;line-height:1.6}
+.mg-why summary{cursor:pointer;font-weight:700;color:var(--or,#99244F);font-size:13px;letter-spacing:.06em;text-transform:uppercase}
+.mg-why p{margin:8px 0 0}
+.mg-trail{margin-top:18px;border-top:1px solid var(--taupe,#E7E2E4);padding-top:12px}
+.mg-trail-t{font-size:11px;text-transform:uppercase;letter-spacing:.14em;font-weight:800;color:var(--or,#99244F);margin-bottom:6px}
+.mg-edit{display:flex;gap:10px;align-items:baseline;width:100%;text-align:left;background:none;border:none;border-radius:10px;padding:7px 8px;font-family:inherit;font-size:14px;line-height:1.45;color:var(--ardoise,#1A1A1A);cursor:pointer}
+.mg-edit:hover{background:var(--off,#FDF4F8)}
+.mg-edit .q{flex:0 0 34%;color:var(--gris,#1A1A1A);font-size:13px;font-weight:600}
+.mg-edit .a{flex:1;font-weight:600}
+.mg-edit .m{flex:0 0 auto;font-size:12px;color:var(--or,#99244F);text-decoration:underline}
+.mg-side{background:var(--off,#FDF4F8);border:1px solid var(--taupe,#E7E2E4);border-radius:16px;padding:14px 16px;align-self:start}
+.mg-side-t{font-size:11px;text-transform:uppercase;letter-spacing:.14em;font-weight:800;color:var(--or,#99244F);margin-bottom:8px}
+.mg-p{margin:0 0 10px}
+.mg-p b{display:block;font-size:14px;line-height:1.35;margin-bottom:4px}
+.mg-bar{height:6px;border-radius:99px;background:#fff;border:1px solid var(--taupe,#E7E2E4);overflow:hidden}
+.mg-bar i{display:block;height:100%;background:var(--ocre,#D6336C);border-radius:99px;transition:width .3s}
+.mg-side-n{font-size:13px;line-height:1.5}
+.mg-sum h3{font-size:12px;text-transform:uppercase;letter-spacing:.14em;font-weight:800;color:var(--or,#99244F);margin:20px 0 8px}
+.mg-sum h3:first-child{margin-top:0}
+.mg-recap{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:22px;line-height:1.5;background:var(--or-clair,#FDEEF3);border-left:4px solid var(--ocre,#D6336C);border-radius:0 14px 14px 0;padding:14px 18px}
+.mg-pi{border:1px solid var(--taupe,#E7E2E4);border-radius:14px;padding:12px 16px;margin-bottom:9px;background:#fff}
+.mg-pi-h{display:flex;justify-content:space-between;gap:10px;align-items:baseline;flex-wrap:wrap}
+.mg-pi-h b{font-size:16.5px}
+.mg-pi-r{font-size:12px;font-weight:700;color:var(--or,#99244F);letter-spacing:.06em;text-transform:uppercase}
+.mg-pi p{margin:6px 0 0;font-size:14.5px;line-height:1.55}
+.mg-pi .conf{color:var(--or,#99244F);font-size:13.5px}
+.mg-pi details{margin-top:6px;font-size:14.5px;line-height:1.55}
+.mg-pi summary{cursor:pointer;font-weight:600;color:var(--or,#99244F);font-size:13.5px}
+.mg-list{margin:0;padding:0 0 0 20px;font-size:15px;line-height:1.55}
+.mg-list li{margin-bottom:5px}
+.mg-fond{display:flex;flex-wrap:wrap;gap:9px;margin-top:8px}
+.mg-fond button{display:flex;align-items:center;gap:8px;border:1.5px solid var(--taupe,#E7E2E4);background:#fff;border-radius:99px;padding:9px 16px;font-size:14.5px;font-weight:600;font-family:inherit;color:var(--ardoise,#1A1A1A);cursor:pointer}
+.mg-fond button:hover{border-color:var(--ocre,#D6336C);background:var(--off,#FDF4F8)}
+.mg-fond small{font-size:12px;font-weight:700;color:var(--or,#99244F)}
+.mg-note{font-size:13px;line-height:1.5;margin-top:14px}
+.mg-st{font-size:13px;font-weight:600;color:#4F7A5A}
+@media(max-width:640px){.mg-card{padding:16px 14px}.mg-qt{font-size:20px}.mg-edit{flex-wrap:wrap}.mg-edit .q{flex:1 1 100%}}
+@media print{.mg-card{display:none!important}}
 </style>
 <script src="auth-guard.js"></script>
 <script src="ai-client.js"></script>
@@ -856,6 +945,22 @@ function recStop(){ recLaunch('Arrêter l’enregistrement'); recSetState('done'
       <span class="ol-statut" id="ol-statut" role="status" aria-live="polite"></span>
     </div>
     <div class="ol-res" id="ol-result" style="display:none"></div>
+  </div>
+
+  <!-- ═══ PARCOURS PAR MOTIF (28/10/2026) : on part de ce que dit la cliente, la question suivante apparaît selon la réponse ═══ -->
+  <div class="mg-card" id="mg-card">
+    <input type="hidden" id="mg-json" value="">
+    <div class="mg-top">
+      <div>
+        <div class="mg-title">Parcours par motif</div>
+        <div class="mg-sub">Touchez ce que la cliente décrit : la question suivante apparaît d'elle-même, avec ce que vous pouvez lui répondre tout de suite. Touches 1 à 9 pour répondre, Entrée pour continuer. Les questions générales (alimentation, rythme, traitements) viennent à la fin.</div>
+      </div>
+      <div class="mg-tools">
+        <button type="button" class="mg-tbtn" id="mg-back" data-mg="back" disabled>← Question précédente</button>
+        <button type="button" class="mg-tbtn" id="mg-reset" data-mg="reset" disabled>Recommencer</button>
+      </div>
+    </div>
+    <div id="mg-body"></div>
   </div>
 
   <div style="background:linear-gradient(135deg,var(--or-clair),var(--grege));border:1px solid var(--sable);border-radius:16px;padding:24px 28px;margin-bottom:26px;display:flex;align-items:center;gap:20px">
@@ -9982,6 +10087,7 @@ function captureSnapshot() {
   // Textareas
   document.querySelectorAll('textarea.fi').forEach((el, i) => { snap['ta_' + (el.id || i)] = el.value; });
   if (typeof olCapturer === 'function') olCapturer(snap); // ouverture libre (22/10/2026) — champ hors textarea.fi, capturé nommément
+  if (typeof mgCapturer === 'function') mgCapturer(snap); // parcours par motif (28/10/2026) — état propre, hors champs .fi
   // Chips cochées
   const chips = [];
   document.querySelectorAll('.chip.on').forEach((c, i) => { chips.push(c.textContent.replace('✓','').trim()); });
@@ -10212,6 +10318,7 @@ function restoreSnapshot(snap) {
   syncDiagChipsState();
   if (typeof calcIMC === 'function') calcIMC();
   if (typeof olRestaurer === 'function') olRestaurer(snap); // ouverture libre (22/10/2026)
+  if (typeof mgRestaurer === 'function') mgRestaurer(snap); // parcours par motif (28/10/2026)
   updateCounter();
 }
 
@@ -10270,6 +10377,8 @@ function collectAllData() {
   d.mots_cles = mots.join(', ');
   // Ouverture libre (22/10/2026) : ses mots à l'arrivée + lecture d'ouverture — lus par generateur.html
   if (typeof olDonnees === 'function') Object.assign(d, olDonnees());
+  // Parcours par motif (28/10/2026) : réponses, pistes, signes d'alerte et examens à discuter — lus par generateur.html
+  if (typeof mgDonnees === 'function') Object.assign(d, mgDonnees());
   // Champs de sécurité — transmis tels quels au générateur (Règle N°6), jamais à ressaisir
   d.secu_grossesse = document.getElementById('secu-grossesse')?.value || '';
   d.secu_cancer = document.getElementById('secu-cancer')?.value || '';
@@ -10619,6 +10728,8 @@ function collectAllData() {
   if (document.getElementById('signal-dysphagie')?.checked) {
     d.alertes_medicales = [d.alertes_medicales, 'Dysphagie (difficulté à avaler, sensation de blocage)'].filter(Boolean).join('\n');
   }
+  // Parcours par motif (28/10/2026) : signes de sécurité repérés pendant l'échange
+  if (d.motif_guide_vigilance) d.alertes_medicales = [d.alertes_medicales, 'Parcours par motif (digestif) : ' + d.motif_guide_vigilance].filter(Boolean).join('\n');
 
   // Localisation précise du bassin (endométriose, 18/09/2026, demande de Sabrina) — même
   // principe que la localisation des douleurs ci-dessus, avec l'intensité par zone reportée
@@ -10919,6 +11030,7 @@ function construireSectionsSynthese(d) {
 
   return [
     ...(typeof olSectionsSynthese === 'function' ? olSectionsSynthese(d) : []),
+    ...(typeof mgSectionsSynthese === 'function' ? mgSectionsSynthese(d) : []),
     { icone: 'user', titre: 'Identité & motif', contenu: [
       d.prenom ? `Prénom : ${d.prenom}` : '',
       d.age ? `Âge : ${d.age} ans` : '',
@@ -13847,6 +13959,830 @@ function olSectionsSynthese(d) {
   if (OL.mode === 'suivi') setTimeout(function () { var rec = olLireRec(); if (rec) { olRendre(rec); } }, 600);
 })();
 
+</script>
+<script id="mg-script">
+/* ═══════════════════════════════════════════════════════════════════
+   PARCOURS PAR MOTIF — module DIGESTIF (28/10/2026)
+   La cliente arrive avec ses symptômes : on part de ce qu'elle dit, et chaque réponse fait
+   apparaître la question suivante, avec la phrase à lui dire tout de suite. Les questions
+   générales (alimentation, mode de vie…) restent dans les sections classiques, à poser à la fin.
+
+   Même schéma que l'ouverture libre : script isolé (s'il échoue, le reste du questionnaire n'est
+   pas touché), état propre dans #mg-json, crochets mgCapturer / mgRestaurer / mgDonnees /
+   mgSectionsSynthese appelés par le questionnaire et lus par le générateur.
+   Les réponses sont aussi reportées sur les cases équivalentes déjà présentes dans les sections
+   (« Alimentation & digestion », « Traitements »…) : on ne les repose donc pas, et les pistes en
+   direct, le suivi (signes à réévaluer) et le générateur les voient comme d'habitude.
+   Aucun conseil concret ici (aliment, complément) : seulement le mécanisme et l'orientation.
+═══════════════════════════════════════════════════════════════════ */
+(function () {
+'use strict';
+
+/* ───────────── Pistes (hypothèses de travail, jamais un diagnostic) ───────────── */
+var PISTES = {
+  sibo: { l: "Pullulation bactérienne de l'intestin grêle (SIBO)",
+    dire: "Il se pourrait que des bactéries soient trop nombreuses dans la première partie de votre intestin, l'intestin grêle, où il y en a normalement très peu. Elles fermentent une partie de ce que vous mangez avant que votre corps l'ait absorbé, et cela produit des gaz sur place : c'est ce qui fait gonfler le ventre.",
+    conf: "Test respiratoire (lactulose ou glucose) à faire prescrire ; contexte de départ (gastro, antibiotiques) ; mieux à jeun." },
+  hypochlor: { l: "Digestion gastrique insuffisante (acidité, vidange lente)",
+    dire: "Il se pourrait que votre estomac fasse mal son travail de départ : l'acidité et les enzymes qui préparent les protéines. Quand cette première étape est incomplète, le repas stagne et fermente, et toute la suite de la digestion en souffre.",
+    conf: "Protéines qui restent sur l'estomac ; IPP ou anti-acides au long cours ; carences en fer, B12 ou zinc ; âge." },
+  gastrite: { l: "Irritation de la muqueuse de l'estomac (dont Helicobacter pylori)",
+    dire: "Une brûlure à jeun qui s'apaise en mangeant fait penser à une muqueuse de l'estomac irritée. Il y a plusieurs causes possibles, dont une bactérie, Helicobacter pylori, que l'on peut rechercher simplement.",
+    conf: "Recherche d'Helicobacter pylori (souffle ou selles) ; antidouleurs, tabac, alcool, stress." },
+  reflux: { l: "Reflux : clapet de l'estomac et vidange lente",
+    dire: "Les remontées viennent du contenu de l'estomac qui franchit le clapet situé avant l'estomac. Ce n'est pas toujours un excès d'acidité : un estomac qui se vide lentement ou un clapet qui se relâche suffisent.",
+    conf: "Position allongée, repas tardifs, hernie hiatale (avis médical), prise d'IPP." },
+  biliaire: { l: "Fonction biliaire et pancréatique (digestion des graisses)",
+    dire: "Le foie fabrique la bile et le pancréas les enzymes qui digèrent les graisses. Quand ce duo manque de souplesse, les repas gras pèsent, on est barbouillée, et les selles peuvent devenir grasses.",
+    conf: "Échographie hépato-biliaire si douleur à droite ; antécédent de calculs ou d'ablation de la vésicule." },
+  dysbiose: { l: "Déséquilibre du microbiote (fermentation ou putréfaction)",
+    dire: "Les bactéries du côlon se nourrissent de ce qui arrive jusqu'à elles. Quand leur équilibre est perturbé, par exemple après des antibiotiques, elles produisent trop de gaz, ou des gaz soufrés : c'est ce que vous sentez.",
+    conf: "Antibiotiques répétés ; variété des fibres ; analyse du microbiote selon le cas." },
+  sii: { l: "Côlon irritable : intestin hypersensible",
+    dire: "Votre intestin pourrait être devenu très sensible : il réagit fort à des contractions ou à une quantité de gaz que la plupart des gens ne sentent pas. Ce n'est pas dans la tête : c'est un dialogue entre l'intestin et le cerveau qui s'emballe.",
+    conf: "Douleur soulagée par la selle, alternance, urgences ; écarter la maladie cœliaque et une maladie inflammatoire avant de conclure." },
+  axe: { l: "Axe intestin-cerveau : stress et système nerveux",
+    dire: "L'intestin a son propre réseau de neurones, relié au cerveau par le nerf vague. Sous stress, la vitesse du transit et la sensibilité changent aussitôt : c'est pourquoi votre ventre réagit à vos tensions.",
+    conf: "Lien dans le temps entre stress et symptômes ; sommeil ; respiration ; section Surrénales." },
+  perm: { l: "Irritation de la muqueuse et hyperperméabilité",
+    dire: "La paroi de l'intestin est un filtre : elle laisse passer les nutriments et retient le reste. Quand elle est irritée, par des antidouleurs, des infections ou le stress, elle laisse passer ce qu'elle devrait retenir, et le corps se met à réagir à certains aliments.",
+    conf: "Antidouleurs réguliers ; intolérances qui changent ; bilan de perméabilité selon le cas." },
+  fodmap: { l: "Sucres fermentescibles mal tolérés (FODMAP)",
+    dire: "Certains sucres, présents dans l'oignon, l'ail, les légumineuses, le blé ou certains fruits, sont peu absorbés puis fermentés par les bactéries. Plus il y a de bactéries au mauvais endroit, plus ils font gonfler.",
+    conf: "Aliments déclencheurs cités ; amélioration en les réduisant (seulement de façon encadrée)." },
+  lactose: { l: "Intolérance au lactose",
+    dire: "Le lactose, le sucre du lait, est digéré par une enzyme, la lactase, que beaucoup d'adultes produisent moins. Non digéré, il fermente et fait gonfler le ventre.",
+    conf: "Test respiratoire au lactose, ou essai d'éviction encadré." },
+  histamine: { l: "Excès d'histamine ou difficulté à la dégrader",
+    dire: "L'histamine est présente dans les aliments vieillis, fermentés ou réchauffés. Si l'enzyme qui la dégrade est en retard, vous pouvez avoir des rougeurs, des maux de tête ou le ventre gonflé juste après.",
+    conf: "Aliments déclencheurs (vin, fromage affiné, charcuterie, restes) ; essai d'éviction encadré." },
+  constip: { l: "Ralentissement du transit",
+    dire: "Quand le contenu de l'intestin avance trop lentement, l'eau est réabsorbée, les selles durcissent et les gaz restent piégés. Plusieurs choses agissent sur cette vitesse : les hormones, la thyroïde, le magnésium, l'eau, le stress.",
+    conf: "Thyroïde ; magnésium ; cycle ; hydratation ; médicaments ralentisseurs." },
+  gyneco: { l: "Composante hormonale ou gynécologique",
+    dire: "Le ventre suit parfois le cycle : la progestérone ralentit le transit en deuxième partie de cycle, et certains troubles gynécologiques, comme l'endométriose, donnent des douleurs digestives qui n'ont pas leur origine dans l'intestin.",
+    conf: "Journal du cycle ; douleurs aux règles ou aux rapports ; section Hormones & cycle ; guide Endométriose." }
+};
+
+/* ───────────── L'arbre ─────────────
+   n.m : 'listen' (elle le dit) | 'ask' (je demande)     n.s : libellé court pour l'historique
+   n.multi : plusieurs réponses   o.k clé, o.l libellé, o.f fragment du récapitulatif (« vous… »)
+   o.say : ce que je peux lui dire tout de suite     o.e : [[piste, points, « preuve »]]
+   o.flag : signe d'alerte (avis médical d'abord)     o.note : point d'attention     o.x : exclusif ("aucun")  */
+var N = {};
+function node(id, d) { d.id = id; N[id] = d; }
+
+node('motifs', { m: 'listen', multi: true, s: 'Ce qu\'elle décrit',
+  q: "Qu'est-ce qui la gêne côté digestion ?",
+  hint: "Elle vous le dit avec ses mots : cochez au fil de son récit, dans l'ordre où elle en parle. Chaque gêne ouvre ses questions, l'une après l'autre.",
+  why: "Je pars de ce que vous ressentez, pas d'un formulaire. Chaque gêne que vous décrivez m'indique où regarder en premier dans votre système digestif.",
+  o: [
+    { k: 'ball', l: "Ventre gonflé, ballonnements, gaz" },
+    { k: 'haut', l: "Reflux, brûlures, estomac lourd, nausées" },
+    { k: 'douleur', l: "Douleurs ou crampes au ventre" },
+    { k: 'transit', l: "Constipation, diarrhées, ou les deux en alternance" },
+    { k: 'alim', l: "Réactions à certains aliments" },
+    { k: 'autre', l: "Autre gêne (haleine, selles grasses, aphtes…)" }
+  ],
+  next: function () { return 'secu'; } });
+
+node('secu', { m: 'ask', multi: true, s: 'Signes de sécurité',
+  q: "Un point de sécurité avant d'aller plus loin : avez-vous remarqué l'un de ces signes ?",
+  hint: "Une seule question, posée naturellement. Si oui, notez-le : on continue, mais l'avis du médecin passe avant l'accompagnement.",
+  why: "Certains signes digestifs doivent d'abord être examinés par un médecin. Je préfère les écarter dès maintenant, avant de construire quoi que ce soit avec vous.",
+  o: [
+    { k: 'sang', l: "Du sang dans les selles, ou des selles noires", flag: "Sang dans les selles ou selles noires : avis médical rapide avant tout accompagnement." },
+    { k: 'poids', l: "Une perte de poids sans l'avoir cherchée", flag: "Perte de poids involontaire : bilan médical avant tout accompagnement." },
+    { k: 'nuit', l: "Une douleur ou une diarrhée qui la réveille la nuit", flag: "Réveils nocturnes par douleur ou diarrhée : évoque une cause organique, avis médical." },
+    { k: 'avaler', l: "Une gêne pour avaler, ou des vomissements répétés", flag: "Gêne à la déglutition ou vomissements répétés : avis médical." },
+    { k: 'fievre', l: "De la fièvre, la peau ou les yeux jaunes, des selles très claires", flag: "Fièvre, jaunisse ou selles décolorées : avis médical urgent." },
+    { k: 'recent', l: "Un changement net du transit, récent et qui dure (surtout après 50 ans)", flag: "Changement récent et durable du transit, surtout après 50 ans : coloscopie à discuter avec le médecin." },
+    { k: 'famille', l: "Un cancer du côlon, une maladie de Crohn, une rectocolite ou une maladie cœliaque chez un proche", flag: "Antécédent familial digestif (côlon, Crohn, RCH, cœliaque) : à signaler au médecin, dépistage adapté." },
+    { k: 'anemie', l: "Une anémie connue, une grande pâleur, un essoufflement inhabituel", flag: "Anémie ou pâleur : cause digestive à rechercher par le médecin." },
+    { k: 'aucun', l: "Aucun de ces signes", x: true }
+  ],
+  next: function (a) { return firstBr(a); } });
+
+/* ── Ballonnements / gaz ── */
+node('ball_quand', { m: 'ask', br: 'ball', s: 'Moment du gonflement',
+  q: "À quel moment votre ventre gonfle-t-il ?",
+  hint: "Le moment du gonflement par rapport au repas situe la zone concernée dans le tube digestif.",
+  why: "Après un repas, les aliments avancent : estomac d'abord, intestin grêle ensuite, côlon enfin. Savoir quand votre ventre gonfle me dit à quel endroit du trajet cela se passe.",
+  o: [
+    { k: 'immediat', l: "Tout de suite après le repas (dans la demi-heure)", f: "votre ventre gonfle tout de suite après le repas",
+      say: "Quand le ventre gonfle tout de suite après le repas, cela se passe plutôt haut dans le tube digestif : l'estomac ou le début de l'intestin grêle. C'est là que la digestion démarre, avec l'acidité et les enzymes ; si elles manquent, les aliments fermentent trop tôt.",
+      e: [['hypochlor', 2, "ventre qui gonfle tout de suite après le repas"], ['sibo', 2, "gonflement précoce après le repas"], ['sii', 1, "gonflement immédiat"]] },
+    { k: 'une_trois', l: "Une à trois heures après le repas", f: "votre ventre gonfle une à trois heures après le repas",
+      say: "Une à trois heures après le repas, les aliments arrivent dans l'intestin grêle. Si des bactéries y sont trop nombreuses, elles fermentent ce qu'elles trouvent et produisent des gaz sur place : le ventre se gonfle à ce moment-là.",
+      e: [['sibo', 3, "gonflement 1 à 3 h après le repas"], ['dysbiose', 1, "gonflement différé après le repas"]] },
+    { k: 'journee', l: "Plat le matin, de plus en plus gonflé au fil de la journée", f: "votre ventre est plat le matin et gonfle au fil de la journée",
+      say: "Un ventre plat le matin qui gonfle un peu plus à chaque repas raconte une fermentation qui s'accumule. C'est typique d'un intestin qui fermente trop, ou qui est très sensible à l'étirement.",
+      e: [['sibo', 2, "ventre plat le matin, gonflé le soir"], ['sii', 2, "gonflement progressif dans la journée"], ['dysbiose', 1, "fermentation qui s'accumule"]] },
+    { k: 'reveil', l: "Gonflé dès le réveil, même à jeun", f: "votre ventre est déjà gonflé au réveil",
+      say: "Un ventre déjà gonflé au réveil, avant tout repas, ne s'explique pas par la fermentation d'un repas. On pense plutôt à un transit qui stagne, à des gaz piégés dans le côlon, ou à un contexte hormonal ou gynécologique.",
+      e: [['constip', 2, "ventre gonflé dès le réveil"], ['gyneco', 1, "ventre gonflé à jeun"]] },
+    { k: 'cycle', l: "Surtout avant les règles, ou selon le moment du cycle", f: "votre ventre gonfle surtout selon le moment du cycle",
+      say: "Quand le ventre suit le cycle, les hormones y sont pour beaucoup : la progestérone ralentit le transit, et les œstrogènes favorisent la rétention d'eau et la sensibilité. On y reviendra plus loin avec votre cycle.",
+      e: [['gyneco', 3, "ventre qui suit le cycle"], ['constip', 1, "transit ralenti selon le cycle"]] },
+    { k: 'irregulier', l: "Sans régularité, parfois sans raison", f: "votre ventre gonfle sans régularité",
+      say: "Un gonflement sans horaire ni déclencheur clair oriente plutôt vers un intestin sensible, qui réagit à beaucoup de choses, dont le stress et la fatigue.",
+      e: [['sii', 2, "gonflement sans régularité"], ['axe', 1, "gonflement imprévisible"]] }
+  ],
+  next: function () { return 'ball_gaz'; } });
+
+node('ball_gaz', { m: 'ask', br: 'ball', s: 'Les gaz',
+  q: "Et côté gaz, comment cela se passe-t-il ?",
+  hint: "Quantité et odeur : c'est ce qui distingue la fermentation (hydrogène), la putréfaction (soufre) et l'air avalé.",
+  why: "La nature des gaz révèle ce que les bactéries ont fermenté et où : les gaz sans odeur et les gaz soufrés n'ont pas du tout la même origine.",
+  o: [
+    { k: 'tendu', l: "Peu de gaz, mais un ventre tendu, dur", f: "vous avez peu de gaz mais un ventre tendu",
+      say: "Un ventre tendu avec peu de gaz évoque plutôt un intestin hypersensible à l'étirement, ou un ventre qui se contracte, davantage qu'une vraie fermentation.",
+      e: [['sii', 2, "ventre tendu avec peu de gaz"], ['axe', 1, "ventre contracté"]] },
+    { k: 'inodore', l: "Beaucoup de gaz, peu odorants", f: "vous avez beaucoup de gaz peu odorants",
+      say: "Des gaz abondants mais peu odorants viennent surtout de la fermentation des sucres et des fibres. Les bactéries se nourrissent de ce qui n'a pas été digéré plus haut.",
+      e: [['fodmap', 2, "gaz abondants peu odorants"], ['sibo', 1, "fermentation de sucres"], ['dysbiose', 1, "gaz de fermentation"]] },
+    { k: 'soufre', l: "Beaucoup de gaz, très malodorants (œuf pourri)", f: "des gaz très malodorants",
+      say: "Les gaz à odeur d'œuf pourri contiennent du soufre. Ils viennent de bactéries qui dégradent des protéines mal digérées. C'est le signe que des protéines arrivent jusqu'au côlon sans avoir été bien préparées plus haut.",
+      e: [['dysbiose', 2, "gaz très malodorants"], ['hypochlor', 1, "protéines mal digérées"]] },
+    { k: 'rots', l: "Surtout des rots, de l'air qui remonte", f: "vous avez surtout des rots",
+      say: "Des rots fréquents traduisent soit de l'air avalé en mangeant vite, soit une digestion gastrique lente qui fait fermenter le repas dans l'estomac.",
+      e: [['hypochlor', 2, "rots fréquents"], ['reflux', 1, "air qui remonte"]] }
+  ],
+  next: function () { return 'ball_aliments'; } });
+
+node('ball_aliments', { m: 'ask', multi: true, br: 'ball', s: 'Aliments qui aggravent',
+  q: "Y a-t-il des aliments qui font nettement monter la gêne ?",
+  hint: "Plusieurs réponses possibles. Ne proposez pas d'éviction ici : on cherche seulement le motif.",
+  why: "Chaque famille d'aliments demande une enzyme ou une étape de digestion différente. Si certains aliments reviennent, cela me dit quelle étape est en difficulté.",
+  o: [
+    { k: 'feculents', l: "Pain, pâtes, riz, féculents", f: "le pain et les féculents aggravent la gêne", e: [['fodmap', 1, "gêne avec le pain et les féculents"], ['sibo', 1, "gêne avec les féculents"]] },
+    { k: 'legumes', l: "Oignon, ail, chou, légumineuses", f: "l'oignon, l'ail, le chou et les légumineuses aggravent la gêne",
+      say: "L'oignon, l'ail, les choux et les légumineuses contiennent des sucres que l'on digère mal. Chez tout le monde ils fermentent un peu ; chez vous ils fermentent trop tôt, au mauvais endroit, ce qui fait gonfler vite.",
+      e: [['fodmap', 2, "gêne avec oignon, ail, chou, légumineuses"], ['sibo', 1, "gêne avec les aliments très fermentescibles"]] },
+    { k: 'laitiers', l: "Produits laitiers", f: "les produits laitiers aggravent la gêne", e: [['lactose', 2, "gêne avec les produits laitiers"]] },
+    { k: 'gras', l: "Repas gras, fritures", f: "les repas gras pèsent",
+      say: "Quand les repas gras pèsent, c'est souvent que la bile et les enzymes du pancréas arrivent en retard ou en trop petite quantité pour digérer les graisses.",
+      e: [['biliaire', 2, "gêne avec les repas gras"]] },
+    { k: 'proteines', l: "Viande, œufs (repas protéiné)", f: "les repas protéinés restent sur l'estomac",
+      say: "Les protéines demandent de l'acidité dans l'estomac pour être préparées. Si elles restent sur l'estomac, c'est le signe que cette première étape manque d'efficacité.",
+      e: [['hypochlor', 2, "gêne avec les repas protéinés"]] },
+    { k: 'fruits', l: "Fruits, jus, miel, sucreries", f: "les fruits et les sucres aggravent la gêne", e: [['fodmap', 1, "gêne avec fruits et sucres"], ['dysbiose', 1, "gêne avec les sucres"]] },
+    { k: 'rien', l: "Rien de précis, tout la gonfle", f: "aucun aliment précis n'explique la gêne", x: true, e: [['sii', 1, "gêne sans aliment précis"], ['perm', 1, "réaction à de nombreux aliments"]] }
+  ],
+  next: function (a) { return afterBr(a, 'ball'); } });
+
+/* ── Estomac, reflux ── */
+node('haut_brulure', { m: 'ask', br: 'haut', s: 'Estomac',
+  q: "Est-ce plutôt une brûlure qui remonte, ou un estomac lourd qui digère longtemps ?",
+  hint: "Quatre profils différents : reflux, estomac irrité (à jeun), digestion lente, nausées.",
+  why: "Une brûlure, une lourdeur et une nausée n'ont pas la même cause. Je veux savoir laquelle de ces trois sensations domine pour regarder au bon endroit.",
+  o: [
+    { k: 'reflux', l: "Une brûlure qui remonte, surtout allongée ou après le repas", f: "vous avez une brûlure qui remonte",
+      say: "Une brûlure qui remonte vient du contenu de l'estomac qui franchit le clapet situé juste au-dessus. Contrairement à une idée répandue, ce n'est pas toujours un excès d'acidité : un estomac qui se vide lentement ou un clapet qui se relâche suffisent.",
+      e: [['reflux', 3, "brûlure qui remonte"], ['hypochlor', 1, "vidange gastrique lente possible"]] },
+    { k: 'jeun', l: "Une brûlure ou un creux douloureux à jeun, qui s'apaise en mangeant", f: "vous avez mal à l'estomac à jeun, et manger vous apaise",
+      say: "Une douleur à jeun qui s'apaise en mangeant évoque une muqueuse de l'estomac irritée. Les causes sont multiples, dont une bactérie, Helicobacter pylori, que l'on recherche avec un simple test.",
+      e: [['gastrite', 3, "douleur d'estomac à jeun apaisée en mangeant"]] },
+    { k: 'lourd', l: "Pas de brûlure, mais un estomac lourd, longtemps après le repas, surtout avec la viande", f: "votre estomac reste lourd longtemps après le repas",
+      say: "Un estomac lourd longtemps après le repas, surtout avec la viande, évoque une digestion gastrique insuffisante : peu d'acidité, ou vidange lente. Les protéines restent alors trop longtemps sur l'estomac.",
+      e: [['hypochlor', 3, "estomac lourd, digestion longue"]] },
+    { k: 'nausee', l: "Surtout des nausées, un mal au cœur après les repas", f: "vous avez des nausées après les repas",
+      say: "Des nausées après le repas viennent souvent de la vésicule et de la digestion des graisses, ou d'un estomac irrité. Le stress, qui coupe la digestion, y participe aussi.",
+      e: [['biliaire', 2, "nausées après les repas"], ['gastrite', 1, "nausées"], ['axe', 1, "nausées liées à la tension"]] }
+  ],
+  next: function () { return 'haut_ipp'; } });
+
+node('haut_ipp', { m: 'ask', br: 'haut', s: 'Médicament pour l\'estomac',
+  q: "Prenez-vous un médicament pour l'estomac, du type oméprazole, ou des anti-acides ?",
+  hint: "Les IPP (oméprazole, ésoméprazole, pantoprazole…) réduisent l'acidité. Ne jamais proposer de les arrêter : c'est le médecin.",
+  why: "L'acidité de l'estomac est la première barrière contre les bactéries et la première étape de la digestion des protéines. Un médicament qui la réduit change la lecture de vos symptômes.",
+  o: [
+    { k: 'ipp_long', l: "Oui, depuis plus d'un an", f: "vous prenez un médicament pour l'estomac depuis plus d'un an",
+      say: "Un médicament qui réduit l'acidité, pris longtemps, gêne la digestion des protéines et peut laisser les bactéries monter dans l'intestin grêle. Il ne faut jamais l'arrêter sans l'accord de votre médecin, et on verra ensemble comment accompagner la suite.",
+      note: "IPP au long cours : l'arrêt se décide avec le médecin, jamais seule. Surveiller B12, fer, magnésium.", e: [['hypochlor', 2, "IPP depuis plus d'un an"], ['sibo', 1, "IPP au long cours"]] },
+    { k: 'ipp_periodes', l: "Oui, par périodes", f: "vous prenez parfois un médicament pour l'estomac", e: [['reflux', 1, "médicament de l'estomac par périodes"]] },
+    { k: 'antiacide', l: "Seulement des anti-acides de temps en temps", f: "vous prenez parfois des anti-acides", e: [['reflux', 1, "anti-acides occasionnels"]] },
+    { k: 'non', l: "Non", x: true }
+  ],
+  next: function (a) { return afterBr(a, 'haut'); } });
+
+/* ── Douleurs ── */
+node('douleur_ou', { m: 'ask', br: 'douleur', s: 'Siège de la douleur',
+  q: "Où avez-vous mal, exactement ? Montrez-moi avec la main.",
+  hint: "Le siège de la douleur oriente : haut, droite, bas, gauche, bas-ventre lié au cycle.",
+  why: "Chaque organe a sa zone : l'estomac au creux du ventre, la vésicule en haut à droite, le côlon sur le pourtour. Le siège exact me dit lequel regarder.",
+  o: [
+    { k: 'epigastre', l: "Le creux de l'estomac, en haut au milieu", f: "la douleur est dans le creux de l'estomac", e: [['gastrite', 2, "douleur au creux de l'estomac"], ['reflux', 1, "douleur épigastrique"], ['biliaire', 1, "douleur épigastrique"]] },
+    { k: 'droite', l: "En haut à droite, sous les côtes", f: "la douleur est en haut à droite, sous les côtes",
+      say: "En haut à droite, sous les côtes, se trouvent le foie et la vésicule biliaire. Une douleur à cet endroit après les repas, surtout gras, fait penser à une bile qui s'écoule mal.",
+      e: [['biliaire', 3, "douleur en haut à droite sous les côtes"]] },
+    { k: 'bas', l: "Le bas du ventre, des deux côtés ou au milieu", f: "la douleur est dans le bas du ventre", e: [['sii', 2, "douleur du bas-ventre"], ['gyneco', 1, "douleur du bas-ventre"]] },
+    { k: 'gauche', l: "En bas à gauche", f: "la douleur est en bas à gauche",
+      say: "En bas à gauche se trouve la dernière partie du côlon, là où les selles s'accumulent quand le transit est lent.",
+      e: [['constip', 2, "douleur en bas à gauche"], ['sii', 1, "douleur colique gauche"]] },
+    { k: 'diffuse', l: "Partout, ou qui se déplace", f: "la douleur est diffuse et se déplace", e: [['sii', 2, "douleur diffuse qui se déplace"], ['axe', 1, "douleur diffuse"]] },
+    { k: 'pelvien', l: "Dans le bas-ventre, plutôt pendant les règles ou aux rapports", f: "la douleur du bas-ventre est liée aux règles ou aux rapports",
+      say: "Une douleur du bas-ventre qui suit le cycle, ou qui apparaît aux rapports, doit faire penser à une origine gynécologique, l'endométriose notamment, et pas seulement à l'intestin. On va regarder cela de près.",
+      note: "Douleur pelvienne cyclique ou aux rapports : explorer la section Hormones & cycle et le guide Endométriose.", e: [['gyneco', 4, "douleur du bas-ventre liée aux règles ou aux rapports"]] }
+  ],
+  next: function () { return 'douleur_quand'; } });
+
+node('douleur_quand', { m: 'ask', br: 'douleur', s: 'Moment de la douleur',
+  q: "Quand cette douleur arrive-t-elle ?",
+  hint: "Le soulagement par la selle est le critère le plus caractéristique du côlon irritable.",
+  why: "Le moment où la douleur survient et ce qui la calme montrent si elle vient d'une contraction de l'intestin, d'un repas ou d'une tension nerveuse.",
+  o: [
+    { k: 'avant_selle', l: "Elle monte avant d'aller à la selle et s'apaise après", f: "la douleur s'apaise après être allée à la selle",
+      say: "Une douleur qui cède après la selle est le critère le plus caractéristique du côlon irritable : l'intestin se contracte trop fort, puis se relâche quand il se vide.",
+      e: [['sii', 3, "douleur soulagée par la selle"]] },
+    { k: 'apres_repas', l: "Après les repas", f: "la douleur survient après les repas", e: [['sibo', 1, "douleur après les repas"], ['hypochlor', 1, "douleur après les repas"], ['biliaire', 1, "douleur après les repas"]] },
+    { k: 'jeun', l: "À jeun, entre les repas", f: "la douleur survient à jeun", e: [['gastrite', 2, "douleur à jeun"], ['axe', 1, "douleur à jeun"]] },
+    { k: 'stress', l: "Quand elle est tendue ou stressée", f: "la douleur vient avec les tensions",
+      say: "Quand la douleur suit vos tensions, c'est le dialogue entre le cerveau et l'intestin qui s'emballe : sous stress, l'intestin se contracte et devient plus sensible.",
+      e: [['axe', 3, "douleur qui suit le stress"], ['sii', 1, "douleur déclenchée par le stress"]] },
+    { k: 'nuit', l: "La nuit : elle la réveille", f: "la douleur vous réveille la nuit", flag: "Douleur qui réveille la nuit : évoque une cause organique, avis médical avant tout accompagnement." },
+    { k: 'imprevisible', l: "Sans moment précis", f: "la douleur n'a pas de moment précis", e: [['sii', 1, "douleur imprévisible"]] }
+  ],
+  next: function (a) { return afterBr(a, 'douleur'); } });
+
+/* ── Transit ── */
+node('transit_selles', { m: 'ask', br: 'transit', s: 'Aspect des selles',
+  q: "Les selles, le plus souvent : plutôt dures, normales, molles ou liquides ?",
+  hint: "Échelle de Bristol : types 1-2 durs, 3-4 normaux, 5-6 mous, 7 liquides.",
+  why: "La consistance des selles reflète la vitesse du transit. Trop dures, l'intestin a avancé trop lentement ; trop molles, trop vite.",
+  o: [
+    { k: 'dures', l: "Dures, en boulettes ou en saucisse craquelée (types 1-2)", f: "vos selles sont dures", e: [['constip', 3, "selles dures"]] },
+    { k: 'normales', l: "Normales (types 3-4)", f: "vos selles sont normales" },
+    { k: 'molles', l: "Molles ou pâteuses (types 5-6)", f: "vos selles sont molles", e: [['sii', 1, "selles molles"]] },
+    { k: 'liquides', l: "Liquides (type 7)", f: "vos selles sont liquides", e: [['sii', 1, "selles liquides"]] },
+    { k: 'alternance', l: "Ça alterne entre dur et liquide", f: "vos selles alternent entre dures et liquides",
+      say: "Une alternance entre constipation et diarrhée, sans schéma stable, est l'un des signes les plus évocateurs d'un intestin irritable : la vitesse du transit n'arrive plus à se réguler.",
+      e: [['sii', 3, "alternance de constipation et de diarrhée"]] }
+  ],
+  next: function (a, v) {
+    if (v === 'dures') return 'const_detail';
+    if (v === 'molles' || v === 'liquides') return 'diar_detail';
+    return afterBr(a, 'transit');
+  } });
+
+node('const_detail', { m: 'ask', multi: true, br: 'transit', s: 'Constipation',
+  q: "Quand vous allez à la selle, comment cela se passe-t-il ?",
+  hint: "Plusieurs réponses possibles.",
+  why: "La façon dont les selles sortent m'indique si le problème est un transit lent, un signal qui ne part pas, ou un bas-ventre trop contracté.",
+  o: [
+    { k: 'pousser', l: "Il faut pousser fort", f: "il faut pousser fort", e: [['constip', 2, "efforts de poussée"]] },
+    { k: 'incomplet', l: "La sensation de ne jamais être vraiment vidée", f: "vous avez la sensation de ne jamais être vraiment vidée",
+      say: "Cette impression de ne pas être vidée vient souvent d'un côlon qui se contracte mal, ou d'une zone du bas du ventre trop tendue. Cela se travaille.",
+      e: [['sii', 2, "sensation d'évacuation incomplète"], ['constip', 1, "évacuation incomplète"]] },
+    { k: 'pas_envie', l: "Pas d'envie du tout pendant plusieurs jours", f: "le besoin d'aller à la selle ne vient pas pendant plusieurs jours",
+      say: "Quand le besoin ne vient pas, c'est le signal qui ne part pas : la paroi du côlon se contracte peu. La thyroïde, le magnésium, les hormones et certains médicaments peuvent le ralentir.",
+      e: [['constip', 3, "pas d'envie pendant plusieurs jours"]] },
+    { k: 'cycle', l: "Pire avant les règles", f: "c'est pire avant les règles",
+      say: "Une constipation qui s'aggrave avant les règles s'explique : la progestérone, qui monte en deuxième partie de cycle, relâche les muscles de l'intestin et ralentit le transit.",
+      e: [['gyneco', 3, "constipation pire avant les règles"], ['constip', 1, "transit ralenti en phase lutéale"]] },
+    { k: 'rien', l: "Rien de particulier", x: true }
+  ],
+  next: function (a) { return afterBr(a, 'transit'); } });
+
+node('diar_detail', { m: 'ask', multi: true, br: 'transit', s: 'Selles molles',
+  q: "Qu'est-ce qui accompagne ces selles molles ?",
+  hint: "Plusieurs réponses possibles. Selles grasses ou diarrhée nocturne : point de vigilance.",
+  why: "Une diarrhée liée aux repas, au stress, aux graisses ou à la nuit n'a pas la même origine. C'est ce contexte qui m'oriente.",
+  o: [
+    { k: 'urgence', l: "Un besoin urgent, impossible à retarder", f: "vous avez des urgences",
+      say: "L'urgence, ce besoin impossible à retarder, traduit un côlon trop sensible et trop rapide. C'est typique d'un intestin irritable, au-delà d'un simple transit rapide.",
+      e: [['sii', 2, "urgences défécatoires"]] },
+    { k: 'repas', l: "Juste après avoir mangé", f: "les selles viennent juste après le repas", e: [['sii', 1, "selles juste après le repas"]] },
+    { k: 'gras', l: "Des selles grasses, qui flottent, difficiles à chasser", f: "vos selles sont grasses et flottent",
+      say: "Des selles grasses, qui flottent, signent des graisses mal digérées : la bile ou les enzymes du pancréas ne font pas tout leur travail.",
+      e: [['biliaire', 3, "selles grasses qui flottent"]] },
+    { k: 'stress', l: "Surtout quand elle est stressée", f: "les selles molles viennent avec le stress", e: [['axe', 2, "diarrhée liée au stress"], ['sii', 1, "diarrhée liée au stress"]] },
+    { k: 'nuit', l: "La nuit", f: "vous avez de la diarrhée la nuit", flag: "Diarrhée nocturne : évoque une cause organique, avis médical avant tout accompagnement." },
+    { k: 'rien', l: "Rien de particulier", x: true }
+  ],
+  next: function (a) { return afterBr(a, 'transit'); } });
+
+/* ── Réactions aux aliments ── */
+node('alim_react', { m: 'ask', multi: true, br: 'alim', s: 'Réactions aux aliments',
+  q: "Quels aliments la dérangent, et comment ?",
+  hint: "Plusieurs réponses possibles.",
+  why: "Chaque type de réaction (gaz, rougeurs, maux de tête, ventre gonflé) renvoie à un mécanisme différent : fermentation, histamine, enzyme manquante, muqueuse fragilisée.",
+  o: [
+    { k: 'histamine', l: "Vin, fromage affiné, charcuterie, plats réchauffés : rougeurs, maux de tête, ventre gonflé", f: "le vin, les fromages affinés et les plats réchauffés vous réveillent des symptômes",
+      say: "Les aliments vieillis, fermentés ou réchauffés contiennent de l'histamine. Si l'enzyme qui la dégrade est en retard, elle s'accumule : rougeurs, maux de tête, ventre gonflé juste après.",
+      e: [['histamine', 3, "réaction au vin, fromages affinés, charcuterie, restes"]] },
+    { k: 'gluten', l: "Blé, pain, pâtes", f: "le blé vous gêne",
+      say: "Le blé contient des fructanes, des sucres qui fermentent, et du gluten que certaines personnes tolèrent mal sans être cœliaques. Avant de le retirer, il faut d'abord écarter la maladie cœliaque par une prise de sang, sinon on la masque.",
+      e: [['fodmap', 1, "gêne avec le blé"], ['sibo', 1, "gêne avec le blé"], ['perm', 1, "réaction au blé"]] },
+    { k: 'lait', l: "Produits laitiers", f: "les produits laitiers vous gênent", e: [['lactose', 2, "gêne avec les produits laitiers"]] },
+    { k: 'tournantes', l: "Ça change : un aliment passe un mois, puis un autre pose problème", f: "les aliments qui vous gênent changent d'un mois à l'autre",
+      say: "Quand les intolérances changent d'un mois à l'autre, ce n'est généralement pas l'aliment qui est en cause mais la muqueuse de l'intestin, devenue plus perméable, qui laisse passer ce qu'elle devrait retenir.",
+      e: [['perm', 3, "intolérances qui changent d'un mois à l'autre"]] },
+    { k: 'beaucoup', l: "Beaucoup d'aliments, et de plus en plus", f: "de plus en plus d'aliments vous gênent",
+      note: "De plus en plus d'aliments évités : vérifier qu'elle ne se restreint pas par peur et que son poids tient (risque de restriction excessive).",
+      e: [['perm', 2, "de plus en plus d'aliments mal tolérés"], ['axe', 1, "peur des aliments"]] },
+    { k: 'rien', l: "Rien de précis", x: true }
+  ],
+  next: function (a) { return afterBr(a, 'alim'); } });
+
+/* ── Autres gênes ── */
+node('autre_precis', { m: 'ask', multi: true, br: 'autre', s: 'Autres gênes',
+  q: "Parmi ces gênes, lesquelles reconnaissez-vous ?",
+  hint: "Plusieurs réponses possibles.",
+  why: "Ces signes, plus discrets, complètent le tableau : ils renseignent sur la digestion haute, la flore ou les carences.",
+  o: [
+    { k: 'haleine', l: "Une mauvaise haleine, une langue chargée", f: "vous avez une mauvaise haleine",
+      say: "Une mauvaise haleine tenace, y compris à jeun, vient souvent de la digestion plus bas : un estomac peu acide ou une flore qui fermente produisent des gaz qui remontent.",
+      e: [['hypochlor', 1, "mauvaise haleine"], ['dysbiose', 1, "mauvaise haleine tenace"]] },
+    { k: 'aphtes', l: "Des aphtes à répétition, la bouche irritée", f: "vous avez des aphtes à répétition",
+      note: "Aphtes récidivants : carences (fer, B12, folates) et maladie cœliaque à écarter.", e: [['perm', 1, "aphtes à répétition"]] },
+    { k: 'grasses', l: "Des selles grasses, très malodorantes", f: "vos selles sont grasses et très malodorantes", e: [['biliaire', 3, "selles grasses malodorantes"]] },
+    { k: 'anal', l: "Des démangeaisons anales, surtout la nuit", f: "vous avez des démangeaisons anales la nuit",
+      note: "Démangeaisons anales nocturnes : parasitose (oxyures) possible, à signaler au médecin ou au pharmacien.", e: [['dysbiose', 1, "démangeaisons anales nocturnes"]] },
+    { k: 'rien', l: "Autre chose : à noter dans les sections classiques", x: true }
+  ],
+  next: function (a) { return afterBr(a, 'autre'); } });
+
+/* ── Questions communes, une fois les gênes décrites ── */
+node('debut', { m: 'ask', s: 'Début des troubles',
+  q: "Comment tout cela a-t-il commencé ?",
+  hint: "C'est la question qui départage le mieux les pistes : le déclencheur.",
+  why: "Presque toujours, un événement précis a fait basculer la digestion. Le retrouver me dit par quel côté commencer.",
+  o: [
+    { k: 'gastro', l: "Après une gastro-entérite, une intoxication alimentaire ou un voyage", f: "tout a commencé après une gastro ou une intoxication alimentaire",
+      say: "Quand tout commence après une gastro, la toxine de certaines bactéries abîme les nerfs qui font avancer le contenu de l'intestin. Il se vide moins bien, les bactéries remontent : c'est la voie classique d'une pullulation du grêle ou d'un côlon irritable post-infectieux.",
+      e: [['sibo', 3, "début après une gastro ou une intoxication"], ['sii', 2, "début après une infection digestive"]] },
+    { k: 'antibio', l: "Après une ou plusieurs cures d'antibiotiques", f: "tout a commencé après des antibiotiques",
+      say: "Les antibiotiques ne font pas que tuer les mauvaises bactéries : ils appauvrissent aussi la flore protectrice. Quand l'équilibre se reconstruit mal, d'autres bactéries prennent la place.",
+      e: [['dysbiose', 3, "début après des antibiotiques"], ['sibo', 1, "début après des antibiotiques"]] },
+    { k: 'stress', l: "Après une période de stress intense ou un choc de vie", f: "tout a commencé après une période de stress intense",
+      say: "Un choc ou un stress prolongé change la motricité et la sensibilité de l'intestin. Pour beaucoup de personnes, la digestion ne s'en remet pas toute seule.",
+      e: [['axe', 3, "début après un stress intense"], ['sii', 2, "début après un choc de vie"]] },
+    { k: 'hormonal', l: "Après un changement hormonal (pilule, grossesse, accouchement, ménopause)", f: "tout a commencé après un changement hormonal",
+      say: "Les hormones agissent directement sur l'intestin : la progestérone ralentit le transit, les œstrogènes modifient la sensibilité. Un bouleversement hormonal peut donc changer la digestion.",
+      e: [['gyneco', 3, "début après un changement hormonal"], ['constip', 1, "transit modifié par les hormones"]] },
+    { k: 'chirurgie', l: "Après une opération du ventre (vésicule, appendice, césarienne…)", f: "tout a commencé après une opération du ventre",
+      say: "Une opération du ventre peut laisser des adhérences, ou modifier l'écoulement de la bile, ce qui change la façon dont l'intestin avance et digère.",
+      e: [['biliaire', 1, "début après une opération du ventre"], ['sibo', 1, "motricité modifiée après chirurgie"]] },
+    { k: 'progressif', l: "Progressivement, depuis longtemps ou depuis l'enfance", f: "cela s'est installé progressivement, depuis longtemps", e: [['sii', 1, "installation progressive depuis longtemps"], ['perm', 1, "installation progressive"]] },
+    { k: 'nsp', l: "Elle ne sait pas", x: true }
+  ],
+  next: function () { return 'soulage'; } });
+
+node('soulage', { m: 'ask', s: 'Ce qui soulage',
+  q: "Qu'est-ce qui vous soulage le plus ?",
+  hint: "Le mieux à jeun oriente vers le grêle ; le mieux en vacances vers l'axe intestin-cerveau.",
+  why: "Ce qui apaise la gêne révèle son mécanisme : si ne pas manger la calme, c'est que le repas la déclenche ; si les vacances l'effacent, le système nerveux y joue un rôle.",
+  o: [
+    { k: 'jeune', l: "Ne pas manger, jeûner", f: "vous allez mieux quand vous ne mangez pas",
+      say: "Quand ne pas manger vous soulage, c'est que le repas déclenche la gêne : ce qui fermente ou stagne n'a plus de carburant.",
+      e: [['sibo', 2, "mieux à jeun"], ['hypochlor', 1, "mieux à jeun"]] },
+    { k: 'selle', l: "Aller à la selle", f: "aller à la selle vous soulage", e: [['sii', 2, "soulagée par la selle"]] },
+    { k: 'chaleur', l: "La chaleur, une bouillotte, le repos", f: "la chaleur vous soulage", e: [['sii', 1, "soulagée par la chaleur"]] },
+    { k: 'vacances', l: "Les vacances, la détente", f: "vous allez mieux en vacances",
+      say: "Le fait d'aller mieux en vacances est une information précieuse : cela montre que votre intestin n'est pas abîmé en permanence, il est très sensible à la charge nerveuse.",
+      e: [['axe', 3, "mieux en vacances"], ['sii', 1, "mieux en vacances"]] },
+    { k: 'rien', l: "Rien ne la soulage vraiment", x: true }
+  ],
+  next: function () { return 'stress_lien'; } });
+
+node('stress_lien', { m: 'ask', s: 'Lien avec le stress',
+  q: "Est-ce que cela empire quand vous êtes stressée ?",
+  hint: "Sans la ramener à « votre stress » : on cherche seulement un lien dans le temps.",
+  why: "L'intestin et le cerveau sont reliés par le nerf vague. Savoir si les symptômes suivent vos tensions me dit si le système nerveux fait partie du problème.",
+  o: [
+    { k: 'oui', l: "Oui, nettement", f: "c'est nettement pire quand vous êtes stressée",
+      say: "Intestin et cerveau sont reliés par le nerf vague et par un réseau de neurones propre à l'intestin. Sous stress, la motricité et la sensibilité de l'intestin changent immédiatement : ce que vous observez est un mécanisme physique, pas de l'imagination.",
+      e: [['axe', 3, "pire quand elle est stressée"], ['sii', 1, "aggravation par le stress"]] },
+    { k: 'un_peu', l: "Un peu", f: "c'est un peu pire quand vous êtes stressée", e: [['axe', 1, "légère aggravation par le stress"]] },
+    { k: 'non', l: "Non, pas de lien", f: "il n'y a pas de lien avec le stress", x: true }
+  ],
+  next: function () { return 'traitements'; } });
+
+node('traitements', { m: 'ask', multi: true, s: 'Traitements pris',
+  q: "Avez-vous pris, ou prenez-vous, l'un de ces traitements ?",
+  hint: "Plusieurs réponses possibles. Le détail (noms, doses) se reprend dans la section Traitements.",
+  why: "Certains médicaments modifient directement la flore, la paroi de l'intestin ou la vitesse du transit. Je dois les connaître pour bien lire vos symptômes.",
+  o: [
+    { k: 'antibio', l: "Des antibiotiques dans l'année écoulée", f: "vous avez pris des antibiotiques dans l'année", e: [['dysbiose', 2, "antibiotiques dans l'année"], ['sibo', 1, "antibiotiques récents"]] },
+    { k: 'ains', l: "Des antidouleurs ou anti-inflammatoires réguliers (ibuprofène, aspirine…)", f: "vous prenez régulièrement des anti-inflammatoires",
+      say: "Les anti-inflammatoires abîment peu à peu la paroi de l'estomac et de l'intestin quand ils sont pris souvent. C'est un point à connaître avant d'aller plus loin.",
+      e: [['perm', 2, "anti-inflammatoires réguliers"], ['gastrite', 1, "anti-inflammatoires réguliers"]] },
+    { k: 'laxatifs', l: "Des laxatifs ou des stimulants du transit", f: "vous prenez des laxatifs",
+      note: "Laxatifs stimulants au long cours : entretiennent la paresse du côlon, à intégrer dans la stratégie.", e: [['constip', 1, "laxatifs"]] },
+    { k: 'pilule', l: "La pilule ou un traitement hormonal", f: "vous prenez un traitement hormonal", e: [['gyneco', 1, "contraception ou traitement hormonal"]] },
+    { k: 'ralentisseurs', l: "Des opioïdes, des antidépresseurs ou des anti-allergiques sédatifs", f: "vous prenez un médicament qui ralentit le transit", e: [['constip', 1, "médicament ralentissant le transit"]] },
+    { k: 'aucun', l: "Aucun de ceux-là", x: true }
+  ],
+  next: function () { return 'examens'; } });
+
+node('examens', { m: 'ask', multi: true, s: 'Examens déjà faits',
+  q: "Quels examens digestifs avez-vous déjà faits ?",
+  hint: "Plusieurs réponses possibles. Ce qui manque s'affichera dans le récapitulatif, à discuter avec son médecin.",
+  why: "Je ne veux ni refaire ce qui existe déjà, ni passer à côté d'un examen utile avant de vous accompagner.",
+  o: [
+    { k: 'gastro', l: "Consulté un gastro-entérologue" },
+    { k: 'coloscopie', l: "Une coloscopie" },
+    { k: 'gastroscopie', l: "Une gastroscopie" },
+    { k: 'souffle', l: "Un test respiratoire (lactulose ou glucose)" },
+    { k: 'coeliaque', l: "Une prise de sang pour la maladie cœliaque" },
+    { k: 'calpro', l: "Une calprotectine dans les selles" },
+    { k: 'echo', l: "Une échographie du foie et de la vésicule" },
+    { k: 'aucun', l: "Aucun examen", x: true }
+  ],
+  next: function () { return null; } });
+
+/* ───────────── Navigation dans l'arbre ───────────── */
+var BR = { ball: 'ball_quand', haut: 'haut_brulure', douleur: 'douleur_ou', transit: 'transit_selles', alim: 'alim_react', autre: 'autre_precis' };
+function queue(a) { var m = a.motifs; return Array.isArray(m) ? m.filter(function (k) { return BR[k]; }) : []; }
+function firstBr(a) { var q = queue(a); return q.length ? BR[q[0]] : 'debut'; }
+function afterBr(a, key) { var q = queue(a), i = q.indexOf(key), nx = q[i + 1]; return nx ? BR[nx] : 'debut'; }
+function nextOf(id, a) { var n = N[id], nx = n.next; return typeof nx === 'function' ? nx(a, a[id]) : (nx || null); }
+function walk(a) { var p = [], id = 'motifs', g = 0; while (id && g++ < 80) { p.push(id); if (a[id] === undefined) break; id = nextOf(id, a); } return p; }
+function chosen(id, a) {
+  var n = N[id], v = a[id]; if (v === undefined || v === '_skip') return [];
+  var ks = Array.isArray(v) ? v : [v], out = [];
+  ks.forEach(function (k) { n.o.forEach(function (o) { if (o.k === k) out.push(o); }); });
+  return out;
+}
+function has(a, id, k) { var v = a[id]; return Array.isArray(v) ? v.indexOf(k) >= 0 : v === k; }
+function hasAny(a, id, ks) { return ks.some(function (k) { return has(a, id, k); }); }
+
+/* ───────────── Cases équivalentes déjà présentes dans les sections ─────────────
+   Libellé (début) de la case → condition sur les réponses. Cochées / décochées automatiquement,
+   sauf si Sabrina a elle-même cliqué dessus. */
+var PONTS = [
+  ['SIBO — Ballonnements marqués et systématiques', function (a) { return hasAny(a, 'ball_quand', ['une_trois', 'journee']) && hasAny(a, 'ball_aliments', ['feculents', 'legumes']); }],
+  ['SII — Douleur abdominale nettement soulagée', function (a) { return has(a, 'douleur_quand', 'avant_selle') || has(a, 'soulage', 'selle'); }],
+  ['SII — Urgences défécatoires', function (a) { return has(a, 'diar_detail', 'urgence'); }],
+  ['SII — Alternance de diarrhée et de constipation', function (a) { return has(a, 'transit_selles', 'alternance'); }],
+  ['Cycle — Gaz, ballonnements ou transit', function (a) { return has(a, 'ball_quand', 'cycle') || has(a, 'const_detail', 'cycle'); }],
+  ['Histamine — Rougeur', function (a) { return has(a, 'alim_react', 'histamine'); }],
+  ['Avez-vous tendance à roter fréquemment', function (a) { return has(a, 'ball_gaz', 'rots'); }],
+  ['Avez-vous la sensation que les protéines', function (a) { return has(a, 'haut_brulure', 'lourd') || has(a, 'ball_aliments', 'proteines'); }],
+  ['Ressentez-vous encore l\'estomac', function (a) { return has(a, 'haut_brulure', 'lourd'); }],
+  ['Avez-vous une haleine putride', function (a) { return has(a, 'autre_precis', 'haleine'); }],
+  ['Avez-vous des ballonnements ou des douleurs 1 à 3h après le repas, plutôt côté droit', function (a) { return has(a, 'douleur_ou', 'droite'); }],
+  ['Vous sentez-vous écœurée ou barbouillée après un repas gras', function (a) { return has(a, 'ball_aliments', 'gras'); }],
+  ['Digérez-vous bien les graisses', function (a) { return has(a, 'ball_aliments', 'gras') || has(a, 'diar_detail', 'gras') || has(a, 'autre_precis', 'grasses'); }],
+  ['Avez-vous des diarrhées ou des urgences digestives déclenchées par le stress', function (a) { return has(a, 'diar_detail', 'stress'); }],
+  ['Vos symptômes gastriques s\'aggravent-ils les semaines de stress intense', function (a) { return has(a, 'stress_lien', 'oui'); }],
+  ['Avez-vous remarqué que vos symptômes s\'améliorent ou s\'aggravent selon ce que vous mangez', function (a) { var v = a.ball_aliments; return Array.isArray(v) && v.length > 0 && v.indexOf('rien') < 0; }],
+  ['Avez-vous des intolérances alimentaires qui changent selon les périodes', function (a) { return has(a, 'alim_react', 'tournantes'); }],
+  ['Avez-vous des intolérances alimentaires qui changent selon les semaines', function (a) { return has(a, 'alim_react', 'tournantes'); }],
+  ['Antidouleurs pris régulièrement', function (a) { return has(a, 'traitements', 'ains'); }]
+];
+
+/* ───────────── État ───────────── */
+var S = { v: 1, th: 'digestif', a: {}, p: {}, edit: null, ponts: [], soon: null, rst: false };
+var HOLDER = 'mg-json';
+function holder() { return document.getElementById(HOLDER); }
+function save() {
+  var h = holder(); if (h) h.value = JSON.stringify(S);
+  try { if (typeof formTouched !== 'undefined') formTouched = true; } catch (e) { /* page sans variable globale */ }
+}
+function load(raw) {
+  try { var o = JSON.parse(raw); if (o && o.a && typeof o.a === 'object') { S = { v: 1, th: o.th || 'digestif', a: o.a, p: o.p || {}, edit: null, ponts: Array.isArray(o.ponts) ? o.ponts : [], soon: null, rst: false }; return true; } } catch (e) { /* état illisible : on repart de zéro */ }
+  return false;
+}
+function esc(t) { return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+function isConsult() { return !!document.getElementById('motif-libre'); }
+
+/* ───────────── Lecture des réponses ───────────── */
+function analyse(a) {
+  var path = walk(a), sc = {}, ev = {}, flags = [], notes = [], frags = [];
+  path.forEach(function (id) {
+    chosen(id, a).forEach(function (o) {
+      (o.e || []).forEach(function (x) {
+        sc[x[0]] = (sc[x[0]] || 0) + x[1]; ev[x[0]] = ev[x[0]] || [];
+        var d = ev[x[0]].filter(function (y) { return y.t === x[2]; })[0];
+        if (d) d.p = Math.max(d.p, x[1]); else ev[x[0]].push({ t: x[2], p: x[1] });
+      });
+      if (o.flag && flags.indexOf(o.flag) < 0) flags.push(o.flag);
+      if (o.note && notes.indexOf(o.note) < 0) notes.push(o.note);
+      if (o.f) frags.push(o.f);
+    });
+  });
+  var list = Object.keys(sc).map(function (k) { return { k: k, s: sc[k], why: (ev[k] || []).map(function (y, i) { return { t: y.t, p: y.p, i: i }; }).sort(function (u, v) { return (v.p - u.p) || (u.i - v.i); }).map(function (y) { return y.t; }) }; }).sort(function (x, y) { return y.s - x.s; });
+  var pistes = list.filter(function (p) { return p.s >= 3; }).slice(0, 4);
+  if (!pistes.length) pistes = list.filter(function (p) { return p.s >= 2; }).slice(0, 2);
+  var done = a[path[path.length - 1]] !== undefined;
+  return { path: path, sc: sc, pistes: pistes, flags: flags, notes: notes, frags: frags, done: done };
+}
+function recap(an) {
+  if (!an.frags.length) return '';
+  var fr = an.frags.slice(0, 10).map(function (f) { return f.charAt(0).toUpperCase() + f.slice(1) + '.'; });
+  return "Si je comprends bien : " + fr.join(' ');
+}
+function examens(a, an) {
+  var out = [], f = function (k) { return has(a, 'examens', k); }, s = an.sc;
+  var chronique = hasAny(a, 'transit_selles', ['molles', 'liquides', 'alternance']);
+  if ((s.sibo || 0) >= 4 && !f('souffle')) out.push("Test respiratoire (lactulose ou glucose) pour objectiver une pullulation du grêle.");
+  if (((s.sii || 0) >= 3 || has(a, 'alim_react', 'gluten') || chronique || has(a, 'autre_precis', 'aphtes')) && !f('coeliaque')) out.push("Prise de sang pour la maladie cœliaque (anticorps anti-transglutaminase et IgA totales), à faire AVANT de retirer le gluten.");
+  if (chronique && !f('calpro')) out.push("Calprotectine fécale, pour écarter une maladie inflammatoire de l'intestin.");
+  if ((s.gastrite || 0) >= 3 && !f('gastroscopie')) out.push("Recherche d'Helicobacter pylori (test respiratoire à l'urée ou dans les selles).");
+  if ((s.biliaire || 0) >= 3 && !f('echo')) out.push("Échographie du foie et de la vésicule biliaire.");
+  if ((s.lactose || 0) >= 3) out.push("Test respiratoire au lactose, ou essai d'éviction encadré.");
+  return out;
+}
+function liens(an) {
+  var s = an.sc, l = [];
+  if ((s.gyneco || 0) >= 3) l.push({ t: "Hormones, cycle & gynécologie", n: 8 });
+  if ((s.sibo || 0) >= 4 || (s.sii || 0) >= 4) l.push({ t: "Guide spécialisé SIBO / SII", n: 12 });
+  if ((s.axe || 0) >= 3) l.push({ t: "Surrénales & axe du stress", n: 7 });
+  if ((s.gyneco || 0) >= 4) l.push({ t: "Guide spécialisé Endométriose", n: 15 });
+  return l;
+}
+
+/* ───────────── Report sur les cases des sections ───────────── */
+function norm(t) { return String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim(); }
+var QMAP = null;
+function qmap() {
+  if (QMAP) return QMAP; QMAP = [];
+  document.querySelectorAll('.trig-check').forEach(function (el) { var q = el.querySelector('.trig-q'); if (q) QMAP.push({ n: norm(q.textContent), el: el }); });
+  return QMAP;
+}
+function appliquerPonts() {
+  if (!isConsult()) return;
+  var a = S.a, path = walk(a), onPath = {}; path.forEach(function (id) { onPath[id] = 1; });
+  var ra = {}; Object.keys(a).forEach(function (k) { if (onPath[k]) ra[k] = a[k]; });
+  var voulu = [], touche = false;
+  PONTS.forEach(function (p) {
+    var ok = false; try { ok = !!p[1](ra); } catch (e) { ok = false; }
+    var key = norm(p[0]);
+    var cible = qmap().filter(function (x) { return x.n.indexOf(key) === 0; })[0];
+    if (!cible) { if (window.console) console.warn('[Parcours par motif] case introuvable :', p[0]); return; }
+    var el = cible.el;
+    if (ok) {
+      voulu.push(p[0]);
+      if (!el.classList.contains('checked') && el.dataset.mgUser !== '1') { el.classList.add('checked'); el.dataset.mgAuto = '1'; touche = true; }
+    } else if (S.ponts.indexOf(p[0]) >= 0 && el.dataset.mgAuto === '1' && el.dataset.mgUser !== '1') {
+      el.classList.remove('checked'); delete el.dataset.mgAuto; touche = true;
+    }
+  });
+  S.ponts = voulu;
+  if (touche) { try { if (typeof updateCounter === 'function') updateCounter(); if (typeof refreshFunnel === 'function') refreshFunnel(); } catch (e) { /* non bloquant */ } }
+}
+/* Un clic de Sabrina sur une case reportée la rend définitivement manuelle */
+document.addEventListener('click', function (e) {
+  var tc = e.target.closest && e.target.closest('.trig-check');
+  if (tc && tc.dataset.mgAuto === '1') { delete tc.dataset.mgAuto; tc.dataset.mgUser = '1'; }
+}, true);
+
+/* ───────────── Affichage ───────────── */
+function currentId(an) {
+  if (S.edit && an.path.indexOf(S.edit) >= 0) return S.edit;
+  S.edit = null;
+  var last = an.path[an.path.length - 1];
+  return an.done ? null : last;
+}
+function lastSay(an, a) {
+  for (var i = an.path.length - 1; i >= 0; i--) {
+    var id = an.path[i]; if (a[id] === undefined) continue;
+    var says = chosen(id, a).filter(function (o) { return o.say; }).slice(0, 2).map(function (o) { return o.say; });
+    if (says.length) return says.join(' ');
+    return '';
+  }
+  return '';
+}
+function optHtml(n, o, i, sel) {
+  return '<button type="button" class="mg-opt' + (sel ? ' on' : '') + (o.x ? ' none' : '') + '" data-mg="pick" data-n="' + n.id + '" data-k="' + o.k + '" aria-pressed="' + (sel ? 'true' : 'false') + '">' +
+    '<span class="mg-key">' + (i < 9 ? i + 1 : '·') + '</span><span>' + esc(o.l) + '</span></button>';
+}
+function questionHtml(id) {
+  var n = N[id], cur = S.a[id], pend = S.p[id];
+  var sel = n.multi ? (Array.isArray(pend) ? pend : (Array.isArray(cur) ? cur : [])) : [];
+  var h = '<div class="mg-q" id="mg-q"><span class="mg-mode ' + n.m + '">' + (n.m === 'listen' ? "J'écoute" : 'Je demande') + '</span>' +
+    '<div class="mg-qt">' + esc(n.q) + '</div>' + (n.hint ? '<div class="mg-hint">' + esc(n.hint) + '</div>' : '') +
+    '<div class="mg-opts' + (n.o.length > 5 && !n.multi ? ' mg-cols' : '') + '">';
+  n.o.forEach(function (o, i) { h += optHtml(n, o, i, n.multi ? sel.indexOf(o.k) >= 0 : cur === o.k); });
+  h += '</div><div class="mg-act">';
+  if (n.multi) h += '<button type="button" class="mg-go" data-mg="cont" data-n="' + id + '"' + (sel.length ? '' : ' disabled') + '>Continuer</button>';
+  h += '<button type="button" class="mg-link" data-mg="skip" data-n="' + id + '">Pas évoqué, passer</button></div>';
+  if (n.why) h += '<details class="mg-why"><summary>Pourquoi je pose cette question</summary><p>' + esc(n.why) + '</p></details>';
+  return h + '</div>';
+}
+function trailHtml(an) {
+  var rows = [];
+  an.path.forEach(function (id) {
+    if (S.a[id] === undefined || id === S.edit) return;
+    var lbl = S.a[id] === '_skip' ? 'passée' : chosen(id, S.a).map(function (o) { return o.l; }).join(' · ');
+    rows.push('<button type="button" class="mg-edit" data-mg="edit" data-n="' + id + '"><span class="q">' + esc(N[id].s) + '</span><span class="a">' + esc(lbl || '—') + '</span><span class="m">modifier</span></button>');
+  });
+  if (!rows.length) return '';
+  return '<div class="mg-trail"><div class="mg-trail-t">Déjà vu avec elle</div>' + rows.join('') + '</div>';
+}
+function sideHtml(an) {
+  var top = an.pistes.length ? an.pistes : [];
+  if (!top.length) return '<div class="mg-side"><div class="mg-side-t">Ce que ça évoque</div><div class="mg-side-n">Les pistes apparaissent ici au fil de ses réponses.</div></div>';
+  var max = top[0].s;
+  return '<div class="mg-side"><div class="mg-side-t">Ce que ça évoque</div>' + top.map(function (p) {
+    return '<div class="mg-p"><b>' + esc(PISTES[p.k].l) + '</b><div class="mg-bar"><i style="width:' + Math.max(18, Math.round(100 * p.s / max)) + '%"></i></div></div>';
+  }).join('') + '<div class="mg-side-n">Hypothèses de travail pour vous seule, à confirmer.</div></div>';
+}
+function fondHtml() {
+  var sec = [[3, 'Traitements & allergies'], [2, 'Antécédents'], [5, 'Alimentation & digestion'], [1, 'Mode de vie'], [6, 'Foie & émonctoires'], [7, 'Surrénales'], [8, 'Hormones & cycle']];
+  return '<div class="mg-fond">' + sec.map(function (s) {
+    var p = document.getElementById('nav-prog-' + s[0]); var pc = p ? p.textContent : '';
+    return '<button type="button" data-mg="go" data-sec="' + s[0] + '">' + esc(s[1]) + (pc ? ' <small>' + esc(pc) + '</small>' : '') + '</button>';
+  }).join('') + '</div>';
+}
+function summaryHtml(an) {
+  var a = S.a, rc = recap(an), ex = examens(a, an), lk = liens(an), h = '<div class="mg-sum" id="mg-sum">';
+  h += '<h3>Ce que j\'ai entendu</h3>';
+  h += rc ? '<div class="mg-recap" id="mg-recap">' + esc(rc) + '</div><div class="mg-act"><button type="button" class="mg-tbtn" data-mg="copy">Copier ce texte</button><span class="mg-st" id="mg-st" role="status" aria-live="polite"></span></div>' : '<div class="mg-side-n">Aucune gêne détaillée pour le moment.</div>';
+  h += '<h3>Ce que ça évoque</h3>';
+  if (an.pistes.length) {
+    an.pistes.forEach(function (p, i) {
+      var P = PISTES[p.k];
+      h += '<div class="mg-pi"><div class="mg-pi-h"><b>' + esc(P.l) + '</b><span class="mg-pi-r">' + (i === 0 ? 'Piste principale' : 'À explorer') + '</span></div>' +
+        '<p>Parce que : ' + esc(p.why.slice(0, 4).join(' ; ')) + '.</p>' +
+        '<details><summary>Ce que je peux lui dire</summary><p>' + esc(P.dire) + '</p></details>' +
+        '<p class="conf">Pour confirmer ou écarter : ' + esc(P.conf) + '</p></div>';
+    });
+  } else h += '<div class="mg-side-n">Pas assez d\'éléments pour orienter : complétez avec les sections classiques.</div>';
+  if (an.flags.length) h += '<h3>À clarifier avec son médecin avant tout</h3><div class="mg-alert"><ul>' + an.flags.map(function (f) { return '<li>' + esc(f) + '</li>'; }).join('') + '</ul></div>';
+  if (an.notes.length) h += '<h3>Points d\'attention</h3><ul class="mg-list">' + an.notes.map(function (f) { return '<li>' + esc(f) + '</li>'; }).join('') + '</ul>';
+  if (ex.length) h += '<h3>Examens à discuter avec son médecin</h3><ul class="mg-list">' + ex.map(function (f) { return '<li>' + esc(f) + '</li>'; }).join('') + '</ul>';
+  h += '<h3>Pour construire son programme</h3><div class="mg-say" style="margin-bottom:8px"><div class="mg-say-l">À lui dire</div><div class="mg-say-t">J\'ai maintenant besoin de quelques informations sur votre quotidien pour que votre programme soit réaliste pour vous : ce que vous mangez, votre rythme, le temps dont vous disposez.</div></div>';
+  h += fondHtml();
+  if (lk.length) h += '<div class="mg-note"><b>Pistes à ouvrir :</b></div><div class="mg-fond">' + lk.map(function (l) { return '<button type="button" data-mg="go" data-sec="' + l.n + '">' + esc(l.t) + '</button>'; }).join('') + '</div>';
+  h += '<div class="mg-note">Hypothèses de travail pour vous, jamais un diagnostic. Les réponses sont reportées sur les cases équivalentes de la section Alimentation & digestion et transmises au générateur.</div>';
+  return h + '</div>';
+}
+function themesHtml() {
+  var T = [['digestif', 'Digestif', true], ['hormones', 'Hormones & cycle'], ['fatigue', 'Fatigue & stress'], ['peau', 'Peau'], ['sommeil', 'Sommeil'], ['autre', 'Autre motif']];
+  return '<div class="mg-themes" role="group" aria-label="Thématique du motif">' + T.map(function (t) {
+    var on = S.th === t[0] && t[2];
+    return '<button type="button" class="mg-th' + (on ? ' on' : '') + (t[2] ? '' : ' soon') + '" data-mg="theme" data-th="' + t[0] + '" aria-pressed="' + (on ? 'true' : 'false') + '">' + esc(t[1]) + (t[2] ? '' : ' (bientôt)') + '</button>';
+  }).join('') + '</div>';
+}
+function soonHtml() {
+  if (!S.soon) return '';
+  var msg = S.soon === 'hormones'
+    ? "Le parcours « Hormones & cycle » sera construit sur le même principe juste après le digestif. En attendant, utilisez la section 09 : elle contient déjà les guides Endométriose, SOPK et Ménopause."
+    : "Ce parcours n'est pas encore construit. En attendant, utilisez les sections classiques dans le menu de gauche ; on le fera dans la foulée si le digestif vous convient.";
+  return '<div class="mg-soon">' + esc(msg) + (S.soon === 'hormones' ? '<br><button type="button" class="mg-tbtn" data-mg="go" data-sec="8">Ouvrir Hormones & cycle</button>' : '') + '</div>';
+}
+function render() {
+  var box = document.getElementById('mg-body'); if (!box) return;
+  var a = S.a, an = analyse(a), cid = currentId(an), started = Object.keys(a).length > 0;
+  var h = themesHtml() + soonHtml();
+  if (an.flags.length && !(cid === null)) h += '<div class="mg-alert"><b>À clarifier avec son médecin avant tout</b><ul>' + an.flags.map(function (f) { return '<li>' + esc(f) + '</li>'; }).join('') + '</ul></div>';
+  var say = cid !== null ? lastSay(an, a) : '';
+  if (cid !== null && say && !S.edit) h += '<div class="mg-say"><div class="mg-say-l">À lui dire maintenant</div><div class="mg-say-t">' + esc(say) + '</div></div>';
+  h += '<div class="mg-grid' + (cid === null ? '' : ' mg-two') + '"><div>' + (cid === null ? summaryHtml(an) : questionHtml(cid)) + trailHtml(an) + '</div>' + (cid === null ? '' : sideHtml(an)) + '</div>';
+  box.innerHTML = h;
+  var back = document.getElementById('mg-back'), rst = document.getElementById('mg-reset');
+  if (back) back.disabled = !started;
+  if (rst) { rst.disabled = !started; rst.textContent = S.rst ? 'Confirmer : tout effacer' : 'Recommencer'; }
+}
+
+/* ───────────── Actions ───────────── */
+function commit() { save(); appliquerPonts(); save(); render(); }
+function pick(id, k) {
+  var n = N[id];
+  if (n.multi) {
+    var cur = Array.isArray(S.p[id]) ? S.p[id].slice() : (Array.isArray(S.a[id]) ? S.a[id].slice() : []);
+    var o = n.o.filter(function (x) { return x.k === k; })[0], i = cur.indexOf(k);
+    if (i >= 0) cur.splice(i, 1);
+    else { if (o && o.x) cur = []; else cur = cur.filter(function (c) { var oc = n.o.filter(function (x) { return x.k === c; })[0]; return !(oc && oc.x); }); cur.push(k); }
+    S.p[id] = cur; save(); render(); return;
+  }
+  S.a[id] = k; S.edit = null; delete S.p[id]; commit(); scrollUp();
+}
+function cont(id) {
+  var sel = S.p[id]; if (!Array.isArray(sel) || !sel.length) sel = Array.isArray(S.a[id]) ? S.a[id] : [];
+  if (!sel.length) return;
+  S.a[id] = sel.slice(); delete S.p[id]; S.edit = null;
+  if (id === 'motifs') { /* l'ordre de la file des gênes change : on garde les réponses déjà données */ }
+  commit(); scrollUp();
+}
+function skip(id) { S.a[id] = N[id].multi ? [] : '_skip'; delete S.p[id]; S.edit = null; commit(); scrollUp(); }
+function back() {
+  var an = analyse(S.a), ids = an.path.filter(function (id) { return S.a[id] !== undefined; });
+  if (!ids.length) return; var last = ids[ids.length - 1];
+  delete S.a[last]; delete S.p[last]; S.edit = null; commit();
+}
+function edit(id) { S.edit = id; S.p[id] = Array.isArray(S.a[id]) ? S.a[id].slice() : undefined; if (S.p[id] === undefined) delete S.p[id]; save(); render(); scrollUp(); }
+function reset() {
+  if (!S.rst) { S.rst = true; render(); setTimeout(function () { if (S.rst) { S.rst = false; render(); } }, 4000); return; }
+  var ponts = S.ponts.slice(); S = { v: 1, th: 'digestif', a: {}, p: {}, edit: null, ponts: ponts, soon: null, rst: false };
+  commit();
+}
+function scrollUp() {
+  var c = document.getElementById('mg-card'); if (!c) return;
+  var r = c.getBoundingClientRect(); if (r.top < 0 || r.top > window.innerHeight * 0.6) c.scrollIntoView({ block: 'start', behavior: 'auto' });
+}
+function copier() {
+  var el = document.getElementById('mg-recap'), st = document.getElementById('mg-st'); if (!el) return;
+  var t = el.textContent || '';
+  var ok = function () { if (st) st.textContent = '✓ Texte copié'; };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(ok, function () { if (st) st.textContent = 'Copie impossible : sélectionnez le texte à la main.'; });
+  else if (st) st.textContent = 'Copie impossible : sélectionnez le texte à la main.';
+}
+
+/* ───────────── Branchements ───────────── */
+function onClick(e) {
+  var b = e.target.closest && e.target.closest('[data-mg]'); if (!b || !document.getElementById('mg-card').contains(b)) return;
+  var act = b.getAttribute('data-mg');
+  if (act === 'pick') pick(b.getAttribute('data-n'), b.getAttribute('data-k'));
+  else if (act === 'cont') cont(b.getAttribute('data-n'));
+  else if (act === 'skip') skip(b.getAttribute('data-n'));
+  else if (act === 'edit') edit(b.getAttribute('data-n'));
+  else if (act === 'back') back();
+  else if (act === 'reset') reset();
+  else if (act === 'copy') copier();
+  else if (act === 'go') { var n = parseInt(b.getAttribute('data-sec'), 10); if (typeof goSection === 'function' && !isNaN(n)) goSection(n); }
+  else if (act === 'theme') { var th = b.getAttribute('data-th'); if (th === 'digestif') S.soon = null; else S.soon = th === 'autre' ? 'autre' : th; render(); }
+}
+var actif = false;
+function onKey(e) {
+  if (!actif || e.ctrlKey || e.metaKey || e.altKey) return;
+  var t = e.target; if (t && t.matches && t.matches('input,textarea,select,[contenteditable]')) return;
+  var an = analyse(S.a), cid = currentId(an); if (cid === null) return;
+  var n = N[cid];
+  if (e.key === 'Enter' && n.multi) { var s = S.p[cid]; if (Array.isArray(s) && s.length) { e.preventDefault(); cont(cid); } return; }
+  if (/^[1-9]$/.test(e.key)) { var o = n.o[parseInt(e.key, 10) - 1]; if (o) { e.preventDefault(); pick(cid, o.k); } }
+}
+
+/* ───────────── Crochets du questionnaire ───────────── */
+window.mgCapturer = function (snap) { if (snap && isConsult()) snap.mg_json = holder() ? holder().value : ''; };
+window.mgRestaurer = function (snap) {
+  if (!isConsult()) return;
+  if (snap && snap.mg_json !== undefined && holder()) holder().value = snap.mg_json;
+  if (holder() && holder().value) load(holder().value);
+  render();
+};
+window.mgDonnees = function () {
+  var a = S.a, an = analyse(a), n = Object.keys(a).length;
+  if (!n) return { motif_guide_json: '' };
+  var reps = an.path.filter(function (id) { return a[id] !== undefined; }).map(function (id) {
+    var l = a[id] === '_skip' ? 'passée' : chosen(id, a).map(function (o) { return o.l; }).join(' ; ');
+    return '- ' + N[id].s + ' : ' + (l || '—');
+  }).join('\n');
+  var pistes = an.pistes.map(function (p) { return '- ' + PISTES[p.k].l + ' — ' + p.why.slice(0, 4).join(' ; ') + ' (à confirmer : ' + PISTES[p.k].conf + ')'; }).join('\n');
+  var ex = examens(a, an).join(' ; ');
+  var notes = an.notes.join(' ; ');
+  return {
+    motif_guide_theme: S.th,
+    motif_guide_recap: recap(an),
+    motif_guide_reponses: reps,
+    motif_guide_pistes: pistes,
+    motif_guide_titres: an.pistes.map(function (p) { return PISTES[p.k].l; }).join(' ; '),
+    motif_guide_vigilance: an.flags.join(' ; '),
+    motif_guide_attention: notes,
+    motif_guide_examens: ex,
+    motif_guide_suivi: JSON.stringify(suiviItems(a, an)),
+    motif_guide_json: JSON.stringify(S)
+  };
+};
+window.mgSectionsSynthese = function (d) {
+  var out = [];
+  if (d && d.motif_guide_reponses) {
+    out.push({ icone: 'leaf', titre: 'Parcours par motif — digestif', contenu: [
+      d.motif_guide_recap || '',
+      d.motif_guide_reponses ? 'Réponses :\n' + d.motif_guide_reponses : '',
+      d.motif_guide_pistes ? 'Ce que cela évoque (hypothèses à confirmer) :\n' + d.motif_guide_pistes : '',
+      d.motif_guide_vigilance ? 'À clarifier avec son médecin avant tout : ' + d.motif_guide_vigilance : '',
+      d.motif_guide_attention ? 'Points d\'attention : ' + d.motif_guide_attention : '',
+      d.motif_guide_examens ? 'Examens à discuter avec son médecin : ' + d.motif_guide_examens : ''
+    ].filter(Boolean).join('\n') });
+  }
+  return out;
+};
+
+/* ───────────── Suivi : descripteurs à réévaluer ─────────────
+   Libellés figés au moment de la consultation (dans motif_guide_suivi) : le questionnaire de suivi
+   les relit tels quels et les ajoute aux « signes décrits en première consultation », sans dépendre
+   de l'arbre. Évolution : ↑ mieux / = stable / ↓ pire, comme les autres signes. */
+var SUIVI_NODES = ['ball_quand', 'ball_gaz', 'haut_brulure', 'douleur_ou', 'douleur_quand', 'transit_selles', 'diar_detail', 'const_detail'];
+function suiviItems(a, an) {
+  var out = [];
+  SUIVI_NODES.forEach(function (id) {
+    if (an.path.indexOf(id) < 0 || a[id] === undefined || a[id] === '_skip') return;
+    chosen(id, a).forEach(function (op) {
+      if (op.f && !op.x) out.push({ s: 'sec-4', l: ('Digestion : ' + op.f.charAt(0).toUpperCase() + op.f.slice(1)).slice(0, 160) });
+    });
+  });
+  return out;
+}
+
+/* ───────────── Initialisation ───────────── */
+function init() {
+  var card = document.getElementById('mg-card'); if (!card) return;
+  if (holder() && holder().value) load(holder().value);
+  card.addEventListener('click', onClick);
+  card.addEventListener('pointerdown', function () { actif = true; });
+  document.addEventListener('pointerdown', function (e) { if (!card.contains(e.target)) actif = false; }, true);
+  document.addEventListener('keydown', onKey);
+  render();
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+
+/* Accès pour les tests */
+window.__mg = { N: N, PISTES: PISTES, PONTS: PONTS, analyse: analyse, walk: walk, state: function () { return S; }, examens: examens };
+})();
 </script>
 </body>
 </html>
