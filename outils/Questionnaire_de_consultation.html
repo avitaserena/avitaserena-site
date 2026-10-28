@@ -12119,6 +12119,13 @@ const SPEC_SIGNS = {
     { label: 'Antécédent de gastro-entérite sévère', patterns: [/gastro-entérite sévère/i] },
     { label: 'Antécédent d\'antibiotiques à large spectre', patterns: [/antibiotiques à large spectre/i] },
     { label: 'Ballonnements marqués après les repas (60-90 min ou systématiques)', patterns: [/ballonnements.*(60|90)/i, /ballonnements marqués et systématiques après les repas/i] },
+    { label: 'Rots fréquents pendant ou juste après les repas (estomac qui se vide mal)', patterns: [/roter fréquemment/i] },
+    { label: 'Estomac « chargé » ou lourd au repas suivant', patterns: [/estomac « chargé »/i, /estomac.{0,25}lourd/i] },
+    { label: 'Aggravation digestive après un probiotique ou un prébiotique', patterns: [/aggravation digestive nette.*(probiotique|prébiotique)/i, /probiotiques? .{0,40}(ballonn|aggrav)/i] },
+    { label: 'Intolérances alimentaires qui s\'étendent ou changent avec le temps', patterns: [/intolérances alimentaires qui changent/i, /nouvelles allergies ou intolérances/i] },
+    { label: 'Chirurgie abdominale (adhérences : motricité de l\'intestin ralentie)', patterns: [/chirurgie abdominale/i] },
+    { label: 'IPP ou anti-acides au long cours (moins d\'acidité : plus de bactéries dans le grêle)', patterns: [/\bIPP\b/] },
+    { label: 'Améliorée sous antibiotiques (digestion plus confortable pendant la cure)', patterns: [/mieux[^<]{0,50}antibio/i, /antibio[^<]{0,50}(mieux|soulag|amélior)/i] },
   ],
   endo: [
     { label: 'Dysménorrhée sévère depuis les premières règles', patterns: [/dysménorrhée sévère/i, /règles très douloureuses.*invalidantes.*depuis les premières règles/i, /règles très douloureuses depuis la puberté/i] },
@@ -14069,12 +14076,12 @@ node('ball_quand', { m: 'ask', multi: true, br: 'ball', s: 'Moment du gonflement
   hint: "Plusieurs réponses possibles.",
   why: "Le moment du gonflement par rapport au repas situe la zone concernée : dans la première demi-heure le repas est encore dans l'estomac, ensuite il avance dans l'intestin grêle, plusieurs heures après il atteint le côlon, où vit l'essentiel de la flore. Un ventre déjà gonflé au réveil évoque plutôt un transit qui stagne ou un contexte hormonal. Les situations peuvent se cumuler, c'est pourquoi plusieurs réponses sont possibles.",
   o: [
-    { k: 'immediat', l: "Tout de suite après le repas (dans la demi-heure)", f: "votre ventre gonfle tout de suite après le repas",
-      say: "Quand le ventre gonfle tout de suite après le repas, cela se passe plutôt haut dans le tube digestif : l'estomac ou le début de l'intestin grêle. C'est là que la digestion démarre, avec l'acidité et les enzymes ; si elles manquent, les aliments fermentent trop tôt.",
-      e: [['hypochlor', 2, "ventre qui gonfle tout de suite après le repas"], ['sibo', 2, "gonflement précoce après le repas"], ['sii', 1, "gonflement immédiat"]] },
+    { k: 'immediat', l: "Très vite : dans l'heure, parfois à peine levée de table", f: "votre ventre gonfle très vite après le repas, dans l'heure",
+      say: "Quand le ventre gonfle très vite après le repas, dans l'heure, cela se passe haut dans le tube digestif : l'estomac et le début de l'intestin grêle, là où il y a normalement très peu de bactéries. Si elles y sont trop nombreuses, elles fermentent le repas dès qu'il arrive, et le ventre gonfle presque aussitôt.",
+      e: [['sibo', 3, "gonflement très rapide après le repas (dans l'heure)"], ['hypochlor', 2, "ventre qui gonfle tout de suite après le repas"], ['sii', 1, "gonflement immédiat"]] },
     { k: 'une_trois', l: "Une à trois heures après le repas", f: "votre ventre gonfle une à trois heures après le repas",
       say: "Une à trois heures après le repas, les aliments arrivent dans l'intestin grêle. Si des bactéries y sont trop nombreuses, elles fermentent ce qu'elles trouvent et produisent des gaz sur place : le ventre se gonfle à ce moment-là.",
-      e: [['sibo', 3, "gonflement 1 à 3 h après le repas"], ['dysbiose', 1, "gonflement différé après le repas"]] },
+      e: [['sibo', 2, "gonflement 1 à 3 h après le repas"], ['dysbiose', 2, "gonflement différé après le repas"]] },
     { k: 'journee', l: "Plat le matin, de plus en plus gonflé au fil de la journée", f: "votre ventre est plat le matin et gonfle au fil de la journée",
       say: "Un ventre plat le matin qui gonfle un peu plus à chaque repas raconte une fermentation qui s'accumule. C'est typique d'un intestin qui fermente trop, ou qui est très sensible à l'étirement.",
       e: [['sibo', 2, "ventre plat le matin, gonflé le soir"], ['sii', 2, "gonflement progressif dans la journée"], ['dysbiose', 1, "fermentation qui s'accumule"]] },
@@ -14087,6 +14094,19 @@ node('ball_quand', { m: 'ask', multi: true, br: 'ball', s: 'Moment du gonflement
     { k: 'irregulier', x: true, l: "Sans régularité, parfois sans raison", f: "votre ventre gonfle sans régularité",
       say: "Un gonflement sans horaire ni déclencheur clair oriente plutôt vers un intestin sensible, qui réagit à beaucoup de choses, dont le stress et la fatigue.",
       e: [['sii', 2, "gonflement sans régularité"], ['axe', 1, "gonflement imprévisible"]] }
+  ],
+  next: function () { return 'ball_ou'; } });
+
+node('ball_ou', { m: 'ask', br: 'ball', s: 'Siège du gonflement',
+  q: "Où sentez-vous le gonflement ?",
+  hint: "Demandez-lui de montrer avec la main : c'est plus parlant que les mots.",
+  why: "Le siège du gonflement situe l'étage du tube digestif : en haut, au creux de l'estomac, ce sont l'estomac et le début de l'intestin grêle qui se distendent ; sur tout le ventre ou plus bas, c'est plutôt le côlon.",
+  o: [
+    { k: 'haut', l: "En haut, au creux de l'estomac", f: "le gonflement est surtout en haut du ventre",
+      say: "Un gonflement qui se concentre en haut, sous les côtes, au creux de l'estomac, vient de l'estomac et du début de l'intestin grêle : ce n'est pas la même chose qu'un côlon qui fermente plus bas.",
+      e: [['sibo', 2, "gonflement en haut du ventre"], ['hypochlor', 1, "gonflement épigastrique"]] },
+    { k: 'tout', l: "Sur tout le ventre", f: "le gonflement touche tout le ventre", e: [['sii', 1, "gonflement diffus"], ['dysbiose', 1, "gonflement diffus"]] },
+    { k: 'bas', l: "Surtout en bas du ventre", f: "le gonflement est surtout dans le bas du ventre", e: [['constip', 1, "gonflement du bas-ventre"], ['gyneco', 1, "gonflement du bas-ventre"]] }
   ],
   next: function () { return 'ball_gaz'; } });
 
@@ -14127,12 +14147,16 @@ node('ball_aliments', { m: 'ask', multi: true, br: 'ball', s: 'Aliments qui aggr
       say: "Les protéines demandent de l'acidité dans l'estomac pour être préparées. Si elles restent sur l'estomac, c'est le signe que cette première étape manque d'efficacité.",
       e: [['hypochlor', 2, "gêne avec les repas protéinés"]] },
     { k: 'fruits', l: "Fruits, jus, miel, sucreries", f: "les fruits et les sucres aggravent la gêne", e: [['fodmap', 1, "gêne avec fruits et sucres"], ['dysbiose', 1, "gêne avec les sucres"]] },
+    { k: 'retire', l: "J'ai retiré de plus en plus d'aliments, j'ai l'impression de ne plus rien digérer", f: "vous retirez de plus en plus d'aliments et avez l'impression de ne plus rien digérer",
+      say: "Retirer peu à peu des aliments, jusqu'à avoir l'impression de ne plus rien digérer, est un schéma très fréquent quand l'intestin grêle fermente trop : au début ce sont les aliments qui fermentent le plus, puis presque tout finit par gêner. Ce n'est pas vous qui êtes devenue fragile : c'est le terrain qui s'est dégradé, et il se répare.",
+      note: "Restriction alimentaire progressive : vérifier l'absence de restriction excessive ou de rapport difficile à l'alimentation avant toute éviction.",
+      e: [['sibo', 3, "retire de plus en plus d'aliments, ne digère plus rien"], ['perm', 1, "réactions à de plus en plus d'aliments"]] },
     { k: 'rien', l: "Rien de précis, tout la gonfle", f: "aucun aliment précis n'explique la gêne", x: true, e: [['sii', 1, "gêne sans aliment précis"], ['perm', 1, "réaction à de nombreux aliments"]] }
   ],
   next: function (a) { return afterBr(a, 'ball'); } });
 
 /* ── Estomac, reflux ── */
-node('haut_brulure', { m: 'ask', br: 'haut', s: 'Estomac',
+node('haut_brulure', { m: 'ask', multi: true, br: 'haut', s: 'Estomac',
   q: "Est-ce plutôt une brûlure qui remonte, ou un estomac lourd qui digère longtemps ?",
   hint: "Quatre profils différents : reflux, estomac irrité (à jeun), digestion lente, nausées.",
   why: "Une brûlure, une lourdeur et une nausée n'ont pas la même cause : la brûlure vient de l'acidité ou d'une muqueuse irritée, la lourdeur d'une vidange gastrique lente ou d'un manque de bile, la nausée d'une digestion des graisses difficile. Savoir laquelle domine me dit où regarder.",
@@ -14287,9 +14311,9 @@ node('alim_react', { m: 'ask', multi: true, br: 'alim', s: 'Réactions aux alime
 
 /* ── Autres gênes ── */
 node('autre_precis', { m: 'ask', multi: true, br: 'autre', s: 'Autres gênes',
-  q: "Parmi ces gênes, lesquelles reconnaissez-vous ?",
+  q: "Parmi ces signes, lesquels reconnaissez-vous ?",
   hint: "Plusieurs réponses possibles.",
-  why: "Ces signes plus discrets complètent le tableau : ils renseignent sur la digestion haute (haleine, langue chargée), la flore ou d'éventuelles carences (fatigue, ongles, cheveux).",
+  why: "Ces signes plus discrets complètent le tableau : ils renseignent sur la digestion haute (haleine, langue chargée), la flore, une fatigue digestive, ou d'éventuelles carences : quand l'intestin grêle absorbe mal, tout le corps le ressent (énergie, peau, articulations, ongles, cheveux).",
   o: [
     { k: 'haleine', l: "Une mauvaise haleine, une langue chargée", f: "vous avez une mauvaise haleine",
       say: "Une mauvaise haleine tenace, y compris à jeun, vient souvent de la digestion plus bas : un estomac peu acide ou une flore qui fermente produisent des gaz qui remontent.",
@@ -14299,6 +14323,16 @@ node('autre_precis', { m: 'ask', multi: true, br: 'autre', s: 'Autres gênes',
     { k: 'grasses', l: "Des selles grasses, très malodorantes", f: "vos selles sont grasses et très malodorantes", e: [['biliaire', 3, "selles grasses malodorantes"]] },
     { k: 'anal', l: "Des démangeaisons anales, surtout la nuit", f: "vous avez des démangeaisons anales la nuit",
       note: "Démangeaisons anales nocturnes : parasitose (oxyures) possible, à signaler au médecin ou au pharmacien.", e: [['dysbiose', 1, "démangeaisons anales nocturnes"]] },
+    { k: 'fatigue', l: "Une fatigue forte après les repas", f: "vous avez une grosse fatigue après les repas",
+      say: "Digérer coûte de l'énergie, et quand la digestion est difficile ou que les bactéries consomment une partie de ce que vous mangez, il en reste moins pour vous. La fatigue après le repas fait partie du tableau.",
+      e: [['sibo', 2, "fatigue après les repas"], ['hypochlor', 1, "fatigue après les repas"], ['biliaire', 1, "fatigue après les repas"]] },
+    { k: 'peau', l: "Des problèmes de peau (eczéma, acné, rougeurs)", f: "vous avez des problèmes de peau",
+      say: "La peau est souvent le reflet de l'intestin : quand la paroi laisse passer des fragments d'aliments mal digérés, le système immunitaire s'active et la peau peut réagir.",
+      e: [['perm', 2, "problèmes de peau"], ['sibo', 1, "problèmes de peau"]] },
+    { k: 'articulations', l: "Des douleurs articulaires ou une sensation d'inflammation", f: "vous avez des douleurs articulaires", e: [['perm', 2, "douleurs articulaires"], ['sibo', 1, "inflammation de fond"]] },
+    { k: 'poids', l: "Un poids qui ne bouge pas : impossible de grossir, ou de perdre", f: "votre poids ne bouge pas malgré vos efforts", e: [['sibo', 1, "poids qui ne bouge pas"], ['axe', 1, "poids qui ne bouge pas"]] },
+    { k: 'carences', l: "Des ongles cassants, des cheveux fragiles, des crampes", f: "vous avez les ongles cassants, les cheveux fragiles ou des crampes",
+      note: "Signes de carence possible (fer, zinc, magnésium, B12) : à croiser avec un bilan biologique.", e: [['sibo', 1, "signes de carence"], ['hypochlor', 1, "signes de carence"]] },
     { k: 'rien', l: "Autre chose : à noter dans les sections classiques", x: true }
   ],
   next: function (a) { return afterBr(a, 'autre'); } });
@@ -14357,6 +14391,23 @@ node('stress_lien', { m: 'ask', s: 'Lien avec le stress',
     { k: 'un_peu', l: "Un peu", f: "c'est un peu pire quand vous êtes stressée", e: [['axe', 1, "légère aggravation par le stress"]] },
     { k: 'non', l: "Non, pas de lien", f: "il n'y a pas de lien avec le stress", x: true }
   ],
+  next: function () { return 'rythme'; } });
+
+node('rythme', { m: 'ask', multi: true, s: 'Rythme des repas',
+  q: "Comment se passent vos repas, au quotidien ?",
+  hint: "Plusieurs réponses possibles. Sans jugement : on cherche seulement ce qui laisse, ou non, du temps à l'intestin.",
+  why: "Environ une heure et demie après la fin d'un repas, l'intestin grêle lance une vague de nettoyage qui balaie les restes et les bactéries vers le côlon. Elle s'arrête dès qu'on mange : grignoter, ou ne pas laisser de coupure la nuit, l'empêche de se mettre en route. Et un repas mal mâché arrive moins bien préparé : il y a davantage à fermenter.",
+  o: [
+    { k: 'grignote', l: "Je mange ou je grignote toutes les deux heures environ", f: "vous mangez ou grignotez toutes les deux heures",
+      say: "Entre les repas, l'intestin grêle se nettoie tout seul, mais seulement environ une heure et demie après avoir fini de manger. Si on mange toutes les deux heures, cette vague de nettoyage n'a presque jamais le temps de démarrer, et les restes stagnent.",
+      e: [['sibo', 2, "grignotage : pas de temps de nettoyage du grêle"], ['dysbiose', 1, "grignotage"]] },
+    { k: 'vite', l: "Je mange vite, je mâche peu", f: "vous mangez vite et mâchez peu",
+      say: "La digestion commence dans la bouche : un aliment bien mâché est déjà préparé, un aliment avalé tel quel arrive entier dans l'estomac et l'intestin, qui ont alors beaucoup plus de travail, et les bactéries beaucoup plus à fermenter.",
+      e: [['hypochlor', 1, "mastication insuffisante"], ['sibo', 1, "mastication insuffisante"], ['dysbiose', 1, "mastication insuffisante"]] },
+    { k: 'tard', l: "Je dîne tard ou je mange la nuit : peu de coupure entre le dîner et le petit-déjeuner", f: "vous n'avez pas de vraie coupure entre le dîner et le petit-déjeuner",
+      e: [['sibo', 1, "pas de jeûne nocturne"]] },
+    { k: 'calme', l: "Mes repas sont posés, bien mâchés, espacés", f: "vos repas sont posés et espacés", x: true }
+  ],
   next: function () { return 'traitements'; } });
 
 node('traitements', { m: 'ask', multi: true, s: 'Traitements pris',
@@ -14373,6 +14424,24 @@ node('traitements', { m: 'ask', multi: true, s: 'Traitements pris',
     { k: 'pilule', l: "La pilule ou un traitement hormonal", f: "vous prenez un traitement hormonal", e: [['gyneco', 1, "contraception ou traitement hormonal"]] },
     { k: 'ralentisseurs', l: "Des opioïdes, des antidépresseurs ou des anti-allergiques sédatifs", f: "vous prenez un médicament qui ralentit le transit", e: [['constip', 1, "médicament ralentissant le transit"]] },
     { k: 'aucun', l: "Aucun de ceux-là", x: true }
+  ],
+  next: function () { return 'reactions'; } });
+
+node('reactions', { m: 'ask', multi: true, s: 'Réaction aux produits essayés',
+  q: "Avez-vous déjà remarqué un effet net, en bien ou en mal, de l'un de ces produits sur votre ventre ?",
+  hint: "Plusieurs réponses possibles. Une amélioration sous antibiotique, ou une aggravation avec des probiotiques, sont des indices précieux.",
+  why: "Ces réactions sont de petits tests grandeur nature. Si le ventre va mieux sous antibiotiques, c'est que des bactéries en excès étaient freinées. Si des probiotiques ou des fibres le font gonfler davantage, c'est qu'elles fermentent trop tôt, dans la partie haute de l'intestin, au lieu d'arriver au côlon.",
+  o: [
+    { k: 'mieux_antibio', l: "J'allais nettement mieux du ventre sous antibiotiques", f: "vous alliez nettement mieux du ventre sous antibiotiques",
+      say: "Aller mieux du ventre sous antibiotiques est un indice important : la plupart des gens digèrent plus mal sous antibiotiques. Quand c'est l'inverse, cela évoque des bactéries trop nombreuses dans l'intestin grêle, freinées par le traitement.",
+      e: [['sibo', 3, "mieux sous antibiotiques"]] },
+    { k: 'origan', l: "Une huile essentielle d'origan, ou une cure antimicrobienne, m'a nettement soulagée", f: "une cure antimicrobienne vous a nettement soulagée", e: [['sibo', 2, "soulagée par une cure antimicrobienne"], ['dysbiose', 1, "soulagée par un antimicrobien"]] },
+    { k: 'probio_pire', l: "Des probiotiques m'ont ballonnée davantage", f: "des probiotiques vous ont fait gonfler davantage",
+      say: "Quand des probiotiques font gonfler davantage, c'est souvent parce qu'ils s'installent et fermentent là où il y a déjà trop de bactéries, au lieu de poursuivre leur route jusqu'au côlon. C'est une information utile, pas un échec.",
+      e: [['sibo', 3, "aggravée par les probiotiques"]] },
+    { k: 'fibres_pire', l: "Les fibres, les prébiotiques ou les aliments fermentés m'ont aggravée", f: "les fibres, prébiotiques ou aliments fermentés vous ont aggravée", e: [['sibo', 2, "aggravée par les fibres et prébiotiques"], ['fodmap', 2, "aggravée par les aliments fermentescibles"]] },
+    { k: 'antibio_pire', l: "Les antibiotiques m'ont abîmé la digestion", f: "les antibiotiques vous ont abîmé la digestion", e: [['dysbiose', 2, "digestion abîmée par les antibiotiques"]] },
+    { k: 'rien', l: "Aucun effet net, ou je n'ai rien essayé", x: true }
   ],
   next: function () { return 'examens'; } });
 
@@ -14412,7 +14481,7 @@ function hasAny(a, id, ks) { return ks.some(function (k) { return has(a, id, k);
    Libellé (début) de la case → condition sur les réponses. Cochées / décochées automatiquement,
    sauf si Sabrina a elle-même cliqué dessus. */
 var PONTS = [
-  ['SIBO — Ballonnements marqués et systématiques', function (a) { return hasAny(a, 'ball_quand', ['une_trois', 'journee']) && hasAny(a, 'ball_aliments', ['feculents', 'legumes']); }],
+  ['SIBO — Ballonnements marqués et systématiques', function (a) { return hasAny(a, 'ball_quand', ['immediat', 'une_trois', 'journee']) && hasAny(a, 'ball_aliments', ['feculents', 'legumes']); }],
   ['SII — Douleur abdominale nettement soulagée', function (a) { return has(a, 'douleur_quand', 'avant_selle') || has(a, 'soulage', 'selle'); }],
   ['SII — Urgences défécatoires', function (a) { return has(a, 'diar_detail', 'urgence'); }],
   ['SII — Alternance de diarrhée et de constipation', function (a) { return has(a, 'transit_selles', 'alternance'); }],
@@ -14755,13 +14824,13 @@ window.mgSectionsSynthese = function (d) {
    Libellés figés au moment de la consultation (dans motif_guide_suivi) : le questionnaire de suivi
    les relit tels quels et les ajoute aux « signes décrits en première consultation », sans dépendre
    de l'arbre. Évolution : ↑ mieux / = stable / ↓ pire, comme les autres signes. */
-var SUIVI_NODES = ['ball_quand', 'ball_gaz', 'haut_brulure', 'douleur_ou', 'douleur_quand', 'transit_selles', 'diar_detail', 'const_detail'];
+var SUIVI_NODES = ['ball_quand', 'ball_ou', 'ball_gaz', 'ball_aliments', 'alim_react', 'autre_precis', 'haut_brulure', 'douleur_ou', 'douleur_quand', 'transit_selles', 'diar_detail', 'const_detail'];
 function suiviItems(a, an) {
   var out = [];
   SUIVI_NODES.forEach(function (id) {
     if (an.path.indexOf(id) < 0 || a[id] === undefined || a[id] === '_skip') return;
     chosen(id, a).forEach(function (op) {
-      if (op.f && !op.x) out.push({ s: 'sec-4', l: ('Digestion : ' + op.f.charAt(0).toUpperCase() + op.f.slice(1)).slice(0, 160) });
+      if (op.f && !op.x) out.push({ s: 'sec-4', l: ((id === 'autre_precis' ? 'Signes associés : ' : 'Digestion : ') + op.f.charAt(0).toUpperCase() + op.f.slice(1)).slice(0, 160) });
     });
   });
   return out;
