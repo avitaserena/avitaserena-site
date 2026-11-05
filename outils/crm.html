@@ -4126,13 +4126,16 @@ function buildFicheHormonale(c, age, cr, part){
     P('Programme',c.programme?pLbl(c.programme):'Consultation ponctuelle'));
 
   // 1bis. Corps & motif (sans l'âge ni le programme : déjà dans « Informations générales »)
-  const txC=(sn.traitements_recus||'').split('\n').filter(Boolean).map(l=>l.replace(/^\[[^\]]*\]\s*/,'')).slice(0,6).join(' · ');
+  const lignesTx=(l)=>(l||'').split('\n').filter(Boolean).map(x=>x.replace(/^\[[^\]]*\]\s*/,'')).map(E).join('<br>');
+  const txC=lignesTx(sn.traitements_recus); // toutes les lignes : produit exact, durée, effet
+  const chirC=lignesTx(sn.chirurgies_toutes); // interventions : date, état, effets
   const b1c=blk('Corps &amp; motif',
     P('Motif principal',c.motifs?E(c.motifs):'', '', 'wide')+
     P('Taille',taille?taille+' cm':'')+
     P(poidsK,poidsTxt)+
     P('IMC',imc?imc.toFixed(1):'',imcCls)+
-    P('Traitements déjà reçus',txC?E(txC):'','', 'wide'));
+    P('Interventions déclarées',chirC,'', 'wide')+
+    P('Traitements déjà reçus (produit · début · statut · durée · effet)',txC,'', 'wide'));
 
   // 2. Contexte hormonal
   const nbE=sn.nb_enfants;
@@ -4199,7 +4202,7 @@ function buildFicheHormonale(c, age, cr, part){
   const today=new Date(); today.setHours(0,0,0,0);
   const futurs=(cr||[]).filter(r=>r.status!=='annule'&&r.date&&new Date(r.date)>=today).sort((a,b)=>new Date(a.date)-new Date(b.date));
   const dernierSuivi=qs?fmtDate(qs.created_at):'';
-  const tx=(sn.traitements_recus||'').split('\n').filter(Boolean).map(l=>l.replace(/^\[[^\]]*\]\s*/,'')).slice(0,6).join(' · ');
+  const tx=(sn.traitements_recus||'').split('\n').filter(Boolean).map(l=>l.replace(/^\[[^\]]*\]\s*/,'')).map(E).join('<br>');
   const b5s=blk('Suivi',
     P('Prochain RDV',futurs[0]?fmtDate(futurs[0].date):'')+
     P('Dernier suivi',dernierSuivi)+
@@ -4207,7 +4210,7 @@ function buildFicheHormonale(c, age, cr, part){
   const b5=blk('Évolution &amp; suite',
     P('Prochain RDV',futurs[0]?fmtDate(futurs[0].date):'')+
     P('Dernier suivi',dernierSuivi)+
-    P('Traitements déclarés (consultation)',tx?E(tx):'','', 'wide')+
+    P('Traitements déclarés (consultation)',tx,'', 'wide')+
     (evHtml?`<div style="flex:1 1 100%;display:flex;flex-wrap:wrap;gap:6px">${evHtml}</div>`:P('Évolution depuis le dernier suivi','')));
 
   // 6. Compléments en cours (dates de début saisies par la cliente dans son protocole)
