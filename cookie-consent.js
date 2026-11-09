@@ -1,12 +1,11 @@
 /* A VITA SERENA — choix des cookies
-   - Rien n'est chargé (Google Tag Manager, Google Analytics) avant un « Accepter » explicite.
+   - Rien n'est chargé (Google Tag Manager, qui porte la balise Google Analytics) avant un « Accepter » explicite.
    - « Refuser » est aussi simple que « Accepter ».
    - Le choix est mémorisé 6 mois dans un cookie technique (avs_consent), puis redemandé.
    - Un lien « Gérer mes cookies » (classe js-cookie-settings) rouvre le choix à tout moment.
    Ahrefs Web Analytics fonctionne sans cookie et n'est pas concerné par ce choix. */
 (function () {
   var GTM_ID = 'GTM-T5FFCD78';
-  var GA_ID = 'G-7H9MR0R1PK';
   var COOKIE = 'avs_consent';
   var SIX_MONTHS = 60 * 60 * 24 * 182;
   var loaded = false;
@@ -51,12 +50,6 @@
     g.async = true;
     g.src = 'https://www.googletagmanager.com/gtm.js?id=' + GTM_ID;
     document.head.appendChild(g);
-    var t = document.createElement('script');
-    t.async = true;
-    t.src = 'https://www.googletagmanager.com/gtag/js?id=' + GA_ID;
-    document.head.appendChild(t);
-    gtag('js', new Date());
-    gtag('config', GA_ID);
   }
 
   var banner = null;
