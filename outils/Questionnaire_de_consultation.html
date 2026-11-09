@@ -16032,7 +16032,177 @@ node('h_andro', { m: 'ask', multi: true, br: 'peau', s: 'Peau, poils, cheveux',
       e: [['five_ar', 3, "signes androgéniques avec bilan hormonal normal"]] },
     { k: 'aucun', l: "Rien de tout cela", x: true }
   ],
-  next: function (a) { return afterBrH(a, 'peau'); } });
+  next: function (a) { var q = peauSeq(a); return q.length ? q[0] : afterBrH(a, 'peau'); } });
+
+
+/* ── Prolongement du parcours « Peau, poils, cheveux » : acné et hirsutisme (06/11/2026) ──
+   Sources : ANSM (bon usage de l'isotrétinoïne), recommandations de bonne pratique du traitement de l'acné,
+   Manuel MSD (hirsutisme), recommandation internationale SOPK 2023. Aucune dose, aucun complément. */
+function peauSeq(a) {
+  var ids = [], an = ['acne', 'gras', 'pilosite', 'cheveux', 'bilan_normal'];
+  if (!sousPilule(a) && queueH(a).indexOf('cycle') < 0) ids.push('h_peau_cycle');
+  if (hasAny(a, 'h_andro', ['acne', 'gras'])) { ids.push('h_acne_type'); ids.push('h_acne_debut'); }
+  if (has(a, 'h_andro', 'pilosite')) ids.push('h_poils');
+  if (hasAny(a, 'h_andro', an)) { ids.push('h_peau_digest'); ids.push('h_peau_ttt'); ids.push('h_peau_vie'); }
+  return ids;
+}
+function nextPeau(a, id) { var q = peauSeq(a), i = q.indexOf(id); return (i >= 0 && q[i + 1]) ? q[i + 1] : afterBrH(a, 'peau'); }
+
+node('h_peau_cycle', { m: 'ask', br: 'peau', s: 'Cycles et peau',
+  q: "Ses règles sont-elles régulières ?",
+  hint: "Une seule réponse. Question à poser dès qu'il y a de l'acné ou des poils, même si elle ne parle pas de ses cycles : c'est le critère qui sépare un simple excès de sébum d'un trouble de l'ovulation. Sous pilule, la question n'est pas posée.",
+  why: "Des hormones masculines en excès freinent souvent l'ovulation, et un cycle long ou irrégulier est le premier signe qui accompagne l'acné et les poils. Un cycle régulier entre 23 et 35 jours rend un trouble de l'ovulation beaucoup moins probable, et oriente plutôt vers une peau très sensible aux hormones.",
+  o: [
+    { k: 'ok', l: "Régulières, entre 23 et 35 jours", f: "vos cycles durent entre 23 et 35 jours",
+      say: "Des cycles réguliers sont plutôt rassurants : on regardera alors surtout la sensibilité de la peau aux hormones masculines.", e: [['five_ar', 1, "acné ou poils avec des cycles réguliers"]] },
+    { k: 'long', l: "Longs ou irréguliers : plus de 35 jours", f: "vos cycles durent plus de 35 jours ou sont irréguliers",
+      say: "Un cycle long traduit presque toujours une ovulation en retard ou absente. Associé à de l'acné ou à des poils, cela renforce la piste d'un excès d'hormones masculines.",
+      e: [['dysovulation', 3, "cycles longs ou irréguliers"], ['sopk', 2, "cycles longs avec signes d'hormones masculines"]] },
+    { k: 'variable', l: "Imprévisibles, ça change beaucoup d'un mois à l'autre", f: "vos cycles sont imprévisibles d'un mois à l'autre",
+      e: [['dysovulation', 3, "cycles imprévisibles"], ['sopk', 1, "cycles imprévisibles avec signes d'hormones masculines"]] },
+    { k: 'absentes', l: "Absents depuis plusieurs mois", f: "vos règles sont absentes depuis plusieurs mois",
+      say: "On commence par écarter une grossesse, puis on cherche la cause : hormones masculines, prolactine, stress ou manque d'énergie.",
+      note: "Règles absentes avec acné ou poils : écarter une grossesse, puis explorer hormones masculines et prolactine avec le médecin.",
+      e: [['dysovulation', 3, "règles absentes"], ['sopk', 2, "règles absentes avec signes d'hormones masculines"], ['prolactine', 1, "règles absentes"]] },
+    { k: 'nsp', l: "Elle ne sait pas, ou ne les suit pas", x: true }
+  ],
+  next: function (a) { return nextPeau(a, 'h_peau_cycle'); } });
+
+node('h_acne_type', { m: 'ask', multi: true, br: 'peau', s: 'Acné',
+  q: "Comment est son acné ?",
+  hint: "Plusieurs réponses possibles. Demandez à voir ou à décrire : où, quelle profondeur, à quel moment du cycle.",
+  why: "La forme et la place des boutons orientent vers la cause : le bas du visage et la mâchoire parlent des hormones masculines, le front et les joues plutôt de la digestion et de l'insuline, les boutons profonds d'un terrain très inflammatoire, et une poussée dans les dix jours avant les règles d'une chute de progestérone qui laisse les hormones masculines agir.",
+  o: [
+    { k: 'profond', l: "Boutons profonds, douloureux, qui laissent des marques ou des cicatrices", f: "vous avez des boutons profonds et douloureux",
+      say: "Des boutons profonds traduisent une inflammation en profondeur de la glande à sébum : à ne pas laisser cicatriser sans avis dermatologique.",
+      note: "Acné profonde ou cicatricielle : encourager l'avis d'un dermatologue en parallèle, sans attendre les résultats de l'accompagnement.",
+      e: [['sopk', 1, "boutons profonds"], ['inflam', 1, "acné inflammatoire profonde"]] },
+    { k: 'superficiel', l: "Points noirs, points blancs, petits boutons superficiels", f: "vous avez surtout des points noirs et de petits boutons superficiels", e: [] },
+    { k: 'cycle', l: "Les poussées arrivent surtout dans les 10 jours avant les règles", f: "votre acné s'aggrave avant les règles",
+      say: "Quand la progestérone baisse, les hormones masculines pèsent davantage : une poussée avant les règles est typique.",
+      e: [['five_ar', 1, "poussée d'acné avant les règles"], ['progesterone_def', 1, "poussée d'acné avant les règles"]] },
+    { k: 'constante', l: "Constante, sans lien avec le cycle", f: "votre acné est constante, sans lien avec le cycle",
+      say: "Une acné qui ne suit pas le cycle signale des hormones masculines plus stables à la hausse, ou une cause qui n'est pas hormonale.",
+      e: [['sopk', 1, "acné constante"]] },
+    { k: 'bas', l: "Menton, mâchoire et cou", f: "votre acné touche le menton, la mâchoire et le cou",
+      e: [['sopk', 2, "acné du menton, de la mâchoire et du cou"]] },
+    { k: 'front', l: "Front et joues", f: "votre acné touche le front et les joues",
+      say: "Le front et les joues sont plutôt la signature d'une digestion perturbée et d'une glycémie instable que celle des hormones masculines.",
+      e: [['dysbiose', 2, "acné du front et des joues"], ['insulino', 1, "acné du front et des joues"]] },
+    { k: 'corps', l: "Dos, épaules ou décolleté", f: "votre acné touche le dos, les épaules ou le décolleté",
+      e: [['sopk', 1, "acné du dos et du décolleté"], ['insulino', 1, "acné du dos et du décolleté"]] },
+    { k: 'sucre', l: "Elle s'aggrave avec le sucre, les produits laitiers ou les repas copieux", f: "votre acné s'aggrave avec le sucre, les produits laitiers ou les gros repas",
+      say: "Les pics d'insuline stimulent les hormones masculines et la production de sébum : c'est un lien direct.",
+      e: [['insulino', 2, "acné aggravée par le sucre ou les laitages"]] },
+    { k: 'gras', l: "Elle s'aggrave avec les repas gras ou l'alcool", f: "votre acné s'aggrave avec les repas gras ou l'alcool",
+      say: "Le foie élimine les hormones, et la bile aide l'intestin à les évacuer : quand les graisses passent mal, l'acné peut en être le reflet.",
+      e: [['foie', 2, "acné aggravée par les graisses ou l'alcool"]] },
+    { k: 'moral', l: "Elle pèse sur le moral ou la confiance en soi", f: "votre acné pèse sur votre moral",
+      note: "Retentissement moral de l'acné : écoute à part entière, avis dermatologique rapide si la détresse est marquée.", e: [] },
+    { k: 'aucun', l: "Rien de tout cela", x: true }
+  ],
+  next: function (a) { return nextPeau(a, 'h_acne_type'); } });
+
+node('h_acne_debut', { m: 'ask', br: 'peau', s: 'Acné : début',
+  q: "Quand son acné a-t-elle commencé ou repris ?",
+  hint: "Une seule réponse. Elle indique si le terrain est ancien, récent, ou déclenché par un événement.",
+  why: "Le moment de début donne l'indice : une acné présente depuis l'adolescence sans accalmie parle d'un terrain hormonal ancien, une acné d'adulte de l'insuline, du stress ou de la progestérone, et une acné revenue à l'arrêt de la pilule d'un terrain que la pilule masquait.",
+  o: [
+    { k: 'ado', l: "Depuis l'adolescence, sans vraie accalmie", f: "votre acné dure depuis l'adolescence",
+      e: [['sopk', 2, "acné persistante depuis l'adolescence"], ['five_ar', 1, "acné persistante depuis l'adolescence"]] },
+    { k: 'adulte', l: "Apparue à l'âge adulte, après 25 ans", f: "votre acné est apparue à l'âge adulte",
+      say: "Une acné qui apparaît à l'âge adulte évoque l'insuline, le stress ou un déficit de progestérone plutôt qu'un simple héritage de l'adolescence.",
+      e: [['insulino', 1, "acné apparue à l'âge adulte"], ['cortexc', 1, "acné apparue à l'âge adulte"], ['progesterone_def', 1, "acné apparue à l'âge adulte"]] },
+    { k: 'arret_pilule', l: "Revenue ou apparue après l'arrêt de la pilule", f: "votre acné est revenue après l'arrêt de la pilule",
+      say: "La pilule met l'acné au repos le temps de la prise sans traiter sa cause : à l'arrêt, le terrain d'origine se montre, parfois plus fort. C'est transitoire et cela s'accompagne.",
+      e: [['five_ar', 2, "acné revenue après l'arrêt de la pilule"], ['dysovulation', 1, "acné revenue après l'arrêt de la pilule"]] },
+    { k: 'sous_pilule', l: "Apparue sous pilule ou sous stérilet hormonal", f: "votre acné est apparue sous contraception hormonale",
+      note: "Acné apparue sous contraception hormonale : à signaler au médecin prescripteur, sans jamais suggérer d'arrêt.",
+      e: [['pilule', 1, "acné apparue sous contraception hormonale"]] },
+    { k: 'evenement', l: "Après une période de stress, un deuil ou un bouleversement", f: "votre acné est apparue après une période de stress",
+      e: [['cortexc', 2, "acné apparue après un stress"]] },
+    { k: 'nsp', l: "Elle ne sait pas", x: true }
+  ],
+  next: function (a) { return nextPeau(a, 'h_acne_debut'); } });
+
+node('h_poils', { m: 'ask', multi: true, br: 'peau', s: 'Pilosité (hirsutisme)',
+  q: "Où poussent ces poils, et comment ont-ils évolué ?",
+  hint: "Plusieurs réponses possibles. Demandez aussi la fréquence d'épilation réelle : rasage, cire ou laser réguliers masquent l'ampleur. Ne pas chiffrer de score avec elle.",
+  why: "Des poils épais et foncés dans des zones habituellement masculines (lèvre, menton, cou, entre les seins, ligne du ventre, bas du dos, intérieur des cuisses) traduisent l'action des hormones masculines sur le follicule. La rapidité d'apparition compte plus que la quantité : une pilosité qui s'installe en quelques mois, avec une voix qui change, impose d'abord un examen médical.",
+  o: [
+    { k: 'visage', l: "Lèvre supérieure, menton, joues ou cou", f: "vous avez des poils sur le visage ou le cou", e: [['sopk', 1, "poils au visage ou au cou"]] },
+    { k: 'thorax', l: "Entre les seins ou autour des mamelons", f: "vous avez des poils entre les seins", e: [['sopk', 1, "poils sur la poitrine"]] },
+    { k: 'ventre', l: "Ligne du milieu du ventre", f: "vous avez des poils sur la ligne du ventre", e: [['sopk', 1, "poils sur le bas du ventre"]] },
+    { k: 'dos', l: "Dos, bas du dos ou fesses", f: "vous avez des poils dans le dos ou le bas du dos", e: [['sopk', 1, "poils dans le dos"]] },
+    { k: 'cuisses', l: "Face interne des cuisses", f: "vous avez des poils sur la face interne des cuisses", e: [['sopk', 1, "poils sur les cuisses"]] },
+    { k: 'puberte', l: "Depuis la puberté, progressivement",
+      e: [['sopk', 1, "pilosité installée depuis la puberté"]] },
+    { k: 'famille', l: "Même pilosité chez la mère, la sœur ou une tante",
+      say: "Quand c'est familial, le plus souvent les hormones sont normales : ce sont les follicules des poils qui sont plus sensibles. Cela se travaille, mais le bilan sera souvent normal.",
+      e: [['five_ar', 2, "pilosité familiale (follicules sensibles aux hormones masculines)"]] },
+    { k: 'epilation', l: "Rasage, cire ou laser très réguliers : difficile à évaluer", note: "Épilation fréquente : demander le rythme réel avant de conclure sur l'importance de la pilosité.", e: [] },
+    { k: 'rapide', l: "Poils apparus en quelques mois seulement", f: "vos poils sont apparus en quelques mois",
+      flag: "Pilosité apparue en quelques mois : avis médical rapide avant tout accompagnement (cause rare à écarter : ovaire ou surrénale).", e: [] },
+    { k: 'virilisation', l: "Voix plus grave, masse musculaire qui augmente, clitoris plus gros, seins qui diminuent", f: "votre voix s'est modifiée ou votre masse musculaire a augmenté",
+      flag: "Signes de virilisation (voix, muscles, clitoris) : avis médical rapide avant tout accompagnement.", e: [] },
+    { k: 'aucun', l: "Rien de tout cela", x: true }
+  ],
+  next: function (a) { return nextPeau(a, 'h_poils'); } });
+
+node('h_peau_digest', { m: 'ask', multi: true, br: 'peau', s: 'Digestion et peau',
+  q: "Côté digestion, retrouve-t-elle l'un de ces points ?",
+  hint: "Plusieurs réponses possibles. C'est le pont entre la peau et l'intestin, à ne pas sauter.",
+  why: "L'intestin et le foie éliminent les hormones : quand le transit est lent, une partie des hormones évacuées par la bile est réabsorbée, et quand la flore est déséquilibrée, la peau en porte souvent la trace. Une cure d'antibiotiques, surtout longue, laisse aussi une trace durable sur la flore.",
+  o: [
+    { k: 'ballon', l: "Ventre gonflé, gaz, digestion lourde", f: "vous avez le ventre gonflé et une digestion lourde",
+      e: [['dysbiose', 2, "ballonnements associés à des problèmes de peau"]] },
+    { k: 'constip', l: "Constipation : moins d'une selle par jour", f: "vous êtes constipée",
+      say: "Quand le transit est lent, les hormones que le foie envoie dans l'intestin sont en partie réabsorbées au lieu d'être évacuées.",
+      e: [['constip', 2, "constipation associée à des problèmes de peau"], ['hyperoestro', 1, "élimination ralentie des hormones"]] },
+    { k: 'graisses', l: "Nausées ou lourdeur après un repas gras", f: "vous digérez mal les repas gras",
+      e: [['biliaire', 2, "mauvaise digestion des graisses associée à des problèmes de peau"]] },
+    { k: 'antibios', l: "Cures d'antibiotiques répétées (acné, ORL, urinaire)", f: "vous avez eu plusieurs cures d'antibiotiques",
+      e: [['dysbiose', 2, "cures d'antibiotiques répétées"]] },
+    { k: 'aucun', l: "Rien de tout cela", x: true }
+  ],
+  next: function (a) { return nextPeau(a, 'h_peau_digest'); } });
+
+node('h_peau_ttt', { m: 'ask', multi: true, br: 'peau', s: 'Traitements de la peau',
+  q: "A-t-elle pris ou prend-elle un traitement pour la peau ou les poils ?",
+  hint: "Plusieurs réponses possibles. Jamais d'arrêt suggéré : le médecin qui prescrit décide. Isotrétinoïne = commercialisée sous les noms Roaccutane, Curacné, Acnétrait.",
+  why: "Chaque traitement laisse une trace à connaître : certains sont dangereux en cas de grossesse, d'autres modifient la flore intestinale, d'autres masquent les hormones le temps de la prise. Il faut aussi éviter de reproposer ce qui a déjà été essayé.",
+  o: [
+    { k: 'roa_cours', l: "Isotrétinoïne (Roaccutane, Curacné…) en ce moment", f: "vous prenez de l'isotrétinoïne",
+      flag: "Isotrétinoïne en cours : contraception fiable obligatoire pendant le traitement et un mois après (risque majeur de malformations), aucune vitamine A ni complément qui en contienne, foie et graisses du sang surveillés par le médecin. Rien à proposer sans l'accord du prescripteur.", e: [] },
+    { k: 'roa_passe', l: "Isotrétinoïne déjà prise dans le passé", f: "vous avez déjà pris de l'isotrétinoïne",
+      note: "Isotrétinoïne dans le passé : demander quand, combien de temps ; foie à ménager, peau sèche possible, et rechute fréquente à relier au terrain hormonal.",
+      e: [['foie', 1, "isotrétinoïne dans le passé"]] },
+    { k: 'cyclines', l: "Antibiotiques par la bouche pendant des mois (doxycycline, lymécycline, minocycline)", f: "vous avez pris des antibiotiques par la bouche pendant des mois",
+      note: "Antibiotique long contre l'acné : flore intestinale à reconstruire.", e: [['dysbiose', 2, "antibiotiques longs contre l'acné"]] },
+    { k: 'topiques', l: "Crèmes sur la peau (rétinoïdes, peroxyde de benzoyle, antibiotique local)", f: "vous utilisez des crèmes pour l'acné", e: [['dysbiose', 1, "antibiotique local au long cours"]] },
+    { k: 'spirono', l: "Spironolactone (anti-hormone masculine)", f: "vous prenez de la spironolactone",
+      note: "Spironolactone en cours : contraception fiable nécessaire, tension et potassium suivis par le médecin ; ne jamais suggérer d'arrêt.", e: [] },
+    { k: 'pilule_anti', l: "Pilule choisie pour son effet sur l'acné ou les poils", f: "votre pilule a été choisie pour l'acné ou les poils",
+      note: "Pilule prise pour l'acné ou les poils : signes masqués le temps de la prise, retour possible à l'arrêt.", e: [['pilule', 1, "pilule prise pour l'acné ou les poils"]] },
+    { k: 'aucun', l: "Aucun traitement", x: true }
+  ],
+  next: function (a) { return nextPeau(a, 'h_peau_ttt'); } });
+
+node('h_peau_vie', { m: 'ask', multi: true, br: 'peau', s: 'Mode de vie et peau',
+  q: "Retrouve-t-elle l'un de ces facteurs ?",
+  hint: "Plusieurs réponses possibles. Demandez les produits exacts pour les compléments.",
+  why: "Le stress prolongé détourne les précurseurs des hormones vers le cortisol et pousse les glandes surrénales à fabriquer des hormones masculines, le manque de sommeil dérègle l'insuline, et certains produits pris par la bouche (protéines en poudre, DHEA, testostérone, vitamine B12 ou B6 en excès) entretiennent l'acné.",
+  o: [
+    { k: 'stress', l: "Stress prolongé ou sommeil court (moins de 7 heures)", f: "vous êtes stressée ou vous dormez peu",
+      say: "Le stress et le manque de sommeil poussent les surrénales et l'insuline : deux moteurs des hormones masculines.",
+      e: [['cortexc', 2, "stress prolongé ou sommeil court"]] },
+    { k: 'produits', l: "Protéines en poudre, DHEA, testostérone, ou vitamine B12 ou B6 à forte dose", f: "vous prenez des protéines en poudre ou des compléments hormonaux ou vitaminés à forte dose",
+      note: "Produit pris par la bouche pouvant entretenir l'acné ou les poils (protéines en poudre, DHEA, testostérone, vitamine B6 ou B12 à forte dose) : relever le nom exact.", e: [] },
+    { k: 'soins', l: "Soins très décapants, gommages fréquents ou produits changés sans arrêt", f: "vous utilisez des soins décapants",
+      note: "Peau agressée par des soins décapants : proposer une routine douce, en accord avec le dermatologue.", e: [] },
+    { k: 'aucun', l: "Rien de tout cela", x: true }
+  ],
+  next: function (a) { return nextPeau(a, 'h_peau_vie'); } });
 
 /* ── Après 40 ans ── */
 node('h_age', { m: 'ask', multi: true, br: 'age', s: 'Après 40 ans',
@@ -16138,6 +16308,8 @@ node('h_examens', { m: 'ask', multi: true, s: 'Examens déjà faits',
     { k: 'pic7', l: "Progestérone et œstradiol à Pic+7" },
     { k: 'j3', l: "Bilan hormonal du début de cycle (FSH, LH, œstradiol)" },
     { k: 'androgenes', l: "Testostérone, SHBG, sulfate de DHEA" },
+    { k: 'homa', l: "Glycémie et insuline à jeun" },
+    { k: '17ohp', l: "17-hydroxyprogestérone (début de cycle)" },
     { k: 'prolactine', l: "Prolactine" },
     { k: 'thyroide', l: "Thyroïde (TSH, T3 libre, T4 libre)" },
     { k: 'echo', l: "Échographie pelvienne" },
@@ -16154,6 +16326,9 @@ function examensH(a, an) {
   if (((s.sopk || 0) >= 3 || (s.dysovulation || 0) >= 3) && !f('androgenes')) out.push("Testostérone totale et SHBG séparées, sulfate de DHEA, en début de cycle ; AMH ; échographie pelvienne. Le diagnostic de SOPK ne relève que du médecin.");
   if (((s.sopk || 0) >= 2 || (s.dysovulation || 0) >= 3 || (s.amenor || 0) >= 3 || has(a, 'h_grossesse', 'long')) && !f('thyroide')) out.push("TSH, T3 libre et T4 libre : la thyroïde influence le cycle et le bilan ne coûte presque rien.");
   if ((s.insulino || 0) >= 3) out.push("Glycémie et insuline à jeun (calcul du HOMA), après un dîner avec féculents la veille.");
+  if (hasAny(a, 'h_andro', ['pilosite']) && (has(a, 'h_poils', 'puberte') || hasAny(a, 'h_peau_cycle', ['long', 'variable', 'absentes']) || has(a, 'h_poils', 'famille')) && !f('17ohp')) out.push("17-hydroxyprogestérone le matin en début de cycle, pour écarter une forme discrète d'hyperplasie des surrénales : à discuter avec le médecin quand la pilosité date de la puberté.");
+  if (((s.insulino || 0) >= 2) && hasAny(a, 'h_andro', ['acne', 'gras', 'pilosite']) && !f('homa') && (s.insulino || 0) < 3) out.push("Glycémie et insuline à jeun (HOMA) : la résistance à l'insuline est une cause fréquente d'acné et de poils, à rechercher même si la glycémie est normale.");
+  if (hasAny(a, 'h_peau_ttt', ['roa_cours'])) out.push("Isotrétinoïne en cours : le médecin prescripteur surveille la grossesse, le foie et les graisses du sang ; rien de ce qui contient de la vitamine A ne doit être proposé.");
   if ((s.endo || 0) >= 3 && !f('echo')) out.push("Échographie ou IRM pelvienne par un médecin formé à l'endométriose.");
   if ((s.resistance_prog || 0) >= 3) out.push("Progestérone à Pic+7 (repère fonctionnel autour de 20 ng/mL) et vitamine D (cible 60 à 80 ng/mL) : si la progestérone est bonne et que les symptômes persistent, penser à l'inflammation et à la sensibilité des récepteurs.");
   if ((s.hyperoestro || 0) >= 3) out.push("Ratio urinaire 2-OH / 16-OH des œstrogènes : un ratio bas (sous 1,5, idéalement au-dessus de 2) signe une élimination moins protectrice.");
@@ -16193,7 +16368,9 @@ PONTS.push.apply(PONTS, [
   ['Avez-vous des douleurs pelviennes chroniques', function (a) { return has(a, 'h_douleur', 'pelvien'); }],
   ['Avez-vous des règles noirâtres', function (a) { return has(a, 'h_impreg', 'noires'); }],
   ['Avez-vous des migraines cycliques', function (a) { return has(a, 'h_spm', 'migraines') || has(a, 'h_impreg', 'migraines'); }],
-  ['Acné adulte au niveau du menton', function (a) { return has(a, 'h_andro', 'acne'); }],
+  ['Acné adulte au niveau du menton', function (a) { return has(a, 'h_andro', 'acne') || has(a, 'h_acne_type', 'bas'); }],
+  ['Acné sur le front ou les joues', function (a) { return has(a, 'h_acne_type', 'front'); }],
+  ['Boutons inflammatoires profonds', function (a) { return has(a, 'h_acne_type', 'profond'); }],
   ['Chute localisée sur les golfes temporaux', function (a) { return has(a, 'h_andro', 'cheveux'); }],
   ['Avez-vous pris du poids depuis la pilule', function (a) { return has(a, 'h_pilule_detail', 'poids'); }],
   ['Depuis l\'arrêt de la pilule', function (a) { return has(a, 'h_pilule_detail', 'retour'); }],
@@ -16223,7 +16400,7 @@ PONTS.push.apply(PONTS, [
   ['Ménopause précoce chez la mère', function (a) { return has(a, 'h_expo', 'famille'); }]
 ]);
 
-var SUIVI_NODES_H = ['h_presence', 'h_glaire', 'h_lut', 'h_volume', 'h_impreg', 'h_hypo', 'h_spm', 'h_douleur', 'h_andro', 'h_age', 'h_absence', 'h_pilule_detail'];
+var SUIVI_NODES_H = ['h_presence', 'h_glaire', 'h_lut', 'h_volume', 'h_impreg', 'h_hypo', 'h_spm', 'h_douleur', 'h_andro', 'h_age', 'h_absence', 'h_pilule_detail', 'h_peau_cycle', 'h_acne_type', 'h_poils', 'h_peau_digest', 'h_peau_vie'];
 
 /* ───────────────────── Prolongement du parcours hormonal : motifs hors cours DFM ─────────────────────
    Fibromes, adénomyose, mastose, insuffisance ovarienne prématurée, post-partum, contraception hors pilule.
@@ -17464,7 +17641,7 @@ var SUIVI_NODES = ['ball_quand', 'ball_ou', 'ball_gaz', 'ball_aliments', 'alim_r
 function suiviItems(a, an) {
   var out = [], hh = an.th === 'hormones', gg = an.th === 'energie';
   var nodes = hh ? SUIVI_NODES_H.concat(SUIVI_NODES_HX) : (gg ? SUIVI_NODES_G : SUIVI_NODES);
-  var PFX_H = { h_andro: 'Peau, poils, cheveux : ', h_pilule_detail: 'Pilule : ', h_seins: 'Seins : ', h_seins_ctx: 'Seins : ', h_diag: 'Imagerie : ', h_fibrome: 'Fibrome : ', h_adeno: 'Adénomyose : ', h_iop: 'Avant 40 ans : ', h_pp: 'Post-partum : ', h_pp_signes: 'Post-partum : ', h_contra: 'Contraception : ', h_contra_effets: 'Contraception : ' };
+  var PFX_H = { h_andro: 'Peau, poils, cheveux : ', h_peau_cycle: 'Cycles et peau : ', h_acne_type: 'Acné : ', h_poils: 'Pilosité : ', h_peau_digest: 'Peau et digestion : ', h_peau_vie: 'Peau et mode de vie : ', h_pilule_detail: 'Pilule : ', h_seins: 'Seins : ', h_seins_ctx: 'Seins : ', h_diag: 'Imagerie : ', h_fibrome: 'Fibrome : ', h_adeno: 'Adénomyose : ', h_iop: 'Avant 40 ans : ', h_pp: 'Post-partum : ', h_pp_signes: 'Post-partum : ', h_contra: 'Contraception : ', h_contra_effets: 'Contraception : ' };
   var PFX_G = { g_fatigue_moment: 'Fatigue : ', g_fatigue_signes: 'Fatigue : ', g_fatigue_debut: 'Fatigue : ', g_sommeil: 'Sommeil : ', g_sommeil_rythme: 'Sommeil : ', g_humeur: 'Humeur : ', g_humeur_cycle: 'Humeur : ', g_poids: 'Poids : ', g_cheveux: 'Cheveux : ', g_cheveux_signes: 'Cheveux : ', g_infect: 'Défenses : ', g_infect_facteurs: 'Défenses : ', g_allergie: 'Allergies : ', g_libido: 'Libido : ', g_douleurs: 'Douleurs : ' };
   var SEC_G = { g_infect: 'sec-2', g_infect_facteurs: 'sec-2', g_allergie: 'sec-2', g_douleurs: 'sec-2', g_libido: 'sec-8' };
   nodes.forEach(function (id) {
