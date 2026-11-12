@@ -4151,13 +4151,15 @@ function buildFicheHormonale(c, age, cr, part){
 
   // 1quater. Parcours par motif (thèmes digestif, hormones & cycle, énergie / sommeil / humeur / immunité) : ce qu'elle a décrit et les pistes annoncées en séance
   const nl=t=>E(String(t||'')).replace(/\n/g,'<br>');
-  const mgBlk=sn.motif_guide_reponses?(
+  const mgBlk=(sn.motif_guide_reponses||sn.motif_guide_croise)?(
+    P('Pourquoi elle vient',nl(sn.motif_guide_entree),'','wide')+
     P('Thème',E(sn.motif_guide_theme||''),'','wide')+
     P('Ce que j\'ai entendu',nl(sn.motif_guide_recap),'','wide')+
     P('Réponses, une à une',nl(sn.motif_guide_reponses),'','wide')+
     P('Pistes évoquées en séance (à confirmer)',nl(sn.motif_guide_pistes),'','wide')+
     P('À clarifier avec son médecin avant tout',nl(sn.motif_guide_vigilance),'warn','wide')+
     P('Points d\'attention',nl(sn.motif_guide_attention),'','wide')+
+    P('Ce qui se recoupe entre ses motifs',nl(sn.motif_guide_croise),'','wide')+
     P('Examens à discuter avec son médecin',nl(sn.motif_guide_examens),'','wide')):'';
   const b1e=mgBlk?blk('Parcours par motif — ce qu\'elle a décrit',mgBlk,'Hypothèses de travail, jamais un diagnostic. Fibrome, adénomyose, mastose, insuffisance ovarienne, post-partum et contraception hors pilule : sujets hors cours DFM (sources HAS, ANSM, Vidal, MSD), à valider.'):'';
 
@@ -7092,6 +7094,11 @@ function ouvrirLettreClinique(clientId){
     programme: c.programme||'', date1: c.date1||'',
     notes: c.notes||''
   };
+  // Parcours par motif (02/11/2026) : texte d'adressage préparé par le questionnaire de consultation le plus récent
+  try{
+    const qc=(questionnairesClient[clientId]||[]).find(q=>q.type==='consultation'&&q.snapshot&&q.snapshot.motif_guide_adressage);
+    if(qc){ data.adressage = qc.snapshot.motif_guide_adressage; data.adressage_date = qc.created_at||''; }
+  }catch(e){}
   sessionStorage.setItem('lc_cliente', JSON.stringify(data));
   localStorage.setItem('lc_cliente', JSON.stringify(data));
   window.open('lettre-adressage.html', '_blank');

@@ -654,7 +654,31 @@ function chargerCliente(){
     if(client.programme) meta.push('Programme '+client.programme.charAt(0).toUpperCase()+client.programme.slice(1));
     if(client.motifs) meta.push(client.motifs.split(/[,·]/)[0].trim());
     document.getElementById('p-meta').textContent = meta.join(' · ');
+    prefillAdressage();
   }catch(e){ console.warn('Pas de cliente en session') }
+}
+
+/* ══════════════════════════════
+   PRÉREMPLISSAGE depuis le parcours par motif du questionnaire de consultation
+   (champs laissés vides uniquement ; tout reste modifiable avant impression)
+══════════════════════════════ */
+function prefillAdressage(){
+  const txt = client && client.adressage;
+  if(!txt) return;
+  const sec = {contexte:[], orient:[], flags:[], exam:[]};
+  let cur = 'contexte';
+  txt.split('\n').forEach(l=>{
+    const t = l.trim(); if(!t) return;
+    if(/^Orientation clinique/.test(t)){ cur='orient'; return; }
+    if(/^Points pour lesquels/.test(t)){ cur='flags'; return; }
+    if(/^Examens que je vous/.test(t)){ cur='exam'; return; }
+    sec[cur].push(t.replace(/^-\s*/,''));
+  });
+  const put = (id,v)=>{ const el=document.getElementById(id); if(el && !el.value.trim() && v) el.value=v; };
+  put('c-contexte', sec.contexte.join('\n'));
+  put('c-suspicion', sec.orient.length ? 'Hypothèses de travail issues de mon interrogatoire, à confirmer ou écarter par vos soins : ' + sec.orient.join(' ; ') + '.' + (sec.flags.length ? ' Points pour lesquels votre avis me semble prioritaire : ' + sec.flags.join(' ; ') + '.' : '') : '');
+  put('c-examens', sec.exam.join('\n'));
+  if(client.adressage_date) toast('Champs préremplis depuis le questionnaire du '+fmtDate(client.adressage_date));
 }
 
 /* ══════════════════════════════
