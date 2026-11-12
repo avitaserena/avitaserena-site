@@ -7848,5 +7848,225 @@ function olSectionsSynthese(d) {
 })();
 
 </script>
+<script id="al-script">
+/* ═════════════════════════════════════════════════════════════════════
+   ALERTES MÉDICALES — bandeau praticienne + préparation de la lettre d'adressage
+   Commun au questionnaire de consultation et au questionnaire de suivi (02/11/2026).
+   Deux niveaux :
+     urgence : conduite immédiate (pas de lettre) ;
+     avis    : avis médical utile → lettre d'adressage préparée (prio = à voir rapidement).
+   Jamais de diagnostic dans les textes : éléments recueillis, hypothèses à écarter, examens à considérer.
+   Réservé à la praticienne : masqué à l'impression.
+   ═════════════════════════════════════════════════════════════════════ */
+(function () {
+  'use strict';
+  var URG_CONSIGNE = {
+    idees: "Ne la laissez pas repartir sans lui avoir parlé : médecin traitant le jour même ; si le danger est immédiat, 15 ou 112 ; le 3114 (prévention du suicide, 24 h/24, gratuit) peut lui être donné.",
+    coeur: "Médecin le jour même ; 15 si la douleur dans la poitrine est en cours, avec un essoufflement ou un malaise.",
+    fievre: "Médecin ou urgences le jour même (fièvre, jaunisse ou selles décolorées).",
+    aigue: "Urgences ou médecin le jour même (douleur pelvienne intense ou soudaine).",
+    horton: "Médecin ou urgences le jour même : une atteinte des artères de la tempe peut menacer la vue.",
+    oeil: "Ophtalmologue ou urgences ophtalmologiques le jour même.",
+    biliaire: "Urgences : une douleur intense avec selles décolorées n'est pas un cas naturopathique.",
+    nuque: "Urgences immédiates (raideur de la nuque avec maux de tête ou fièvre)."
+  };
+
+  /* id, niveau, libellé court, re = motif de reconnaissance sur le texte d'une alerte du parcours, dom = reconnaissance d'une case classique */
+  var AL = [
+    { id: 'idees', niv: 'urg', lib: "Idées noires ou envie de mourir", re: /Idées noires|idées noires/ },
+    { id: 'coeur', niv: 'urg', lib: "Palpitations fortes, douleur thoracique ou essoufflement inhabituel", re: /Palpitations fortes/ },
+    { id: 'fievre', niv: 'urg', lib: "Fièvre, jaunisse ou selles décolorées", re: /Fièvre, jaunisse/ },
+    { id: 'aigue', niv: 'urg', lib: "Douleur pelvienne intense ou soudaine", re: /Douleur pelvienne intense/ },
+    { id: 'horton', niv: 'urg', lib: "Maux de tête nouveaux avec cuir chevelu douloureux, mâchoire ou vue touchée", dom: { txt: /^Alerte — maux de tête nouveaux/ } },
+    { id: 'oeil', niv: 'urg', lib: "Œil rouge et douloureux avec baisse de la vue", dom: { txt: /^Alerte — œil rouge/ } },
+    { id: 'biliaire', niv: 'urg', lib: "Douleur abdominale intense avec selles décolorées", dom: { txt: /^Avez-vous déjà eu ce tableau \(douleur intense/ } },
+    { id: 'nuque', niv: 'urg', lib: "Nuque raide avec maux de tête ou fièvre", dom: { id: 'zi-cb-nuque-raide' } },
+
+    { id: 'sang', niv: 'avis', prio: 1, lib: "Sang dans les selles ou selles noires", re: /Sang dans les selles/, dom: { txt: /^Alerte — sang dans les selles/ },
+      motif: "Sang dans les selles ou selles noires rapportés par la patiente.",
+      ex: ["Avis gastro-entérologique et exploration digestive à votre appréciation (coloscopie, fibroscopie)", "NFS, ferritine, CRP"] },
+    { id: 'amaigr', niv: 'avis', prio: 1, lib: "Perte de poids involontaire", re: /Perte de poids involontaire/,
+      motif: "Perte de poids involontaire, parfois associée à une fatigue marquée.",
+      ex: ["Bilan général à votre appréciation (NFS, CRP, ionogramme, glycémie ou HbA1c, bilan hépatique, TSH)"] },
+    { id: 'nuit', niv: 'avis', lib: "Douleur ou diarrhée qui réveille la nuit", re: /Réveils nocturnes par douleur|Douleur qui réveille la nuit|Diarrhée nocturne/,
+      motif: "Douleur ou diarrhée nocturne qui réveille la patiente, évoquant une cause organique à écarter.",
+      ex: ["CRP, calprotectine fécale", "Dépistage de la maladie cœliaque (anticorps anti-transglutaminase IgA avec dosage des IgA totales)"] },
+    { id: 'avaler', niv: 'avis', lib: "Gêne à la déglutition ou vomissements répétés", re: /déglutition/,
+      motif: "Gêne à la déglutition ou vomissements répétés.",
+      ex: ["Avis gastro-entérologique, fibroscopie à votre appréciation"] },
+    { id: 'recent', niv: 'avis', lib: "Changement récent et durable du transit", re: /Changement récent et durable du transit/,
+      motif: "Changement récent et durable du transit, notamment après 50 ans.",
+      ex: ["Coloscopie à discuter selon l'âge et le contexte", "NFS, ferritine, CRP"] },
+    { id: 'famille', niv: 'avis', lib: "Antécédent familial digestif (côlon, Crohn, RCH, cœliaque)", re: /Antécédent familial digestif/,
+      motif: "Antécédent familial digestif (cancer du côlon, maladie de Crohn, rectocolite ou maladie cœliaque).",
+      ex: ["Dépistage adapté à l'histoire familiale à votre appréciation"] },
+    { id: 'anemie', niv: 'avis', lib: "Anémie connue, pâleur, essoufflement inhabituel", re: /Anémie ou pâleur/,
+      motif: "Anémie connue ou pâleur marquée avec essoufflement inhabituel.",
+      ex: ["NFS, ferritine, saturation de la transferrine, CRP", "Recherche d'une cause digestive à votre appréciation"] },
+    { id: 'ventre', niv: 'avis', prio: 1, lib: "Gonflement du ventre persistant et récent", dom: { txt: /^Alerte — gonflement du ventre persistant/ },
+      motif: "Gonflement abdominal récent et persistant depuis plus de 3 à 4 semaines, notamment après 45 ans.",
+      ex: ["Examen clinique et échographie abdomino-pelvienne à votre appréciation", "Bilan complémentaire selon vos conclusions (marqueurs, imagerie)"] },
+    { id: 'hors', niv: 'avis', prio: 1, lib: "Saignement en dehors des règles ou après la ménopause", re: /Saignement en dehors des règles/,
+      motif: "Saignements en dehors des règles ou après la ménopause.",
+      ex: ["Avis gynécologique, échographie pelvienne", "Frottis cervico-utérin à jour"] },
+    { id: 'masse', niv: 'avis', prio: 1, lib: "Masse palpée au ventre ou au sein", re: /Masse palpée/,
+      motif: "Masse palpée par la patiente au ventre ou au sein.",
+      ex: ["Examen clinique, imagerie mammaire ou pelvienne à votre appréciation"] },
+    { id: 'tete', niv: 'avis', prio: 1, lib: "Maux de tête ou troubles visuels avec absence de règles ou écoulement mammaire", re: /Maux de tête ou troubles visuels avec absence de règles/,
+      motif: "Maux de tête ou troubles visuels associés à une absence de règles ou à un écoulement mammaire.",
+      ex: ["Prolactine", "Avis endocrinologique, imagerie hypophysaire et champ visuel à votre appréciation"] },
+    { id: 'addison', niv: 'avis', prio: 1, lib: "Taches foncées, joues creuses, malaises ou tension basse", re: /insuffisance surrénalienne/,
+      motif: "Taches pigmentées, joues creuses, malaises ou tension basse : insuffisance surrénalienne à écarter.",
+      ex: ["Cortisol à 8 h et ACTH", "Ionogramme sanguin", "Avis endocrinologique"] },
+    { id: 'cushing', niv: 'avis', lib: "Visage gonflé, bosse entre les épaules, bleus faciles, peau fine", re: /excès de cortisol/,
+      motif: "Visage gonflé, bosse entre les épaules, ecchymoses faciles et peau fine : excès de cortisol à écarter.",
+      ex: ["Exploration de l'axe du cortisol à votre appréciation (cortisol libre urinaire ou salivaire du soir, freinage)", "Avis endocrinologique"] },
+    { id: 'apnee', niv: 'avis', lib: "Ronflements forts, pauses respiratoires ou somnolence marquée", re: /pauses respiratoires/,
+      motif: "Ronflements forts avec pauses respiratoires nocturnes ou somnolence diurne marquée : syndrome d'apnées du sommeil à rechercher.",
+      ex: ["Polygraphie ventilatoire ou polysomnographie à votre appréciation"] },
+    { id: 'jambes', niv: 'avis', lib: "Jambes sans repos le soir", re: /Jambes sans repos/,
+      motif: "Impatiences : besoin de bouger les jambes le soir, gênant l'endormissement.",
+      ex: ["Ferritine et saturation de la transferrine"] },
+    { id: 'rapide', niv: 'avis', lib: "Prise de poids rapide et inexpliquée", re: /Prise de poids rapide/,
+      motif: "Prise de plusieurs kilos en quelques semaines sans explication.",
+      ex: ["TSH, créatinine, bilan hépatique, glycémie", "Exploration de l'axe du cortisol selon votre examen"] },
+    { id: 'oedeme', niv: 'avis', lib: "Œdèmes (chevilles, visage, paupières) ou essoufflement", re: /Œdèmes ou essoufflement/,
+      motif: "Chevilles, visage ou paupières gonflés avec essoufflement : causes rénales, cardiaques ou thyroïdiennes à écarter.",
+      ex: ["Créatinine, bandelette urinaire (protéinurie), albumine, TSH", "Avis cardiologique à votre appréciation"] },
+    { id: 'grain', niv: 'avis', prio: 1, lib: "Grain de beauté ou tache qui change", re: /Grain de beauté ou tache qui change/, dom: { txt: /^Alerte — grain de beauté/ },
+      motif: "Grain de beauté ou tache cutanée qui change de forme ou de couleur, grossit, saigne ou gratte.",
+      ex: ["Examen dermatologique avec dermoscopie, sans attendre"] },
+    { id: 'plaques', niv: 'avis', lib: "Chute de cheveux en plaques ou brutale et massive", re: /Chute en plaques/,
+      motif: "Chute de cheveux en plaques bien délimitées, ou brutale et massive.",
+      ex: ["Avis dermatologique", "NFS, ferritine, TSH selon votre examen"] },
+    { id: 'viril', niv: 'avis', prio: 1, lib: "Virilisation rapide (voix, pilosité, traits)", re: /Virilisation rapide/,
+      motif: "Virilisation d'installation rapide (voix plus grave, pilosité, traits).",
+      ex: ["Testostérone totale, SHBG, DHEA-S, 17-OH-progestérone", "Échographie pelvienne et avis endocrinologique"] },
+    { id: 'plaie', niv: 'avis', lib: "Plaie qui ne cicatrise pas", re: /Lésion qui ne cicatrise pas/,
+      motif: "Plaie ou lésion cutanée qui ne cicatrise pas, douloureuse ou suintante.",
+      ex: ["Avis dermatologique"] },
+    { id: 'douleur', niv: 'avis', prio: 1, lib: "Douleur nouvelle, brutale ou qui s'aggrave vite", dom: { id: 'douleur-alerte-item-c', cls: 'checked' },
+      motif: "Douleur nouvelle, d'apparition brutale ou s'aggravant rapidement.",
+      ex: ["Examen clinique et exploration de la zone douloureuse à votre appréciation"] }
+  ];
+  var BY = {}; AL.forEach(function (a) { BY[a.id] = a; });
+
+  var masquees = {};
+  function norm(s) { return String(s || '').replace(/\s+/g, ' ').trim(); }
+
+  /* ── Détection ── */
+  function detecter() {
+    var f = {};
+    /* 1. alertes des parcours par motif (consultation) */
+    try {
+      if (typeof window.mgAlertesFlags === 'function') {
+        window.mgAlertesFlags().forEach(function (txt) { AL.forEach(function (a) { if (a.re && a.re.test(txt)) f[a.id] = 1; }); });
+      }
+    } catch (e) {}
+    /* 2. cases d'alerte classiques cochées */
+    var items = document.querySelectorAll('.check-item.checked');
+    for (var i = 0; i < items.length; i++) {
+      var span = items[i].querySelector('.ci-top span, .ci-top + span, div > div:not(.cb)') || items[i];
+      var t = norm((items[i].querySelector('.ci-top span') || items[i].querySelector('.cb + div') || items[i]).textContent);
+      AL.forEach(function (a) { if (a.dom && a.dom.txt && a.dom.txt.test(t)) f[a.id] = 1; });
+      if (items[i].id) AL.forEach(function (a) { if (a.dom && a.dom.id === items[i].id) f[a.id] = 1; });
+    }
+    AL.forEach(function (a) {
+      if (a.dom && a.dom.id && !a.dom.cls) { var el = document.getElementById(a.dom.id); if (el && el.checked) f[a.id] = 1; }
+    });
+    return AL.filter(function (a) { return f[a.id]; });
+  }
+
+  /* ── Lettre ── */
+  function val(id) { var e = document.getElementById(id); return e ? String(e.value || '').trim() : ''; }
+  function ouvrirLettre(avis) {
+    var qs = new URLSearchParams(location.search);
+    var adr = '';
+    try { if (typeof window.mgAdressage === 'function') adr = window.mgAdressage() || ''; } catch (e) {}
+    var data = {
+      prenom: val('prenom') || qs.get('prenom') || '', nom: val('nom') || '', ddn: val('ddn') || '',
+      email: '', tel: '', motifs: '', axes: '', programme: '', date1: val('date-initiale') || '', notes: '',
+      client_id: qs.get('client_id') || '',
+      adressage: adr, adressage_date: new Date().toISOString(),
+      alertes_lettre: avis.map(function (a) { return { id: a.id, lib: a.lib, motif: a.motif, ex: a.ex, prio: !!a.prio }; }),
+      source_alerte: document.title || ''
+    };
+    try { sessionStorage.setItem('lc_cliente', JSON.stringify(data)); } catch (e) {}
+    try { localStorage.setItem('lc_cliente', JSON.stringify(data)); } catch (e) {}
+    window.open('lettre-adressage.html', '_blank');
+  }
+
+  /* ── Bandeau ── */
+  var bar, ouvert = true, derniereSig = '';
+  function css() {
+    var st = document.createElement('style');
+    st.textContent =
+      '#al-bar{position:fixed;left:16px;bottom:16px;z-index:9000;width:min(560px,calc(100vw - 32px));font-family:inherit;font-size:15px;line-height:1.55;color:#1E1E1C}' +
+      '#al-bar .al-box{border-radius:12px;border:2px solid #B4906A;background:#F7F6F4;box-shadow:0 6px 28px rgba(30,30,28,.16);overflow:hidden}' +
+      '#al-bar.al-u .al-box{border-color:#C0392B;background:#FBE9E7}' +
+      '#al-bar .al-h{display:flex;align-items:center;gap:10px;padding:12px 16px;cursor:pointer;font-weight:700;font-size:14px;letter-spacing:.04em;text-transform:uppercase}' +
+      '#al-bar.al-u .al-h{color:#7B241C}#al-bar .al-h{color:#6B5230}' +
+      '#al-bar .al-h .al-n{margin-left:auto;font-size:13px;font-weight:600;text-transform:none;letter-spacing:0;opacity:1}' +
+      '#al-bar .al-b{padding:0 16px 14px;max-height:52vh;overflow:auto}' +
+      '#al-bar .al-sec{margin-top:10px}' +
+      '#al-bar .al-st{font-weight:700;font-size:13px;letter-spacing:.06em;text-transform:uppercase;margin:0 0 4px}' +
+      '#al-bar .al-it{display:flex;gap:8px;align-items:flex-start;padding:8px 0;border-top:1px solid rgba(30,30,28,.10)}' +
+      '#al-bar .al-it:first-of-type{border-top:0}' +
+      '#al-bar .al-it b{font-weight:700}' +
+      '#al-bar .al-c{display:block;font-size:14px;color:#4a2a26;margin-top:2px}' +
+      '#al-bar .al-x{margin-left:auto;flex:none;border:1px solid rgba(30,30,28,.25);background:transparent;border-radius:6px;font-size:13px;padding:2px 8px;cursor:pointer;color:#1E1E1C}' +
+      '#al-bar .al-go{display:inline-block;margin-top:8px;background:#1E1E1C;color:#fff;border:0;border-radius:8px;padding:10px 16px;font-size:14px;font-weight:700;cursor:pointer}' +
+      '#al-bar .al-note{font-size:14px;margin-top:8px;color:#6B6560}' +
+      '@media print{#al-bar{display:none!important}}';
+    document.head.appendChild(st);
+  }
+  function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function dessiner() {
+    var act = detecter().filter(function (a) { return !masquees[a.id]; });
+    var sig = act.map(function (a) { return a.id; }).join(',') + (ouvert ? '|o' : '|c');
+    if (sig === derniereSig) return; derniereSig = sig;
+    if (!act.length) { if (bar) bar.style.display = 'none'; return; }
+    if (!bar) { css(); bar = document.createElement('div'); bar.id = 'al-bar'; document.body.appendChild(bar); }
+    bar.style.display = '';
+    var urg = act.filter(function (a) { return a.niv === 'urg'; }), avis = act.filter(function (a) { return a.niv === 'avis'; });
+    bar.className = urg.length ? 'al-u' : '';
+    var titre = urg.length ? 'Urgence médicale à orienter' : 'Avis médical conseillé';
+    var h = '<div class="al-box"><div class="al-h" data-al="toggle"><span>' + titre + '</span><span class="al-n">' + act.length + ' alerte' + (act.length > 1 ? 's' : '') + ' · ' + (ouvert ? 'réduire' : 'afficher') + '</span></div>';
+    if (ouvert) {
+      h += '<div class="al-b">';
+      if (urg.length) {
+        h += '<div class="al-sec"><p class="al-st" style="color:#7B241C">Urgence : conduite immédiate, pas de lettre</p>';
+        urg.forEach(function (a) { h += '<div class="al-it"><div><b>' + esc(a.lib) + '</b><span class="al-c">' + esc(URG_CONSIGNE[a.id] || '') + '</span></div><button type="button" class="al-x" data-al="mask" data-id="' + a.id + '">Pris en charge</button></div>'; });
+        h += '</div>';
+      }
+      if (avis.length) {
+        h += '<div class="al-sec"><p class="al-st" style="color:#6B5230">Avis médical utile : lettre d\'adressage</p>';
+        avis.forEach(function (a) { h += '<div class="al-it"><div><b>' + esc(a.lib) + '</b>' + (a.prio ? '<span class="al-c">À voir rapidement.</span>' : '') + '</div><button type="button" class="al-x" data-al="mask" data-id="' + a.id + '">Masquer</button></div>'; });
+        h += '<button type="button" class="al-go" data-al="lettre">Préparer la lettre au médecin (' + avis.length + ')</button>';
+        h += '<p class="al-note">Recueillez d\'abord l\'accord de la cliente pour transmettre ces éléments à son médecin. La lettre s\'ouvre déjà rédigée ; vous relisez avant d\'imprimer.</p></div>';
+      }
+      h += '</div>';
+    }
+    h += '</div>';
+    bar.innerHTML = h;
+  }
+  function init() {
+    document.addEventListener('click', function (e) {
+      var t = e.target.closest ? e.target.closest('[data-al]') : null; if (!t || !bar || !bar.contains(t)) return;
+      var k = t.getAttribute('data-al');
+      if (k === 'toggle') { ouvert = !ouvert; derniereSig = ''; dessiner(); }
+      else if (k === 'mask') { masquees[t.getAttribute('data-id')] = 1; derniereSig = ''; dessiner(); }
+      else if (k === 'lettre') { ouvrirLettre(detecter().filter(function (a) { return a.niv === 'avis' && !masquees[a.id]; })); }
+    });
+    setInterval(dessiner, 1200);
+    dessiner();
+  }
+  window.alertesMedicales = function () { return detecter(); };
+  window.alertesTexte = function () {
+    return detecter().map(function (a) { return (a.niv === 'urg' ? 'URGENCE — ' : 'Avis médical — ') + a.lib; }).join(' ; ');
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+})();
+</script>
 </body>
 </html>
