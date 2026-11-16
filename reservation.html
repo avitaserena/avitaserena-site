@@ -153,6 +153,14 @@ textarea.fi{min-height:90px;resize:vertical;line-height:1.65}
 .recap-total-val{font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:300;color:white}
 
 /* ── BOUTON PAYER ── */
+.consent-box{background:var(--off);border:1px solid var(--taupe);border-radius:12px;padding:16px 18px;margin-bottom:16px}
+.consent-box.err{border-color:#B4503A;background:#FBF1EE}
+.consent-row{display:flex;align-items:flex-start;gap:12px;cursor:pointer}
+.consent-row+.consent-row{margin-top:14px}
+.consent-row input{margin-top:4px;width:19px;height:19px;flex-shrink:0;accent-color:var(--ocre);cursor:pointer}
+.consent-row span{font-size:14.5px;line-height:1.65;color:var(--ardoise)}
+.consent-row a{color:var(--ocre);font-weight:600;text-decoration:underline}
+.consent-err{display:none;font-size:13.5px;color:#B4503A;margin-top:12px;font-weight:600}
 .btn-payer{width:100%;background:var(--ocre);color:white;border:none;border-radius:99px;padding:18px 32px;font-size:15px;font-weight:700;font-family:'Be Vietnam Pro',sans-serif;cursor:pointer;transition:all .18s;display:flex;align-items:center;justify-content:center;gap:10px;letter-spacing:.04em}
 .btn-payer:hover{background:var(--or);transform:translateY(-2px);box-shadow:0 8px 24px rgba(180,144,106,.4)}
 .btn-payer:disabled{background:var(--taupe);cursor:not-allowed;transform:none;box-shadow:none}
@@ -979,6 +987,17 @@ textarea.fi{min-height:90px;resize:vertical;line-height:1.65}
           <div class="trust-item" style="color:var(--gris)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Secret professionnel</div>
           <div class="trust-item" style="color:var(--gris)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Confirmation immédiate</div>
         </div>
+        <div class="consent-box" id="consent-box">
+          <label class="consent-row">
+            <input type="checkbox" id="chk-cgv">
+            <span>J'ai lu et j'accepte les <a href="/cgv" target="_blank" rel="noopener">conditions générales de vente</a>.</span>
+          </label>
+          <label class="consent-row" id="row-renonc">
+            <input type="checkbox" id="chk-renonc">
+            <span id="txt-renonc">Je demande que ma séance puisse avoir lieu avant la fin du délai de rétractation de 14 jours. Je reconnais que, une fois la séance réalisée, je perds mon droit de rétractation pour cette séance.</span>
+          </label>
+          <div class="consent-err" id="consent-err">Merci de cocher les cases ci-dessus pour finaliser votre réservation.</div>
+        </div>
         <button class="btn-payer" id="btn-payer" onclick="lancerPaiement()">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>Payer <span id="btn-prix-affiche">—</span> en toute sécurité
         </button>
@@ -1700,6 +1719,18 @@ async function lancerPaiement() {
   if(!state.stripeInitialized){showMsg('Stripe non initialisé');return;}
   if(!state.prestaId){showMsg('Aucune prestation sélectionnée');return;}
 
+  // Consentement obligatoire (CGV art. 5 : renonciation expresse au droit de rétractation,
+  // L.221-28 du Code de la consommation) — vérifié avant tout appel serveur.
+  var chkCgv = document.getElementById('chk-cgv'), chkRenonc = document.getElementById('chk-renonc');
+  var boxC = document.getElementById('consent-box'), errC = document.getElementById('consent-err');
+  if(!(chkCgv && chkCgv.checked && chkRenonc && chkRenonc.checked)){
+    boxC.classList.add('err'); errC.style.display = 'block';
+    boxC.scrollIntoView({behavior:'smooth', block:'center'});
+    return;
+  }
+  boxC.classList.remove('err'); errC.style.display = 'none';
+  state.consentAt = new Date().toISOString();
+
   var btn = document.getElementById('btn-payer');
   btn.disabled = true;
   btn.classList.add('loading');
@@ -1748,6 +1779,9 @@ async function lancerPaiement() {
           client_key: state.clientKeyConfirmation || '',
           luma_option: state.lumaOption ? 'oui' : 'non',
           parraine_par: state.parraineePar || '',
+          cgv_acceptees: 'oui',
+          renonciation_retractation: 'oui',
+          consentement_le: state.consentAt || '',
           date: state.creneauDate,
           time: state.creneauHeure
         }
