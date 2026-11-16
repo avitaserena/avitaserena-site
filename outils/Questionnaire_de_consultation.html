@@ -2770,6 +2770,7 @@ function recStop(){ recLaunch('Arrêter l’enregistrement'); recSetState('done'
             <option>Oui — antécédent</option>
             <option>Oui — en cours de traitement / suivi</option>
           </select>
+          <div style="font-size:12px;color:#000;margin-top:5px;line-height:1.5">Pour tout cancer en cours de traitement ou de suivi actif, hormono-dépendant ou non, choisissez « Oui — en cours de traitement / suivi » : le générateur applique alors la règle n°62 (aucun complément ni plante). À revérifier à chaque séance.</div>
         </div>
       </div>
       <div style="margin:14px 0 4px"><label class="fl">Traitements en cours nécessitant une vigilance particulière</label>
@@ -11023,6 +11024,8 @@ function collectAllData() {
   }
   // Parcours par motif (28/10/2026) : signes de sécurité repérés pendant l'échange
   if (d.motif_guide_vigilance) d.alertes_medicales = [d.alertes_medicales, 'Parcours par motif (' + (d.motif_guide_theme || 'digestif') + ') : ' + d.motif_guide_vigilance].filter(Boolean).join('\n');
+  // Motif d'entrée « cancer » (16/11/2026) : l'alerte part vers le générateur, qui applique la RÈGLE N°62
+  try { if (typeof window.mgEntree === 'function' && window.mgEntree().indexOf('cancer') >= 0) d.alertes_medicales = [d.alertes_medicales, "Cancer (en cours de traitement ou passé) évoqué comme motif de consultation : accompagnement uniquement en complément de l'équipe d'oncologie, aucun complément ni plante sans l'accord de l'oncologue (RÈGLE N°62)"].filter(Boolean).join('\n'); } catch (x) { /* module absent */ }
 
   // Localisation précise du bassin (endométriose, 18/09/2026, demande de Sabrina) — même
   // principe que la localisation des douleurs ci-dessus, avec l'intensité par zone reportée
@@ -15609,10 +15612,152 @@ node('e_motifs', { m: 'listen', multi: true, s: 'Ce qui l\'amène',
       note: "Immunité, allergies : pas de parcours dédié ; passer par la section « Traitements & allergies » et par l'intestin et le cortisol (le cortisol est notre anti-inflammatoire naturel)." },
     { k: 'douleurs', l: "Douleurs : articulations, muscles, migraines", f: "vous venez pour des douleurs ou des migraines",
       note: "Douleurs, migraines : pas de parcours dédié ; regarder l'inflammation, le cycle (migraines cycliques), la thyroïde et le magnésium dans les sections classiques." },
+    { k: 'cancer', l: "Accompagnement dans le cadre d'un cancer (en cours de traitement, ou après)", f: "vous venez dans le cadre d'un cancer, en cours de traitement ou après",
+      say: "Je vous accompagne en complément de votre équipe de soins, jamais à sa place : votre oncologue reste votre référent pour tout ce qui touche au traitement. Ce que je peux faire avec vous, c'est soutenir votre digestion, votre sommeil, votre énergie et votre alimentation, au rythme de ce que votre corps traverse. Avant tout complément ou plante, je vous demanderai l'accord de votre oncologue, parce que certains modifient l'effet des traitements.",
+      note: "Cancer : renseigner la sphère « Oncologique » et le champ de sécurité cancer ; aucun complément ni plante sans accord de l'oncologue (RÈGLE N°62) ; jamais de promesse sur la maladie, jamais de régime restrictif ni de détox ; demander si l'équipe a un diététicien et des soins de support." },
     { k: 'prevention', l: "Prévention, vitalité, mieux comprendre mon corps", f: "vous venez pour prendre soin de votre santé et mieux comprendre votre corps",
       note: "Motif de prévention : pas de parcours dédié ; l'étape de socle femme (cycle, thyroïde, cortisol) donne déjà un état des lieux." },
     { k: 'autre', l: "Autre motif", f: "vous venez pour un autre motif",
       note: "Autre motif : à préciser dans l'ouverture libre du début de séance." }
+  ],
+  next: function () { return null; } });
+
+
+/* ═══════════════════════════════════════════════════════════════════
+   PARCOURS « CANCER » (16/11/2026) — accompagnement de confort, jamais de soin du cancer
+   Cadre voulu par Sabrina : aucun complément, aucune plante, aucune huile essentielle ; rien qui prétende agir sur la maladie ;
+   seulement sommeil, énergie, digestion, écoute, en lien avec l'équipe d'oncologie. Aucun conseil concret ici : on repère,
+   on alerte, on dit clairement ce que l'accompagnement ne fait pas. Les alertes partent vers le générateur (RÈGLE N°62).
+═══════════════════════════════════════════════════════════════════ */
+node('o_situation', { m: 'ask', s: 'Où elle en est dans son parcours',
+  q: "Où en êtes-vous dans votre parcours de soins ?",
+  hint: "Une seule réponse. C'est elle qui détermine ce que vous pouvez faire, et surtout ce que vous ne ferez pas.",
+  why: "Ce que je peux vous proposer dépend entièrement de l'étape où vous en êtes : pendant un traitement, l'enjeu est votre confort et de ne pas perdre de poids ni de muscle ; après, nous pouvons travailler davantage votre énergie, votre digestion et votre sommeil. Dans tous les cas, votre équipe d'oncologie reste votre référente.",
+  o: [
+    { k: 'bilan', l: "Diagnostic ou bilan récent, traitement pas encore commencé", f: "votre diagnostic est récent et le traitement n'a pas commencé",
+      say: "Dans cette période, l'essentiel se joue avec votre équipe d'oncologie. Je peux vous écouter et vous aider à tenir sur le sommeil et le stress, mais je ne ferai rien qui puisse retarder ou modifier votre prise en charge.",
+      flag: "Cancer pas encore traité : priorité absolue à l'équipe d'oncologie ; ne rien entreprendre qui puisse retarder ou modifier la prise en charge." },
+    { k: 'actif', l: "En cours de traitement (chimiothérapie, radiothérapie, immunothérapie, thérapie ciblée)", f: "vous êtes en cours de traitement",
+      say: "Pendant un traitement, mon rôle est strictement un soutien de confort, en complément de votre équipe. Je ne vous proposerai ni complément, ni plante, ni huile essentielle, parce que certains modifient l'effet des traitements.",
+      flag: "Traitement en cours : aucun complément, plante ni huile essentielle proposés ; soutien de confort uniquement, en lien avec l'équipe d'oncologie (RÈGLE N°62)." },
+    { k: 'hormono', l: "Traitement terminé, hormonothérapie en cours (tamoxifène, inhibiteur de l'aromatase…)", f: "votre traitement est terminé mais vous suivez encore une hormonothérapie",
+      say: "L'hormonothérapie est un vrai traitement : je ne propose donc rien d'actif sur les hormones, ni plante ni complément. Je peux en revanche vous aider avec ses effets du quotidien, comme le sommeil ou les bouffées de chaleur, par des gestes simples.",
+      flag: "Hormonothérapie en cours : aucun phytoestrogène, aucune plante ni complément à action hormonale ; soutien de confort uniquement (RÈGLE N°62 et RÈGLE N°6)." },
+    { k: 'surveillance', l: "Traitement terminé, en surveillance ou en rémission", f: "votre traitement est terminé et vous êtes en surveillance",
+      say: "Après les traitements, on peut travailler votre énergie, votre digestion et votre sommeil. En revanche, aucune approche naturelle n'empêche un cancer de revenir : je ne vous le promettrai jamais.",
+      flag: "Cancer passé, en surveillance : aucun complément ni plante sans l'accord de l'oncologue ; aucune promesse de prévention de récidive (RÈGLE N°62)." },
+    { k: 'ancien', l: "Cancer ancien, plus de suivi actif", f: "votre cancer est ancien et vous n'avez plus de suivi actif",
+      note: "Cancer ancien : s'il était hormono-dépendant, rester prudente avec tout actif hormonal ; le noter dans la sphère « Oncologique » et dans le champ de sécurité cancer." },
+    { k: 'avance', l: "Maladie évoluée, récidive ou soins palliatifs", f: "votre maladie est évoluée, en récidive ou en soins palliatifs",
+      say: "Dans votre situation, ce qui compte est votre confort et ce que décide votre équipe. Je ne peux vous accompagner qu'avec elle, et seulement pour vous soulager au quotidien.",
+      flag: "Maladie évoluée ou soins palliatifs : accompagnement uniquement en lien et avec l'accord de l'équipe soignante ; pas de programme de santé classique." }
+  ],
+  next: function () { return 'o_equipe'; } });
+
+node('o_equipe', { m: 'ask', multi: true, s: 'Son équipe de soins',
+  q: "Qui la suit, et son équipe sait-elle qu'elle me consulte ?",
+  hint: "Plusieurs réponses possibles. Si l'oncologue ne sait pas qu'elle consulte, on continue, mais on lui demande de l'informer.",
+  why: "Je travaille en complément de votre équipe, jamais à côté. Si votre oncologue sait que vous me consultez, nous pouvons nous appuyer sur lui pour tout ce qui touche à votre traitement. Et votre centre propose souvent des soins de support (diététicien, psychologue, activité physique adaptée) qui valent mieux que moi pour certains besoins.",
+  o: [
+    { k: 'onco_info', l: "Son oncologue sait qu'elle consulte une naturopathe", f: "votre oncologue sait que vous me consultez" },
+    { k: 'onco_pas', l: "Son oncologue n'est pas au courant", f: "votre oncologue n'est pas au courant de notre rendez-vous",
+      say: "Je vous demande d'en parler à votre oncologue lors de votre prochain rendez-vous. Je ne m'y oppose pas, je tiens simplement à ce qu'il le sache.",
+      flag: "L'oncologue n'est pas informé : l'inviter à l'en informer avant toute séance de suivi ; rien n'est proposé sans son accord." },
+    { k: 'support', l: "Elle bénéficie de soins de support (diététicien, psychologue, activité physique adaptée…)", f: "vous bénéficiez de soins de support dans votre centre" },
+    { k: 'sans_support', l: "Aucun soin de support ne lui a été proposé", f: "aucun soin de support ne vous a été proposé",
+      note: "Lui rappeler que son centre peut proposer un diététicien, un psychologue, de l'activité physique adaptée, une socio-esthéticienne ; l'encourager à les demander." },
+    { k: 'medecin', l: "Son médecin traitant est informé", f: "votre médecin traitant est informé" }
+  ],
+  next: function () { return 'o_alertes'; } });
+
+node('o_alertes', { m: 'ask', multi: true, s: 'Signes à ne pas manquer',
+  q: "Un point de sécurité : retrouve-t-elle l'un de ces signes en ce moment ?",
+  hint: "Une seule question, posée naturellement. Si oui, notez-le : on continue, mais son équipe passe avant, et elle doit l'appeler sans attendre.",
+  why: "Pendant ou juste après un traitement, certains signes demandent d'appeler votre équipe immédiatement : ce n'est pas à moi de les interpréter. Je les repère dès le début pour que vous sachiez quoi faire.",
+  o: [
+    { k: 'fievre', l: "Fièvre à 38 °C ou plus, frissons (surtout sous chimiothérapie)", f: "vous avez de la fièvre", flag: "Fièvre à 38 °C ou plus, notamment sous chimiothérapie : elle doit appeler sans attendre son équipe de soins ou le 15." },
+    { k: 'saignement', l: "Saignements inhabituels, ecchymoses nombreuses", f: "vous avez des saignements inhabituels", flag: "Saignements inhabituels : appel de l'équipe de soins sans attendre." },
+    { k: 'vomissements', l: "Vomissements qui empêchent de boire, diarrhées importantes", f: "vous avez des vomissements ou des diarrhées qui empêchent de vous hydrater", flag: "Vomissements ou diarrhées empêchant de s'hydrater : appel de l'équipe de soins sans attendre." },
+    { k: 'thorax', l: "Douleur dans la poitrine ou essoufflement nouveau", f: "vous avez une douleur dans la poitrine ou un essoufflement nouveau", flag: "Douleur thoracique ou essoufflement nouveau : appeler le 15 ou l'équipe de soins sans attendre." },
+    { k: 'poids', l: "Perte de poids importante, ou n'arrive plus à manger", f: "vous perdez du poids ou n'arrivez plus à manger", flag: "Perte de poids ou impossibilité de s'alimenter : en parler tout de suite à l'équipe ; son diététicien passe avant moi." },
+    { k: 'aucun', l: "Aucun de ces signes", x: true }
+  ],
+  next: function () { return 'o_gene'; } });
+
+node('o_gene', { m: 'listen', multi: true, s: 'Ce qui la gêne',
+  q: "Qu'est-ce qui vous gêne le plus au quotidien en ce moment ?",
+  hint: "Elle vous le dit avec ses mots : cochez au fil de son récit. Aucun conseil concret ici : on repère et on rassure sur ce que vous pouvez faire.",
+  why: "Je pars de ce que vous vivez, pas d'un questionnaire. Ce qui vous pèse le plus au quotidien me dit par où commencer, et ce que je peux vous apporter sans jamais toucher à votre traitement.",
+  o: [
+    { k: 'fatigue', l: "Une grande fatigue", f: "vous avez une grande fatigue",
+      say: "La fatigue liée au cancer et à ses traitements est très fréquente, et ce n'est pas de la paresse. Nous pouvons regarder ensemble ce qui l'aggrave dans votre quotidien : sommeil, repas, rythme. Si elle est très forte, j'en parlerai aussi à votre équipe." },
+    { k: 'sommeil', l: "Un sommeil perturbé (endormissement, réveils, nuits courtes)", f: "votre sommeil est perturbé",
+      say: "Le sommeil est l'un des sujets sur lesquels je peux le plus vous aider, par des gestes simples et sans aucun produit." },
+    { k: 'digestion', l: "Nausées, goût modifié, bouche sèche, ou appétit qui change", f: "vous avez des nausées, un goût modifié ou un appétit qui change",
+      say: "Ces effets sont fréquents. Ma priorité sera que vous mangiez suffisamment, sans vous forcer à un régime. Le diététicien de votre équipe reste la personne à voir en premier.",
+      note: "Nausées, goût, appétit : l'enjeu est de maintenir l'apport ; renvoyer vers le diététicien de l'équipe ; ne rien interdire ni retirer de l'alimentation." },
+    { k: 'transit', l: "Ballonnements, diarrhées ou constipation", f: "vous avez des ballonnements, des diarrhées ou de la constipation",
+      say: "Les traitements perturbent souvent le ventre. Je peux vous aider à mieux comprendre ce qui se passe et à vous soulager par des gestes simples, en lien avec votre équipe.",
+      note: "Troubles digestifs sous traitement : pas de probiotique ni de complément ; diarrhées importantes ou persistantes : en parler à l'équipe." },
+    { k: 'chaleur', l: "Bouffées de chaleur, sécheresse, douleurs articulaires (hormonothérapie)", f: "vous avez des bouffées de chaleur, une sécheresse ou des douleurs articulaires liées à votre hormonothérapie",
+      say: "Ces effets de l'hormonothérapie sont très répandus. Je ne vous proposerai aucune plante ni aucun complément, car ils pourraient agir sur les hormones, mais nous pouvons chercher des gestes simples pour vous soulager.",
+      note: "Hormonothérapie : jamais de phytoestrogène, de plante ni de complément à action hormonale ; bouffées de chaleur, sécheresse et douleurs articulaires à signaler à l'oncologue si elles pèsent." },
+    { k: 'moral', l: "Anxiété, tension, peur de la suite", f: "vous ressentez de l'anxiété ou de la peur de la suite",
+      say: "C'est tout à fait compréhensible. Je peux vous aider avec des gestes simples de détente. Votre centre propose aussi souvent un psychologue spécialisé en cancer, et je vous encourage à le rencontrer.",
+      note: "Anxiété et peur : écouter, proposer des techniques de respiration simples ; encourager la rencontre avec le psychologue ou le psycho-oncologue du centre." },
+    { k: 'activite', l: "Se sentir faible, vouloir reprendre une activité", f: "vous vous sentez faible et voulez reprendre une activité",
+      say: "Bouger est bénéfique, mais le bon rythme dépend de votre traitement. Je vous orienterai vers l'activité physique adaptée de votre centre, ou je demanderai l'accord de votre équipe.",
+      note: "Reprise d'activité : avec l'accord de l'équipe ; orienter vers l'activité physique adaptée du centre." },
+    { k: 'peau', l: "Peau, ongles ou cheveux abîmés par les traitements", f: "votre peau, vos ongles ou vos cheveux sont abîmés par les traitements",
+      note: "Peau, ongles, cheveux : orienter vers la socio-esthéticienne ou le dermatologue du centre ; aucun produit ni huile essentielle." },
+    { k: 'fourmillements', l: "Fourmillements ou engourdissements des mains et des pieds", f: "vous avez des fourmillements ou des engourdissements des mains et des pieds",
+      flag: "Fourmillements ou engourdissements des mains et des pieds : à signaler à l'oncologue (neuropathie liée au traitement)." }
+  ],
+  next: function () { return 'o_pris'; } });
+
+node('o_pris', { m: 'ask', multi: true, s: 'Compléments, plantes, produits déjà pris',
+  q: "Prend-elle déjà des compléments, des plantes, des huiles essentielles ou des tisanes ?",
+  hint: "Ne la jugez pas, et ne lui demandez pas de les arrêter vous-même : demandez-lui d'en parler à l'oncologue ou au pharmacien de l'hôpital.",
+  why: "Beaucoup de plantes et de compléments modifient la façon dont le corps élimine les traitements, ou leur efficacité. Je ne vous demande pas d'arrêter quoi que ce soit moi-même : je vous demande de le dire à votre oncologue ou au pharmacien de l'hôpital.",
+  o: [
+    { k: 'oui_equipe', l: "Oui, et son équipe de soins le sait", f: "vous prenez des produits dont votre équipe est informée" },
+    { k: 'oui_pas', l: "Oui, mais son équipe de soins ne le sait pas", f: "vous prenez des produits dont votre équipe n'est pas informée",
+      say: "Je ne vous demande pas de les arrêter moi-même. Je vous demande d'en parler à votre oncologue ou au pharmacien de l'hôpital avant votre prochaine cure, car certains modifient l'effet des traitements.",
+      flag: "Compléments, plantes ou huiles essentielles pris à l'insu de l'équipe : lui demander d'en parler à l'oncologue ou au pharmacien de l'hôpital avant la prochaine cure ; je n'y ajoute rien." },
+    { k: 'anticancer', l: "Une cure ou un produit présenté comme « anticancer » conseillé par quelqu'un", f: "on vous a conseillé une cure ou un produit présenté comme anticancer",
+      say: "Aucune cure ni aucun produit n'a prouvé qu'il soignait ou empêchait un cancer, et certains peuvent être dangereux avec vos traitements. Je vous invite à en parler à votre oncologue.",
+      flag: "Cure ou produit présenté comme « anticancer » : l'orienter vers son oncologue, sans jugement ; aucun produit de ce type dans l'accompagnement." },
+    { k: 'non', l: "Non, rien", x: true }
+  ],
+  next: function () { return 'o_regime'; } });
+
+node('o_regime', { m: 'ask', multi: true, s: 'Régime ou jeûne',
+  q: "Suit-elle ou envisage-t-elle un régime particulier ?",
+  hint: "Si oui, ne l'encouragez pas : le risque principal est la dénutrition. Renvoyez vers le diététicien de l'équipe.",
+  why: "Pendant un cancer, le plus important est de ne pas perdre de poids ni de muscle : ils vous aident à supporter les traitements. Un jeûne ou un régime strict peut vous affaiblir. Rien ne prouve qu'un aliment « affame » une tumeur.",
+  o: [
+    { k: 'jeune', l: "Jeûne ou jeûne intermittent", f: "vous faites ou envisagez un jeûne", flag: "Jeûne pendant un cancer : risque de dénutrition ; ne pas l'encourager, renvoyer vers le diététicien de l'équipe." },
+    { k: 'cetogene', l: "Régime cétogène, sans sucre ou « pour affamer la tumeur »", f: "vous suivez ou envisagez un régime cétogène ou sans sucre", flag: "Régime cétogène ou sans sucre pendant un cancer : risque de dénutrition ; ne pas l'encourager, renvoyer vers le diététicien de l'équipe." },
+    { k: 'eviction', l: "Régime très strict (crudivorisme, végétalisme strict, éviction de groupes d'aliments)", f: "vous suivez un régime très strict", flag: "Régime très restrictif pendant un cancer : risque de dénutrition ; ne pas l'encourager, renvoyer vers le diététicien de l'équipe." },
+    { k: 'aucun', l: "Non, alimentation habituelle", x: true }
+  ],
+  next: function () { return 'o_attente'; } });
+
+node('o_attente', { m: 'ask', multi: true, s: 'Ce qu\'elle attend',
+  q: "Qu'attendez-vous de moi ?",
+  hint: "Écoutez sans corriger tout de suite, puis dites clairement ce que vous faites et ne faites pas. Si elle attend un effet sur la maladie, la réponse est non.",
+  why: "Je veux que ce soit très clair entre nous : je ne soigne pas le cancer et je ne l'empêche pas de revenir. Ce que je peux faire, c'est vous aider à mieux dormir, à mieux supporter votre quotidien et à vous sentir accompagnée, en complément de votre équipe. Savoir ce que vous attendez me permet de vous le dire honnêtement.",
+  o: [
+    { k: 'confort', l: "Mieux dormir, retrouver de l'énergie, être plus confortable", f: "vous attendez de mieux dormir et de vous sentir plus confortable",
+      say: "C'est exactement ce que je peux faire avec vous : sommeil, énergie, digestion, au rythme de votre corps et de vos traitements." },
+    { k: 'ecoute', l: "Être écoutée et accompagnée dans ce qu'elle traverse", f: "vous attendez d'être écoutée et accompagnée" },
+    { k: 'apres', l: "Reprendre son quotidien après les traitements", f: "vous attendez de reprendre votre quotidien après les traitements" },
+    { k: 'guerir', l: "Combattre la maladie, renforcer l'immunité contre le cancer ou éviter une récidive", f: "vous attendez d'agir sur la maladie ou sur le risque de récidive",
+      say: "Je veux être très claire avec vous : je ne soigne pas le cancer, et aucune approche naturelle n'empêche une récidive. Ce que je peux faire, c'est vous aider à mieux vous sentir au quotidien, en complément de votre équipe.",
+      flag: "Attente d'agir sur la maladie, sur l'immunité contre le cancer ou sur une récidive : lui dire clairement que l'accompagnement ne le permet pas ; il ne vise que son confort ; la renvoyer vers son oncologue." },
+    { k: 'arret', l: "Remplacer, alléger ou arrêter un traitement", f: "vous envisagez de remplacer, d'alléger ou d'arrêter un traitement",
+      say: "Cette décision appartient à vous et à votre oncologue, pas à moi. Je ne peux pas vous accompagner dans une démarche qui remplace votre traitement, mais je reste disponible pour votre confort.",
+      flag: "Souhait de remplacer, d'alléger ou d'arrêter un traitement : ne jamais l'encourager ; l'inviter à en parler à son oncologue avant toute décision ; noter la date et sa réponse." }
   ],
   next: function () { return null; } });
 
@@ -16473,21 +16618,21 @@ var SUIVI_SEC = { fatigue: 'sec-7', poids: 'sec-4', peau: 'sec-6', sommeil: 'sec
    parcours sont classées ensemble (ce qui revient plusieurs fois remonte), avec « pour confirmer »,
    examens à discuter et le texte à reprendre dans la lettre d'adressage au médecin.
 ═══════════════════════════════════════════════════════════════════ */
-var TH_LABEL = { entree: 'Motif', digestif: 'Digestif', hormones: 'Hormones & cycle', fatigue: 'Fatigue, stress & moral', poids: 'Poids', peau: 'Peau & cheveux', sommeil: 'Sommeil', base: 'Socle femme : cycle, thyroïde, cortisol', croise: 'Synthèse croisée' };
-var TH_LONG = { digestif: 'digestif', hormones: 'hormones & cycle', fatigue: 'fatigue, stress & moral', poids: 'poids', peau: 'peau & cheveux', sommeil: 'sommeil', base: 'socle femme (cycle, thyroïde, cortisol)' };
-var TH_ORDER = ['digestif', 'hormones', 'fatigue', 'poids', 'peau', 'sommeil', 'base'];
-var TH_PREFIX = { 'h_': 'hormones', 'f_': 'fatigue', 'w_': 'poids', 'k_': 'peau', 'z_': 'sommeil', 'b_': 'base', 'e_': 'entree' };
-var SEC_OF = { digestif: 'Alimentation & digestion', hormones: 'Hormones & cycle', fatigue: 'Surrénales & axe cortisol', poids: 'Surrénales, Hormones & Alimentation', peau: 'Foie & émonctoires', sommeil: 'Surrénales & axe cortisol', base: 'Hormones & Surrénales' };
+var TH_LABEL = { entree: 'Motif', cancer: 'Cancer', digestif: 'Digestif', hormones: 'Hormones & cycle', fatigue: 'Fatigue, stress & moral', poids: 'Poids', peau: 'Peau & cheveux', sommeil: 'Sommeil', base: 'Socle femme : cycle, thyroïde, cortisol', croise: 'Synthèse croisée' };
+var TH_LONG = { cancer: "l'accompagnement dans le cadre d'un cancer", digestif: 'digestif', hormones: 'hormones & cycle', fatigue: 'fatigue, stress & moral', poids: 'poids', peau: 'peau & cheveux', sommeil: 'sommeil', base: 'socle femme (cycle, thyroïde, cortisol)' };
+var TH_ORDER = ['cancer', 'digestif', 'hormones', 'fatigue', 'poids', 'peau', 'sommeil', 'base'];
+var TH_PREFIX = { 'o_': 'cancer', 'h_': 'hormones', 'f_': 'fatigue', 'w_': 'poids', 'k_': 'peau', 'z_': 'sommeil', 'b_': 'base', 'e_': 'entree' };
+var SEC_OF = { cancer: 'Antécédents', digestif: 'Alimentation & digestion', hormones: 'Hormones & cycle', fatigue: 'Surrénales & axe cortisol', poids: 'Surrénales, Hormones & Alimentation', peau: 'Foie & émonctoires', sommeil: 'Surrénales & axe cortisol', base: 'Hormones & Surrénales' };
 function thOf(id) { return TH_PREFIX[String(id).slice(0, 2)] || 'digestif'; }
-ROOT.entree = 'e_motifs'; ROOT.fatigue = 'f_motifs'; ROOT.poids = 'w_motifs'; ROOT.peau = 'k_motifs'; ROOT.sommeil = 'z_motifs';
+ROOT.cancer = 'o_situation'; ROOT.entree = 'e_motifs'; ROOT.fatigue = 'f_motifs'; ROOT.poids = 'w_motifs'; ROOT.peau = 'k_motifs'; ROOT.sommeil = 'z_motifs';
 
 /* Motifs d'entrée → parcours. Les motifs sans parcours dédié (immunité, douleurs, autre) renvoient aux sections classiques. */
-var ENTRY_TH = { digestif: 'digestif', hormones: 'hormones', fatigue: 'fatigue', poids: 'poids', peau: 'peau', sommeil: 'sommeil' };
+var ENTRY_TH = { cancer: 'cancer', digestif: 'digestif', hormones: 'hormones', fatigue: 'fatigue', poids: 'poids', peau: 'peau', sommeil: 'sommeil' };
 function femmeOK() { var s = document.getElementById('sexe'); return !(s && s.value === 'Homme'); }
 function entreeFaite(a) { return Array.isArray(a.e_motifs) && a.e_motifs.length > 0; }
 function themeQueue(a) {
   var q = []; (Array.isArray(a.e_motifs) ? a.e_motifs : []).forEach(function (k) { var t = ENTRY_TH[k]; if (t && q.indexOf(t) < 0) q.push(t); });
-  if (entreeFaite(a) && femmeOK()) q.push('base');
+  if (entreeFaite(a) && femmeOK() && !hasE(a, 'cancer')) q.push('base'); /* cancer : pas de batterie hormonale en première intention */
   return q;
 }
 function startedThemes(a) { return TH_ORDER.filter(function (th) { return walk(a, th).some(function (id) { return a[id] !== undefined; }); }); }
@@ -16780,6 +16925,7 @@ function trailHtml(an) {
   return '<div class="mg-trail"><div class="mg-trail-t">Déjà vu avec elle</div>' + rows.join('') + '</div>';
 }
 function sideHtml(an) {
+  if (an.th === 'cancer') return '<div class="mg-side"><div class="mg-side-t">Le cadre à garder en tête</div>' + '<ul class="mg-list"><li>Aucun complément, aucune plante, aucune huile essentielle, aucune tisane médicinale.</li><li>Aucun régime, jeûne ni détox.</li><li>Aucune promesse sur la maladie ni sur une récidive.</li><li>Rien qui retarde, allège ou remplace un traitement.</li><li>L\'oncologue reste le référent ; le diététicien de l\'équipe passe avant vous sur l\'alimentation.</li></ul>' + '</div>';
   var top = an.pistes.length ? an.pistes : [];
   if (!top.length) return '<div class="mg-side"><div class="mg-side-t">Ce que ça évoque</div><div class="mg-side-n">Les pistes apparaissent ici au fil de ses réponses.</div></div>';
   var max = top[0].s;
@@ -16798,8 +16944,9 @@ function summaryHtml(an) {
   var a = S.a, rc = recap(an), ex = examens(a, an), lk = liens(an), h = '<div class="mg-sum" id="mg-sum">';
   h += '<h3>Ce que j\'ai entendu</h3>';
   h += rc ? '<div class="mg-recap" id="mg-recap">' + esc(rc) + '</div><div class="mg-act"><button type="button" class="mg-tbtn" data-mg="copy">Copier ce texte</button><span class="mg-st" id="mg-st" role="status" aria-live="polite"></span></div>' : '<div class="mg-side-n">Aucune gêne détaillée pour le moment.</div>';
-  h += '<h3>Ce que ça évoque</h3>';
-  if (an.pistes.length) {
+  h += an.th === 'cancer' ? '<h3>Le cadre de l\'accompagnement</h3>' : '<h3>Ce que ça évoque</h3>';
+  if (an.th === 'cancer') h += '<ul class="mg-list"><li>Aucun complément, aucune plante, aucune huile essentielle, aucune tisane médicinale.</li><li>Aucun régime, jeûne ni détox.</li><li>Aucune promesse sur la maladie ni sur une récidive.</li><li>Rien qui retarde, allège ou remplace un traitement.</li><li>L\'oncologue reste le référent ; le diététicien de l\'équipe passe avant vous sur l\'alimentation.</li></ul>';
+  else if (an.pistes.length) {
     an.pistes.forEach(function (p, i) {
       var P = PISTES[p.k];
       h += '<div class="mg-pi"><div class="mg-pi-h"><b>' + esc(P.l) + '</b><span class="mg-pi-r">' + (i === 0 ? 'Piste principale' : 'À explorer') + '</span></div>' +
@@ -16906,6 +17053,7 @@ function onKey(e) {
 }
 
 /* ───────────── Crochets du questionnaire ───────────── */
+window.mgEntree = function () { try { return Array.isArray(S.a.e_motifs) ? S.a.e_motifs.slice() : []; } catch (x) { return []; } };
 window.mgCapturer = function (snap) { if (snap && isConsult()) snap.mg_json = holder() ? holder().value : ''; };
 window.mgRestaurer = function (snap) {
   if (!isConsult()) return;
