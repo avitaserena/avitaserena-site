@@ -683,6 +683,36 @@ button,input,select,textarea{font-family:inherit;color:inherit}
 .fv2-wrap>.fv2-panel{flex:1}
 .fv2-panel{padding-top:18px}
 .fv2-panel>*+*{margin-top:16px}
+/* ── Checklist unique de la fiche (20/11/2026) ── */
+.ck-card{background:var(--white);border:1px solid var(--border);border-radius:var(--r16);margin-bottom:18px;overflow:hidden}
+.ck-head{display:flex;align-items:center;gap:22px;flex-wrap:wrap;padding:20px 24px;border-bottom:1px solid var(--border);background:var(--off,#F7F6F4)}
+.ck-head-t{font-family:var(--serif);font-size:24px;font-weight:600;line-height:1.1}
+.ck-head-s{font-size:14px;color:var(--muted);margin-top:3px}
+.ck-count{font-family:var(--serif);font-size:34px;font-weight:600;line-height:1;color:var(--ink)}.ck-count small{font-size:16px;color:var(--muted);font-weight:500}
+.ck-bar{flex:1;min-width:160px;height:8px;border-radius:99px;background:var(--grege);overflow:hidden}.ck-bar i{display:block;height:100%;background:var(--green);border-radius:99px}
+.ck-chips{display:flex;gap:8px;flex-wrap:wrap}
+.ck-chip{font-size:13px;font-weight:700;padding:5px 12px;border-radius:99px}
+.ck-chip.late{background:var(--red);color:#fff}.ck-chip.soon{background:var(--orange-lt);color:var(--orange)}.ck-chip.ok{background:var(--green-lt);color:var(--green)}
+.ck-grp{font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--gold-dk);padding:14px 24px 8px;background:var(--white)}
+.ck-row{display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:14px;align-items:center;padding:13px 24px;border-top:1px solid var(--border);border-left:5px solid transparent}
+.ck-row.late{background:var(--red-lt);border-left-color:var(--red)}
+.ck-row.soon{background:var(--orange-lt);border-left-color:var(--orange)}
+.ck-row.ok{border-left-color:var(--green)}
+.ck-dot{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;border:2px solid var(--border2);color:var(--muted);background:var(--white);flex-shrink:0}
+.ck-dot svg,.ck-dot .ico{width:17px;height:17px;stroke-width:3}
+.ck-row.ok .ck-dot{background:var(--green);border-color:var(--green);color:#fff}
+.ck-row.late .ck-dot{background:var(--red);border-color:var(--red);color:#fff}
+.ck-row.soon .ck-dot{background:var(--orange);border-color:var(--orange);color:#fff}
+.ck-row.na .ck-dot{border-style:dashed}
+.ck-dot.tg{cursor:pointer}.ck-dot.tg:hover{box-shadow:0 0 0 4px var(--green-lt)}
+.ck-t{font-size:16px;font-weight:700;color:var(--ink);line-height:1.3}
+.ck-row.na .ck-t{color:var(--gris,#6B6560);font-weight:600}
+.ck-s{font-size:14px;color:var(--muted);margin-top:2px;line-height:1.5}
+.ck-row.late .ck-s{color:var(--red);font-weight:600}.ck-row.ok .ck-s{color:var(--green)}
+.ck-act{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;align-items:center}
+.ck-pill{font-size:12px;font-weight:700;padding:4px 11px;border-radius:99px;white-space:nowrap;background:var(--grege);color:var(--muted)}
+.ck-row.ok .ck-pill{background:var(--green-lt);color:var(--green)}.ck-row.late .ck-pill{background:var(--red);color:#fff}.ck-row.soon .ck-pill{background:var(--orange);color:#fff}
+@media(max-width:760px){.ck-row{grid-template-columns:34px minmax(0,1fr)}.ck-act{grid-column:2;justify-content:flex-start}}
 .fv2-two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;align-items:start}
 .fv2-two>*{margin-top:0!important}
 .fv2-brief{max-width:none}
@@ -4730,6 +4760,98 @@ function renderFiche(c){
       ${btn(`doc-action ${d.ac}`,d.fn,escH(d.al))}
     </div>`).join('');
 
+  // ══ CHECKLIST UNIQUE (20/11/2026) — chaque élément du dossier apparaît UNE seule fois, ici ══
+  // ok = fait (vert) · late = en retard / à faire maintenant (rouge) · soon = date proche (orange)
+  // todo = pas encore dû (gris) · na = sur demande / non applicable (gris pointillé)
+  const dBy=n=>docs.find(x=>x.name===n)||{};
+  const wfK=k=>wf.find(x=>x.key===k);
+  const hasTl=t=>!!c.timeline?.find(x=>x.title?.toLowerCase().includes(t));
+  const passedD=d=>!!d&&d<=today();
+  const CK=[];
+  const ckAct=(cls,fn,label)=>btnSm(cls,fn,label);
+  const wfState=(done,sx)=>done?'ok':(sx&&sx.isOvd)?'late':(sx&&sx.isSoon)?'soon':'todo';
+  const pillOf={ok:'Fait',late:'En retard',soon:'Cette semaine',todo:'À venir',na:'Sur demande'};
+  // — Avant la visio —
+  {
+    const s=wfPrep[0];
+    const done=qVisio.length>0||!!c.workflowDone?.questionnaire_visio;
+    let st=done?'ok':s?wfState(false,s):(passedD(c.date1)?'na':'todo');
+    CK.push({grp:'Avant la visio',st,title:'Questionnaire de préparation visio',
+      sub:done?(qVisio.length?'Répondu le '+fmtDate(qVisio[0].created_at)+' — à lire avant la visio':'Marqué comme reçu'):(s?'À recevoir au plus tard le '+fmtDate(s.tgt)+' — lien personnel à cette fiche':(st==='na'?'Non demandé pour cette cliente':'Envoyé automatiquement à la réservation d\'un bilan, ou envoyez le lien ici')),
+      pill:st==='na'?'Non demandé':null,
+      acts:done?(qVisio.length?[ckAct('tool',`voirReponsesVisio('${cid}')`,ic('eye')+' Voir les réponses')]:[]):[ckAct('email',`envoyerMailPrepVisio('${cid}')`,ic('mail')+' Email'),ckAct('tool',`copierLienPrepVisio('${cid}')`,ic('file')+' Lien')],
+      key:'questionnaire_visio'});
+    const d=dBy('Questionnaire de consultation');const done2=qConsult.length>0;
+    const st2=done2?'ok':(passedD(c.date1)||c.programme)?'late':'todo';
+    CK.push({grp:'Avant la visio',st:st2,title:'Questionnaire de consultation',sub:done2?'Complété le '+fmtDate(qConsult[0].created_at):(st2==='late'?'Non rempli — nécessaire pour construire le protocole':'Non rempli pour le moment'),
+      acts:[ckAct('tool',d.fn||'',(done2?'Revoir':'Ouvrir'))]});
+  }
+  // — Séance & protocole —
+  {
+    const crs=(consultationSummariesClient[cid]||[]).filter(x=>x.plan_type!=='questionnaire_consultation');
+    const d1=dBy('Compte rendu de séance (enregistrement)');
+    const stCr=crs.length?'ok':passedD(c.date1)?'late':'na';
+    CK.push({grp:'Séance & protocole',st:stCr,title:'Compte rendu de séance',sub:crs.length?crs.length+' compte(s) rendu(s) · dernier le '+fmtDate(crs[0].created_at):(stCr==='late'?'À enregistrer : transcription Buzz → compte rendu relu':'Après la séance'),pill:stCr==='na'?'Plus tard':null,
+      acts:[ckAct('tool',d1.fn||'',crs.length?'Nouveau':'Enregistrer')]});
+    const sums=consultationSummariesClient[cid]||[];const d2=dBy('Résumé narratif (IA)');
+    const stSn=sums.length?'ok':qConsult.length?'soon':'na';
+    CK.push({grp:'Séance & protocole',st:stSn,title:'Résumé narratif (IA)',sub:sums.length?sums.length+' résumé(s) · dernier le '+fmtDate(sums[0].created_at):(qConsult.length?'Pas encore généré — il se crée à la finalisation du questionnaire':'Nécessite le questionnaire de consultation'),
+      pill:stSn==='na'?'Plus tard':null,acts:qConsult.length?[ckAct('tool',d2.fn||'',sums.length?'Voir / régénérer':'Générer')]:[]});
+    const dp=dBy('Protocole PHV');const sP=wfK('protocole_envoye');
+    const doneP=dp.st==='ok'||!!sP?.done||hasPHV;
+    const stP=wfState(doneP,sP);
+    const pa=[];
+    if(doneP){pa.push(ckAct('tool',dp.fn||`window.open('phv-print.html?client=${encodeURIComponent(cid)}','_blank')`,ic('eye')+' Voir'));pa.push(ckAct('tool',`ouvrirPHVCliente('${cid}')`,ic('refresh')+' Régénérer'));}
+    else pa.push(ckAct('email',`ouvrirPHVCliente('${cid}')`,ic('spark')+' Générer'));
+    if(c.phv_pdf_url) pa.push(ckAct('tool',`window.open('${escH(c.phv_url?c.phv_pdf_url:c.phv_pdf_url)}','_blank')`,ic('download')+' PDF'));
+    CK.push({grp:'Séance & protocole',st:stP,title:'Protocole PHV envoyé',sub:doneP?(dp.meta||'Envoyé'):(sP&&sP.tgt?(stP==='late'?'Prévu le '+fmtDate(sP.tgt)+' — à envoyer maintenant':'Prévu le '+fmtDate(sP.tgt)):'À générer puis envoyer'),acts:pa,key:'protocole_envoye'});
+    if(c.programme){
+      const sB=wfK('bilan_entree');const doneB=!!sB?.done||hasTl('bilan');
+      CK.push({grp:'Séance & protocole',st:wfState(doneB,sB),title:"Bilan d'entrée de programme",sub:doneB?'Complété':'Capturer le « avant » documenté au démarrage'+(sB&&sB.tgt?' — prévu le '+fmtDate(sB.tgt):''),acts:doneB?[]:[ckAct('tool',`ouvrirBilanEntree('${cid}','depart')`,ic('file')+' Ouvrir')],key:'bilan_entree'});
+      const sC=wfK('checkin_active');const doneC=!!sC?.done||hasTl('check-in');
+      CK.push({grp:'Séance & protocole',st:wfState(doneC,sC),title:'Lien check-in hebdo envoyé',sub:doneC?'Lien envoyé à la cliente':'Lien de suivi hebdomadaire personnalisé'+(sC&&sC.tgt?' — prévu le '+fmtDate(sC.tgt):''),acts:doneC?[]:[ckAct('tool',`envoyerCheckinBrevoTpl('${cid}')`,ic('chart')+' Envoyer le lien')],key:'checkin_active'});
+    }
+  }
+  // — Suivi —
+  {
+    wf.filter(x=>['check_j7','check_j21','suivi_jX','fin_programme'].includes(x.key)).forEach(x=>{
+      const stx=wfState(x.done,x);
+      let a=[];
+      if(!x.done){
+        if(x.action==='cloture') a=[ckAct('tool',`ouvrirBilanEntree('${cid}','cloture')`,ic('trophy')+' Clôture')];
+        else if(x.tpl) a=[ckAct('email',`ouvrirMailModal('${cid}','${x.tpl}')`,ic('mail')+' Email')];
+      }
+      CK.push({grp:'Suivi',st:stx,title:x.label,sub:x.done?'Fait':(x.tgt?(stx==='late'?'Prévu le ':'À faire le ')+fmtDate(x.tgt)+' — '+(x.desc||''):(x.desc||'')),acts:a,key:x.key});
+    });
+    const dS=dBy('Questionnaire de suivi');
+    CK.push({grp:'Suivi',st:qSuivi.length?'ok':'na',title:'Questionnaire de suivi',sub:qSuivi.length?qSuivi.length+' suivi(s) · dernier le '+fmtDate(qSuivi[0].created_at):'À remplir au moment du suivi',pill:qSuivi.length?qSuivi.length+' au total':null,acts:[ckAct('tool',dS.fn||'',qSuivi.length?'Nouveau suivi':'Ouvrir')]});
+  }
+  // — Sur demande —
+  {
+    const dR=docs.find(x=>(x.name||'').startsWith('Rapport de progression'))||{};
+    const dueR=dR.st==='missing';
+    CK.push({grp:'Sur demande',st:dueR?'soon':'na',title:'Rapport de progression (IA)',sub:dR.meta||'Brouillon généré à partir du suivi, toujours relu avant envoi',pill:dueR?(dR.stl||'À faire'):null,acts:[ckAct('tool',dR.fn||`genererRapportProgressionIA('${cid}')`,ic('spark')+' Générer')]});
+    CK.push({grp:'Sur demande',st:'na',title:"Lettre d'adressage",sub:'Courrier ponctuel vers un professionnel de santé (gastro, gynéco…)',acts:[ckAct('tool',`ouvrirLettreClinique('${cid}')`,ic('mail')+' Rédiger')]});
+  }
+  const ckCnt={ok:0,late:0,soon:0,todo:0,na:0};CK.forEach(r=>ckCnt[r.st]++);
+  const ckTotal=CK.length-ckCnt.na;
+  const ckPct=ckTotal?Math.round(ckCnt.ok/ckTotal*100):0;
+  let ckGrp='';
+  const checklistHtml=`<div class="ck-card">
+    <div class="ck-head">
+      <div><div class="ck-head-t">Où en est le dossier ?</div><div class="ck-head-s">${ckCnt.late?'Des éléments demandent votre attention.':ckCnt.soon?'Une échéance approche.':'Tout est à jour.'}</div></div>
+      <div class="ck-count">${ckCnt.ok}<small> / ${ckTotal} faits</small></div>
+      <div class="ck-bar"><i style="width:${ckPct}%"></i></div>
+      <div class="ck-chips">${ckCnt.late?`<span class="ck-chip late">${ckCnt.late} en retard</span>`:''}${ckCnt.soon?`<span class="ck-chip soon">${ckCnt.soon} cette semaine</span>`:''}${!ckCnt.late&&!ckCnt.soon?'<span class="ck-chip ok">À jour</span>':''}</div>
+    </div>
+    ${CK.map(r=>{
+      const g=r.grp!==ckGrp?`<div class="ck-grp">${r.grp}</div>`:'';ckGrp=r.grp;
+      const ico=r.st==='ok'?ic('check'):r.st==='late'?'!':r.st==='soon'?ic('alarm'):r.st==='na'?'–':'';
+      const tg=r.key?` tg" title="Cliquer pour marquer fait / à faire" onclick="toggleWF('${cid}','${r.key}')`:'';
+      return g+`<div class="ck-row ${r.st}"><div class="ck-dot${tg}">${ico}</div><div style="min-width:0"><div class="ck-t">${escH(r.title)}</div><div class="ck-s">${escH(r.sub||'')}</div></div><div class="ck-act">${r.acts.join('')}<span class="ck-pill">${escH(r.pill||pillOf[r.st])}</span></div></div>`;
+    }).join('')}
+  </div>`;
+
   // Historique complet des protocoles générés — jamais écrasé, contrairement au protocole actif
   const protoHist = protocolesHistory[cid]||[];
   const protoHistHtml = protoHist.length ? protoHist.map((p,i)=>`
@@ -4740,12 +4862,12 @@ function renderFiche(c){
     </div>`).join('') : "<div style='padding:16px;font-size:13px;color:var(--muted);font-style:italic'>Aucun protocole généré pour le moment.</div>";
 
   // Historique des questionnaires archivés sur Supabase (consultable à tout moment)
-  const qTypeLbl={consultation:'Consultation',suivi:'Suivi'};
+  const qTypeLbl={consultation:'Consultation',suivi:'Suivi',visio:'Préparation visio'};
   const qHistHtml = qList.length ? qList.map(q=>`
     <div class="doc-item">
       <div class="doc-icon" style="background:var(--surface)">${q.type==='suivi'?ic('refresh'):ic('file')}</div>
       <div class="doc-body"><div class="doc-name">${escH(qTypeLbl[q.type]||q.type||'Questionnaire')}</div><div class="doc-meta">${fmtDate(q.created_at)}</div></div>
-      ${btn('doc-action',`voirQuestionnaireArchive('${cid}','${escH(q.id)}')`,'Voir')}
+      ${q.type==='visio'?btn('doc-action',`voirReponsesVisio('${cid}')`,'Voir'):btn('doc-action',`voirQuestionnaireArchive('${cid}','${escH(q.id)}')`,'Voir')}
     </div>`).join('') : "<div style='padding:16px;font-size:13px;color:var(--muted);font-style:italic'>Aucun questionnaire archivé pour le moment.</div>";
 
 
@@ -4979,12 +5101,13 @@ function renderFiche(c){
   const tabNow=window._ficheTab||'resume';
   const nbRetard=wf.filter(s=>!s.done&&s.isOvd).length;
   const nbAVenir=wf.filter(s=>!s.done&&(s.isOvd||s.isSoon)).length;
+  const nbRdvAVenir=cr.filter(r=>r.status!=='annule'&&r.date>=today()).length;
   const nbNonLus=clientMsgsAll.filter(m=>!m.lu).length;
   const tabDef=[
-    ['resume','En résumé','sun',''],
+    ['resume','En résumé','sun',(ckCnt.late?'<span class="fv2-tab-badge red">'+ckCnt.late+'</span>':ckCnt.soon?'<span class="fv2-tab-badge">'+ckCnt.soon+'</span>':'')],
     ['profil','Profil','user',''],
     ['aluma','A Luma','message-circle',nbNonLus?'<span class="fv2-tab-badge">'+nbNonLus+'</span>':(chatActif?'<span class="fv2-dot on" title="Application active"></span>':'<span class="fv2-dot" title="Application inactive"></span>')],
-    ['echeances','Échéances','alarm-clock',nbAVenir?'<span class="fv2-tab-badge'+(nbRetard?' red':'')+'">'+nbAVenir+'</span>':''],
+    ['echeances','Échéances','alarm-clock',nbRdvAVenir?'<span class="fv2-tab-n">'+nbRdvAVenir+'</span>':''],
     ['docs','Documents & bilans','droplet',dm.length?'<span class="fv2-tab-n">'+dm.length+'</span>':''],
     ['histo','Historique','history','']
   ];
@@ -5012,9 +5135,6 @@ function renderFiche(c){
           <details class="more">
             <summary class="fv2-btn">Plus <i data-lucide="chevron-down" class="ico"></i></summary>
             <div class="more-menu">
-              ${hasPHV?btn('',`window.open('${c.phv_url?escH(c.phv_url):'phv-print.html?client='+encodeURIComponent(cid)}','_blank')`,ic('download')+' Voir le PHV'):''}
-              ${btn('',`ouvrirPHVCliente('${cid}')`, hasPHV?ic('refresh')+' Régénérer le PHV':ic('spark')+' Générer le PHV')}
-              ${btn('',`ouvrirLettreClinique('${cid}')`,ic('mail')+' Lettre d\'adressage')}
               ${c.email?`<button onclick="voirCommeElle('${cid}')">${ic('eye')} Aperçu de son espace</button>`:''}
               ${btn('danger',`ouvrirSuppressionCliente('${cid}')`, ic('trash')+' Supprimer la fiche')}
             </div>
@@ -5027,7 +5147,7 @@ function renderFiche(c){
       ${briefHtml}
       ${resaHtml}
       ${ouvertureHtml}
-      ${naHtml}
+      ${checklistHtml}
       ${c.propositionParcoursEnvoyeeLe ? `<div class="next-action soon"><div class="na-icon">${ic('mail')}</div><div class="na-body"><div class="na-label">Proposition ${c.propositionParcoursProgramme?pLbl(c.propositionParcoursProgramme):'de parcours'} envoyée</div><div class="na-sub">Le ${fmtDate(c.propositionParcoursEnvoyeeLe)} — envoyée automatiquement par Brevo à J+21, sans confirmation depuis ${Math.round(diffD(c.propositionParcoursEnvoyeeLe))} jours</div></div><button class="feed-btn feed-btn-ghost" onclick="marquerPropositionAnnulee('${cid}')">Effacer</button></div>` : ''}
       <div class="fv2-two">
         ${progCardHtml}
@@ -5068,10 +5188,6 @@ function renderFiche(c){
     ${P('echeances',`
       <div class="fv2-two">
         <div class="fv2-col"><div class="info-card">
-          <div class="ic-head"><div class="ic-title">${ic('alarm')} Prochaines échéances</div><span style="font-size:11px;color:var(--muted)">${doneCount}/${totalWF} complétées</span></div>
-          <div class="ic-body"><div class="wf2-list">${wfHtml||"<div style='padding:16px;font-size:13px;color:var(--muted);font-style:italic'>Aucune échéance de suivi (pas de programme en cours).</div>"}</div></div>
-        </div></div>
-        <div class="fv2-col"><div class="info-card">
         <div class="ic-head"><div class="ic-title">${ic('calendar')} Rendez-vous</div>${cr.length>0?`<span style="font-size:11px;color:var(--muted)">${cr.length} au total</span>`:''}</div>
         <div class="ic-body">${rdvHtml}</div>
       </div><div class="info-card"><div class="ic-head"><div class="ic-title">${ic('refresh')} Suivi &amp; compléments en cours</div></div><div class="ic-body">${buildFicheHormonale(c, age, cr, 'suite')}</div></div></div>
@@ -5096,9 +5212,6 @@ function renderFiche(c){
       ${sec('Ce que nous avons fait ensemble')}
       <div class="fv2-two">
         <div class="fv2-col"><div class="info-card">
-          <div class="ic-head"><div class="ic-title">${ic('file')} Protocole & outils</div></div>
-          <div class="ic-body"><div class="doc-list">${docsHtml}</div></div>
-        </div><div class="info-card">
           <div class="ic-head"><div class="ic-title">${ic('spark')} Historique des protocoles</div><span style="font-size:11px;color:var(--muted)">${protoHist.length} version(s)</span></div>
           <div class="ic-body"><div class="doc-list">${protoHistHtml}</div></div>
         </div></div>
