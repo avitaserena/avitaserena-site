@@ -7320,18 +7320,42 @@ async function lienPrepVisio(clientId){
 async function copierLienPrepVisio(clientId){
   const lien = await lienPrepVisio(clientId);
   if(!lien) return;
-  try{ await navigator.clipboard.writeText(lien); toast('Lien du questionnaire copié','ok'); }
-  catch(e){ window.prompt('Copiez ce lien :', lien); }
+  let ok = false;
+  try{ await navigator.clipboard.writeText(lien); ok = true; }catch(e){}
+  if(!ok){
+    try{
+      const ta=document.createElement('textarea'); ta.value=lien; ta.style.position='fixed'; ta.style.opacity='0';
+      document.body.appendChild(ta); ta.select(); ok=document.execCommand('copy'); ta.remove();
+    }catch(e){}
+  }
+  if(ok) toast('Lien du questionnaire copié','ok'); else window.prompt('Copiez ce lien :', lien);
 }
+// 20/11/2026 : envoi par la fonction serveur send-prepvisio-link (Brevo), comme les autres emails du CRM.
+// (La version « mailto: » ne faisait rien quand aucune application de messagerie n'est configurée sur l'ordinateur.)
 async function envoyerMailPrepVisio(clientId){
   const c = db.clients.find(x=>x.id===clientId);
   if(!c){ toast('Cliente introuvable','err'); return; }
   if(!c.email){ toast('Aucun email sur cette fiche : ajoutez-le ou copiez le lien','err'); return; }
-  const lien = await lienPrepVisio(clientId);
-  if(!lien) return;
-  const sujet = 'Votre questionnaire de préparation — A VITA SERENA';
-  const corps = 'Bonjour '+(c.prenom||'')+',\n\nPour préparer au mieux notre rendez-vous, voici votre questionnaire personnel (environ 3 minutes) :\n'+lien+'\n\nIl est rattaché à votre dossier : merci de ne pas le transférer.\n\nPrenez soin de vous,\nSabrina';
-  window.location.href = 'mailto:'+encodeURIComponent(c.email)+'?subject='+encodeURIComponent(sujet)+'&body='+encodeURIComponent(corps);
+  if(!confirm('Envoyer le questionnaire de préparation à '+c.email+' ?')) return;
+  toast('Envoi en cours…');
+  try{
+    let authToken = KEY;
+    if(typeof Auth!=='undefined'){ try{ const t=await Auth.getValidAccessToken(); if(t) authToken=t; }catch(e){} }
+    const res = await fetch(SB+'/functions/v1/send-prepvisio-link', {
+      method:'POST',
+      headers:{ 'apikey':KEY, 'Authorization':'Bearer '+authToken, 'Content-Type':'application/json' },
+      body: JSON.stringify({ client_id: clientId })
+    });
+    const data = await res.json().catch(()=>({}));
+    if(!res.ok || data.error){ toast("Erreur d'envoi : "+(data.error||'échec'),'err'); return; }
+    if(!c.timeline) c.timeline=[];
+    c.timeline.push({type:'suivi', title:'Lien du questionnaire de préparation envoyé', icon:'·', date:today()});
+    try{ await saveClient(c); }catch(e){ console.warn(e); }
+    toast('Lien envoyé à '+c.email,'ok');
+    renderFiche(c);
+  }catch(e){
+    toast('Erreur : '+e.message,'err');
+  }
 }
 
 // ── Affiche les réponses enregistrées du questionnaire de préparation visio ──
