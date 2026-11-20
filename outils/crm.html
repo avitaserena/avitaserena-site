@@ -4622,16 +4622,35 @@ function renderFiche(c){
     </div>` ;
 
   // Workflow complet
-  const wfHtml=wf.map(s=>{
+  // 20/11/2026 : étape « Questionnaire de préparation visio » ajoutée ICI (affichage de l'onglet
+  // Échéances uniquement, pas dans buildWF) : elle se cale sur le prochain rendez-vous de bilan
+  // (ou la date de 1ère consultation encore à venir), pas sur la date du protocole — et n'agit donc
+  // jamais sur le statut de la cliente ni sur le tableau de bord. Elle disparaît une fois la date passée.
+  const prepAnchor=(()=>{
+    const prochainBilan=cr.filter(r=>r.status!=='annule'&&r.type==='bilan'&&r.date&&r.date>=today()).sort((a,b)=>a.date.localeCompare(b.date))[0];
+    if(prochainBilan) return prochainBilan.date;
+    return (c.date1&&c.date1>=today())?c.date1:null;
+  })();
+  const wfPrep=(()=>{
+    if(!prepAnchor) return [];
+    const done=(questionnairesClient[cid]||[]).some(q=>q.type==='visio')||!!(c.workflowDone?.questionnaire_visio);
+    const tgt=addD(prepAnchor,-1);
+    const dLeft=-diffD(tgt);
+    return [{key:'questionnaire_visio',j:-1,label:'Questionnaire de préparation visio',action:'prepvisio',icon:'spark',
+      desc:done?'Réponses reçues — à lire avant la visio':"À recevoir avant la visio (envoyé automatiquement à la réservation d'un bilan, sinon envoyez le lien ici)",
+      tgt,done,isOvd:!done&&diffD(tgt)>=0,isSoon:!done&&dLeft>0&&dLeft<=7,badgeLbl:'Avant le rendez-vous'}];
+  })();
+  const wfHtml=[...wfPrep,...wf].map(s=>{
     let cls=s.done?'wf2-done':s.isOvd?'wf2-overdue':s.isSoon?'wf2-soon':'';
     let badge='';
     if(s.done) badge="<span class='wf2-badge done'>"+ic('check')+" Fait</span>";
     else if(s.isOvd) badge="<span class='wf2-badge overdue'>Retard</span>";
     else if(s.isSoon) badge="<span class='wf2-badge soon'>Cette semaine</span>";
-    else badge=`<span class="wf2-badge prog">${s.j<0?'Avant J0':'J+'+s.j}</span>`;
+    else badge=`<span class="wf2-badge prog">${s.badgeLbl||(s.j<0?'Avant J0':'J+'+s.j)}</span>`;
     let aBtn='';
     if(!s.done){
-      if(s.action==='bilan') aBtn=btnSm('tool',`ouvrirBilanEntree('${cid}','depart')`,ic('file')+' Bilan');
+      if(s.action==='prepvisio') aBtn=btnSm('email',`envoyerMailPrepVisio('${cid}')`,ic('mail')+' Email')+btnSm('tool',`copierLienPrepVisio('${cid}')`,ic('file')+' Lien');
+      else if(s.action==='bilan') aBtn=btnSm('tool',`ouvrirBilanEntree('${cid}','depart')`,ic('file')+' Bilan');
       else if(s.action==='phv') aBtn=btnSm('tool',`ouvrirPHVCliente('${cid}')`,ic('spark')+' PHV');
       else if(s.action==='checkin') aBtn=btnSm('tool',`envoyerCheckinBrevoTpl('${cid}')`,ic('chart')+' Lien');
       else if(s.action==='cloture') aBtn=btnSm('tool',`ouvrirBilanEntree('${cid}','cloture')`,ic('trophy')+' Clôture');
