@@ -2905,7 +2905,7 @@ function caNet(f){return Math.max(0,(Number(f.montant)||0)-(Number(f.montantRemb
 function isGuide(f){return !!f&&f.prestation==='guide_sibo';}
 // Facture intégralement remboursée le même mois : elle ne génère aucun chiffre d'affaires, on ne l'envoie pas à Indy
 function annuleeMemeMois(f){return !!f&&f.statut==='remboursee'&&!!f.rembourseLe&&!!f.date&&String(f.rembourseLe).slice(0,7)===String(f.date).slice(0,7);}
-function mapC(r){return{id:r.id,prenom:r.prenom,nom:r.nom,email:r.email,tel:r.tel,age:r.age,ddn:r.ddn,motifs:r.motifs,axes:r.axes,notes:r.notes,programme:r.programme,dureeTtt:r.duree_ttt,date1:r.date1,dateProtocole:r.date_protocole,phv_url:r.phv_url||'',timeline:r.timeline||[],workflowDone:r.workflow_done||{},createdAt:r.created_at,chat_addon_actif:!!r.chat_addon_actif,chat_addon_prix:r.chat_addon_prix||45,chatPrixRenseigne:r.chat_addon_prix!=null,chatAnnulationPrevueLe:r.chat_addon_annulation_prevue_le||null,chat_addon_debut:r.chat_addon_debut||'',chat_addon_renouvellement:r.chat_addon_renouvellement||'',chat_addon_source:r.chat_addon_source||'',chat_addon_stripe_sub_id:r.chat_addon_stripe_sub_id||'',luma_ora_rappel_fin_envoye_le:r.luma_ora_rappel_fin_envoye_le||'',propositionParcoursEnvoyeeLe:r.proposition_parcours_envoyee_le||null,propositionParcoursProgramme:r.proposition_parcours_programme||null,suiviSpecialites:(typeof r.suivi_specialites==='string')?r.suivi_specialites:null};}
+function mapC(r){return{id:r.id,prenom:r.prenom,nom:r.nom,email:r.email,tel:r.tel,age:r.age,ddn:r.ddn,motifs:r.motifs,axes:r.axes,notes:r.notes,programme:r.programme,dureeTtt:r.duree_ttt,date1:r.date1,dateProtocole:r.date_protocole,phv_url:r.phv_url||'',timeline:r.timeline||[],workflowDone:r.workflow_done||{},createdAt:r.created_at,chat_addon_actif:!!r.chat_addon_actif,chat_addon_prix:r.chat_addon_prix||45,chatPrixRenseigne:r.chat_addon_prix!=null,chatAnnulationPrevueLe:r.chat_addon_annulation_prevue_le||null,chat_addon_debut:r.chat_addon_debut||'',chat_addon_renouvellement:r.chat_addon_renouvellement||'',chat_addon_source:r.chat_addon_source||'',chat_addon_stripe_sub_id:r.chat_addon_stripe_sub_id||'',luma_ora_rappel_fin_envoye_le:r.luma_ora_rappel_fin_envoye_le||'',propositionParcoursEnvoyeeLe:r.proposition_parcours_envoyee_le||null,propositionParcoursProgramme:r.proposition_parcours_programme||null,suiviSpecialites:(typeof r.suivi_specialites==='string')?r.suivi_specialites:null,questionnaireToken:r.questionnaire_token||''};}
 
 /* Date AAAA-MM-JJ à l'heure de Paris (toISOString donne l'heure UTC → décalage d'un jour entre 0h et 2h) */
 function _ymdParis(d){return (_ymdParis.f||(_ymdParis.f=new Intl.DateTimeFormat('fr-CA',{timeZone:'Europe/Paris',year:'numeric',month:'2-digit',day:'2-digit'}))).format(d);}
@@ -4650,9 +4650,7 @@ function renderFiche(c){
   const qConsult = qList.filter(q=>q.type==='consultation');
   const qSuivi = qList.filter(q=>q.type==='suivi');
   const qVisio = qList.filter(q=>q.type==='visio');
-  // Prochain RDV à venir pour cette cliente — sert à savoir si un envoi automatique
-  // du questionnaire de préparation visio est encore à attendre (envoyé la veille,
-  // voir Edge Function send-auto-emails) ou n'a simplement pas de RDV à couvrir.
+  // Prochain RDV à venir pour cette cliente (le questionnaire de préparation visio n'en dépend plus : lien personnel toujours disponible).
   const prochainRdv = cr.filter(r=>r.status!=='annule' && r.date>=today()).sort((a,b)=>a.date.localeCompare(b.date))[0];
   const docs=[
     {icon:ic('file'),bg:'var(--orange-lt)',name:'Questionnaire de consultation',meta:qConsult.length?'Complété le '+fmtDate(qConsult[0].created_at):'Non rempli',st:qConsult.length?'ok':'missing',stl:qConsult.length?'Complété':'À faire',al:'Ouvrir',ac:qConsult.length?'':'primary',fn:`ouvrirQuestionnaireCliente('${cid}','consultation')`},
@@ -4665,10 +4663,11 @@ function renderFiche(c){
         st:crs.length?'ok':'missing',stl:crs.length?crs.length+' au total':'Aucun',al:'Nouveau compte rendu',ac:'',fn:`ouvrirResumeConsultation('${cid}')`};
     })(),
     (()=>{
-      // Envoyé automatiquement par send-auto-emails la veille du RDV (8h-9h, heure de Paris).
-      if(qVisio.length) return {icon:ic('spark'),bg:'var(--violet-lt)',name:'Questionnaire de préparation visio',meta:'Répondu le '+fmtDate(qVisio[0].created_at),st:'ok',stl:'Répondu',al:'Voir les réponses',ac:'',fn:`voirReponsesVisio('${cid}')`};
-      if(prochainRdv) return {icon:ic('spark'),bg:'var(--violet-lt)',name:'Questionnaire de préparation visio',meta:'Envoi automatique prévu la veille du '+fmtDate(prochainRdv.date)+' (pas encore reçu)',st:'missing',stl:'En attente',al:'—',ac:'',fn:''};
-      return {icon:ic('spark'),bg:'var(--violet-lt)',name:'Questionnaire de préparation visio',meta:'Aucun rendez-vous à venir pour cette cliente',st:'missing',stl:'N/A',al:'—',ac:'',fn:''};
+      // Lien personnel (jeton) : envoyé automatiquement à la réservation d'un bilan, ou à envoyer ici
+      // à la main (amie, cliente sans réservation). Toujours disponible, avec ou sans rendez-vous.
+      const base={icon:ic('spark'),bg:'var(--violet-lt)',name:'Questionnaire de préparation visio',al2:'Copier le lien',fn2:`copierLienPrepVisio('${cid}')`};
+      if(qVisio.length) return {...base,meta:'Répondu le '+fmtDate(qVisio[0].created_at),st:'ok',stl:'Répondu',al:'Voir les réponses',ac:'',fn:`voirReponsesVisio('${cid}')`};
+      return {...base,meta:c.email?'Pas encore répondu — le lien est personnel à cette fiche':'Ajoutez un email à la fiche pour l\'envoyer, ou copiez le lien',st:'missing',stl:'À envoyer',al:'Envoyer par email',ac:'primary',fn:`envoyerMailPrepVisio('${cid}')`};
     })(),
     (()=>{
       const sums=consultationSummariesClient[cid]||[];
@@ -4708,6 +4707,7 @@ function renderFiche(c){
       <div class="doc-icon" style="background:${d.bg}">${d.icon}</div>
       <div class="doc-body"><div class="doc-name">${escH(d.name)}</div><div class="doc-meta">${escH(d.meta)}</div></div>
       <span class="doc-status ${d.st}">${escH(d.stl)}</span>
+      ${d.fn2?btn('doc-action',d.fn2,escH(d.al2)):''}
       ${btn(`doc-action ${d.ac}`,d.fn,escH(d.al))}
     </div>`).join('');
 
@@ -5584,11 +5584,13 @@ async function saveNewClient(){
   const id=idCanoniqueCliente(prenom,nom,ddn);
   const payload={id,prenom,nom,email:document.getElementById('nc-email')?.value||'',tel:document.getElementById('nc-tel')?.value||'',age:age?String(age):'',ddn,motifs:document.getElementById('nc-motifs')?.value||'',axes:document.getElementById('nc-axes')?.value||'',notes:document.getElementById('nc-notes')?.value||'',programme:document.getElementById('nc-prog')?.value||'',duree_ttt:document.getElementById('nc-duree')?.value||'60',date1,date_protocole:document.getElementById('nc-dateproto')?.value||'',timeline:[{type:'creation',title:'Dossier créé',icon:'·',date:today()}],workflow_done:{},created_at:new Date().toISOString()};
   try{
-    await sb('clientes',{method:'POST',headers:{'Prefer':'return=representation,resolution=merge-duplicates'},body:JSON.stringify(payload)});
+    const creee=await sb('clientes',{method:'POST',headers:{'Prefer':'return=representation,resolution=merge-duplicates'},body:JSON.stringify(payload)});
+    // 20/11/2026 : on mappe la ligne renvoyée par la base (elle contient le jeton du questionnaire de préparation visio)
+    const ligne=(Array.isArray(creee)&&creee[0])?creee[0]:payload;
     // Mettre à jour en mémoire (remplacer si existant, ajouter sinon)
     const existIdx = db.clients.findIndex(c => c.id === payload.id);
-    if(existIdx > -1) db.clients[existIdx] = mapC(payload);
-    else db.clients.unshift(mapC(payload));
+    if(existIdx > -1) db.clients[existIdx] = mapC(ligne);
+    else db.clients.unshift(mapC(ligne));
     closeM('m-client');toast('Fiche créée','ok');nav('clients',null);renderClients();
   }
   catch(e){toast('Erreur: '+e.message,'err');}
@@ -7298,17 +7300,38 @@ function ouvrirResumeConsultation(clientId){
   window.open('resume-consultation.html?' + params.toString(), '_blank');
 }
 
-// ── Aperçu manuel du questionnaire de préparation visio, pré-rempli et rattaché
-//    au client_id (le même lien que celui envoyé automatiquement la veille du RDV
-//    par l'Edge Function send-auto-emails) — utile pour prévisualiser ou renvoyer
-//    le lien à la main (ex. copier/coller dans un message) ──
-function ouvrirQuestionnairePrepVisio(clientId){
+// ── Questionnaire de préparation visio : lien personnel de la cliente (20/11/2026) ──
+//    Le lien ne contient qu'un jeton secret propre à la fiche (clientes.questionnaire_token).
+//    La fonction serveur visio-questionnaire retrouve la fiche grâce à lui : le questionnaire
+//    arrive donc toujours sur la bonne fiche, qu'il s'agisse d'une cliente qui a payé ou d'une
+//    amie dont la fiche a été créée à la main. Nom et prénom sont affichés d'après la fiche.
+async function lienPrepVisio(clientId){
+  const c = db.clients.find(x=>x.id===clientId);
+  if(!c){ toast('Cliente introuvable','err'); return ''; }
+  if(!c.questionnaireToken){
+    try{
+      const r = await sb('clientes?id=eq.'+encodeURIComponent(clientId)+'&select=questionnaire_token');
+      c.questionnaireToken = (r&&r[0]&&r[0].questionnaire_token)||'';
+    }catch(e){ console.error(e); }
+  }
+  if(!c.questionnaireToken){ toast('Lien indisponible pour cette fiche','err'); return ''; }
+  return 'https://avitaserena.com/questionnaire_preparation_visio.html?t='+encodeURIComponent(c.questionnaireToken);
+}
+async function copierLienPrepVisio(clientId){
+  const lien = await lienPrepVisio(clientId);
+  if(!lien) return;
+  try{ await navigator.clipboard.writeText(lien); toast('Lien du questionnaire copié','ok'); }
+  catch(e){ window.prompt('Copiez ce lien :', lien); }
+}
+async function envoyerMailPrepVisio(clientId){
   const c = db.clients.find(x=>x.id===clientId);
   if(!c){ toast('Cliente introuvable','err'); return; }
-  const params = new URLSearchParams({
-    client_id: c.id, prenom: c.prenom||'', email: c.email||''
-  });
-  window.open('questionnaire_preparation_visio.html?' + params.toString(), '_blank');
+  if(!c.email){ toast('Aucun email sur cette fiche : ajoutez-le ou copiez le lien','err'); return; }
+  const lien = await lienPrepVisio(clientId);
+  if(!lien) return;
+  const sujet = 'Votre questionnaire de préparation — A VITA SERENA';
+  const corps = 'Bonjour '+(c.prenom||'')+',\n\nPour préparer au mieux notre rendez-vous, voici votre questionnaire personnel (environ 3 minutes) :\n'+lien+'\n\nIl est rattaché à votre dossier : merci de ne pas le transférer.\n\nPrenez soin de vous,\nSabrina';
+  window.location.href = 'mailto:'+encodeURIComponent(c.email)+'?subject='+encodeURIComponent(sujet)+'&body='+encodeURIComponent(corps);
 }
 
 // ── Affiche les réponses enregistrées du questionnaire de préparation visio ──

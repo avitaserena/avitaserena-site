@@ -179,12 +179,18 @@ html,body{height:100vh;height:100dvh;overflow:hidden;font-family:'Be Vietnam Pro
 .confirm-title{font-family:'Cormorant Garamond',serif;font-weight:500;font-size:clamp(28px,5vw,42px);line-height:1.15;color:var(--ardoise);margin-bottom:14px}
 .confirm-sub{font-size:16px;color:var(--gris);line-height:1.7}
 
-/* Pourquoi cette question */
-.why-toggle{display:inline-flex;align-items:center;gap:6px;margin-top:18px;font-size:12px;color:var(--gris-clair);cursor:pointer;border:none;background:none;font-family:'Be Vietnam Pro',sans-serif;transition:color .2s}
-.why-toggle:hover{color:var(--ocre)}
-.why-body{display:none;margin-top:10px;font-size:13px;color:var(--gris);line-height:1.65;max-width:400px;margin-left:auto;margin-right:auto;text-align:center}
-.why-body.open{display:block}
+/* Pourquoi je pose cette question — toujours visible */
+.why{max-width:440px;margin:0 auto 26px;padding:14px 18px;background:var(--or-clair);border-left:3px solid var(--ocre);border-radius:0 14px 14px 0;text-align:left}
+.why-label{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--or);margin-bottom:6px}
+.why-text{font-size:14.5px;color:var(--gris);line-height:1.65}
 
+/* Identité préremplie depuis la fiche */
+.ident{max-width:440px;margin:0 auto;padding:18px 22px;background:var(--blanc);border:1.5px solid var(--taupe);border-radius:14px;text-align:left}
+.ident-name{font-family:'Cormorant Garamond',serif;font-weight:500;font-size:28px;line-height:1.2;color:var(--ardoise)}
+.ident-mail{font-size:14.5px;color:var(--gris);margin-top:4px;word-break:break-all}
+.lien-erreur{display:none;max-width:420px;margin:0 auto;font-size:15px;line-height:1.7;color:rgba(255,255,255,.85)}
+.lien-erreur a{color:var(--sable)}
+.hero-cta:disabled{opacity:.55;cursor:default;transform:none;box-shadow:none}
 /* Mobile */
 @media(max-width:640px){
   .nav{padding:calc(14px + env(safe-area-inset-top)) 20px 14px}
@@ -239,7 +245,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <div class="hero-eyebrow">Bilan de vitalité · A VITA SERENA</div>
     <h1 class="hero-title">Votre corps vous parle.<br>Il est temps de <em>l'écouter.</em></h1>
     <p class="hero-sub">Quelques questions pour préparer notre rendez-vous. Rien de médical, rien de compliqué — juste l'essentiel.</p>
-    <button class="hero-cta" onclick="go(1)">Commencer <span>→</span></button>
+    <button class="hero-cta" id="hero-cta" onclick="go(1)" disabled>Chargement…</button>
+    <p class="lien-erreur" id="lien-erreur">Ce lien n'est pas valide ou est incomplet. Écrivez-moi à <a href="mailto:sabrina@avitaserena.com">sabrina@avitaserena.com</a> et je vous en envoie un nouveau.</p>
     <p class="hero-hint">3 minutes · confidentiel · depuis chez vous</p>
   </div>
 </div>
@@ -248,13 +255,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <div class="screen q-screen" id="s1">
   <div class="q-wrap">
     <div class="q-number">01 · 06</div>
-    <h2 class="q-title">Faisons connaissance</h2>
-    <div class="q-sub">Comment puis-je vous appeler ?</div>
-    <div class="field-row">
-      <div class="field"><label>Prénom</label><input type="text" id="prenom" placeholder="Votre prénom" autocomplete="given-name"></div>
-      <div class="field"><label>Email</label><input type="email" id="email-cliente" placeholder="votre@email.com" autocomplete="email"></div>
-    </div>
-    <div class="field-row" style="margin-top:14px">
+    <h2 class="q-title" id="s1-title">Faisons connaissance</h2>
+    <div class="q-sub">Voici ce que j'ai déjà de vous : vous n'avez rien à ressaisir.</div>
+    <div class="why"><div class="why-label">Pourquoi je vous pose cette question</div><div class="why-text">Ces informations viennent de votre fiche : elles me permettent de rattacher vos réponses à votre dossier, et à vous seule. Votre âge m'aide à situer votre terrain, car les besoins hormonaux et métaboliques du corps ne sont pas les mêmes à 25, 40 ou 55 ans.</div></div>
+    <div class="ident"><div class="ident-name" id="ident-name"></div><div class="ident-mail" id="ident-mail"></div></div>
+    <div class="field-row" id="age-row" style="margin-top:14px;display:none">
       <div class="field"><label>Âge</label><input type="number" id="age" placeholder="ex : 34" min="16" max="90"></div>
       <div class="field"></div>
     </div>
@@ -270,6 +275,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <div class="q-number">02 · 06</div>
     <h2 class="q-title">Depuis combien de temps ?</h2>
     <div class="q-sub">Depuis quand ces symptômes font-ils partie de votre vie ?</div>
+    <div class="why"><div class="why-label">Pourquoi je vous pose cette question</div><div class="why-text">Un terrain récent et un terrain chronique ne demandent pas la même approche — la durée oriente l'intensité et le rythme du protocole.</div></div>
     <div class="opts" id="duree-opts">
       <div class="opt" onclick="selOpt(this,'duree')"><div class="dot"></div>Quelques semaines</div>
       <div class="opt" onclick="selOpt(this,'duree')"><div class="dot"></div>2 à 6 mois</div>
@@ -278,8 +284,6 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <div class="opt" onclick="selOpt(this,'duree')"><div class="dot"></div>Depuis l'enfance</div>
     </div>
     <div class="empathy" id="empathy-duree"></div>
-    <button class="why-toggle" onclick="toggleWhy(this)">↓ Pourquoi cette question ?</button>
-    <div class="why-body">Un terrain récent et un terrain chronique ne demandent pas la même approche — la durée oriente l'intensité et le rythme du protocole.</div>
     <div class="q-actions">
       <button class="btn btn-back" onclick="go(1)">← Retour</button>
       <button class="btn btn-primary" onclick="go(3)" id="btn-s2" disabled>Continuer →</button>
@@ -293,6 +297,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <div class="q-number">03 · 06</div>
     <h2 class="q-title">Ce qui vous pèse le plus</h2>
     <div class="q-sub">Sélectionnez tout ce qui vous parle.</div>
+    <div class="why"><div class="why-label">Pourquoi je vous pose cette question</div><div class="why-text">Savoir ce qui pèse le plus dans votre quotidien m'aide à orienter notre conversation dès la première minute.</div></div>
     <div class="chips" id="symptom-chips">
       <div class="chip" onclick="togChip(this)">Fatigue chronique</div>
       <div class="chip" onclick="togChip(this)">Ventre gonflé</div>
@@ -309,8 +314,6 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <div class="chip" onclick="togChip(this)">Autre</div>
     </div>
     <textarea class="other-field" id="other-symptom" placeholder="Décrivez en quelques mots…" rows="2"></textarea>
-    <button class="why-toggle" onclick="toggleWhy(this)">↓ Pourquoi cette question ?</button>
-    <div class="why-body">Savoir ce qui pèse le plus dans votre quotidien m'aide à orienter notre conversation dès la première minute.</div>
     <div class="q-actions">
       <button class="btn btn-back" onclick="go(2)">← Retour</button>
       <button class="btn btn-primary" onclick="go(4)">Continuer →</button>
@@ -324,6 +327,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <div class="q-number">04 · 06</div>
     <h2 class="q-title">Votre énergie aujourd'hui</h2>
     <div class="q-sub">Si vous deviez la noter sur 10 ?</div>
+    <div class="why"><div class="why-label">Pourquoi je vous pose cette question</div><div class="why-text">Votre niveau d'énergie est un indicateur global de votre terrain — il me dit à quel point votre corps a besoin d'être soutenu.</div></div>
     <div class="energy-wrap">
       <div class="energy-val" id="energy-val">5</div>
       <div class="energy-label" id="energy-label">Moyenne</div>
@@ -331,8 +335,6 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <input type="range" min="1" max="10" value="5" id="energy-slider" oninput="updateEnergy(this)">
     </div>
     <div class="empathy" id="empathy-energy"></div>
-    <button class="why-toggle" onclick="toggleWhy(this)">↓ Pourquoi cette question ?</button>
-    <div class="why-body">Votre niveau d'énergie est un indicateur global de votre terrain — il me dit à quel point votre corps a besoin d'être soutenu.</div>
     <div class="q-actions">
       <button class="btn btn-back" onclick="go(3)">← Retour</button>
       <button class="btn btn-primary" onclick="go(5)">Continuer →</button>
@@ -346,6 +348,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <div class="q-number">05 · 06</div>
     <h2 class="q-title">Comment aimeriez-vous vous sentir ?</h2>
     <div class="q-sub">Dans 1, 2 ou 3 mois — décrivez-le comme vous voulez.</div>
+    <div class="why"><div class="why-label">Pourquoi je vous pose cette question</div><div class="why-text">Savoir comment vous aimeriez vous sentir me donne le cap : votre protocole se construit autour de votre objectif, pas seulement autour de vos symptômes.</div></div>
     <div class="field-row" style="max-width:480px">
       <div class="field" style="flex:1"><textarea id="objectif" placeholder="Ex. : me lever avec de l'énergie, ne plus avoir le ventre gonflé tous les soirs, me reconnaître." rows="3"></textarea></div>
     </div>
@@ -362,6 +365,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <div class="q-number">06 · 06</div>
     <h2 class="q-title">Quelque chose à me dire ?</h2>
     <div class="q-sub">Ce qui compte pour vous — ou ce qui serait plus facile à écrire qu'à dire à l'oral. Rien ne sera jugé.</div>
+    <div class="why"><div class="why-label">Pourquoi je vous pose cette question</div><div class="why-text">Certaines choses sont plus faciles à écrire qu'à dire. Une habitude, une peur ou un détail de votre quotidien peut changer complètement la lecture de votre situation — je préfère le savoir avant notre rendez-vous.</div></div>
     <div class="field-row" style="max-width:480px">
       <div class="field" style="flex:1"><textarea id="libre" placeholder="Ex. : je fume un paquet par jour. Ou : j'ai peur que ce soit dans ma tête. Ou : rien de particulier, j'ai hâte d'en parler de vive voix." rows="3"></textarea></div>
     </div>
@@ -403,27 +407,39 @@ const EMPATHY_DUREE={
 const ENERGY_LABELS=['','Très épuisée','Épuisée','Difficile','Faible','Moyenne','Correcte','Plutôt bien','Bien','Très bien','Excellente'];
 const ENERGY_COLORS=['','#9B3A3A','#A8522A','#A06A22','#9B7230','#7A8A22','#4A8A2A','#3A8A48','#2A7A62','#206080','#1E5A8A'];
 
-/* ── Pré-remplissage & identification depuis le lien envoyé automatiquement
-   la veille du RDV (voir Edge Function send-auto-emails) : le lien porte le
-   client_id + prénom + email de la cliente. Ça permet (1) de lui éviter de
-   ressaisir ce qu'on sait déjà d'elle, et (2) de rattacher fiablement ses
-   réponses à sa fiche cliente — sans client_id, deux clientes prénommées
-   pareil ne pouvaient pas être distinguées côté CRM. ── */
-const urlParamsVisio=new URLSearchParams(location.search);
-const PREFILL_CLIENT_ID=urlParamsVisio.get('client_id')||'';
-const PREFILL_PRENOM=urlParamsVisio.get('prenom')||'';
-const PREFILL_EMAIL=urlParamsVisio.get('email')||'';
-(function prefillFromLink(){
-  if(PREFILL_PRENOM){ const el=document.getElementById('prenom'); if(el) el.value=PREFILL_PRENOM; }
-  if(PREFILL_EMAIL){ const el=document.getElementById('email-cliente'); if(el) el.value=PREFILL_EMAIL; }
+/* ── Identification par jeton secret (lien personnel envoyé depuis la fiche cliente).
+   Le lien ne contient QUE ce jeton : ni nom, ni date de naissance, ni identifiant.
+   Le serveur (fonction visio-questionnaire) retrouve la fiche et renvoie prénom, nom, email,
+   âge. Sans jeton valide, le questionnaire ne peut pas être commencé ni envoyé. ── */
+const FN_URL='https://bqhkdndwldwqacrrbbig.supabase.co/functions/v1/visio-questionnaire';
+const TOKEN=(new URLSearchParams(location.search).get('t')||'').trim();
+let IDENT=null;
+async function appelFonction(payload){
+  const res=await fetch(FN_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  let data={};try{data=await res.json();}catch(e){}
+  if(!res.ok) throw Object.assign(new Error(data.error||'erreur'),{status:res.status});
+  return data;
+}
+(async function verifierLien(){
+  const cta=document.getElementById('hero-cta');
+  const err=document.getElementById('lien-erreur');
+  const echec=()=>{cta.style.display='none';err.style.display='block';};
+  if(!/^[a-f0-9]{64}$/.test(TOKEN)){echec();return;}
+  try{
+    IDENT=await appelFonction({action:'load',token:TOKEN});
+    document.getElementById('ident-name').textContent=[IDENT.prenom,IDENT.nom].filter(Boolean).join(' ');
+    document.getElementById('ident-mail').textContent=IDENT.email||'';
+    if(IDENT.prenom) document.getElementById('s1-title').textContent='Bonjour '+IDENT.prenom;
+    if(!IDENT.age) document.getElementById('age-row').style.display='flex';
+    cta.disabled=false;cta.innerHTML='Commencer <span>→</span>';
+  }catch(e){
+    if(e.status===404){echec();}
+    else{cta.textContent='Réessayer';cta.disabled=false;cta.onclick=()=>location.reload();toast('Connexion impossible pour le moment, veuillez réessayer.',5000);}
+  }
 })();
 
 function go(n){
   if(n===current) return;
-  if(n===1){
-    const p=document.getElementById('prenom').value.trim();
-    // No blocking validation on step 1 — user can continue
-  }
   const prev=document.getElementById('s'+current);
   const next=document.getElementById('s'+n);
   if(!prev||!next) return;
@@ -480,12 +496,6 @@ function updateEnergy(inp){
   else{emp.classList.remove('show');}
 }
 
-function toggleWhy(btn){
-  const body=btn.nextElementSibling;
-  body.classList.toggle('open');
-  btn.textContent=body.classList.contains('open')?'↑ Fermer':'↓ Pourquoi cette question ?';
-}
-
 function toast(msg,d=4200){
   const t=document.getElementById('toast');
   t.textContent=msg;t.classList.add('show');
@@ -495,18 +505,8 @@ function toast(msg,d=4200){
 /* ══════════════════════════════════════
    COLLECTE & ENVOI
 ══════════════════════════════════════ */
-function collectData(){
-  const data={};
-  const p=document.getElementById('prenom').value.trim();
-  const email=document.getElementById('email-cliente').value.trim();
-  const age=document.getElementById('age').value.trim();
-  if(p) data['Prénom']=p;
-  if(email) data['Email']=email;
-  if(age) data['Âge']=age;
-
+function collectAnswers(){
   const dureeOpt=document.querySelector('#duree-opts .opt.on');
-  if(dureeOpt) data['Durée symptômes']=dureeOpt.textContent.trim();
-
   const chips=[];
   document.querySelectorAll('#symptom-chips .chip.on').forEach(c=>{
     const t=c.textContent.trim();
@@ -514,72 +514,28 @@ function collectData(){
   });
   const other=document.getElementById('other-symptom').value.trim();
   if(other) chips.push(other);
-  if(chips.length) data['Ce qui pèse']=chips.join(' · ');
-
-  const energy=document.getElementById('energy-slider').value;
-  data['Énergie générale']=energy+'/10';
-
-  const obj=document.getElementById('objectif').value.trim();
-  if(obj) data['Objectif']=obj;
-
-  const libre=document.getElementById('libre').value.trim();
-  if(libre) data['Message libre']=libre;
-
-  return data;
+  return{
+    age:(document.getElementById('age')?.value||'').trim(),
+    duree:dureeOpt?dureeOpt.textContent.trim():'',
+    motif:chips.join(' · '),
+    energie:document.getElementById('energy-slider').value,
+    objectif:document.getElementById('objectif').value.trim(),
+    libre:document.getElementById('libre').value.trim()
+  };
 }
-
-const SUPA_V_URL='https://bqhkdndwldwqacrrbbig.supabase.co';
-const SUPA_V_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxaGtkbmR3bGR3cWFjcnJiYmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MzAyNTIsImV4cCI6MjA5NjMwNjI1Mn0.nH2UktMAVKYwng4L3SvW5F0fluV_sObGV0f3Mk1dnOY';
-
-function sauvegarderPourConsultation(prenom,data){
-  try{
-    const visioAnswers={
-      client_id:PREFILL_CLIENT_ID||null,
-      prenom:prenom,
-      email:data['Email']||PREFILL_EMAIL||'',
-      age:document.getElementById('age')?.value?.trim()||'',
-      duree:data['Durée symptômes']||'',
-      motif:data['Ce qui pèse']||'',
-      objectif:data['Objectif']||'',
-      libre:data['Message libre']||'',
-      scores:{energieGenerale:document.getElementById('energy-slider')?.value||''},
-      ts:Date.now()
-    };
-    localStorage.setItem('avita_visio_answers',JSON.stringify(visioAnswers));
-    fetch(SUPA_V_URL+'/rest/v1/questionnaires',{
-      method:'POST',
-      headers:{'apikey':SUPA_V_KEY,'Authorization':'Bearer '+SUPA_V_KEY,
-        'Content-Type':'application/json','Prefer':'return=minimal'},
-      body:JSON.stringify({id:'visio_'+Date.now(),type:'visio',prenom,
-        client_id:PREFILL_CLIENT_ID||null,
-        snapshot:visioAnswers,created_at:new Date().toISOString(),updated_at:new Date().toISOString()})
-    }).catch(e=>console.warn('Supabase visio:',e));
-  }catch(e){}
-}
-
-const FORMSPREE_ENDPOINT='https://formspree.io/f/xvzyakle';
 
 async function sendForm(){
-  const p=document.getElementById('prenom').value.trim();
-  const clientEmail=document.getElementById('email-cliente').value.trim();
-  if(!p){toast('Merci de renseigner votre prénom');go(1);return;}
-  if(!clientEmail||!clientEmail.includes('@')){toast('Merci de renseigner votre email');go(1);return;}
-
+  if(!IDENT||!/^[a-f0-9]{64}$/.test(TOKEN)){toast('Ce lien n\'est pas valide. Écrivez-moi à sabrina@avitaserena.com.',6000);return;}
   const b=document.getElementById('btn-send');
   b.classList.add('loading');b.disabled=true;b.querySelector('.btn-label').textContent='Envoi en cours…';
-  const data=collectData();
-  const payload={_replyto:clientEmail,_subject:'Questionnaire préparation visio — '+p,Prénom:p,Email:clientEmail,...data};
-
   try{
-    const res=await fetch(FORMSPREE_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify(payload)});
-    if(res.ok){
-      sauvegarderPourConsultation(p,data);
-      document.getElementById('confirm-name').textContent=p;
-      go(7);
-    }else{throw new Error('err');}
+    // On attend la confirmation du serveur : « Merci » ne s'affiche que si les réponses sont bien enregistrées sur la fiche.
+    const r=await appelFonction({action:'submit',token:TOKEN,answers:collectAnswers()});
+    document.getElementById('confirm-name').textContent=r.prenom||IDENT.prenom||'';
+    go(7);
   }catch(e){
     b.classList.remove('loading');b.disabled=false;b.querySelector('.btn-label').textContent='Envoyer mon questionnaire →';
-    toast('Une erreur est survenue, veuillez réessayer.',4000);
+    toast(e.status===404?'Ce lien n\'est plus valide. Écrivez-moi à sabrina@avitaserena.com.':'Vos réponses n\'ont pas pu être envoyées. Rien n\'est perdu : veuillez réessayer.',6000);
   }
 }
 </script>
