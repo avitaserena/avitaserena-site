@@ -5550,7 +5550,7 @@ function renderFactures(){
     const fstLbl=f.statut==='remboursee'?('Remboursée'+(f.montantRembourse&&f.montantRembourse<f.montant?' (partiel)':'')):(f.statut==='payee'?'Payée':'En attente');
     const indyCls=f.indySaisie?'findy on':'findy';
     const indyTitle=f.indySaisie?('Saisie dans Indy'+(f.indySaisieLe?(' le '+fmtShort(f.indySaisieLe)):'')+' — cliquer pour annuler'):'Pas encore saisie dans Indy — cliquer pour marquer comme fait';
-    return "<div class='fr'><span class='fnum'>N° "+escH(f.num||'')+"</span><div style='flex:1'><div class='fcl'>"+(c?escH(c.prenom+' '+(c.nom||'')):(f.acheteurNom||f.acheteurEmail?escH(f.acheteurNom||f.acheteurEmail):"<span style='color:var(--muted)'>—</span>"))+"</div><div class='fpre'>"+escH(f.prestationLabel||f.prestation||'')+(isGuide(f)?" · "+escH(f.acheteurEmail||'')+(f.mailStatut==='ok'?" · <span style='color:var(--green)'>e-mail envoyé</span>":" · <span style='color:var(--orange)' title='"+escH(f.mailStatut||'Aucune confirmation envoi enregistree')+"'>e-mail non confirmé</span>"):'')+"</div></div><span class='fdat'>"+fmtShort(f.date)+"</span><span class='famt'>"+(f.montant||0).toFixed(0)+" €</span><span class='fst "+fstCls+"'>"+fstLbl+"</span><button class='"+indyCls+"' title=\""+indyTitle+"\" onclick=\"toggleIndySaisie('"+f.id+"')\">"+(f.indySaisie?ic('check'):'Indy')+"</button><button class='btn btn-ghost btn-xs' onclick=\"printF('"+f.id+"')\">"+ic('printer')+"</button></div>";
+    return "<div class='fr'><span class='fnum'>N° "+escH(f.num||'')+"</span><div style='flex:1'><div class='fcl'>"+(c?escH(c.prenom+' '+(c.nom||'')):(f.acheteurNom||f.acheteurEmail?escH(f.acheteurNom||f.acheteurEmail):"<span style='color:var(--muted)'>—</span>"))+"</div><div class='fpre'>"+escH(f.prestationLabel||f.prestation||'')+(isGuide(f)?" · "+escH(f.acheteurEmail||'')+(f.mailStatut==='ok'?" · <span style='color:var(--green)'>e-mail envoyé</span>":" · <span style='color:var(--orange)' title='"+escH(f.mailStatut||'Aucune confirmation envoi enregistree')+"'>e-mail non confirmé</span>"):'')+"</div></div><span class='fdat'>"+fmtShort(f.date)+"</span><span class='famt'>"+(f.montant||0).toFixed(0)+" €</span><span class='fst "+fstCls+"'>"+fstLbl+"</span><button class='"+indyCls+"' title=\""+indyTitle+"\" onclick=\"toggleIndySaisie('"+f.id+"')\">"+(f.indySaisie?ic('check'):'Indy')+"</button><button class='btn btn-ghost btn-xs' onclick=\"printF('"+f.id+"')\">"+ic('printer')+"</button><button class='btn btn-ghost btn-xs' style='color:var(--red)' title='Supprimer cette facture' onclick=\"supprimerFacture('"+f.id+"')\">"+ic('trash')+"</button></div>";
   }).join('');
 }
 
@@ -5604,6 +5604,50 @@ function factureHTML(f,c,s){
   "</tbody></table><div class=total><div class=tl>Total TTC</div><div class=tv>"+(f.montant||0).toFixed(2)+" €</div></div>"+
   "<div class=mentions>TVA non applicable — Art. 293B du CGI · Naturopathe non conventionné·e<br>A VITA SERENA · "+(s.nom||'')+" · "+(s.adresse||'')+" · "+(s.email||'sabrina@avitaserena.com')+"</div>"+
   "</div></div></body></html>";
+}
+
+// ── Suppression d'une facture ── AJOUT 20/11/2026 (Claude)
+// Avant : aucun bouton, et la suppression d'une cliente était bloquée tant qu'elle avait des factures.
+// La base (RLS « praticienne_only ») autorisait déjà le DELETE ; seul le CRM manquait.
+// Nettoyage associé : rendez-vous liés (facture_id remis à vide), ligne « Facture N° … » de l'historique cliente.
+async function supprimerFacture(fid){
+  const f=db.factures.find(x=>x.id===fid);
+  if(!f){toast('Facture introuvable','err');return;}
+  const c=db.clients.find(x=>x.id===f.clientId);
+  const qui=c?(c.prenom+' '+(c.nom||'')).trim():(f.acheteurNom||f.acheteurEmail||'sans cliente');
+  const reelle=(f.statut==='payee'&&!(f.montantRembourse>0))||f.indySaisie;
+  let msg='Supprimer définitivement la facture N° '+f.num+' ('+(f.montant||0).toFixed(0)+' € — '+qui+') ?\n\nCette action est irréversible.';
+  if(reelle){
+    msg+='\n\n⚠ Cette facture est une vraie facture encaissée'+(f.indySaisie?' et déjà saisie dans Indy':'')+'. Une facture réelle doit être conservée 10 ans et la numérotation ne doit pas avoir de trou. Si la cliente a été remboursée, utilisez plutôt « remboursée » ; supprimez seulement une facture de test ou une erreur.';
+  }
+  if(!confirm(msg)) return;
+  if(reelle){
+    const rep=prompt('Pour confirmer la suppression de cette facture réelle, tapez SUPPRIMER :');
+    if(!rep||rep.trim().toUpperCase()!=='SUPPRIMER'){toast('Suppression annulée','warn');return;}
+  }
+  try{
+    // 1) détacher les rendez-vous liés (aucune clé étrangère : sinon référence orpheline)
+    const lies=rdvs.filter(r=>r.facture_id===fid);
+    if(lies.length){
+      await sb('rendez_vous?facture_id=eq.'+encodeURIComponent(fid),{method:'PATCH',prefer:'return=minimal',body:JSON.stringify({facture_id:null})});
+      lies.forEach(r=>{r.facture_id=null;});
+    }
+    // 2) supprimer la facture
+    await sb('factures?id=eq.'+encodeURIComponent(fid),{method:'DELETE',prefer:'return=minimal'});
+    db.factures=db.factures.filter(x=>x.id!==fid);
+    // 3) retirer la trace dans l'historique de la cliente
+    if(c&&Array.isArray(c.timeline)){
+      const avant=c.timeline.length;
+      c.timeline=c.timeline.filter(t=>!(t.type==='facture'&&String(t.title||'').indexOf('Facture N°'+f.num+' ')===0));
+      if(c.timeline.length!==avant){try{await saveClient(c);}catch(e){console.error('[CRM] timeline après suppression facture',e);}}
+    }
+    renderFactures();
+    if(typeof renderActionsJour==='function') renderActionsJour();
+    toast('Facture N° '+f.num+' supprimée','ok');
+  }catch(e){
+    console.error('[CRM] supprimerFacture:',e);
+    toast('Échec de la suppression : '+e.message,'err');
+  }
 }
 
 function printF(fid){
