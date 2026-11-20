@@ -3302,7 +3302,15 @@ function ouvrirSuppressionCliente(cid){
   if(!c) return;
   const facturesClient=db.factures.filter(f=>f.clientId===cid);
   if(facturesClient.length>0){
-    toast('Suppression bloquée — '+facturesClient.length+' facture(s) existent pour cette cliente. Supprimez-les d\'abord si besoin.','err');
+    // MAJ 20/11/2026 (Claude) : on ouvre directement l'écran Facturation filtré sur cette cliente,
+    // avec ses factures dépliées, pour pouvoir les supprimer (une facture pouvait rester cachée
+    // dans un mois replié, d'où l'impression de « factures déjà supprimées »).
+    const nomC=((c.prenom||'')+' '+(c.nom||'')).trim();
+    toast('Suppression bloquée — '+facturesClient.length+' facture(s) existent encore pour '+nomC+' (N° '+facturesClient.map(f=>f.num).join(', ')+'). Supprimez-les, puis revenez sur la fiche.','err');
+    fFilter='all';fSearch=nomC.toLowerCase();
+    nav('factures',null);
+    const inp=document.getElementById('f-search');if(inp)inp.value=nomC;
+    renderFactures();
     return;
   }
   document.getElementById('dc-client-id').value=cid;
@@ -5673,8 +5681,9 @@ function renderFactures(listOnly){
   if(!facs.length){list.innerHTML="<div class='fx-empty'>Aucune facture ne correspond à ce filtre"+(fSearch?' ou à cette recherche':'')+".</div>";return;}
   const groupes={};facs.forEach(f=>{const mk=String(f.date||'').slice(0,7)||'0000-00';(groupes[mk]=groupes[mk]||[]).push(f);});
   const mois=Object.keys(groupes).sort().reverse();
-  if(!fCollapsedInit){ // à l'ouverture : on replie les mois anciens déjà entièrement saisis
-    mois.forEach(mk=>{if(mk!==moisCourant&&!db.factures.some(f=>String(f.date||'').slice(0,7)===mk&&fAIndy(f)))fCollapsed[mk]=true;});
+  if(!fCollapsedInit){ // à l'ouverture : on replie seulement les mois de plus de 2 mois déjà entièrement saisis
+    const d0=new Date(moisCourant+'-01T12:00:00');d0.setMonth(d0.getMonth()-2);const limite=d0.getFullYear()+'-'+String(d0.getMonth()+1).padStart(2,'0');
+    mois.forEach(mk=>{if(mk<limite&&!db.factures.some(f=>String(f.date||'').slice(0,7)===mk&&fAIndy(f)))fCollapsed[mk]=true;});
     fCollapsedInit=true;
   }
   const filtreActif=fFilter!=='all'||!!fSearch;
