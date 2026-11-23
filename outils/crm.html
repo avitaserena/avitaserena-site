@@ -2892,6 +2892,23 @@ function erreursBox(list){
 
 
 /* ── Sauvegardes (23/11/2026) ── */
+
+/* ── Calibrage des pistes (23/11/2026) ── */
+async function chargerCalibrage(){
+  const R=document.getElementById('cal-resume'),T=document.getElementById('cal-tab'),A=document.getElementById('cal-ajout'); if(!R) return;
+  try{
+    const rows=await sb('calibrage_pistes?select=piste_titre,verdict,note,proposee_ouverture,client_id,updated_at&order=updated_at.desc&limit=2000');
+    if(!rows.length){ R.innerHTML='<div style="padding:14px 16px;border-radius:12px;background:#EDE9E1;font-size:16px;line-height:1.6">Rien n\'est encore enregistré. Dans le questionnaire de consultation, le bloc « Calibrage » apparaît sous la problématique pressentie : après la séance, indiquez pour chaque piste si vous la confirmez ou l\'écartez.</div>'; T.innerHTML=''; A.innerHTML=''; return; }
+    const par={}; const ajout=[];
+    rows.forEach(r=>{ if(r.verdict==='ajoutee'){ ajout.push(r); return; } const o=par[r.piste_titre]=par[r.piste_titre]||{confirmee:0,ecartee:0,a_verifier:0}; o[r.verdict]=(o[r.verdict]||0)+1; });
+    const lignes=Object.entries(par).map(([t,o])=>({t,...o,n:o.confirmee+o.ecartee+o.a_verifier,taux:(o.confirmee+o.ecartee)?Math.round(100*o.confirmee/(o.confirmee+o.ecartee)):null})).sort((a,b)=>b.n-a.n);
+    const clientes=new Set(rows.map(r=>r.client_id)).size;
+    R.innerHTML=`<div style="padding:14px 16px;border-radius:12px;background:#EDE9E1;font-size:16px;line-height:1.6"><b>${rows.length}</b> avis enregistrés sur <b>${clientes}</b> cliente(s). ${rows.length<30?'Pour que les pourcentages aient un sens, il faut une trentaine d\'avis : lisez-les comme des indications.':''}</div>`;
+    T.innerHTML=`<table style="width:100%;border-collapse:collapse;font-size:15px"><thead><tr style="text-align:left;color:var(--muted)"><th style="padding:8px">Piste proposée</th><th style="padding:8px">Confirmée</th><th style="padding:8px">Écartée</th><th style="padding:8px">À vérifier</th><th style="padding:8px">Taux de confirmation</th></tr></thead><tbody>`+lignes.map(l=>`<tr style="border-top:1px solid #EDE9E1"><td style="padding:10px 8px">${escH(l.t)}</td><td style="padding:10px 8px">${l.confirmee}</td><td style="padding:10px 8px">${l.ecartee}</td><td style="padding:10px 8px">${l.a_verifier}</td><td style="padding:10px 8px"><b>${l.taux===null?'—':l.taux+' %'}</b>${l.taux!==null&&l.confirmee+l.ecartee>=5&&l.taux<35?' <span style="color:#B4906A">à resserrer</span>':''}${l.taux!==null&&l.confirmee+l.ecartee>=5&&l.taux>85?' <span style="color:#6B6560">fiable</span>':''}</td></tr>`).join('')+`</tbody></table>`;
+    A.innerHTML=ajout.length?`<div style="font-size:17px;font-weight:600;margin-bottom:8px">Pistes que vous avez retenues et que l'outil n'avait pas proposées</div>`+ajout.map(r=>`<div style="padding:10px 14px;margin-bottom:6px;background:#fff;border:1px solid #EDE9E1;border-radius:12px;font-size:16px">${escH(r.piste_titre)}<span style="color:var(--muted);font-size:14px"> · ${new Date(r.updated_at).toLocaleDateString('fr-FR')}</span></div>`).join(''):'';
+  }catch(e){ R.innerHTML='<div style="padding:14px 16px;border-radius:12px;background:#F3E3D6;font-size:16px">Impossible de lire le calibrage ('+escH(e.message)+').</div>'; }
+}
+
 async function bkToken(){ let t=KEY; if(typeof Auth!=='undefined'){ const x=await Auth.getValidAccessToken(); if(x) t=x; } return t; }
 function bkFmtTaille(n){ n=+n||0; return n>1048576?(n/1048576).toFixed(1)+' Mo':Math.max(1,Math.round(n/1024))+' Ko'; }
 async function chargerSauvegardes(opts){
@@ -3295,7 +3312,7 @@ function nav(name,el){
   document.getElementById('page-'+name)?.classList.add('active');
   if(!el){const map={fiche:'clients'};const k=map[name]||name;el=document.querySelector('.sb-item[onclick*="nav(\''+k+'\'"]');}
   if(el)el.classList.add('active');
-  const titles={dashboard:"Aujourd'hui",agenda:'Agenda',clients:'Clientes',fiche:'Fiche cliente',factures:'Factures',stats:'Statistiques',settings:'Mon cabinet',messages:'Messages clientes',erreurs:'Erreurs techniques',sauvegardes:'Sauvegardes',recettes:'Recettes',pilotage:'Checklist',formalites:'Formalités'};
+  const titles={dashboard:"Aujourd'hui",agenda:'Agenda',clients:'Clientes',fiche:'Fiche cliente',factures:'Factures',stats:'Statistiques',settings:'Mon cabinet',messages:'Messages clientes',erreurs:'Erreurs techniques',sauvegardes:'Sauvegardes',calibrage:'Calibrage des pistes',recettes:'Recettes',pilotage:'Checklist',formalites:'Formalités'};
   document.getElementById('page-title').textContent=titles[name]||name;
   if(name==='dashboard')renderDashboard();
   window.scrollTo(0,0);document.querySelector('.main')?.scrollTo?.(0,0);
@@ -3310,6 +3327,7 @@ function nav(name,el){
   if(name==='messages')renderMessagesFeed();
   if(name==='erreurs')renderErreurs();
   if(name==='sauvegardes')chargerSauvegardes();
+  if(name==='calibrage')chargerCalibrage();
   if(name==='recettes')loadRecettesAdmin();
   if(name==='pilotage')loadPilotage();
   if(name==='formalites')renderFormalites();
@@ -8332,6 +8350,9 @@ function ouvrirBilanEntree(clientId, mode){
     <div class="sb-item" onclick="nav('sauvegardes',this)">
       <div class="sb-ic"><i data-lucide="database-backup"></i></div><span class="sb-lbl">Sauvegardes</span><span class="sb-bdg" id="badge-sauvegardes">!</span>
     </div>
+    <div class="sb-item" onclick="nav('calibrage',this)">
+      <div class="sb-ic"><i data-lucide="scale"></i></div><span class="sb-lbl">Calibrage des pistes</span>
+    </div>
 
     <div class="sb-sec">Outils</div>
     <div class="sb-item sb-ext" onclick="window.open('Boite_a_outils_complements.html','_blank')" title="Compléments et aromathérapie"><div class="sb-ic"><i data-lucide="flask-conical"></i></div><span class="sb-lbl">Compléments</span></div>
@@ -8470,6 +8491,14 @@ function ouvrirBilanEntree(clientId, mode){
   <div class="page" id="page-erreurs">
     <p class="page-note">Capture automatique des erreurs survenues dans l'espace cliente — sans aucune action de leur part. Utile pour retrouver ce qui s'est passé quand une cliente signale un souci, ou pour repérer un problème avant même qu'elle ne le remarque.</p>
     <div id="erreurs-full-box"></div>
+  </div>
+
+  <!-- CALIBRAGE DES PISTES -->
+  <div class="page" id="page-calibrage">
+    <p class="page-note">Pour chaque piste proposée à l'ouverture d'une consultation, vous indiquez après la séance si vous la confirmez, l'écartez ou la laissez à vérifier. Cette page rassemble ces réponses : elle montre quelles pistes se confirment le plus souvent, lesquelles sont souvent écartées, et quelles pistes vous retenez que l'outil n'a pas proposées. C'est ce qui permet d'ajuster les règles de l'outil.</p>
+    <div id="cal-resume" style="margin:14px 0"></div>
+    <div id="cal-tab"></div>
+    <div id="cal-ajout" style="margin-top:22px"></div>
   </div>
 
   <!-- SAUVEGARDES -->

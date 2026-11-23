@@ -17122,10 +17122,61 @@ function summaryHtml(an) {
   h += '<div class="mg-note">Hypothèses de travail pour vous, jamais un diagnostic. Les réponses sont reportées sur les cases équivalentes de la section ' + (SEC_OF[an.th] || 'Alimentation & digestion') + ' et transmises au générateur.</div>';
   return h + '</div>';
 }
+
+/* ── Calibrage des pistes (23/11/2026) : ce que l'outil propose / ce que Sabrina retient, enregistré par cliente ── */
+var CAL = {}, CAL_CHARGE = false, CAL_ERR = '', CAL_OPEN = false;
+function calCid() { return timerClientTag(); }
+function calPistes() {
+  try { var ac = CLI ? lecture().ac : analyseCroise(S.a); return ac.pistes.slice(0, 3).map(function (p) { return { k: p.k, t: PISTES[p.k].l }; }); } catch (e) { return []; }
+}
+async function calCharger() {
+  var cid = calCid(); if (!cid || CAL_CHARGE) return; CAL_CHARGE = true;
+  try {
+    var rows = await sbFetch('calibrage_pistes?client_id=eq.' + encodeURIComponent(cid) + '&select=piste_titre,verdict,note,proposee_ouverture');
+    (rows || []).forEach(function (r) { CAL[r.piste_titre] = { v: r.verdict, note: r.note || '', prop: r.proposee_ouverture }; });
+    render();
+  } catch (e) { CAL_ERR = 'Calibrage non chargé'; }
+}
+async function calEnregistrer(titre, verdict, note, propose, cle) {
+  var cid = calCid(); if (!cid) return;
+  var prev = CAL[titre] || {}; CAL[titre] = { v: verdict, note: note != null ? note : (prev.note || ''), prop: propose };
+  render();
+  try {
+    await sbFetch('calibrage_pistes?on_conflict=client_id,piste_titre', { method: 'POST', prefer: 'resolution=merge-duplicates,return=minimal',
+      body: JSON.stringify([{ client_id: cid, theme: (S.th || '') + '', piste_cle: cle || null, piste_titre: titre, proposee_ouverture: propose, verdict: verdict, note: CAL[titre].note, updated_at: new Date().toISOString() }]) });
+    CAL_ERR = '';
+  } catch (e) { CAL_ERR = 'Enregistrement impossible : ' + (e && e.message || e); render(); }
+}
+function calibrageHtml() {
+  var cid = calCid(); if (!cid) return '';
+  calCharger();
+  var ps = calPistes(), titres = ps.map(function (p) { return p.t; });
+  var ajoutees = Object.keys(CAL).filter(function (t) { return CAL[t].v === 'ajoutee'; });
+  if (!ps.length && !ajoutees.length) return '';
+  var V = [['confirmee', 'Confirmée'], ['ecartee', 'Écartée'], ['a_verifier', 'À vérifier']];
+  var h = '<details class="mg-cal"' + (CAL_OPEN ? ' open' : '') + ' style="margin:0 0 16px;border:1.5px solid var(--taupe,#D5CFC6);border-radius:16px;background:#fff;padding:12px 16px"><summary style="cursor:pointer;font-size:16px;font-weight:600">Calibrage : ce que vous retenez après la séance</summary>' +
+    '<p style="font-size:15px;line-height:1.7;margin:10px 0">Pour chaque piste proposée à l\'ouverture, indiquez ce que vous retenez. C\'est enregistré dans la fiche et sert à ajuster les propositions de l\'outil.</p>';
+  ps.forEach(function (p) {
+    var c = CAL[p.t] || {};
+    h += '<div style="padding:10px 0;border-top:1px solid #EDE9E1"><div style="font-size:16px;margin-bottom:8px"><b>' + esc(p.t) + '</b></div><div style="display:flex;gap:8px;flex-wrap:wrap">' +
+      V.map(function (v) { return '<button type="button" data-cal="v" data-t="' + esc(p.t) + '" data-k="' + esc(p.k) + '" data-v="' + v[0] + '" style="padding:8px 14px;border-radius:99px;border:1.5px solid ' + (c.v === v[0] ? '#B4906A' : '#D5CFC6') + ';background:' + (c.v === v[0] ? '#EDE9E1' : '#fff') + ';font-size:15px;cursor:pointer">' + v[1] + '</button>'; }).join('') + '</div></div>';
+  });
+  ajoutees.forEach(function (t) { h += '<div style="padding:10px 0;border-top:1px solid #EDE9E1;font-size:16px"><b>Piste ajoutée par vous :</b> ' + esc(t) + '</div>'; });
+  h += '<div style="padding:10px 0;border-top:1px solid #EDE9E1"><div style="font-size:15px;margin-bottom:6px">Une piste que l\'outil n\'a pas proposée et que vous retenez :</div><div style="display:flex;gap:8px"><input id="mg-cal-add" type="text" placeholder="ex. Hypothyroïdie fruste" style="flex:1;padding:9px 12px;border:1.5px solid #D5CFC6;border-radius:10px;font-size:16px"><button type="button" data-cal="add" style="padding:8px 14px;border-radius:10px;border:1.5px solid #B4906A;background:#EDE9E1;font-size:15px;cursor:pointer">Ajouter</button></div></div>';
+  if (CAL_ERR) h += '<div style="color:#B4906A;font-size:14px">' + esc(CAL_ERR) + '</div>';
+  return h + '</details>';
+}
+document.addEventListener('toggle', function (e) { if (e.target && e.target.classList && e.target.classList.contains('mg-cal')) CAL_OPEN = e.target.open; }, true);
+document.addEventListener('click', function (e) {
+  var b = e.target.closest && e.target.closest('[data-cal]'); if (!b) return;
+  if (b.dataset.cal === 'v') calEnregistrer(b.dataset.t, b.dataset.v, null, true, b.dataset.k);
+  else if (b.dataset.cal === 'add') { var i = document.getElementById('mg-cal-add'), t = i && i.value.trim(); if (t) calEnregistrer(t.slice(0, 120), 'ajoutee', '', false, null); }
+});
+
 function render() {
   var box = document.getElementById('mg-body'); if (!box) return;
   var a = S.a, an = analyse(a), cid = currentId(an), started = Object.keys(a).length > 0;
-  var h = lectureHtml() + themesHtml() + soonHtml();
+  var h = lectureHtml() + calibrageHtml() + themesHtml() + soonHtml();
   if (S.th === 'croise') { box.innerHTML = h + croiseHtml(an); var b0 = document.getElementById('mg-back'), r0 = document.getElementById('mg-reset'); if (b0) b0.disabled = !started; if (r0) { r0.disabled = !started; r0.textContent = S.rst ? 'Confirmer : tout effacer' : 'Recommencer'; } return; }
   if (an.flags.length && !(cid === null)) h += '<div class="mg-alert"><b>À clarifier avec son médecin avant tout</b><ul>' + an.flags.map(function (f) { return '<li>' + esc(f) + '</li>'; }).join('') + '</ul></div>';
   var say = cid !== null ? lastSay(an, a) : '';
