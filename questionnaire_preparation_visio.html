@@ -204,6 +204,29 @@ html,body{height:100vh;height:100dvh;overflow:hidden;font-family:'Be Vietnam Pro
   .energy-val{font-size:56px}
 }
 @media(prefers-reduced-motion:reduce){.screen{transition:opacity .3s}*{animation-duration:.01ms!important}}
+
+/* ═══ AJOUTS : questions par motif ═══ */
+.nav.dark-mode{background:rgba(247,246,244,.94);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.opts{max-width:520px}
+.opt{line-height:1.45}
+.opt.multi .dot{border-radius:6px}
+.opt.multi.on .dot::after{width:9px;height:9px;border-radius:2px}
+.q-theme{display:inline-block;margin-bottom:6px}
+.q-hint{font-size:13px;color:var(--gris-clair);margin:-18px auto 22px;max-width:460px}
+.sub-field{margin:14px auto 0;max-width:520px;text-align:left}
+.sub-field label{display:block;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gris);margin-bottom:7px}
+.sub-field textarea,.sub-field input[type=date]{width:100%;border:1.5px solid var(--taupe);border-radius:14px;padding:14px 18px;font-size:16px;font-family:'Be Vietnam Pro',sans-serif;color:var(--ardoise);background:var(--blanc);outline:none;line-height:1.6;resize:none;transition:border-color .2s,box-shadow .2s}
+.sub-field textarea:focus,.sub-field input[type=date]:focus{border-color:var(--ocre);box-shadow:0 0 0 4px rgba(180,144,106,.1)}
+.drop{display:flex;flex-direction:column;align-items:center;gap:6px;max-width:520px;margin:0 auto;padding:26px 20px;border:1.5px dashed var(--sable);border-radius:14px;background:var(--blanc);cursor:pointer;color:var(--gris);font-size:15px;transition:all .2s}
+.drop:hover{border-color:var(--ocre);background:var(--or-clair)}
+.drop strong{color:var(--ardoise);font-weight:600}
+.file-list{max-width:520px;margin:12px auto 0;display:flex;flex-direction:column;gap:8px}
+.file-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 16px;border:1.5px solid var(--taupe);border-radius:12px;background:var(--blanc);font-size:14.5px;text-align:left}
+.file-row span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.file-row em{font-style:normal;font-size:12px;color:var(--gris);flex-shrink:0}
+.file-row button{background:none;border:none;color:var(--gris);cursor:pointer;font-size:18px;line-height:1;padding:0 4px;flex-shrink:0}
+.skip{display:block;margin:16px auto 0;background:none;border:none;color:var(--gris);font-size:13px;text-decoration:underline;cursor:pointer;font-family:'Be Vietnam Pro',sans-serif}
+
 </style>
 </head>
 <body>
@@ -245,142 +268,18 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <div class="hero-eyebrow">Bilan de vitalité · A VITA SERENA</div>
     <h1 class="hero-title">Votre corps vous parle.<br>Il est temps de <em>l'écouter.</em></h1>
     <p class="hero-sub">Quelques questions pour préparer notre rendez-vous. Rien de médical, rien de compliqué — juste l'essentiel.</p>
-    <button class="hero-cta" id="hero-cta" onclick="go(1)" disabled>Chargement…</button>
+    <button class="hero-cta" id="hero-cta" onclick="start()" disabled>Chargement…</button>
     <p class="lien-erreur" id="lien-erreur">Ce lien n'est pas valide ou est incomplet. Écrivez-moi à <a href="mailto:sabrina@avitaserena.com">sabrina@avitaserena.com</a> et je vous en envoie un nouveau.</p>
-    <p class="hero-hint">3 minutes · confidentiel · depuis chez vous</p>
+    <p class="hero-hint">4 minutes · confidentiel · depuis chez vous</p>
   </div>
 </div>
 
-<!-- ═══ ÉCRAN 1 : Prénom & email ═══ -->
-<div class="screen q-screen" id="s1">
-  <div class="q-wrap">
-    <div class="q-number">01 · 06</div>
-    <h2 class="q-title" id="s1-title">Faisons connaissance</h2>
-    <div class="q-sub">Voici ce que j'ai déjà de vous : vous n'avez rien à ressaisir.</div>
-    <div class="why"><div class="why-label">Pourquoi je vous pose cette question</div><div class="why-text">Ces informations viennent de votre fiche : elles me permettent de rattacher vos réponses à votre dossier, et à vous seule. Votre âge m'aide à situer votre terrain, car les besoins hormonaux et métaboliques du corps ne sont pas les mêmes à 25, 40 ou 55 ans.</div></div>
-    <div class="ident"><div class="ident-name" id="ident-name"></div><div class="ident-mail" id="ident-mail"></div></div>
-    <div class="field-row" id="age-row" style="margin-top:14px;display:none">
-      <div class="field"><label>Âge</label><input type="number" id="age" placeholder="ex : 34" min="16" max="90"></div>
-      <div class="field"></div>
-    </div>
-    <div class="q-actions">
-      <button class="btn btn-primary" onclick="go(2)">Continuer →</button>
-    </div>
-  </div>
+<!-- ═══ ÉCRAN DYNAMIQUE : toutes les questions ═══ -->
+<div class="screen q-screen" id="sq">
+  <div class="q-wrap" id="qw"></div>
 </div>
 
-<!-- ═══ ÉCRAN 2 : Durée ═══ -->
-<div class="screen q-screen" id="s2">
-  <div class="q-wrap">
-    <div class="q-number">02 · 06</div>
-    <h2 class="q-title">Depuis combien de temps ?</h2>
-    <div class="q-sub">Depuis quand ces symptômes font-ils partie de votre vie ?</div>
-    <div class="why"><div class="why-label">Pourquoi je vous pose cette question</div><div class="why-text">Un terrain récent et un terrain chronique ne demandent pas la même approche — la durée oriente l'intensité et le rythme du protocole.</div></div>
-    <div class="opts" id="duree-opts">
-      <div class="opt" onclick="selOpt(this,'duree')"><div class="dot"></div>Quelques semaines</div>
-      <div class="opt" onclick="selOpt(this,'duree')"><div class="dot"></div>2 à 6 mois</div>
-      <div class="opt" onclick="selOpt(this,'duree')"><div class="dot"></div>6 mois à 2 ans</div>
-      <div class="opt" onclick="selOpt(this,'duree')"><div class="dot"></div>Plus de 2 ans</div>
-      <div class="opt" onclick="selOpt(this,'duree')"><div class="dot"></div>Depuis l'enfance</div>
-    </div>
-    <div class="empathy" id="empathy-duree"></div>
-    <div class="q-actions">
-      <button class="btn btn-back" onclick="go(1)">← Retour</button>
-      <button class="btn btn-primary" onclick="go(3)" id="btn-s2" disabled>Continuer →</button>
-    </div>
-  </div>
-</div>
-
-<!-- ═══ ÉCRAN 3 : Ce qui pèse le plus ═══ -->
-<div class="screen q-screen" id="s3">
-  <div class="q-wrap">
-    <div class="q-number">03 · 06</div>
-    <h2 class="q-title">Ce qui vous pèse le plus</h2>
-    <div class="q-sub">Sélectionnez tout ce qui vous parle.</div>
-    <div class="why"><div class="why-label">Pourquoi je vous pose cette question</div><div class="why-text">Savoir ce qui pèse le plus dans votre quotidien m'aide à orienter notre conversation dès la première minute.</div></div>
-    <div class="chips" id="symptom-chips">
-      <div class="chip" onclick="togChip(this)">Fatigue chronique</div>
-      <div class="chip" onclick="togChip(this)">Ventre gonflé</div>
-      <div class="chip" onclick="togChip(this)">Troubles du sommeil</div>
-      <div class="chip" onclick="togChip(this)">Stress / anxiété</div>
-      <div class="chip" onclick="togChip(this)">Problèmes de peau</div>
-      <div class="chip" onclick="togChip(this)">Douleurs digestives</div>
-      <div class="chip" onclick="togChip(this)">Prise de poids</div>
-      <div class="chip" onclick="togChip(this)">Brouillard mental</div>
-      <div class="chip" onclick="togChip(this)">Déséquilibre hormonal</div>
-      <div class="chip" onclick="togChip(this)">Règles douloureuses</div>
-      <div class="chip" onclick="togChip(this)">Cycles irréguliers</div>
-      <div class="chip" onclick="togChip(this)">Chute de cheveux</div>
-      <div class="chip" onclick="togChip(this)">Autre</div>
-    </div>
-    <textarea class="other-field" id="other-symptom" placeholder="Décrivez en quelques mots…" rows="2"></textarea>
-    <div class="q-actions">
-      <button class="btn btn-back" onclick="go(2)">← Retour</button>
-      <button class="btn btn-primary" onclick="go(4)">Continuer →</button>
-    </div>
-  </div>
-</div>
-
-<!-- ═══ ÉCRAN 4 : Énergie ═══ -->
-<div class="screen q-screen" id="s4">
-  <div class="q-wrap">
-    <div class="q-number">04 · 06</div>
-    <h2 class="q-title">Votre énergie aujourd'hui</h2>
-    <div class="q-sub">Si vous deviez la noter sur 10 ?</div>
-    <div class="why"><div class="why-label">Pourquoi je vous pose cette question</div><div class="why-text">Votre niveau d'énergie est un indicateur global de votre terrain — il me dit à quel point votre corps a besoin d'être soutenu.</div></div>
-    <div class="energy-wrap">
-      <div class="energy-val" id="energy-val">5</div>
-      <div class="energy-label" id="energy-label">Moyenne</div>
-      <div class="energy-track"><div class="energy-fill" id="energy-fill" style="width:44%"></div></div>
-      <input type="range" min="1" max="10" value="5" id="energy-slider" oninput="updateEnergy(this)">
-    </div>
-    <div class="empathy" id="empathy-energy"></div>
-    <div class="q-actions">
-      <button class="btn btn-back" onclick="go(3)">← Retour</button>
-      <button class="btn btn-primary" onclick="go(5)">Continuer →</button>
-    </div>
-  </div>
-</div>
-
-<!-- ═══ ÉCRAN 5 : Objectif ═══ -->
-<div class="screen q-screen" id="s5">
-  <div class="q-wrap">
-    <div class="q-number">05 · 06</div>
-    <h2 class="q-title">Comment aimeriez-vous vous sentir ?</h2>
-    <div class="q-sub">Dans 1, 2 ou 3 mois — décrivez-le comme vous voulez.</div>
-    <div class="why"><div class="why-label">Pourquoi je vous pose cette question</div><div class="why-text">Savoir comment vous aimeriez vous sentir me donne le cap : votre protocole se construit autour de votre objectif, pas seulement autour de vos symptômes.</div></div>
-    <div class="field-row" style="max-width:480px">
-      <div class="field" style="flex:1"><textarea id="objectif" placeholder="Ex. : me lever avec de l'énergie, ne plus avoir le ventre gonflé tous les soirs, me reconnaître." rows="3"></textarea></div>
-    </div>
-    <div class="q-actions">
-      <button class="btn btn-back" onclick="go(4)">← Retour</button>
-      <button class="btn btn-primary" onclick="go(6)">Continuer →</button>
-    </div>
-  </div>
-</div>
-
-<!-- ═══ ÉCRAN 6 : Message libre ═══ -->
-<div class="screen q-screen" id="s6">
-  <div class="q-wrap">
-    <div class="q-number">06 · 06</div>
-    <h2 class="q-title">Quelque chose à me dire ?</h2>
-    <div class="q-sub">Ce qui compte pour vous — ou ce qui serait plus facile à écrire qu'à dire à l'oral. Rien ne sera jugé.</div>
-    <div class="why"><div class="why-label">Pourquoi je vous pose cette question</div><div class="why-text">Certaines choses sont plus faciles à écrire qu'à dire. Une habitude, une peur ou un détail de votre quotidien peut changer complètement la lecture de votre situation — je préfère le savoir avant notre rendez-vous.</div></div>
-    <div class="field-row" style="max-width:480px">
-      <div class="field" style="flex:1"><textarea id="libre" placeholder="Ex. : je fume un paquet par jour. Ou : j'ai peur que ce soit dans ma tête. Ou : rien de particulier, j'ai hâte d'en parler de vive voix." rows="3"></textarea></div>
-    </div>
-    <div class="q-actions">
-      <button class="btn btn-back" onclick="go(5)">← Retour</button>
-      <button class="btn btn-send-final" id="btn-send" onclick="sendForm()">
-        <svg class="btn-spinner" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 3a9 9 0 1 0 9 9"/></svg>
-        <span class="btn-label">Envoyer mon questionnaire →</span>
-      </button>
-    </div>
-    <div style="margin-top:16px;font-size:12px;color:var(--gris-clair)">Vos données sont protégées et ne seront jamais partagées.</div>
-  </div>
-</div>
-
-<!-- ═══ ÉCRAN 7 : Confirmation ═══ -->
+<!-- ═══ ÉCRAN FINAL : Confirmation ═══ -->
 <div class="screen q-screen" id="s7">
   <div class="confirm-wrap">
     <div class="confirm-ic"><svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 5.5-2 12.5A6.5 6.5 0 0 1 11 20"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg></div>
@@ -393,10 +292,114 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
 <script>
 /* ══════════════════════════════════════
-   NAVIGATION PLEIN ÉCRAN
+   QUESTIONNAIRE DE PRÉPARATION — par motif
+   Les identifiants et les clés de réponse sont ceux du moteur de consultation
+   (et ceux acceptés par la fonction visio-questionnaire v3). Ne pas les renommer.
 ══════════════════════════════════════ */
-const TOTAL=6;
-let current=0;
+const FN_URL='https://bqhkdndwldwqacrrbbig.supabase.co/functions/v1/visio-questionnaire';
+const TOKEN=(new URLSearchParams(location.search).get('t')||'').trim();
+let IDENT=null;
+async function appelFonction(payload){
+  const res=await fetch(FN_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  let data={};try{data=await res.json();}catch(e){}
+  if(!res.ok) throw Object.assign(new Error(data.error||'erreur'),{status:res.status});
+  return data;
+}
+
+/* ── Motifs d'entrée ── */
+const ENTRY=[
+ ['digestif','Digestion : ballonnements, douleurs, transit, reflux','Digestion'],
+ ['hormones','Cycle et hormones : règles, syndrome prémenstruel, ménopause, projet de bébé','Cycle et hormones'],
+ ['fatigue','Fatigue, stress, moral, concentration','Fatigue, stress, moral'],
+ ['poids','Prise de poids ou difficulté à perdre','Poids'],
+ ['peau','Peau, cheveux, ongles : acné, chute de cheveux, sécheresse, eczéma','Peau, cheveux, ongles'],
+ ['sommeil','Sommeil : endormissement, réveils, nuits peu réparatrices','Sommeil'],
+ ['immunite','Infections à répétition, allergies, immunité','Immunité, allergies'],
+ ['douleurs','Douleurs : articulations, muscles, migraines','Douleurs'],
+ ['cancer',"Accompagnement dans le cadre d'un cancer (en cours de traitement, ou après)",'Accompagnement cancer'],
+ ['prevention','Prévention, vitalité, mieux comprendre mon corps','Prévention'],
+ ['autre','Autre motif','Autre motif']
+];
+/* Motifs sans entonnoir dédié : une seule question libre ensuite */
+const NOFUNNEL=['immunite','douleurs','cancer','prevention','autre'];
+
+const THEMES=[
+ {k:'digestif',nom:'Digestion',main:'motifs',alerte:'secu'},
+ {k:'hormones',nom:'Cycle et hormones',main:'h_motifs',alerte:'h_secu'},
+ {k:'fatigue',nom:'Fatigue, stress et moral',main:'f_motifs',alerte:'f_secu'},
+ {k:'poids',nom:'Poids',main:'w_motifs',alerte:'w_secu'},
+ {k:'peau',nom:'Peau, cheveux, ongles',main:'k_motifs',alerte:'k_secu'},
+ {k:'sommeil',nom:'Sommeil',main:'z_motifs',alerte:'z_alertes'}
+];
+
+/* Quelle réponse du premier écran d'un thème ouvre quelles questions */
+const FOLLOW={
+ motifs:{ball:['ball_quand','ball_gaz','ball_aliments'],haut:['haut_brulure'],douleur:['douleur_quand'],transit:['transit_selles'],alim:['alim_react']},
+ h_motifs:{regles:['h_volume'],cycle:['h_presence'],spm:['h_spm'],douleur:['h_douleur'],peau:['h_andro'],age:['h_age'],grossesse:['h_grossesse'],pilule:['h_pilule_detail']},
+ f_motifs:{energie:['f_rythme'],stress:['f_stress'],burn:['f_stress'],humeur:['f_humeur'],cerveau:['f_cerveau']},
+ w_motifs:{prise:['w_hist'],perdre:['w_hist'],ventre:['w_morpho'],bas:['w_morpho'],fringales:['w_fringales'],regimes:['w_regimes']},
+ k_motifs:{cheveux:['k_cheveux'],ongles:['k_cheveux'],acne:['k_acne'],seche:['k_seche'],terne:['k_terne']},
+ z_motifs:{endorm:['z_endorm'],reveils:['z_reveils'],leger:['z_leger'],jour:['z_leger'],tot:['z_tot']}
+};
+
+/* m : plusieurs réponses possibles · ex : réponses qui excluent les autres · o : [clé, libellé, mot court] */
+const Q={
+ /* ───── DIGESTION ───── */
+ motifs:{th:'digestif',m:1,t:"Qu'est-ce qui vous gêne côté digestion ?",w:"Le mot « digestion » recouvre des mécanismes très différents : selon ce qui vous gêne, je ne cherche pas au même endroit de l'intestin. Vos réponses m'évitent de vous poser des questions qui ne vous concernent pas.",o:[['ball','Ventre gonflé, ballonnements, gaz','ballonnements'],['haut','Reflux, brûlures, estomac lourd, nausées','reflux, estomac'],['douleur','Douleurs ou crampes au ventre','douleurs au ventre'],['transit','Constipation, diarrhées, ou les deux en alternance','transit'],['alim','Réactions à certains aliments','réactions aux aliments'],['autre','Autre gêne (haleine, selles grasses, aphtes…)','autre gêne']]},
+ ball_quand:{th:'digestif',m:1,t:'À quel moment votre ventre gonfle-t-il ?',w:"Le moment où le ventre gonfle m'indique à quel niveau de l'intestin les aliments fermentent. C'est un des premiers indices qui orientent mes pistes.",o:[['immediat',"Très vite : dans l'heure, parfois à peine levée de table"],['une_deux','Une à deux heures après le repas'],['deux_trois','Deux à trois heures après le repas'],['journee','Plat le matin, de plus en plus gonflé au fil de la journée'],['reveil','Gonflé dès le réveil, même à jeun']]},
+ ball_gaz:{th:'digestif',m:1,t:'Et côté gaz, comment cela se passe-t-il ?',w:"La nature des gaz renseigne sur ce que fabriquent les bactéries de votre intestin : des gaz peu odorants, malodorants ou de l'air avalé ne racontent pas la même histoire.",o:[['tendu','Peu de gaz, mais un ventre tendu, dur'],['inodore','Beaucoup de gaz, peu odorants'],['soufre','Gaz très malodorants (œuf pourri)'],['rots',"Des rots, de l'air qui remonte"]]},
+ ball_aliments:{th:'digestif',m:1,ex:['rien'],t:'Y a-t-il des aliments qui font nettement monter la gêne ?',w:"Les aliments qui déclenchent vos symptômes me disent quels sucres ou quelles protéines votre intestin digère mal. C'est un indice très précis.",o:[['feculents','Pain, pâtes, riz, féculents'],['legumes','Oignon, ail, chou, légumineuses'],['laitiers','Produits laitiers'],['gras','Repas gras, fritures'],['proteines','Viande, œufs (repas protéiné)'],['fruits','Fruits, jus, miel, sucreries'],['retire',"J'ai retiré de plus en plus d'aliments, j'ai l'impression de ne plus rien digérer"],['rien','Rien de précis, tout me gonfle']]},
+ haut_brulure:{th:'digestif',m:1,t:'Est-ce plutôt une brûlure qui remonte, ou un estomac lourd qui digère longtemps ?',w:"Une brûlure, un creux à jeun ou une lourdeur après la viande ne viennent pas du même endroit de l'estomac. Votre réponse m'oriente vers des pistes différentes.",o:[['reflux','Une brûlure qui remonte, surtout allongée ou après le repas'],['jeun','Une brûlure ou un creux douloureux à jeun, qui s\'apaise en mangeant'],['lourd','Pas de brûlure, mais un estomac lourd, longtemps après le repas, surtout avec la viande'],['nausee','Surtout des nausées, un mal au cœur après les repas']]},
+ douleur_quand:{th:'digestif',m:0,t:'Quand cette douleur arrive-t-elle ?',w:"Le moment de la douleur (avant la selle, après le repas, à jeun, la nuit) me dit si elle vient plutôt de l'intestin, de l'estomac ou du système nerveux qui commande la digestion.",o:[['avant_selle',"Elle monte avant d'aller à la selle et s'apaise après"],['apres_repas','Après les repas'],['jeun','À jeun, entre les repas'],['stress','Quand je suis tendue ou stressée'],['nuit','La nuit : elle me réveille'],['imprevisible','Sans moment précis']]},
+ transit_selles:{th:'digestif',m:0,t:'Vos selles, le plus souvent : plutôt dures, normales, molles ou liquides ?',w:"La vitesse à laquelle les aliments traversent votre intestin influence directement l'équilibre de vos bactéries. Vos selles me la montrent sans examen.",o:[['dures','Dures, en boulettes ou en saucisse craquelée (types 1-2)'],['normales','Normales (types 3-4)'],['molles','Molles ou pâteuses (types 5-6)'],['liquides','Liquides (type 7)'],['alternance','Ça alterne entre dur et liquide']]},
+ alim_react:{th:'digestif',m:1,ex:['rien'],t:'Quels aliments vous dérangent, et comment ?',w:"Une réaction à un aliment peut venir d'une intolérance, d'un excès d'histamine ou d'une muqueuse fragilisée. Je ne cherche pas la même chose selon l'aliment concerné.",o:[['histamine','Vin, fromage affiné, charcuterie, plats réchauffés : rougeurs, maux de tête, ventre gonflé'],['gluten','Blé, pain, pâtes'],['lait','Produits laitiers'],['tournantes','Ça change : un aliment passe un mois, puis un autre pose problème'],['beaucoup','Beaucoup d\'aliments, et de plus en plus'],['rien','Rien de précis']]},
+ /* ───── HORMONES ───── */
+ h_motifs:{th:'hormones',m:1,t:"Qu'est-ce qui vous gêne côté cycle et hormones ?",w:"Vos hormones forment un ensemble : le cycle, la peau, l'humeur et la thyroïde se répondent. Ce que vous cochez me dit par quel bout commencer.",o:[['regles','Règles très abondantes, avec caillots, ou au contraire très légères','règles abondantes ou légères'],['cycle','Cycles trop courts, trop longs, irréguliers ou absents','cycles irréguliers'],['spm','Avant les règles : seins tendus, irritabilité, sommeil, ventre gonflé','syndrome prémenstruel'],['douleur','Règles douloureuses, douleurs pendant les rapports ou au bas du ventre','douleurs'],['peau','Acné, pilosité, peau grasse ou chute de cheveux','acné, pilosité'],['age','Bouffées de chaleur, cycles qui changent après 40 ans','après 40 ans'],['grossesse','Projet de grossesse, difficulté à concevoir, fausse couche','projet de bébé'],['pilule','Pilule, DIU hormonal ou implant (en cours ou arrêté)','pilule, DIU, implant']]},
+ h_volume:{th:'hormones',m:0,t:'Comment sont vos règles ?',w:"Le volume des règles reflète l'équilibre entre œstrogènes et progestérone. Il peut aussi révéler une perte de fer qui explique de la fatigue.",o:[['abondantes','Abondantes : caillots, protection à changer toutes les 2 heures'],['normales','Normales (environ 50 ml, 3 à 5 jours)'],['legeres',"Très légères : un à deux jours, à peine de quoi remplir une protection"],['variables',"Très variables d'un mois à l'autre"]]},
+ h_presence:{th:'hormones',m:0,t:'Comment sont vos cycles, du premier jour des règles au premier jour des suivantes ?',w:"La durée du cycle me dit si l'ovulation a lieu, et à quel moment. C'est la base de tout le reste.",o:[['ok','Réguliers, entre 23 et 35 jours'],['court','Courts : moins de 23 jours'],['long','Longs ou irréguliers : plus de 35 jours'],['variable',"Imprévisibles, ça change beaucoup d'un mois à l'autre"],['absentes','Absents depuis plusieurs mois']]},
+ h_spm:{th:'hormones',m:1,ex:['aucun'],t:'Que remarquez-vous dans les jours avant les règles ?',w:"Les signes d'avant les règles trahissent souvent un manque de progestérone ou un excès d'œstrogènes en seconde moitié de cycle. Leur combinaison oriente mes pistes.",o:[['seins','Seins tendus ou douloureux'],['humeur','Irritabilité, anxiété, humeur très changeante'],['sommeil','Sommeil qui se dégrade dans les jours avant les règles'],['precoce',"Cela démarre tôt, dès le lendemain de l'ovulation"],['spotting','De petits saignements avant les règles (spotting)'],['ventre',"Ventre gonflé, prise de poids, rétention d'eau"],['sucre','Envies de sucre ou de chocolat'],['migraines','Migraines ou maux de tête'],['aucun','Rien de particulier']]},
+ h_douleur:{th:'hormones',m:1,ex:['aucune'],t:'Quelles douleurs décrivez-vous ?',w:"Le type de douleur oriente vers des mécanismes d'inflammation et de terrain très différents. C'est un point que j'ai besoin de comprendre tôt.",o:[['regles','Règles très douloureuses, depuis la puberté'],['rapports','Douleurs profondes pendant ou après les rapports'],['pelvien','Douleurs au bas du ventre en dehors des règles'],['digestif','Troubles digestifs ou urinaires pendant les règles (ventre gonflé, selles ou urines douloureuses)'],['decouverte',"Endométriose découverte lors d'un bilan d'infertilité, avec peu ou pas de douleur"],['ovulation',"Douleur au moment de l'ovulation"],['aucune','Aucune']]},
+ h_andro:{th:'hormones',m:1,ex:['aucun'],t:'Que remarquez-vous du côté de la peau, des poils et des cheveux ?',w:"Acné, poils, cheveux, fringales : ces signes révèlent l'effet des hormones androgènes et de l'insuline sur votre corps. Ils m'aident à distinguer plusieurs terrains.",o:[['acne','Acné sur le menton et la mâchoire'],['gras','Peau grasse, pores dilatés'],['pilosite','Poils plus nombreux ou plus épais (visage, poitrine, ventre)'],['cheveux','Chute de cheveux aux tempes ou raie qui s\'élargit'],['ventre','Graisse concentrée sur le ventre, tour de taille élevé'],['fringales','Fringales, coups de pompe après les repas, malaise 2 à 3 heures après manger'],['peau_foncee','Peau foncée et épaissie aux plis (cou, aisselles)'],['famille','Diabète, obésité, hypertension ou foie gras dans la famille ou chez moi'],['bilan_normal','Acné, chute de cheveux ou poils malgré un bilan hormonal normal'],['aucun','Rien de tout cela']]},
+ h_age:{th:'hormones',m:1,ex:['aucun'],t:'Que constatez-vous depuis la quarantaine ?',w:"Après 40 ans, la progestérone baisse souvent avant les œstrogènes. Les signes que vous remarquez me disent où vous en êtes dans cette transition.",o:[['cycles','Cycles qui se raccourcissent ou qui s\'espacent'],['bouffees','Bouffées de chaleur ou sueurs nocturnes'],['seche','Sécheresse vaginale'],['sommeil','Sommeil et humeur qui se dégradent'],['libido','Baisse de libido'],['arret','Règles arrêtées depuis plus d\'un an'],['aucun','Rien de tout cela']]},
+ h_grossesse:{th:'hormones',m:1,ex:['aucun'],t:'Où en est votre projet de grossesse ?',w:"Un projet de bébé change ma manière de vous accompagner : certains choix sont possibles, d'autres non. J'ai besoin de savoir où vous en êtes.",o:[['en_cours','Nous essayons depuis moins d\'un an'],['long','Nous essayons depuis plus d\'un an'],['fausse','Une ou plusieurs fausses couches précoces'],['aucun','Pas de projet pour le moment']]},
+ h_pilule_detail:{th:'hormones',m:1,ex:['rien'],t:"Pour quelle raison la pilule vous a-t-elle été prescrite, ou qu'est-ce qui a changé depuis l'arrêt ?",w:"La pilule met l'ovulation au repos : savoir pourquoi elle a été prescrite m'aide à comprendre ce que votre cycle cachait avant elle, ou ce qui revient à l'arrêt.",o:[['contra','Pour la contraception seulement'],['acne',"Pour l'acné"],['douloureuses','Pour des règles douloureuses'],['irreguliers','Pour réguler des cycles irréguliers'],['ado',"Prise dès l'adolescence, cycle jamais observé sans elle"],['poids','Prise de poids depuis la pilule'],['retour',"Depuis l'arrêt : acné, chute de cheveux, cycles absents ou longs"],['rien','Rien de particulier']]},
+ /* ───── FATIGUE, STRESS, MORAL ───── */
+ f_motifs:{th:'fatigue',m:1,t:"Qu'est-ce qui vous gêne : énergie, stress, moral, concentration ?",w:"La fatigue n'a presque jamais une seule cause : thyroïde, stress, sommeil, carences, sucre dans le sang. Vos réponses me permettent de poser les questions qui les distinguent.",o:[['energie','Fatigue persistante, coups de pompe, manque d\'énergie','fatigue'],['stress','Stress, surmenage, charge mentale, tension nerveuse','stress'],['burn',"Épuisement : je ne récupère plus, burn-out ou risque de burn-out",'épuisement'],['humeur','Moral en dents de scie, irritabilité, anxiété, baisse de motivation','moral'],['cerveau','Brouillard mental, mémoire, concentration','concentration']]},
+ f_rythme:{th:'fatigue',m:1,ex:['aucun'],t:'À quel moment de la journée la fatigue est-elle la plus forte ?',w:"L'heure du coup de fatigue distingue des mécanismes différents : cortisol, sucre dans le sang, thyroïde ou sommeil. Je la lis comme une courbe de votre journée.",o:[['matin','Le matin au réveil, puis ça va mieux en fin de journée'],['aprem','En début d\'après-midi, 13 h-15 h'],['repas','Juste après les repas, avec somnolence'],['toute','Toute la journée, sans amélioration avec le repos'],['soir','Elle disparaît le soir : je suis en pleine forme tard'],['effort','Fatigue anormalement longue après un effort, même modéré'],['essouffle','Essoufflée à l\'effort léger, chute de cheveux diffuse'],['sommeil','Je dors mal, c\'est surtout ça qui me fatigue'],['aucun','Rien de précis']]},
+ f_stress:{th:'fatigue',m:1,ex:['aucun'],t:'Comment le stress se manifeste-t-il ?',w:"Votre manière de réagir au stress me renseigne sur l'état de votre système de réponse au stress (cortisol, système nerveux) et sur sa capacité à récupérer.",o:[['charge','Je porte beaucoup : charge mentale, je ne sais pas dire non, perfectionnisme'],['survoltee','Je suis tendue, survoltée, je ne sais plus me poser'],['digestif','Le stress me retourne le ventre (diarrhée, nœud, nausées)'],['submergee','Je suis submergée dès qu\'il y a un imprévu'],['recup','Je mets plusieurs jours à récupérer, un week-end ne suffit plus'],['booster','Café, sucre ou sel pour tenir'],['tics','Tics de paupière, crampes, tensions dans la nuque'],['long','Cela dure depuis plus d\'un an'],['burn','J\'ai déjà fait un burn-out'],['aucun','Rien de tout cela']]},
+ f_humeur:{th:'fatigue',m:1,ex:['aucun'],t:'Que remarquez-vous côté humeur et motivation ?',w:"L'humeur et la motivation dépendent de messagers du cerveau, comme la sérotonine et la dopamine. Leurs déséquilibres ne donnent pas les mêmes signes, et je les distingue grâce à vos réponses.",o:[['irritable','Irritable, impulsive, je rumine sans pouvoir lâcher'],['sucre_soir','Envie de sucre ou de gras surtout en fin de journée'],['motivation','Motivation en berne, je remets au lendemain, du mal à me lever'],['plaisir','Moins de plaisir, moins de libido, repli sur soi'],['anxiete','Anxiété, nervosité, hypersensibilité aux bruits ou à la lumière'],['dents_scie','Moral en dents de scie, souvent bas'],['aucun','Rien de marquant']]},
+ f_cerveau:{th:'fatigue',m:1,ex:['aucun'],t:'Que remarquez-vous côté cerveau ?',w:"Le cerveau consomme beaucoup d'énergie : il est souvent le premier à ralentir quand le terrain est fatigué. Ses signes m'aident à savoir où chercher.",o:[['brouillard','Brouillard mental, impression de lenteur'],['memoire','Mémoire et concentration qui flanchent'],['vaseux','État vaseux, « à côté de la plaque »'],['migraines','Maux de tête ou migraines fréquents'],['perf','Baisse de performance physique ou intellectuelle'],['creux','Je me concentre mal surtout en milieu de matinée ou d\'après-midi'],['aucun','Rien de marquant']]},
+ /* ───── SOMMEIL ───── */
+ z_motifs:{th:'sommeil',m:1,t:"Qu'est-ce qui ne va pas dans votre sommeil ?",w:"S'endormir difficilement, se réveiller la nuit ou trop tôt : ce sont trois mécanismes hormonaux différents. Je ne pose pas les mêmes questions pour chacun.",o:[['endorm',"Difficile de m'endormir",'endormissement'],['reveils','Réveils la nuit, difficile de me rendormir','réveils nocturnes'],['leger','Sommeil léger, agité, pas réparateur','sommeil léger'],['jour','Somnolence dans la journée, fatigue au réveil','somnolence'],['tot','Réveil trop tôt, impossible de me rendormir','réveil trop tôt']]},
+ z_endorm:{th:'sommeil',m:1,ex:['aucun'],t:"Qu'est-ce qui accompagne la difficulté à vous endormir ?",w:"Un cerveau qui tourne, un corps agité ou une lumière tardive retardent l'endormissement pour des raisons différentes : cortisol trop haut le soir, mélatonine freinée, digestion tardive.",o:[['rumine','Le cerveau tourne, ruminations, impossible de couper'],['survolte','Corps agité, tendu, cœur qui bat, même très fatiguée'],['ecrans','Écrans ou lumière vive jusqu\'au coucher'],['stress_soir','Stress du soir : mails, factures, mauvaises nouvelles avant de dormir'],['diner','Dîner tard, lourd ou sucré'],['tard','Je suis plus en forme le soir, je ne m\'endors pas avant minuit-1 h'],['sport_soir','Sport intense ou chambre chaude le soir'],['regles','Seulement dans les jours avant les règles'],['aucun','Rien de marquant']]},
+ z_reveils:{th:'sommeil',m:1,ex:['aucun'],t:'Que remarquez-vous lors de vos réveils de nuit ?',w:"L'heure du réveil et ce qui l'accompagne (cœur, chaleur, crampes) me disent si c'est un coup de sucre, un pic de cortisol, une chute hormonale ou un manque de minéraux.",o:[['rendormir','Je me réveille et j\'ai du mal à me rendormir'],['trois_heures','Souvent vers 3-4 h du matin'],['bruit','Je me réveille au moindre bruit, sommeil léger et anxieux'],['crampes','Crampes ou spasmes dans les jambes la nuit'],['coeur','Cœur qui bat ou chaleur en me réveillant'],['sueurs','Bouffées de chaleur ou sueurs nocturnes'],['cycle','Surtout après l\'ovulation et avant les règles'],['aucun','Rien de marquant']]},
+ z_leger:{th:'sommeil',m:1,ex:['aucun'],t:'Comment décririez-vous la qualité de votre sommeil ?',w:"Dormir assez d'heures sans être reposée m'oriente vers la qualité du sommeil plutôt que sa durée : mélatonine, anxiété de fond, respiration pendant la nuit.",o:[['fatiguee','Je dors assez d\'heures mais je me réveille fatiguée'],['leger','Sommeil léger, superficiel, anxieux'],['somnolence','Somnolence ou coups de barre dans la journée'],['aucun','Rien de marquant']]},
+ z_tot:{th:'sommeil',m:1,ex:['aucun'],t:'Que remarquez-vous lors des réveils trop précoces ?',w:"Se réveiller tôt en pleine forme, avec des pensées stressantes ou avec le moral bas : ce sont trois situations différentes pour votre cortisol et votre humeur.",o:[['avance','Je me réveille avant l\'heure (4-5 h) et suis alors en forme'],['stress','Je me réveille tôt avec des pensées stressantes ou de l\'anxiété'],['bas','Je me réveille tôt avec le moral bas'],['aucun','Rien de marquant']]},
+ /* ───── POIDS ───── */
+ w_motifs:{th:'poids',m:1,t:'Que diriez-vous de votre poids et de votre corps ?',w:"La prise de poids est rarement une question de volonté : l'insuline, la thyroïde et le cortisol y participent souvent ensemble. Vos réponses me disent lequel regarder en premier.",o:[['prise',"J'ai pris du poids (progressivement ou rapidement)",'prise de poids'],['perdre',"Je n'arrive pas à perdre malgré mes efforts",'difficulté à perdre'],['ventre','Je grossis surtout du ventre','ventre'],['bas','Je grossis surtout des hanches, des cuisses ; jambes lourdes, rétention d\'eau','hanches, jambes lourdes'],['fringales','Fringales, envies de sucre, grignotage','fringales'],['regimes','Beaucoup de régimes, effet yo-yo','régimes']]},
+ w_hist:{th:'poids',m:1,ex:['aucun'],t:'Comment la prise de poids est-elle arrivée ?',w:"L'histoire de votre poids (après un stress, la pilule, un mauvais sommeil, la périménopause) pointe vers l'hormone concernée, mieux qu'un chiffre sur la balance.",o:[['progressive','Progressive, sans changer mon alimentation ni mon activité'],['malgre','Je mange pourtant peu, et je ne maigris pas'],['stress','Après une période de stress ou un burn-out'],['pilule','Depuis la pilule, ou depuis son arrêt'],['meno','Depuis la périménopause ou la ménopause'],['sommeil','Depuis que je dors mal'],['sedentaire','Vie sédentaire, peu d\'activité physique'],['muscle','Je perds du muscle, mon corps se ramollit'],['aucun','Rien de particulier']]},
+ w_morpho:{th:'poids',m:1,ex:['aucun'],t:'Où se dépose le poids, et que remarquez-vous ?',w:"L'endroit où le corps stocke raconte l'hormone en cause : le ventre évoque l'insuline et le cortisol, les hanches plutôt les œstrogènes, un gonflement du matin plutôt la thyroïde.",o:[['ventre','Surtout autour du ventre (« en pomme »), le tour de taille augmente'],['poire','Surtout les hanches, les fesses, les cuisses (« en poire »), cellulite'],['retention','Rétention d\'eau, jambes lourdes, gonflement variable au fil du cycle'],['gonfle_matin','Paupières ou doigts gonflés le matin'],['ballonnement','Ventre gonflé, ballonnements, transit lent'],['acne','Acné, poils sur le menton ou le ventre, cycles longs'],['aucun','Pas de localisation particulière']]},
+ w_fringales:{th:'poids',m:1,ex:['aucun'],t:'Quand et comment les envies de sucre se manifestent-elles ?',w:"Le moment des fringales distingue une glycémie qui chute, un cortisol qui s'épuise et un besoin de réconfort. Les trois se traitent très différemment.",o:[['toutes_2_3h','Faim et envie de sucre toutes les 2-3 h, avec tremblements ou faiblesse'],['fin_journee','Surtout en fin de journée : envie de sucre ou de gras, irritabilité, grignotage'],['booster','Besoin de sucre, de sel ou de café pour tenir, coup de barre au début de l\'après-midi'],['stress','Je grignote quand je suis stressée'],['apres_repas','Coup de barre après le repas'],['petit_dej','Un petit-déjeuner sucré me donne faim une heure ou deux plus tard'],['soir','Gros appétit le soir ou la nuit'],['aucun','Pas de fringales particulières']]},
+ w_regimes:{th:'poids',m:1,ex:['aucun'],t:'Que dites-vous de vos régimes ?',w:"Les régimes répétés, le jeûne ou la suppression des glucides modifient la façon dont votre corps gère l'énergie. Je dois les connaître avant de proposer quoi que ce soit.",o:[['yoyo','Nombreux régimes, poids qui remonte à chaque fois (effet yo-yo)'],['jeune','Jeûne, repas sautés pour perdre du poids'],['low_glucides','Je supprime les glucides par peur de l\'insuline'],['sport_sans','Beaucoup de sport, sans résultat sur le poids'],['aucun','Pas de régime particulier']]},
+ /* ───── PEAU, CHEVEUX, ONGLES ───── */
+ k_motifs:{th:'peau',m:1,t:"Qu'est-ce qui vous gêne côté peau, cheveux, ongles ?",w:"La peau et les cheveux sont un miroir de l'intérieur : hormones, thyroïde, fer, zinc et intestin y laissent leur marque. Selon ce qui vous gêne, je regarde un terrain différent.",o:[['cheveux','Chute de cheveux, cheveux fins ou ternes','cheveux'],['acne','Acné, peau grasse, poils en excès','acné'],['seche','Peau sèche, eczéma, psoriasis, peau réactive','peau sèche, eczéma'],['ongles','Ongles cassants ou striés','ongles'],['terne','Teint terne, vieillissement de la peau, rides précoces','teint, vieillissement']]},
+ k_cheveux:{th:'peau',m:1,ex:['aucun'],t:'Que remarquez-vous côté cheveux et ongles ?',w:"La forme de la chute (diffuse, aux tempes, sourcils clairsemés) distingue le fer, la thyroïde, les hormones androgènes ou un choc de stress. Ce n'est pas le même terrain.",o:[['diffuse','Chute diffuse, sur toute la tête'],['cent','Plus de 100 cheveux par jour depuis plus de 2 mois'],['golfes','Chute aux tempes et au sommet, raie qui s\'élargit'],['golfes_acne','Chute aux tempes et au sommet, avec acné, peau grasse ou cycles longs'],['fins','Cheveux fins, cassants, ternes, qui poussent moins vite'],['sourcil','Sourcils clairsemés vers la queue'],['ongles','Ongles fragiles, cassants, mous'],['pilule','Chute après le démarrage ou l\'arrêt de la pilule'],['aucun','Rien de marquant']]},
+ k_acne:{th:'peau',m:1,ex:['aucun'],t:"Que remarquez-vous côté acné, peau grasse et poils ?",w:"La place de l'acné (mâchoire, front), son rythme (avant les règles) et les signes associés me disent si elle vient des hormones androgènes, de l'insuline ou de l'intestin.",o:[['machoire','Acné sur le menton et la mâchoire, adulte'],['avant_regles','Acné qui revient surtout avant les règles'],['grasse','Peau et cheveux gras'],['poils','Poils sur le menton, la poitrine, le ventre'],['cycles','Cycles longs ou irréguliers'],['fringales','Fringales de sucre, ventre qui grossit'],['sous_pilule','Acné apparue sous pilule'],['arret_pilule','Acné revenue ou aggravée à l\'arrêt de la pilule'],['front','Acné sur le front et les joues'],['aucun','Rien de marquant']]},
+ k_seche:{th:'peau',m:1,ex:['aucun'],t:'Que remarquez-vous côté sécheresse, eczéma, rougeurs ?',w:"Une peau sèche aux tibias évoque la thyroïde, un eczéma un terrain allergique et un intestin fragilisé. L'endroit et le contexte me guident vers la bonne piste.",o:[['tibias','Peau très sèche aux tibias, aux talons, aux coudes'],['partout','Peau sèche partout, besoin de crème en permanence'],['eczema','Eczéma, ou terrain allergique (asthme, rhinite, urticaire)'],['psoriasis','Psoriasis'],['reactive','Peau réactive, rougeurs, qui change selon l\'alimentation ou la saison'],['avant_regles','Cela s\'aggrave avant les règles'],['orange','Paumes des mains ou plantes des pieds orangées'],['aucun','Rien de marquant']]},
+ k_terne:{th:'peau',m:1,ex:['aucun'],t:'Que remarquez-vous côté teint et vieillissement de la peau ?',w:"Un teint terne ou une peau qui vieillit vite viennent souvent du sucre (glycation), d'un manque d'hormones ou d'un foie encombré. Vos réponses m'aident à trancher.",o:[['terne','Teint terne, peau qui manque d\'éclat'],['fine','Peau fine, sèche, ridules précoces'],['glycation','Grosse consommation de sucre, de pain, de grillades'],['meno','Peau qui change depuis la périménopause'],['aucun','Rien de marquant']]}
+};
+
+/* Signes à connaître avant le rendez-vous (mêmes libellés que le serveur) */
+const ALERTES={
+ secu:{sang:"Du sang dans les selles, ou des selles noires",poids:"Une perte de poids sans l'avoir cherchée",nuit:"Une douleur ou une diarrhée qui me réveille la nuit",avaler:"Une gêne pour avaler, ou des vomissements répétés",fievre:"De la fièvre, la peau ou les yeux jaunes, des selles très claires",recent:"Un changement net du transit, récent et qui dure (surtout après 50 ans)",famille:"Un cancer du côlon, une maladie de Crohn, une rectocolite ou une maladie cœliaque chez un proche",anemie:"Une anémie connue, une grande pâleur, un essoufflement inhabituel"},
+ h_secu:{hors:"Des saignements en dehors des règles, ou après la ménopause",aigue:"Une douleur au bas du ventre intense ou soudaine",poids:"Une perte de poids sans l'avoir cherchée",tete:"Des maux de tête inhabituels ou des troubles de la vue (surtout sans règles ou avec un écoulement des seins)",masse:"Une boule ou une masse dans le ventre ou dans un sein"},
+ f_secu:{amaigr:"Une perte de poids importante sans l'avoir cherchée, avec une fatigue marquée",coeur:"Des palpitations fortes, une douleur dans la poitrine ou un essoufflement inhabituel",addison:"Des taches foncées sur la peau (genoux, coudes, plis des mains), des joues creuses, des malaises",cushing:"Un visage gonflé, une bosse entre les épaules, des bleus faciles, une peau fine"},
+ z_alertes:{apnee:"Ronflements forts, pauses respiratoires la nuit, somnolence forte dans la journée",jambes:"Jambes qui ne tiennent pas en place le soir, besoin de les bouger"},
+ w_secu:{rapide:"Plusieurs kilos pris en quelques semaines, sans explication",oedeme:"Chevilles, visage ou paupières très gonflés, essoufflement",cushing:"Visage rond, bosse entre les épaules, bleus faciles, peau fine, fonte musculaire",addison:"Perte de poids avec taches foncées sur la peau, joues creuses, tension basse",diabete:"Diabète, glycémie élevée, hypertension ou cholestérol élevé déjà signalés"},
+ k_secu:{grain:"Un grain de beauté ou une tache qui change de forme ou de couleur, saigne ou gratte",plaques:"Des cheveux qui tombent en plaques bien délimitées, ou une chute très brutale et massive",virilisation:"Une voix qui devient plus grave, des poils qui poussent rapidement, des traits qui se virilisent",plaie:"Une plaie qui ne cicatrise pas, une lésion douloureuse ou suintante"}
+};
+
+const DUREES=['Quelques semaines','2 à 6 mois','6 mois à 2 ans','Plus de 2 ans',"Depuis l'enfance"];
 const EMPATHY_DUREE={
   'Quelques semaines':'Un trouble récent se rééquilibre souvent vite — on a l\'avantage d\'agir tôt.',
   '2 à 6 mois':'Assez pour peser au quotidien, mais pas encore ancré — une bonne fenêtre pour intervenir.',
@@ -407,30 +410,39 @@ const EMPATHY_DUREE={
 const ENERGY_LABELS=['','Très épuisée','Épuisée','Difficile','Faible','Moyenne','Correcte','Plutôt bien','Bien','Très bien','Excellente'];
 const ENERGY_COLORS=['','#9B3A3A','#A8522A','#A06A22','#9B7230','#7A8A22','#4A8A2A','#3A8A48','#2A7A62','#206080','#1E5A8A'];
 
-/* ── Identification par jeton secret (lien personnel envoyé depuis la fiche cliente).
-   Le lien ne contient QUE ce jeton : ni nom, ni date de naissance, ni identifiant.
-   Le serveur (fonction visio-questionnaire) retrouve la fiche et renvoie prénom, nom, email,
-   âge. Sans jeton valide, le questionnaire ne peut pas être commencé ni envoyé. ── */
-const FN_URL='https://bqhkdndwldwqacrrbbig.supabase.co/functions/v1/visio-questionnaire';
-const TOKEN=(new URLSearchParams(location.search).get('t')||'').trim();
-let IDENT=null;
-async function appelFonction(payload){
-  const res=await fetch(FN_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-  let data={};try{data=await res.json();}catch(e){}
-  if(!res.ok) throw Object.assign(new Error(data.error||'erreur'),{status:res.status});
-  return data;
+/* ══════════ ÉTAT ══════════ */
+const A={e_motifs:[]};           /* réponses : identifiant de question -> liste de clés (ou clé seule) */
+const S={age:'',duree:'',energie:5,objectif:'',libre:'',prec:'',autreDig:'',alertes:[],aucunAlerte:false,files:[],dateAn:''};
+let idx=0,PLAN=[],sending=false;
+
+const $=id=>document.getElementById(id);
+const esc=v=>String(v==null?'':v).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const chosenThemes=()=>THEMES.filter(t=>A.e_motifs.includes(t.k));
+const hasNoFunnel=()=>A.e_motifs.some(k=>NOFUNNEL.includes(k));
+const sel=id=>Array.isArray(A[id])?A[id]:(A[id]?[A[id]]:[]);
+
+function plan(){
+  const p=['id','entry'];
+  if(!A.e_motifs.length) return p;
+  chosenThemes().forEach(t=>{
+    p.push(t.main);
+    const seen=[];
+    sel(t.main).forEach(k=>(FOLLOW[t.main][k]||[]).forEach(q=>{if(!seen.includes(q)) seen.push(q);}));
+    seen.forEach(q=>p.push(q));
+  });
+  if(hasNoFunnel()) p.push('prec');
+  if(chosenThemes().length) p.push('alertes');
+  p.push('duree','energie','objectif','analyses','libre');
+  return p;
 }
+
+/* ══════════ LIEN PERSONNEL ══════════ */
 (async function verifierLien(){
-  const cta=document.getElementById('hero-cta');
-  const err=document.getElementById('lien-erreur');
+  const cta=$('hero-cta'),err=$('lien-erreur');
   const echec=()=>{cta.style.display='none';err.style.display='block';};
   if(!/^[a-f0-9]{64}$/.test(TOKEN)){echec();return;}
   try{
     IDENT=await appelFonction({action:'load',token:TOKEN});
-    document.getElementById('ident-name').textContent=[IDENT.prenom,IDENT.nom].filter(Boolean).join(' ');
-    document.getElementById('ident-mail').textContent=IDENT.email||'';
-    if(IDENT.prenom) document.getElementById('s1-title').textContent='Bonjour '+IDENT.prenom;
-    if(!IDENT.age) document.getElementById('age-row').style.display='flex';
     cta.disabled=false;cta.innerHTML='Commencer <span>→</span>';
   }catch(e){
     if(e.status===404){echec();}
@@ -438,104 +450,276 @@ async function appelFonction(payload){
   }
 })();
 
-function go(n){
-  if(n===current) return;
-  const prev=document.getElementById('s'+current);
-  const next=document.getElementById('s'+n);
-  if(!prev||!next) return;
-  prev.classList.remove('active');
-  prev.classList.add(n>current?'exit-up':'');
-  setTimeout(()=>prev.classList.remove('exit-up'),600);
-  next.classList.add('active');
-  current=n;
-
-  // Progress
-  const pct=n===0?0:Math.round((n/TOTAL)*100);
-  document.getElementById('prog-fill').style.width=pct+'%';
-
-  // Nav
-  const nav=document.getElementById('nav');
-  const step=document.getElementById('nav-step');
-  if(n===0){nav.classList.remove('dark-mode');step.textContent='';}
-  else{nav.classList.add('dark-mode');step.textContent=n<=TOTAL?`${n} / ${TOTAL}`:'Terminé';}
+/* ══════════ NAVIGATION ══════════ */
+function show(id){
+  ['s0','sq','s7'].forEach(s=>{const el=$(s);if(el) el.classList.toggle('active',s===id);});
+}
+function setNav(){
+  const nav=$('nav');
+  if(idx<0||!PLAN.length){nav.classList.remove('dark-mode');$('nav-step').textContent='';$('prog-fill').style.width='0%';return;}
+  nav.classList.add('dark-mode');
+  $('nav-step').textContent=(idx+1)+' / '+PLAN.length;
+  $('prog-fill').style.width=Math.round(((idx)/PLAN.length)*100)+'%';
+}
+function start(){ if(!IDENT) return; idx=0; render(); }
+function next(){ if(!canNext()) return; collect(); PLAN=plan(); if(idx<PLAN.length-1){idx++;render();} }
+function back(){
+  collect();
+  if(idx===0){idx=-1;PLAN=[];setNav();show('s0');return;}
+  PLAN=plan(); idx--; render();
 }
 
-function selOpt(el,group){
-  el.closest('.opts').querySelectorAll('.opt').forEach(o=>o.classList.remove('on'));
-  el.classList.add('on');
-  const btnNext=document.getElementById('btn-s2');
-  if(btnNext) btnNext.disabled=false;
-  // Empathy
-  if(group==='duree'){
-    const txt=el.textContent.trim();
-    const emp=document.getElementById('empathy-duree');
-    if(EMPATHY_DUREE[txt]){emp.textContent=EMPATHY_DUREE[txt];emp.classList.add('show');}
+/* ══════════ AFFICHAGE ══════════ */
+function opts(id){
+  const q=Q[id];const cur=sel(id);
+  return '<div class="opts" data-q="'+id+'">'+q.o.map(o=>'<div class="opt'+(q.m?' multi':'')+(cur.includes(o[0])?' on':'')+'" data-k="'+o[0]+'" role="'+(q.m?'checkbox':'radio')+'" tabindex="0"><div class="dot"></div><span>'+esc(o[1])+'</span></div>').join('')+'</div>';
+}
+function why(t){return '<div class="why"><div class="why-label">Pourquoi je vous pose cette question</div><div class="why-text">'+t+'</div></div>';}
+function actions(last){
+  return '<div class="q-actions"><button class="btn btn-back" onclick="back()">← Retour</button>'+
+   (last?'<button class="btn btn-send-final" id="btn-send" onclick="sendForm()"><svg class="btn-spinner" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 3a9 9 0 1 0 9 9"/></svg><span class="btn-label">Envoyer mon questionnaire →</span></button>'
+         :'<button class="btn btn-primary" id="btn-next" onclick="next()">Continuer →</button>')+'</div>';
+}
+function head(n,t,sub){
+  return '<div class="q-number">'+n+'</div><h2 class="q-title">'+t+'</h2>'+(sub?'<div class="q-sub">'+sub+'</div>':'');
+}
+function alertItems(){
+  /* un libellé commun à plusieurs thèmes n'apparaît qu'une fois */
+  const map=new Map();
+  chosenThemes().forEach(t=>{Object.entries(ALERTES[t.alerte]).forEach(([k,l])=>{if(!map.has(l)) map.set(l,[]);map.get(l).push([t.alerte,k]);});});
+  return [...map.entries()].map(([l,pairs])=>({l,pairs}));
+}
+
+function render(){
+  PLAN=plan();
+  const id=PLAN[idx];
+  const w=$('qw');
+  const total=PLAN.length;
+  const last=id==='libre';
+  const num=(id in Q?THEMES.find(t=>t.k===Q[id].th).nom+' · ':'')+(idx+1)+' / '+total;
+  let h='';
+  if(id==='id'){
+    const nom=[IDENT.prenom,IDENT.nom].filter(Boolean).join(' ');
+    h=head(num,IDENT.prenom?'Bonjour '+esc(IDENT.prenom):'Faisons connaissance',"Voici ce que j'ai déjà de vous : vous n'avez rien à ressaisir.")+
+      why("Ces informations viennent de votre fiche : elles me permettent de rattacher vos réponses à votre dossier, et à vous seule. Votre âge m'aide à situer votre terrain, car les besoins hormonaux et métaboliques du corps ne sont pas les mêmes à 25, 40 ou 55 ans.")+
+      '<div class="ident"><div class="ident-name">'+esc(nom)+'</div><div class="ident-mail">'+esc(IDENT.email||'')+'</div></div>'+
+      (IDENT.age?'':'<div class="field-row" style="margin-top:14px"><div class="field"><label for="age">Âge</label><input type="number" id="age" placeholder="ex : 34" min="16" max="90" value="'+esc(S.age)+'"></div><div class="field"></div></div>')+
+      actions(false);
+  }else if(id==='entry'){
+    h=head(num,"Qu'est-ce qui vous amène ?","Plusieurs réponses possibles. Cochez ce qui vous gêne le plus.")+
+      why("Je pars de ce qui vous gêne, pas d'un questionnaire standard : chaque motif ouvre quelques questions précises, et je ne vous en pose aucune qui ne vous concerne pas. Les motifs se croisent presque toujours, je les regarderai ensemble.")+
+      '<div class="opts" data-q="e_motifs" id="entry-opts">'+ENTRY.map(o=>'<div class="opt multi'+(A.e_motifs.includes(o[0])?' on':'')+'" data-k="'+o[0]+'" role="checkbox" tabindex="0"><div class="dot"></div><span>'+esc(o[1])+'</span></div>').join('')+'</div>'+
+      actions(false);
+  }else if(id in Q){
+    const q=Q[id];
+    h=head(num,esc(q.t),q.m?'Plusieurs réponses possibles.':'Une seule réponse.')+why(esc(q.w))+opts(id)+
+      (id==='motifs'?'<div class="sub-field" id="autre-dig" style="display:'+(sel('motifs').includes('autre')?'block':'none')+'"><label for="autre-dig-t">Quelle autre gêne ?</label><textarea id="autre-dig-t" rows="2" placeholder="Décrivez en quelques mots…">'+esc(S.autreDig)+'</textarea></div>':'')+
+      actions(false);
+  }else if(id==='prec'){
+    const autre=A.e_motifs.includes('autre');
+    const noms=ENTRY.filter(o=>A.e_motifs.includes(o[0])&&NOFUNNEL.includes(o[0])).map(o=>o[2]);
+    h=head(num,autre?'Votre autre motif':"Dites-m'en un peu plus",autre?"Décrivez en quelques mots ce qui vous amène.":"Pour : "+esc(noms.join(', '))+". Écrivez ce qui vous semble utile, à votre rythme.")+
+      why(autre?"Votre motif ne rentre pas dans mes catégories : c'est justement pour cela que j'ai besoin de vos mots. Je les lirai avant notre rendez-vous pour ne pas passer à côté.":"Pour ces motifs, il n'y a pas de série de questions toute faite : ce que vous écrivez avec vos mots me guide mieux qu'une liste de cases.")+
+      '<div class="sub-field"><label for="prec-t">'+(autre?'Votre motif':'Vos précisions')+'</label><textarea id="prec-t" rows="5" placeholder="Depuis quand, ce que vous ressentez, ce qui l\'aggrave ou l\'apaise…">'+esc(S.prec)+'</textarea></div>'+
+      actions(false);
+  }else if(id==='alertes'){
+    const items=alertItems();
+    h=head(num,'Un point de sécurité',"Avez-vous remarqué l'un de ces signes ? Il n'y a rien d'alarmant à cocher : je préfère simplement le savoir avant notre rendez-vous.")+
+      why("Quelques signes demandent d'abord l'avis d'un médecin, avant tout accompagnement naturel. Les connaître à l'avance me permet d'en parler avec vous sereinement, et de vous orienter si besoin.")+
+      '<div class="opts" id="alert-opts">'+items.map((it,i)=>'<div class="opt multi'+(S.alertes.includes(it.l)?' on':'')+'" data-al="'+i+'" role="checkbox" tabindex="0"><div class="dot"></div><span>'+esc(it.l)+'</span></div>').join('')+
+      '<div class="opt multi'+(S.aucunAlerte?' on':'')+'" data-al="aucun" role="checkbox" tabindex="0"><div class="dot"></div><span>Aucun de ces signes</span></div></div>'+
+      actions(false);
+  }else if(id==='duree'){
+    h=head(num,'Depuis combien de temps ?','Depuis quand ces symptômes font-ils partie de votre vie ?')+
+      why("Un terrain récent et un terrain chronique ne demandent pas la même approche : la durée oriente l'intensité et le rythme du protocole.")+
+      '<div class="opts" id="duree-opts">'+DUREES.map(d=>'<div class="opt'+(S.duree===d?' on':'')+'" data-d="'+esc(d)+'" role="radio" tabindex="0"><div class="dot"></div><span>'+esc(d)+'</span></div>').join('')+'</div>'+
+      '<div class="empathy'+(S.duree?' show':'')+'" id="empathy-duree">'+esc(EMPATHY_DUREE[S.duree]||'')+'</div>'+actions(false);
+  }else if(id==='energie'){
+    const v=S.energie;
+    h=head(num,"Votre énergie aujourd'hui",'Si vous deviez la noter sur 10 ?')+
+      why("Votre niveau d'énergie est un indicateur global de votre terrain : il me dit à quel point votre corps a besoin d'être soutenu.")+
+      '<div class="energy-wrap"><div class="energy-val" id="energy-val" style="color:'+ENERGY_COLORS[v]+'">'+v+'</div><div class="energy-label" id="energy-label">'+ENERGY_LABELS[v]+'</div><div class="energy-track"><div class="energy-fill" id="energy-fill" style="width:'+((v-1)/9*100)+'%"></div></div><input type="range" min="1" max="10" value="'+v+'" id="energy-slider" aria-label="Énergie sur 10"></div>'+
+      '<div class="empathy'+(v<=3?' show':'')+'" id="empathy-energy">'+(v<=3?"Se sentir à plat n'est pas une fatalité : c'est un signal que je prends très au sérieux.":'')+'</div>'+actions(false);
+  }else if(id==='objectif'){
+    h=head(num,'Comment aimeriez-vous vous sentir ?','Dans 1, 2 ou 3 mois : décrivez-le comme vous voulez.')+
+      why("Savoir comment vous aimeriez vous sentir me donne le cap : votre protocole se construit autour de votre objectif, pas seulement autour de vos symptômes.")+
+      '<div class="sub-field"><textarea id="objectif" rows="3" placeholder="Ex. : me lever avec de l\'énergie, ne plus avoir le ventre gonflé tous les soirs, me reconnaître.">'+esc(S.objectif)+'</textarea></div>'+actions(false);
+  }else if(id==='analyses'){
+    h=head(num,'Vos analyses, si vous en avez','Facultatif : vous pouvez passer cette étape.')+
+      why("Si vous avez déjà fait une prise de sang ou d'autres examens, je peux les lire avant notre rendez-vous. Cela m'évite de vous les redemander et me fait gagner du temps pour vous.")+
+      '<label class="drop" for="file-in"><strong>Ajouter un document</strong><span>PDF, JPG, PNG ou WEBP · 5 fichiers maximum · 10 Mo chacun</span></label><input type="file" id="file-in" accept=".pdf,.jpg,.jpeg,.png,.webp" multiple style="display:none"><div class="file-list" id="file-list"></div>'+
+      '<div class="sub-field"><label for="date-an">Date des analyses (si vous la connaissez)</label><input type="date" id="date-an" value="'+esc(S.dateAn)+'"></div>'+actions(false);
+  }else if(id==='libre'){
+    h=head(num,'Quelque chose à me dire ?',"Ce qui compte pour vous, ou ce qui serait plus facile à écrire qu'à dire à l'oral. Rien ne sera jugé.")+
+      why("Certaines choses sont plus faciles à écrire qu'à dire. Une habitude, une peur ou un détail de votre quotidien peut changer complètement la lecture de votre situation : je préfère le savoir avant notre rendez-vous.")+
+      '<div class="sub-field"><textarea id="libre" rows="3" placeholder="Ex. : je fume un paquet par jour. Ou : j\'ai peur que ce soit dans ma tête. Ou : rien de particulier, j\'ai hâte d\'en parler de vive voix.">'+esc(S.libre)+'</textarea></div>'+
+      actions(true)+'<div style="margin-top:16px;font-size:12px;color:var(--gris-clair)">Vos données sont protégées et ne seront jamais partagées.</div>';
+  }
+  w.innerHTML=h;
+  show('sq');
+  setNav();
+  $('sq').scrollTop=0;
+  if(id==='analyses') renderFiles();
+  refreshNext();
+}
+
+/* ══════════ INTERACTIONS ══════════ */
+function toggleChoice(qid,k,multi){
+  const q=qid==='e_motifs'?{m:1}:Q[qid];
+  let cur=sel(qid).slice();
+  if(!q.m){A[qid]=k;return;}
+  const ex=(Q[qid]&&Q[qid].ex)||[];
+  if(cur.includes(k)) cur=cur.filter(x=>x!==k);
+  else{
+    if(ex.includes(k)) cur=[k]; else cur=cur.filter(x=>!ex.includes(x)).concat(k);
+  }
+  A[qid]=cur;
+}
+document.addEventListener('click',e=>{
+  const o=e.target.closest&&e.target.closest('#qw .opt');if(!o) return;
+  const id=PLAN[idx];
+  if(o.dataset.al!==undefined){
+    const items=alertItems();
+    if(o.dataset.al==='aucun'){S.aucunAlerte=!S.aucunAlerte;if(S.aucunAlerte) S.alertes=[];}
+    else{const l=items[+o.dataset.al].l;S.alertes=S.alertes.includes(l)?S.alertes.filter(x=>x!==l):S.alertes.concat(l);if(S.alertes.length) S.aucunAlerte=false;}
+    $('alert-opts').querySelectorAll('.opt').forEach(el=>{const a=el.dataset.al;el.classList.toggle('on',a==='aucun'?S.aucunAlerte:S.alertes.includes(items[+a].l));});
+    refreshNext();return;
+  }
+  if(o.dataset.d!==undefined){
+    S.duree=o.dataset.d;
+    $('duree-opts').querySelectorAll('.opt').forEach(el=>el.classList.toggle('on',el===o));
+    const emp=$('empathy-duree');emp.textContent=EMPATHY_DUREE[S.duree]||'';emp.classList.add('show');
+    refreshNext();return;
+  }
+  const qid=o.closest('.opts').dataset.q;
+  toggleChoice(qid,o.dataset.k);
+  o.closest('.opts').querySelectorAll('.opt').forEach(el=>el.classList.toggle('on',sel(qid).includes(el.dataset.k)));
+  if(qid==='motifs'){$('autre-dig').style.display=sel('motifs').includes('autre')?'block':'none';}
+  refreshNext();
+});
+document.addEventListener('keydown',e=>{
+  if((e.key==='Enter'||e.key===' ')&&e.target.classList&&e.target.classList.contains('opt')){e.preventDefault();e.target.click();}
+});
+document.addEventListener('input',e=>{
+  if(e.target.id==='energy-slider'){
+    const v=parseInt(e.target.value,10);S.energie=v;
+    $('energy-val').textContent=v;$('energy-val').style.color=ENERGY_COLORS[v];
+    $('energy-label').textContent=ENERGY_LABELS[v];$('energy-fill').style.width=((v-1)/9*100)+'%';
+    const emp=$('empathy-energy');
+    if(v<=3){emp.textContent="Se sentir à plat n'est pas une fatalité : c'est un signal que je prends très au sérieux.";emp.classList.add('show');}else{emp.classList.remove('show');}
+  }
+  if(e.target.id==='prec-t'||e.target.id==='age') refreshNext();
+});
+document.addEventListener('change',e=>{ if(e.target.id==='file-in'){addFiles([...e.target.files]);e.target.value='';} });
+document.addEventListener('focusin',e=>{
+  const t=e.target;
+  if(t&&/^(INPUT|TEXTAREA)$/.test(t.tagName)) setTimeout(()=>{try{t.scrollIntoView({block:'center',behavior:'smooth'});}catch(x){}},320);
+});
+
+/* Ce qu'il faut avoir répondu pour continuer */
+function canNext(){
+  const id=PLAN[idx];
+  if(id==='entry') return A.e_motifs.length>0;
+  if(id==='prec'){ if(A.e_motifs.includes('autre')){const t=$('prec-t');return !!(t&&t.value.trim().length>=3);} return true; }
+  if(id==='alertes') return S.aucunAlerte||S.alertes.length>0;
+  if(id==='duree') return !!S.duree;
+  if(id==='id'&&!IDENT.age){const a=parseInt(($('age')||{}).value,10);return a>=16&&a<=90;}
+  return true;
+}
+function refreshNext(){const b=$('btn-next');if(b) b.disabled=!canNext();}
+
+/* Lecture des champs texte de l'écran affiché */
+function collect(){
+  const id=PLAN[idx];
+  if(id==='id'&&$('age')) S.age=$('age').value.trim();
+  if(id==='motifs'&&$('autre-dig-t')) S.autreDig=$('autre-dig-t').value.trim();
+  if(id==='prec'&&$('prec-t')) S.prec=$('prec-t').value.trim();
+  if(id==='objectif'&&$('objectif')) S.objectif=$('objectif').value.trim();
+  if(id==='analyses'&&$('date-an')) S.dateAn=$('date-an').value;
+  if(id==='libre'&&$('libre')) S.libre=$('libre').value.trim();
+}
+
+/* ══════════ ANALYSES FACULTATIVES ══════════ */
+const MIME={pdf:'application/pdf',jpg:'image/jpeg',jpeg:'image/jpeg',png:'image/png',webp:'image/webp'};
+function renderFiles(){
+  const el=$('file-list');if(!el) return;
+  el.innerHTML=S.files.map((f,i)=>'<div class="file-row"><span>'+esc(f.nom)+'</span><em>'+(f.etat==='envoi'?'envoi…':f.etat==='ok'?'ajouté':'échec')+'</em><button type="button" aria-label="Retirer" onclick="rmFile('+i+')">×</button></div>').join('');
+}
+function rmFile(i){S.files.splice(i,1);renderFiles();}
+async function addFiles(list){
+  for(const f of list){
+    if(S.files.length>=5){toast('5 fichiers maximum.');break;}
+    const ext=(f.name.split('.').pop()||'').toLowerCase();
+    if(!MIME[ext]){toast('Format non accepté : PDF, JPG, PNG ou WEBP.');continue;}
+    if(f.size>10*1024*1024){toast('Fichier trop lourd (10 Mo maximum).');continue;}
+    const e={nom:f.name.slice(0,120),etat:'envoi',path:''};
+    S.files.push(e);renderFiles();
+    try{
+      const u=await appelFonction({action:'upload_url',token:TOKEN,ext});
+      const r=await fetch(u.url,{method:'PUT',headers:{'Content-Type':MIME[ext]},body:f});
+      if(!r.ok) throw new Error('put');
+      e.path=u.path;e.etat='ok';
+    }catch(x){e.etat='erreur';toast("Ce document n'a pas pu être envoyé. Vous pourrez me le transmettre pendant le rendez-vous.",5000);}
+    renderFiles();
   }
 }
 
-function togChip(el){
-  el.classList.toggle('on');
-  const otherField=document.getElementById('other-symptom');
-  if(el.textContent.trim()==='Autre'){
-    otherField.classList.toggle('show',el.classList.contains('on'));
-    if(el.classList.contains('on')) otherField.focus();
-  }
-}
-
-function updateEnergy(inp){
-  const v=parseInt(inp.value);
-  const val=document.getElementById('energy-val');
-  const lbl=document.getElementById('energy-label');
-  const fill=document.getElementById('energy-fill');
-  val.textContent=v;
-  val.style.color=ENERGY_COLORS[v];
-  lbl.textContent=ENERGY_LABELS[v];
-  fill.style.width=((v-1)/9*100)+'%';
-  const emp=document.getElementById('empathy-energy');
-  if(v<=3){emp.textContent='Se sentir à plat n\'est pas une fatalité — c\'est un signal que je prends très au sérieux.';emp.classList.add('show');}
-  else{emp.classList.remove('show');}
-}
-
+/* ══════════ ENVOI ══════════ */
 function toast(msg,d=4200){
-  const t=document.getElementById('toast');
-  t.textContent=msg;t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'),d);
+  const t=$('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),d);
 }
-
-/* ══════════════════════════════════════
-   COLLECTE & ENVOI
-══════════════════════════════════════ */
-function collectAnswers(){
-  const dureeOpt=document.querySelector('#duree-opts .opt.on');
-  const chips=[];
-  document.querySelectorAll('#symptom-chips .chip.on').forEach(c=>{
-    const t=c.textContent.trim();
-    if(t!=='Autre') chips.push(t);
+function buildAnswers(){
+  PLAN=plan();
+  const moteur={e_motifs:A.e_motifs.slice()};
+  PLAN.forEach(id=>{if(id in Q){const v=sel(id);if(v.length) moteur[id]=Q[id].m?v:v[0];}});
+  /* alertes : réponses « oui » ou « aucun » pour chaque thème choisi */
+  chosenThemes().forEach(t=>{
+    const keys=[];
+    alertItems().forEach(it=>{if(S.alertes.includes(it.l)) it.pairs.forEach(([qid,k])=>{if(qid===t.alerte) keys.push(k);});});
+    if(keys.length) moteur[t.alerte]=keys; else if(S.aucunAlerte) moteur[t.alerte]=['aucun'];
   });
-  const other=document.getElementById('other-symptom').value.trim();
-  if(other) chips.push(other);
+  /* résumé lisible du motif (affiché dans la fiche) */
+  const parts=[];
+  ENTRY.forEach(o=>{
+    if(!A.e_motifs.includes(o[0])) return;
+    const th=THEMES.find(t=>t.k===o[0]);
+    if(th){const sub=sel(th.main).map(k=>(Q[th.main].o.find(x=>x[0]===k)||[])[2]).filter(Boolean);parts.push(o[2]+(sub.length?' ('+sub.join(', ')+')':''));}
+    else parts.push(o[2]);
+  });
+  const prec=[];
+  if(S.prec) prec.push((A.e_motifs.includes('autre')?'Autre motif : ':'Précisions : ')+S.prec);
+  if(sel('motifs').includes('autre')&&S.autreDig) prec.push('Autre gêne digestive : '+S.autreDig);
+  const precisions=prec.join('\n');
+  /* Le texte libre transporte aussi les précisions : la fiche consultation affiche déjà « son message » */
+  const libre=[precisions,S.libre].filter(Boolean).join('\n\n');
   return{
-    age:(document.getElementById('age')?.value||'').trim(),
-    duree:dureeOpt?dureeOpt.textContent.trim():'',
-    motif:chips.join(' · '),
-    energie:document.getElementById('energy-slider').value,
-    objectif:document.getElementById('objectif').value.trim(),
-    libre:document.getElementById('libre').value.trim()
+    age:IDENT.age||S.age,
+    duree:S.duree,
+    motif:parts.join(' · ').slice(0,1500),
+    precisions,
+    energie:String(S.energie),
+    objectif:S.objectif,
+    libre,
+    date_analyses:S.dateAn||'',
+    moteur,
+    fichiers:S.files.filter(f=>f.etat==='ok').map(f=>({path:f.path,nom:f.nom}))
   };
 }
-
 async function sendForm(){
-  if(!IDENT||!/^[a-f0-9]{64}$/.test(TOKEN)){toast('Ce lien n\'est pas valide. Écrivez-moi à sabrina@avitaserena.com.',6000);return;}
-  const b=document.getElementById('btn-send');
+  collect();
+  if(sending) return;
+  if(!IDENT||!/^[a-f0-9]{64}$/.test(TOKEN)){toast("Ce lien n'est pas valide. Écrivez-moi à sabrina@avitaserena.com.",6000);return;}
+  if(S.files.some(f=>f.etat==='envoi')){toast('Vos documents sont en cours d\'envoi, un instant.');return;}
+  const b=$('btn-send');sending=true;
   b.classList.add('loading');b.disabled=true;b.querySelector('.btn-label').textContent='Envoi en cours…';
   try{
-    // On attend la confirmation du serveur : « Merci » ne s'affiche que si les réponses sont bien enregistrées sur la fiche.
-    const r=await appelFonction({action:'submit',token:TOKEN,answers:collectAnswers()});
-    document.getElementById('confirm-name').textContent=r.prenom||IDENT.prenom||'';
-    go(7);
+    const r=await appelFonction({action:'submit',token:TOKEN,answers:buildAnswers()});
+    $('confirm-name').textContent=r.prenom||IDENT.prenom||'';
+    $('nav').classList.add('dark-mode');$('nav-step').textContent='Terminé';$('prog-fill').style.width='100%';
+    show('s7');
   }catch(e){
-    b.classList.remove('loading');b.disabled=false;b.querySelector('.btn-label').textContent='Envoyer mon questionnaire →';
-    toast(e.status===404?'Ce lien n\'est plus valide. Écrivez-moi à sabrina@avitaserena.com.':'Vos réponses n\'ont pas pu être envoyées. Rien n\'est perdu : veuillez réessayer.',6000);
+    sending=false;b.classList.remove('loading');b.disabled=false;b.querySelector('.btn-label').textContent='Envoyer mon questionnaire →';
+    toast(e.status===404?"Ce lien n'est plus valide. Écrivez-moi à sabrina@avitaserena.com.":"Vos réponses n'ont pas pu être envoyées. Rien n'est perdu : veuillez réessayer.",6000);
   }
 }
 </script>
