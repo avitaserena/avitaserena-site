@@ -16981,7 +16981,9 @@ function lectureHtml() {
         '<p class="conf">Pour confirmer ou écarter : ' + esc(P.conf) + '</p></div>';
     });
   } else h += '<div class="mg-side-n">Pas encore assez d\'éléments dans ses réponses pour orienter. Les pistes apparaissent au fil des questions.</div>';
-  if (att) h += '<div class="mg-act"><button type="button" class="mg-go" data-mg="confirmall">Tout confirmer avec elle (' + att + ' réponse' + (att > 1 ? 's' : '') + ')</button></div>';
+  var nc = planConfirm().add.length;
+  if (nc) h += '<div class="mg-act"><button type="button" class="mg-go" data-mg="confirmall">Confirmer avec elle ce qu\'elle a dit (' + nc + ' réponse' + (nc > 1 ? 's' : '') + ')</button></div>';
+  if (att > nc) h += '<div class="mg-side-n">' + (att - nc) + ' autre' + (att - nc > 1 ? 's' : '') + ' réponse' + (att - nc > 1 ? 's' : '') + ' de la cliente vous seront proposée' + (att - nc > 1 ? 's' : '') + ' déjà cochée' + (att - nc > 1 ? 's' : '') + ' au fil des questions.</div>';
   return h + '<div class="mg-note">Hypothèses de travail pour vous seul·e, jamais un diagnostic.</div></div>';
 }
 function confirmCli(id) {
@@ -16990,20 +16992,29 @@ function confirmCli(id) {
   if (id === 'e_motifs') { var q0 = themeQueue(S.a); if (q0.length) S.th = q0.filter(function (t) { return !themeDone(S.a, t); })[0] || q0[0]; }
   commit(); scrollUp();
 }
-/* Confirme tout ce qu'elle a dit, dans l'ordre du parcours, jusqu'à la première question qu'elle n'a pas vue */
-function confirmAll() {
-  if (!CLI) return;
-  if (S.a.e_motifs === undefined && CLI.e_motifs !== undefined) S.a.e_motifs = cliCopy(CLI.e_motifs);
-  var q = themeQueue(S.a);
-  q.forEach(function (th) {
+/* Ce qui peut être confirmé d'un coup : ses réponses, dans l'ordre du parcours, jusqu'à la première question
+   qu'elle n'a pas vue (celle-là, Sabrina la pose en séance ; les réponses suivantes seront alors proposées déjà cochées) */
+function planConfirm() {
+  var a = {}; Object.keys(S.a).forEach(function (k) { a[k] = S.a[k]; });
+  var add = [];
+  if (!CLI) return { add: add, a: a };
+  if (a.e_motifs === undefined && CLI.e_motifs !== undefined) { a.e_motifs = cliCopy(CLI.e_motifs); add.push('e_motifs'); }
+  themeQueue(a).forEach(function (th) {
     var g = 0;
     while (g++ < 80) {
-      var path = walk(S.a, th), last = path[path.length - 1];
-      if (S.a[last] !== undefined || CLI[last] === undefined) break;
-      S.a[last] = cliCopy(CLI[last]);
+      var path = walk(a, th), last = path[path.length - 1];
+      if (a[last] !== undefined || CLI[last] === undefined) break;
+      a[last] = cliCopy(CLI[last]); add.push(last);
     }
   });
-  S.p = {}; S.edit = null;
+  return { add: add, a: a };
+}
+function confirmAll() {
+  if (!CLI) return;
+  var pl = planConfirm(); if (!pl.add.length) return;
+  pl.add.forEach(function (id) { S.a[id] = cliCopy(pl.a[id]); delete S.p[id]; });
+  S.edit = null;
+  var q = themeQueue(S.a);
   if (q.length) S.th = q.filter(function (t) { return !themeDone(S.a, t); })[0] || q[0];
   commit(); scrollUp();
 }
