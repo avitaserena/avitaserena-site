@@ -75,7 +75,13 @@ button:disabled{opacity:.5}
         <option value="pic7">Pic de glaire + 7 jours</option>
         <option value="autre">Autre jour du cycle</option>
         <option value="absent">Pas de cycle / règles absentes</option>
-        <option value="pilule">Sous contraception hormonale</option>
+      </select></div>
+    <div><label>Contraception au moment de la prise de sang</label>
+      <select id="contra">
+        <option value="non">Aucune, ou stérilet au cuivre / méthode non hormonale</option>
+        <option value="horm">Pilule, anneau, patch, implant ou injection</option>
+        <option value="diu">Stérilet hormonal</option>
+        <option value="?">Je ne sais pas encore</option>
       </select></div>
     <div id="jcw" class="hide"><label>Jour du cycle (nombre)</label><input type="number" id="jc" min="1" max="60"></div>
   </div>
@@ -126,13 +132,21 @@ const M={
  crp:{panel:'insu',nom:'CRP ultrasensible',u:'mg/L',min:null,max:1,alts:[],cyc:'indiff',
   quoi:"Un marqueur d'inflammation de fond. Au-dessus de 1 mg/L : inflammation de bas grade possible.",
   bas:"",haut:"Entre 1 et 10 : inflammation de bas grade (intestin, graisse abdominale, stress…). Au-dessus de 10 : probablement une infection ou une inflammation aiguë, avis médical (repère médical usuel)."},
- tsh:{panel:'thy',nom:'TSH',u:'mUI/L',min:null,max:2.5,alts:[],cyc:'indiff',
+ tsh:{panel:'thy',nom:'TSH',u:'mUI/L',min:null,max:2,alts:[],cyc:'indiff',
   quoi:"L'ordre du cerveau à la thyroïde. Elle monte quand la thyroïde donne trop peu d'hormones. À lire avec T4 libre et T3 libre.",
-  bas:"",haut:"Thyroïde qui peine à fournir. Au-dessus de 4 : avis médical (repère médical usuel). Une thyroïde ralentie fait monter l'insuline et baisser la SHBG."},
+  bas:"",haut:"Thyroïde qui peine à fournir. La norme du laboratoire va jusqu'à 4 ; la cible fonctionnelle de votre livre et de votre cours est inférieure à 2. Au-dessus de 4 : avis médical (repère médical usuel). Une thyroïde ralentie fait monter l'insuline et baisser la SHBG."},
  t4:{panel:'thy',nom:'T4 libre',u:'pmol/L',min:13,max:null,alts:[['ng/dl',v=>v*12.87]],cyc:'indiff',
   quoi:"L'hormone de stock de la thyroïde.",bas:"Défaut de fabrication : manque de matériaux (iode, sélénium, fer, protéines) ou excès de transporteur (pilule, œstrogènes).",haut:""},
- t3:{panel:'thy',nom:'T3 libre',u:'pmol/L',min:4.5,max:null,alts:[['pg/ml',v=>v*1.536]],cyc:'indiff',
+ t3:{panel:'thy',nom:'T3 libre',u:'pmol/L',min:5,max:null,alts:[['pg/ml',v=>v*1.536]],cyc:'indiff',
   quoi:"L'hormone active, fabriquée à partir de la T4 surtout dans le foie et l'intestin.",bas:"Défaut de conversion : stress, restriction, inflammation, manque de sélénium ou de zinc.",haut:""},
+ se:{panel:'thy',nom:'Sélénium',u:'µg/L',min:120,max:null,alts:[],cyc:'indiff',
+  quoi:"Le minéral qui active la T4 en T3 (désiodase) et protège la thyroïde. La norme du laboratoire commence vers 70 ; la cible fonctionnelle est 120.",bas:"Conversion T4 vers T3 freinée. À vérifier AVANT tout apport d'iode : l'iode sans sélénium peut stresser la thyroïde.",haut:""},
+ iod:{panel:'thy',nom:'Iodurie (iode urinaire)',u:'µg/L',min:150,max:null,alts:[],cyc:'indiff',
+  quoi:"Le reflet de l'iode disponible. Les ovaires en sont, après la thyroïde, l'organe le plus riche. Cible fonctionnelle : au-dessus de 150 (environ 200 en projet de grossesse), sur la première urine du matin.",bas:"Fabrication de T4 freinée. Vérifiez le sélénium avant tout apport, et les perturbateurs (fluor, brome, chlore).",haut:""},
+ vita:{panel:'thy',nom:'Vitamine A (rétinol)',u:'µg/dl',min:70,max:null,alts:[],cyc:'indiff',
+  quoi:"Indispensable à l'activation du récepteur des hormones thyroïdiennes. La norme du laboratoire est 30-80 ; la cible fonctionnelle est autour de 70.",bas:"La T3 peut être correcte mais ne pas activer son récepteur. Aucun complément sans dosage : l'excès de vitamine A est délétère, et jamais pendant une grossesse ou un désir de grossesse.",haut:""},
+ fer:{panel:'thy',nom:'Ferritine',u:'µg/L',min:70,max:null,alts:[],cyc:'indiff',
+  quoi:"Le stock de fer, nécessaire à la TPO, l'enzyme qui fabrique la T4. La norme du laboratoire est 10-100 ; la cible fonctionnelle est 70. Se lit avec la CRP : l'inflammation la fait monter à tort.",bas:"Fabrication de T4 freinée. Chercher la cause (règles abondantes, inflammation, dysbiose, porosité) avant tout complément, et jamais de fer sans carence confirmée.",haut:""},
  fsh:{panel:'ova',nom:'FSH (J3)',u:'mUI/ml',min:null,max:7,alts:[],cyc:'j3',
   quoi:"L'ordre du cerveau aux ovaires de faire mûrir un follicule. À J3 uniquement.",bas:"Effondrée : origine centrale possible (stress, poids bas, restriction).",haut:"Entre 10 et 15 : déclin ovarien à envisager. Au-dessus de 80 : ménopause confirmée."},
  lh:{panel:'ova',nom:'LH (J3)',u:'mUI/ml',min:null,max:null,alts:[],cyc:'j3',
@@ -144,8 +158,8 @@ const M={
  prog:{panel:'ova',nom:'Progestérone Pic+7',u:'ng/ml',min:15,max:30,alts:[],cyc:'pic7',
   quoi:"L'hormone qui apaise la deuxième moitié du cycle : elle n'existe que si l'ovulation a eu lieu. Jamais à J21 : toujours Pic+7.",
   bas:"Ovulation de moindre qualité ou absente. Un stress prolongé consomme la progestérone. Objectif fertilité : plus de 20.",haut:""},
- prl:{panel:'ova',nom:'Prolactine',u:'ng/ml',min:null,max:19,alts:[],cyc:'indiff',
-  quoi:"L'hormone du lait : en excès, elle freine l'ovulation et pousse les androgènes des surrénales.",bas:"",haut:"Entre 19 et 25 : à surveiller. Au-dessus de 25 : à confirmer par le médecin, prélèvement au repos le matin (repère médical usuel)."},
+ prl:{panel:'ova',nom:'Prolactine',u:'ng/ml',min:null,max:20,alts:[],cyc:'indiff',
+  quoi:"L'hormone du lait : en excès, elle freine l'ovulation et pousse les androgènes des surrénales.",bas:"",haut:"Au-dessus de 20, même dans la norme du laboratoire, la prolactine peut suffire à perturber le cycle. Au-dessus de 50 : adénome de l'hypophyse à écarter, avis médical et IRM (livre « Troubles hormonaux » p. 223-224). Prélèvement le matin à jeun, après 30 minutes de repos, à J3."},
  car:{panel:'sur',nom:'CAR (cortisol au réveil)',u:'%',min:50,max:100,alts:[],cyc:'indiff',
   quoi:"La montée du cortisol dans l'heure qui suit le réveil. Interprétation prudente, jamais sur un test isolé.",bas:"Montée plate : rythme du stress à explorer.",haut:""},
  clu:{panel:'sur',nom:'Cortisol libre urinaire 24 h',u:'µg/24h',min:35,max:null,alts:[],cyc:'indiff',
@@ -185,12 +199,17 @@ function getVal(k){
 function statut(k,v){ const m=M[k]; if(v==null) return null; if(m.min!=null&&v<m.min) return 'bas'; if(m.max!=null&&v>m.max) return 'haut'; return 'ok'; }
 /* Validité selon le moment du cycle */
 function validite(k){
-  const c=$('#cyc').value, m=M[k];
+  const c=$('#cyc').value, ct=$('#contra').value, m=M[k];
   const horm=['fsh','lh','e2a','e2b','prog'].includes(k);
-  if(c==='pilule'){
-    if(horm) return {n:'non',t:"Ininterprétable sous contraception hormonale (LH, FSH, œstradiol, progestérone sont effondrées)."};
+  if(ct==='horm'){
+    if(horm) return {n:'non',t:"Ininterprétable sous contraception hormonale : la contraception bloque l'ovulation, LH, FSH, œstradiol et progestérone sont effondrées."};
     if(k==='shbg'||k==='testo') return {n:'lim',t:"Sous contraception hormonale, la SHBG est artificiellement haute et la testostérone libre basse : lecture limitée."};
   }
+  if(ct==='diu'){
+    if(horm) return {n:'lim',t:"Stérilet hormonal : le progestatif agit surtout dans l'utérus, mais votre cours juge les dosages non interprétables sous contraception hormonale. Lecture limitée : à confirmer avec votre cours et avec la clinique."};
+    if(k==='shbg'||k==='testo') return {n:'lim',t:"Stérilet hormonal : lecture limitée, la clinique prime."};
+  }
+  if(ct==='?' && (horm||k==='shbg'||k==='testo')) return {n:'lim',t:"Contraception inconnue : demandez-la avant de conclure, elle change toute la lecture."};
   if(m.cyc==='j3'){
     if(c==='j3') return {n:'ok'};
     if(c==='inconnu') return {n:'lim',t:"Moment du cycle inconnu : interprétation limitée, ce dosage ne se lit qu'à J3."};
@@ -228,18 +247,17 @@ function buildPanels(){
     h+=`<div class="lec" id="l_${p}"></div><div id="t_${p}"></div></div>`;
   }
   $('#panels').innerHTML=h;
-  document.querySelectorAll('#panels input,#panels select,#cyc,#jc,#rapide,#viril,#signes').forEach(e=>e.addEventListener('input',lire));
+  document.querySelectorAll('#panels input,#panels select,#cyc,#contra,#jc,#rapide,#viril,#signes').forEach(e=>e.addEventListener('input',lire));
 }
 
 /* ═══ Lecture ═══ */
 function lire(){
   const c=$('#cyc').value;
   $('#jcw').classList.toggle('hide',c!=='autre');
-  $('#cycnote').innerHTML={
+  $('#cycnote').innerHTML=($('#contra').value==='horm'?"Sous pilule, anneau, patch, implant ou injection : LH, FSH, œstradiol et progestérone sont ininterprétables. Ne suggérez jamais d'arrêter (décision médicale). ":'')+({
    inconnu:"<b>Jour du cycle inconnu ?</b> 1) Cherchez la date de prélèvement sur le compte rendu du laboratoire. 2) Avec la date des dernières règles, comptez le jour du cycle. 3) Si la date reste introuvable, lisez le bilan avec prudence : seuls les écarts francs comptent, la clinique prime. 4) Ne refaites la prise de sang que si une décision en dépend.",
    absent:"Sans cycle, le « jour du cycle » ne veut rien dire : le prélèvement se fait hors période de glaire.",
-   pilule:"Sous contraception hormonale : LH, FSH, œstradiol et progestérone sont ininterprétables. Ne suggérez jamais d'arrêter (décision médicale).",
-   j3:"", pic7:"", autre:"Un autre jour que J3 ou Pic+7 : les dosages à jour précis ne sont pas interprétables."}[c]||"";
+   j3:"", pic7:"", autre:"Un autre jour que J3 ou Pic+7 : les dosages à jour précis ne sont pas interprétables."}[c]||"");
   const val={}, st={}, vd={};
   let any=false;
   for(const k in M){
@@ -288,7 +306,7 @@ function lire(){
   if(g!=null){ if(g>=1.26) add('insu','med',"Glycémie à jeun de 1,26 g/L ou plus",["Repère médical usuel : à faire voir au médecin avant toute autre démarche."],1); else if(g>=1.10) add('insu','att',"Glycémie à jeun entre 1,10 et 1,25 g/L",["Repère médical usuel : à faire voir au médecin ; le HOMA n'est pas lisible dans ces conditions."],1); }
   if(val.crp!=null){ if(val.crp>10) add('insu','med',"CRP ultrasensible au-dessus de 10 mg/L",["Repère médical usuel : plutôt une infection ou une inflammation aiguë qu'un bas grade ; avis médical."],1); else if(val.crp>1) add('insu','att',"Inflammation de bas grade possible",["CRP ultrasensible entre 1 et 10 mg/L : cherchez la cause (intestin, graisse abdominale, stress, terrain)."],1); }
   if(val.zinc!=null&&st.zinc==='bas'&&$('#signes').checked) add('insu','info',"Zinc sous le repère avec signes d'androgènes",["Le zinc freine la transformation de la testostérone en DHT : un manque peut renforcer acné et poils."]);
-  if(val.tsh!=null&&st.tsh==='haut'){ add('thy',val.tsh>4?'med':'att',"TSH au-dessus de 2,5",[val.tsh>4?"Au-dessus de 4 (repère médical usuel) : avis médical. ":"","Regardez T4 libre et T3 libre pour savoir si le défaut est de fabrication ou de conversion. Une thyroïde ralentie peut expliquer une SHBG basse et une insuline haute."].filter(Boolean),1); }
+  if(val.tsh!=null&&st.tsh==='haut'){ add('thy',val.tsh>4?'med':'att',"TSH au-dessus de 2",[val.tsh>4?"Au-dessus de 4 (repère médical usuel) : avis médical. ":"","Regardez T4 libre et T3 libre pour savoir si le défaut est de fabrication ou de conversion. Une thyroïde ralentie peut expliquer une SHBG basse et une insuline haute."].filter(Boolean),1); }
   if(val.t4!=null&&val.t3!=null&&val.tsh!=null){
     if(st.tsh==='haut'&&st.t4==='bas'&&st.t3==='bas') add('thy','att',"TSH haute, T4 et T3 basses",["Défaut de fabrication (ou transporteur en excès : pilule, œstrogènes, foie surchargé). Pistes : sélénium, iode, fer, protéines."]);
     else if(st.t4==='ok'&&st.t3==='bas') add('thy','info',"T4 normale, T3 basse",["Défaut de conversion : stress, restriction, inflammation, manque de sélénium ou de zinc."]);
@@ -296,7 +314,11 @@ function lire(){
   if(val.prog!=null&&vd.prog.n==='ok'&&st.prog==='bas'){ add('ova','att',"Progestérone basse à Pic+7",["Ovulation de moindre qualité ou absente. "+(st.testo==='haut'?"Avec des androgènes élevés, c'est un cercle : moins de progestérone donne plus d'effet des androgènes.":"Un stress prolongé consomme la progestérone.")],1); }
   if(val.fsh!=null&&vd.fsh.n!=='non'){ if(val.fsh>80) add('ova','med',"FSH au-dessus de 80 mUI/ml",["Évoque une ménopause confirmée (seuil notable de vos cours) : à évoquer avec le médecin."],1); else if(val.fsh>=10) add('ova','att',"FSH de 10 ou plus",["Déclin ovarien à envisager : ne concluez pas sur un seul dosage ; croisez avec l'âge, la clinique et l'AMH."],1); }
   if(fh!=null&&vd.lh.n==='ok'&&fh>=1) add('ova','info',"LH/FSH supérieur ou égal à 1 à J3",["Cible : inférieur à 1. Un rapport élevé se voit avec une insuline haute ou un profil de SOPK : croisez avec le HOMA, jamais de diagnostic."]);
-  if(val.prl!=null&&st.prl==='haut'){ add('ova',val.prl>25?'med':'att',"Prolactine au-dessus de 19 ng/ml",["Elle freine l'ovulation et pousse les androgènes surrénaliens. Au-dessus de 25 : à confirmer par le médecin, au repos le matin (repère médical usuel)."],1); }
+  if(val.iod!=null&&st.iod==='bas'){ add('thy','att',"Iodurie sous 150 µg/L",["Vérifiez le sélénium avant tout apport d'iode (l'iode sans sélénium peut stresser la thyroïde), et cherchez les perturbateurs : fluor, brome, chlore, excès d'aliments goitrogènes crus."+(val.se!=null&&st.se==='bas'?" Ici le sélénium est bas : il passe en premier.":"")]); }
+  if(val.se!=null&&st.se==='bas') add('thy','info',"Sélénium sous 120 µg/L",["Le sélénium active la conversion de T4 en T3 : une T3 basse avec une T4 correcte peut venir de là. À optimiser avant l'iode."]);
+  if(val.vita!=null&&st.vita==='bas') add('thy','info',"Vitamine A sous 70 µg/dl",["Elle est nécessaire à l'activation du récepteur de la T3 : une T3 correcte ne suffit pas sans elle. Aucun complément avant d'avoir le dosage, jamais en cas de grossesse ou de projet de grossesse."]);
+  if(val.fer!=null&&st.fer==='bas') add('thy','info',"Ferritine sous 70 µg/L",["Le fer est nécessaire à la TPO, l'enzyme de fabrication de la T4. Lisez avec la CRP, cherchez la cause avant tout complément, et jamais de fer sans carence confirmée."]);
+  if(val.prl!=null&&st.prl==='haut'){ add('ova',val.prl>50?'med':'att',"Prolactine au-dessus de 20 ng/ml",["Elle freine l'ovulation et pousse les androgènes surrénaliens. Au-dessus de 50 : avis médical (adénome à écarter par IRM). Entre 20 et 50 : à traiter fonctionnellement (stress, thyroïde, excès d'œstrogènes, médicaments), après un prélèvement à J3, à jeun, après 30 minutes de repos."],1); }
   if(val.car!=null&&st.car!=='ok') add('sur','info',"CAR hors de la plage 50-100 %",["Le rythme du cortisol est à explorer, avec la clinique (réveil, creux d'après-midi) : jamais de conclusion sur un test isolé."]);
   if(val.preg!=null&&st.preg==='bas') add('sur','info',"Prégnénolone basse",["La matière première est épuisée : moins pour la progestérone et la DHEA. Lisez avec la clinique et le stress."]);
   if($('#rapide').checked||$('#viril').checked) add('andro','med',"Signes rapides ou de virilisation",["Poils apparus en quelques mois ou voix grave, muscles qui augmentent, seins qui diminuent : avis médical rapide, cause rare à écarter (ovaire ou surrénale)."],1);
@@ -320,12 +342,12 @@ async function sbq(path,opts={}){
   if(!r.ok) throw new Error(await r.text());
   const t=await r.text(); return t?JSON.parse(t):[];
 }
-const MAPK={testo:'Testostérone totale',shbg:'SHBG',dheas:'DHEA-S',gly:'Glycémie à jeun',insu:'Insuline à jeun',zinc:'Zinc sérique',crp:'CRP ultrasensible',tsh:'TSH',t4:'T4 libre',t3:'T3 libre',fsh:'FSH J3',lh:'LH J3',e2a:'Œstradiol J3',e2b:'Œstradiol Pic+7',prog:'Progestérone Pic+7',prl:'Prolactine',car:'CAR',clu:'Cortisol libre urinaire',preg:'Prégnénolone sérique'};
+const MAPK={testo:'Testostérone totale',shbg:'SHBG',dheas:'DHEA-S',gly:'Glycémie à jeun',insu:'Insuline à jeun',zinc:'Zinc sérique',crp:'CRP ultrasensible',tsh:'TSH',t4:'T4 libre',t3:'T3 libre',se:'Sélénium',iod:'Iodurie',vita:'Vitamine A',fer:'Ferritine',fsh:'FSH J3',lh:'LH J3',e2a:'Œstradiol J3',e2b:'Œstradiol Pic+7',prog:'Progestérone Pic+7',prl:'Prolactine',car:'CAR',clu:'Cortisol libre urinaire',preg:'Prégnénolone sérique'};
 async function enregistrer(){
   const b=$('#save'); b.disabled=true; $('#msg').textContent='Enregistrement…';
   try{
     const cid=$('#cli').value, d=$('#dt').value||new Date().toISOString().slice(0,10), E=window.__etat;
-    const cl={inconnu:'jour du cycle inconnu',j3:'J3',pic7:'Pic+7',absent:'pas de cycle',pilule:'sous contraception hormonale',autre:'J'+($('#jc').value||'?')}[$('#cyc').value];
+    const cl=({horm:'contraception hormonale · ',diu:'stérilet hormonal · ','?':'contraception inconnue · ',non:''}[$('#contra').value])+({inconnu:'jour du cycle inconnu',j3:'J3',pic7:'Pic+7',absent:'pas de cycle',autre:'J'+($('#jc').value||'?')}[$('#cyc').value]);
     const synth=E.G.map(r=>r.n).join(' · ')||'Aucun point d\'attention particulier.';
     const [bil]=await sbq('bilans_biologiques',{method:'POST',body:JSON.stringify([{client_id:cid,client_key:cid,nom_fichier:'Saisie Lecteur de bilans du '+d,date_bilan:d,storage_path:'lecteur:saisie',type:'bilan_sanguin',laboratoire:$('#labo').value||null,synthese_ia:synth}])});
     const rows=[];
