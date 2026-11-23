@@ -16809,6 +16809,8 @@ window.mgChargerVisio = function (snap) {
       if (ks.length) c[id] = n.multi ? ks : ks[0];
     });
     CLI = Object.keys(c).length ? c : null; LASTTOP = null; TOPNOTE = '';
+    /* Ses réponses de préparation sont reprises comme confirmées dès l'ouverture, jusqu'à la première question qu'elle n'a pas vue */
+    if (CLI && !S.edit) { var pl = planConfirm(); if (pl.add.length) { confirmAll(); return; } }
     render();
   } catch (e) { if (window.console) console.warn('[Préparation visio] chargement des réponses impossible :', e); }
 };
@@ -16969,8 +16971,8 @@ function lectureHtml() {
     if (LASTTOP !== null && top) TOPNOTE = 'La piste principale a changé : ' + (PISTES[LASTTOP] ? PISTES[LASTTOP].l : '—') + ' → ' + PISTES[top].l + '. Parce que : ' + ac.pistes[0].why.slice(0, 3).join(' ; ') + '.';
     LASTTOP = top;
   }
-  var h = '<div class="mg-lec" id="mg-lec"><div class="mg-lec-h">' + (L.nbConf ? 'Problématique pressentie : mise à jour à chaque réponse' : 'Première lecture avant le rendez-vous') + '</div>' +
-    '<p class="mg-lec-s">' + (L.nbConf ? 'D\'après ses réponses de préparation, complétées ou corrigées en séance.' : 'D\'après ce qu\'elle a répondu au questionnaire de préparation. À confirmer avec elle : rien n\'est transmis au générateur tant que vous n\'avez pas confirmé.') + '</p>';
+  var h = '<div class="mg-lec" id="mg-lec"><div class="mg-lec-h">Problématique pressentie : mise à jour à chaque réponse</div>' +
+    '<p class="mg-lec-s">D\'après ses réponses au questionnaire de préparation, reprises telles quelles, puis complétées ou corrigées en séance.</p>';
   if (al.length) h += '<div class="mg-alert"><b>Signes signalés par la cliente avant le rendez-vous</b><ul>' + al.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></div>';
   if (TOPNOTE) h += '<div class="mg-lec-chg">' + esc(TOPNOTE) + '</div>';
   if (ac.pistes.length) {
@@ -16982,8 +16984,8 @@ function lectureHtml() {
     });
   } else h += '<div class="mg-side-n">Pas encore assez d\'éléments dans ses réponses pour orienter. Les pistes apparaissent au fil des questions.</div>';
   var nc = planConfirm().add.length;
-  if (nc) h += '<div class="mg-act"><button type="button" class="mg-go" data-mg="confirmall">Confirmer avec elle ce qu\'elle a dit (' + nc + ' réponse' + (nc > 1 ? 's' : '') + ')</button></div>';
-  if (att > nc) h += '<div class="mg-side-n">' + (att - nc) + ' autre' + (att - nc > 1 ? 's' : '') + ' réponse' + (att - nc > 1 ? 's' : '') + ' de la cliente vous seront proposée' + (att - nc > 1 ? 's' : '') + ' déjà cochée' + (att - nc > 1 ? 's' : '') + ' au fil des questions.</div>';
+  if (nc) h += '<div class="mg-act"><button type="button" class="mg-go" data-mg="confirmall">Reprendre ses réponses (' + nc + ' réponse' + (nc > 1 ? 's' : '') + ')</button></div>';
+  if (att > nc) h += '<div class="mg-side-n">' + (att - nc) + ' autre' + (att - nc > 1 ? 's' : '') + ' réponse' + (att - nc > 1 ? 's' : '') + ' de la cliente vous seront proposée' + (att - nc > 1 ? 's' : '') + ' déjà cochée' + (att - nc > 1 ? 's' : '') + ' au fil des questions : il suffit de valider.</div>';
   return h + '<div class="mg-note">Hypothèses de travail pour vous seul·e, jamais un diagnostic.</div></div>';
 }
 function confirmCli(id) {
@@ -17043,7 +17045,7 @@ function questionHtml(id) {
   var n = N[id], cur = S.a[id], pend = S.p[id], cl = cliVal(id);
   var sel = n.multi ? (Array.isArray(pend) ? pend : (Array.isArray(cur) ? cur : (Array.isArray(cl) ? cl : []))) : [];
   var h = '<div class="mg-q" id="mg-q"><span class="mg-mode ' + n.m + '">' + (n.m === 'listen' ? "J'écoute" : 'Je demande') + '</span>' +
-    '<div class="mg-qt">' + esc(n.q) + '</div>' + (cl !== undefined ? '<div class="mg-cli"><b>Dit par la cliente avant le rendez-vous</b> : à confirmer avec elle. Touchez une autre réponse pour la remplacer.</div>' : '') + (n.why ? '<div class="mg-why"><div class="mg-why-l">Pourquoi je vous pose cette question</div><p>' + esc(n.why) + '</p></div>' : '') + (n.hint ? '<div class="mg-hint">' + esc(n.hint) + '</div>' : '') +
+    '<div class="mg-qt">' + esc(n.q) + '</div>' + (cl !== undefined ? '<div class="mg-cli"><b>Réponse de la cliente (questionnaire de préparation)</b> : validez-la, ou touchez une autre réponse pour la remplacer.</div>' : '') + (n.why ? '<div class="mg-why"><div class="mg-why-l">Pourquoi je vous pose cette question</div><p>' + esc(n.why) + '</p></div>' : '') + (n.hint ? '<div class="mg-hint">' + esc(n.hint) + '</div>' : '') +
     '<div class="mg-opts' + (n.o.length > 5 && !n.multi ? ' mg-cols' : '') + '">';
   n.o.forEach(function (o, i) { h += optHtml(n, o, i, n.multi ? sel.indexOf(o.k) >= 0 : (cur === o.k || (cur === undefined && cl !== undefined && cl === o.k))); });
   h += '</div><div class="mg-act">';

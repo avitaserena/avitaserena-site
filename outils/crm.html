@@ -1582,6 +1582,18 @@ function renderCommsEnvoyees(){
   renderListeComm('comms-list-brevo', getCommsBrevo(20));
 }
 
+// ── Questionnaires de préparation visio reçus (23/11/2026) : visibles dans « À traiter maintenant » jusqu'à lecture ──
+let visiosRecues=null, visiosRecuesCharge=false;
+function visiosVus(){ try{ return JSON.parse(localStorage.getItem('avs_visio_vus')||'[]'); }catch(e){ return []; } }
+function marquerVisioVu(id){ try{ const v=visiosVus(); if(!v.includes(id)){ v.push(id); localStorage.setItem('avs_visio_vus',JSON.stringify(v.slice(-200))); } }catch(e){} }
+async function chargerVisiosRecues(){
+  if(visiosRecuesCharge) return; visiosRecuesCharge=true;
+  try{
+    const since=new Date(Date.now()-30*864e5).toISOString();
+    visiosRecues=await sb('questionnaires?type=eq.visio&created_at=gte.'+encodeURIComponent(since)+'&order=created_at.desc&select=id,client_id,created_at,alertes:snapshot->alertes&limit=50');
+    renderActionsJour();
+  }catch(e){ console.error('[CRM] ✗ Questionnaires visio reçus:', e.message); visiosRecues=[]; }
+}
 function renderActionsJour(){
   const listEl = document.getElementById('ajd-list');
   const greetEl = document.getElementById('home-greet-title');
@@ -1594,9 +1606,26 @@ function renderActionsJour(){
   if(!listEl) return;
 
   const tdy = today();
+  if(!visiosRecuesCharge) chargerVisiosRecues();
 
   // ── Rassembler toutes les sources en une seule file, triée par urgence ──
   const items = [];
+
+  // Questionnaire de préparation visio reçu, pas encore lu : à lire avant le rendez-vous (rouge si signes signalés)
+  (visiosRecues||[]).filter(v=>!visiosVus().includes(v.id)).forEach(function(v){
+    const c=db.clients.find(cl=>cl.id===v.client_id); if(!c) return;
+    const al=Array.isArray(v.alertes)?v.alertes.map(a=>a&&a.l).filter(Boolean):[];
+    const quand=v.created_at?new Date(v.created_at).toLocaleDateString('fr-FR',{day:'numeric',month:'short'})+' à '+new Date(v.created_at).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}):'';
+    items.push({u: al.length?5:4, html:
+      '<div class="feed-item feed-message'+(al.length?' feed-message-urgent':'')+'">'+
+        '<div class="feed-ic">'+ic(al.length?'warn':'spark')+'</div>'+
+        '<div class="feed-body">'+
+          '<div class="feed-title">'+escH(c.prenom)+' '+escH(c.nom||'')+' <span class="tab-pill"'+(al.length?' style="background:var(--red-lt,#FEE2E2);color:var(--red,#B4452F)"':'')+'>Préparation visio reçue</span></div>'+
+          '<div class="feed-text"'+(al.length?' style="color:var(--rouge)"':'')+'>'+(al.length?'Signes signalés : '+al.map(escH).join(' · ')+' · ':'')+escH(quand)+'</div>'+
+        '</div>'+
+        '<div class="feed-actions"><button class="feed-btn feed-btn-ghost" onclick="marquerVisioVu(\''+v.id+'\');openFiche(\''+c.id+'\')">Fiche</button><button class="feed-btn" onclick="marquerVisioVu(\''+v.id+'\');renderActionsJour();voirReponsesVisio(\''+c.id+'\')">Lire</button></div>'+
+      '</div>'});
+  });
 
   // 0) Alertes santé — check-ins du jour signalant une énergie très basse, une humeur
   // préoccupante ou un message inquiet dans le champ libre. Priorité maximale, à égalité
@@ -7662,6 +7691,7 @@ function voirReponsesVisio(cid){
   if(!qList.length){ toast('Aucune réponse enregistrée','warn'); return; }
   const c = db.clients.find(x=>x.id===cid);
   const dernier = qList[0];
+  try{ marquerVisioVu(dernier.id); }catch(e){}
   const s = dernier.snapshot||{};
   const rows = [
     ['Âge', s.age], ['Durée des symptômes', s.duree], ['Motifs', s.motif], ['Précisions de la cliente', s.precisions],
