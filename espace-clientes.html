@@ -4966,9 +4966,9 @@ async function loadBilans(){
     if(!rows.length){ list.innerHTML=''; empty.style.display='block'; return; }
     empty.style.display='none';
     list.innerHTML = rows.map(function(b){
-      var url = SUPA_URL + '/storage/v1/object/public/avs-bilans/' + b.storage_path;
+      var ref = String(b.storage_path||'');
       var d = b.date_bilan ? new Date(b.date_bilan).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}) : '';
-      return '<a href="'+url+'" target="_blank" class="dl-item">' +
+      return '<a href="#" onclick="ouvrirBilanPrive(this.getAttribute(\'data-ref\'));return false" data-ref="'+escHtml(ref)+'" class="dl-item">' +
         '<div class="dl-icon"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>' +
         '<div class="dl-info"><div class="dl-title">'+escHtml(b.nom_fichier||b.type||'Bilan')+'</div><div class="dl-sub">'+d+'</div></div>' +
         '<span class="dl-btn">Voir →</span>' +
@@ -4978,6 +4978,22 @@ async function loadBilans(){
     console.warn('Bilans non chargés :', e);
     empty.style.display='block';
   }
+}
+
+/* Le stockage des bilans est privé (23/11/2026) : chaque document s'ouvre par un lien temporaire de 5 minutes */
+async function ouvrirBilanPrive(ref){
+  var w = window.open('', '_blank');
+  try {
+    var m = /avs-bilans\/(.+?)(?:\?.*)?$/.exec(String(ref||''));
+    var path = decodeURIComponent(m ? m[1] : String(ref||'').replace(/^\/+/, ''));
+    var token = await Auth.getValidAccessToken();
+    var r = await fetch(SUPA_URL + '/storage/v1/object/sign/avs-bilans/' + path.split('/').map(encodeURIComponent).join('/'), {
+      method: 'POST', headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + (token || SUPA_KEY), 'Content-Type': 'application/json' }, body: JSON.stringify({ expiresIn: 300 })
+    });
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    var d = await r.json();
+    if(w) w.location.href = SUPA_URL + '/storage/v1' + d.signedURL;
+  } catch(e){ if(w) w.close(); alert("Ce document ne peut pas être ouvert pour le moment. Écrivez-moi si le problème continue."); }
 }
 
 /* ─── HISTORIQUE DES SÉANCES ─── */

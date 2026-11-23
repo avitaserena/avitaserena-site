@@ -5044,7 +5044,7 @@ function renderFiche(c){
         ${d.synthese_ia?`<div style="font-size:11.5px;color:var(--ink);font-style:italic;background:var(--surface);border-radius:8px;padding:8px 10px;margin-top:6px;line-height:1.5">💡 ${escH(d.synthese_ia)}</div>`:''}
       </div>
       <span class="doc-status ok">Disponible</span>
-      ${btn('doc-action',`window.open('${escH(d.storage_path)}','_blank')`,'Voir')}
+      ${btn('doc-action',`ouvrirDocBilan('${escH(d.storage_path)}')`,'Voir')}
       ${d.type==='bilan_sanguin' && !d.synthese_ia ? btn('doc-action',`interpreterBilanExistant('${cid}','${d.id}')`,"Interpréter avec l'IA") : ''}
       ${btn('doc-action',`supprimerDocMedical('${cid}','${d.id}')`,ic('trash'))}
     </div>`).join(''):"<div style='padding:16px;font-size:13px;color:var(--muted);font-style:italic'>Aucun document médical ajouté pour le moment.</div>";
@@ -7656,6 +7656,24 @@ async function envoyerMailPrepVisio(clientId){
 }
 
 // ── Affiche les réponses enregistrées du questionnaire de préparation visio ──
+
+/* ── Documents médicaux : le stockage avs-bilans est PRIVÉ (23/11/2026). On ouvre chaque document par un lien temporaire (5 min). ── */
+async function ouvrirDocBilan(ref){
+  const w = window.open('', '_blank');
+  try{
+    const m = /avs-bilans\/(.+?)(?:\?.*)?$/.exec(String(ref||'')); const path = decodeURIComponent(m ? m[1] : String(ref||'').replace(/^\/+/, ''));
+    if(!path) throw new Error('document introuvable');
+    let tok = KEY;
+    if (typeof Auth !== 'undefined') { const t = await Auth.getValidAccessToken(); if (t) tok = t; }
+    const r = await fetch(SB + '/storage/v1/object/sign/avs-bilans/' + path.split('/').map(encodeURIComponent).join('/'), {
+      method:'POST', headers:{ 'apikey': KEY, 'Authorization':'Bearer '+tok, 'Content-Type':'application/json' }, body: JSON.stringify({ expiresIn: 300 })
+    });
+    if(!r.ok) throw new Error('lien refusé ('+r.status+')');
+    const d = await r.json(); const u = SB + '/storage/v1' + d.signedURL;
+    if(w) w.location.href = u; else window.location.href = u;
+  }catch(e){ if(w) w.close(); try{ (typeof toast==='function'?toast:showToast)('Ouverture impossible : '+e.message,'err'); }catch(_){ alert('Ouverture impossible : '+e.message); } }
+}
+
 // ── Préparation visio : lecture lisible des réponses par motif, des alertes et des analyses (23/11/2026) ──
 function visioMoteurHtml(s){
   const L=window.VISIO_LABELS, m=s&&s.moteur;
@@ -7684,7 +7702,7 @@ function visioAlertesHtml(s){
 function visioAnalysesHtml(s){
   const an=Array.isArray(s&&s.analyses)?s.analyses.filter(a=>a&&/^https:\/\//.test(a.url||'')):[];
   if(!an.length) return '';
-  return `<div class="ic-row"><div class="ic-key">Analyses jointes</div><div class="ic-val">${an.map(a=>`<a href="${escH(a.url)}" target="_blank" rel="noopener">${escH(a.nom||'Analyses')}${a.date?' ('+escH(a.date)+')':''}</a>`).join('<br>')}</div></div>`;
+  return `<div class="ic-row"><div class="ic-key">Analyses jointes</div><div class="ic-val">${an.map(a=>`<a href="#" onclick="ouvrirDocBilan('${escH(a.url)}');return false">${escH(a.nom||'Analyses')}${a.date?' ('+escH(a.date)+')':''}</a>`).join('<br>')}</div></div>`;
 }
 function voirReponsesVisio(cid){
   const qList = (questionnairesClient[cid]||[]).filter(q=>q.type==='visio');
