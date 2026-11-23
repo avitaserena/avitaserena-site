@@ -123,7 +123,7 @@ const AIClient = (function () {
       try { bodyTxt = await res.text(); } catch (e) {}
       if (res.status === 401) throw erreur('Clé PHV refusée par Anthropic (révoquée ou erronée) — enregistrez-en une nouvelle.', 'API_ERROR', 401);
       if (/credit balance/i.test(bodyTxt))
-        throw erreur('Solde de crédits API insuffisant pour la clé PHV — ajoutez des crédits ou liez l\'organisation dans la console Anthropic.', 'API_ERROR', res.status);
+        throw erreur('Solde API insuffisant : il n\'y a plus de crédits sur la clé PHV. Ajoutez des crédits dans la console Anthropic (Facturation), puis cliquez sur « Réessayer la génération » — vos réponses sont conservées.', 'API_ERROR', res.status);
       if (/spend|billing|credit|limit/i.test(bodyTxt) && (res.status === 400 || res.status === 403 || res.status === 429))
         throw erreur('Plafond de dépenses de la clé PHV atteint — augmentez-le dans la console Anthropic.', 'API_ERROR', res.status);
       throw erreur('Erreur API (' + res.status + ') ' + bodyTxt, 'API_ERROR', res.status);
