@@ -997,6 +997,7 @@ async function init(){
 
   if(titleEl) titleEl.textContent="Aujourd'hui";
   renderDashboard();
+  setTimeout(bkFraicheur,2500);
   renderMessagesFeed();
   renderAttentePopup();
 
@@ -2889,6 +2890,68 @@ function erreursBox(list){
   }).join('');
 }
 
+
+/* ── Sauvegardes (23/11/2026) ── */
+async function bkToken(){ let t=KEY; if(typeof Auth!=='undefined'){ const x=await Auth.getValidAccessToken(); if(x) t=x; } return t; }
+function bkFmtTaille(n){ n=+n||0; return n>1048576?(n/1048576).toFixed(1)+' Mo':Math.max(1,Math.round(n/1024))+' Ko'; }
+async function chargerSauvegardes(opts){
+  const st=document.getElementById('bk-status'), li=document.getElementById('bk-list');
+  if(!st||!li) return null;
+  try{
+    const tok=await bkToken(); const H={apikey:KEY,Authorization:'Bearer '+tok,'Content-Type':'application/json'};
+    const r=await fetch(SB+'/storage/v1/object/list/backups',{method:'POST',headers:H,body:JSON.stringify({prefix:'',limit:100,sortBy:{column:'name',order:'desc'}})});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const dossiers=(await r.json()).filter(x=>/^\d{4}-\d{2}-\d{2}$/.test(x.name)).sort((a,b)=>b.name.localeCompare(a.name));
+    const lignes=[];
+    for(const d of dossiers.slice(0,31)){
+      const rr=await fetch(SB+'/storage/v1/object/list/backups',{method:'POST',headers:H,body:JSON.stringify({prefix:d.name,limit:5})});
+      const f=rr.ok?(await rr.json()).find(x=>x.name==='export.json'):null;
+      if(f) lignes.push({date:d.name,taille:f.metadata&&f.metadata.size,maj:f.updated_at||f.created_at});
+    }
+    window.__bkDerniere=lignes[0]||null;
+    const der=lignes[0]; const age=der?(Date.now()-new Date(der.maj).getTime())/36e5:null;
+    const frais=age!==null&&age<30;
+    const bdg=document.getElementById('badge-sauvegardes'); if(bdg) bdg.classList.toggle('show',!frais);
+    st.innerHTML = der
+      ? `<div style="padding:14px 16px;border-radius:12px;background:${frais?'#EDE9E1':'#F3E3D6'};font-size:16px;line-height:1.6">${frais?'La dernière sauvegarde date de':'<b>Attention : la dernière sauvegarde est ancienne.</b> Dernière :'} <b>${new Date(der.maj).toLocaleString('fr-FR',{dateStyle:'long',timeStyle:'short'})}</b> (${bkFmtTaille(der.taille)}).</div>`
+      : `<div style="padding:14px 16px;border-radius:12px;background:#F3E3D6;font-size:16px"><b>Aucune sauvegarde trouvée.</b> Cliquez sur « Sauvegarder maintenant ».</div>`;
+    li.innerHTML = lignes.length? `<div style="display:grid;gap:8px">`+lignes.map(l=>`<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:#fff;border:1px solid #EDE9E1;border-radius:12px"><div style="flex:1;font-size:16px">${new Date(l.date+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}<span style="color:var(--muted);font-size:14px"> · ${bkFmtTaille(l.taille)}</span></div><button class="btn btn-ghost btn-sm" onclick="telechargerSauvegarde('${l.date}')">Télécharger</button></div>`).join('')+`</div>` : '';
+    return der;
+  }catch(e){ st.innerHTML=`<div style="padding:14px 16px;border-radius:12px;background:#F3E3D6;font-size:16px">Impossible de lire les sauvegardes (${escH(e.message)}).</div>`; return null; }
+}
+async function telechargerSauvegarde(date){
+  try{
+    const tok=await bkToken();
+    const r=await fetch(SB+'/storage/v1/object/sign/backups/'+date+'/export.json',{method:'POST',headers:{apikey:KEY,Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({expiresIn:120})});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const d=await r.json();
+    const b=await (await fetch(SB+'/storage/v1'+d.signedURL)).blob();
+    const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='avs-sauvegarde-'+date+'.json'; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1500);
+  }catch(e){ toast('Téléchargement impossible : '+e.message,'err'); }
+}
+async function sauvegarderMaintenant(){
+  const b=document.getElementById('bk-now'); if(b){b.disabled=true;b.textContent='Sauvegarde en cours…';}
+  try{
+    const tok=await bkToken();
+    const r=await fetch(SB+'/functions/v1/backup-export',{method:'POST',headers:{apikey:KEY,Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:'{}'});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok||!d.ok) throw new Error(d.error||('erreur '+r.status));
+    toast('Sauvegarde terminée : '+d.lignes+' lignes, '+d.tables+' tables','ok');
+    await chargerSauvegardes();
+  }catch(e){ toast('Sauvegarde impossible : '+e.message,'err'); }
+  if(b){b.disabled=false;b.textContent='Sauvegarder maintenant';}
+}
+
+async function bkFraicheur(){
+  try{
+    const tok=await bkToken();
+    const r=await fetch(SB+'/storage/v1/object/list/backups',{method:'POST',headers:{apikey:KEY,Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({prefix:'',limit:100,sortBy:{column:'name',order:'desc'}})});
+    if(!r.ok) return;
+    const noms=(await r.json()).map(x=>x.name).filter(n=>/^\d{4}-\d{2}-\d{2}$/.test(n)).sort().reverse();
+    const hier=new Date(Date.now()-36*3600*1000).toISOString().slice(0,10);
+    const bdg=document.getElementById('badge-sauvegardes'); if(bdg) bdg.classList.toggle('show',!(noms[0]&&noms[0]>=hier));
+  }catch(e){}
+}
 function renderErreurs(){
   const box = document.getElementById('erreurs-full-box');
   if(box) box.innerHTML = erreursBox(clientErrorLogs);
@@ -3232,7 +3295,7 @@ function nav(name,el){
   document.getElementById('page-'+name)?.classList.add('active');
   if(!el){const map={fiche:'clients'};const k=map[name]||name;el=document.querySelector('.sb-item[onclick*="nav(\''+k+'\'"]');}
   if(el)el.classList.add('active');
-  const titles={dashboard:"Aujourd'hui",agenda:'Agenda',clients:'Clientes',fiche:'Fiche cliente',factures:'Factures',stats:'Statistiques',settings:'Mon cabinet',messages:'Messages clientes',erreurs:'Erreurs techniques',recettes:'Recettes',pilotage:'Checklist',formalites:'Formalités'};
+  const titles={dashboard:"Aujourd'hui",agenda:'Agenda',clients:'Clientes',fiche:'Fiche cliente',factures:'Factures',stats:'Statistiques',settings:'Mon cabinet',messages:'Messages clientes',erreurs:'Erreurs techniques',sauvegardes:'Sauvegardes',recettes:'Recettes',pilotage:'Checklist',formalites:'Formalités'};
   document.getElementById('page-title').textContent=titles[name]||name;
   if(name==='dashboard')renderDashboard();
   window.scrollTo(0,0);document.querySelector('.main')?.scrollTo?.(0,0);
@@ -3246,6 +3309,7 @@ function nav(name,el){
   if(name==='stats')renderStats();
   if(name==='messages')renderMessagesFeed();
   if(name==='erreurs')renderErreurs();
+  if(name==='sauvegardes')chargerSauvegardes();
   if(name==='recettes')loadRecettesAdmin();
   if(name==='pilotage')loadPilotage();
   if(name==='formalites')renderFormalites();
@@ -8265,6 +8329,9 @@ function ouvrirBilanEntree(clientId, mode){
     <div class="sb-item" onclick="nav('erreurs',this)">
       <div class="sb-ic"><i data-lucide="triangle-alert"></i></div><span class="sb-lbl">Erreurs techniques</span><span class="sb-bdg" id="badge-erreurs">0</span>
     </div>
+    <div class="sb-item" onclick="nav('sauvegardes',this)">
+      <div class="sb-ic"><i data-lucide="database-backup"></i></div><span class="sb-lbl">Sauvegardes</span><span class="sb-bdg" id="badge-sauvegardes">!</span>
+    </div>
 
     <div class="sb-sec">Outils</div>
     <div class="sb-item sb-ext" onclick="window.open('Boite_a_outils_complements.html','_blank')" title="Compléments et aromathérapie"><div class="sb-ic"><i data-lucide="flask-conical"></i></div><span class="sb-lbl">Compléments</span></div>
@@ -8403,6 +8470,17 @@ function ouvrirBilanEntree(clientId, mode){
   <div class="page" id="page-erreurs">
     <p class="page-note">Capture automatique des erreurs survenues dans l'espace cliente — sans aucune action de leur part. Utile pour retrouver ce qui s'est passé quand une cliente signale un souci, ou pour repérer un problème avant même qu'elle ne le remarque.</p>
     <div id="erreurs-full-box"></div>
+  </div>
+
+  <!-- SAUVEGARDES -->
+  <div class="page" id="page-sauvegardes">
+    <p class="page-note">Chaque nuit, toutes vos données (clientes, rendez-vous, factures, questionnaires, protocoles, comptes, liste des documents) sont enregistrées dans un fichier, et ce fichier vous est aussi envoyé par e-mail. Gardez de temps en temps un exemplaire sur votre ordinateur : c'est votre copie de sécurité hors du système.</p>
+    <div id="bk-status" style="margin:14px 0"></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px">
+      <button class="btn btn-primary btn-sm" id="bk-now" onclick="sauvegarderMaintenant()">Sauvegarder maintenant</button>
+      <button class="btn btn-ghost btn-sm" onclick="chargerSauvegardes()">Actualiser</button>
+    </div>
+    <div id="bk-list"></div>
   </div>
 
   <!-- CLIENTS -->
