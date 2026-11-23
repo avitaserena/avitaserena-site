@@ -880,6 +880,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--sable)!i
 
 </style>
 <script src="auth-guard.js"></script>
+<script src="visio-labels.js"></script>
 <!-- Export en masse des factures du mois (ZIP de PDF individuels, un par facture) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -5153,6 +5154,7 @@ function renderFiche(c){
     </div>`;
   }
 
+  const visioAl=(()=>{ const v=(questionnairesClient[cid]||[]).find(q=>q.type==='visio'); const h=v?visioAlertesHtml(v.snapshot||{}):''; return h?h.replace('<div style="background','<div onclick="voirReponsesVisio(\''+cid+'\')" style="cursor:pointer;background'):''; })();
   // « À la réservation » (11/10/2026) — ce que la cliente a indiqué sur le formulaire de réservation
   // (motif, durée, message), repris des notes du RDV créé au paiement. Évite d'aller le chercher
   // dans l'agenda Google, et rend visible par exemple un soin prévu la veille/le lendemain de la séance.
@@ -5277,6 +5279,7 @@ function renderFiche(c){
     </div>
 
     ${P('resume',`
+      ${visioAl}
       ${briefHtml}
       ${resaHtml}
       ${ouvertureHtml}
@@ -7624,6 +7627,35 @@ async function envoyerMailPrepVisio(clientId){
 }
 
 // ── Affiche les réponses enregistrées du questionnaire de préparation visio ──
+// ── Préparation visio : lecture lisible des réponses par motif, des alertes et des analyses (23/11/2026) ──
+function visioMoteurHtml(s){
+  const L=window.VISIO_LABELS, m=s&&s.moteur;
+  if(!L||!m||typeof m!=='object') return '';
+  const lab=(id,k)=>{ const q=L.q[id]; if(id==='e_motifs'){ const e=L.entry[k]; return e?e.l:k; } return (q&&q.o&&q.o[k])||k; };
+  const groups={}, ordre=[];
+  Object.keys(m).forEach(id=>{
+    const q=L.q[id]; const th=id==='e_motifs'?'_entree':(q&&q.th)||'_autre';
+    if(!groups[th]){ groups[th]=[]; ordre.push(th); }
+    const v=Array.isArray(m[id])?m[id]:[m[id]];
+    groups[th].push([q?q.t:(id==='e_motifs'?'Motifs choisis':id), v.map(k=>lab(id,k)).join(' · ')]);
+  });
+  ordre.sort((a,b)=>(a==='_entree'?-1:b==='_entree'?1:0));
+  return ordre.map(th=>{
+    const T=th==='_entree'?'Motifs de consultation':((L.themes[th]&&L.themes[th].nom)||th);
+    return `<div style="margin:14px 0 4px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:var(--muted)">${escH(T)}</div>`+
+      groups[th].map(([k,v])=>`<div class="ic-row"><div class="ic-key">${escH(k)}</div><div class="ic-val">${escH(v)}</div></div>`).join('');
+  }).join('');
+}
+function visioAlertesHtml(s){
+  const al=Array.isArray(s&&s.alertes)?s.alertes.map(a=>a&&a.l).filter(Boolean):[];
+  if(!al.length) return '';
+  return `<div style="background:var(--red-lt);border:1.5px solid var(--red);border-radius:12px;padding:12px 16px;margin:12px 0;color:#6B2E1F"><div style="font-weight:800;margin-bottom:4px">Signes signalés par la cliente : à lire avant le rendez-vous</div><ul style="margin:0 0 0 18px;padding:0">${al.map(x=>`<li>${escH(x)}</li>`).join('')}</ul></div>`;
+}
+function visioAnalysesHtml(s){
+  const an=Array.isArray(s&&s.analyses)?s.analyses.filter(a=>a&&/^https:\/\//.test(a.url||'')):[];
+  if(!an.length) return '';
+  return `<div class="ic-row"><div class="ic-key">Analyses jointes</div><div class="ic-val">${an.map(a=>`<a href="${escH(a.url)}" target="_blank" rel="noopener">${escH(a.nom||'Analyses')}${a.date?' ('+escH(a.date)+')':''}</a>`).join('<br>')}</div></div>`;
+}
 function voirReponsesVisio(cid){
   const qList = (questionnairesClient[cid]||[]).filter(q=>q.type==='visio');
   if(!qList.length){ toast('Aucune réponse enregistrée','warn'); return; }
@@ -7631,10 +7663,11 @@ function voirReponsesVisio(cid){
   const dernier = qList[0];
   const s = dernier.snapshot||{};
   const rows = [
-    ['Âge', s.age], ['Durée des symptômes', s.duree], ['Ce qui pèse', s.motif],
+    ['Âge', s.age], ['Durée des symptômes', s.duree], ['Motifs', s.motif], ['Précisions de la cliente', s.precisions],
     ['Énergie du jour', s.scores?.energieGenerale?s.scores.energieGenerale+'/10':''],
     ['Objectif', s.objectif], ['Message libre', s.libre]
-  ].filter(([,v])=>v).map(([k,v])=>`<div class="ic-row"><div class="ic-key">${escH(k)}</div><div class="ic-val">${escH(String(v))}</div></div>`).join('');
+  ].filter(([,v])=>v).map(([k,v])=>`<div class="ic-row"><div class="ic-key">${escH(k)}</div><div class="ic-val">${escH(String(v))}</div></div>`).join('')+visioAnalysesHtml(s);
+  const detail=visioAlertesHtml(s)+rows+visioMoteurHtml(s);
   const modal=document.createElement('div');
   modal.className='modal-bg open';
   modal.id='modal-reponses-visio';
@@ -7643,7 +7676,7 @@ function voirReponsesVisio(cid){
       <div style="font-size:16px;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:8px">${ic('spark')} Questionnaire de préparation visio — ${escH(c?.prenom||'')} · ${fmtDate(dernier.created_at)}</div>
       <button onclick="document.getElementById('modal-reponses-visio').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted)">×</button>
     </div>
-    <div style="padding:8px 24px 20px;max-height:60vh;overflow:auto">${rows||"<div style='padding:16px;font-size:13px;color:var(--muted);font-style:italic'>Aucune réponse détaillée.</div>"}</div>
+    <div style="padding:8px 24px 20px;max-height:60vh;overflow:auto">${detail||"<div style='padding:16px;font-size:13px;color:var(--muted);font-style:italic'>Aucune réponse détaillée.</div>"}</div>
   </div>`;
   modal.addEventListener('click', e=>{ if(e.target===modal) modal.remove(); });
   document.body.appendChild(modal);

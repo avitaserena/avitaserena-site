@@ -767,6 +767,14 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 .mg-st{font-size:13px;font-weight:600;color:#4F7A5A}
 @media(max-width:640px){.mg-card{padding:16px 14px}.mg-qt{font-size:20px}.mg-edit{flex-wrap:wrap}.mg-edit .q{flex:1 1 100%}}
 @media print{.mg-card{display:none!important}}
+/* Réponses de la préparation visio relues dans le parcours (23/11/2026) */
+.mg-lec{background:var(--or-clair,#FBF3E4);border:1.5px solid var(--ocre,#B4906A);border-radius:16px;padding:16px 18px 14px;margin:0 0 16px}
+.mg-lec-h{font-size:12px;text-transform:uppercase;letter-spacing:.14em;font-weight:800;color:var(--or,#9B7230);margin:0 0 4px}
+.mg-lec-s{font-size:14px;line-height:1.5;margin:0 0 10px;color:var(--gris,#6B6560)}
+.mg-lec .mg-pi{background:#fff}
+.mg-lec-chg{background:#fff;border-left:4px solid var(--ocre,#B4906A);border-radius:0 12px 12px 0;padding:10px 14px;margin:0 0 10px;font-size:14.5px;line-height:1.5}
+.mg-cli{background:var(--or-clair,#FBF3E4);border:1px dashed var(--ocre,#B4906A);border-radius:12px;padding:9px 14px;margin:0 0 10px;font-size:14px;line-height:1.5}
+@media print{.mg-lec{display:none!important}}
 .mg-th.q{border-color:var(--ocre,#D6336C)}
 .mg-th.dn{color:var(--gris,#6B6560)}
 .mg-adr{white-space:pre-wrap;background:#fff;border:1.5px solid var(--taupe,#E7E2E4);border-radius:12px;padding:14px 16px;font:inherit;font-size:15px;line-height:1.7;color:var(--ardoise,#1A1A1A);margin:0 0 10px}
@@ -10622,8 +10630,9 @@ function restoreSnapshot(snap) {
 function preRemplirDepuisVisio() {
   try {
     const raw = localStorage.getItem('avita_visio_answers');
-    if (!raw) { showToast('⚠️ Aucun questionnaire de préparation visio trouvé dans ce navigateur.'); return; }
-    const d = JSON.parse(raw);
+    const d = window.__visioSnap || (raw ? JSON.parse(raw) : null);
+    if (!d) { showToast('⚠️ Aucun questionnaire de préparation visio trouvé pour cette cliente.'); return; }
+    try { if (typeof window.mgChargerVisio === 'function') window.mgChargerVisio(d); } catch (e) {}
     // Prénom
     if (d.prenom) { const el = document.getElementById('prenom'); if (el) el.value = d.prenom; }
     // Âge
@@ -11024,6 +11033,8 @@ function collectAllData() {
   }
   // Parcours par motif (28/10/2026) : signes de sécurité repérés pendant l'échange
   if (d.motif_guide_vigilance) d.alertes_medicales = [d.alertes_medicales, 'Parcours par motif (' + (d.motif_guide_theme || 'digestif') + ') : ' + d.motif_guide_vigilance].filter(Boolean).join('\n');
+  // Signes signalés par la cliente dans sa préparation (23/11/2026) : comptent même avant confirmation en séance
+  try { if (typeof window.mgAlertesVisio === 'function') { const av = window.mgAlertesVisio(); if (av) d.alertes_medicales = [d.alertes_medicales, 'Signes signalés par la cliente avant le rendez-vous (préparation visio) : ' + av].filter(Boolean).join('\n'); } } catch (e) { /* non bloquant */ }
   // Motif d'entrée « cancer » (16/11/2026) : l'alerte part vers le générateur, qui applique la RÈGLE N°62
   try { if (typeof window.mgEntree === 'function' && window.mgEntree().indexOf('cancer') >= 0) d.alertes_medicales = [d.alertes_medicales, "Cancer (en cours de traitement ou passé) évoqué comme motif de consultation : accompagnement uniquement en complément de l'équipe d'oncologie, aucun complément ni plante sans l'accord de l'oncologue (RÈGLE N°62)"].filter(Boolean).join('\n'); } catch (x) { /* module absent */ }
 
@@ -11995,6 +12006,8 @@ async function chargerPrepVisio() {
       }
     } catch (e) { console.warn('[Prep visio] Lecture réservation impossible :', e); }
     renderPrepVisioFaits(row.snapshot || {}, resa);
+    window.__visioSnap = row.snapshot || null;
+    try { if (typeof window.mgChargerVisio === 'function') window.mgChargerVisio(row.snapshot || {}); } catch (e) { console.warn('[Prep visio] Parcours non préchargé :', e); }
 
     if (row.synthese_ia) { renderPrepVisioSynthese(row.synthese_ia); }
     else { genererPrepVisioSynthese(false); }
@@ -12004,7 +12017,7 @@ async function chargerPrepVisio() {
 function renderPrepVisioFaits(s, resa) {
   const el = document.getElementById('prep-visio-faits');
   if (!el) return;
-  const esc = (v) => String(v).replace(/</g, '&lt;');
+  const esc = (v) => String(v).replace(/</g, '&lt;').replace(/"/g, '&quot;');
   const p = [];
   if (s.age) p.push(esc(s.age) + ' ans');
   if (s.duree) p.push('depuis ' + esc(s.duree));
@@ -12012,8 +12025,13 @@ function renderPrepVisioFaits(s, resa) {
   const resaDuree = (resa || []).find((l) => l[0] === 'Depuis (réservation)');
   if (resaDuree && s.duree && resaDuree[1] !== s.duree) p.push('à la réservation : « ' + esc(resaDuree[1]) + ' »');
   const msg = [(resa || []).find((l) => l[0] === 'Message'), s.libre ? ['', s.libre] : null].filter(Boolean).map((l) => '« ' + esc(l[1]) + ' »');
-  el.innerHTML = (p.length ? '<div style="font-weight:600">' + p.join(' · ') + '</div>' : '') +
-    (msg.length ? '<div style="margin-top:4px">Son message : ' + msg.join(' / ') + '</div>' : '');
+  const al = Array.isArray(s.alertes) ? s.alertes.map((a) => a && a.l).filter(Boolean) : [];
+  const an = Array.isArray(s.analyses) ? s.analyses.filter((a) => a && /^https:\/\//.test(a.url || '')) : [];
+  el.innerHTML = (al.length ? '<div style="background:#F5E4DE;border:1.5px solid #B5533A;border-radius:12px;padding:10px 14px;margin-bottom:10px;color:#6B2E1F"><b>Signes signalés par la cliente : à lire avant le rendez-vous</b><ul style="margin:6px 0 0 18px;padding:0">' + al.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul></div>' : '') +
+    (p.length ? '<div style="font-weight:600">' + p.join(' · ') + '</div>' : '') +
+    (s.motif ? '<div style="margin-top:4px">Motifs : ' + esc(s.motif) + '</div>' : '') +
+    (msg.length ? '<div style="margin-top:4px">Son message : ' + msg.join(' / ') + '</div>' : '') +
+    (an.length ? '<div style="margin-top:4px">Analyses jointes : ' + an.map((a) => '<a href="' + esc(a.url) + '" target="_blank" rel="noopener">' + esc(a.nom || 'analyses') + (a.date ? ' (' + esc(a.date) + ')' : '') + '</a>').join(' · ') + '</div>' : '');
 }
 
 function renderPrepVisioSynthese(d) {
@@ -16771,7 +16789,29 @@ function entreeFin(an) {
 }
 
 /* Accès pour le bandeau d'alertes médicales */
-window.mgAlertesFlags = function () { try { return analyseCroise(S.a).flags || []; } catch (x) { return []; } };
+window.mgAlertesFlags = function () {
+  try {
+    var f = (analyseCroise(S.a).flags || []).slice();
+    if (CLI) ALERT_NODES.forEach(function (id) { if (N[id] && CLI[id] !== undefined) chosen(id, CLI).forEach(function (o) { if (o.flag && f.indexOf(o.flag) < 0) f.push(o.flag); }); });
+    return f;
+  } catch (x) { return []; }
+};
+/* Signes signalés par la cliente dans sa préparation, pour le générateur et le dossier */
+window.mgAlertesVisio = function () { try { return cliAlertes().join(' ; '); } catch (x) { return ''; } };
+/* Chargement des réponses de la préparation (appelé par chargerPrepVisio) */
+window.mgChargerVisio = function (snap) {
+  try {
+    if (!isConsult() || !snap || !snap.moteur || typeof snap.moteur !== 'object') return;
+    var c = {};
+    Object.keys(snap.moteur).forEach(function (id) {
+      var n = N[id]; if (!n) return;
+      var v = snap.moteur[id], ks = (Array.isArray(v) ? v : [v]).filter(function (k) { return typeof k === 'string' && n.o.some(function (o) { return o.k === k; }); });
+      if (ks.length) c[id] = n.multi ? ks : ks[0];
+    });
+    CLI = Object.keys(c).length ? c : null; LASTTOP = null; TOPNOTE = '';
+    render();
+  } catch (e) { if (window.console) console.warn('[Préparation visio] chargement des réponses impossible :', e); }
+};
 window.mgAdressage = function () { try { return adressageTexte(S.a); } catch (x) { return ''; } };
 
 /* ───────────── État ───────────── */
@@ -16882,6 +16922,92 @@ document.addEventListener('click', function (e) {
   if (tc && tc.dataset.mgAuto === '1') { delete tc.dataset.mgAuto; tc.dataset.mgUser = '1'; }
 }, true);
 
+/* ───────────── Réponses de la préparation visio (23/11/2026) ─────────────
+   La cliente a répondu chez elle avec les MÊMES identifiants et clés que ce moteur (fonction visio-questionnaire).
+   Ses réponses sont gardées à part (CLI) : « dit par la cliente, à confirmer ». Elles préremplissent chaque question,
+   alimentent la première lecture et les pistes en direct, mais ne partent vers le générateur qu'une fois confirmées
+   avec elle (mgDonnees ne lit que S.a). Une réponse donnée en séance remplace celle de la cliente. */
+var CLI = null, LASTTOP = null, TOPNOTE = '';
+var ALERT_NODES = ['secu', 'h_secu', 'f_secu', 'z_alertes', 'w_secu', 'k_secu'];
+function cliVal(id) { return (CLI && S.a[id] === undefined && S.p[id] === undefined) ? CLI[id] : undefined; }
+function cliCopy(v) { return Array.isArray(v) ? v.slice() : v; }
+/* Réponses de la cliente, puis celles confirmées ou modifiées en séance par-dessus */
+function fusion() { var m = {}; Object.keys(CLI || {}).forEach(function (k) { m[k] = CLI[k]; }); Object.keys(S.a).forEach(function (k) { m[k] = S.a[k]; }); return m; }
+/* La préparation ne pose pas toutes les questions du parcours : on passe celles qu'elle n'a pas vues pour que les
+   réponses qui suivent comptent quand même (calcul seulement, rien n'est écrit dans S.a) */
+function fill(m) {
+  var out = {}; Object.keys(m).forEach(function (k) { out[k] = m[k]; });
+  TH_ORDER.forEach(function (th) {
+    var g = 0;
+    while (g++ < 80) {
+      var path = walk(out, th), last = path[path.length - 1];
+      if (out[last] !== undefined) break;
+      var reste = Object.keys(out).some(function (id) { return N[id] && thOf(id) === th && path.indexOf(id) < 0; });
+      if (!reste) break;
+      out[last] = '_skip';
+    }
+  });
+  return out;
+}
+function lecture() {
+  if (!CLI) return null;
+  var ac = analyseCroise(fill(fusion()));
+  return { ac: ac, nbConf: Object.keys(S.a).filter(function (k) { return N[k] && S.a[k] !== undefined; }).length };
+}
+function cliAlertes() {
+  var out = [];
+  if (!CLI) return out;
+  ALERT_NODES.forEach(function (id) { if (N[id] && CLI[id] !== undefined) chosen(id, CLI).forEach(function (o) { if (o.flag && out.indexOf(o.l) < 0) out.push(o.l); }); });
+  return out;
+}
+function cliEnAttente() { return Object.keys(CLI || {}).filter(function (id) { return N[id] && S.a[id] === undefined; }).length; }
+function lectureHtml() {
+  if (!CLI) return '';
+  var L; try { L = lecture(); } catch (e) { if (window.console) console.warn('[Préparation visio] lecture impossible :', e); return ''; }
+  var ac = L.ac, top = ac.pistes[0] ? ac.pistes[0].k : null, att = cliEnAttente(), al = cliAlertes();
+  if (top !== LASTTOP) {
+    if (LASTTOP !== null && top) TOPNOTE = 'La piste principale a changé : ' + (PISTES[LASTTOP] ? PISTES[LASTTOP].l : '—') + ' → ' + PISTES[top].l + '. Parce que : ' + ac.pistes[0].why.slice(0, 3).join(' ; ') + '.';
+    LASTTOP = top;
+  }
+  var h = '<div class="mg-lec" id="mg-lec"><div class="mg-lec-h">' + (L.nbConf ? 'Problématique pressentie : mise à jour à chaque réponse' : 'Première lecture avant le rendez-vous') + '</div>' +
+    '<p class="mg-lec-s">' + (L.nbConf ? 'D\'après ses réponses de préparation, complétées ou corrigées en séance.' : 'D\'après ce qu\'elle a répondu au questionnaire de préparation. À confirmer avec elle : rien n\'est transmis au générateur tant que vous n\'avez pas confirmé.') + '</p>';
+  if (al.length) h += '<div class="mg-alert"><b>Signes signalés par la cliente avant le rendez-vous</b><ul>' + al.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></div>';
+  if (TOPNOTE) h += '<div class="mg-lec-chg">' + esc(TOPNOTE) + '</div>';
+  if (ac.pistes.length) {
+    ac.pistes.slice(0, 3).forEach(function (p, i) {
+      var P = PISTES[p.k];
+      h += '<div class="mg-pi"><div class="mg-pi-h"><b>' + esc(P.l) + '</b><span class="mg-pi-r">' + (i === 0 ? 'Piste principale' : 'À explorer') + (p.by && p.by.length > 1 ? ' · revient dans ' + p.by.map(function (t) { return TH_LONG[t]; }).join(' et ') : '') + '</span></div>' +
+        '<p>Parce que, dans ses réponses : ' + esc(p.why.slice(0, 4).join(' ; ')) + '.</p>' +
+        '<p class="conf">Pour confirmer ou écarter : ' + esc(P.conf) + '</p></div>';
+    });
+  } else h += '<div class="mg-side-n">Pas encore assez d\'éléments dans ses réponses pour orienter. Les pistes apparaissent au fil des questions.</div>';
+  if (att) h += '<div class="mg-act"><button type="button" class="mg-go" data-mg="confirmall">Tout confirmer avec elle (' + att + ' réponse' + (att > 1 ? 's' : '') + ')</button></div>';
+  return h + '<div class="mg-note">Hypothèses de travail pour vous seul·e, jamais un diagnostic.</div></div>';
+}
+function confirmCli(id) {
+  var c = CLI && CLI[id]; if (c === undefined) return;
+  S.a[id] = cliCopy(c); delete S.p[id]; S.edit = null;
+  if (id === 'e_motifs') { var q0 = themeQueue(S.a); if (q0.length) S.th = q0.filter(function (t) { return !themeDone(S.a, t); })[0] || q0[0]; }
+  commit(); scrollUp();
+}
+/* Confirme tout ce qu'elle a dit, dans l'ordre du parcours, jusqu'à la première question qu'elle n'a pas vue */
+function confirmAll() {
+  if (!CLI) return;
+  if (S.a.e_motifs === undefined && CLI.e_motifs !== undefined) S.a.e_motifs = cliCopy(CLI.e_motifs);
+  var q = themeQueue(S.a);
+  q.forEach(function (th) {
+    var g = 0;
+    while (g++ < 80) {
+      var path = walk(S.a, th), last = path[path.length - 1];
+      if (S.a[last] !== undefined || CLI[last] === undefined) break;
+      S.a[last] = cliCopy(CLI[last]);
+    }
+  });
+  S.p = {}; S.edit = null;
+  if (q.length) S.th = q.filter(function (t) { return !themeDone(S.a, t); })[0] || q[0];
+  commit(); scrollUp();
+}
+
 /* ───────────── Affichage ───────────── */
 function currentId(an) {
   if (S.edit && an.path.indexOf(S.edit) >= 0) return S.edit;
@@ -16903,14 +17029,15 @@ function optHtml(n, o, i, sel) {
     '<span class="mg-key">' + (i < 9 ? i + 1 : '·') + '</span><span>' + esc(o.l) + '</span></button>';
 }
 function questionHtml(id) {
-  var n = N[id], cur = S.a[id], pend = S.p[id];
-  var sel = n.multi ? (Array.isArray(pend) ? pend : (Array.isArray(cur) ? cur : [])) : [];
+  var n = N[id], cur = S.a[id], pend = S.p[id], cl = cliVal(id);
+  var sel = n.multi ? (Array.isArray(pend) ? pend : (Array.isArray(cur) ? cur : (Array.isArray(cl) ? cl : []))) : [];
   var h = '<div class="mg-q" id="mg-q"><span class="mg-mode ' + n.m + '">' + (n.m === 'listen' ? "J'écoute" : 'Je demande') + '</span>' +
-    '<div class="mg-qt">' + esc(n.q) + '</div>' + (n.why ? '<div class="mg-why"><div class="mg-why-l">Pourquoi je vous pose cette question</div><p>' + esc(n.why) + '</p></div>' : '') + (n.hint ? '<div class="mg-hint">' + esc(n.hint) + '</div>' : '') +
+    '<div class="mg-qt">' + esc(n.q) + '</div>' + (cl !== undefined ? '<div class="mg-cli"><b>Dit par la cliente avant le rendez-vous</b> : à confirmer avec elle. Touchez une autre réponse pour la remplacer.</div>' : '') + (n.why ? '<div class="mg-why"><div class="mg-why-l">Pourquoi je vous pose cette question</div><p>' + esc(n.why) + '</p></div>' : '') + (n.hint ? '<div class="mg-hint">' + esc(n.hint) + '</div>' : '') +
     '<div class="mg-opts' + (n.o.length > 5 && !n.multi ? ' mg-cols' : '') + '">';
-  n.o.forEach(function (o, i) { h += optHtml(n, o, i, n.multi ? sel.indexOf(o.k) >= 0 : cur === o.k); });
+  n.o.forEach(function (o, i) { h += optHtml(n, o, i, n.multi ? sel.indexOf(o.k) >= 0 : (cur === o.k || (cur === undefined && cl !== undefined && cl === o.k))); });
   h += '</div><div class="mg-act">';
-  if (n.multi) h += '<button type="button" class="mg-go" data-mg="cont" data-n="' + id + '"' + (sel.length ? '' : ' disabled') + '>Continuer</button>';
+  if (n.multi) h += '<button type="button" class="mg-go" data-mg="cont" data-n="' + id + '"' + (sel.length ? '' : ' disabled') + '>' + (cl !== undefined && pend === undefined ? 'Confirmer et continuer' : 'Continuer') + '</button>';
+  else if (cl !== undefined) h += '<button type="button" class="mg-go" data-mg="confirm" data-n="' + id + '">Confirmer</button>';
   h += '<button type="button" class="mg-link" data-mg="skip" data-n="' + id + '">Pas évoqué, passer</button></div>';
   return h + '</div>';
 }
@@ -16968,7 +17095,7 @@ function summaryHtml(an) {
 function render() {
   var box = document.getElementById('mg-body'); if (!box) return;
   var a = S.a, an = analyse(a), cid = currentId(an), started = Object.keys(a).length > 0;
-  var h = themesHtml() + soonHtml();
+  var h = lectureHtml() + themesHtml() + soonHtml();
   if (S.th === 'croise') { box.innerHTML = h + croiseHtml(an); var b0 = document.getElementById('mg-back'), r0 = document.getElementById('mg-reset'); if (b0) b0.disabled = !started; if (r0) { r0.disabled = !started; r0.textContent = S.rst ? 'Confirmer : tout effacer' : 'Recommencer'; } return; }
   if (an.flags.length && !(cid === null)) h += '<div class="mg-alert"><b>À clarifier avec son médecin avant tout</b><ul>' + an.flags.map(function (f) { return '<li>' + esc(f) + '</li>'; }).join('') + '</ul></div>';
   var say = cid !== null ? lastSay(an, a) : '';
@@ -16985,7 +17112,7 @@ function commit() { save(); appliquerPonts(); save(); render(); }
 function pick(id, k) {
   var n = N[id];
   if (n.multi) {
-    var cur = Array.isArray(S.p[id]) ? S.p[id].slice() : (Array.isArray(S.a[id]) ? S.a[id].slice() : []);
+    var cur = Array.isArray(S.p[id]) ? S.p[id].slice() : (Array.isArray(S.a[id]) ? S.a[id].slice() : (Array.isArray(cliVal(id)) ? cliVal(id).slice() : []));
     var o = n.o.filter(function (x) { return x.k === k; })[0], i = cur.indexOf(k);
     if (i >= 0) cur.splice(i, 1);
     else { if (o && o.x) cur = []; else cur = cur.filter(function (c) { var oc = n.o.filter(function (x) { return x.k === c; })[0]; return !(oc && oc.x); }); cur.push(k); }
@@ -16994,7 +17121,7 @@ function pick(id, k) {
   S.a[id] = k; S.edit = null; delete S.p[id]; commit(); scrollUp();
 }
 function cont(id) {
-  var sel = S.p[id]; if (!Array.isArray(sel) || !sel.length) sel = Array.isArray(S.a[id]) ? S.a[id] : [];
+  var sel = S.p[id]; if (!Array.isArray(sel) || !sel.length) sel = Array.isArray(S.a[id]) ? S.a[id] : (Array.isArray(cliVal(id)) ? cliVal(id) : []);
   if (!sel.length) return;
   S.a[id] = sel.slice(); delete S.p[id]; S.edit = null;
   if (id === 'motifs') { /* l'ordre de la file des gênes change : on garde les réponses déjà données */ }
@@ -17034,6 +17161,8 @@ function onClick(e) {
   if (act === 'pick') pick(b.getAttribute('data-n'), b.getAttribute('data-k'));
   else if (act === 'cont') cont(b.getAttribute('data-n'));
   else if (act === 'skip') skip(b.getAttribute('data-n'));
+  else if (act === 'confirm') confirmCli(b.getAttribute('data-n'));
+  else if (act === 'confirmall') confirmAll();
   else if (act === 'edit') edit(b.getAttribute('data-n'));
   else if (act === 'back') back();
   else if (act === 'reset') reset();
@@ -17145,7 +17274,7 @@ function init() {
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 
 /* Accès pour les tests */
-window.__mg = { N: N, PISTES: PISTES, PONTS: PONTS, analyse: analyse, walk: walk, state: function () { return S; }, examens: examens };
+window.__mg = { cli: function () { return CLI; }, fusion: fusion, fill: fill, lecture: lecture, N: N, PISTES: PISTES, PONTS: PONTS, analyse: analyse, walk: walk, state: function () { return S; }, examens: examens };
 })();
 </script>
 <script id="al-script">
