@@ -65,6 +65,10 @@ html,body{height:100vh;height:100dvh;overflow:hidden;font-family:'Be Vietnam Pro
 .hero-sub{font-size:16px;color:rgba(255,255,255,.7);line-height:1.7;max-width:420px;margin:0 auto 40px;opacity:0;animation:fadeIn .8s .5s ease forwards}
 .hero-cta{display:inline-flex;align-items:center;gap:10px;background:var(--blanc);color:var(--ardoise);padding:16px 42px;border-radius:99px;font-size:15px;font-weight:700;cursor:pointer;border:none;font-family:'Be Vietnam Pro',sans-serif;letter-spacing:.02em;transition:all .25s;opacity:0;animation:fadeIn .8s .65s ease forwards}
 .hero-cta:hover{background:var(--sable);color:var(--blanc);transform:translateY(-2px);box-shadow:0 8px 32px rgba(196,168,130,.35)}
+.consent{display:flex;gap:12px;align-items:flex-start;max-width:520px;margin:0 auto 22px;text-align:left;font-size:15px;line-height:1.6;color:rgba(255,255,255,.88);cursor:pointer}
+.consent input{flex:0 0 22px;width:22px;height:22px;margin-top:2px;accent-color:#C4A882;cursor:pointer}
+.consent a{color:#fff;text-decoration:underline;text-underline-offset:3px}
+.consent-err{display:none;max-width:520px;margin:-10px auto 16px;font-size:14px;color:#fff;background:rgba(180,69,47,.55);border-radius:10px;padding:8px 12px}
 .hero-hint{font-size:12px;color:rgba(255,255,255,.7);margin-top:20px;letter-spacing:.06em;opacity:0;animation:fadeIn .8s .8s ease forwards}
 @keyframes fadeIn{to{opacity:1}}
 
@@ -268,6 +272,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <div class="hero-eyebrow">Bilan de vitalité · A VITA SERENA</div>
     <h1 class="hero-title">Votre corps vous parle.<br>Il est temps de <em>l'écouter.</em></h1>
     <p class="hero-sub">Quelques questions pour préparer notre rendez-vous. Rien de médical, rien de compliqué — juste l'essentiel.</p>
+    <label class="consent" for="consent"><input type="checkbox" id="consent" onchange="majConsent()"><span>Je consens à ce que A VITA SERENA recueille mes réponses, y compris les informations de santé et les analyses que je choisis de joindre, pour préparer mon rendez-vous. Je peux retirer mon consentement ou demander la suppression de mes données à tout moment (sabrina@avitaserena.com). <a href="/consentement-donnees-sante" target="_blank" rel="noopener">Lire le détail</a> · <a href="/politique-confidentialite" target="_blank" rel="noopener">Politique de confidentialité</a></span></label>
+    <p class="consent-err" id="consent-err">Cochez la case ci-dessus pour commencer : sans votre accord, je ne peux pas recueillir vos réponses.</p>
     <button class="hero-cta" id="hero-cta" onclick="start()" disabled>Chargement…</button>
     <p class="lien-erreur" id="lien-erreur">Ce lien n'est pas valide ou est incomplet. Écrivez-moi à <a href="mailto:sabrina@avitaserena.com">sabrina@avitaserena.com</a> et je vous en envoie un nouveau.</p>
     <p class="hero-hint">4 minutes · confidentiel · depuis chez vous</p>
@@ -443,10 +449,10 @@ function plan(){
   if(!/^[a-f0-9]{64}$/.test(TOKEN)){echec();return;}
   try{
     IDENT=await appelFonction({action:'load',token:TOKEN});
-    cta.disabled=false;cta.innerHTML='Commencer <span>→</span>';
+    cta.innerHTML='Commencer <span>→</span>';cta.disabled=!consentOk();
   }catch(e){
     if(e.status===404){echec();}
-    else{cta.textContent='Réessayer';cta.disabled=false;cta.onclick=()=>location.reload();toast('Connexion impossible pour le moment, veuillez réessayer.',5000);}
+    else{cta.textContent='Réessayer';cta.dataset.retry='1';cta.disabled=false;cta.onclick=()=>location.reload();toast('Connexion impossible pour le moment, veuillez réessayer.',5000);}
   }
 })();
 
@@ -461,7 +467,9 @@ function setNav(){
   $('nav-step').textContent=(idx+1)+' / '+PLAN.length;
   $('prog-fill').style.width=Math.round(((idx)/PLAN.length)*100)+'%';
 }
-function start(){ if(!IDENT) return; idx=0; render(); }
+function consentOk(){const c=$('consent');return !!(c&&c.checked);}
+function majConsent(){const c=$('consent'),e=$('consent-err');if(e&&consentOk())e.style.display='none';const b=$('hero-cta');if(b&&IDENT&&!b.dataset.retry){b.disabled=!consentOk();}}
+function start(){ if(!IDENT) return; if(!consentOk()){const e=$('consent-err');if(e)e.style.display='block';return;} CONSENT_TS=new Date().toISOString(); idx=0; render(); }
 function next(){ if(!canNext()) return; collect(); PLAN=plan(); if(idx<PLAN.length-1){idx++;render();} }
 function back(){
   collect();
@@ -701,12 +709,15 @@ function buildAnswers(){
     objectif:S.objectif,
     libre,
     date_analyses:S.dateAn||'',
+    consentement:{ok:true,ts:CONSENT_TS,v:'2026-11-23'},
     moteur,
     fichiers:S.files.filter(f=>f.etat==='ok').map(f=>({path:f.path,nom:f.nom}))
   };
 }
+var CONSENT_TS='';
 async function sendForm(){
   collect();
+  if(!CONSENT_TS){toast('Pour envoyer vos réponses, merci de cocher d\'abord la case de consentement sur la première page.',6000);return;}
   if(sending) return;
   if(!IDENT||!/^[a-f0-9]{64}$/.test(TOKEN)){toast("Ce lien n'est pas valide. Écrivez-moi à sabrina@avitaserena.com.",6000);return;}
   if(S.files.some(f=>f.etat==='envoi')){toast('Vos documents sont en cours d\'envoi, un instant.');return;}
