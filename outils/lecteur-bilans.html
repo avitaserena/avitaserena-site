@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Lecteur de bilans — A VITA SERENA</title>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;800&family=Cormorant+Garamond:ital,wght@1,400;1,500&display=swap" rel="stylesheet">
+<style>
+:root{--blanc:#FFFFFF;--off:#F7F6F4;--grege:#EDE9E1;--taupe:#D5CFC6;--sable:#C4A882;--ocre:#B4906A;--ardoise:#1E1E1C;--gris:#6B6560;--vert:#3D6B2C;--vert-clair:#EAF0E6;--or-clair:#FBF3E4;--rouge:#B0432F;--rouge-clair:#FBEDE9}
+*{box-sizing:border-box;margin:0;padding:0}
+html{font-family:"Be Vietnam Pro",sans-serif;color:var(--ardoise);background:var(--off);font-size:17px;line-height:1.75}
+body{max-width:980px;margin:0 auto;padding:0 18px 120px}
+.hdr{background:var(--blanc);border-bottom:1px solid var(--taupe);padding:16px 22px;margin:0 -18px 22px;display:flex;align-items:center;gap:18px;position:sticky;top:0;z-index:50}
+.hdr img{height:42px;width:auto}
+.hdr h1{font-weight:800;font-size:19px;letter-spacing:.02em}
+.hdr .sub{font-size:14px;color:var(--gris)}
+.card{background:var(--blanc);border:1px solid var(--taupe);border-radius:14px;padding:22px;margin-bottom:20px}
+.card h2{font-size:20px;font-weight:800;margin-bottom:4px}
+.lead{font-size:15px;color:var(--gris);margin-bottom:14px}
+label{display:block;font-size:14px;font-weight:600;color:var(--gris);margin-bottom:3px}
+input,select,textarea{font:inherit;font-size:16px;width:100%;padding:9px 11px;border:1px solid var(--taupe);border-radius:9px;background:var(--off);color:var(--ardoise)}
+input:focus,select:focus{outline:2px solid var(--sable);background:#fff}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}
+.mk{display:grid;grid-template-columns:minmax(150px,1.2fr) 110px 110px;gap:10px;align-items:end;padding:10px 0;border-top:1px solid var(--grege)}
+.mk:first-of-type{border-top:0}
+.mk .nm{font-weight:600;font-size:16px}
+.mk .rf{font-size:13px;color:var(--gris);line-height:1.4}
+.tag{display:inline-block;font-size:13px;font-weight:600;padding:2px 10px;border-radius:99px;margin:2px 4px 2px 0}
+.t-ok{background:var(--vert-clair);color:var(--vert)}
+.t-bas,.t-haut{background:var(--or-clair);color:#7A5A22}
+.t-na{background:var(--grege);color:var(--gris)}
+.t-med{background:var(--rouge-clair);color:var(--rouge)}
+.lec{margin-top:14px;display:flex;flex-direction:column;gap:12px}
+.lec .ln{border-left:4px solid var(--sable);background:var(--off);padding:10px 14px;border-radius:0 10px 10px 0;font-size:16px}
+.lec .ln.att{border-color:var(--ocre);background:var(--or-clair)}
+.lec .ln.med{border-color:var(--rouge);background:var(--rouge-clair)}
+.lec .ln b{display:block;font-size:15px;margin-bottom:2px}
+.trois{background:var(--grege);border-radius:12px;padding:14px 18px;margin-top:14px}
+.trois h3{font-size:16px;font-weight:800;margin-bottom:6px}
+.trois ol{padding-left:22px;font-size:16px}
+.dire{margin-top:12px;font-family:"Cormorant Garamond",serif;font-style:italic;font-size:21px;line-height:1.5;border-left:3px solid var(--ocre);padding-left:16px}
+.dire small{display:block;font-family:"Be Vietnam Pro",sans-serif;font-style:normal;font-size:13px;color:var(--gris);margin-bottom:2px}
+.bar{position:fixed;left:0;right:0;bottom:0;background:var(--blanc);border-top:1px solid var(--taupe);padding:12px 22px;display:flex;gap:14px;align-items:center;justify-content:center;z-index:60}
+button{font:inherit;font-weight:600;font-size:16px;padding:10px 22px;border-radius:10px;border:0;background:var(--ocre);color:#fff;cursor:pointer}
+button.sec{background:var(--grege);color:var(--ardoise)}
+button:disabled{opacity:.5}
+.note{font-size:14px;color:var(--gris);margin-top:8px}
+.warnbox{background:var(--or-clair);border:1px solid var(--sable);border-radius:12px;padding:12px 16px;font-size:15px;margin-bottom:18px}
+.chk{display:flex;gap:10px;align-items:flex-start;font-size:15px;font-weight:400;color:var(--ardoise);margin:6px 0}
+.chk input{width:auto;margin-top:6px}
+#msg{font-size:15px}
+.hide{display:none}
+</style>
+</head>
+<body>
+<div class="hdr"><img src="../logo.svg" alt="A VITA SERENA"><div><h1>Lecteur de bilans</h1><div class="sub">Saisissez les valeurs, le moment du cycle : la lecture s'affiche seule</div></div></div>
+
+<div id="gate" class="card hide"><h2>Connexion nécessaire</h2><p class="lead">Ouvrez le CRM, connectez-vous, puis revenez ici depuis la fiche de la cliente (bouton « Lecteur de bilans »).</p></div>
+
+<div id="app" class="hide">
+<div class="warnbox"><b>À savoir.</b> Les repères viennent de vos cours DFM (Atlas clinique, valeurs santé du CRM) et du livre « Troubles hormonaux ». Les seuils marqués <b>« repère médical usuel »</b> ne viennent pas de vos cours : relisez-les avant de vous y fier. Cet outil aide à lire un bilan, il ne pose jamais de diagnostic.</div>
+
+<div class="card">
+  <h2>La cliente et le contexte de la prise de sang</h2>
+  <p class="lead">Le moment du cycle change la lecture : sans lui, l'outil le dit et limite ses conclusions.</p>
+  <div class="grid">
+    <div><label>Cliente</label><select id="cli"></select></div>
+    <div><label>Date de la prise de sang</label><input type="date" id="dt"></div>
+    <div><label>Laboratoire</label><input id="labo" placeholder="Ex : Cerba, Biogroup…"></div>
+    <div><label>Moment du cycle</label>
+      <select id="cyc">
+        <option value="inconnu">Je ne sais pas (à retrouver)</option>
+        <option value="j3">J2 à J4 (début de cycle)</option>
+        <option value="pic7">Pic de glaire + 7 jours</option>
+        <option value="autre">Autre jour du cycle</option>
+        <option value="absent">Pas de cycle / règles absentes</option>
+        <option value="pilule">Sous contraception hormonale</option>
+      </select></div>
+    <div id="jcw" class="hide"><label>Jour du cycle (nombre)</label><input type="number" id="jc" min="1" max="60"></div>
+  </div>
+  <div class="note" id="cycnote"></div>
+  <div style="margin-top:10px">
+    <label class="chk"><input type="checkbox" id="rapide"> Signes d'hormones masculines apparus en quelques mois (poils, acné brutale)</label>
+    <label class="chk"><input type="checkbox" id="viril"> Voix plus grave, muscles qui augmentent, seins qui diminuent</label>
+    <label class="chk"><input type="checkbox" id="signes"> Signes d'androgènes présents (acné de la mâchoire, poils, cheveux qui s'amincissent au sommet)</label>
+  </div>
+</div>
+
+<div id="panels"></div>
+
+<div class="card">
+  <h2>Lecture d'ensemble</h2>
+  <div class="lec" id="global"><div class="note">Saisissez des valeurs pour voir apparaître la lecture croisée.</div></div>
+</div>
+</div>
+
+<div class="bar" id="bar"><span id="msg"></span><button id="save" class="hide">Enregistrer dans la fiche de la cliente</button><a id="back" class="hide"><button class="sec">Retour à la fiche</button></a></div>
+
+<script src="supabase-db.js"></script>
+<script src="auth-guard.js"></script>
+<script>
+/* ═══ Repères : valeurs santé du CRM (VALEURS_SANTE_REF) + RÈGLE N°20/78 du générateur + Atlas clinique ═══ */
+const U={ng:'ng/ml'};
+const M={
+ testo:{panel:'andro',nom:'Testostérone totale',u:'ng/ml',min:.30,max:.50,alts:[['nmol/L',v=>v/3.467],['ng/dl',v=>v/100]],cyc:'sens',
+  quoi:"L'hormone « masculine » principale, fabriquée par les ovaires et les surrénales. Elle varie dans le cycle : plus haute vers l'ovulation, plus basse avant les règles.",
+  bas:"Moins d'énergie, de libido, de muscle. Causes à chercher : stress qui détourne les précurseurs vers le cortisol, apports énergétiques trop faibles, transporteur (SHBG) trop haut, pilule.",
+  haut:"Plus d'effet sur la peau, les poils, l'ovulation. Causes à chercher : insuline en excès, ovulation de mauvaise qualité, thyroïde ralentie, prolactine. Un chiffre élevé sans signe n'est pas un verdict."},
+ shbg:{panel:'andro',nom:'SHBG',u:'nmol/L',min:65,max:75,alts:[],cyc:'sens',
+  quoi:"Le « camion » qui transporte la testostérone et la met en sommeil. Plus il y a de camions, moins il reste de testostérone libre, c'est-à-dire active.",
+  bas:"Plus de testostérone libre, donc active, même si le total paraît normal. Causes : insuline en excès, thyroïde ralentie, surpoids abdominal.",
+  haut:"Moins de testostérone libre. Causes : pilule ou excès d'œstrogènes, parfois thyroïde trop active. À lire avec la clinique : libido et énergie."},
+ dheas:{panel:'andro',nom:'DHEA-S (sulfate de DHEA)',u:'µg/dl',min:200,max:280,alts:[['ng/ml',v=>v/10],['µmol/L',v=>v*36.85]],cyc:'indiff',
+  quoi:"La réserve d'androgènes fabriquée par les surrénales (les glandes du stress). Attention aux unités : 1 000 ng/ml = 100 µg/dl.",
+  bas:"Le stress prolongé détourne la « matière première » vers le cortisol : il en reste moins pour la DHEA.",
+  haut:"Origine plutôt surrénalienne des androgènes. À croiser avec la prolactine, qui peut les pousser. Très élevée avec signes rapides : avis médical."},
+ gly:{panel:'insu',nom:'Glycémie à jeun',u:'g/L',min:null,max:1.0,alts:[['mmol/L',v=>v/5.55],['mg/dl',v=>v/100]],cyc:'indiff',
+  quoi:"Le sucre dans le sang à jeun. Marqueur tardif : l'insuline monte des années avant que la glycémie bouge.",
+  bas:"",haut:"Au-dessus de 1,00 g/L : à surveiller ; à partir de 1,26 g/L : avis médical (repère médical usuel)."},
+ insu:{panel:'insu',nom:'Insuline à jeun',u:'µUI/mL',min:null,max:null,alts:[['pmol/L',v=>v/6.945]],cyc:'indiff',
+  quoi:"L'hormone qui fait entrer le sucre dans les cellules. Trop d'insuline pousse les ovaires à fabriquer de la testostérone et fait baisser la SHBG.",bas:"",haut:""},
+ zinc:{panel:'insu',nom:'Zinc sérique',u:'µg/dl',min:100,max:null,alts:[['µmol/L',v=>v*6.54]],cyc:'indiff',
+  quoi:"Repère du livre : environ 100 µg/dl (valeur approximative). Le zinc freine la transformation de la testostérone en DHT (5-alpha réductase) et aide l'insuline.",
+  bas:"Peut accompagner acné, poils, cicatrisation lente, perte de goût. Se lit avec la clinique.",haut:""},
+ crp:{panel:'insu',nom:'CRP ultrasensible',u:'mg/L',min:null,max:1,alts:[],cyc:'indiff',
+  quoi:"Un marqueur d'inflammation de fond. Au-dessus de 1 mg/L : inflammation de bas grade possible.",
+  bas:"",haut:"Entre 1 et 10 : inflammation de bas grade (intestin, graisse abdominale, stress…). Au-dessus de 10 : probablement une infection ou une inflammation aiguë, avis médical (repère médical usuel)."},
+ tsh:{panel:'thy',nom:'TSH',u:'mUI/L',min:null,max:2.5,alts:[],cyc:'indiff',
+  quoi:"L'ordre du cerveau à la thyroïde. Elle monte quand la thyroïde donne trop peu d'hormones. À lire avec T4 libre et T3 libre.",
+  bas:"",haut:"Thyroïde qui peine à fournir. Au-dessus de 4 : avis médical (repère médical usuel). Une thyroïde ralentie fait monter l'insuline et baisser la SHBG."},
+ t4:{panel:'thy',nom:'T4 libre',u:'pmol/L',min:13,max:null,alts:[['ng/dl',v=>v*12.87]],cyc:'indiff',
+  quoi:"L'hormone de stock de la thyroïde.",bas:"Défaut de fabrication : manque de matériaux (iode, sélénium, fer, protéines) ou excès de transporteur (pilule, œstrogènes).",haut:""},
+ t3:{panel:'thy',nom:'T3 libre',u:'pmol/L',min:4.5,max:null,alts:[['pg/ml',v=>v*1.536]],cyc:'indiff',
+  quoi:"L'hormone active, fabriquée à partir de la T4 surtout dans le foie et l'intestin.",bas:"Défaut de conversion : stress, restriction, inflammation, manque de sélénium ou de zinc.",haut:""},
+ fsh:{panel:'ova',nom:'FSH (J3)',u:'mUI/ml',min:null,max:7,alts:[],cyc:'j3',
+  quoi:"L'ordre du cerveau aux ovaires de faire mûrir un follicule. À J3 uniquement.",bas:"Effondrée : origine centrale possible (stress, poids bas, restriction).",haut:"Entre 10 et 15 : déclin ovarien à envisager. Au-dessus de 80 : ménopause confirmée."},
+ lh:{panel:'ova',nom:'LH (J3)',u:'mUI/ml',min:null,max:null,alts:[],cyc:'j3',
+  quoi:"L'ordre qui déclenche l'ovulation et la fabrication de testostérone par les ovaires. À J3 uniquement : une LH haute à l'ovulation est normale.",bas:"",haut:""},
+ e2a:{panel:'ova',nom:'Œstradiol J3',u:'pg/ml',min:45,max:65,alts:[],cyc:'j3',
+  quoi:"L'œstrogène principal en début de cycle. Ce qui compte est son effet sur les tissus, pas seulement le chiffre.",bas:"Déficit en début de cycle : réserve ovarienne, stress, poids bas.",haut:"Au-dessus de la cible : aromatase trop active, SHBG basse ou élimination lente par le foie."},
+ e2b:{panel:'ova',nom:'Œstradiol Pic+7',u:'pg/ml',min:150,max:250,alts:[],cyc:'pic7',
+  quoi:"L'œstradiol de la deuxième moitié du cycle. À lire avec la SHBG et la progestérone, jamais seul.",bas:"",haut:""},
+ prog:{panel:'ova',nom:'Progestérone Pic+7',u:'ng/ml',min:15,max:30,alts:[],cyc:'pic7',
+  quoi:"L'hormone qui apaise la deuxième moitié du cycle : elle n'existe que si l'ovulation a eu lieu. Jamais à J21 : toujours Pic+7.",
+  bas:"Ovulation de moindre qualité ou absente. Un stress prolongé consomme la progestérone. Objectif fertilité : plus de 20.",haut:""},
+ prl:{panel:'ova',nom:'Prolactine',u:'ng/ml',min:null,max:19,alts:[],cyc:'indiff',
+  quoi:"L'hormone du lait : en excès, elle freine l'ovulation et pousse les androgènes des surrénales.",bas:"",haut:"Entre 19 et 25 : à surveiller. Au-dessus de 25 : à confirmer par le médecin, prélèvement au repos le matin (repère médical usuel)."},
+ car:{panel:'sur',nom:'CAR (cortisol au réveil)',u:'%',min:50,max:100,alts:[],cyc:'indiff',
+  quoi:"La montée du cortisol dans l'heure qui suit le réveil. Interprétation prudente, jamais sur un test isolé.",bas:"Montée plate : rythme du stress à explorer.",haut:""},
+ clu:{panel:'sur',nom:'Cortisol libre urinaire 24 h',u:'µg/24h',min:35,max:null,alts:[],cyc:'indiff',
+  quoi:"Le cortisol total fabriqué sur 24 heures.",bas:"Production basse : à lire avec la clinique (réveil difficile, creux d'après-midi).",haut:""},
+ preg:{panel:'sur',nom:'Prégnénolone sérique',u:'ng/ml',min:90,max:120,alts:[],cyc:'indiff',
+  quoi:"L'« hormone mère » à partir de laquelle sont fabriqués cortisol, progestérone et DHEA.",bas:"Le stress prolongé l'épuise : moins pour la progestérone et la DHEA.",haut:""}
+};
+const PAN={
+ andro:{t:"Hormones masculines : testostérone, SHBG, DHEA-S",
+  trois:["Ne lisez jamais la testostérone seule : toujours avec la SHBG et le moment du cycle.","La clinique prime : acné, poils, cycles longs comptent plus que le chiffre.","Cherchez la cause en amont : insuline, thyroïde, prolactine, stress."],
+  dire:"Votre prise de sang ne se lit pas toute seule : ce qui compte, c'est l'effet de ces hormones sur votre corps, et la cause qui les fait monter ou baisser."},
+ insu:{t:"Insuline, inflammation, zinc",
+  trois:["Le HOMA n'est fiable que si la prise de sang est à jeun et que le dîner de la veille contenait des féculents.","Avant 1,5 : cible ; de 1,5 à 2,4 : à surveiller ; au-dessus de 2,4 : résistance à l'insuline.","Aucune restriction de sucres sans HOMA confirmé : restreindre à tort peut freiner l'ovulation."],
+  dire:"L'insuline est la clé qui fait entrer le sucre dans vos cellules. Quand il en faut trop, les ovaires fabriquent plus de testostérone : c'est pourquoi nous vérifions ce point avant de toucher à votre alimentation."},
+ thy:{t:"Thyroïde",
+  trois:["TSH, T4 libre et T3 libre se lisent ensemble : TSH seule ne suffit pas.","Une thyroïde ralentie fait monter l'insuline et baisser la SHBG : elle touche aussi les androgènes.","Le défaut est-il de fabrication (T4 basse) ou de conversion (T3 basse) ? Les pistes ne sont pas les mêmes."],
+  dire:"Votre thyroïde est le chef d'orchestre de l'énergie : quand elle ralentit, beaucoup d'autres hormones se dérèglent."},
+ ova:{t:"Cycle : FSH, LH, œstradiol, progestérone, prolactine",
+  trois:["Chaque dosage a son jour : FSH, LH, œstradiol à J3 ; progestérone à Pic+7, jamais à J21.","Sous pilule, ces dosages sont ininterprétables.","Une progestérone basse veut dire ovulation de moindre qualité, pas « manque de progestérone » à compléter."],
+  dire:"Chaque hormone se dose à un jour précis du cycle : prélevée un autre jour, la valeur n'a plus de sens."},
+ sur:{t:"Surrénales : cortisol, prégnénolone",
+  trois:["Un test isolé ne prouve rien : lisez-le avec la clinique et les autres points de la journée.","Cortisol, progestérone et DHEA partagent la même matière première : le stress en consomme.","Fatigue majeure avec vomissements, tension basse, malaise : avis médical urgent."],
+  dire:"Quand le stress dure, votre corps utilise sa matière première pour le cortisol : il en reste moins pour d'autres hormones."}
+};
+
+/* ═══ Utilitaires ═══ */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fr=n=>(Math.round(n*100)/100).toString().replace('.',',');
+function getVal(k){
+  const v=parseFloat(String($('#v_'+k).value).replace(',','.'));
+  if(isNaN(v)) return null;
+  const u=$('#u_'+k).value, m=M[k];
+  if(u===m.u) return v;
+  const a=m.alts.find(x=>x[0]===u); return a? a[1](v): v;
+}
+function statut(k,v){ const m=M[k]; if(v==null) return null; if(m.min!=null&&v<m.min) return 'bas'; if(m.max!=null&&v>m.max) return 'haut'; return 'ok'; }
+/* Validité selon le moment du cycle */
+function validite(k){
+  const c=$('#cyc').value, m=M[k];
+  const horm=['fsh','lh','e2a','e2b','prog'].includes(k);
+  if(c==='pilule'){
+    if(horm) return {n:'non',t:"Ininterprétable sous contraception hormonale (LH, FSH, œstradiol, progestérone sont effondrées)."};
+    if(k==='shbg'||k==='testo') return {n:'lim',t:"Sous contraception hormonale, la SHBG est artificiellement haute et la testostérone libre basse : lecture limitée."};
+  }
+  if(m.cyc==='j3'){
+    if(c==='j3') return {n:'ok'};
+    if(c==='inconnu') return {n:'lim',t:"Moment du cycle inconnu : interprétation limitée, ce dosage ne se lit qu'à J3."};
+    if(c==='absent') return {n:'lim',t:"Sans cycle, il n'y a pas de « J3 » : lecture limitée ; le prélèvement se fait hors période de glaire."};
+    return {n:'non',t:"Ce dosage ne se lit qu'à J3 : prélevé un autre jour, la valeur n'est pas interprétable."};
+  }
+  if(m.cyc==='pic7'){
+    if(c==='pic7') return {n:'ok'};
+    if(c==='inconnu') return {n:'lim',t:"Moment du cycle inconnu : interprétation limitée, ce dosage ne se lit qu'à Pic+7."};
+    if(c==='absent') return {n:'non',t:"Sans ovulation, pas de Pic+7 : une progestérone basse est alors attendue."};
+    return {n:'non',t:"Ce dosage ne se lit qu'à Pic+7 (jamais à J21) : valeur non interprétable à ce moment."};
+  }
+  if(m.cyc==='sens'){
+    if(c==='inconnu') return {n:'lim',t:"Moment du cycle inconnu : la testostérone varie dans le cycle. Lisez l'écart franc, pas le petit écart."};
+    if(c==='absent') return {n:'ok'};
+  }
+  return {n:'ok'};
+}
+
+/* ═══ Construction de l'interface ═══ */
+function buildPanels(){
+  let h='';
+  for(const p in PAN){
+    h+=`<div class="card" id="p_${p}"><h2>${PAN[p].t}</h2><div class="lead">Renseignez ce que vous avez : les autres lignes restent vides.</div>`;
+    for(const k in M){ if(M[k].panel!==p) continue; const m=M[k];
+      const rf=(m.min!=null&&m.max!=null)?`${m.min}–${m.max}`:m.min!=null?`> ${m.min}`:m.max!=null?`< ${m.max}`:'repère à voir';
+      h+=`<div class="mk"><div><div class="nm">${m.nom}</div><div class="rf">Valeur santé : ${rf} ${m.u}</div></div>
+      <div><label>Valeur</label><input id="v_${k}" inputmode="decimal"></div>
+      <div><label>Unité</label><select id="u_${k}"><option>${m.u}</option>${m.alts.map(a=>`<option>${a[0]}</option>`).join('')}</select></div></div>
+      <div id="r_${k}"></div>`;
+      if(k==='insu') h+=`<div class="mk"><div><div class="nm">HOMA</div><div class="rf">calculé automatiquement : insuline × glycémie (mmol/L) ÷ 22,5</div></div><div id="homaV" style="font-weight:800;font-size:20px">—</div><div></div></div>`;
+      if(k==='insu') h+=`<div class="grid" style="margin:6px 0 4px"><div><label>Prise de sang à jeun ?</label><select id="jeun"><option value="">Je ne sais pas</option><option value="oui">Oui</option><option value="non">Non</option></select></div><div><label>Dîner avec féculents la veille ?</label><select id="fec"><option value="">Je ne sais pas</option><option value="oui">Oui</option><option value="non">Non, ou jeûne</option></select></div></div>`;
+      if(k==='lh') h+=`<div class="mk"><div><div class="nm">Rapport LH / FSH (J3)</div><div class="rf">cible : inférieur à 1</div></div><div id="lhfsh" style="font-weight:800;font-size:20px">—</div><div></div></div>`;
+    }
+    h+=`<div class="lec" id="l_${p}"></div><div id="t_${p}"></div></div>`;
+  }
+  $('#panels').innerHTML=h;
+  document.querySelectorAll('#panels input,#panels select,#cyc,#jc,#rapide,#viril,#signes').forEach(e=>e.addEventListener('input',lire));
+}
+
+/* ═══ Lecture ═══ */
+function lire(){
+  const c=$('#cyc').value;
+  $('#jcw').classList.toggle('hide',c!=='autre');
+  $('#cycnote').innerHTML={
+   inconnu:"<b>Jour du cycle inconnu ?</b> 1) Cherchez la date de prélèvement sur le compte rendu du laboratoire. 2) Avec la date des dernières règles, comptez le jour du cycle. 3) Si la date reste introuvable, lisez le bilan avec prudence : seuls les écarts francs comptent, la clinique prime. 4) Ne refaites la prise de sang que si une décision en dépend.",
+   absent:"Sans cycle, le « jour du cycle » ne veut rien dire : le prélèvement se fait hors période de glaire.",
+   pilule:"Sous contraception hormonale : LH, FSH, œstradiol et progestérone sont ininterprétables. Ne suggérez jamais d'arrêter (décision médicale).",
+   j3:"", pic7:"", autre:"Un autre jour que J3 ou Pic+7 : les dosages à jour précis ne sont pas interprétables."}[c]||"";
+  const val={}, st={}, vd={};
+  let any=false;
+  for(const k in M){
+    val[k]=getVal(k); st[k]=statut(k,val[k]); vd[k]=validite(k);
+    const el=$('#r_'+k); if(!el) continue;
+    if(val[k]==null){el.innerHTML='';continue;} any=true;
+    const m=M[k]; let h='';
+    if(vd[k].n==='non') h=`<span class="tag t-na">Non interprétable</span> ${esc(vd[k].t)}`;
+    else{
+      const lab={ok:'Dans la valeur santé',bas:'Sous la valeur santé',haut:'Au-dessus de la valeur santé'}[st[k]];
+      h=`<span class="tag t-${st[k]==='ok'?'ok':st[k]}">${lab}</span>`;
+      if(vd[k].n==='lim') h+=` <span class="tag t-na">Lecture limitée</span> ${esc(vd[k].t)}`;
+      h+=`<div class="note">${esc(m.quoi)}${st[k]==='bas'&&m.bas?'<br><b>Si c\'est bas :</b> '+esc(m.bas):''}${st[k]==='haut'&&m.haut?'<br><b>Si c\'est haut :</b> '+esc(m.haut):''}</div>`;
+    }
+    el.innerHTML=h;
+  }
+  /* HOMA */
+  const g=val.gly, i=val.insu; let homa=null;
+  if(g!=null&&i!=null){ homa=i*(g*5.55)/22.5; $('#homaV').textContent=fr(homa)+(homa<1.5?' (cible)':homa<=2.4?' (à surveiller)':' (résistance)'); } else $('#homaV').textContent='—';
+  let fh=null; if(val.lh!=null&&val.fsh!=null&&val.fsh>0){fh=val.lh/val.fsh; $('#lhfsh').textContent=fr(fh)+(fh<1?' (cible)':' (≥ 1)');} else $('#lhfsh').textContent='—';
+  const jeun=$('#jeun')?.value, fec=$('#fec')?.value;
+  const homaFiable=homa!=null&&jeun==='oui'&&fec==='oui'&&g!=null&&g<1.10;
+  const homaDouteux=homa!=null&&!homaFiable;
+
+  /* Lectures croisées par panneau */
+  const L={andro:[],insu:[],thy:[],ova:[],sur:[]}, G=[];
+  const add=(p,t,n,x,g2)=>{L[p].push({t,n,x}); if(g2) G.push({t,n,x});};
+  const T=val.testo,S=val.shbg,D=val.dheas;
+  const tOK=vd.testo.n!=='non', sOK=vd.shbg.n!=='non';
+  if(T!=null&&S!=null&&tOK&&sOK){
+    if(st.testo==='haut'&&st.shbg==='bas') add('andro','att',"Testostérone haute et SHBG basse",["La testostérone circule en plus grande quantité et il y a moins de « camions » pour la mettre en sommeil : l'effet sur la peau et les poils est amplifié. Cherchez d'abord l'insuline (HOMA), puis la thyroïde."],1);
+    else if(st.testo==='ok'&&st.shbg==='bas') add('andro','att',"Total normal mais SHBG basse",["Le total rassure à tort : avec peu de transporteur, une part plus grande est libre et active. Cherchez l'insuline et la thyroïde."],1);
+    else if(st.testo==='bas'&&st.shbg==='haut') add('andro','att',"Testostérone basse et SHBG haute",["Peu de testostérone libre : transporteur en excès. Demandez la contraception hormonale et les œstrogènes élevés comme causes ; ne suggérez jamais d'arrêter la pilule."],1);
+    else if(st.testo==='bas'&&st.shbg!=='haut'&&D!=null&&st.dheas==='bas') add('andro','info',"Testostérone et DHEA-S basses",["Le stress prolongé détourne la matière première vers le cortisol. Cherchez la cause avant tout complément : la DHEA ne se complète jamais sans médecin."],1);
+  } else if(S!=null&&sOK&&st.shbg==='haut') add('andro','info',"SHBG haute",["Moins de testostérone libre qu'il n'y paraît. Cherchez la pilule, un excès d'œstrogènes ou une thyroïde trop active."]);
+  else if(S!=null&&sOK&&st.shbg==='bas') add('andro','info',"SHBG basse",["Plus de testostérone libre, même sans total élevé. Cherchez l'insuline et la thyroïde."]);
+  if(T!=null&&tOK&&T>0.7) add('andro','att',"Testostérone supérieure à 0,70 ng/ml",["Votre cours la juge trop élevée au-dessus de 0,7. Avec des signes rapides ou de virilisation : avis médical rapide."],1);
+  if(D!=null&&st.dheas==='haut'){ add('andro','att',"DHEA-S au-dessus de la valeur santé",["Les androgènes viennent plutôt des surrénales. Vérifiez l'unité (ng/ml ou µg/dl, facteur 10) et croisez avec la prolactine : l'excès de prolactine pousse les androgènes surrénaliens."],1); }
+  if(D!=null&&st.dheas==='bas'&&!(st.testo==='bas')) add('andro','info',"DHEA-S basse",["Le stress prolongé en consomme la matière première. Cherchez la cause : rythme, sommeil, apports. Jamais de DHEA sans médecin."]);
+  if(homa!=null){
+    if(homaDouteux) add('insu','att',"HOMA à refaire dans de bonnes conditions",["Le HOMA n'est lisible que s'il est à jeun, que le dîner de la veille contenait des féculents et que la glycémie est normale. Sinon, la valeur peut sembler normale à tort : ne rassurez pas la cliente et proposez de refaire la prise de sang."],1);
+    else if(homa>2.4) add('insu','att',"Résistance à l'insuline confirmée",["Le HOMA dépasse 2,4 dans de bonnes conditions. Les conseils sur le sucre peuvent alors s'envisager, par le mécanisme expliqué à la cliente. L'insuline en excès fait fabriquer plus de testostérone aux ovaires et baisse la SHBG."],1);
+    else if(homa>=1.5) add('insu','info',"HOMA à surveiller",["Entre 1,5 et 2,4 : l'insuline travaille trop sans que ce soit encore une résistance. Pas de restriction : une alimentation régulière et équilibrée."],1);
+    else add('insu','info',"HOMA dans la cible",["Un HOMA normal n'exclut pas un rôle de l'insuline (récepteurs de l'ovaire parfois hypersensibles), mais ne justifie aucune restriction."]);
+  }
+  if(g!=null){ if(g>=1.26) add('insu','med',"Glycémie à jeun de 1,26 g/L ou plus",["Repère médical usuel : à faire voir au médecin avant toute autre démarche."],1); else if(g>=1.10) add('insu','att',"Glycémie à jeun entre 1,10 et 1,25 g/L",["Repère médical usuel : à faire voir au médecin ; le HOMA n'est pas lisible dans ces conditions."],1); }
+  if(val.crp!=null){ if(val.crp>10) add('insu','med',"CRP ultrasensible au-dessus de 10 mg/L",["Repère médical usuel : plutôt une infection ou une inflammation aiguë qu'un bas grade ; avis médical."],1); else if(val.crp>1) add('insu','att',"Inflammation de bas grade possible",["CRP ultrasensible entre 1 et 10 mg/L : cherchez la cause (intestin, graisse abdominale, stress, terrain)."],1); }
+  if(val.zinc!=null&&st.zinc==='bas'&&$('#signes').checked) add('insu','info',"Zinc sous le repère avec signes d'androgènes",["Le zinc freine la transformation de la testostérone en DHT : un manque peut renforcer acné et poils."]);
+  if(val.tsh!=null&&st.tsh==='haut'){ add('thy',val.tsh>4?'med':'att',"TSH au-dessus de 2,5",[val.tsh>4?"Au-dessus de 4 (repère médical usuel) : avis médical. ":"","Regardez T4 libre et T3 libre pour savoir si le défaut est de fabrication ou de conversion. Une thyroïde ralentie peut expliquer une SHBG basse et une insuline haute."].filter(Boolean),1); }
+  if(val.t4!=null&&val.t3!=null&&val.tsh!=null){
+    if(st.tsh==='haut'&&st.t4==='bas'&&st.t3==='bas') add('thy','att',"TSH haute, T4 et T3 basses",["Défaut de fabrication (ou transporteur en excès : pilule, œstrogènes, foie surchargé). Pistes : sélénium, iode, fer, protéines."]);
+    else if(st.t4==='ok'&&st.t3==='bas') add('thy','info',"T4 normale, T3 basse",["Défaut de conversion : stress, restriction, inflammation, manque de sélénium ou de zinc."]);
+  }
+  if(val.prog!=null&&vd.prog.n==='ok'&&st.prog==='bas'){ add('ova','att',"Progestérone basse à Pic+7",["Ovulation de moindre qualité ou absente. "+(st.testo==='haut'?"Avec des androgènes élevés, c'est un cercle : moins de progestérone donne plus d'effet des androgènes.":"Un stress prolongé consomme la progestérone.")],1); }
+  if(val.fsh!=null&&vd.fsh.n!=='non'){ if(val.fsh>80) add('ova','med',"FSH au-dessus de 80 mUI/ml",["Évoque une ménopause confirmée (seuil notable de vos cours) : à évoquer avec le médecin."],1); else if(val.fsh>=10) add('ova','att',"FSH de 10 ou plus",["Déclin ovarien à envisager : ne concluez pas sur un seul dosage ; croisez avec l'âge, la clinique et l'AMH."],1); }
+  if(fh!=null&&vd.lh.n==='ok'&&fh>=1) add('ova','info',"LH/FSH supérieur ou égal à 1 à J3",["Cible : inférieur à 1. Un rapport élevé se voit avec une insuline haute ou un profil de SOPK : croisez avec le HOMA, jamais de diagnostic."]);
+  if(val.prl!=null&&st.prl==='haut'){ add('ova',val.prl>25?'med':'att',"Prolactine au-dessus de 19 ng/ml",["Elle freine l'ovulation et pousse les androgènes surrénaliens. Au-dessus de 25 : à confirmer par le médecin, au repos le matin (repère médical usuel)."],1); }
+  if(val.car!=null&&st.car!=='ok') add('sur','info',"CAR hors de la plage 50-100 %",["Le rythme du cortisol est à explorer, avec la clinique (réveil, creux d'après-midi) : jamais de conclusion sur un test isolé."]);
+  if(val.preg!=null&&st.preg==='bas') add('sur','info',"Prégnénolone basse",["La matière première est épuisée : moins pour la progestérone et la DHEA. Lisez avec la clinique et le stress."]);
+  if($('#rapide').checked||$('#viril').checked) add('andro','med',"Signes rapides ou de virilisation",["Poils apparus en quelques mois ou voix grave, muscles qui augmentent, seins qui diminuent : avis médical rapide, cause rare à écarter (ovaire ou surrénale)."],1);
+
+  for(const p in PAN){
+    const rows=L[p], filled=Object.keys(M).some(k=>M[k].panel===p&&val[k]!=null);
+    $('#l_'+p).innerHTML=rows.map(r=>`<div class="ln ${r.t==='med'?'med':r.t==='att'?'att':''}"><b>${r.t==='med'?'À voir avec le médecin · ':''}${esc(r.n)}</b>${r.x.map(esc).join(' ')}</div>`).join('');
+    $('#t_'+p).innerHTML=filled?`<div class="trois"><h3>Les trois choses à retenir</h3><ol>${PAN[p].trois.map(x=>`<li>${esc(x)}</li>`).join('')}</ol></div><div class="dire"><small>À dire à la cliente :</small>« ${esc(PAN[p].dire)} »</div>`:'';
+  }
+  $('#global').innerHTML=any?(G.length?G.map(r=>`<div class="ln ${r.t==='med'?'med':r.t==='att'?'att':''}"><b>${esc(r.n)}</b>${r.x.map(esc).join(' ')}</div>`).join(''):'<div class="note">Aucun point d\'attention particulier avec les valeurs saisies.</div>'):'<div class="note">Saisissez des valeurs pour voir apparaître la lecture croisée.</div>';
+  window.__etat={val,st,vd,homa,G,L};
+  $('#save').classList.toggle('hide',!any||!$('#cli').value);
+}
+
+/* ═══ Connexion, clientes, enregistrement ═══ */
+async function sbq(path,opts={}){
+  const tok=(await Auth.getValidAccessToken())||SUPA_KEY;
+  const h={'apikey':SUPA_KEY,'Authorization':'Bearer '+tok,'Content-Type':'application/json'};
+  if(opts.method&&opts.method!=='GET'&&opts.method!=='DELETE') h.Prefer=opts.prefer||'return=representation';
+  const r=await fetch(SUPA_URL+'/rest/v1/'+path,{...opts,headers:h});
+  if(!r.ok) throw new Error(await r.text());
+  const t=await r.text(); return t?JSON.parse(t):[];
+}
+const MAPK={testo:'Testostérone totale',shbg:'SHBG',dheas:'DHEA-S',gly:'Glycémie à jeun',insu:'Insuline à jeun',zinc:'Zinc sérique',crp:'CRP ultrasensible',tsh:'TSH',t4:'T4 libre',t3:'T3 libre',fsh:'FSH J3',lh:'LH J3',e2a:'Œstradiol J3',e2b:'Œstradiol Pic+7',prog:'Progestérone Pic+7',prl:'Prolactine',car:'CAR',clu:'Cortisol libre urinaire',preg:'Prégnénolone sérique'};
+async function enregistrer(){
+  const b=$('#save'); b.disabled=true; $('#msg').textContent='Enregistrement…';
+  try{
+    const cid=$('#cli').value, d=$('#dt').value||new Date().toISOString().slice(0,10), E=window.__etat;
+    const cl={inconnu:'jour du cycle inconnu',j3:'J3',pic7:'Pic+7',absent:'pas de cycle',pilule:'sous contraception hormonale',autre:'J'+($('#jc').value||'?')}[$('#cyc').value];
+    const synth=E.G.map(r=>r.n).join(' · ')||'Aucun point d\'attention particulier.';
+    const [bil]=await sbq('bilans_biologiques',{method:'POST',body:JSON.stringify([{client_id:cid,client_key:cid,nom_fichier:'Saisie Lecteur de bilans du '+d,date_bilan:d,storage_path:'lecteur:saisie',type:'bilan_sanguin',laboratoire:$('#labo').value||null,synthese_ia:synth}])});
+    const rows=[];
+    for(const k in M){ const v=E.val[k]; if(v==null) continue; const m=M[k];
+      let s=E.vd[k].n==='non'?'a_verifier':({ok:'normal',bas:'bas',haut:'eleve'}[E.st[k]]);
+      rows.push({bilan_id:bil.id,client_id:cid,client_key:cid,marqueur:MAPK[k],valeur:Math.round(v*1000)/1000,unite:m.u,ref_min:m.min,ref_max:m.max,statut:s,date_bilan:d,laboratoire:$('#labo').value||null,commentaire:'Moment du cycle : '+cl+(E.vd[k].t?' · '+E.vd[k].t:'')});
+    }
+    if(E.homa!=null) rows.push({bilan_id:bil.id,client_id:cid,client_key:cid,marqueur:'HOMA',valeur:Math.round(E.homa*100)/100,unite:'',ref_min:null,ref_max:1.5,statut:E.homa<1.5?'normal':E.homa<=2.4?'a_verifier':'eleve',date_bilan:d,laboratoire:$('#labo').value||null,commentaire:'Calculé · à jeun : '+($('#jeun').value||'?')+' · féculents la veille : '+($('#fec').value||'?')});
+    await sbq('bilans_marqueurs',{method:'POST',body:JSON.stringify(rows)});
+    $('#msg').textContent='Enregistré dans la fiche de la cliente ('+rows.length+' valeurs).';
+  }catch(e){ $('#msg').textContent='Erreur : '+e.message; }
+  b.disabled=false;
+}
+async function init(){
+  const ok=typeof Auth!=='undefined'&&Auth.isLoggedIn&&Auth.isLoggedIn();
+  if(!ok){ $('#gate').classList.remove('hide'); $('#bar').classList.add('hide'); return; }
+  $('#app').classList.remove('hide'); buildPanels(); $('#dt').value=new Date().toISOString().slice(0,10);
+  try{
+    const cs=await sbq('clientes?select=id,prenom,nom&order=nom.asc&limit=1000');
+    $('#cli').innerHTML='<option value="">— Choisir —</option>'+cs.map(c=>`<option value="${esc(c.id)}">${esc((c.prenom||'')+' '+(c.nom||''))}</option>`).join('');
+    const q=new URLSearchParams(location.search).get('client'); if(q){ $('#cli').value=q; }
+    const bid=new URLSearchParams(location.search).get('bilan');
+    if(q){ const a=$('#back'); a.href='crm.html'; a.classList.remove('hide'); }
+    if(bid){ const ms=await sbq('bilans_marqueurs?bilan_id=eq.'+encodeURIComponent(bid));
+      const inv=Object.fromEntries(Object.entries(MAPK).map(([k,v])=>[v,k]));
+      ms.forEach(m=>{const k=inv[m.marqueur]; if(k&&m.valeur!=null) $('#v_'+k).value=String(m.valeur).replace('.',',');});
+      if(ms[0]){ $('#dt').value=ms[0].date_bilan||$('#dt').value; $('#labo').value=ms[0].laboratoire||''; } }
+  }catch(e){ $('#msg').textContent='Liste des clientes indisponible : '+e.message; }
+  $('#cli').addEventListener('input',lire); $('#save').onclick=enregistrer; lire();
+}
+init();
+</script>
+</body>
+</html>
