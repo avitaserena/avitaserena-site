@@ -10832,9 +10832,9 @@ function preRemplirDepuisVisio() {
     // étaient bien enregistrés (localStorage + Supabase) mais jamais relus ici — perdus en
     // silence à chaque consultation, la praticienne devait tout retaper.
     if (d.objectif) { const el = document.getElementById('objectif-6mois'); if (el) el.value = d.objectif; }
-    if (d.libre) {
+    if (visioLibre(d)) {
       const el = document.getElementById('motif');
-      if (el) el.value = (el.value ? el.value + '\n\n' : '') + '« Quelque chose à me dire » (pré-visio) : ' + d.libre;
+      if (el) el.value = (el.value ? el.value + '\n\n' : '') + '« Quelque chose à me dire » (pré-visio) : ' + visioLibre(d);
     }
     updateCounter();
     showToast('✓ Champs pré-remplis depuis le questionnaire de préparation !');
@@ -12248,7 +12248,7 @@ function renderPrepVisioFaits(s, resa) {
   if (s.scores && s.scores.energieGenerale) p.push('énergie ' + esc(s.scores.energieGenerale) + '/10');
   const resaDuree = (resa || []).find((l) => l[0] === 'Depuis (réservation)');
   if (resaDuree && s.duree && resaDuree[1] !== s.duree) p.push('à la réservation : « ' + esc(resaDuree[1]) + ' »');
-  const msg = [(resa || []).find((l) => l[0] === 'Message'), s.libre ? ['', s.libre] : null].filter(Boolean).map((l) => '« ' + esc(l[1]) + ' »');
+  const msg = [(resa || []).find((l) => l[0] === 'Message'), visioLibre(s) ? ['', visioLibre(s)] : null].filter(Boolean).map((l) => '« ' + esc(l[1]) + ' »');
   const al = Array.isArray(s.alertes) ? s.alertes.map((a) => a && a.l).filter(Boolean) : [];
   const an = Array.isArray(s.analyses) ? s.analyses.filter((a) => a && /^https:\/\//.test(a.url || '')) : [];
   el.innerHTML = (al.length ? '<div style="background:#F5E4DE;border:1.5px solid #B5533A;border-radius:12px;padding:10px 14px;margin-bottom:10px;color:#6B2E1F"><b>Signes signalés par la cliente : à lire avant le rendez-vous</b><ul style="margin:6px 0 0 18px;padding:0">' + al.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul></div>' : '') +
@@ -17128,13 +17128,16 @@ window.mgAlertesFlags = function () {
 /* Signes signalés par la cliente dans sa préparation, pour le générateur et le dossier */
 window.mgAlertesVisio = function () { try { return cliAlertes().join(' ; '); } catch (x) { return ''; } };
 /* Chargement des réponses de la préparation (appelé par chargerPrepVisio) */
+window.visioLibre = function (s){ var l=(s&&s.libre)||'', p=(s&&s.precisions)||''; return (p&&l.indexOf(p)===0)?l.slice(p.length).trim():l; }; /* le message libre reprend les précisions : on n'affiche que ce qui s'y ajoute */
 window.mgChargerVisio = function (snap) {
   try {
     if (!isConsult() || !snap || !snap.moteur || typeof snap.moteur !== 'object') return;
-    var c = {};
+    var c = {}; NSP = {};
     Object.keys(snap.moteur).forEach(function (id) {
       var n = N[id]; if (!n) return;
-      var v = snap.moteur[id], ks = (Array.isArray(v) ? v : [v]).filter(function (k) { return typeof k === 'string' && n.o.some(function (o) { return o.k === k; }); });
+      var v = snap.moteur[id]; if ((Array.isArray(v) ? v : [v]).indexOf('nsp') >= 0) NSP[id] = true;
+      v = snap.moteur[id];
+      var ks = (Array.isArray(v) ? v : [v]).filter(function (k) { return typeof k === 'string' && n.o.some(function (o) { return o.k === k; }); });
       if (ks.length) c[id] = n.multi ? ks : ks[0];
     });
     CLI = Object.keys(c).length ? c : null; LASTTOP = null; TOPNOTE = '';
@@ -17258,7 +17261,7 @@ document.addEventListener('click', function (e) {
    Ses réponses sont gardées à part (CLI) : « dit par la cliente, à confirmer ». Elles préremplissent chaque question,
    alimentent la première lecture et les pistes en direct, mais ne partent vers le générateur qu'une fois confirmées
    avec elle (mgDonnees ne lit que S.a). Une réponse donnée en séance remplace celle de la cliente. */
-var CLI = null, LASTTOP = null, TOPNOTE = '';
+var CLI = null, LASTTOP = null, TOPNOTE = '', NSP = {};
 var ALERT_NODES = ['secu', 'h_secu', 'f_secu', 'z_alertes', 'w_secu', 'k_secu'];
 function cliVal(id) { return (CLI && S.a[id] === undefined && S.p[id] === undefined) ? CLI[id] : undefined; }
 function cliCopy(v) { return Array.isArray(v) ? v.slice() : v; }
@@ -17374,7 +17377,7 @@ function questionHtml(id) {
   var n = N[id], cur = S.a[id], pend = S.p[id], cl = cliVal(id);
   var sel = n.multi ? (Array.isArray(pend) ? pend : (Array.isArray(cur) ? cur : (Array.isArray(cl) ? cl : []))) : [];
   var h = '<div class="mg-q" id="mg-q"><span class="mg-mode ' + n.m + '">' + (n.m === 'listen' ? "J'écoute" : 'Je demande') + '</span>' +
-    '<div class="mg-qt">' + esc(n.q) + '</div>' + (cl !== undefined ? '<div class="mg-cli"><b>Réponse de la cliente (questionnaire de préparation)</b> : validez-la, ou touchez une autre réponse pour la remplacer.</div>' : '') + (n.why ? '<div class="mg-why"><div class="mg-why-l">Pourquoi je vous pose cette question</div><p>' + esc(n.why) + '</p></div>' : '') + (n.hint ? '<div class="mg-hint">' + esc(n.hint) + '</div>' : '') +
+    '<div class="mg-qt">' + esc(n.q) + '</div>' + (NSP[id] && cl === undefined && cur === undefined ? '<div class="mg-cli" style="background:#FBF3E4;border-color:#C4A882"><b>Elle a répondu « je ne sais pas » à cette question dans le questionnaire de préparation</b> : posez-la-lui, sans rien présumer.</div>' : '') + (cl !== undefined ? '<div class="mg-cli"><b>Réponse de la cliente (questionnaire de préparation)</b> : validez-la, ou touchez une autre réponse pour la remplacer.</div>' : '') + (n.why ? '<div class="mg-why"><div class="mg-why-l">Pourquoi je vous pose cette question</div><p>' + esc(n.why) + '</p></div>' : '') + (n.hint ? '<div class="mg-hint">' + esc(n.hint) + '</div>' : '') +
     '<div class="mg-opts' + (n.o.length > 5 && !n.multi ? ' mg-cols' : '') + '">';
   n.o.forEach(function (o, i) { h += optHtml(n, o, i, n.multi ? sel.indexOf(o.k) >= 0 : (cur === o.k || (cur === undefined && cl !== undefined && cl === o.k))); });
   h += '</div><div class="mg-act">';

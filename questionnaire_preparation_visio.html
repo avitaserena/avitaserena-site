@@ -403,6 +403,18 @@ const Q={
  k_seche:{th:'peau',m:1,ex:['aucun'],t:'Que remarquez-vous côté sécheresse, eczéma, rougeurs ?',w:"Une peau sèche aux tibias évoque la thyroïde, un eczéma un terrain allergique et un intestin fragilisé. L'endroit et le contexte me guident vers la bonne piste.",o:[['tibias','Peau très sèche aux tibias, aux talons, aux coudes'],['partout','Peau sèche partout, besoin de crème en permanence'],['eczema','Eczéma, ou terrain allergique (asthme, rhinite, urticaire)'],['psoriasis','Psoriasis'],['reactive','Peau réactive, rougeurs, qui change selon l\'alimentation ou la saison'],['avant_regles','Cela s\'aggrave avant les règles'],['orange','Paumes des mains ou plantes des pieds orangées'],['aucun','Rien de marquant']]},
  k_terne:{th:'peau',m:1,ex:['aucun'],t:'Que remarquez-vous côté teint et vieillissement de la peau ?',w:"Un teint terne ou une peau qui vieillit vite viennent souvent du sucre (glycation), d'un manque d'hormones ou d'un foie encombré. Vos réponses m'aident à trancher.",o:[['terne','Teint terne, peau qui manque d\'éclat'],['fine','Peau fine, sèche, ridules précoces'],['glycation','Grosse consommation de sucre, de pain, de grillades'],['meno','Peau qui change depuis la périménopause'],['aucun','Rien de marquant']]}
 };
+/* « Je ne sais pas » (24/11/2026) : réponse neutre ajoutée à chaque question de détail. Elle n'alimente aucune piste :
+   dans la fiche et dans la consultation, elle signale à la praticienne qu'il faut creuser. Exclue : les questions
+   « motif » (premier niveau de chaque thème), la méthode de contraception (qui a déjà « je ne sais plus ») et les signes d'alerte. */
+(function(){
+  const mains=new Set(THEMES.map(t=>t.main));
+  Object.keys(Q).forEach(id=>{
+    if(mains.has(id)||id==='c_methode') return;
+    const q=Q[id]; if(!q.o||q.o.some(o=>o[0]==='nsp')) return;
+    q.o.push(['nsp','Je ne sais pas']);
+    if(q.m) q.ex=(q.ex||[]).concat('nsp');
+  });
+})();
 
 /* Signes à connaître avant le rendez-vous (mêmes libellés que le serveur) */
 const ALERTES={
