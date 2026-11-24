@@ -7778,25 +7778,98 @@ async function ouvrirDocBilan(ref){
 
 // ── Préparation visio : lecture lisible des réponses par motif, des alertes et des analyses (23/11/2026) ──
 function visioLibre(s){ var l=(s&&s.libre)||'', p=(s&&s.precisions)||''; return (p&&l.indexOf(p)===0)?l.slice(p.length).trim():l; } /* le message libre reprend les précisions : on n'affiche que ce qui s'y ajoute */
-function visioMoteurHtml(s){
-  const L=window.VISIO_LABELS, m=s&&s.moteur;
-  if(!L||!m||typeof m!=='object') return '';
-  const lab=(id,k)=>{ const q=L.q[id]; if(id==='e_motifs'){ const e=L.entry[k]; return e?e.l:k; } return (q&&q.o&&q.o[k])||k; };
-  const groups={}, ordre=[];
-  Object.keys(m).forEach(id=>{
-    const q=L.q[id]; if(!q&&id!=='e_motifs') return; // signes d'alerte : déjà dans l'encadré rouge
-    const th=id==='e_motifs'?'_entree':(q&&q.th)||'_autre';
-    if(!groups[th]){ groups[th]=[]; ordre.push(th); }
-    const v=Array.isArray(m[id])?m[id]:[m[id]];
-    groups[th].push([q?q.t:(id==='e_motifs'?'Motifs choisis':id), v.map(k=>lab(id,k)).join(' · ')]);
-  });
-  ordre.sort((a,b)=>(a==='_entree'?-1:b==='_entree'?1:0));
-  return ordre.map(th=>{
-    const T=th==='_entree'?'Motifs de consultation':((L.themes[th]&&L.themes[th].nom)||th);
-    return `<div style="margin:14px 0 4px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:var(--muted)">${escH(T)}</div>`+
-      groups[th].map(([k,v])=>`<div class="ic-row"><div class="ic-key">${escH(k)}</div><div class="ic-val">${escH(v)}</div></div>`).join('');
-  }).join('');
+/* ───── Fiche « Préparation visio » (refonte 24/11/2026) : questions, options proposées, et ce que la cliente a coché ───── */
+const VF_CSS=`
+.vf-modal{max-width:960px!important;display:flex;flex-direction:column;overflow:hidden!important;background:#FBF9F5}
+.vf-top{padding:22px 28px 18px;background:linear-gradient(135deg,#FBF9F5 0%,#F3EEE5 55%,#EDE5D6 100%);border-bottom:1px solid var(--border2);display:flex;gap:16px;align-items:flex-start;justify-content:space-between}
+.vf-eyebrow{font-size:11.5px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--gold-dk);margin-bottom:6px}
+.vf-name{font-size:26px;font-weight:800;color:var(--ink);line-height:1.15;letter-spacing:-.01em}
+.vf-tools{display:flex;gap:8px;align-items:center;flex-shrink:0}
+.vf-toggle{font:600 13px var(--font);color:var(--ink3);background:#fff;border:1.5px solid var(--border2);border-radius:999px;padding:8px 14px;cursor:pointer;transition:var(--t)}
+.vf-toggle:hover{border-color:var(--ocre);color:var(--ink)}
+.vf-x{background:none;border:none;font-size:26px;line-height:1;cursor:pointer;color:var(--muted);padding:2px 8px}
+.vf-body{overflow:auto;padding:22px 28px 30px;max-height:calc(92vh - 110px)}
+.vf-facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:22px}
+.vf-fact{background:#fff;border:1px solid var(--border);border-radius:14px;padding:14px 16px}
+.vf-fk{font-size:11.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.vf-fv{font-size:19px;font-weight:700;color:var(--ink);line-height:1.3}
+.vf-fv small{font-size:14px;font-weight:500;color:var(--muted)}
+.vf-bar{display:flex;gap:3px;margin-top:9px}.vf-bar i{flex:1;height:6px;border-radius:3px;background:var(--grege)}.vf-bar i.on{background:linear-gradient(90deg,#C4A882,#B4906A)}
+.vf-alert{background:var(--red-lt);border:1.5px solid var(--red);border-radius:14px;padding:14px 18px;margin-bottom:22px;color:#6B2E1F;font-size:15px}
+.vf-alert b{display:block;font-size:15.5px;margin-bottom:6px}.vf-alert ul{margin:0 0 0 20px;padding:0}.vf-alert li{margin:3px 0}
+.vf-h{font-size:11.5px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--gold-dk);margin:26px 0 12px;display:flex;align-items:center;gap:12px}
+.vf-h::after{content:"";flex:1;height:1px;background:var(--border2)}
+.vf-chips{display:flex;flex-wrap:wrap;gap:8px}
+.vf-chip{background:#F6EEDF;border:1.5px solid var(--sable);color:var(--ink);border-radius:999px;padding:8px 16px;font-size:15px;font-weight:600}
+.vf-quotes{display:grid;gap:12px}
+.vf-quote{background:#fff;border:1px solid var(--border);border-left:4px solid var(--sable);border-radius:4px 14px 14px 4px;padding:14px 20px}
+.vf-quote .k{font-size:11.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;font-style:normal}
+.vf-quote .t{font-family:var(--serif);font-style:italic;font-size:21px;line-height:1.45;color:var(--ink);white-space:pre-wrap}
+.vf-theme{background:#fff;border:1px solid var(--border);border-radius:18px;margin-top:16px;overflow:hidden}
+.vf-theme>.vf-th{padding:14px 22px;background:linear-gradient(90deg,#F5EFE6,#fff);border-bottom:1px solid var(--border);display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.vf-th .n{font-size:17px;font-weight:800;color:var(--ink)}.vf-th .c{font-size:13px;color:var(--muted);font-weight:600}
+.vf-q{padding:18px 22px;border-bottom:1px solid var(--border)}.vf-q:last-child{border-bottom:none}
+.vf-qh{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}
+.vf-qt{font-size:17px;font-weight:700;color:var(--ink);line-height:1.4}
+.vf-badge{flex-shrink:0;font-size:12.5px;font-weight:700;color:var(--gold-dk);background:var(--gold-lt);border-radius:999px;padding:4px 11px;white-space:nowrap}
+.vf-badge.warn{color:#7A4A12;background:var(--orange-lt)}
+.vf-opts{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:8px}
+.vf-o{display:flex;gap:11px;align-items:flex-start;padding:10px 13px;border-radius:12px;border:1.5px solid var(--border);font-size:15px;line-height:1.4;color:var(--muted)}
+.vf-o .vf-ic{flex-shrink:0;width:20px;height:20px;margin-top:1px;border-radius:6px;border:1.8px solid var(--border2);background:#fff;display:flex;align-items:center;justify-content:center}
+.vf-o.rad .vf-ic{border-radius:50%}
+.vf-o.on{background:#F6EEDF;border-color:var(--sable);color:var(--ink);font-weight:600}
+.vf-o.on .vf-ic{background:linear-gradient(135deg,#C4A882,#B4906A);border-color:#B4906A}
+.vf-o.on .vf-ic svg{width:12px;height:12px;stroke:#fff}
+.vf-o.nsp.on{background:var(--orange-lt);border-color:var(--orange);color:#7A4A12}
+.vf-o.nsp.on .vf-ic{background:var(--orange);border-color:var(--orange)}
+.vf.compact .vf-o.off{display:none}
+.vf-doc a{color:var(--gold-dk);font-weight:600}
+@media(max-width:700px){.vf-top,.vf-body{padding-left:16px;padding-right:16px}.vf-name{font-size:21px}.vf-opts{grid-template-columns:1fr}}
+`;
+const VF_CHECK='<svg viewBox="0 0 24 24" fill="none" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+function vfCss(){ if(document.getElementById('vf-css')) return; const st=document.createElement('style'); st.id='vf-css'; st.textContent=VF_CSS; document.head.appendChild(st); }
+function vfLabel(id,k,L){ let t=(L.q[id]&&L.q[id].o&&L.q[id].o[k])||k; if(id==='c_methode') t=t.replace(/\s*\([^)]*\)/g,'').replace(/\s{2,}/g,' ').trim(); return t; }
+function vfQuestion(id,L,m){
+  const q=L.q[id], v=m[id], multi=Array.isArray(v), sel=multi?v:[v];
+  const keys=Object.keys(q.o), nsp=sel.includes('nsp'), total=keys.filter(k=>k!=='nsp').length;
+  const nOn=sel.filter(k=>k!=='nsp'&&keys.includes(k)).length;
+  const opts=keys.filter(k=>k!=='nsp'||nsp).map(k=>{ const on=sel.includes(k);
+    return '<div class="vf-o'+(on?' on':' off')+(k==='nsp'?' nsp':'')+(multi?'':' rad')+'"><span class="vf-ic">'+(on?VF_CHECK:'')+'</span><span>'+escH(vfLabel(id,k,L))+'</span></div>'; }).join('');
+  const badge=nsp&&!nOn?'<span class="vf-badge warn">À creuser</span>':(multi?'<span class="vf-badge">'+nOn+' sur '+total+'</span>':'');
+  return '<div class="vf-q"><div class="vf-qh"><div class="vf-qt">'+escH(q.t)+'</div>'+badge+'</div><div class="vf-opts">'+opts+'</div></div>';
 }
+function visioFicheHtml(s,c,created){
+  s=s||{}; const L=window.VISIO_LABELS||{entry:{},themes:{},q:{}}, m=(s.moteur&&typeof s.moteur==='object')?s.moteur:{};
+  const nom=((c&&c.prenom)||s.prenom||'')+' '+((c&&c.nom)||s.nom||'');
+  const en=parseInt(s.scores&&s.scores.energieGenerale,10)||0;
+  const facts=[
+    s.age?'<div class="vf-fact"><div class="vf-fk">Âge</div><div class="vf-fv">'+escH(s.age)+' <small>ans</small></div></div>':'',
+    s.duree?'<div class="vf-fact"><div class="vf-fk">Depuis</div><div class="vf-fv" style="font-size:16px">'+escH(s.duree)+'</div></div>':'',
+    en?'<div class="vf-fact"><div class="vf-fk">Énergie du jour</div><div class="vf-fv">'+en+'<small> / 10</small></div><div class="vf-bar">'+Array.from({length:10},(_,i)=>'<i class="'+(i<en?'on':'')+'"></i>').join('')+'</div></div>':''
+  ].join('');
+  const al=Array.isArray(s.alertes)?s.alertes.map(a=>a&&a.l).filter(Boolean):[];
+  const alertes=al.length?'<div class="vf-alert"><b>Signes signalés par la cliente : à lire avant le rendez-vous</b><ul>'+al.map(x=>'<li>'+escH(x)+'</li>').join('')+'</ul></div>':'';
+  const motifs=Array.isArray(m.e_motifs)?m.e_motifs:[];
+  const chips=motifs.map(k=>L.entry&&L.entry[k]?'<span class="vf-chip">'+escH(L.entry[k].l)+'</span>':'').join('');
+  const strip=t=>String(t||'').replace(/^(Précisions|Autre motif)\s*:\s*/,'').trim();
+  const quotes=[['Ce qu’elle précise',strip(s.precisions)],['Ce qu’elle voudrait',s.objectif],['Son message',(window.visioLibre?window.visioLibre(s):s.libre)]]
+    .filter(([,t])=>t&&String(t).trim()).map(([k,t])=>'<div class="vf-quote"><div class="k">'+k+'</div><div class="t">« '+escH(String(t).trim())+' »</div></div>').join('');
+  const ordre=[...motifs.filter(k=>L.themes&&L.themes[k]),...Object.keys(L.themes||{}).filter(k=>!motifs.includes(k))];
+  const themes=ordre.map(th=>{
+    const ids=Object.keys(L.q||{}).filter(id=>L.q[id].th===th&&m[id]!==undefined);
+    if(!ids.length) return '';
+    return '<div class="vf-theme"><div class="vf-th"><div class="n">'+escH(L.themes[th].nom||th)+'</div><div class="c">'+ids.length+' question'+(ids.length>1?'s':'')+' répondue'+(ids.length>1?'s':'')+'</div></div>'+ids.map(id=>vfQuestion(id,L,m)).join('')+'</div>';
+  }).join('');
+  const an=Array.isArray(s.analyses)?s.analyses.filter(a=>a&&/^https:\/\//.test(a.url||'')):[];
+  const docs=an.length?'<div class="vf-h">Analyses jointes</div><div class="vf-doc">'+an.map(a=>'<a href="#" onclick="ouvrirDocBilan(\''+escH(a.url)+'\');return false">'+escH(a.nom||'Analyses')+(a.date?' ('+escH(a.date)+')':'')+'</a>').join('<br>')+'</div>':'';
+  return '<div class="vf"><div class="vf-top"><div><div class="vf-eyebrow">Préparation visio · reçue le '+escH(created)+'</div><div class="vf-name">'+escH(nom.trim())+'</div></div>'
+    +'<div class="vf-tools"><button class="vf-toggle" onclick="vfBascule(this)">Voir seulement ses réponses</button><button class="vf-x" onclick="document.getElementById(\'modal-reponses-visio\').remove()" aria-label="Fermer">×</button></div></div>'
+    +'<div class="vf-body">'+alertes+(facts?'<div class="vf-facts">'+facts+'</div>':'')
+    +(chips?'<div class="vf-h" style="margin-top:4px">Ses motifs</div><div class="vf-chips">'+chips+'</div>':'')
+    +(quotes?'<div class="vf-h">Avec ses mots</div><div class="vf-quotes">'+quotes+'</div>':'')
+    +(themes?'<div class="vf-h">Ses réponses, question par question</div>'+themes:'')+docs+'</div></div>';
+}
+function vfBascule(b){ const el=b.closest('.vf'); const c=el.classList.toggle('compact'); b.textContent=c?'Voir toutes les options':'Voir seulement ses réponses'; }
 function visioAlertesHtml(s){
   const al=Array.isArray(s&&s.alertes)?s.alertes.map(a=>a&&a.l).filter(Boolean):[];
   if(!al.length) return '';
@@ -7813,23 +7886,12 @@ function voirReponsesVisio(cid){
   const c = db.clients.find(x=>x.id===cid);
   const dernier = qList[0];
   try{ marquerVisioVu(dernier.id); }catch(e){}
-  const s = dernier.snapshot||{};
-  const rows = [
-    ['Âge', s.age], ['Durée des symptômes', s.duree], ['Motifs', s.motif], ['Précisions de la cliente', s.precisions],
-    ['Énergie du jour', s.scores?.energieGenerale?s.scores.energieGenerale+'/10':''],
-    ['Objectif', s.objectif], ['Message libre', visioLibre(s)]
-  ].filter(([,v])=>v).map(([k,v])=>`<div class="ic-row"><div class="ic-key">${escH(k)}</div><div class="ic-val">${escH(String(v))}</div></div>`).join('')+visioAnalysesHtml(s);
-  const detail=visioAlertesHtml(s)+rows+visioMoteurHtml(s);
+  vfCss();
+  const old=document.getElementById('modal-reponses-visio'); if(old) old.remove();
   const modal=document.createElement('div');
   modal.className='modal-bg open';
   modal.id='modal-reponses-visio';
-  modal.innerHTML=`<div class="modal modal-lg">
-    <div style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
-      <div style="font-size:16px;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:8px">${ic('spark')} Questionnaire de préparation visio — ${escH(c?.prenom||'')} · ${fmtDate(dernier.created_at)}</div>
-      <button onclick="document.getElementById('modal-reponses-visio').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted)">×</button>
-    </div>
-    <div style="padding:8px 24px 20px;max-height:60vh;overflow:auto">${detail||"<div style='padding:16px;font-size:13px;color:var(--muted);font-style:italic'>Aucune réponse détaillée.</div>"}</div>
-  </div>`;
+  modal.innerHTML='<div class="modal vf-modal">'+visioFicheHtml(dernier.snapshot||{},c,fmtDate(dernier.created_at))+'</div>';
   modal.addEventListener('click', e=>{ if(e.target===modal) modal.remove(); });
   document.body.appendChild(modal);
 }
