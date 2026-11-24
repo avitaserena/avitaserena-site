@@ -996,6 +996,25 @@ function recStop(){ recLaunch('Arrêter l’enregistrement'); recSetState('done'
   </div>
   <div id="bloc-prep-visio" style="display:none;background:var(--or-clair);border:1px solid var(--ocre);border-radius:16px;padding:20px 22px;margin-bottom:26px">
     <style>
+      .pvr{background:linear-gradient(135deg,#fff 0%,var(--or-clair) 100%);border:1.5px solid var(--sable);border-radius:18px;padding:22px 26px;margin-bottom:20px;box-shadow:0 10px 28px rgba(153,36,79,.08)}
+      .pvr-eyebrow{font-size:11px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:var(--or)}
+      .pvr-bref{font-family:'Cormorant Garamond',serif;font-size:24px;line-height:1.4;color:var(--ardoise);margin:8px 0 18px;font-weight:600}
+      .pvr-cols{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px}
+      .pvr-col{background:#fff;border:1px solid var(--taupe);border-radius:14px;padding:16px 18px}
+      .pvr-col ul,.pvr-open ol{margin:0;padding:0;list-style:none}
+      .pvr-col li{position:relative;padding:8px 0 8px 18px;font-size:15.5px;line-height:1.5;color:var(--ardoise);border-top:1px solid var(--grege)}
+      .pvr-col li:first-child{border-top:none}
+      .pvr-col li::before{content:"";position:absolute;left:0;top:16px;width:7px;height:7px;border-radius:50%;background:var(--ocre)}
+      .pvr-creuser li::before{background:var(--rouge)}
+      .pvr-t{display:flex;align-items:center;gap:10px;font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--or);margin-bottom:8px}
+      .pvr-ico{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:var(--or-clair);border:1.5px solid var(--sable);font-size:13px;letter-spacing:0;color:var(--or)}
+      .pvr-open{background:#fff;border:1.5px solid var(--sable);border-radius:14px;padding:16px 20px}
+      .pvr-open ol{counter-reset:q}
+      .pvr-open li{counter-increment:q;display:flex;gap:14px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--grege)}
+      .pvr-open li:first-child{border-top:none}
+      .pvr-open li::before{content:counter(q);flex-shrink:0;width:28px;height:28px;border-radius:50%;background:var(--or);color:#fff;font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;margin-top:1px}
+      .pvr-open li span{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:20px;line-height:1.45;color:var(--ardoise)}
+      @media(max-width:720px){.pvr-cols{grid-template-columns:1fr}.pvr{padding:18px}}
       .pv-grid{display:grid;grid-template-columns:1fr 1.5fr 1.1fr;gap:0;border:1px solid var(--ocre);border-radius:12px;overflow:hidden;background:#fff}
       .pv-grid.pv-2{grid-template-columns:1fr 2.6fr}
       .pv-h{font-size:11px;text-transform:uppercase;letter-spacing:.12em;font-weight:700;color:var(--or);background:#F7F6F4;padding:9px 14px;border-bottom:1px solid var(--ocre)}
@@ -12273,10 +12292,20 @@ function renderPrepVisioSynthese(d) {
   } else {
     let h = '';
     const rs = d.resume || {};
-    if (rs.vue_d_ensemble || (rs.liens || []).length) {
-      h += '<div style="background:#F6EEDF;border:1px solid var(--sable);border-radius:12px;padding:12px 16px;margin-bottom:14px"><div class="pv-t" style="margin-top:0">En un coup d\u2019\u0153il</div>' +
-        (rs.vue_d_ensemble ? '<div style="margin-bottom:8px">' + esc(rs.vue_d_ensemble) + '</div>' : '') +
-        (rs.liens || []).map((l) => '<div style="font-weight:600;margin-top:4px">' + esc(l) + '</div>').join('') + '</div>';
+    const L = (x) => (Array.isArray(x) ? x : []).filter(Boolean);
+    const rc = L(rs.a_croiser), rk = L(rs.a_creuser), rq = L(rs.par_ou_commencer);
+    if (rs.en_bref || rc.length || rk.length || rq.length) {
+      const bloc = (cls, ico, titre, items) => items.length
+        ? '<div class="pvr-col ' + cls + '"><div class="pvr-t"><span class="pvr-ico">' + ico + '</span>' + titre + '</div><ul>' + items.map((i) => '<li>' + esc(i) + '</li>').join('') + '</ul></div>' : '';
+      const ouv = rq.length
+        ? '<div class="pvr-open"><div class="pvr-t"><span class="pvr-ico">\u2192</span>Par où commencer en visio</div><ol>' + rq.map((i) => '<li><span>' + esc(i) + '</span></li>').join('') + '</ol></div>' : '';
+      h += '<div class="pvr">' +
+        '<div class="pvr-top"><span class="pvr-eyebrow">En un coup d\u2019\u0153il</span></div>' +
+        (rs.en_bref ? '<p class="pvr-bref">' + esc(rs.en_bref) + '</p>' : '') +
+        ((rc.length || rk.length) ? '<div class="pvr-cols">' + bloc('pvr-croiser', '\u21c4', '\u00c0 croiser', rc) + bloc('pvr-creuser', '?', '\u00c0 creuser', rk) + '</div>' : '') +
+        ouv + '</div>';
+    } else if (rs.vue_d_ensemble || (rs.liens || []).length) {
+      h += '<div class="pvr"><p class="pvr-bref" style="margin:0">Ancien format de résumé. Cliquez sur « \u21bb Régénérer » pour la nouvelle version.</p></div>';
     }
     if (lignes.length) {
       h += '<div class="pv-grid"><div class="pv-h">Elle a dit</div><div class="pv-h">Je lui dis</div><div class="pv-h">Pour moi : à investiguer</div>' +
