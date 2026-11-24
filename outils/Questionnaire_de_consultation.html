@@ -785,6 +785,7 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 </style>
 <script src="auth-guard.js"></script>
 <script src="ai-client.js"></script>
+<script src="contraception-data.js"></script>
 <!-- ai-explain-panel.js retiré (25/08/2026) : le bouton flottant "💬 Explications" faisait
      doublon avec le moteur entonnoire (questions de rebond + "pourquoi" affichés en direct
      dans le questionnaire) et le panneau "Pistes en direct". Les appels à window.AIPanel
@@ -1309,6 +1310,7 @@ function recStop(){ recLaunch('Arrêter l’enregistrement'); recSetState('done'
         <button class="chip" data-spec="hashi" onclick="toggleSpecialite(this)"><span class="ck">✓</span> Hashimoto / Thyroïde</button>
         <button class="chip" data-spec="surr" onclick="toggleSpecialite(this)"><span class="ck">✓</span> Fatigue surrénalienne / Cortisol</button>
         <button class="chip" data-spec="amenorrhee" onclick="toggleSpecialite(this)"><span class="ck">✓</span> Aménorrhée centrale</button>
+        <button class="chip" data-spec="contra" onclick="toggleSpecialite(this)"><span class="ck">✓</span> Contraception / arrêt de contraception</button>
         <button class="chip" onclick="toggleSpecialite(this)"><span class="ck">✓</span> Fatigue chronique</button>
         <button class="chip" onclick="toggleSpecialite(this)"><span class="ck">✓</span> Troubles du sommeil</button>
         <button class="chip" onclick="toggleSpecialite(this)"><span class="ck">✓</span> Stress & anxiété</button>
@@ -5002,14 +5004,159 @@ function recStop(){ recLaunch('Arrêter l’enregistrement'); recSetState('done'
           </select>
         </div>
         <div><label class="fl">Contraception actuelle</label>
-          <select class="fi" id="contraception-consult" data-funnel-select>
+          <select class="fi" id="contraception-consult" data-funnel-select onchange="contraMaj()">
             <option value="">— —</option>
-            <option data-funnel="pilule-aucune">Aucune</option><option>Pilule oestroprogestative</option>
-            <option>Pilule microprogestative</option><option>DIU hormonal (Mirena)</option>
-            <option>DIU cuivre</option><option>Implant</option><option>Autre</option>
           </select>
+          <script>(function(){var el=document.getElementById('contraception-consult');if(window.CONTRA&&el)CONTRA.fillSelect(el,{funnelAucune:true});})();</script>
         </div>
       </div>
+      <!-- CONTRACEPTION — vue d'ensemble, effets par méthode et arrêt (24/11/2026, demande de Sabrina) -->
+      <style>
+        .contra-card{margin:14px 0 6px;padding:18px 20px;border:1.5px solid var(--taupe);border-radius:14px;background:var(--off)}
+        .contra-card h4{margin:0 0 4px;font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;color:var(--ardoise)}
+        .contra-card .contra-sub{font-size:15px;color:var(--gris);line-height:1.6;margin-bottom:12px}
+        .contra-info{margin:12px 0;padding:14px 16px;background:var(--blanc);border:1px solid var(--grege);border-radius:10px;font-size:16px;line-height:1.7;color:var(--ardoise)}
+        .contra-info b{color:var(--ocre)}
+        .contra-h{margin:16px 0 8px;font-size:15px;font-weight:800;color:var(--ardoise)}
+        .contra-alertes{margin-top:14px;font-size:15px;line-height:1.65;color:var(--ardoise)}
+        .contra-alertes summary{cursor:pointer;font-weight:800}
+        .contra-alertes li{margin:6px 0}
+        #contra-projets{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 10px}
+      </style>
+      <div class="contra-card" id="anchor-contra">
+        <h4>Contraception : vue d'ensemble et arrêt</h4>
+        <div class="contra-sub">Quelle méthode, depuis quand, pourquoi, et ce qui a changé. C'est ce qui permet de lire le bilan hormonal : sous contraception hormonale, les saignements sont des saignements de privation, pas de vraies règles.</div>
+        <div class="g3">
+          <div><label class="fl" for="contra-marque">Marque exacte (si connue)</label>
+            <input class="fi2" type="text" id="contra-marque" list="contra-marques" autocomplete="off" placeholder="Ex : Minidril, Cérazette, Mirena, Nexplanon…" oninput="contraMaj()">
+            <datalist id="contra-marques"></datalist></div>
+          <div><label class="fl" for="contra-statut">Où en est-elle</label>
+            <select class="fi2" id="contra-statut" onchange="contraMaj()">
+              <option value="">— —</option><option>En cours</option><option>Arrêt envisagé, rien de décidé</option><option>Arrêt décidé, pas encore arrêtée</option>
+              <option>Arrêtée depuis moins de 3 mois</option><option>Arrêtée depuis 3 à 12 mois</option><option>Arrêtée depuis plus d'un an</option><option>Jamais prise</option>
+            </select></div>
+          <div><label class="fl" for="contra-duree">Depuis quand, dès quel âge, pourquoi</label>
+            <input class="fi2" type="text" id="contra-duree" placeholder="Ex : dès 16 ans pour l'acné, 12 ans au total">
+          </div>
+        </div>
+        <div id="contra-avant-wrap" style="display:none;margin-top:8px">
+          <label class="fl" for="contra-avant">Méthode utilisée avant l'arrêt</label>
+          <select class="fi2" id="contra-avant" onchange="contraMaj()"><option value="">— —</option></select>
+        </div>
+        <div class="contra-info" id="contra-info" style="display:none"></div>
+        <div id="contra-sympt-wrap" style="display:none">
+          <div class="contra-h" id="contra-sympt-titre">Ce que décrit la cliente depuis la pose ou la prise</div>
+          <div class="check-list" id="contra-sympt"></div>
+        </div>
+        <div id="contra-arret-wrap" style="display:none">
+          <div class="contra-h">Où en est la cliente dans sa réflexion ?</div>
+          <div id="contra-projets"></div>
+          <div class="contra-info" id="contra-projet-dire" style="display:none"></div>
+          <div class="contra-h">Depuis l'arrêt (ou depuis qu'elle y réfléchit) : ce qui revient ou apparaît</div>
+          <div class="check-list" id="contra-arret-sympt"></div>
+        </div>
+        <details class="contra-alertes">
+          <summary>Signes d'alerte : avis médical, jamais un conseil d'arrêt</summary>
+          <ul id="contra-alertes-liste"></ul>
+        </details>
+      </div>
+      <script>
+      (function(){
+        if (!window.CONTRA) return;
+        CONTRA.fillDatalist(document.getElementById('contra-marques'));
+        CONTRA.fillSelect(document.getElementById('contra-avant'));
+        var FAM_TITRES = {
+          combinee: "Depuis que vous prenez la pilule combinée (ou le patch, l'anneau)",
+          progestative: "Depuis que vous prenez la pilule progestative",
+          macro: "Depuis le macroprogestatif",
+          diu_hormonal: "Depuis la pose du stérilet hormonal",
+          diu_cuivre: "Depuis la pose du stérilet au cuivre",
+          implant: "Depuis la pose de l'implant",
+          injection: "Depuis les injections"
+        };
+        var box = document.getElementById('contra-sympt');
+        Object.keys(FAM_TITRES).forEach(function(f){
+          var d = document.createElement('div'); d.setAttribute('data-famille', f); d.style.display = 'none';
+          d.innerHTML = '<div class="contra-h" style="margin-top:4px">' + FAM_TITRES[f] + ' : cochez ce que décrit la cliente</div>' + CONTRA.itemsHtml(CONTRA.symptomes[f]);
+          box.appendChild(d);
+        });
+        document.getElementById('contra-arret-sympt').innerHTML = CONTRA.itemsHtml(CONTRA.symptomesArret);
+        document.getElementById('contra-alertes-liste').innerHTML = CONTRA.alertes.map(function(a){ return '<li>' + a.replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];}) + '</li>'; }).join('');
+        var pr = document.getElementById('contra-projets');
+        CONTRA.projets.forEach(function(p){
+          var b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.setAttribute('data-k', p.k);
+          b.innerHTML = '<span class="ck">✓</span> ' + p.l;
+          b.onclick = function(){ var on = !b.classList.contains('on'); pr.querySelectorAll('.chip').forEach(function(c){ c.classList.remove('on'); }); if (on) b.classList.add('on'); contraMaj(); };
+          pr.appendChild(b);
+        });
+      })();
+
+      function contraMethodeActive() {
+        // Méthode de référence : celle en cours ; sinon celle d'avant l'arrêt ; sinon celle déduite de la marque.
+        var cur = CONTRA.parLabel(document.getElementById('contraception-consult').value);
+        if (cur && cur.id !== 'aucune') return cur;
+        var av = CONTRA.parLabel(document.getElementById('contra-avant').value);
+        if (av && av.id !== 'aucune') return av;
+        var mk = CONTRA.parMarque(document.getElementById('contra-marque').value);
+        return mk ? mk.methode : null;
+      }
+      function contraMaj() {
+        if (!window.CONTRA) return;
+        var sel = document.getElementById('contraception-consult');
+        var marqueEl = document.getElementById('contra-marque');
+        var mk = CONTRA.parMarque(marqueEl.value);
+        // Marque reconnue et méthode pas encore choisie : on la sélectionne pour gagner un clic.
+        if (mk && !sel.value && !document.getElementById('contra-avant').value) {
+          var statutTmp = document.getElementById('contra-statut').value;
+          var cible = /^Arrêtée|^Arrêt/.test(statutTmp) ? document.getElementById('contra-avant') : sel;
+          cible.value = mk.methode.label;
+          cible.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        var statut = document.getElementById('contra-statut').value;
+        var arret = /^Arrêt/.test(statut);
+        document.getElementById('contra-avant-wrap').style.display = (arret && /^Arrêtée/.test(statut)) || (arret && sel.value === 'Aucune') ? 'block' : 'none';
+        var m = contraMethodeActive();
+        var info = document.getElementById('contra-info');
+        if (m && m.id !== 'aucune') {
+          var h = '<b>À dire à la cliente.</b> ' + m.dire;
+          if (m.progestatif) h += '<br><b>Hormone(s) :</b> ' + m.progestatif + (mk && mk.methode.id === m.id ? ' · <b>marque :</b> ' + mk.marque : '');
+          if (mk && mk.methode.id !== m.id) h += '<br><b>Attention :</b> la marque saisie correspond à « ' + mk.methode.label + ' », différente de la méthode choisie.';
+          info.innerHTML = h; info.style.display = 'block';
+        } else if (m) { info.innerHTML = '<b>À dire à la cliente.</b> ' + m.dire; info.style.display = 'block'; }
+        else { info.style.display = 'none'; }
+        // Symptômes de la famille concernée.
+        var fam = m ? CONTRA.familleSymptomes(m) : '';
+        if (fam === 'patch_anneau') fam = 'combinee';
+        var wrap = document.getElementById('contra-sympt-wrap'), any = false;
+        document.querySelectorAll('#contra-sympt > [data-famille]').forEach(function (d) {
+          var on = d.getAttribute('data-famille') === fam; d.style.display = on ? 'block' : 'none'; if (on) any = true;
+        });
+        wrap.style.display = any ? 'block' : 'none';
+        // Bloc arrêt : arrêt envisagé, décidé ou récent.
+        var wa = document.getElementById('contra-arret-wrap');
+        wa.style.display = arret ? 'block' : 'none';
+        var pj = document.querySelector('#contra-projets .chip.on');
+        var dire = document.getElementById('contra-projet-dire');
+        if (pj) { var proj = CONTRA.projets.filter(function (x) { return x.k === pj.getAttribute('data-k'); })[0]; dire.innerHTML = '<b>À dire à la cliente.</b> ' + proj.dire; dire.style.display = 'block'; }
+        else dire.style.display = 'none';
+        try { if (typeof detecterSpecialites === 'function') detecterSpecialites(); } catch (e) {}
+      }
+      function contraCompose() {
+        var lab = document.getElementById('contraception-consult').value;
+        var marque = (document.getElementById('contra-marque').value || '').trim();
+        var statut = document.getElementById('contra-statut').value;
+        var avant = document.getElementById('contra-avant').value;
+        var duree = (document.getElementById('contra-duree').value || '').trim();
+        var pj = document.querySelector('#contra-projets .chip.on');
+        var out = lab;
+        if (marque) out += (out ? ' — ' : '') + marque;
+        if (avant && avant !== 'Aucune') out += (out ? ' · ' : '') + 'méthode avant l\'arrêt : ' + avant;
+        if (statut && statut !== 'En cours') out += (out ? ' · ' : '') + statut.toLowerCase();
+        if (duree) out += (out ? ' · ' : '') + duree;
+        if (pj) out += ' · projet : ' + pj.textContent.replace('✓', '').trim().toLowerCase();
+        return out;
+      }
+      </script>
       <!-- DATE DES DERNIÈRES RÈGLES (02/10/2026) : champ « fi2 » (hors sauvegarde positionnelle), sauvegardé sous « ddr » ;
            affiché dans la carte « coup d'œil » de la fiche cliente du CRM. -->
       <div class="g3" style="margin-top:6px">
@@ -5641,6 +5788,7 @@ function recStop(){ recLaunch('Arrêter l’enregistrement'); recSetState('done'
         <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Hashimoto / Thyroïde</button>
         <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Fatigue surrénalienne / Cortisol</button>
         <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Aménorrhée centrale</button>
+        <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Contraception / arrêt de contraception</button>
         <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Fatigue chronique</button>
         <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Troubles du sommeil</button>
         <button class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Stress & anxiété</button>
@@ -10425,6 +10573,8 @@ function captureSnapshot() {
   snap['chips'] = JSON.stringify(chips);
   snap['menarche'] = (document.getElementById('menarche-ado')?.value || document.getElementById('menarche-sopk')?.value || '');
   snap['ddr'] = document.getElementById('ddr')?.value || '';
+  ['contra-marque','contra-statut','contra-avant','contra-duree'].forEach(id => { snap[id] = document.getElementById(id)?.value || ''; });
+  snap['contra-projet'] = document.querySelector('#contra-projets .chip.on')?.getAttribute('data-k') || '';
   // Check-items cochés (14/09/2026, bug remonté par Sabrina — voir explication détaillée dans
   // restoreSnapshot ci-dessous : capturé par le TEXTE de la question, plus par sa position dans
   // le document, qui bouge à chaque modification du questionnaire).
@@ -10571,6 +10721,11 @@ function restoreSnapshot(snap) {
   document.querySelectorAll('select.fi').forEach((el, i) => { const v = snap['select_' + (el.id || i)]; if (v) el.value = v; });
   document.querySelectorAll('textarea.fi').forEach((el, i) => { const v = snap['ta_' + (el.id || i)]; if (v !== undefined) el.value = v; });
   try { const ddrEl = document.getElementById('ddr'); if (ddrEl && snap['ddr']) { ddrEl.value = snap['ddr']; majJourCycleDDR(); } } catch(e) {}
+  try {
+    ['contra-marque','contra-statut','contra-avant','contra-duree'].forEach(id => { const e = document.getElementById(id); if (e && snap[id]) e.value = snap[id]; });
+    if (snap['contra-projet']) { const b = document.querySelector('#contra-projets .chip[data-k="' + snap['contra-projet'] + '"]'); if (b) b.classList.add('on'); }
+    if (typeof contraMaj === 'function') contraMaj();
+  } catch(e) {}
   try { if (snap['menarche'] !== undefined) { ['menarche-ado','menarche-sopk'].forEach(id => { const e = document.getElementById(id); if (e) e.value = snap['menarche']; }); } } catch(e) {}
   // Chips
   try {
@@ -10757,7 +10912,13 @@ function collectAllData() {
   d.premieres_regles_resume = (document.getElementById('menarche-sopk-calc')?.textContent || document.getElementById('menarche-ado-calc')?.textContent || '').trim();
   Object.assign(d, homaCollect()); // bilan insuline / HOMA + tour de taille (06/10/2026)
   d.regime_viande = document.getElementById('regime-viande-consult')?.value || '';
-  d.contraception_actuelle = document.getElementById('contraception-consult')?.value || '';
+  d.contraception_actuelle = (typeof contraCompose === 'function' ? contraCompose() : (document.getElementById('contraception-consult')?.value || ''));
+  d.contraception_methode = document.getElementById('contraception-consult')?.value || '';
+  d.contraception_marque = (document.getElementById('contra-marque')?.value || '').trim();
+  d.contraception_statut = document.getElementById('contra-statut')?.value || '';
+  d.contraception_avant = document.getElementById('contra-avant')?.value || '';
+  d.contraception_duree = (document.getElementById('contra-duree')?.value || '').trim();
+  d.contraception_projet = (document.querySelector('#contra-projets .chip.on')?.textContent || '').replace('✓', '').trim();
   d.traitements_vigilance = [...document.querySelectorAll('#cons-secu-traitements-group .chip.on')].map(c => c.textContent.replace('✓','').trim()).join(', ');
   d.allergies_alim = [...document.querySelectorAll('#cons-allergies-group .chip.on')].map(c => c.textContent.replace('✓','').trim()).join(', ');
   const obj6mois = document.getElementById('objectif-6mois');
@@ -12477,7 +12638,8 @@ function handleAlcool(sel) {
 const SPEC_CHIP_MAP = {
   'SIBO': 'sibo', 'SII / Côlon irritable': 'sii', 'Endométriose': 'endo',
   'SOPK': 'sopk', 'Ménopause / périménopause': 'meno', 'Hashimoto / Thyroïde': 'hashi',
-  'Fatigue surrénalienne / Cortisol': 'surr', 'Aménorrhée centrale': 'amenorrhee'
+  'Fatigue surrénalienne / Cortisol': 'surr', 'Aménorrhée centrale': 'amenorrhee',
+  'Contraception / arrêt de contraception': 'contra'
 };
 const SPEC_SIGNS = {
   // Chaque spécialité : liste de signes cliniques DISTINCTS. Un signe peut être reconnu par
@@ -12604,6 +12766,8 @@ const SPEC_SIGNS = {
     { label: 'Symptômes mammaires prémenstruels (tension, gonflement, ou seins fibrokystiques)', patterns: [/douleurs à la poitrine.*seins.*hors spm/i, /tension mammaire/i, /gonflement du ventre ou des seins en 2e partie de cycle/i, /seins fibrokystiques/i] },
     { label: 'Migraines cycliques', patterns: [/migraines cycliques/i] },
   ],
+  // Contraception et arrêt (24/11/2026) : signes générés depuis outils/contraception-data.js (livre pp. 270-312).
+  contra: (window.CONTRA ? CONTRA.specSigns() : []),
   progesterone_def: [
     { label: 'Phase entre l\'ovulation et les règles inférieure à 11 jours', patterns: [/inférieure à 11 jours/i, /phase lutéale courte/i, /Cycle qui raccourcit/i, /cycles? de moins de 23 jours/i] },
     { label: 'Fausse(s) couche(s) précoce(s) récente(s)', patterns: [/fausse\(s\) couche\(s\)/i] },
@@ -13032,7 +13196,7 @@ function detecterSpecialites() {
 const FLOAT_SUSP_DOT = {
   sibo:'var(--sibo-bd)', sii:'var(--sii-bd)', endo:'var(--endo-bd)', sopk:'var(--sopk-bd)',
   meno:'var(--meno-bd)', hashi:'var(--hashi-bd)', surr:'var(--surr-bd)',
-  hyperoestro:'var(--rouge)', progesterone_def:'var(--rose)', androgene_f:'var(--violet)', amenorrhee:'var(--amen-bd)', insulino:'var(--amber)'
+  hyperoestro:'var(--rouge)', progesterone_def:'var(--rose)', androgene_f:'var(--violet)', amenorrhee:'var(--amen-bd)', insulino:'var(--amber)', contra:'var(--ocre)'
 };
 /* Cible de saut pour chaque piste : l'onglet à activer (index réutilisé depuis
    SPEC_SECTION_INDEX, déjà défini plus haut et utilisé par toggleSpecialite()), et l'id de
@@ -13053,7 +13217,8 @@ const SUSP_JUMP_TARGET = {
   progesterone_def:{section:SPEC_SECTION_INDEX.sopk, el:'tblock-sopk'},
   meno:{section:SPEC_SECTION_INDEX.meno, el:'tblock-meno'},
   amenorrhee:{section:SPEC_SECTION_INDEX.amenorrhee, el:'tblock-amenorrhee'},
-  hyperoestro:{section:8, el:'anchor-hyperoestro'}
+  hyperoestro:{section:8, el:'anchor-hyperoestro'},
+  contra:{section:8, el:'anchor-contra'}
 };
 // Mémorise l'onglet quitté pour retrouver le chemin du retour en un clic — la mémorisation
 // elle-même est gérée de façon générale dans goSection(), pour tout chemin d'entrée dans un
@@ -13368,6 +13533,7 @@ surr:  { label: 'Fatigue surrénalienne / dysrégulation du cortisol', pourquoi:
   amenorrhee: { label: 'Aménorrhée centrale (hypothalamique)', pourquoi: 'Absence de règles prolongée sans grossesse ni ménopause, associée à un stress marqué et/ou une charge d\'entraînement/des apports alimentaires insuffisants — l\'axe cerveau-ovaires se met en pause alors que les ovaires eux-mêmes sont intacts.', relance: 'Depuis quand les règles ont-elles disparu ? Où en êtes-vous avec vos apports alimentaires et votre niveau d\'activité physique en ce moment — y a-t-il une restriction, volontaire ou non ?' },
   // ── Ajouts branche Gonades (Hormono Pratik — 20/08/2026) ──
   hyperoestro: { label: 'Excès d\'imprégnation œstrogénique', pourquoi: 'Tension mammaire, règles abondantes ou migraines cycliques évoquent un excès d\'imprégnation œstrogénique — réel ou relatif par manque de progestérone — à explorer via les 5 familles de causes (production, SHBG, progestérone, perturbateurs endocriniens, détox) avant de choisir un levier.', relance: 'Les seins sont-ils tendus/douloureux surtout en 2e partie de cycle ? Les règles sont-elles devenues plus abondantes qu\'avant, avec des caillots ?' },
+  contra: { label: 'Effets de la contraception hormonale / arrêt de contraception', pourquoi: "Plusieurs signes cochés évoquent un impact de la contraception sur le terrain (thyroïde, hormones masculines, sérotonine, foie, surrénales, microbiote vaginal), ou un arrêt récent qui laisse réapparaître ce que la pilule masquait. La pilule n'est jamais la cause à traiter à la place du médecin : elle renseigne sur un terrain à comprendre.", relance: "Quelle méthode exactement, depuis quel âge, et pour quelle raison a-t-elle été prescrite ? Qu'est-ce qui a changé depuis la pose ou depuis l'arrêt ?" },
   progesterone_def: { label: 'Déficit de progestérone', pourquoi: 'Un cycle raccourci, une phase lutéale courte ou une fausse couche précoce orientent vers un manque de progestérone, le plus souvent lié à une anovulation ou une ovulation de mauvaise qualité.', relance: 'Le cycle est-il plus court qu\'avant (moins de 25 jours) ? Y a-t-il eu une ou plusieurs fausses couches précoces, ou un désir de grossesse en cours ?' },
   androgene_f: { label: 'Possible déficit androgénique féminin', pourquoi: 'Une baisse de libido associée à une fatigue résistante peut évoquer, chez la femme, un manque d\'androgènes d\'origine surrénalienne — à confirmer par le contexte global avant tout levier actif (jamais de DHEA en supplémentation).', relance: 'Depuis combien de temps la libido a-t-elle baissé ? Y a-t-il aussi une perte de tonus musculaire, de densité osseuse ou de motivation, sans autre explication évidente ?' },
   hypochlor: { label: 'Hypochlorhydrie (acidité gastrique insuffisante)', pourquoi: 'Rots, estomac lourd, protéines qui restent sur l\'estomac, brûlures, haleine à jeun : un estomac pas assez acide digère mal les protéines, absorbe mal le fer, le zinc et la B12, et laisse les aliments fermenter sur place. Aucun signe ne suffit seul : c\'est l\'ensemble qui oriente.', relance: 'Les rots sont-ils fréquents ? Les brûlures arrivent-elles avec des aliments précis, le stress, le gras ou le café ? Prenez-vous ou avez-vous pris un anti-acide (IPP) ?' },
