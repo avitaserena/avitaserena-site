@@ -780,6 +780,18 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 .ml-det .ml-sub{font-weight:500;color:var(--gris,#6B6560);font-size:13px}
 .ml-det[open] summary{margin-bottom:10px}
 .lc-pre{font-size:13px;color:var(--gris,#6B6560);margin:8px 0 0;font-style:normal}
+.rt{margin:0 0 16px}
+.rt-h{font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--or,#99244F);margin:0 0 8px}
+.rt-t{width:100%;border-collapse:separate;border-spacing:0;font-size:14.5px;line-height:1.55;background:#fff;border:1px solid var(--taupe,#E7E2E4);border-radius:14px;overflow:hidden}
+.rt-t th{background:var(--or-clair,#FDEEF3);text-align:left;font-size:12px;letter-spacing:.08em;text-transform:uppercase;padding:9px 12px;color:var(--or,#99244F)}
+.rt-t td{vertical-align:top;padding:11px 12px;border-top:1px solid var(--taupe,#E7E2E4)}
+.rt-t ul{margin:0;padding-left:16px}
+.rt-d{font-weight:700;font-size:15.5px;margin-bottom:4px}
+.rt-q{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:17px;line-height:1.45}
+.rt-new{display:inline-block;background:var(--or,#99244F);color:#fff;border-radius:999px;padding:2px 9px;font-size:11.5px;font-weight:700;margin-bottom:6px}
+.lc-acc{margin-top:10px;background:var(--or-clair,#FDEEF3);border-radius:12px;padding:10px 14px;font-size:14.5px;line-height:1.55}
+.lc-acc b{display:block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--or,#99244F);margin-bottom:3px}
+@media print{.rt-t{font-size:12px}}
 .lc{background:#fff;border:1px solid var(--taupe,#E7E2E4);border-radius:16px;padding:14px 18px 12px;margin:0 0 12px;box-shadow:0 4px 14px rgba(153,36,79,.05)}
 .lc.main{border-color:var(--sable,#F3B6CE);border-width:1.5px}
 .lc-rank{font-size:11.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--or,#99244F);margin:0 0 10px}
@@ -17124,6 +17136,7 @@ function croiseHtml(ac) {
   h += '<h3>Ce que j\'ai entendu</h3>';
   var recs = ac.ths.map(function (th) { return recap(ac.per[th]); }).filter(Boolean);
   h += recs.length ? '<div class="mg-recap" id="mg-recap">' + recs.map(esc).join('<br><br>') + '</div><div class="mg-act"><button type="button" class="mg-tbtn" data-mg="copy">Copier ce texte</button><span class="mg-st" id="mg-st" role="status" aria-live="polite"></span></div>' : '<div class="mg-side-n">Aucune gêne détaillée pour le moment.</div>';
+  h += recapTableHtml(ac);
   h += '<h3>Ce qui se recoupe</h3>';
   if (ac.pistes.length) {
     ac.pistes.forEach(function (p, i) {
@@ -17210,6 +17223,7 @@ function mgPreCocher() {
     if (!isConsult() || !CLI) return;
     var ac = analyseCroise(S.a), done = [], wrap = document.getElementById('specialites-chips');
     if (!wrap) return;
+    if (!PISTES0) PISTES0 = (ac.pistes || []).map(function (q) { return q.k; });
     (ac.pistes || []).forEach(function (p) {
       var sp = PISTE_SPEC[p.k]; if (!sp || done.indexOf(sp) >= 0) return;
       var chip = wrap.querySelector('.chip[data-spec="' + sp + '"]'); if (!chip) return;
@@ -17375,6 +17389,71 @@ function cliAlertes() {
   return out;
 }
 function cliEnAttente() { return Object.keys(CLI || {}).filter(function (id) { return N[id] && S.a[id] === undefined; }).length; }
+var ACC = {
+"sibo": "Nous reprenons votre digestion dans l'ordre : d'abord confirmer cette piste avec votre médecin, puis rééquilibrer ce qui a laissé les bactéries remonter, et enfin aider l'intestin à retrouver son rythme de nettoyage.",
+"hypochlor": "Nous allons soutenir le début de la digestion, dans l'estomac, car tout ce qui suit en dépend : si ce premier temps est bien fait, le reste du ventre travaille beaucoup mieux.",
+"gastrite": "Nous commencerons par apaiser l'estomac et protéger sa paroi, avec un avis médical si besoin, car tant qu'il est irrité, la digestion et l'absorption restent perturbées.",
+"reflux": "Nous travaillerons sur ce qui fait remonter l'acidité (rythme des repas, pression sur l'estomac, stress) pour que le clapet retrouve son rôle, sans masquer le signal.",
+"biliaire": "Nous allons aider votre foie et votre vésicule à mieux fonctionner, car ce sont eux qui permettent de digérer les graisses et d'évacuer ce que le corps n'a plus besoin de garder.",
+"fermentation": "Nous rééquilibrerons progressivement la flore du côlon, étape par étape, pour que ce que vous mangez nourrisse votre corps au lieu de fermenter et de gonfler.",
+"putrefaction": "Nous allons rééquilibrer votre flore et aider la digestion des protéines, car c'est quand elle est incomplète que l'intestin produit ces substances irritantes.",
+"candidose": "Nous rééquilibrerons votre terrain pas à pas, pour que les levures reprennent leur place normale, sans rien brusquer qui fragiliserait davantage l'intestin.",
+"dysbiose": "Nous remettrons de l'ordre dans votre flore intestinale, avec un rythme progressif, car un microbiote déséquilibré entretient la fatigue, les ballonnements et l'inflammation.",
+"sii": "Nous calmerons la sensibilité de votre intestin et régulerons son rythme, tout en travaillant sur le lien avec le stress, car chez vous les deux se répondent.",
+"axe": "Nous agirons sur les deux à la fois : le ventre et le système nerveux, parce qu'ils communiquent en permanence, et que soulager l'un sans l'autre ne tient pas dans la durée.",
+"perm": "Nous aiderons la paroi de votre intestin à se réparer, parce qu'une muqueuse plus étanche réduit l'inflammation et les réactions à certains aliments.",
+"fodmap": "Nous identifierons précisément ce qui ne passe pas, sans vous faire supprimer des aliments au hasard, puis nous remettrons l'intestin en état pour que vous retrouviez de la liberté.",
+"lactose": "Nous vérifierons d'abord ce qui est vraiment en cause, puis nous adapterons votre assiette sans carence, pour que vous mangiez sans douleur.",
+"histamine": "Nous chercherons ce qui fait monter votre histamine et ce qui freine son élimination, pour réduire ces réactions sans vous faire vivre de restrictions inutiles.",
+"constip": "Nous remettrons votre transit en mouvement en agissant sur ce qui le ralentit, car un transit lent recycle les déchets et peut aggraver la fatigue et l'équilibre hormonal.",
+"gyneco": "Nous regarderons le lien entre votre cycle et votre digestion, car les hormones agissent directement sur l'intestin, et inversement.",
+"progesterone_def": "Nous soutiendrons la seconde partie de votre cycle, en agissant sur ce qui l'écourte (stress, ovulation, réserves du corps), pour retrouver des règles et une humeur plus stables.",
+"hyperoestro": "Nous aiderons votre corps à mieux éliminer l'excès d'œstrogènes, avec le foie et l'intestin, car c'est ce qui allège les règles, les seins tendus et l'irritabilité.",
+"hypooestro": "Nous soutiendrons l'équilibre de votre cycle et de votre énergie, en veillant à ce que le corps ait ce qu'il faut pour fabriquer ses hormones.",
+"dysovulation": "Nous travaillerons sur ce qui perturbe votre ovulation (stress, énergie disponible, sucres, thyroïde), car un cycle régulier commence par une ovulation de qualité.",
+"sopk": "Nous agirons sur la stabilité de votre énergie et de votre glycémie, la gestion du stress et l'inflammation, car ce sont les trois leviers qui calment le déséquilibre hormonal du SOPK.",
+"insulino": "Nous stabiliserons votre énergie au fil de la journée pour que l'insuline cesse de s'emballer, car c'est elle qui entretient les envies de sucre, la prise de poids et les troubles du cycle.",
+"endo": "Nous travaillerons sur l'inflammation et sur l'élimination des hormones en excès, en complément de votre suivi médical, pour réduire la douleur et regagner du confort au quotidien.",
+"meno": "Nous accompagnerons cette transition en soutenant votre équilibre hormonal, votre sommeil et votre énergie, pour que votre corps s'adapte en douceur plutôt que de subir.",
+"amenor": "Nous aiderons votre corps à se sentir en sécurité : énergie suffisante, stress apaisé, repos, car c'est ce signal que le cerveau attend pour relancer le cycle.",
+"prolactine": "Nous commencerons par faire vérifier cette piste avec votre médecin, puis nous soutiendrons votre équilibre nerveux et hormonal pour accompagner le retour à la normale.",
+"tdpm": "Nous préparerons chaque cycle bien en amont, pour que la période avant les règles soit mieux traversée, avec un soutien nerveux et hormonal adapté à votre rythme.",
+"resistance_prog": "Nous chercherons pourquoi votre corps répond mal à sa progestérone, souvent lié à l'inflammation et au stress, pour que vous retrouviez calme et stabilité avant les règles.",
+"five_ar": "Nous agirons sur ce qui amplifie l'effet des hormones masculines sur votre peau et vos cheveux, avec un soutien de l'équilibre glycémique et de l'inflammation.",
+"pe": "Nous réduirons votre exposition au quotidien et soutiendrons les organes qui éliminent, pour alléger la charge que vos hormones doivent gérer.",
+"reserve": "Nous protégerons ce qui peut l'être : qualité de l'ovulation, inflammation, énergie, en lien avec votre médecin pour les examens utiles à votre projet.",
+"pilule": "Nous laisserons à votre cycle le temps de se réinstaller, en soutenant ce que la pilule a mis en pause, pour que votre corps retrouve son propre rythme et que nous le lisions clairement.",
+"thyro": "Nous soutiendrons votre thyroïde et ce qui la fait ralentir (stress, digestion, carences), en complément de votre suivi médical, pour retrouver chaleur, énergie et clarté.",
+"cort_haut": "Nous calmerons votre système de stress pour qu'il cesse de tourner à plein régime, car c'est lui qui entretient la fatigue le soir, le sommeil léger et les envies de sucre.",
+"cort_bas": "Nous soutiendrons vos surrénales avec un rythme de vie et un soutien adaptés, pour que votre énergie remonte progressivement, sans vous pousser à nouveau dans la fatigue.",
+"rythmes": "Nous remettrons de la régularité dans vos journées (lumière, repas, coucher), car votre corps règle presque toutes ses hormones sur ces repères.",
+"melato": "Nous travaillerons sur votre soirée et votre environnement de nuit, pour aider votre corps à se mettre en sommeil profond et à vraiment récupérer.",
+"serotonine": "Nous soutiendrons votre équilibre nerveux et la fabrication de vos messagers du bien-être, car c'est ce qui apaise l'humeur, les ruminations et les envies de sucre.",
+"dopamine": "Nous soutiendrons votre motivation et votre élan du matin, en agissant sur ce dont votre cerveau a besoin pour fabriquer son énergie de démarrage.",
+"mag": "Nous vérifierons ce qui épuise vos réserves (stress, digestion, rythme) et nous les reconstituerons, car elles conditionnent le sommeil, les nerfs et les crampes.",
+"fer_zinc": "Nous confirmerons d'abord avec votre médecin, puis nous soutiendrons vos réserves et leur absorption, car elles conditionnent l'énergie, la peau et les cheveux.",
+"mito": "Nous soutiendrons la production d'énergie de vos cellules et nous lèverons ce qui la freine, pour une énergie plus régulière et moins de récupération interminable.",
+"androgenes": "Nous agirons sur la stabilité de votre énergie et l'inflammation, car c'est ce qui régule la production d'hormones masculines dans l'organisme.",
+"atopie": "Nous apaiserons le terrain de votre peau de l'intérieur (intestin, inflammation, stress), car la peau reflète souvent ce qui se passe plus en profondeur."
+};
+var PISTES0 = null;
+function recapRows(ac) {
+  return (ac.pistes || []).slice(0, 5).map(function (p) {
+    var P = PISTES[p.k]; return { k: p.k, why: p.why.slice(0, 4), deduit: String(P.l).split(' : ')[0], dire: P.dire || '', acc: ACC[p.k] || '', nouveau: !!(PISTES0 && PISTES0.indexOf(p.k) < 0) };
+  });
+}
+function recapTableHtml(ac) {
+  var rows = recapRows(ac); if (!rows.length) return '';
+  var h = '<div class="rt"><div class="rt-h">Tableau de restitution : ce que je lui réponds, et comment je l\u2019accompagne</div><table class="rt-t"><thead><tr><th>Elle a dit / confirmé</th><th>Ce que je lui réponds</th><th>Comment je vous accompagne</th></tr></thead><tbody>';
+  rows.forEach(function (r) {
+    h += '<tr><td>' + (r.nouveau ? '<span class="rt-new">Ajouté pendant l\u2019échange</span>' : '') + '<ul>' + r.why.map(function (w) { return '<li>' + esc(w) + '</li>'; }).join('') + '</ul></td>' +
+      '<td><div class="rt-d">' + esc(r.deduit) + '</div><div class="rt-q">«\u00a0' + esc(r.dire) + '\u00a0»</div></td><td>' + esc(r.acc) + '</td></tr>';
+  });
+  return h + '</tbody></table><div class="mg-act"><button type="button" class="mg-tbtn" data-mg="copyrt">Copier ce tableau en texte</button><span class="mg-st" id="mg-st3"></span></div></div>';
+}
+function recapTexte(ac) {
+  return recapRows(ac).map(function (r) { return 'Vous m\u2019avez dit : ' + r.why.join(' ; ') + '.\nCe que je comprends : ' + r.dire + '\nComment je peux vous accompagner : ' + r.acc; }).join('\n\n');
+}
 function lectureHtml() {
   if (!CLI) return '';
   var L; try { L = lecture(); } catch (e) { if (window.console) console.warn('[Préparation visio] lecture impossible :', e); return ''; }
@@ -17397,7 +17476,7 @@ function lectureHtml() {
         '<div class="lc-ar">→</div>' +
         '<div><div class="lc-k">On approfondit</div>' + (TH_LABEL[th] && th !== 'entree' ? '<button type="button" class="lc-go" data-mg="theme" data-th="' + th + '">Questions : ' + esc(thl) + '</button>' : '') + '</div>' +
         '</div>' +
-        '<details class="lc-more"><summary>Ce que je peux lui dire · pour moi</summary>' +
+        (ACC[p.k] ? '<div class="lc-acc"><b>Comment je peux vous accompagner</b>' + esc(ACC[p.k]) + '</div>' : '') + '<details class="lc-more"><summary>Ce que je peux lui dire · pour moi</summary>' +
         (P.dire ? '<p class="lc-dire">«\u00a0' + esc(P.dire) + '\u00a0»</p>' : '') +
         '<p class="lc-conf"><b>Pour confirmer ou écarter :</b> ' + esc(P.conf) + '</p></details></div>';
     });
@@ -17667,6 +17746,7 @@ function onClick(e) {
   else if (act === 'back') back();
   else if (act === 'reset') reset();
   else if (act === 'copy') copier();
+  else if (act === 'copyrt') { try { var t = recapTexte(analyseCroise(S.a)), st = document.getElementById('mg-st3'); (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(function () { if (st) st.textContent = 'Copié'; }, function () { if (st) st.textContent = 'Copie impossible : sélectionnez le tableau'; }); } catch (x) { /* sans effet */ } }
   else if (act === 'go') { var n = parseInt(b.getAttribute('data-sec'), 10); if (typeof goSection === 'function' && !isNaN(n)) goSection(n); }
   else if (act === 'copyadr') copierAdr();
   else if (act === 'theme') { var th = b.getAttribute('data-th'); if (TH_LABEL[th]) { S.soon = null; S.th = th; S.edit = null; S.rst = false; commit(); scrollUp(); } }
