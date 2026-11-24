@@ -15245,11 +15245,11 @@ var HPISTES = {
 };
 Object.keys(HPISTES).forEach(function (k) { PISTES[k] = HPISTES[k]; });
 
-var ROOT = { digestif: 'motifs', hormones: 'h_motifs' };
+var ROOT = { digestif: 'motifs', hormones: function (a) { return hasE(a, 'contra') ? 'c_motifs' : 'h_motifs'; } };
 var BRH = { regles: 'h_volume', cycle: 'h_presence', spm: 'h_spm', douleur: 'h_douleur', peau: 'h_andro', age: 'h_age', grossesse: 'h_grossesse' };
 function isH(id) { return String(id).indexOf('h_') === 0; }
-function sousPilule(a) { return has(a, 'h_pilule', 'actuelle'); }
-function queueH(a) { var m = a.h_motifs; return Array.isArray(m) ? m.filter(function (k) { return BRH[k] && !(k === 'cycle' && sousPilule(a)); }) : []; }
+function sousPilule(a) { return has(a, 'h_pilule', 'actuelle') || has(a, 'c_depuis', 'en_cours_moins2') || has(a, 'c_depuis', 'en_cours_plus2') || has(a, 'c_depuis', 'en_cours_ado'); }
+function queueH(a) { var m = Array.isArray(a.h_motifs) ? a.h_motifs.slice() : a.h_motifs; if (Array.isArray(m) && has(a, 'c_motifs', 'bebe') && m.indexOf('grossesse') < 0) m.push('grossesse'); var ordre = Object.keys(BRH); return Array.isArray(m) ? m.filter(function (k) { return BRH[k] && !(k === 'cycle' && sousPilule(a)); }).sort(function (x, y) { return ordre.indexOf(x) - ordre.indexOf(y); }) : []; }
 function firstBrH(a) { var q = queueH(a); return q.length ? BRH[q[0]] : 'h_meds'; }
 function afterBrH(a, key) { var q = queueH(a), i = q.indexOf(key), nx = q[i + 1]; return nx ? BRH[nx] : 'h_meds'; }
 
@@ -15269,6 +15269,78 @@ node('h_motifs', { m: 'listen', multi: true, s: 'Ce qu\'elle décrit',
   ],
   next: function () { return 'h_secu'; } });
 
+/* ───── CONTRACEPTION ET ARRÊT (24/11/2026) : mêmes questions que la préparation visio ───── */
+node('c_motifs', { m: 'listen', multi: true, s: 'Où elle en est',
+  q: "Où en est-elle avec sa contraception hormonale ?",
+  hint: "Elle vous le dit avec ses mots : cochez au fil de son récit. Ne jamais l'inciter à arrêter : on l'informe, le choix lui appartient.",
+  why: "Sous contraception hormonale, l'ovulation est mise au repos et les saignements sont de privation : on ne lit ni le cycle ni les dosages hormonaux. Savoir si elle veut retrouver ses cycles, voir où elle en est ou préparer un bébé change complètement l'accompagnement, notamment le délai à prévoir entre l'arrêt et les essais.",
+  o: [
+    { k: 'cycles', l: "Elle souhaite arrêter pour retrouver ses cycles", f: "vous souhaitez arrêter pour retrouver vos cycles", e: [['pilule', 2, "arrêt pour retrouver ses cycles"]] },
+    { k: 'situer', l: "Elle souhaite arrêter pour voir où elle en est (cycles, règles, acné…)", f: "vous souhaitez arrêter pour voir où vous en êtes", e: [['pilule', 2, "arrêt pour voir où elle en est"]] },
+    { k: 'bebe', l: "Elle arrête pour concevoir un enfant, ou prépare un projet bébé", f: "vous arrêtez pour concevoir un enfant",
+      say: "Pour un bébé, le mieux est d'arrêter la contraception hormonale 3 mois, idéalement 6 mois avant d'essayer : le temps de remonter vos réserves et de faire les analyses utiles. Le retour des règles ne prouve pas que l'ovulation est de bonne qualité.",
+      e: [['pilule', 2, "arrêt pour un projet de bébé"]] },
+    { k: 'autre', l: "Elle souhaite passer à une contraception sans hormones", f: "vous souhaitez passer à une contraception sans hormones", e: [['pilule', 1, "passage à une contraception sans hormones"]] },
+    { k: 'reflexion', l: "Elle l'a arrêtée récemment, ou s'interroge sans avoir décidé", f: "vous avez arrêté récemment ou vous vous interrogez", e: [['pilule', 2, "arrêt récent ou en réflexion"]] }
+  ],
+  next: function () { return 'c_methode'; } });
+
+node('c_methode', { m: 'ask', s: 'Quelle méthode',
+  q: "Quelle contraception hormonale prend-elle, ou avait-elle avant l'arrêt ?",
+  hint: "Demandez la marque exacte : elle donne le progestatif et la génération. Le détail se note dans la section « Hormones, cycle & gynécologie ».",
+  why: "La pilule combinée apporte deux hormones de synthèse et met les ovaires au repos ; la pilule progestative, le stérilet hormonal et l'implant apportent un progestatif seul ; le stérilet au cuivre n'apporte aucune hormone. Les effets et les symptômes à rechercher ne sont pas les mêmes selon la méthode.",
+  o: [
+    { k: 'comb', l: "Pilule combinée (Minidril, Ludéal, Optilova, Leeloo, Mercilon, Cycleane, Méliane, Minesse, Jasmine, Jasminelle, Bélanette, Belara, Zoély, Drovelis, Diane 35…)", f: "vous prenez ou preniez une pilule combinée", e: [['pilule', 2, "pilule combinée : œstrogène de synthèse et progestatif"]] },
+    { k: 'prog', l: "Pilule progestative (Cérazette, Optimizette, Antigone, Elfasette, Microval, Slinda)", f: "vous prenez ou preniez une pilule progestative", e: [['pilule', 2, "pilule progestative"]] },
+    { k: 'macro', l: "Progestatif fortement dosé (Lutényl, Colprone, Lutéran)", f: "vous prenez ou preniez un progestatif fortement dosé", e: [['pilule', 3, "progestatif fortement dosé : cycle à l'arrêt"]] },
+    { k: 'patch', l: "Patch (Evra) ou anneau vaginal (NuvaRing, Ornibel)", f: "vous utilisez ou utilisiez un patch ou un anneau", e: [['pilule', 2, "patch ou anneau : mêmes hormones que la pilule combinée"]] },
+    { k: 'implant', l: "Implant (Nexplanon)", f: "vous avez ou aviez un implant", e: [['pilule', 2, "implant : progestatif seul"]] },
+    { k: 'diu_h', l: "Stérilet hormonal (Mirena, Donasert, Kyleena, Jaydess)", f: "vous avez ou aviez un stérilet hormonal", e: [['pilule', 2, "stérilet hormonal : progestatif seul"]] },
+    { k: 'diu_c', l: "Stérilet au cuivre (Mona Lisa, TT380, NT380, UT380, Gynelle…)", f: "vous avez ou aviez un stérilet au cuivre", e: [['pilule', 1, "stérilet au cuivre : sans hormone"]] },
+    { k: 'inj', l: "Injection tous les 3 mois (Depo-Provera)", f: "vous avez ou aviez des injections contraceptives", e: [['pilule', 2, "injection contraceptive"]] },
+    { k: 'inconnue', l: "Elle ne sait plus laquelle exactement", f: "vous ne savez plus exactement quelle contraception", e: [['pilule', 1, "méthode à préciser"]] }
+  ],
+  next: function () { return 'c_depuis'; } });
+
+node('c_depuis', { m: 'ask', s: 'Depuis quand',
+  q: "Depuis combien de temps l'utilise-t-elle, ou depuis combien de temps l'a-t-elle arrêtée ?",
+  hint: "Une seule réponse. Pensez à demander dès quel âge et pourquoi elle a été prescrite.",
+  why: "La durée de prise et le temps écoulé depuis l'arrêt indiquent à quel stade du retour de l'ovulation elle se trouve, et si ce qu'elle remarque relève de la transition ou d'un terrain à soutenir.",
+  o: [
+    { k: 'en_cours_moins2', l: "En cours depuis moins de 2 ans", f: "vous la prenez depuis moins de 2 ans" },
+    { k: 'en_cours_plus2', l: "En cours depuis plus de 2 ans", f: "vous la prenez depuis plus de 2 ans" },
+    { k: 'en_cours_ado', l: "En cours depuis l'adolescence, cycle jamais observé sans elle", f: "vous la prenez depuis l'adolescence",
+      note: "Contraception dès l'adolescence : le cycle naturel n'a jamais été observé, la lecture de base se fera après l'arrêt.", e: [['pilule', 2, "contraception dès l'adolescence"]] },
+    { k: 'arret_3', l: "Arrêtée depuis moins de 3 mois", f: "vous l'avez arrêtée il y a moins de 3 mois", e: [['pilule', 3, "arrêt depuis moins de 3 mois"]] },
+    { k: 'arret_12', l: "Arrêtée depuis 3 à 12 mois", f: "vous l'avez arrêtée il y a 3 à 12 mois", e: [['pilule', 2, "arrêt depuis 3 à 12 mois"]] },
+    { k: 'arret_plus', l: "Arrêtée depuis plus d'un an", f: "vous l'avez arrêtée il y a plus d'un an" }
+  ],
+  next: function () { return 'c_symptomes'; } });
+
+node('c_symptomes', { m: 'ask', multi: true, s: 'Ce qu\'elle remarque',
+  q: "Qu'a-t-elle remarqué depuis la prise de cette contraception, ou depuis son arrêt ?",
+  hint: "Plusieurs réponses possibles. Le détail par méthode se coche dans la section « Hormones, cycle & gynécologie ».",
+  why: "Chaque signe renvoie à un mécanisme : thyroïde ralentie, hormones masculines, sérotonine, foie, surrénales, flore vaginale, ou, après l'arrêt, ce que la contraception masquait. Ils m'évitent de poser dix questions.",
+  o: [
+    { k: 'libido', l: "Baisse de libido, perte de confiance en soi", f: "votre libido ou votre confiance en vous ont baissé",
+      say: "La contraception met les ovaires au repos : ils fabriquent moins de testostérone, et la pilule fait monter la protéine qui la lie. La testostérone libre, la seule active, diminue.", e: [['pilule', 2, "baisse de libido sous contraception"]] },
+    { k: 'peau', l: "Acné, peau grasse, poils ou chute de cheveux", f: "vous avez de l'acné, la peau grasse, des poils ou une chute de cheveux", e: [['pilule', 2, "acné ou chute de cheveux liée à la contraception"], ['sopk', 1, "acné, peau grasse, poils ou chute de cheveux"]] },
+    { k: 'poids', l: "Prise de poids, ventre qui gonfle, frilosité ou fatigue", f: "vous avez pris du poids, le ventre gonfle, vous avez froid ou êtes fatiguée",
+      say: "La pilule freine la transformation de l'hormone thyroïdienne en sa forme active et augmente la protéine qui la transporte. Ce qui s'explique n'est pas pour autant normal.", e: [['pilule', 2, "prise de poids, frilosité ou fatigue sous contraception"]] },
+    { k: 'humeur', l: "Irritabilité, impatience, humeur plus basse ou envies de sucre le soir", f: "vous êtes plus irritable, l'humeur est plus basse ou vous avez des envies de sucre le soir",
+      say: "La pilule semble épuiser la sérotonine : les vitamines B6, B9, B12 et le zinc nécessaires à sa fabrication sont diminués.", e: [['pilule', 2, "humeur ou compulsions du soir sous contraception"]] },
+    { k: 'tensions', l: "Tensions musculaires, crampes, réveils nocturnes ou sensibilité au stress", f: "vous avez des tensions, des crampes, des réveils nocturnes ou une sensibilité au stress", e: [['pilule', 2, "déficit en magnésium et surrénales sous contraception"]] },
+    { k: 'seins', l: "Seins douloureux, chevilles gonflées ou saignements en dehors de la pause", f: "vous avez les seins douloureux, les chevilles gonflées ou des saignements hors pause", e: [['hyperoestro', 2, "seins, chevilles ou saignements hors pause sous contraception"], ['pilule', 1, "signes d'excès d'œstrogènes sous contraception"]] },
+    { k: 'tete', l: "Maux de tête, migraines ou nausées", f: "vous avez des maux de tête, des migraines ou des nausées", e: [['pilule', 2, "maux de tête ou nausées sous contraception"]] },
+    { k: 'mycoses', l: "Mycoses, cystites ou infections vaginales à répétition", f: "vous avez des mycoses, des cystites ou des infections vaginales à répétition", e: [['pilule', 2, "mycoses ou cystites sous contraception"]] },
+    { k: 'regles_abond', l: "Règles plus abondantes ou plus douloureuses (stérilet au cuivre)", f: "vos règles sont plus abondantes ou plus douloureuses", e: [['hyperoestro', 2, "règles plus abondantes ou douloureuses avec le stérilet au cuivre"]] },
+    { k: 'arret_cycles', l: "Depuis l'arrêt : cycles absents, très longs ou irréguliers", f: "depuis l'arrêt, vos cycles sont absents, très longs ou irréguliers", e: [['dysovulation', 2, "cycles absents, longs ou irréguliers depuis l'arrêt"], ['pilule', 2, "cycles perturbés depuis l'arrêt"]] },
+    { k: 'arret_peau', l: "Depuis l'arrêt : acné, peau grasse ou chute de cheveux apparues ou revenues", f: "depuis l'arrêt, l'acné, la peau grasse ou la chute de cheveux sont apparues ou revenues", e: [['sopk', 2, "acné ou chute de cheveux depuis l'arrêt de la contraception"], ['pilule', 2, "symptômes revenus à l'arrêt"]] },
+    { k: 'arret_spm', l: "Depuis l'arrêt : règles douloureuses, abondantes ou syndrome prémenstruel marqué", f: "depuis l'arrêt, vos règles sont douloureuses ou abondantes ou le syndrome prémenstruel est marqué", e: [['endo', 1, "règles douloureuses revenues à l'arrêt"], ['progesterone_def', 1, "syndrome prémenstruel marqué à l'arrêt"], ['pilule', 2, "symptômes revenus à l'arrêt"]] },
+    { k: 'rien', l: "Rien de particulier", x: true }
+  ],
+  next: function () { return 'h_motifs'; } });
+
 node('h_secu', { m: 'ask', multi: true, s: 'Signes de sécurité',
   q: "Un point de sécurité avant d'aller plus loin : avez-vous remarqué l'un de ces signes ?",
   hint: "Une seule question, posée naturellement. Si oui, notez-le : on continue, mais l'avis du médecin passe avant l'accompagnement.",
@@ -15281,7 +15353,7 @@ node('h_secu', { m: 'ask', multi: true, s: 'Signes de sécurité',
     { k: 'masse', l: "Une boule ou une masse dans le ventre ou dans un sein", flag: "Masse palpée au ventre ou au sein : examen médical avant tout accompagnement." },
     { k: 'aucun', l: "Aucun de ces signes", x: true }
   ],
-  next: function () { return 'h_pilule'; } });
+  next: function (a) { return a.c_methode !== undefined ? 'h_pilule_detail' : 'h_pilule'; } });
 
 node('h_pilule', { m: 'ask', br: 'pilule', s: 'Pilule',
   q: "Prenez-vous ou avez-vous pris une pilule, un DIU hormonal ou un implant ?",
@@ -15612,6 +15684,8 @@ node('h_grossesse', { m: 'ask', multi: true, br: 'grossesse', s: 'Projet de gros
   hint: "Plusieurs réponses possibles.",
   why: "Pour concevoir, il faut une ovulation de bonne qualité suivie d'une seconde moitié de cycle suffisamment longue pour que la progestérone soutienne le début de grossesse. Les fausses couches précoces à répétition orientent d'abord vers un déficit de progestérone.",
   o: [
+    { k: 'prepare', l: "Elle prépare un projet bébé, sans encore essayer (contraception en cours ou récemment arrêtée)", f: "vous préparez un projet bébé, sans encore essayer",
+      say: "C'est le meilleur moment pour prendre soin de votre terrain : il faut un temps entre l'arrêt de la contraception hormonale et les premiers essais.", e: [] },
     { k: 'en_cours', l: "Elle essaie depuis moins d'un an", f: "vous essayez de concevoir depuis moins d'un an", e: [] },
     { k: 'long', l: "Elle essaie depuis plus d'un an", f: "vous essayez de concevoir depuis plus d'un an",
       note: "Projet de grossesse depuis plus d'un an : bilan de fertilité à prévoir avec le médecin ou le gynécologue en parallèle.",
@@ -15621,7 +15695,7 @@ node('h_grossesse', { m: 'ask', multi: true, br: 'grossesse', s: 'Projet de gros
       e: [['progesterone_def', 3, "fausse(s) couche(s) précoce(s)"]] },
     { k: 'aucun', l: "Pas de projet pour le moment", x: true }
   ],
-  next: function (a) { return 'h_meds'; } });
+  next: function (a) { return afterBrH(a, 'grossesse'); } });
 
 /* ── Médicaments et examens ── */
 node('h_meds', { m: 'ask', multi: true, s: 'Médicaments',
@@ -15866,6 +15940,9 @@ node('e_motifs', { m: 'listen', multi: true, s: 'Ce qui l\'amène',
   hint: "Plusieurs réponses possibles : cochez au fil de son récit, dans l'ordre de ce qui la gêne le plus. Chaque motif ouvre son parcours, l'un après l'autre, puis tout est croisé à la fin.",
   why: "Je pars de ce qui vous gêne, pas d'un questionnaire standard. Et les motifs se croisent presque toujours : une prise de poids peut venir de l'insuline, de la thyroïde ou du cortisol ; une fatigue de la thyroïde, des surrénales ou du sommeil ; de l'acné de l'insuline autant que des hormones. C'est en les regardant ensemble qu'on trouve l'origine, plutôt que de traiter chaque symptôme à part.",
   o: [
+    { k: 'contra', l: "Arrêter ma contraception hormonale (ou l'avoir arrêtée récemment)", f: "vous souhaitez arrêter votre contraception hormonale, ou vous l'avez arrêtée récemment",
+      say: "Sous contraception hormonale, l'ovulation est mise au repos et les saignements sont des saignements de privation. Je regarderai ce que votre cycle cachait, ce qui revient après l'arrêt et, si vous préparez un bébé, comment mettre votre terrain dans les meilleures conditions.",
+      e: [['pilule', 3, "souhait d'arrêter la contraception hormonale ou arrêt récent"]] },
     { k: 'digestif', l: "Digestion : ballonnements, douleurs, transit, reflux", f: "vous venez pour des troubles digestifs",
       say: "L'intestin est au carrefour de presque tout : il fabrique l'essentiel de la sérotonine, il dialogue avec la thyroïde et il conditionne l'état de la peau. Je regarderai donc aussi ces liens." },
     { k: 'hormones', l: "Cycle et hormones : règles, syndrome prémenstruel, ménopause, projet de bébé", f: "vous venez pour votre cycle ou vos hormones",
@@ -17421,6 +17498,24 @@ function render() {
   var back = document.getElementById('mg-back'), rst = document.getElementById('mg-reset');
   if (back) back.disabled = !started;
   if (rst) { rst.disabled = !started; rst.textContent = S.rst ? 'Confirmer : tout effacer' : 'Recommencer'; }
+  try { pontCarteContra(S.a); } catch (e) { /* carte contraception absente : sans conséquence */ }
+}
+/* Les réponses du parcours (ou de la préparation visio) préremplissent la carte « Contraception » de la section Hormones, sans jamais écraser une saisie existante. */
+function pontCarteContra(a) {
+  if (!window.CONTRA || !a || a.c_methode === undefined) return;
+  var sel = document.getElementById('contraception-consult'), st = document.getElementById('contra-statut'), av = document.getElementById('contra-avant');
+  if (!sel || !st) return;
+  var MET = { comb: 'Pilule œstroprogestative — marque ou génération non précisée', macro: 'Pilule macroprogestative (progestatif fortement dosé : Lutényl, Colprone, Lutéran…)', implant: 'Implant contraceptif (Nexplanon)', diu_h: 'DIU hormonal / stérilet hormonal (Mirena, Donasert, Kyleena, Jaydess)', diu_c: 'DIU cuivre / stérilet au cuivre (Mona Lisa, TT380, NT380, UT380, Gynelle, Ballerine…)', patch: 'Patch contraceptif (Evra)', inj: 'Injection contraceptive (Depo-Provera) [hors livre]' };
+  var lab = MET[a.c_methode], d = a.c_depuis, arret = /^arret_/.test(d || ''), changed = false;
+  var statut = d === 'arret_3' ? 'Arrêtée depuis moins de 3 mois' : d === 'arret_12' ? 'Arrêtée depuis 3 à 12 mois' : d === 'arret_plus' ? "Arrêtée depuis plus d'un an" : (d ? (has(a, 'c_motifs', 'cycles') || has(a, 'c_motifs', 'situer') || has(a, 'c_motifs', 'bebe') ? 'Arrêt décidé, pas encore arrêtée' : 'En cours') : '');
+  function setv(el, v) { if (el && v && !el.value) { el.value = v; changed = true; } }
+  if (lab) setv(arret ? av : sel, lab);
+  if (arret && av && av.value === '' && !lab) { /* méthode non précisée : on laisse vide */ }
+  if (arret && sel && !sel.value) { sel.value = 'Aucune'; changed = true; }
+  setv(st, statut);
+  var pj = has(a, 'c_motifs', 'bebe') ? 'bebe' : has(a, 'c_motifs', 'cycles') ? 'cycles' : has(a, 'c_motifs', 'situer') ? 'situer' : has(a, 'c_motifs', 'autre') ? 'autre' : has(a, 'c_motifs', 'reflexion') ? 'indecise' : '';
+  if (pj && !document.querySelector('#contra-projets .chip.on')) { var b = document.querySelector('#contra-projets .chip[data-k="' + pj + '"]'); if (b) { b.classList.add('on'); changed = true; } }
+  if (changed && typeof contraMaj === 'function') contraMaj();
 }
 
 /* ───────────── Actions ───────────── */
