@@ -1036,8 +1036,9 @@ function recStop(){ recLaunch('Arrêter l’enregistrement'); recSetState('done'
       .pvr-open li::before{content:counter(q);flex-shrink:0;width:28px;height:28px;border-radius:50%;background:var(--or);color:#fff;font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;margin-top:1px}
       .pvr-open li span{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:20px;line-height:1.45;color:var(--ardoise)}
       @media(max-width:720px){.pvr-cols{grid-template-columns:1fr}.pvr{padding:18px}}
-      .pv-grid{display:grid;grid-template-columns:1fr 1.5fr 1.1fr;gap:0;border:1px solid var(--ocre);border-radius:12px;overflow:hidden;background:#fff}
+      .pv-grid{display:grid;grid-template-columns:1fr 1.5fr 1.2fr 1fr;gap:0;border:1px solid var(--ocre);border-radius:12px;overflow:hidden;background:#fff}
       .pv-grid.pv-2{grid-template-columns:1fr 2.6fr}
+      .pv-grid.pv-3{grid-template-columns:1fr 1.5fr 1.1fr}
       .pv-h{font-size:11px;text-transform:uppercase;letter-spacing:.12em;font-weight:700;color:var(--or);background:#F7F6F4;padding:9px 14px;border-bottom:1px solid var(--ocre)}
       .pv-c{padding:12px 14px;font-size:15px;line-height:1.55;color:var(--ardoise);border-bottom:1px solid #EDE9E1}
       .pv-c.pv-dit{font-weight:700}
@@ -12354,8 +12355,9 @@ function renderPrepVisioSynthese(d) {
       h += '<div class="pvr"><p class="pvr-bref" style="margin:0">Ancien format de résumé. Cliquez sur « \u21bb Régénérer » pour la nouvelle version.</p></div>';
     }
     if (lignes.length) {
-      h += '<div class="pv-grid"><div class="pv-h">Elle a dit</div><div class="pv-h">Je lui dis</div><div class="pv-h">Pour moi : à investiguer</div>' +
-        lignes.map((l) => '<div class="pv-c pv-dit">' + esc(l.elle_a_dit) + '</div><div class="pv-c pv-parle">« ' + esc(l.je_lui_dis) + ' »</div><div class="pv-c pv-moi">' + esc(l.a_investiguer) + '</div>').join('') +
+      var avecAcc = lignes.some((l) => l.je_vous_accompagne);
+      h += '<div class="pv-grid' + (avecAcc ? '' : ' pv-3') + '"><div class="pv-h">Elle a dit</div><div class="pv-h">Je lui dis</div>' + (avecAcc ? '<div class="pv-h">Comment je vous accompagne</div>' : '') + '<div class="pv-h">Pour moi : à investiguer</div>' +
+        lignes.map((l) => '<div class="pv-c pv-dit">' + esc(l.elle_a_dit) + '</div><div class="pv-c pv-parle">« ' + esc(l.je_lui_dis) + ' »</div>' + (avecAcc ? '<div class="pv-c pv-parle">' + (l.je_vous_accompagne ? '« ' + esc(l.je_vous_accompagne) + ' »' : '') + '</div>' : '') + '<div class="pv-c pv-moi">' + esc(l.a_investiguer) + '</div>').join('') +
         '</div>';
     }
     if (objectifs.length) {
