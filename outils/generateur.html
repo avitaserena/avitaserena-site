@@ -5164,6 +5164,13 @@ const FICHES_DISPONIBLES = [
   { code:'alimentation-mediterraneenne', label:'L\'alimentation méditerranéenne', url:'https://avitaserena.com/fiches/alimentation-mediterraneenne.html', groupe:'pratique' },
   { code:'assiette-fonctionnelle',       label:'L\'assiette fonctionnelle',       url:'https://avitaserena.com/fiches/assiette-fonctionnelle.html', groupe:'pratique' },
   { code:'foie-detox-oestrogenes',       label:'Foie & détoxification des œstrogènes', url:'https://avitaserena.com/fiches/foie-detox-oestrogenes.html', groupe:'mecanisme' },
+  { code:'perturbateurs-endocriniens', label:'Les perturbateurs endocriniens — comprendre, réduire, recettes ménagères', url:'https://avitaserena.com/fiches/perturbateurs-endocriniens.html', groupe:'pratique' },
+  { code:'bonnes-pratiques-quotidiennes', label:'Bonnes pratiques du quotidien — alimentation, hydratation, rythme', url:'https://avitaserena.com/fiches/bonnes-pratiques-quotidiennes.html', groupe:'pratique' },
+  { code:'sommeil-hormones', label:'Sommeil et hormones — guide pratique', url:'https://avitaserena.com/fiches/sommeil-hormones-pratique.html', groupe:'pratique' },
+  { code:'vivre-avec-son-cycle', label:'Vivre avec les 4 phases de son cycle', url:'https://avitaserena.com/fiches/vivre-avec-son-cycle-pratique.html', groupe:'pratique' },
+  { code:'sport-cycle-feminin', label:'Sport et cycle féminin — guide pratique', url:'https://avitaserena.com/fiches/sport-cycle-feminin-pratique.html', groupe:'pratique' },
+  { code:'preconception-pratique', label:'Préconception — préparer son corps 3 mois avant', url:'https://avitaserena.com/fiches/preconception-pratique.html', groupe:'pratique' },
+  { code:'arret-pilule-pratique', label:'Après l\'arrêt de la pilule — guide pratique', url:'https://avitaserena.com/fiches/arret-pilule-pratique.html', groupe:'pratique' },
 ];
 
 // Codes présélectionnés (Set) à partir des axes retenus pour CE protocole et des
@@ -5195,6 +5202,8 @@ function suggererFichesCodes() {
   const d = generatedData?._client || {};
   const axes = axesOrder || [];
   const suggested = new Set();
+  // Conseils généraux de naturopathie, donnés à toutes les clientes (rétabli 24/11/2026, demande Sabrina)
+  suggested.add('bonnes-pratiques-quotidiennes');
 
   if (diagCoche('SIBO')) { suggested.add('fodmap'); suggested.add('test-respiratoire-sibo'); suggested.add('sibo'); }
   if (detectHyperpermeabilite(d)) { suggested.add('permeabilite'); }
@@ -5203,9 +5212,13 @@ function suggererFichesCodes() {
   if (diagCoche('Fatigue surrénalienne / burn-out')) { suggested.add('surrenales'); }
   if (diagCoche('Hypothyroïdie') || diagCoche('Hashimoto / hypothyroïdie') || diagCoche('Basedow / hyperthyroïdie')) { suggested.add('thyroide'); }
   if (diagCoche('Périménopause') || diagCoche('Ménopause')) { suggested.add('menopause'); }
-  if (diagCoche('SOPK')) { suggested.add('sopk'); }
-  if (diagCoche('Endométriose') || diagCoche('Endométriose du côlon') || diagCoche('Adénomyose')) { suggested.add('endometriose'); }
+  if (diagCoche('SOPK')) { suggested.add('sopk'); suggested.add('perturbateurs-endocriniens'); }
+  if (diagCoche('Endométriose') || diagCoche('Endométriose du côlon') || diagCoche('Adénomyose')) { suggested.add('endometriose'); suggested.add('perturbateurs-endocriniens'); }
   if (axes.includes('SPM')) { suggested.add('spm'); }
+  if (diagCoche('Périménopause') || diagCoche('Ménopause') || diagCoche('Fatigue surrénalienne / burn-out')) { suggested.add('sommeil-hormones'); }
+  if (axes.includes('SPM') || diagCoche('SOPK') || diagCoche('Endométriose') || diagCoche('Endométriose du côlon') || diagCoche('Adénomyose')) { suggested.add('vivre-avec-son-cycle'); suggested.add('sport-cycle-feminin'); }
+  if ((d.secu_grossesse || '').includes('Désir de grossesse')) { suggested.add('preconception-pratique'); suggested.add('perturbateurs-endocriniens'); }
+  if ((d.modifContraception || '') === 'Arrêt de la pilule') { suggested.add('arret-pilule-pratique'); }
   if (/\bipp\b/i.test(d.traitements_vigilance || '')) { suggested.add('sevrage-ipp'); }
   return suggested;
 }
