@@ -5167,8 +5167,7 @@ const FICHES_DISPONIBLES = [
   { code:'perturbateurs-endocriniens', label:'Les perturbateurs endocriniens — comprendre, réduire, recettes ménagères', url:'https://avitaserena.com/fiches/perturbateurs-endocriniens.html', groupe:'pratique' },
   { code:'bonnes-pratiques-quotidiennes', label:'Bonnes pratiques du quotidien — alimentation, hydratation, rythme', url:'https://avitaserena.com/fiches/bonnes-pratiques-quotidiennes.html', groupe:'pratique' },
   { code:'sommeil-hormones', label:'Sommeil et hormones — guide pratique', url:'https://avitaserena.com/fiches/sommeil-hormones-pratique.html', groupe:'pratique' },
-  { code:'vivre-avec-son-cycle', label:'Vivre avec les 4 phases de son cycle', url:'https://avitaserena.com/fiches/vivre-avec-son-cycle-pratique.html', groupe:'pratique' },
-  { code:'sport-cycle-feminin', label:'Sport et cycle féminin — guide pratique', url:'https://avitaserena.com/fiches/sport-cycle-feminin-pratique.html', groupe:'pratique' },
+  { code:'vivre-avec-son-cycle', label:'Vivre avec son cycle — 4 phases, alimentation, sport, énergie', url:'https://avitaserena.com/fiches/vivre-avec-son-cycle-pratique.html', groupe:'pratique' },
   { code:'preconception-pratique', label:'Préconception — préparer son corps 3 mois avant', url:'https://avitaserena.com/fiches/preconception-pratique.html', groupe:'pratique' },
   { code:'arret-pilule-pratique', label:'Après l\'arrêt de la pilule — guide pratique', url:'https://avitaserena.com/fiches/arret-pilule-pratique.html', groupe:'pratique' },
 ];
@@ -5195,31 +5194,58 @@ function diagCoche(label){
 }
 
 function suggererFichesCodes() {
-  // DÉCISION 24/11/2026 (Sabrina) : une fiche « comprendre » n'est proposée que lorsque la
-  // problématique est ÉTABLIE (diagnostic coché), jamais sur un simple soupçon / axe de travail.
-  // Les anciennes fiches « pratiques » sont abandonnées : leur contenu vit dans le protocole.
-  // Exceptions assumées : SPM, Foie & détox et Stress n'ont pas de diagnostic dédié, l'axe retenu fait foi.
+  // RÈGLE DE PRÉCOCHAGE (24/11/2026, Sabrina) :
+  //  - fiche « Comprendre sa pathologie » (sopk, endometriose…) : seulement si le diagnostic est ÉTABLI (puce cochée) ;
+  //  - fiches « Guides » (perturbateurs endocriniens, cycle, sommeil…) : cochées dès que la problématique est ÉTABLIE
+  //    OU SIMPLEMENT PRESSENTIE par le questionnaire (« Pathologies pressenties »), car ces guides sont utiles
+  //    pendant l'investigation et ne disent pas à la cliente qu'elle a une maladie.
+  // Chaque fiche reste décochable à la main par la praticienne avant l'envoi.
   const d = generatedData?._client || {};
   const axes = axesOrder || [];
   const suggested = new Set();
-  // Conseils généraux de naturopathie, donnés à toutes les clientes (rétabli 24/11/2026, demande Sabrina)
+  const pressenti = (re) => re.test((sessionData?.pathologies_pressenties || '') + ' ' + (d.pathologies_pressenties || ''));
+  const texteQuestionnaire = [d.symptomes_coches, d.chips_coches, d.motifs, sessionData?.symptomes_coches, sessionData?.chips_coches].filter(Boolean).join(' ');
+
+  // Conseils généraux de naturopathie : donnés à toutes les clientes
   suggested.add('bonnes-pratiques-quotidiennes');
 
+  const sopk = diagCoche('SOPK');
+  const endo = diagCoche('Endométriose') || diagCoche('Endométriose du côlon') || diagCoche('Adénomyose');
+  const sopkPressenti = pressenti(/SOPK|ovaires polykystiques/i);
+  const endoPressenti = pressenti(/endom[ée]triose|ad[ée]nomyose/i);
+  const thyro = diagCoche('Hypothyroïdie') || diagCoche('Hashimoto / hypothyroïdie') || diagCoche('Basedow / hyperthyroïdie');
+  const surr = diagCoche('Fatigue surrénalienne / burn-out');
+  const meno = diagCoche('Périménopause') || diagCoche('Ménopause');
+  const desirGrossesse = /d[ée]sir de grossesse/i.test(d.secu_grossesse || '');
+  const arretPilule = /arr[êe]t[^.\n]{0,25}(pilule|contracepti)|(pilule|contracepti)[^.\n]{0,25}arr[êe]t/i.test((d.contraception || '') + ' ' + (sessionData?.modif_hormonale || '') + ' ' + (sessionData?.contraception_actuelle || '') + ' ' + texteQuestionnaire);
+
+  // Digestif
   if (diagCoche('SIBO')) { suggested.add('fodmap'); suggested.add('test-respiratoire-sibo'); suggested.add('sibo'); }
   if (detectHyperpermeabilite(d)) { suggested.add('permeabilite'); }
   if (axes.includes('Foie & détox')) { suggested.add('foie-detox-oestrogenes'); }
-  if (axes.includes('Stress & système nerveux') || diagCoche('Fatigue surrénalienne / burn-out')) { suggested.add('coherence-nerf-vague'); }
-  if (diagCoche('Fatigue surrénalienne / burn-out')) { suggested.add('surrenales'); }
-  if (diagCoche('Hypothyroïdie') || diagCoche('Hashimoto / hypothyroïdie') || diagCoche('Basedow / hyperthyroïdie')) { suggested.add('thyroide'); }
-  if (diagCoche('Périménopause') || diagCoche('Ménopause')) { suggested.add('menopause'); }
-  if (diagCoche('SOPK')) { suggested.add('sopk'); suggested.add('perturbateurs-endocriniens'); }
-  if (diagCoche('Endométriose') || diagCoche('Endométriose du côlon') || diagCoche('Adénomyose')) { suggested.add('endometriose'); suggested.add('perturbateurs-endocriniens'); }
-  if (axes.includes('SPM')) { suggested.add('spm'); }
-  if (diagCoche('Périménopause') || diagCoche('Ménopause') || diagCoche('Fatigue surrénalienne / burn-out')) { suggested.add('sommeil-hormones'); }
-  if (axes.includes('SPM') || diagCoche('SOPK') || diagCoche('Endométriose') || diagCoche('Endométriose du côlon') || diagCoche('Adénomyose')) { suggested.add('vivre-avec-son-cycle'); suggested.add('sport-cycle-feminin'); }
-  if ((d.secu_grossesse || '').includes('Désir de grossesse')) { suggested.add('preconception-pratique'); suggested.add('perturbateurs-endocriniens'); }
-  if ((d.modifContraception || '') === 'Arrêt de la pilule') { suggested.add('arret-pilule-pratique'); }
   if (/\bipp\b/i.test(d.traitements_vigilance || '')) { suggested.add('sevrage-ipp'); }
+
+  // Stress, surrénales, sommeil
+  if (axes.includes('Stress & système nerveux') || surr) { suggested.add('coherence-nerf-vague'); }
+  if (surr) { suggested.add('surrenales'); }
+  if (surr || meno || axes.includes('Sommeil & récupération') || axes.includes('Surrénales & énergie') || pressenti(/p[ée]rim[ée]nopause|m[ée]nopause|surr[ée]nal|cortisol/i)) { suggested.add('sommeil-hormones'); }
+
+  // Thyroïde
+  if (thyro) { suggested.add('thyroide'); suggested.add('perturbateurs-endocriniens'); }
+
+  // Hormones féminines : guide établi OU pressenti
+  if (meno) { suggested.add('menopause'); }
+  if (sopk) { suggested.add('sopk'); }
+  if (endo) { suggested.add('endometriose'); }
+  if (axes.includes('SPM')) { suggested.add('spm'); }
+  if (sopk || endo || sopkPressenti || endoPressenti || axes.includes('SPM') || axes.includes('Hormonal & cycles')) {
+    suggested.add('vivre-avec-son-cycle');
+  }
+  if (sopk || endo || sopkPressenti || endoPressenti) { suggested.add('perturbateurs-endocriniens'); }
+
+  // Projet de grossesse, arrêt de pilule
+  if (desirGrossesse) { suggested.add('preconception-pratique'); suggested.add('perturbateurs-endocriniens'); }
+  if (arretPilule) { suggested.add('arret-pilule-pratique'); }
   return suggested;
 }
 
