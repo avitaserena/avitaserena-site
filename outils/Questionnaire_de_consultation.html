@@ -61,6 +61,21 @@
 .float-susp-jump{display:block;margin-top:5px;font-size:10px;font-weight:700;color:var(--ocre);text-transform:uppercase;letter-spacing:.04em}
 .jump-highlight{animation:jumpPulse 1.1s ease 2}
 @keyframes jumpPulse{0%,100%{box-shadow:none}50%{box-shadow:0 0 0 4px var(--ocre)}}
+#float-susp{width:400px}
+.float-susp-label{font-size:15.5px!important}
+.fs-k{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--or,#99244F);margin:8px 0 4px}
+.fs-chips{display:flex;flex-wrap:wrap;gap:5px}
+.fs-chip{background:var(--or-clair,#FDEEF3);border:1px solid var(--sable,#F3B6CE);border-radius:999px;padding:3px 10px;font-size:13.5px;line-height:1.4;color:var(--ardoise)}
+.fs-none{font-size:13.5px;color:var(--gris)}
+.fs-q{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:16.5px;line-height:1.45;color:var(--ardoise)}
+.fs-acc{margin-top:10px;background:var(--or-clair,#FDEEF3);border-radius:10px;padding:9px 12px;font-size:13.5px;line-height:1.5;color:var(--ardoise)}
+.fs-acc b{display:block;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--or,#99244F);margin-bottom:2px}
+.float-susp-relance{font-size:13.5px!important}
+.float-susp-why{font-size:13.5px!important}
+.float-susp-signs{font-size:13.5px!important}
+.fs-more{margin-top:8px}
+.fs-more summary{cursor:pointer;font-size:12.5px;font-weight:700;color:var(--or,#99244F)}
+.fs-orig{font-size:12px;font-weight:700;color:var(--gris);margin:6px 0}
 .float-susp-empty{font-size:11.5px;color:var(--gris);font-style:italic;padding:14px 4px;text-align:center}
 @media (max-width:640px){#float-stack{right:12px;bottom:12px;left:12px;max-width:none;align-items:stretch}#float-susp,#float-meca{width:auto}}
 
@@ -781,6 +796,7 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 .ml-det[open] summary{margin-bottom:10px}
 .lc-pre{font-size:13px;color:var(--gris,#6B6560);margin:8px 0 0;font-style:normal}
 .rt{margin:0 0 16px}
+.rt-fix{display:grid;gap:10px;margin:0 0 16px}.rt-fix div{background:var(--or-clair,#FDEEF3);border-radius:12px;padding:11px 14px;font-size:15px;line-height:1.6}.rt-fix b{display:block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--or,#99244F);margin-bottom:3px}
 .rt-h{font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--or,#99244F);margin:0 0 8px}
 .rt-t{width:100%;border-collapse:separate;border-spacing:0;font-size:14.5px;line-height:1.55;background:#fff;border:1px solid var(--taupe,#E7E2E4);border-radius:14px;overflow:hidden}
 .rt-t th{background:var(--or-clair,#FDEEF3);text-align:left;font-size:12px;letter-spacing:.08em;text-transform:uppercase;padding:9px 12px;color:var(--or,#99244F)}
@@ -13327,41 +13343,33 @@ function renderFloatSuspicions(suggestions, matchIndices) {
     const r = SPEC_REASONS[s];
     const target = SUSP_JUMP_TARGET[s];
     const cocheeManuelle = window.__specManuellementCochees?.has(s);
-    // Score de confiance "X sur Y" : Y = nombre de signes cliniques distincts référencés pour
-    // cette spécialité dans SPEC_SIGNS, X = nombre de signes distincts déjà rencontrés dans la
-    // séance en cours. Un chip "motifs pressentis" coché manuellement (sans aucun signe
-    // clinique corroborant) affichera donc "0 sur Y" — c'est volontaire, ça distingue une
-    // intuition de départ d'une suggestion appuyée sur plusieurs signes indépendants.
+    const info = (typeof window.mgPisteInfo === 'function') ? window.mgPisteInfo(s) : null;
     const signesSpec = SPEC_SIGNS[s] || [];
-    const total = signesSpec.length || null;
     const matchedSet = matchIndices && matchIndices[s] ? matchIndices[s] : new Set();
-    const matched = matchedSet.size;
-    // Bandeau d'origine (14/09/2026, retour de Sabrina) — sans lui, un score faible ("1 sur 4")
-    // pouvait donner l'impression fausse que le détecteur automatique s'était trompé, alors qu'en
-    // réalité c'est une case cochée à la main (section 1 ou son miroir) qui s'affiche ici sans
-    // seuil, par choix assumé — pas le détecteur de signes qui aurait suggéré ça tout seul.
-    const origineHtml = cocheeManuelle
-      ? `<div style="font-size:10.5px;font-weight:700;color:var(--or);margin-bottom:6px">✋ Cochée à la main dans « Spécialités pressenties » — affichée sans seuil, quel que soit le nombre de signes ci-dessous</div>`
-      : `<div style="font-size:10.5px;font-weight:700;color:#1E7A3D;margin-bottom:6px">🔍 Suggérée automatiquement — au moins 2 signes indépendants trouvés</div>`;
-    const scoreHtml = !total ? '' : `<div class="float-susp-score">
-      <span class="float-susp-score-text">${matched} sur ${total} signes</span>
-      <span class="float-susp-score-bar"><span class="float-susp-score-fill" style="width:${Math.round(matched / total * 100)}%"></span></span>
-    </div>`;
-    // Liste des signes un à un, coché ou non (14/09/2026, demande de Sabrina) — jusqu'ici seul le
-    // score "X sur Y" était visible, sans dire LESQUELS parmi les Y étaient déjà cochés.
-    const signesHtml = !signesSpec.length ? '' : `<ul class="float-susp-signs">${signesSpec.map((signe, idx) =>
-      `<li class="${matchedSet.has(idx) ? 'signe-coche' : 'signe-absent'}">${matchedSet.has(idx) ? '☑' : '☐'} ${signe.label}</li>`
-    ).join('')}</ul>`;
+    const entendus = signesSpec.filter((sg, i) => matchedSet.has(i)).map(sg => sg.label);
+    const restants = signesSpec.filter((sg, i) => !matchedSet.has(i)).map(sg => sg.label);
+    const origine = cocheeManuelle ? 'Cochée dans « Spécialités pressenties »' : 'Repérée d\u2019après ses réponses';
+    const titre = info ? info.l : r.label;
+    const entendusHtml = entendus.length
+      ? `<div class="fs-k">Ce qu\u2019elle a dit</div><div class="fs-chips">${entendus.slice(0, 5).map(x => `<span class="fs-chip">${x}</span>`).join('')}</div>`
+      : `<div class="fs-k">Ce qu\u2019elle a dit</div><div class="fs-none">Pas encore de signe précis dans ses réponses.</div>`;
+    const comprisHtml = `<div class="fs-k">Ce que je lui explique</div><div class="fs-q">${info && info.dire ? '«\u00a0' + info.dire + '\u00a0»' : r.pourquoi}</div>`;
+    const accHtml = info && info.acc ? `<div class="fs-acc"><b>Comment je peux vous accompagner</b>${info.acc}</div>` : '';
     const relanceHtml = !r.relance ? '' : target
       ? `<div class="float-susp-relance float-susp-relance-clickable" onclick="jumpToSuspicion('${s}')"><b>Question de relance</b>${r.relance}<span class="float-susp-jump">↳ Aller à cette section</span></div>`
       : `<div class="float-susp-relance"><b>Question de relance</b>${r.relance}</div>`;
-    return `<div class="float-susp-card">
-      <div class="float-susp-label"><span class="float-susp-dot" style="background:${FLOAT_SUSP_DOT[s] || 'var(--sable)'}"></span>${r.label}</div>
-      ${origineHtml}
-      ${scoreHtml}
-      ${signesHtml}
+    const plus = `<details class="fs-more"><summary>Pour moi : détail clinique</summary>
+      <div class="fs-orig">${origine} · ${entendus.length} signe${entendus.length > 1 ? 's' : ''} sur ${signesSpec.length}</div>
       <div class="float-susp-why">${r.pourquoi}</div>
+      ${restants.length ? `<div class="fs-k">Autres signes à chercher</div><ul class="float-susp-signs">${restants.map(x => `<li class="signe-absent">☐ ${x}</li>`).join('')}</ul>` : ''}
+    </details>`;
+    return `<div class="float-susp-card">
+      <div class="float-susp-label"><span class="float-susp-dot" style="background:${FLOAT_SUSP_DOT[s] || 'var(--sable)'}"></span>${titre}</div>
+      ${entendusHtml}
+      ${comprisHtml}
+      ${accHtml}
       ${relanceHtml}
+      ${plus}
     </div>`;
   }).join('');
 }
@@ -17137,16 +17145,6 @@ function croiseHtml(ac) {
   var recs = ac.ths.map(function (th) { return recap(ac.per[th]); }).filter(Boolean);
   h += recs.length ? '<div class="mg-recap" id="mg-recap">' + recs.map(esc).join('<br><br>') + '</div><div class="mg-act"><button type="button" class="mg-tbtn" data-mg="copy">Copier ce texte</button><span class="mg-st" id="mg-st" role="status" aria-live="polite"></span></div>' : '<div class="mg-side-n">Aucune gêne détaillée pour le moment.</div>';
   h += recapTableHtml(ac);
-  h += '<h3>Ce qui se recoupe</h3>';
-  if (ac.pistes.length) {
-    ac.pistes.forEach(function (p, i) {
-      var P = PISTES[p.k], multi = p.by.length > 1;
-      h += '<div class="mg-pi"><div class="mg-pi-h"><b>' + esc(P.l) + '</b><span class="mg-pi-r">' + (i === 0 ? 'Piste principale' : 'À explorer') + (multi ? ' · revient dans ' + p.by.map(function (t) { return TH_LONG[t]; }).join(' et ') : '') + '</span></div>' +
-        '<p>Parce que : ' + esc(p.why.slice(0, 5).join(' ; ')) + '.</p>' +
-        '<details><summary>Ce que je peux lui dire</summary><p>' + esc(P.dire) + '</p></details>' +
-        '<p class="conf">Pour confirmer ou écarter : ' + esc(P.conf) + '</p></div>';
-    });
-  } else h += '<div class="mg-side-n">Pas assez d\'éléments pour orienter : complétez avec les sections classiques.</div>';
   if (cr.length) h += '<h3>Ce qui relie ses motifs</h3><div class="mg-say" style="margin-bottom:8px"><div class="mg-say-l">À lui dire</div><div class="mg-say-t">' + cr.map(esc).join(' ') + '</div></div>';
   if (ac.flags.length) h += '<h3>À clarifier avec son médecin avant tout</h3><div class="mg-alert"><ul>' + ac.flags.map(function (f) { return '<li>' + esc(f) + '</li>'; }).join('') + '</ul></div>';
   if (ac.notes.length) h += '<h3>Points d\'attention</h3><ul class="mg-list">' + ac.notes.map(function (f) { return '<li>' + esc(f) + '</li>'; }).join('') + '</ul>';
@@ -17217,6 +17215,10 @@ window.mgChargerVisio = function (snap) {
   try { setTimeout(mgPreCocher, 0); } catch (e) { /* sans effet */ }
 };
 /* Spécialités pressenties précochées d'après ses réponses de préparation (une seule fois par ouverture ; elle peut décocher) */
+var SPEC_PISTE = { sibo: 'sibo', sii: 'sii', endo: 'endo', sopk: 'sopk', meno: 'meno', hashi: 'thyro', insulino: 'insulino', surr: 'cort_bas', hyperoestro: 'hyperoestro', progesterone_def: 'progesterone_def', androgene_f: 'androgenes', amenorrhee: 'amenor', contra: 'pilule' };
+window.mgPisteInfo = function (spec) {
+  try { var k = SPEC_PISTE[spec], P = k && PISTES[k]; if (!P) return null; return { l: String(P.l).split(' : ')[0], dire: P.dire || '', acc: ACC[k] || '' }; } catch (e) { return null; }
+};
 var PISTE_SPEC = { sibo: 'sibo', sii: 'sii', endo: 'endo', sopk: 'sopk', meno: 'meno', thyro: 'hashi', cort_bas: 'surr', cort_haut: 'surr', amenor: 'amenorrhee', pilule: 'contra' };
 function mgPreCocher() {
   try {
@@ -17442,9 +17444,15 @@ function recapRows(ac) {
     var P = PISTES[p.k]; return { k: p.k, why: p.why.slice(0, 4), deduit: String(P.l).split(' : ')[0], dire: P.dire || '', acc: ACC[p.k] || '', nouveau: !!(PISTES0 && PISTES0.indexOf(p.k) < 0) };
   });
 }
+var RT_CORPS = "Ce que vous vivez n\u2019est pas un hasard ni un manque de volonté : chaque signe que vous décrivez est une réponse logique de votre corps à un déséquilibre précis. Et c\u2019est justement parce qu\u2019il y a une cause que votre corps peut retrouver son équilibre.";
+var RT_NATURO = "Mon rôle est de comprendre ce déséquilibre, d\u2019agir sur ses causes (digestion, stress, rythme, apports) et de redonner à votre corps les conditions pour retrouver son propre fonctionnement. Je n\u2019efface pas un symptôme : j\u2019aide votre corps à se reprogrammer.";
+function rtMedecin(ac) {
+  var n = (ac.flags || []).length;
+  return "Je travaille toujours en accord avec vos médecins, jamais à leur place. " + (n ? "Sur certains points que nous avons vus, je vous inviterai à en parler avec votre médecin avant d\u2019aller plus loin." : "Si un point demande un avis médical ou un examen, je vous le dirai clairement.") + " Votre suivi médical reste en place, et ce que je mets en place vient le compléter.";
+}
 function recapTableHtml(ac) {
   var rows = recapRows(ac); if (!rows.length) return '';
-  var h = '<div class="rt"><div class="rt-h">Tableau de restitution : ce que je lui réponds, et comment je l\u2019accompagne</div><table class="rt-t"><thead><tr><th>Elle a dit / confirmé</th><th>Ce que je lui réponds</th><th>Comment je vous accompagne</th></tr></thead><tbody>';
+  var h = '<div class="rt"><div class="rt-h">Ce que je lui dis en conclusion</div><div class="rt-fix"><div><b>Ce qui se passe dans votre corps</b>' + esc(RT_CORPS) + '</div><div><b>Comment la naturopathie le remet en route</b>' + esc(RT_NATURO) + '</div><div><b>Avec vos médecins</b>' + esc(rtMedecin(ac)) + '</div></div><div class="rt-h">Tableau de restitution : ce que je lui réponds, et comment je l\u2019accompagne</div><table class="rt-t"><thead><tr><th>Elle a dit / confirmé</th><th>Ce que je lui réponds</th><th>Comment je vous accompagne</th></tr></thead><tbody>';
   rows.forEach(function (r) {
     h += '<tr><td>' + (r.nouveau ? '<span class="rt-new">Ajouté pendant l\u2019échange</span>' : '') + '<ul>' + r.why.map(function (w) { return '<li>' + esc(w) + '</li>'; }).join('') + '</ul></td>' +
       '<td><div class="rt-d">' + esc(r.deduit) + '</div><div class="rt-q">«\u00a0' + esc(r.dire) + '\u00a0»</div></td><td>' + esc(r.acc) + '</td></tr>';
@@ -17452,7 +17460,7 @@ function recapTableHtml(ac) {
   return h + '</tbody></table><div class="mg-act"><button type="button" class="mg-tbtn" data-mg="copyrt">Copier ce tableau en texte</button><span class="mg-st" id="mg-st3"></span></div></div>';
 }
 function recapTexte(ac) {
-  return recapRows(ac).map(function (r) { return 'Vous m\u2019avez dit : ' + r.why.join(' ; ') + '.\nCe que je comprends : ' + r.dire + '\nComment je peux vous accompagner : ' + r.acc; }).join('\n\n');
+  return RT_CORPS + '\n\n' + RT_NATURO + '\n\n' + rtMedecin(ac) + '\n\n' + recapRows(ac).map(function (r) { return 'Vous m\u2019avez dit : ' + r.why.join(' ; ') + '.\nCe que je comprends : ' + r.dire + '\nComment je peux vous accompagner : ' + r.acc; }).join('\n\n');
 }
 function lectureHtml() {
   if (!CLI) return '';
