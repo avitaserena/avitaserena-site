@@ -504,6 +504,7 @@ select.fi.answered{background:var(--off)}
 </style>
 <script src="auth-guard.js"></script>
 <script src="ai-client.js"></script>
+<script src="contraception-data.js"></script>
 <!-- ai-explain-panel.js retiré (26/08/2026) : cohérence avec Questionnaire_de_consultation.html
      (retiré le 25/08/2026) — le bouton flottant "💬 Explications" faisait doublon avec le
      moteur entonnoire (questions de rebond + "pourquoi" affichés en direct) et le panneau
@@ -900,6 +901,7 @@ function recStop(){ recLaunch('Arrêter l’enregistrement'); recSetState('done'
           <button class="chip" onclick="toggleChip(this)"><span class="ck">✓</span> Neuro-excitabilité</button>
           <button class="chip" onclick="toggleChip(this)"><span class="ck">✓</span> Neurotransmetteurs</button>
           <button class="chip" onclick="toggleChip(this)"><span class="ck">✓</span> Aménorrhée centrale</button>
+          <button class="chip" onclick="toggleChip(this)"><span class="ck">✓</span> Contraception / arrêt</button>
           <button class="chip" onclick="toggleChip(this)"><span class="ck">✓</span> Thyroïde</button>
           <button class="chip" onclick="toggleChip(this)"><span class="ck">✓</span> Foie & Détox</button>
           <button class="chip" onclick="toggleChip(this)"><span class="ck">✓</span> Insulino-résistance / métabolique</button>
@@ -2098,6 +2100,66 @@ function recStop(){ recLaunch('Arrêter l’enregistrement'); recSetState('done'
       <textarea class="fi" id="notes-libres-neuro" style="min-height:70px" placeholder="Tolérance du précurseur en cours, contexte (traitement ISRS à vérifier avant tout 5-HTP/Griffonia), évolution croisée avec le bloc surrénales…"></textarea>
     </div>
   </div>
+<div class="spec-block" data-spec="contra">
+    <div class="spec-hdr">Contraception : effets et arrêt</div>
+    <div class="edu-box insight" style="margin-bottom:14px">
+      <p>Sous contraception hormonale, les saignements sont des saignements de privation et non de vraies règles. À l'arrêt, ce que la pilule masquait peut réapparaître (acné, cycles longs, règles douloureuses, syndrome prémenstruel). Les symptômes décrits depuis la pose ou l'arrêt renseignent le terrain à soutenir : ils ne remplacent jamais l'avis du médecin prescripteur.</p>
+    </div>
+    <div class="g2" style="margin-bottom:14px">
+      <div><label class="fl">Méthode actuelle ou utilisée avant l'arrêt</label>
+        <select class="fi" id="suivi-contra-methode" onchange="suiviContraMaj()"><option value="">— Sélectionner —</option></select></div>
+      <div><label class="fl">Marque exacte</label>
+        <input class="fi" type="text" id="suivi-contra-marque" list="suivi-contra-marques" placeholder="Ex : Minidril, Mirena, Nexplanon…" oninput="suiviContraMaj()">
+        <datalist id="suivi-contra-marques"></datalist></div>
+    </div>
+    <div class="g2" style="margin-bottom:14px">
+      <div><label class="fl">Où en est-elle</label>
+        <select class="fi" id="suivi-contra-statut" onchange="suiviContraMaj()"><option value="">— Sélectionner —</option><option>En cours</option><option>Arrêt envisagé, rien de décidé</option><option>Arrêt décidé, pas encore arrêtée</option><option>Arrêtée depuis moins de 3 mois</option><option>Arrêtée depuis 3 à 12 mois</option><option>Arrêtée depuis plus d'un an</option></select></div>
+      <div><label class="fl">Projet</label>
+        <select class="fi" id="suivi-contra-projet" onchange="suiviContraMaj()"><option value="">— Sélectionner —</option></select></div>
+    </div>
+    <div class="edu-box" id="suivi-contra-dire" style="display:none;margin-bottom:14px"><p></p></div>
+    <div id="suivi-contra-sympt"></div>
+    <div class="divider-label" style="margin-top:10px">Depuis l'arrêt : ce qui revient ou apparaît</div>
+    <div id="suivi-contra-arret"></div>
+    <div class="evol-item"><div class="evol-label">Retour et régularité du cycle<small>Premières règles spontanées, durée du cycle, glaire ou température qui montrent une ovulation</small></div><div class="evol-btns"><button class="evol-btn" onclick="setEvol(this,'up')">↑ Mieux</button><button class="evol-btn" onclick="setEvol(this,'same')">= Stable</button><button class="evol-btn" onclick="setEvol(this,'down')">↓ Pire</button></div></div>
+    <div class="evol-item"><div class="evol-label">Acné, peau grasse et chute de cheveux depuis l'arrêt<small>Ce que la pilule masquait peut réapparaître dans les 2 à 4 premiers mois</small></div><div class="evol-btns"><button class="evol-btn" onclick="setEvol(this,'up')">↑ Mieux</button><button class="evol-btn" onclick="setEvol(this,'same')">= Stable</button><button class="evol-btn" onclick="setEvol(this,'down')">↓ Pire</button></div></div>
+    <details style="margin-top:10px"><summary style="cursor:pointer;font-weight:800">Signes d'alerte : avis médical, jamais un conseil d'arrêt</summary><ul id="suivi-contra-alertes"></ul></details>
+    <div style="margin-top:14px"><label class="fl">Notes libres — contraception</label>
+      <textarea class="fi" id="notes-libres-contra" style="min-height:70px" placeholder="Évolution depuis la dernière séance, décision de la cliente, échange avec le médecin"></textarea>
+    </div>
+    <script>
+    (function(){
+      if(!window.CONTRA) return;
+      CONTRA.fillSelect(document.getElementById('suivi-contra-methode'));
+      CONTRA.fillDatalist(document.getElementById('suivi-contra-marques'));
+      var sp=document.getElementById('suivi-contra-projet');
+      CONTRA.projets.forEach(function(p){var o=document.createElement('option');o.value=p.k;o.textContent=p.l;sp.appendChild(o);});
+      var esc=function(t){return String(t).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];});};
+      var item=function(x){return '<div class="check-item" onclick="this.classList.toggle(\'checked\')"><div class="cb">✓</div><div>'+esc(x.t)+'<small style="display:block;color:var(--gris);margin-top:2px">'+esc(x.why)+'</small></div></div>';};
+      var box=document.getElementById('suivi-contra-sympt');
+      ['combinee','progestative','macro','diu_hormonal','diu_cuivre','implant','injection'].forEach(function(f){
+        var d=document.createElement('div');d.setAttribute('data-famille',f);d.style.display='none';
+        d.innerHTML=CONTRA.symptomes[f].map(item).join('');box.appendChild(d);
+      });
+      document.getElementById('suivi-contra-arret').innerHTML=CONTRA.symptomesArret.map(item).join('');
+      document.getElementById('suivi-contra-alertes').innerHTML=CONTRA.alertes.map(function(a){return '<li>'+esc(a)+'</li>';}).join('');
+    })();
+    function suiviContraMaj(){
+      if(!window.CONTRA) return;
+      var sel=document.getElementById('suivi-contra-methode'), mk=CONTRA.parMarque(document.getElementById('suivi-contra-marque').value);
+      if(mk && !sel.value){ sel.value=mk.methode.label; }
+      var m=CONTRA.parLabel(sel.value)||(mk&&mk.methode)||null;
+      var fam=m?CONTRA.familleSymptomes(m):''; if(fam==='patch_anneau') fam='combinee';
+      document.querySelectorAll('#suivi-contra-sympt > [data-famille]').forEach(function(d){d.style.display=d.getAttribute('data-famille')===fam?'block':'none';});
+      var dire=document.getElementById('suivi-contra-dire'), txt='';
+      if(m&&m.id!=='aucune') txt+='À dire à la cliente. '+m.dire;
+      var pj=document.getElementById('suivi-contra-projet').value;
+      if(pj){var pr=CONTRA.projets.filter(function(x){return x.k===pj;})[0]; if(pr) txt+=(txt?' ':'')+pr.dire;}
+      dire.style.display=txt?'block':'none'; dire.firstElementChild.textContent=txt;
+    }
+    </script>
+  </div>
 <div class="spec-block" data-spec="amenorrhee">
     <div class="spec-hdr"><svg class="picto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg> Suivi aménorrhée centrale — retour du cycle</div>
     <div class="edu-box insight" style="margin-bottom:14px">
@@ -2802,6 +2864,12 @@ function recStop(){ recLaunch('Arrêter l’enregistrement'); recSetState('done'
           <select class="fi" id="suivi-modif-contraception">
             <option value="">— Aucun changement —</option>
             <option>Arrêt de la pilule</option>
+            <option>Arrêt de la contraception hormonale (autre que la pilule)</option>
+            <option>Début d'une contraception hormonale</option>
+            <option>Passage à une contraception non hormonale</option>
+            <option>Retour de règles après arrêt de la contraception</option>
+            <option>Pose de l'implant</option>
+            <option>Retrait de l'implant</option>
             <option>Changement de pilule ou de méthode</option>
             <option>Pose du stérilet</option>
             <option>Retrait du stérilet</option>
@@ -4253,6 +4321,7 @@ const SPEC_MAP = {
   'Neuro-excitabilité': 'neuroexc',
   'Neurotransmetteurs': 'neuro',
   'Aménorrhée centrale': 'amenorrhee',
+  'Contraception / arrêt': 'contra',
   'Thyroïde': 'thyroide',
   'Foie & Détox': 'foie',
   'Insulino-résistance / métabolique': 'metabo',
@@ -4283,6 +4352,8 @@ function updateSpecialtyBlocks() {
    en haut du questionnaire (badge "nouveau").
 ══════════════════════════════════════════════════════ */
 const SPEC_SIGNS_LIVE = {
+  // Contraception et arrêt (24/11/2026) : mêmes signes que la consultation, générés depuis contraception-data.js.
+  contra: (window.CONTRA ? CONTRA.specSigns() : []),
   // Même principe que côté consultation : un signe peut être reconnu par plusieurs formulations
   // différentes — s'il matche avec N'IMPORTE LAQUELLE, le signe compte une seule fois.
   sopk: [
@@ -4446,6 +4517,7 @@ const SPEC_REASONS_LIVE = {
   thyroide: { label: 'Hashimoto / hypothyroïdie', pourquoi: 'Frilosité, perte du bout du sourcil, paupières ou doigts gonflés le matin, peau sèche aux tibias, fatigue du matin, prise de poids : la thyroïde donne le rythme à toutes les cellules (production d\'énergie et de chaleur) ; quand elle ralentit, ces signes apparaissent ensemble. Aucun signe ne suffit seul, et la prise de sang seule ne suffit jamais à conclure.', relance: 'Avez-vous un dosage TSH/anti-TPO récent ? Le traitement (si en cours) a-t-il été ajusté ?' },
 surr:  { label: 'Fatigue surrénalienne / cortisol', pourquoi: 'Un creux d\'énergie en début d\'après-midi ou après un stress, un besoin de booster (café, sucre), une résistance au stress amoindrie et un état vaseux face aux imprévus orientent vers un cortisol bas. Une fatigue surtout matinale oriente plutôt vers la thyroïde.', relance: 'À quelle heure la fatigue est-elle la plus forte : matin, début d\'après-midi, soir ? Est-elle pire après un stress ?' },
   metabo: { label: 'Insulinorésistance / hyperinsulinisme', pourquoi: 'Ventre qui s\'épaissit, fringales, coups de pompe après le repas : un excès d\'insuline pousse à stocker et fatigue. La glycémie peut rester normale pendant des années.', relance: 'Les fringales et le coup de barre après le repas ont-ils changé ? Le tour de taille bouge-t-il ?' },
+  contra: { label: 'Effets de la contraception hormonale / arrêt de contraception', pourquoi: "Plusieurs signes évoquent un impact de la contraception sur le terrain (thyroïde, hormones masculines, sérotonine, foie, surrénales, microbiote), ou ce que la pilule masquait après son arrêt.", relance: "Qu'est-ce qui a changé depuis la dernière séance : méthode, arrêt, retour de règles, symptômes ?" },
   amenorrhee: { label: 'Aménorrhée centrale (hypothalamique)', pourquoi: 'Retour des règles évoqué, ou balance énergétique/apports encore signalés comme insuffisants — l\'axe cerveau-ovaires réagit lentement, le cycle est toujours le dernier marqueur à bouger.', relance: 'Où en est le niveau de stress perçu et la charge d\'entraînement depuis la dernière séance ? Le suivi médical/psychologique associé (si concerné) est-il maintenu ?' },
   hyperoestro: { label: 'Excès d\'imprégnation œstrogénique', pourquoi: 'Tension mammaire, règles abondantes ou migraines cycliques — excès réel ou relatif (manque de progestérone).', relance: 'La tension mammaire ou les règles abondantes évoluent-elles avec le protocole détox/œstrogénique en cours ?' },
   progesterone_def: { label: 'Déficit de progestérone', pourquoi: 'Cycle raccourci, phase lutéale courte ou fausse couche précoce — anovulation ou ovulation de mauvaise qualité.', relance: 'Le cycle s\'est-il rallongé depuis le début du soutien de la progestérone ? Le timing des phyto-progestatives est-il bien respecté (jamais avant l\'ovulation) ?' },
@@ -4461,7 +4533,7 @@ surr:  { label: 'Fatigue surrénalienne / cortisol', pourquoi: 'Un creux d\'éne
 const FLOAT_SUSP_DOT_SUIVI = {
   sibo:'var(--bleu)', sii:'var(--violet)', endo:'var(--rouge)', sopk:'var(--vert)',
   meno:'var(--amber)', thyroide:'var(--rouge)', metabo:'var(--amber)', surr:'var(--bleu)',
-  hyperoestro:'var(--rouge)', progesterone_def:'var(--amber)', androgene_f:'var(--violet)', amenorrhee:'var(--violet)'
+  hyperoestro:'var(--rouge)', progesterone_def:'var(--amber)', androgene_f:'var(--violet)', amenorrhee:'var(--violet)', contra:'var(--or)'
 };
 // Activation en un clic depuis la fenêtre flottante (13/09/2026) — contrairement à la
 // consultation où les guides spécialité sont de simples onglets consultables librement, le
@@ -4798,7 +4870,7 @@ function afficherBandeauDossier(row, historique) {
   };
   prefillCtx('chip-ctx-non-fumeuse', snap.tabac_fumeuse, 'Non-fumeur·se');
   prefillCtx('chip-ctx-vegetarienne', snap.regime_viande, 'Aucune (végétarienne/végétalienne)');
-  prefillCtx('chip-ctx-pas-pilule', snap.contraception_actuelle, 'Aucune');
+  prefillCtx('chip-ctx-pas-pilule', snap.contraception_methode || snap.contraception_actuelle, 'Aucune');
   // Âge des premières règles + pilule prise jeune (02/10/2026) : repris de la consultation initiale
   const elMen = document.getElementById('suivi-menarche');
   if (elMen && !elMen.value && snap.age_premieres_regles) elMen.value = snap.age_premieres_regles;
@@ -6226,6 +6298,7 @@ const SPECIALITE_CARRYOVER_MAP = {
   'Hashimoto / Thyroïde': 'Thyroïde',
   'Fatigue surrénalienne / Cortisol': 'Fatigue / Surrénales',
   'Aménorrhée centrale': 'Aménorrhée centrale',
+  'Contraception / arrêt de contraception': 'Contraception / arrêt',
   // Vocabulaire suivi → passe tel quel (report suivi → suivi, séances suivantes)
   'SIBO H₂': 'SIBO H₂', 'SIBO Méthane': 'SIBO Méthane', 'SIBO H₂S': 'SIBO H₂S',
   'Dysbiose putréfaction': 'Dysbiose putréfaction', 'Barrière intestinale (LGS)': 'Barrière intestinale (LGS)',
@@ -6872,6 +6945,7 @@ function collectData() {
   // Modification contraception/hormones (grossesse, accouchement, allaitement, THS...) — options
   // déjà présentes dans le select mais jamais lues auparavant (pas d'id).
   d.modifContraception = document.getElementById('suivi-modif-contraception')?.value || '';
+  d.contraSuivi = ['methode','marque','statut','projet'].map(k => (document.getElementById('suivi-contra-'+k)?.value || '').trim()).filter(Boolean).join(' · ');
   d.evenementReproductif = document.getElementById('suivi-evenement-reproductif')?.value || '';
   d.modifHormonale = [d.modifContraception, d.evenementReproductif].filter(Boolean).join(' · ');
   d.impactHormonal = document.getElementById('suivi-impact-hormonal')?.value?.trim() || '';
@@ -7084,6 +7158,7 @@ function genererSynthese() {
   if(d.nouveauxElementsParAxe||d.modifHormonale) {
     txt += `NOUVEAU DEPUIS LA CONSULTATION INITIALE (par axe)\n${'─'.repeat(30)}\n`;
     if(d.nouveauxElementsParAxe) txt += `${d.nouveauxElementsParAxe}\n`;
+    if(d.contraSuivi) txt += `Contraception (suivi) : ${d.contraSuivi}\n`;
     if(d.modifHormonale) txt += `Modification contraception/hormones : ${d.modifHormonale}${d.impactHormonal ? ' — ' + d.impactHormonal : ''}\n`;
     txt += '\n';
   }
