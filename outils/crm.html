@@ -4670,7 +4670,7 @@ function buildFicheHormonale(c, age, cr, part){
 
 async function loadQuestionnaires(cid){
   try{
-    const r=await sb('questionnaires?client_id=eq.'+encodeURIComponent(cid)+'&order=created_at.desc&select=id,type,prenom,snapshot,created_at');
+    const r=await sb('questionnaires?client_id=eq.'+encodeURIComponent(cid)+'&order=created_at.desc&select=id,type,prenom,snapshot,synthese_ia,created_at');
     questionnairesClient[cid]=r;
   }catch(e){
     console.error('[CRM] ✗ Questionnaires:', e.message);
@@ -7823,6 +7823,16 @@ const VF_CSS=`
 .vf-o.nsp.on{background:var(--orange-lt);border-color:var(--orange);color:#7A4A12}
 .vf-o.nsp.on .vf-ic{background:var(--orange);border-color:var(--orange)}
 .vf.compact .vf-o.off{display:none}
+.vf-resume{background:linear-gradient(135deg,#FBF6EC,#F3EBDC);border:1px solid var(--sable);border-radius:18px;padding:20px 24px;margin-bottom:22px}
+.vf-resume .vf-rh{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
+.vf-resume .vf-rt{font-size:11.5px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--gold-dk)}
+.vf-resume .vf-rv{font-size:17px;line-height:1.65;color:var(--ink);margin:0 0 14px}
+.vf-liens{display:grid;gap:8px}
+.vf-lien{background:#fff;border:1px solid var(--border);border-radius:12px;padding:11px 16px;font-size:15.5px;line-height:1.5;color:var(--ink);font-weight:600}
+.vf-lien .ar{color:var(--ocre);font-weight:800;margin:0 4px}
+.vf-rbtn{font:600 13px var(--font);color:var(--gold-dk);background:#fff;border:1.5px solid var(--sable);border-radius:999px;padding:8px 16px;cursor:pointer}
+.vf-rbtn:disabled{opacity:.6;cursor:wait}
+.vf-rnote{font-size:12.5px;color:var(--muted);margin-top:10px}
 .vf-doc a{color:var(--gold-dk);font-weight:600}
 @media(max-width:700px){.vf-top,.vf-body{padding-left:16px;padding-right:16px}.vf-name{font-size:21px}.vf-opts{grid-template-columns:1fr}}
 `;
@@ -7838,7 +7848,29 @@ function vfQuestion(id,L,m){
   const badge=nsp&&!nOn?'<span class="vf-badge warn">À creuser</span>':(multi?'<span class="vf-badge">'+nOn+' sur '+total+'</span>':'');
   return '<div class="vf-q"><div class="vf-qh"><div class="vf-qt">'+escH(q.t)+'</div>'+badge+'</div><div class="vf-opts">'+opts+'</div></div>';
 }
-function visioFicheHtml(s,c,created){
+function vfResumeHtml(syn,qid){
+  const r=syn&&syn.resume, ok=r&&(r.vue_d_ensemble||(r.liens||[]).length);
+  const bar=lab=>'<button class="vf-rbtn" onclick="vfGenererResume(\''+escH(qid)+'\',this)">'+lab+'</button>';
+  if(!ok) return '<div class="vf-resume" id="vf-resume"><div class="vf-rh"><div class="vf-rt">En un coup d\u2019\u0153il</div>'+bar('Générer le résumé')+'</div><div class="vf-rnote">Un court résumé rédigé par l\u2019IA à partir de ses réponses : ce qui ressort et les liens de cause à effet.</div></div>';
+  const liens=(r.liens||[]).map(l=>'<div class="vf-lien">'+escH(l).replace(/\s*(→|->)\s*/g,'<span class="ar">→</span>')+'</div>').join('');
+  return '<div class="vf-resume" id="vf-resume"><div class="vf-rh"><div class="vf-rt">En un coup d\u2019\u0153il</div>'+bar('↻ Régénérer')+'</div>'
+    +(r.vue_d_ensemble?'<p class="vf-rv">'+escH(r.vue_d_ensemble)+'</p>':'')+(liens?'<div class="vf-liens">'+liens+'</div>':'')
+    +'<div class="vf-rnote">Hypothèses de lecture générées par l\u2019IA à partir de ses réponses, à confirmer en visio.</div></div>';
+}
+async function vfGenererResume(qid,btn){
+  const q=Object.values(questionnairesClient).flat().find(x=>x.id===qid); if(!q) return;
+  btn.disabled=true; btn.textContent='Rédaction en cours…';
+  try{
+    let tok=KEY; if(typeof Auth!=='undefined'){ try{ const t=await Auth.getValidAccessToken(); if(t) tok=t; }catch(e){} }
+    const res=await fetch(SB+'/functions/v1/generate-synthese-prep-visio',{method:'POST',headers:{apikey:KEY,Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify({client_id:q.snapshot&&q.snapshot.client_id||q.client_id,force:true})});
+    const d=await res.json().catch(()=>({}));
+    if(!res.ok||d.error) throw new Error(d.error||'échec');
+    q.synthese_ia=d;
+    const el=document.getElementById('vf-resume'); if(el) el.outerHTML=vfResumeHtml(d,qid);
+    if(!(d.resume&&(d.resume.vue_d_ensemble||(d.resume.liens||[]).length))) toast('Résumé indisponible pour le moment','warn');
+  }catch(e){ toast('Erreur : '+e.message,'err'); btn.disabled=false; btn.textContent='Réessayer'; }
+}
+function visioFicheHtml(s,c,created,syn,qid){
   s=s||{}; const L=window.VISIO_LABELS||{entry:{},themes:{},q:{}}, m=(s.moteur&&typeof s.moteur==='object')?s.moteur:{};
   const nom=((c&&c.prenom)||s.prenom||'')+' '+((c&&c.nom)||s.nom||'');
   const en=parseInt(s.scores&&s.scores.energieGenerale,10)||0;
@@ -7864,7 +7896,7 @@ function visioFicheHtml(s,c,created){
   const docs=an.length?'<div class="vf-h">Analyses jointes</div><div class="vf-doc">'+an.map(a=>'<a href="#" onclick="ouvrirDocBilan(\''+escH(a.url)+'\');return false">'+escH(a.nom||'Analyses')+(a.date?' ('+escH(a.date)+')':'')+'</a>').join('<br>')+'</div>':'';
   return '<div class="vf"><div class="vf-top"><div><div class="vf-eyebrow">Préparation visio · reçue le '+escH(created)+'</div><div class="vf-name">'+escH(nom.trim())+'</div></div>'
     +'<div class="vf-tools"><button class="vf-toggle" onclick="vfBascule(this)">Voir seulement ses réponses</button><button class="vf-x" onclick="document.getElementById(\'modal-reponses-visio\').remove()" aria-label="Fermer">×</button></div></div>'
-    +'<div class="vf-body">'+alertes+(facts?'<div class="vf-facts">'+facts+'</div>':'')
+    +'<div class="vf-body">'+alertes+(facts?'<div class="vf-facts">'+facts+'</div>':'')+vfResumeHtml(syn,qid)
     +(chips?'<div class="vf-h" style="margin-top:4px">Ses motifs</div><div class="vf-chips">'+chips+'</div>':'')
     +(quotes?'<div class="vf-h">Avec ses mots</div><div class="vf-quotes">'+quotes+'</div>':'')
     +(themes?'<div class="vf-h">Ses réponses, question par question</div>'+themes:'')+docs+'</div></div>';
@@ -7891,7 +7923,7 @@ function voirReponsesVisio(cid){
   const modal=document.createElement('div');
   modal.className='modal-bg open';
   modal.id='modal-reponses-visio';
-  modal.innerHTML='<div class="modal vf-modal">'+visioFicheHtml(dernier.snapshot||{},c,fmtDate(dernier.created_at))+'</div>';
+  modal.innerHTML='<div class="modal vf-modal">'+visioFicheHtml(dernier.snapshot||{},c,fmtDate(dernier.created_at),dernier.synthese_ia,dernier.id)+'</div>';
   modal.addEventListener('click', e=>{ if(e.target===modal) modal.remove(); });
   document.body.appendChild(modal);
 }
