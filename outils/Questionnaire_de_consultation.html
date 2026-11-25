@@ -1112,6 +1112,30 @@ b,strong{font-weight:600}
 .pv-grid.pv-2{grid-template-columns:1fr 2.2fr!important}
 .pv-c.pv-moi{border-left:2px solid var(--taupe-fonce)!important;padding-left:16px!important}
 </style>
+<style id="design-2027g">
+/* aération générale */
+.sec-title{margin-bottom:44px!important}
+.qcard{margin-bottom:56px!important}
+.qcard-top{padding:32px 36px 22px!important}
+.qinput{padding:14px 36px 44px!important}
+.qtext{margin-bottom:20px!important}
+.info-boxes{display:flex;flex-direction:column;gap:16px;margin-top:18px}
+.chip-wrap{gap:12px!important;margin-top:12px!important}
+.g4,.g-id,.g3,.g2{gap:22px!important}
+label.fl,.fl{font-size:13px!important;font-weight:600!important;letter-spacing:.1em!important;text-transform:uppercase!important;display:block;margin:32px 0 12px!important;line-height:1.4}
+.qinput>div:first-child>label.fl:first-child,.top-ctx label.fl:first-child{margin-top:8px!important}
+.fi{margin-top:2px}
+.gl-card{margin-bottom:48px!important;padding:26px 30px!important}
+.mg-card{margin-bottom:48px!important}
+.mg-flow{gap:28px!important}
+.mg-opts{gap:12px!important}
+.mg-th-l,.mg-step{margin:22px 0 12px!important}
+.mg-themes{gap:12px!important;margin-bottom:26px!important}
+.pv-t{margin:34px 0 14px!important}
+.top-ctx{background:#fff;border:1px solid var(--taupe);border-radius:20px;padding:30px 36px 34px;margin-bottom:48px}
+.top-ctx-t{font-size:13px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--ardoise);margin-bottom:6px}
+.top-ctx-t.sec-gap{margin:8px 0 18px}
+</style>
 </head>
 <body>
 <div id="alerte-cle-ia" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9998;background:var(--ardoise);color:#fff;padding:12px 20px;font-size:15px;font-family:'Be Vietnam Pro',sans-serif;align-items:center;justify-content:center;gap:14px;box-shadow:0 2px 10px rgba(0,0,0,.15)">
@@ -1263,6 +1287,33 @@ function recStop(){ recLaunch('Arrêter l’enregistrement'); recSetState('done'
     <div class="sec-h">Accueil & motif de consultation</div>
   </div>
 
+  <div class="top-ctx">
+    <div class="top-ctx-t">Pour commencer</div>
+      <!-- Ligne 3 : type de consultation (ajout 02/09/2026) -->
+      <div style="margin-top:16px">
+        <label class="fl">Cette consultation concerne</label>
+        <div class="chip-wrap" id="type-conso" style="margin-top:6px">
+          <button type="button" class="chip on" onclick="toggleTypeConsultation(this,false)">La cliente elle-même</button>
+          <button type="button" class="chip" onclick="toggleTypeConsultation(this,true)">Son enfant / un mineur</button>
+        </div>
+      </div>
+
+      <!-- Orientation médicale (ajout 25/09/2026, demande Sabrina) -->
+      <div style="margin-top:16px">
+        <label class="fl">Êtes-vous orientée vers moi par un médecin ou un spécialiste ?</label>
+        <div style="font-size:13px;line-height:1.5;color:var(--ardoise);margin-top:2px;margin-bottom:6px;font-style:italic">Je vous pose cette question pour pouvoir, si vous le souhaitez, faire un retour courtois à ce médecin sur notre travail commun, et parce que ça m'indique parfois qu'une piste diagnostique a déjà été évoquée de son côté.</div>
+        <div class="chip-wrap" id="orientation-medecin">
+          <button type="button" class="chip" onclick="toggleOrientationMedecin(this,true)">Oui</button>
+          <button type="button" class="chip on" onclick="toggleOrientationMedecin(this,false)">Non</button>
+        </div>
+        <div id="medecin-referent-wrap" style="display:none;margin-top:10px">
+          <label class="fl">Nom du médecin ou du spécialiste (facultatif)</label>
+          <input class="fi" type="text" id="medecin-referent" placeholder="Dr ...">
+        </div>
+      </div>
+
+  </div>
+
   <div id="bloc-prep-visio" class="gl-card" style="display:none">
     <style>
       .pvr{background:#fff;border:1px solid var(--taupe);border-radius:16px;padding:18px 22px;margin-bottom:16px;box-shadow:none;--x:rgba(122,92,56,.08)}
@@ -1296,7 +1347,7 @@ function recStop(){ recLaunch('Arrêter l’enregistrement'); recSetState('done'
       @media(max-width:720px){.pv-grid,.pv-grid.pv-2{grid-template-columns:1fr}.pv-h{display:none}.pv-c{border-bottom:none;padding:8px 14px}.pv-c.pv-moi{border-bottom:1px solid #EDE9E1}}
     </style>
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px">
-      <div class="gl-t"><span class="gl-n">1</span>Sa préparation, lue pour la consultation</div>
+      <div class="gl-t">Sa préparation, lue pour la consultation</div>
       <button type="button" id="btn-regen-prep-visio" onclick="genererPrepVisioSynthese(true)" style="display:none;background:none;border:1px solid var(--ocre);color:var(--ardoise);border-radius:99px;padding:5px 12px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">↻ Régénérer</button>
     </div>
     <div id="pv-body">
@@ -1310,7 +1361,7 @@ function recStop(){ recLaunch('Arrêter l’enregistrement'); recSetState('done'
     <input type="hidden" id="mg-json" value="">
     <div class="mg-top">
       <div>
-        <div class="mg-title"><span class="gl-n">2</span>Questions à lui poser, selon son motif</div>
+        <div class="mg-title">Questions à lui poser, selon son motif</div>
         <div class="mg-sub">Posez la question affichée, cochez ce qu'elle répond puis cliquez sur « Continuer » : la question suivante apparaît, avec ce que vous pouvez lui dire (encadré bleu-gris). Les pistes sont déduites automatiquement.</div>
       </div>
       <div class="mg-tools">
@@ -1329,6 +1380,7 @@ function recStop(){ recLaunch('Arrêter l’enregistrement'); recSetState('done'
     <div id="bilans-saisis-liste" style="font-size:15px;line-height:1.7"></div>
     <div style="margin-top:8px;font-size:15px;color:var(--ardoise)">Lecture complète et enregistrement de nouvelles valeurs : bouton « Lecteur de bilans » dans la fiche cliente du CRM.</div>
   </div>
+  <div class="top-ctx-t sec-gap">Identité et motif</div>
   <!-- Q1 -->
   <div class="qcard">
     <div class="qcard-top">
@@ -1349,29 +1401,6 @@ function recStop(){ recLaunch('Arrêter l’enregistrement'); recSetState('done'
       </div>
     </div>
     <div class="qinput">
-      <!-- Ligne 3 : type de consultation (ajout 02/09/2026) -->
-      <div style="margin-top:16px">
-        <label class="fl">Cette consultation concerne</label>
-        <div class="chip-wrap" id="type-conso" style="margin-top:6px">
-          <button type="button" class="chip on" onclick="toggleTypeConsultation(this,false)">La cliente elle-même</button>
-          <button type="button" class="chip" onclick="toggleTypeConsultation(this,true)">Son enfant / un mineur</button>
-        </div>
-      </div>
-
-      <!-- Orientation médicale (ajout 25/09/2026, demande Sabrina) -->
-      <div style="margin-top:16px">
-        <label class="fl">Êtes-vous orientée vers moi par un médecin ou un spécialiste ?</label>
-        <div style="font-size:13px;line-height:1.5;color:var(--ardoise);margin-top:2px;margin-bottom:6px;font-style:italic">Je vous pose cette question pour pouvoir, si vous le souhaitez, faire un retour courtois à ce médecin sur notre travail commun, et parce que ça m'indique parfois qu'une piste diagnostique a déjà été évoquée de son côté.</div>
-        <div class="chip-wrap" id="orientation-medecin">
-          <button type="button" class="chip" onclick="toggleOrientationMedecin(this,true)">Oui</button>
-          <button type="button" class="chip on" onclick="toggleOrientationMedecin(this,false)">Non</button>
-        </div>
-        <div id="medecin-referent-wrap" style="display:none;margin-top:10px">
-          <label class="fl">Nom du médecin ou du spécialiste (facultatif)</label>
-          <input class="fi" type="text" id="medecin-referent" placeholder="Dr ...">
-        </div>
-      </div>
-
       <!-- Identité : une seule ligne -->
       <div class="g-id" style="margin-top:18px">
         <div><label class="fl">Prénom</label><input class="fi" type="text" id="prenom" placeholder="Marie"></div>
@@ -17665,7 +17694,7 @@ function questionHtml(id) {
   var sel = n.multi ? (Array.isArray(pend) ? pend : (Array.isArray(cur) ? cur : (Array.isArray(cl) ? cl : []))) : [];
   var h = '<div class="mg-q" id="mg-q"><span class="mg-mode ' + n.m + '">' + (n.m === 'listen' ? '1 · Je lui demande (question ouverte : laissez-la parler)' : '1 · Je lui demande') + '</span>' +
     '<div class="mg-qt">' + esc(n.q) + '</div>' + (NSP[id] && cl === undefined && cur === undefined ? '<div class="mg-cli" style="background:#FBF3E4;border-color:#C4A882"><b>Elle a répondu « je ne sais pas » à cette question dans le questionnaire de préparation</b> : posez-la-lui, sans rien présumer.</div>' : '') + (cl !== undefined ? '<div class="mg-cli"><b>Réponse de la cliente (questionnaire de préparation)</b> : validez-la, ou touchez une autre réponse pour la remplacer.</div>' : '') + (n.why ? '<div class="mg-why"><div class="mg-why-l">À lui dire</div><p>' + esc(n.why) + '</p></div>' : '') + (n.hint ? '<div class="mg-hint">' + esc(n.hint) + '</div>' : '') +
-    '<div class="mg-step">2 · Elle répond (cochez)</div><div class="mg-opts' + (n.o.length > 5 && !n.multi ? ' mg-cols' : '') + '">';
+    '<div class="mg-step">' + (cl !== undefined ? '2 · Elle avait déjà répondu dans son questionnaire : confirmez avec elle, ou corrigez' : '2 · Elle répond : cochez') + '</div><div class="mg-opts' + (n.o.length > 5 && !n.multi ? ' mg-cols' : '') + '">';
   n.o.forEach(function (o, i) { h += optHtml(n, o, i, n.multi ? sel.indexOf(o.k) >= 0 : (cur === o.k || (cur === undefined && cl !== undefined && cl === o.k))); });
   h += '</div><div class="mg-act">';
   if (n.multi) h += '<button type="button" class="mg-go" data-mg="cont" data-n="' + id + '"' + (sel.length ? '' : ' disabled') + '>' + (cl !== undefined && pend === undefined ? 'Confirmer et continuer' : 'Continuer') + '</button>';
@@ -17681,16 +17710,16 @@ function trailHtml(an) {
     rows.push('<button type="button" class="mg-edit" data-mg="edit" data-n="' + id + '"><span class="q">' + esc(N[id].s) + '</span><span class="a">' + esc(lbl || '—') + '</span><span class="m">modifier</span></button>');
   });
   if (!rows.length) return '';
-  return '<div class="mg-trail"><div class="mg-trail-t">Ses réponses jusqu\'ici (cliquez pour corriger)</div>' + rows.join('') + '</div>';
+  return '<div class="mg-trail"><div class="mg-trail-t">Ses réponses déjà validées (cliquez pour modifier)</div>' + rows.join('') + '</div>';
 }
 function sideHtml(an) {
   if (an.th === 'cancer') return '<div class="mg-side"><div class="mg-side-t">Le cadre à garder en tête</div>' + '<ul class="mg-list"><li>Aucun complément, aucune plante, aucune huile essentielle, aucune tisane médicinale.</li><li>Aucun régime, jeûne ni détox.</li><li>Aucune promesse sur la maladie ni sur une récidive.</li><li>Rien qui retarde, allège ou remplace un traitement.</li><li>L\'oncologue reste le référent ; le diététicien de l\'équipe passe avant vous sur l\'alimentation.</li></ul>' + '</div>';
   var top = an.pistes.length ? an.pistes : [];
-  if (!top.length) return '<div class="mg-side"><div class="mg-side-t">4 · J\'investigue : pistes évoquées par ses réponses</div><div class="mg-side-n">Elles apparaissent ici dès que vous cliquez sur « Continuer ».</div></div>';
+  if (!top.length) return '<div class="mg-side"><div class="mg-side-t">4 · Pour moi : pistes à investiguer, mises à jour à chaque réponse validée</div><div class="mg-side-n">Elles apparaissent ici dès qu\'une réponse est validée.</div></div>';
   var max = top[0].s;
-  return '<div class="mg-side"><div class="mg-side-t">4 · J\'investigue : pistes évoquées par ses réponses</div>' + top.map(function (p) {
+  return '<div class="mg-side"><div class="mg-side-t">4 · Pour moi : pistes à investiguer, mises à jour à chaque réponse validée</div>' + top.map(function (p) {
     return '<div class="mg-p"><b>' + esc(PISTES[p.k].l) + '</b><div class="mg-bar"><i style="width:' + Math.max(18, Math.round(100 * p.s / max)) + '%"></i></div></div>';
-  }).join('') + '<div class="mg-side-n">Mises à jour quand vous cliquez sur « Continuer ». Hypothèses pour vous seule, à confirmer.</div></div>';
+  }).join('') + '<div class="mg-side-n">Hypothèses pour vous seule, à confirmer.</div></div>';
 }
 function fondHtml() {
   var sec = [[3, 'Traitements & allergies'], [2, 'Antécédents'], [5, 'Alimentation & digestion'], [1, 'Mode de vie'], [6, 'Foie & émonctoires'], [7, 'Surrénales'], [8, 'Hormones & cycle']];
@@ -17783,7 +17812,7 @@ function render() {
   if (an.flags.length && !(cid === null)) h += '<div class="mg-alert"><b>À clarifier avec son médecin avant tout</b><ul>' + an.flags.map(function (f) { return '<li>' + esc(f) + '</li>'; }).join('') + '</ul></div>';
   var say = cid !== null ? lastSay(an, a) : '';
   h += '<div class="mg-flow">' + (cid === null ? (S.th === 'entree' ? entreeFin(an) : summaryHtml(an)) : questionHtml(cid));
-  if (cid !== null && say && !S.edit) h += '<div class="mg-say"><div class="mg-say-l">3 · Je lui dis</div><div class="mg-say-t">' + esc(say) + '</div></div>';
+  if (cid !== null && say && !S.edit) h += '<div class="mg-say"><div class="mg-say-l">3 · Je lui dis, à propos de sa réponse précédente</div><div class="mg-say-t">' + esc(say) + '</div></div>';
   h += (cid === null ? '' : sideHtml(an)) + trailHtml(an) + '</div>';
   box.innerHTML = h + calWrap();
   var back = document.getElementById('mg-back'), rst = document.getElementById('mg-reset');
