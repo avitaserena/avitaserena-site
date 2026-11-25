@@ -80,9 +80,9 @@ with sync_playwright() as p:
     pg.evaluate("s=>window.mgChargerVisio(s)",{"moteur":{"e_motifs":["sommeil"],"z_motifs":["endorm","reveils"],"z_endorm":["rumine"],"z_reveils":["trois_heures"],"z_alertes":["aucun"]}}); pg.wait_for_timeout(800)
     check('le bloc Calibrage apparaît avec les pistes', pg.evaluate("document.querySelectorAll('[data-cal=v]').length") >= 1)
     if pg.evaluate("!!document.querySelector('.mg-cal')"):
-        pg.evaluate("document.querySelector('.mg-cal').open=true"); pg.evaluate("document.querySelector('[data-cal=v][data-v=confirmee]').click()"); pg.wait_for_timeout(700)
+        pg.evaluate("document.querySelector('[data-cal=v][data-v=confirmee]').click()"); pg.wait_for_timeout(700)
         check('un avis est envoyé à la table calibrage_pistes', len(posts) == 1 and 'confirmee' in posts[0], posts)
-        check('le bloc reste ouvert après un clic', pg.evaluate("document.querySelector('.mg-cal').open"))
+        check('le bloc reste visible après un clic et garde l\'avis choisi', pg.evaluate("!!document.querySelector('.mg-cal') && !!document.querySelector('[data-cal=v][data-v=confirmee].on')"))
     b.close()
 
 print('5. Cohérence consultation ↔ suivi ↔ générateur')
