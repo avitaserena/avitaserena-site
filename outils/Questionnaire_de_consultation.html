@@ -1159,6 +1159,13 @@ label.fl,.fl{font-size:13px!important;font-weight:600!important;letter-spacing:.
 .mg-trail[open]>summary::before{content:"▾ "}
 .mg-trail[open]>summary{margin-bottom:16px}
 </style>
+<style id="design-2027k">
+.bandeau-mineur{background:var(--say-bg);border-left:4px solid var(--say-bd);border-radius:0 16px 16px 0;padding:22px 26px;margin:0 0 40px}
+.bandeau-mineur .bm-t{font-size:20px;font-weight:600;margin-bottom:12px}
+.bandeau-mineur ul{margin:0;padding-left:20px}.bandeau-mineur li{padding:5px 0;font-size:15px;line-height:1.6}
+body.mode-mineur .nav-btn-spec[data-spec="meno"],body.mode-mineur #sec-spec-meno,body.mode-mineur #enfants-oui-non,body.mode-mineur #enfants-wrap{display:none!important}
+body.mode-mineur #enfants-oui-non{display:none!important}
+</style>
 </head>
 <body>
 <div id="alerte-cle-ia" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9998;background:var(--ardoise);color:#fff;padding:12px 20px;font-size:15px;font-family:'Be Vietnam Pro',sans-serif;align-items:center;justify-content:center;gap:14px;box-shadow:0 2px 10px rgba(0,0,0,.15)">
@@ -1310,7 +1317,16 @@ function recStop(){ recLaunch('Arrêter l’enregistrement'); recSetState('done'
     <div class="sec-h">Accueil & motif de consultation</div>
   </div>
 
-  <div class="top-ctx">
+  <div id="bandeau-mineur" class="bandeau-mineur" style="display:none">
+  <div class="bm-t">Consultation pour un mineur : les parents répondent avec l'enfant</div>
+  <ul>
+    <li>Toute posologie est adaptée à l'âge et au poids de l'enfant, jamais une dose d'adulte : son foie et ses reins ne traitent pas les substances comme ceux d'un adulte.</li>
+    <li>Priorité absolue : soif marquée avec réveils nocturnes pour uriner, ou bouche sèche persistante. Le médecin passe d'abord, avant tout complément, même si une glycémie normale a déjà été faite (elle n'écarte pas d'autres causes).</li>
+    <li>Aucun conseil de perte de poids, aucun changement de traitement médical, aucun dosage biologique cité aux parents. L'accompagnement complète le suivi pédiatrique, il ne le remplace pas.</li>
+    <li>Masqué pour un mineur : guide Ménopause et questions sur ses propres enfants. À remplir : « Volet mineur » dans Identité (taille des parents, puberté, soif, nycturie).</li>
+  </ul>
+</div>
+<div class="top-ctx">
     <div class="top-ctx-t">Pour commencer</div>
       <!-- Ligne 3 : type de consultation (ajout 02/09/2026) -->
       <div style="margin-top:16px">
@@ -1559,6 +1575,8 @@ function recStop(){ recLaunch('Arrêter l’enregistrement'); recSetState('done'
             </select>
           </div>
           <div><label class="fl">Contexte fratrie / scolarité</label><input class="fi" type="text" id="min-fratrie" placeholder="ex. aînée de 2, entrée en 6e"></div>
+          <div><label class="fl">Courbe de croissance (carnet de santé) : cassure de taille ou de poids ?</label><input class="fi" type="text" id="min-courbe" placeholder="ex. stable, a décroché depuis 2 ans"></div>
+          <div><label class="fl">Suivi pédiatrique ou médical en cours (qui, quand)</label><input class="fi" type="text" id="min-suivi-medical" placeholder="ex. pédiatre, dernier bilan en mars"></div>
         </div>
 
         <div class="g3" style="margin-top:16px">
@@ -9401,7 +9419,20 @@ function toggleTypeConsultation(btn, mineur) {
   btn.classList.add('on');
   const wrap = document.getElementById('mineur-wrap');
   if (wrap) wrap.style.display = mineur ? 'block' : 'none';
+  appliquerModeMineur();
 }
+
+
+function appliquerModeMineur() {
+  var on = !!(document.getElementById('type-conso') && [...document.querySelectorAll('#type-conso .chip.on')].some(function (c) { return /mineur/i.test(c.textContent); }));
+  document.body.classList.toggle('mode-mineur', on);
+  var b = document.getElementById('bandeau-mineur'); if (b) b.style.display = on ? 'block' : 'none';
+}
+document.addEventListener('DOMContentLoaded', function () {
+  var t = document.getElementById('type-conso');
+  if (t && window.MutationObserver) new MutationObserver(appliquerModeMineur).observe(t, { subtree: true, attributes: true, attributeFilter: ['class'] });
+  appliquerModeMineur();
+});
 
 function toggleOrientationMedecin(btn, oui) {
   document.querySelectorAll('#orientation-medecin .chip').forEach(c => c.classList.remove('on'));
