@@ -4548,7 +4548,7 @@ function buildFicheHormonale(c, age, cr, part){
   const poidsTxt=poids?(poids+' kg'):'';
   const poidsK=poidsS?'Poids (dernier suivi)':'Poids';
   const imcCls=imc?(imc<18.5||imc>=30?'warn':''):'';
-  const orient=sn.orientation_medecin==='Oui'?(sn.medecin_referent?E(sn.medecin_referent):'Un médecin'):(sn.orientation_medecin==='Non'?'Venue d\'elle-même':'');
+  const orient=sn.orientation_medecin==='Oui'?((sn.medecin_referent?E(sn.medecin_referent):'Un médecin')+(sn.medecin_specialite?' ('+E(sn.medecin_specialite)+')':'')):(sn.orientation_medecin==='Non'?'Venue d\'elle-même':'');
   const b1=blk('Qui est-elle',
     P('Âge',age?age+' ans':'')+
     P('Taille',taille?taille+' cm':'')+
@@ -4865,7 +4865,7 @@ function renderFiche(c){
       if(!o) return [];
       const nom=qc.snapshot.medecin_referent;
       return [['Orientée par', o==='Oui'
-        ? (nom?`<strong style="color:var(--ink)">${escH(nom)}</strong>`:`<span style="color:var(--ink)">Un médecin (nom non précisé)</span>`)
+        ? ((nom?`<strong style="color:var(--ink)">${escH(nom)}</strong>`:`<span style="color:var(--ink)">Un professionnel (nom non précisé)</span>`)+(qc.snapshot.medecin_specialite?` · ${escH(qc.snapshot.medecin_specialite)}`:''))
         : `<span style="color:var(--muted)">Venue d'elle-même</span>`]];
     })(),
     ['Date de naissance', c.ddn?(fmtDate(c.ddn)+(age?` · <span style="color:var(--muted)">${age} ans</span>`:'')):'—'],
