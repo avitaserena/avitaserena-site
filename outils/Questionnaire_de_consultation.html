@@ -1139,6 +1139,13 @@ label.fl,.fl{font-size:13px!important;font-weight:600!important;letter-spacing:.
 .mg-q .mg-mode.listen,.mg-q .mg-mode.ask,.mg-q .mg-mode{background:transparent!important;padding:0!important;margin-bottom:6px}
 .g-id{grid-template-columns:repeat(3,1fr)!important}
 </style>
+<style id="design-2027h">
+.pv-t{font-size:13px!important;font-weight:600!important;letter-spacing:.12em!important;text-transform:uppercase!important;margin:40px 0 14px!important;padding-top:26px;border-top:1px solid var(--taupe)}
+#prep-visio-faits .pv-t:first-child{border-top:0;padding-top:0;margin-top:8px!important}
+.pv-motif{background:var(--grege);border:1.5px solid var(--taupe-fonce);border-radius:99px;padding:8px 16px;font-size:15px}
+.pv-msg{background:var(--say-bg);border-left:4px solid var(--say-bd);border-radius:0 12px 12px 0;padding:14px 18px}
+.mg-legend{font-size:15px;margin:-10px 0 24px}
+</style>
 </head>
 <body>
 <div id="alerte-cle-ia" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9998;background:var(--ardoise);color:#fff;padding:12px 20px;font-size:15px;font-family:'Be Vietnam Pro',sans-serif;align-items:center;justify-content:center;gap:14px;box-shadow:0 2px 10px rgba(0,0,0,.15)">
@@ -1303,14 +1310,16 @@ function recStop(){ recLaunch('Arrêter l’enregistrement'); recSetState('done'
 
       <!-- Orientation médicale (ajout 25/09/2026, demande Sabrina) -->
       <div style="margin-top:16px">
-        <label class="fl">Êtes-vous orientée vers moi par un médecin ou un spécialiste ?</label>
+        <label class="fl">Êtes-vous orientée vers moi par un médecin, un spécialiste ou un autre professionnel ?</label>
         <div style="font-size:13px;line-height:1.5;color:var(--ardoise);margin-top:2px;margin-bottom:6px;font-style:italic">Je vous pose cette question pour pouvoir, si vous le souhaitez, faire un retour courtois à ce médecin sur notre travail commun, et parce que ça m'indique parfois qu'une piste diagnostique a déjà été évoquée de son côté.</div>
         <div class="chip-wrap" id="orientation-medecin">
           <button type="button" class="chip" onclick="toggleOrientationMedecin(this,true)">Oui</button>
           <button type="button" class="chip on" onclick="toggleOrientationMedecin(this,false)">Non</button>
         </div>
         <div id="medecin-referent-wrap" style="display:none;margin-top:10px">
-          <label class="fl">Nom du médecin ou du spécialiste (facultatif)</label>
+          <label class="fl">Spécialité de la personne qui vous a orientée</label>
+          <select class="fi" id="medecin-specialite"><option value="">— Choisir —</option><option>Médecin généraliste</option><option>Gynécologue</option><option>Gynécologue-obstétricien</option><option>Endocrinologue</option><option>Gastro-entérologue</option><option>Sage-femme</option><option>Chirurgien</option><option>ORL</option><option>Dermatologue</option><option>Nutritionniste / diététicien</option><option>Psychiatre / psychologue</option><option>Cardiologue</option><option>Rhumatologue</option><option>Allergologue</option><option>Pédiatre</option><option>Ostéopathe</option><option>Naturopathe</option><option>Acupuncteur</option><option>Kinésithérapeute</option><option>Autre</option></select>
+          <label class="fl">Nom (facultatif)</label>
           <input class="fi" type="text" id="medecin-referent" placeholder="Dr ...">
         </div>
       </div>
@@ -11100,6 +11109,7 @@ function collectAllData() {
   d.imc = document.getElementById('imc')?.value || '';
   d.orientation_medecin = document.getElementById('orientation-medecin')?.querySelector('.chip.on')?.textContent?.trim() || '';
   d.medecin_referent = document.getElementById('medecin-referent')?.value?.trim() || '';
+  d.medecin_specialite = document.getElementById('medecin-specialite')?.value || '';
   d.enfants_oui_non = document.getElementById('enfants-oui-non')?.querySelector('.chip.on')?.textContent?.trim() || '';
   d.nb_enfants = d.enfants_oui_non === 'Oui' ? document.querySelectorAll('.enfant-row').length : (d.enfants_oui_non === 'Non' ? 0 : '');
   const _valLbl = (txt, scope) => { const l = [...(scope || document).querySelectorAll('label.fl')].find(x => x.textContent.trim() === txt); const c = l && l.parentElement ? l.parentElement.querySelector('select, input') : null; return c ? (c.value || '').trim() : ''; };
@@ -12453,11 +12463,12 @@ function renderPrepVisioFaits(s, resa) {
   const msg = [(resa || []).find((l) => l[0] === 'Message'), visioLibre(s) ? ['', visioLibre(s)] : null].filter(Boolean).map((l) => '« ' + esc(l[1]) + ' »');
   const al = Array.isArray(s.alertes) ? s.alertes.map((a) => a && a.l).filter(Boolean) : [];
   const an = Array.isArray(s.analyses) ? s.analyses.filter((a) => a && /^https:\/\//.test(a.url || '')) : [];
+  const motifs = s.motif ? String(s.motif).split(/[,;·|]/).map((x) => x.trim()).filter(Boolean).slice(0, 8) : [];
   el.innerHTML = (al.length ? '<div style="background:#F5E4DE;border:1.5px solid #B5533A;border-radius:12px;padding:10px 14px;margin-bottom:10px;color:#6B2E1F"><b>Signes signalés par la cliente : à lire avant le rendez-vous</b><ul style="margin:6px 0 0 18px;padding:0">' + al.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul></div>' : '') +
-    (p.length ? '<div style="font-weight:600">' + p.join(' · ') + '</div>' : '') +
-    (s.motif ? '<div style="margin-top:4px">Motifs : ' + esc(s.motif) + '</div>' : '') +
-    (msg.length ? '<div style="margin-top:4px">Son message : ' + msg.join(' / ') + '</div>' : '') +
-    (an.length ? '<div style="margin-top:4px">Analyses jointes : ' + an.map((a) => '<a href="#" onclick="ouvrirDocBilan(\'' + esc(a.url) + '\');return false">' + esc(a.nom || 'analyses') + (a.date ? ' (' + esc(a.date) + ')' : '') + '</a>').join(' · ') + '</div>' : '');
+    (motifs.length ? '<div class="pv-t">Ses motifs</div><div class="chip-wrap">' + motifs.map((m) => '<span class="pv-motif">' + esc(m) + '</span>').join('') + '</div>' : '') +
+    (p.length ? '<div class="pv-t">Ce qu\u2019elle a indiqué</div><div>' + p.join(' · ') + '</div>' : '') +
+    (msg.length ? '<div class="pv-t">Son message, à lire avec elle</div><div class="pv-msg">' + msg.join(' / ') + '</div>' : '') +
+    (an.length ? '<div class="pv-t">Analyses jointes</div><div>' + an.map((a) => '<a href="#" onclick="ouvrirDocBilan(\'' + esc(a.url) + '\');return false">' + esc(a.nom || 'analyses') + (a.date ? ' (' + esc(a.date) + ')' : '') + '</a>').join(' · ') + '</div>' : '');
 }
 
 function renderPrepVisioSynthese(d) {
@@ -12492,12 +12503,12 @@ function renderPrepVisioSynthese(d) {
     }
     if (lignes.length) {
       var avecAcc = lignes.some((l) => l.je_vous_accompagne);
-      h += '<div class="pv-grid' + (avecAcc ? '' : ' pv-3') + '"><div class="pv-h">Elle a dit</div><div class="pv-h">Je lui dis</div>' + (avecAcc ? '<div class="pv-h">Comment je vous accompagne</div>' : '') + '<div class="pv-h">Pour moi : à investiguer</div>' +
+      h += '<div class="pv-t">Ce qu\u2019elle a dit, ce que je lui dis, ce que j\u2019investigue</div><div class="pv-grid' + (avecAcc ? '' : ' pv-3') + '"><div class="pv-h">Elle a dit</div><div class="pv-h">Je lui dis</div>' + (avecAcc ? '<div class="pv-h">Comment je vous accompagne</div>' : '') + '<div class="pv-h">Pour moi : à investiguer</div>' +
         lignes.map((l) => '<div class="pv-c pv-dit">' + esc(l.elle_a_dit) + '</div><div class="pv-c pv-parle">« ' + esc(l.je_lui_dis) + ' »</div>' + (avecAcc ? '<div class="pv-c pv-parle">' + (l.je_vous_accompagne ? '« ' + esc(l.je_vous_accompagne) + ' »' : '') + '</div>' : '') + '<div class="pv-c pv-moi">' + esc(l.a_investiguer) + '</div>').join('') +
         '</div>';
     }
     if (objectifs.length) {
-      h += '<div class="pv-t">Ses objectifs : je les lui reformule</div><div class="pv-grid pv-2"><div class="pv-h">Elle a dit</div><div class="pv-h">Je lui dis</div>' +
+      h += '<div class="pv-t">Ses objectifs : ce qu\u2019elle a dit, ce que je lui dis</div><div class="pv-grid pv-2"><div class="pv-h">Elle a dit</div><div class="pv-h">Je lui dis</div>' +
         objectifs.map((o) => '<div class="pv-c pv-dit">' + esc(o.elle_a_dit) + '</div><div class="pv-c pv-parle">« ' + esc(o.je_lui_dis) + ' »</div>').join('') +
         '</div>';
     }
@@ -17184,7 +17195,7 @@ var SUIVI_SEC = { fatigue: 'sec-7', poids: 'sec-4', peau: 'sec-6', sommeil: 'sec
    parcours sont classées ensemble (ce qui revient plusieurs fois remonte), avec « pour confirmer »,
    examens à discuter et le texte à reprendre dans la lettre d'adressage au médecin.
 ═══════════════════════════════════════════════════════════════════ */
-var TH_LABEL = { entree: 'Motif', cancer: 'Cancer', digestif: 'Digestif', hormones: 'Hormones & cycle', fatigue: 'Fatigue, stress & moral', poids: 'Poids', peau: 'Peau & cheveux', sommeil: 'Sommeil', base: 'Socle femme : cycle, thyroïde, cortisol', croise: 'Synthèse croisée' };
+var TH_LABEL = { entree: '1 · Pourquoi elle vient', cancer: 'Cancer', digestif: 'Digestif', hormones: 'Hormones & cycle', fatigue: 'Fatigue, stress & moral', poids: 'Poids', peau: 'Peau & cheveux', sommeil: 'Sommeil', base: 'Socle femme : cycle, thyroïde, cortisol', croise: 'Synthèse croisée' };
 var TH_LONG = { cancer: "l'accompagnement dans le cadre d'un cancer", digestif: 'digestif', hormones: 'hormones & cycle', fatigue: 'fatigue, stress & moral', poids: 'poids', peau: 'peau & cheveux', sommeil: 'sommeil', base: 'socle femme (cycle, thyroïde, cortisol)' };
 var TH_ORDER = ['cancer', 'digestif', 'hormones', 'fatigue', 'poids', 'peau', 'sommeil', 'base'];
 var TH_PREFIX = { 'o_': 'cancer', 'h_': 'hormones', 'c_': 'hormones', 'f_': 'fatigue', 'w_': 'poids', 'k_': 'peau', 'z_': 'sommeil', 'b_': 'base', 'e_': 'entree' };
@@ -17311,12 +17322,12 @@ function copierAdr() {
 }
 function themesHtml() {
   var a = S.a, q = themeQueue(a), st = startedThemes(a);
-  var tabs = ['entree'].concat(TH_ORDER.filter(function (t) { return t !== 'base' || femmeOK(); }));
+  var tabs = ['entree'].concat(TH_ORDER.filter(function (t) { return (q.indexOf(t) >= 0 || st.indexOf(t) >= 0 || S.th === t) && (t !== 'base' || femmeOK()); }));
   if (st.length) tabs.push('croise');
   return '<div class="mg-themes" role="group" aria-label="Parcours">' + tabs.map(function (t) {
     var on = S.th === t, isq = q.indexOf(t) >= 0, dn = t === 'entree' ? entreeFaite(a) : (t === 'croise' ? false : themeDone(a, t));
     return '<button type="button" class="mg-th' + (on ? ' on' : '') + (isq && !on ? ' q' : '') + (dn && !on ? ' dn' : '') + '" data-mg="theme" data-th="' + t + '" aria-pressed="' + (on ? 'true' : 'false') + '">' + esc(TH_LABEL[t]) + (dn ? ' ✓' : '') + '</button>';
-  }).join('') + '</div>';
+  }).join('') + '</div><div class="mg-legend">Un parcours par motif qu\'elle a choisi, à faire l\'un après l\'autre. Vert foncé : celui en cours. ✓ : terminé.</div>';
 }
 function soonHtml() { return ''; }
 function entreeFin(an) {
@@ -17810,7 +17821,7 @@ function calWrap() { var c = calibrageHtml(); return c ? '<details class="mg-cal
 function render() {
   var box = document.getElementById('mg-body'); if (!box) return;
   var a = S.a, an = analyse(a), cid = currentId(an), started = Object.keys(a).length > 0;
-  var h = lectureHtml() + '<div class="mg-th-l">Thème de la question</div>' + themesHtml() + soonHtml();
+  var h = lectureHtml() + '<div class="mg-th-l">Ses motifs, un par un</div>' + themesHtml() + soonHtml();
   if (S.th === 'croise') { box.innerHTML = h + croiseHtml(an) + calWrap(); var b0 = document.getElementById('mg-back'), r0 = document.getElementById('mg-reset'); if (b0) b0.disabled = !started; if (r0) { r0.disabled = !started; r0.textContent = S.rst ? 'Confirmer : tout effacer' : 'Recommencer'; } return; }
   if (an.flags.length && !(cid === null)) h += '<div class="mg-alert"><b>À clarifier avec son médecin avant tout</b><ul>' + an.flags.map(function (f) { return '<li>' + esc(f) + '</li>'; }).join('') + '</ul></div>';
   var say = cid !== null ? lastSay(an, a) : '';
