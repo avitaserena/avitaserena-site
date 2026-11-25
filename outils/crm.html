@@ -4548,7 +4548,7 @@ function buildFicheHormonale(c, age, cr, part){
   const poidsTxt=poids?(poids+' kg'):'';
   const poidsK=poidsS?'Poids (dernier suivi)':'Poids';
   const imcCls=imc?(imc<18.5||imc>=30?'warn':''):'';
-  const orient=sn.orientation_medecin==='Oui'?((sn.medecin_referent?E(sn.medecin_referent):'Un médecin')+(sn.medecin_specialite?' ('+E(sn.medecin_specialite)+')':'')):(sn.orientation_medecin==='Non'?'Venue d\'elle-même':'');
+  const orient=sn.orientation_medecin==='Oui'?(sn.medecin_referent?E(sn.medecin_referent):'Un médecin'):(sn.orientation_medecin==='Non'?'Venue d\'elle-même':'');
   const b1=blk('Qui est-elle',
     P('Âge',age?age+' ans':'')+
     P('Taille',taille?taille+' cm':'')+
@@ -4865,7 +4865,7 @@ function renderFiche(c){
       if(!o) return [];
       const nom=qc.snapshot.medecin_referent;
       return [['Orientée par', o==='Oui'
-        ? ((nom?`<strong style="color:var(--ink)">${escH(nom)}</strong>`:`<span style="color:var(--ink)">Un professionnel (nom non précisé)</span>`)+(qc.snapshot.medecin_specialite?` · ${escH(qc.snapshot.medecin_specialite)}`:''))
+        ? (nom?`<strong style="color:var(--ink)">${escH(nom)}</strong>`:`<span style="color:var(--ink)">Un médecin (nom non précisé)</span>`)
         : `<span style="color:var(--muted)">Venue d'elle-même</span>`]];
     })(),
     ['Date de naissance', c.ddn?(fmtDate(c.ddn)+(age?` · <span style="color:var(--muted)">${age} ans</span>`:'')):'—'],
@@ -7754,15 +7754,13 @@ async function lienPrepVisio(clientId){
 async function copierLienPrepVisio(clientId){
   const lien = await lienPrepVisio(clientId);
   if(!lien) return;
+  // 25/11/2026 : si la copie automatique échoue (fenêtre pas au premier plan, outils de développement ouverts…),
+  // le presse-papiers gardait l'ancien contenu sans prévenir. On n'annonce « copié » que si la copie a vraiment réussi,
+  // sinon le lien s'affiche pour être copié à la main.
   let ok = false;
   try{ await navigator.clipboard.writeText(lien); ok = true; }catch(e){}
-  if(!ok){
-    try{
-      const ta=document.createElement('textarea'); ta.value=lien; ta.style.position='fixed'; ta.style.opacity='0';
-      document.body.appendChild(ta); ta.select(); ok=document.execCommand('copy'); ta.remove();
-    }catch(e){}
-  }
-  if(ok) toast('Lien du questionnaire copié','ok'); else window.prompt('Copiez ce lien :', lien);
+  if(ok) toast('Lien copié — il se termine par …'+lien.slice(-6),'ok');
+  else window.prompt('La copie automatique a échoué. Copiez ce lien (Cmd+C) :', lien);
 }
 // 20/11/2026 : envoi par la fonction serveur send-prepvisio-link (Brevo), comme les autres emails du CRM.
 // (La version « mailto: » ne faisait rien quand aucune application de messagerie n'est configurée sur l'ordinateur.)
