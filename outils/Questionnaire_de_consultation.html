@@ -1045,6 +1045,31 @@ b,strong{font-weight:600}
 .nav-btn-spec,.nav-btn-spec.active,.nav-btn-spec:hover{background-image:none!important}
 </style>
 
+<style id="design-2027c">
+/* v3 — état « activé » : vert doux lisible (texte ardoise) ; « désactivé » : beige clair */
+:root{--on-bg:#DDEBDB;--on-bd:#5B8A5F}
+.chip.on,.fchip.on,.porte-opt.sel,.check-item.checked,.trig-check.checked,.bilan-card.checked,.mg-opt.on,.mg-th.on,.mg-cal-seg button.on,.nav-btn-spec.suggere{background:var(--on-bg)!important;border-color:var(--on-bd)!important;color:var(--ardoise)!important;box-shadow:none!important}
+.mg-th,.mg-cal-seg button,.mg-opt{background:var(--grege)!important;border-color:var(--taupe-fonce)!important;color:var(--ardoise)!important}
+.mg-th.on,.mg-opt.on,.mg-cal-seg button.on{background:var(--on-bg)!important;border-color:var(--on-bd)!important}
+.mg-th.q{border-color:var(--taupe-fonce)!important}
+.chip.on::before,.fchip.on::before,.mg-th.on::before,.nav-btn-spec.suggere::before{content:"✓ ";color:var(--on-bd);font-weight:600}
+.mg-opt.on .mg-key{background:var(--on-bd)!important;color:#fff!important}
+.nav-btn-spec.suggere{border-radius:12px}
+.nav-btn{padding-top:11px!important;padding-bottom:11px!important}
+.nav-btn-spec{padding-top:10px!important;padding-bottom:10px!important}
+.nav-divider{margin-top:22px!important}
+/* tableau « Elle a dit / Je lui dis / À investiguer » : une seule typo, seul « Je lui dis » a un fond */
+.pv-c,.pv-c.pv-dit,.pv-c.pv-moi,.pv-c.pv-parle{font-family:'Be Vietnam Pro',sans-serif!important;font-size:15px!important;font-weight:400!important;font-style:normal!important;color:var(--ardoise)!important;line-height:1.65}
+.pv-c.pv-dit,.pv-c.pv-moi{background:transparent!important;border-left:0!important}
+.pv-c.pv-parle{background:var(--or-clair)!important}
+/* parcours par motif */
+.mg-th-l{font-size:13px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;margin:6px 0 8px}
+.mg-calw{margin-top:22px;border:1px solid var(--taupe);border-radius:16px;background:var(--off)}
+.mg-calw>summary{cursor:pointer;padding:14px 20px;font-size:15px;font-weight:600;list-style:none}
+.mg-calw>summary::-webkit-details-marker{display:none}
+.mg-calw .mg-cal{margin:0;border:0;background:transparent;padding-top:0}
+.mg-mode.listen,.mg-mode.ask{background:var(--grege)!important;color:var(--ardoise)!important}
+</style>
 </head>
 <body>
 <div id="alerte-cle-ia" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9998;background:var(--ardoise);color:#fff;padding:12px 20px;font-size:15px;font-family:'Be Vietnam Pro',sans-serif;align-items:center;justify-content:center;gap:14px;box-shadow:0 2px 10px rgba(0,0,0,.15)">
@@ -1243,8 +1268,8 @@ function recStop(){ recLaunch('Arrêter l’enregistrement'); recSetState('done'
     <input type="hidden" id="mg-json" value="">
     <div class="mg-top">
       <div>
-        <div class="mg-title"><span class="gl-n">2</span>Avec elle : parcours par motif</div>
-        <div class="mg-sub">Touchez ce qu'elle décrit : la question suivante apparaît, avec ce que vous pouvez lui répondre. Touches 1 à 9 pour répondre, Entrée pour continuer.</div>
+        <div class="mg-title"><span class="gl-n">2</span>Questions à lui poser, selon son motif</div>
+        <div class="mg-sub">Posez la question affichée, cochez ce qu'elle répond puis cliquez sur « Continuer » : la question suivante apparaît, avec ce que vous pouvez lui dire (encadré beige). Les pistes sont déduites automatiquement.</div>
       </div>
       <div class="mg-tools">
         <button type="button" class="mg-tbtn" id="mg-back" data-mg="back" disabled>← Question précédente</button>
@@ -17602,7 +17627,7 @@ function optHtml(n, o, i, sel) {
 function questionHtml(id) {
   var n = N[id], cur = S.a[id], pend = S.p[id], cl = cliVal(id);
   var sel = n.multi ? (Array.isArray(pend) ? pend : (Array.isArray(cur) ? cur : (Array.isArray(cl) ? cl : []))) : [];
-  var h = '<div class="mg-q" id="mg-q"><span class="mg-mode ' + n.m + '">' + (n.m === 'listen' ? "J'écoute" : 'Je demande') + '</span>' +
+  var h = '<div class="mg-q" id="mg-q"><span class="mg-mode ' + n.m + '">' + (n.m === 'listen' ? 'Question ouverte : laissez-la parler' : 'À lui demander') + '</span>' +
     '<div class="mg-qt">' + esc(n.q) + '</div>' + (NSP[id] && cl === undefined && cur === undefined ? '<div class="mg-cli" style="background:#FBF3E4;border-color:#C4A882"><b>Elle a répondu « je ne sais pas » à cette question dans le questionnaire de préparation</b> : posez-la-lui, sans rien présumer.</div>' : '') + (cl !== undefined ? '<div class="mg-cli"><b>Réponse de la cliente (questionnaire de préparation)</b> : validez-la, ou touchez une autre réponse pour la remplacer.</div>' : '') + (n.why ? '<div class="mg-why"><div class="mg-why-l">Pourquoi je vous pose cette question</div><p>' + esc(n.why) + '</p></div>' : '') + (n.hint ? '<div class="mg-hint">' + esc(n.hint) + '</div>' : '') +
     '<div class="mg-opts' + (n.o.length > 5 && !n.multi ? ' mg-cols' : '') + '">';
   n.o.forEach(function (o, i) { h += optHtml(n, o, i, n.multi ? sel.indexOf(o.k) >= 0 : (cur === o.k || (cur === undefined && cl !== undefined && cl === o.k))); });
@@ -17620,16 +17645,16 @@ function trailHtml(an) {
     rows.push('<button type="button" class="mg-edit" data-mg="edit" data-n="' + id + '"><span class="q">' + esc(N[id].s) + '</span><span class="a">' + esc(lbl || '—') + '</span><span class="m">modifier</span></button>');
   });
   if (!rows.length) return '';
-  return '<div class="mg-trail"><div class="mg-trail-t">Déjà vu avec elle</div>' + rows.join('') + '</div>';
+  return '<div class="mg-trail"><div class="mg-trail-t">Ses réponses jusqu\'ici (cliquez pour corriger)</div>' + rows.join('') + '</div>';
 }
 function sideHtml(an) {
   if (an.th === 'cancer') return '<div class="mg-side"><div class="mg-side-t">Le cadre à garder en tête</div>' + '<ul class="mg-list"><li>Aucun complément, aucune plante, aucune huile essentielle, aucune tisane médicinale.</li><li>Aucun régime, jeûne ni détox.</li><li>Aucune promesse sur la maladie ni sur une récidive.</li><li>Rien qui retarde, allège ou remplace un traitement.</li><li>L\'oncologue reste le référent ; le diététicien de l\'équipe passe avant vous sur l\'alimentation.</li></ul>' + '</div>';
   var top = an.pistes.length ? an.pistes : [];
-  if (!top.length) return '<div class="mg-side"><div class="mg-side-t">Ce que ça évoque</div><div class="mg-side-n">Les pistes apparaissent ici au fil de ses réponses.</div></div>';
+  if (!top.length) return '<div class="mg-side"><div class="mg-side-t">Pistes évoquées par ses réponses</div><div class="mg-side-n">Elles apparaissent ici dès que vous cliquez sur « Continuer ».</div></div>';
   var max = top[0].s;
-  return '<div class="mg-side"><div class="mg-side-t">Ce que ça évoque</div>' + top.map(function (p) {
+  return '<div class="mg-side"><div class="mg-side-t">Pistes évoquées par ses réponses</div>' + top.map(function (p) {
     return '<div class="mg-p"><b>' + esc(PISTES[p.k].l) + '</b><div class="mg-bar"><i style="width:' + Math.max(18, Math.round(100 * p.s / max)) + '%"></i></div></div>';
-  }).join('') + '<div class="mg-side-n">Hypothèses de travail pour vous seul·e, à confirmer.</div></div>';
+  }).join('') + '<div class="mg-side-n">Mises à jour quand vous cliquez sur « Continuer ». Hypothèses pour vous seule, à confirmer.</div></div>';
 }
 function fondHtml() {
   var sec = [[3, 'Traitements & allergies'], [2, 'Antécédents'], [5, 'Alimentation & digestion'], [1, 'Mode de vie'], [6, 'Foie & émonctoires'], [7, 'Surrénales'], [8, 'Hormones & cycle']];
@@ -17706,23 +17731,24 @@ function calibrageHtml() {
   if (CAL_ERR) h += '<div class="mg-cal-s">' + esc(CAL_ERR) + '</div>';
   return h + '</div>';
 }
-document.addEventListener('toggle', function (e) { if (e.target && e.target.classList && e.target.classList.contains('mg-cal')) CAL_OPEN = e.target.open; }, true);
+document.addEventListener('toggle', function (e) { if (e.target && e.target.classList && e.target.classList.contains('mg-calw')) CAL_OPEN = e.target.open; }, true);
 document.addEventListener('click', function (e) {
   var b = e.target.closest && e.target.closest('[data-cal]'); if (!b) return;
   if (b.dataset.cal === 'v') calEnregistrer(b.dataset.t, b.dataset.v, null, true, b.dataset.k);
   else if (b.dataset.cal === 'add') { var i = document.getElementById('mg-cal-add'), t = i && i.value.trim(); if (t) calEnregistrer(t.slice(0, 120), 'ajoutee', '', false, null); }
 });
 
+function calWrap() { var c = calibrageHtml(); return c ? '<details class="mg-calw"' + (CAL_OPEN ? ' open' : '') + '><summary>Mes retours sur les pistes (facultatif) : l\'outil les déduit déjà de ses réponses</summary>' + c + '</details>' : ''; }
 function render() {
   var box = document.getElementById('mg-body'); if (!box) return;
   var a = S.a, an = analyse(a), cid = currentId(an), started = Object.keys(a).length > 0;
-  var h = lectureHtml() + calibrageHtml() + themesHtml() + soonHtml();
-  if (S.th === 'croise') { box.innerHTML = h + croiseHtml(an); var b0 = document.getElementById('mg-back'), r0 = document.getElementById('mg-reset'); if (b0) b0.disabled = !started; if (r0) { r0.disabled = !started; r0.textContent = S.rst ? 'Confirmer : tout effacer' : 'Recommencer'; } return; }
+  var h = lectureHtml() + '<div class="mg-th-l">Thème de la question</div>' + themesHtml() + soonHtml();
+  if (S.th === 'croise') { box.innerHTML = h + croiseHtml(an) + calWrap(); var b0 = document.getElementById('mg-back'), r0 = document.getElementById('mg-reset'); if (b0) b0.disabled = !started; if (r0) { r0.disabled = !started; r0.textContent = S.rst ? 'Confirmer : tout effacer' : 'Recommencer'; } return; }
   if (an.flags.length && !(cid === null)) h += '<div class="mg-alert"><b>À clarifier avec son médecin avant tout</b><ul>' + an.flags.map(function (f) { return '<li>' + esc(f) + '</li>'; }).join('') + '</ul></div>';
   var say = cid !== null ? lastSay(an, a) : '';
   if (cid !== null && say && !S.edit) h += '<div class="mg-say"><div class="mg-say-l">À lui dire maintenant</div><div class="mg-say-t">' + esc(say) + '</div></div>';
   h += '<div class="mg-grid' + (cid === null ? '' : ' mg-two') + '"><div>' + (cid === null ? (S.th === 'entree' ? entreeFin(an) : summaryHtml(an)) : questionHtml(cid)) + trailHtml(an) + '</div>' + (cid === null ? '' : sideHtml(an)) + '</div>';
-  box.innerHTML = h;
+  box.innerHTML = h + calWrap();
   var back = document.getElementById('mg-back'), rst = document.getElementById('mg-reset');
   if (back) back.disabled = !started;
   if (rst) { rst.disabled = !started; rst.textContent = S.rst ? 'Confirmer : tout effacer' : 'Recommencer'; }
