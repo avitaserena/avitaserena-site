@@ -1146,6 +1146,10 @@ label.fl,.fl{font-size:13px!important;font-weight:600!important;letter-spacing:.
 .pv-msg{background:var(--say-bg);border-left:4px solid var(--say-bd);border-radius:0 12px 12px 0;padding:14px 18px}
 .mg-legend{font-size:15px;margin:-10px 0 24px}
 </style>
+<style id="design-2027i">
+.mg-trail-say{background:var(--say-bg);border-left:4px solid var(--say-bd);border-radius:0 12px 12px 0;padding:12px 18px;margin:4px 0 18px 0;font-size:15px;line-height:1.6}
+.mg-trail-say .mg-say-l{font-size:13px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;margin-bottom:4px}
+</style>
 </head>
 <body>
 <div id="alerte-cle-ia" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9998;background:var(--ardoise);color:#fff;padding:12px 20px;font-size:15px;font-family:'Be Vietnam Pro',sans-serif;align-items:center;justify-content:center;gap:14px;box-shadow:0 2px 10px rgba(0,0,0,.15)">
@@ -17722,9 +17726,11 @@ function trailHtml(an) {
     if (S.a[id] === undefined || id === S.edit) return;
     var lbl = S.a[id] === '_skip' ? 'passée' : chosen(id, S.a).map(function (o) { return o.l; }).join(' · ');
     rows.push('<button type="button" class="mg-edit" data-mg="edit" data-n="' + id + '"><span class="q">' + esc(N[id].s) + '</span><span class="a">' + esc(lbl || '—') + '</span><span class="m">modifier</span></button>');
+    var sy = S.a[id] === '_skip' ? [] : chosen(id, S.a).filter(function (o) { return o.say; }).slice(0, 2).map(function (o) { return o.say; });
+    if (sy.length) rows.push('<div class="mg-trail-say"><div class="mg-say-l">Je lui dis</div>' + esc(sy.join(' ')) + '</div>');
   });
   if (!rows.length) return '';
-  return '<div class="mg-trail"><div class="mg-trail-t">Ses réponses déjà validées (cliquez pour modifier)</div>' + rows.join('') + '</div>';
+  return '<div class="mg-trail"><div class="mg-trail-t">Ses réponses déjà validées, avec ce que je lui dis (cliquez pour modifier)</div>' + rows.join('') + '</div>';
 }
 function sideHtml(an) {
   if (an.th === 'cancer') return '<div class="mg-side"><div class="mg-side-t">Le cadre à garder en tête</div>' + '<ul class="mg-list"><li>Aucun complément, aucune plante, aucune huile essentielle, aucune tisane médicinale.</li><li>Aucun régime, jeûne ni détox.</li><li>Aucune promesse sur la maladie ni sur une récidive.</li><li>Rien qui retarde, allège ou remplace un traitement.</li><li>L\'oncologue reste le référent ; le diététicien de l\'équipe passe avant vous sur l\'alimentation.</li></ul>' + '</div>';
@@ -17820,6 +17826,14 @@ document.addEventListener('click', function (e) {
 function calWrap() { var c = calibrageHtml(); return c ? '<details class="mg-calw"' + (CAL_OPEN ? ' open' : '') + '><summary>Mes retours sur les pistes (facultatif) : l\'outil les déduit déjà de ses réponses</summary>' + c + '</details>' : ''; }
 function render() {
   var box = document.getElementById('mg-body'); if (!box) return;
+  /* Ce qu'elle a déjà répondu dans son questionnaire est repris tel quel : on ne pose que les questions restantes (rien n'est perdu : tout reste modifiable dans « Ses réponses déjà validées ») */
+  var auto = false, guard = 0;
+  while (CLI && !S.edit && guard++ < 60) {
+    var an0 = analyse(S.a), c0 = currentId(an0);
+    if (c0 === null || S.a[c0] !== undefined || S.p[c0] !== undefined || CLI[c0] === undefined || (Array.isArray(CLI[c0]) && !CLI[c0].length) || NSP[c0]) break;
+    S.a[c0] = cliCopy(CLI[c0]); auto = true;
+  }
+  if (auto) { try { save(); appliquerPonts(); save(); } catch (e) { /* sans conséquence */ } }
   var a = S.a, an = analyse(a), cid = currentId(an), started = Object.keys(a).length > 0;
   var h = lectureHtml() + '<div class="mg-th-l">Ses motifs, un par un</div>' + themesHtml() + soonHtml();
   if (S.th === 'croise') { box.innerHTML = h + croiseHtml(an) + calWrap(); var b0 = document.getElementById('mg-back'), r0 = document.getElementById('mg-reset'); if (b0) b0.disabled = !started; if (r0) { r0.disabled = !started; r0.textContent = S.rst ? 'Confirmer : tout effacer' : 'Recommencer'; } return; }
