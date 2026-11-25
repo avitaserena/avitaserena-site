@@ -11104,7 +11104,9 @@ function preRemplirDepuisVisio() {
     // Durée symptômes
     if (d.duree) {
       const el = document.getElementById('duree');
-      if (el) { for (let o of el.options) { if (o.text.toLowerCase().includes(d.duree.toLowerCase().substring(0,6))) { el.value = o.value; break; } } }
+      const CORR = { 'quelques semaines':'Quelques semaines', '2 à 6 mois':'2-6 mois', "depuis l'enfance":"Depuis l'enfance" };
+      const cible = CORR[String(d.duree).trim().toLowerCase()];
+      if (el && cible) { for (let o of el.options) { if (o.value === cible) { el.value = o.value; break; } } }
     }
     // Motif libre
     if (d.motif) { const el = document.getElementById('motif'); if (el) el.value = d.motif; }
@@ -12526,8 +12528,11 @@ function prefillMotifDepuisVisio(s) {
   const fire = (el) => { el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); };
   const du = document.getElementById('duree');
   if (du && !du.value && s.duree) {
-    const k = String(s.duree).toLowerCase().substring(0, 6);
-    for (const o of du.options) { if (o.value !== '' && o.text.toLowerCase().includes(k)) { du.value = o.value; fire(du); break; } }
+    // 25/11/2026 : l'ancien test « 6 premières lettres » faisait coïncider « Plus de 2 ans » avec « Plus de 3 ans ».
+    // Les deux listes sont différentes : on ne reporte que les correspondances sûres, sinon on laisse vide (à confirmer en visio).
+    const CORR = { 'quelques semaines':'Quelques semaines', '2 à 6 mois':'2-6 mois', "depuis l'enfance":"Depuis l'enfance" };
+    const cible = CORR[String(s.duree).trim().toLowerCase()];
+    if (cible) { for (const o of du.options) { if (o.value === cible) { du.value = o.value; fire(du); break; } } }
   }
   const ob = document.getElementById('objectif-6mois');
   if (ob && !ob.value && s.objectif) { ob.value = s.objectif; fire(ob); }
@@ -12550,7 +12555,7 @@ function renderPrepVisioFaits(s, resa) {
   window.__visioMsg = msg.join(' / ');
   const al = Array.isArray(s.alertes) ? s.alertes.map((a) => a && a.l).filter(Boolean) : [];
   const an = Array.isArray(s.analyses) ? s.analyses.filter((a) => a && /^https:\/\//.test(a.url || '')) : [];
-  const motifs = s.motif ? String(s.motif).split(/[,;·|](?![^(]*\))/).map((x) => x.trim()).filter(Boolean).slice(0, 8) : [];
+  const motifs = s.motif ? String(s.motif).split(/\s*[·|]\s*/).map((x) => x.trim()).filter(Boolean).slice(0, 8) : [];
   el.innerHTML = (al.length ? '<div style="background:#F5E4DE;border:1.5px solid #B5533A;border-radius:12px;padding:10px 14px;margin-bottom:10px;color:#6B2E1F"><b>Signes signalés par la cliente : à lire avant le rendez-vous</b><ul style="margin:6px 0 0 18px;padding:0">' + al.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul></div>' : '') +
     (motifs.length ? '<div class="pv-t">Ses motifs</div><ul class="pv-motifs">' + motifs.map((m) => '<li>' + esc(m) + '</li>').join('') + '</ul>' : '') +
     (an.length ? '<div class="pv-t">Analyses jointes</div><div>' + an.map((a) => '<a href="#" onclick="ouvrirDocBilan(\'' + esc(a.url) + '\');return false">' + esc(a.nom || 'analyses') + (a.date ? ' (' + esc(a.date) + ')' : '') + '</a>').join(' · ') + '</div>' : '');
