@@ -1592,9 +1592,27 @@ async function chargerVisiosRecues(){
   try{
     const since=new Date(Date.now()-30*864e5).toISOString();
     visiosRecues=await sb('questionnaires?type=eq.visio&created_at=gte.'+encodeURIComponent(since)+'&order=created_at.desc&select=id,client_id,created_at,alertes:snapshot->alertes&limit=50');
+    try{ // 25/11/2026 : qui a déjà rempli quoi (toutes dates) — sert aux retards « avant la visio » du tableau de bord
+      const qa=await sb('questionnaires?type=in.(visio,consultation)&select=client_id,type&limit=2000');
+      qDejaRemplis={}; (qa||[]).forEach(x=>{ (qDejaRemplis[x.client_id]=qDejaRemplis[x.client_id]||{})[x.type]=1; });
+    }catch(e){ qDejaRemplis=null; }
     renderActionsJour();
   }catch(e){ console.error('[CRM] ✗ Questionnaires visio reçus:', e.message); visiosRecues=[]; }
 }
+let qDejaRemplis=null;
+// Retards « avant la visio » d'une fiche (mêmes règles que l'onglet Échéances) — [] si rien à signaler.
+function retardsAvantVisio(c){
+  if(!qDejaRemplis) return [];
+  const rempli=qDejaRemplis[c.id]||{}; const out=[];
+  const rd=cRdvs(c).filter(r=>r.status!=='annule');
+  const bilan=rd.filter(r=>r.type==='bilan'&&r.date&&r.date>=today()).sort((a,b)=>a.date.localeCompare(b.date))[0];
+  const anchor=bilan?bilan.date:((c.date1&&c.date1>=today())?c.date1:null);
+  if(anchor && !rempli.visio && !c.workflowDone?.questionnaire_visio && diffD(addD(anchor,-1))>=0) out.push('Questionnaire de préparation visio non reçu');
+  const recent=c.date1&&c.date1<=today()&&diffD(c.date1)<=14;
+  if(!rempli.consultation && (recent||(anchor&&diffD(addD(anchor,-1))>=0))) out.push('Questionnaire de consultation non rempli');
+  return out;
+}
+
 function renderActionsJour(){
   const listEl = document.getElementById('ajd-list');
   const greetEl = document.getElementById('home-greet-title');
@@ -1789,6 +1807,23 @@ function renderActionsJour(){
         '<div class="feed-actions">'+
           '<button class="feed-btn feed-btn-ghost" onclick="openFiche(\''+c.id+'\')">Fiche</button>'+
           (list.length===1&&a0.tpl?'<button class="feed-btn" onclick="openEmail(\''+c.id+'\',\''+a0.tpl+'\')">Email</button>':'')+
+        '</div>'+
+      '</div>'});
+  });
+
+  // 4bis) Avant la visio : questionnaires attendus et non reçus (25/11/2026 — jusque-là visibles seulement dans la fiche)
+  db.clients.forEach(c=>{
+    const l=retardsAvantVisio(c); if(!l.length) return;
+    items.push({u:2, html:
+      '<div class="feed-item feed-workflow">'+
+        '<div class="feed-ic">'+ic('alarm')+'</div>'+
+        '<div class="feed-body">'+
+          '<div class="feed-title">'+escH(c.prenom)+' '+escH(c.nom||'')+' <span class="feed-tag tag-workflow">Avant la visio</span></div>'+
+          '<div class="feed-text">'+l.map(escH).join(' · ')+'</div>'+
+        '</div>'+
+        '<div class="feed-actions">'+
+          '<button class="feed-btn feed-btn-ghost" onclick="openFiche(\''+c.id+'\')">Fiche</button>'+
+          (l.some(x=>/visio/.test(x))&&c.email?'<button class="feed-btn" onclick="envoyerMailPrepVisio(\''+c.id+'\')">Envoyer le lien</button>':'')+
         '</div>'+
       '</div>'});
   });
