@@ -1488,7 +1488,7 @@ function recStop(){ recLaunch('Arrêter l’enregistrement'); recSetState('done'
     <div id="bilans-saisis-liste" style="font-size:15px;line-height:1.7"></div>
     <div style="margin-top:8px;font-size:15px;color:var(--ardoise)">Lecture complète et enregistrement de nouvelles valeurs : bouton « Lecteur de bilans » dans la fiche cliente du CRM.</div>
   </div>
-<div class="qcard">
+<div class="qcard" id="card-specialites" style="display:none" aria-hidden="true"><!-- 26/11/2026 : masquée (déduite automatiquement des réponses guidées) ; cases conservées pour le code -->
     <div class="qcard-top">
       <div class="qnum">3</div>
       <div class="qcontent">
@@ -1533,10 +1533,16 @@ function recStop(){ recLaunch('Arrêter l’enregistrement'); recSetState('done'
   <!-- Q2 -->
   <div class="qcard">
     <div class="qcard-top">
-      <div class="qnum">4</div>
+      <div class="qnum">3</div>
       <div class="qcontent">
-        <div class="qtext">Motif détaillé</div>
-        <div class="qtags"><span class="qtag opt">Notes libres · à remplir au fil de l'échange</span></div>
+        <div class="qtext">Ce qui l'amène, avec ses mots</div>
+        <div class="qtags"><span class="qtag opt">Question d'ouverture · notes libres</span></div>
+        <div class="info-boxes">
+          <div class="info-box dis">
+            <div class="box-lbl"><svg class="picto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0" aria-hidden="true"><path d="M4 4 L20 4 L20 16 L9 16 L4 20 Z"/></svg> Ce que vous pouvez dire à voix haute</div>
+            <div class="dis-phrase">"Racontez-moi, avec vos mots, ce qui vous amène aujourd'hui, et ce que vous aimeriez que ça change. Prenez le temps, je note."</div>
+          </div>
+        </div>
       </div>
     </div>
     <div class="qinput">
@@ -1552,7 +1558,7 @@ function recStop(){ recLaunch('Arrêter l’enregistrement'); recSetState('done'
 <div class="ex-chips" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px"><button type="button" class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> « Ne plus avoir le ventre gonflé tous les soirs — j&#39;en peux plus de me coucher comme enceinte de 6 mois. »</button><button type="button" class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> « Retrouver l&#39;énergie que j&#39;avais avant — je me lève déjà épuisée. »</button><button type="button" class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> « Pouvoir manger normalement en société sans stresser. »</button><button type="button" class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> « Me reconnaître dans mon corps. »</button><button type="button" class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> « Arrêter d&#39;être irascible avec mes enfants J-5 avant mes règles. » → Ces mots sont précieux : ce sont eux qui constituent l&#39;objectif du PHV.</button></div>
       </div>
       </details>
-      <div style="max-width:340px;margin-bottom:16px"><label class="fl">Durée des symptômes</label>
+      <div style="max-width:340px;margin-bottom:16px"><label class="fl">Depuis quand, pour son motif principal ? <span style="font-weight:400">(la durée de chaque thème est demandée dans les questions guidées)</span></label>
           <select class="fi" id="duree">
             <option value="">--</option>
             <option>Quelques semaines</option><option>2-6 mois</option>
@@ -1560,9 +1566,9 @@ function recStop(){ recLaunch('Arrêter l’enregistrement'); recSetState('done'
             <option>Plus de 3 ans</option><option>Depuis l'enfance</option>
           </select>
         </div>
-      <div><label class="fl">Motif détaillé libre</label>
+      <div><label class="fl">Ses mots, vos notes</label>
         <textarea class="fi" id="motif" style="min-height:80px" placeholder="Saisissez vos notes…"></textarea>
-<div class="ex-chips" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px"><button type="button" class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Ballonnements quotidiens après chaque repas, ventre dur le soir (intensité 7/10).</button><button type="button" class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Aggravés par le gluten, les légumineuses, le stress.</button><button type="button" class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Soulagés par la chaleur abdominale et le jeûne.</button><button type="button" class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Impact : évite les repas au restaurant, ne sort plus le soir.</button><button type="button" class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Fatigue dès le réveil — n&#39;a aucun coup d&#39;énergie en journée.</button><button type="button" class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Pire après repas du midi.</button><button type="button" class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Café indispensable pour fonctionner.</button><button type="button" class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> SPM invalidant : pleurs, rage, gonflement seins J-7 à J-1, disparaît dès J1.</button><button type="button" class="chip" onclick="this.classList.toggle('on')"><span class="ck">✓</span> Impact : congés posés les jours avant les règles.</button></div>
+
       </div>
     </div>
   </div>
@@ -15100,8 +15106,8 @@ node('motifs', { m: 'listen', multi: true, s: 'Ce qu\'elle décrit',
   next: function () { return 'secu'; } });
 
 node('secu', { m: 'ask', multi: true, s: 'Signes de sécurité',
-  q: "Un point de sécurité avant d'aller plus loin : avez-vous remarqué l'un de ces signes ?",
-  hint: "Une seule question, posée naturellement. Si oui, notez-le : on continue, mais l'avis du médecin passe avant l'accompagnement.",
+  q: "Avant d'aller plus loin, je vérifie toujours quelques points avec toutes mes clientes : avez-vous remarqué l'un de ces signes ?",
+  hint: "Dites-le comme une routine : « Je pose ces questions à toutes mes clientes, c'est systématique. » Si oui, notez-le : on continue, mais l'avis du médecin passe avant l'accompagnement.",
   why: "Certains signes (sang dans les selles, perte de poids inexpliquée, difficulté à avaler, fièvre) relèvent d'abord d'un examen médical. Je les écarte dès maintenant : un accompagnement naturopathique ne se construit qu'une fois ces causes exclues.",
   o: [
     { k: 'sang', l: "Du sang dans les selles, ou des selles noires", flag: "Sang dans les selles ou selles noires : avis médical rapide avant tout accompagnement." },
@@ -15707,8 +15713,8 @@ node('c_symptomes', { m: 'ask', multi: true, s: 'Ce qu\'elle remarque',
   next: function () { return 'h_motifs'; } });
 
 node('h_secu', { m: 'ask', multi: true, s: 'Signes de sécurité',
-  q: "Un point de sécurité avant d'aller plus loin : avez-vous remarqué l'un de ces signes ?",
-  hint: "Une seule question, posée naturellement. Si oui, notez-le : on continue, mais l'avis du médecin passe avant l'accompagnement.",
+  q: "Avant d'aller plus loin, je vérifie toujours quelques points avec toutes mes clientes : avez-vous remarqué l'un de ces signes ?",
+  hint: "Dites-le comme une routine : « Je pose ces questions à toutes mes clientes, c'est systématique. » Si oui, notez-le : on continue, mais l'avis du médecin passe avant l'accompagnement.",
   why: "Certains signes (saignements en dehors des règles ou après la ménopause, douleur pelvienne intense, perte de poids inexpliquée, maux de tête avec troubles de la vue) demandent d'abord un examen médical. Je les écarte dès maintenant : un accompagnement ne se construit qu'une fois ces causes exclues.",
   o: [
     { k: 'hors', l: "Des saignements en dehors des règles, ou après la ménopause", flag: "Saignement en dehors des règles ou après la ménopause : avis médical avant tout accompagnement." },
@@ -16615,8 +16621,8 @@ node('f_motifs', { m: 'listen', multi: true, s: 'Ce qu\'elle décrit',
   next: function () { return 'f_secu'; } });
 
 node('f_secu', { m: 'ask', multi: true, s: 'Signes de sécurité',
-  q: "Un point de sécurité avant d'aller plus loin : avez-vous remarqué l'un de ces signes ?",
-  hint: "Une seule question, posée naturellement. Si oui, notez-le : on continue, mais l'avis du médecin passe avant l'accompagnement.",
+  q: "Avant d'aller plus loin, je vérifie toujours quelques points avec toutes mes clientes : avez-vous remarqué l'un de ces signes ?",
+  hint: "Dites-le comme une routine : « Je pose ces questions à toutes mes clientes, c'est systématique. » Si oui, notez-le : on continue, mais l'avis du médecin passe avant l'accompagnement.",
   why: "Une fatigue importante ou un moral très bas peuvent avoir une cause qui demande d'abord un examen médical (anémie, thyroïde, surrénales, cœur) ou un soutien rapide. Je les écarte dès maintenant : un accompagnement ne se construit qu'une fois ces causes exclues.",
   o: [
     { k: 'idees', l: "Des idées noires ou l'envie de ne plus vivre", flag: "Idées noires ou envie de mourir : avis médical sans attendre, avant tout accompagnement.", f: "vous avez des idées noires" },
@@ -16920,8 +16926,8 @@ node('w_motifs', { m: 'listen', multi: true, s: 'Ce qu\'elle décrit',
   next: function () { return 'w_secu'; } });
 
 node('w_secu', { m: 'ask', multi: true, s: 'Signes de sécurité',
-  q: "Un point de sécurité avant d'aller plus loin : avez-vous remarqué l'un de ces signes ?",
-  hint: "Une seule question, posée naturellement. Si oui, notez-le : on continue, mais l'avis du médecin passe avant l'accompagnement.",
+  q: "Avant d'aller plus loin, je vérifie toujours quelques points avec toutes mes clientes : avez-vous remarqué l'un de ces signes ?",
+  hint: "Dites-le comme une routine : « Je pose ces questions à toutes mes clientes, c'est systématique. » Si oui, notez-le : on continue, mais l'avis du médecin passe avant l'accompagnement.",
   why: "Une prise de poids rapide ou des gonflements peuvent venir d'un excès de cortisol, d'un problème de thyroïde, de rein ou de cœur, qui demandent d'abord un examen médical. Je les écarte dès maintenant : un accompagnement ne se construit qu'une fois ces causes exclues.",
   o: [
     { k: 'rapide', l: "Plusieurs kilos pris en quelques semaines, sans explication", flag: "Prise de poids rapide et inexpliquée : avis médical avant tout accompagnement.", f: "vous avez pris plusieurs kilos en quelques semaines sans explication" },
@@ -17079,8 +17085,8 @@ node('k_motifs', { m: 'listen', multi: true, s: 'Ce qu\'elle décrit',
   next: function () { return 'k_secu'; } });
 
 node('k_secu', { m: 'ask', multi: true, s: 'Signes de sécurité',
-  q: "Un point de sécurité avant d'aller plus loin : avez-vous remarqué l'un de ces signes ?",
-  hint: "Une seule question, posée naturellement. Si oui, notez-le : on continue, mais l'avis du médecin passe avant l'accompagnement.",
+  q: "Avant d'aller plus loin, je vérifie toujours quelques points avec toutes mes clientes : avez-vous remarqué l'un de ces signes ?",
+  hint: "Dites-le comme une routine : « Je pose ces questions à toutes mes clientes, c'est systématique. » Si oui, notez-le : on continue, mais l'avis du médecin passe avant l'accompagnement.",
   why: "Une lésion de la peau qui change d'aspect, une chute de cheveux en plaques ou des traits qui se virilisent rapidement demandent d'abord un avis médical (dermatologue, endocrinologue). Je les écarte dès maintenant : un accompagnement ne se construit qu'une fois ces causes exclues.",
   o: [
     { k: 'grain', l: "Un grain de beauté ou une tache qui change de forme ou de couleur, saigne ou gratte", flag: "Grain de beauté ou tache qui change : avis dermatologique sans attendre.", f: "vous avez un grain de beauté ou une tache qui change" },
@@ -17869,12 +17875,8 @@ function trailHtml(an) {
 }
 function sideHtml(an) {
   if (an.th === 'cancer') return '<div class="mg-side"><div class="mg-side-t">Le cadre à garder en tête</div>' + '<ul class="mg-list"><li>Aucun complément, aucune plante, aucune huile essentielle, aucune tisane médicinale.</li><li>Aucun régime, jeûne ni détox.</li><li>Aucune promesse sur la maladie ni sur une récidive.</li><li>Rien qui retarde, allège ou remplace un traitement.</li><li>L\'oncologue reste le référent ; le diététicien de l\'équipe passe avant vous sur l\'alimentation.</li></ul>' + '</div>';
-  var top = an.pistes.length ? an.pistes : [];
-  if (!top.length) return '<div class="mg-side"><div class="mg-side-t">4 · Pour moi : pistes à investiguer, mises à jour à chaque réponse validée</div><div class="mg-side-n">Elles apparaissent ici dès qu\'une réponse est validée.</div></div>';
-  var max = top[0].s;
-  return '<div class="mg-side"><div class="mg-side-t">4 · Pour moi : pistes à investiguer, mises à jour à chaque réponse validée</div>' + top.map(function (p) {
-    return '<div class="mg-p"><b>' + esc(PISTES[p.k].l) + '</b><div class="mg-bar"><i style="width:' + Math.max(18, Math.round(100 * p.s / max)) + '%"></i></div></div>';
-  }).join('') + '<div class="mg-side-n">Hypothèses pour vous seule, à confirmer.</div></div>';
+  /* 26/11/2026 : le panneau « pistes à investiguer » est retiré du déroulé (jamais relu ensuite) ; les pistes restent dans le bilan final « Ce que ça évoque » */
+  return '';
 }
 function fondHtml() {
   var sec = [[3, 'Traitements & allergies'], [2, 'Antécédents'], [5, 'Alimentation & digestion'], [1, 'Mode de vie'], [6, 'Foie & émonctoires'], [7, 'Surrénales'], [8, 'Hormones & cycle']];
