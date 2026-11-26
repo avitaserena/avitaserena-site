@@ -10521,9 +10521,11 @@ function goSection(n) {
   const sectionsAvant = document.querySelectorAll('.section');
   const currentAvant = document.querySelector('.section.active');
   const currentIndexAvant = currentAvant ? Array.prototype.indexOf.call(sectionsAvant, currentAvant) : null;
-  if (n >= 12 && currentIndexAvant !== null && currentIndexAvant < 12 && lastSectionBeforeJump === null) {
+  const CAM_IDX = 19; // onglet « Questionnaire de la cliente » (26/11/2026) : fait partie du parcours principal
+  const estPrincipal = i => i < 12 || i === CAM_IDX;
+  if (n >= 12 && n !== CAM_IDX && currentIndexAvant !== null && estPrincipal(currentIndexAvant) && lastSectionBeforeJump === null) {
     lastSectionBeforeJump = currentIndexAvant;
-  } else if (n < 12) {
+  } else if (estPrincipal(n)) {
     lastSectionBeforeJump = null;
   }
   if (typeof updateReturnBanner === 'function') updateReturnBanner();
@@ -10547,6 +10549,8 @@ function goSection(n) {
     const pct = Math.round((n + 1) / TOTAL * 100);
     document.getElementById('progress').style.width = pct + '%';
     document.getElementById('progress-label').textContent = 'Section ' + (n + 1) + ' sur ' + TOTAL;
+  } else if (n === CAM_IDX) {
+    document.getElementById('progress-label').textContent = 'Questionnaire guidé — hors du parcours en ' + TOTAL + ' sections';
   } else {
     document.getElementById('progress-label').textContent = 'Guide spécialisé — hors du parcours en ' + TOTAL + ' sections';
   }
@@ -17529,13 +17533,343 @@ var SUIVI_SEC = { fatigue: 'sec-7', poids: 'sec-4', peau: 'sec-6', sommeil: 'sec
    parcours sont classées ensemble (ce qui revient plusieurs fois remonte), avec « pour confirmer »,
    examens à discuter et le texte à reprendre dans la lettre d'adressage au médecin.
 ═══════════════════════════════════════════════════════════════════ */
-var TH_LABEL = { entree: '1 · Pourquoi elle vient', cancer: 'Cancer', digestif: 'Digestif', hormones: 'Hormones & cycle', fatigue: 'Fatigue, stress & moral', poids: 'Poids', peau: 'Peau & cheveux', sommeil: 'Sommeil', base: 'Socle femme : cycle, thyroïde, cortisol', croise: 'Synthèse croisée' };
-var TH_LONG = { cancer: "l'accompagnement dans le cadre d'un cancer", digestif: 'digestif', hormones: 'hormones & cycle', fatigue: 'fatigue, stress & moral', poids: 'poids', peau: 'peau & cheveux', sommeil: 'sommeil', base: 'socle femme (cycle, thyroïde, cortisol)' };
-var TH_ORDER = ['cancer', 'digestif', 'hormones', 'fatigue', 'poids', 'peau', 'sommeil', 'base'];
-var TH_PREFIX = { 'o_': 'cancer', 'h_': 'hormones', 'c_': 'hormones', 'f_': 'fatigue', 'w_': 'poids', 'k_': 'peau', 'z_': 'sommeil', 'b_': 'base', 'e_': 'entree' };
-var SEC_OF = { cancer: 'Antécédents', digestif: 'Alimentation & digestion', hormones: 'Hormones & cycle', fatigue: 'Surrénales & axe cortisol', poids: 'Surrénales, Hormones & Alimentation', peau: 'Foie & émonctoires', sommeil: 'Surrénales & axe cortisol', base: 'Hormones & Surrénales' };
+var TH_LABEL = { entree: '1 · Pourquoi elle vient', cancer: 'Cancer', digestif: 'Digestif', hormones: 'Hormones & cycle', fatigue: 'Fatigue, stress & moral', poids: 'Poids', peau: 'Peau & cheveux', sommeil: 'Sommeil', base: 'Socle femme : cycle, thyroïde, cortisol', vie: 'Son quotidien & sa famille', croise: 'Synthèse croisée' };
+var TH_LONG = { cancer: "l'accompagnement dans le cadre d'un cancer", digestif: 'digestif', hormones: 'hormones & cycle', fatigue: 'fatigue, stress & moral', poids: 'poids', peau: 'peau & cheveux', sommeil: 'sommeil', base: 'socle femme (cycle, thyroïde, cortisol)', vie: 'son quotidien et sa famille' };
+/* ═══════════════════════════════════════════════════════════════════
+   PARCOURS « SON QUOTIDIEN & SA FAMILLE » (26/11/2026) — les questions que pose toujours une naturopathe,
+   quel que soit le motif : foyer, enfants, grossesse, travail, lieu de vie, charge mentale, sommeil, sport,
+   alimentation, boissons, tabac, allergies, famille, événements marquants, disponibilité.
+   Elles complètent les parcours par motif, sans les redoubler. Les réponses partent vers le générateur avec le reste du déroulé ;
+   celles qui ont une case équivalente (grossesse, sport, tabac, sommeil, allergie aux huiles essentielles) la renseignent aussi.
+═══════════════════════════════════════════════════════════════════ */
+function ageCli() { var e = document.getElementById('age'); var n = e ? parseInt(e.value, 10) : NaN; return isNaN(n) ? null : n; }
+
+node('v_foyer', { m: 'ask', s: 'Avec qui elle vit',
+  q: "Avec qui vivez-vous au quotidien ?",
+  hint: "Une seule réponse. Question d'ouverture sur sa vie : elle donne le contexte de tout le reste (fatigue, sommeil, temps pour soi).",
+  why: "Je pose cette question parce que ce qui se passe chez vous pèse sur votre corps autant que ce que vous mangez. Vivre seule, en couple ou avec des enfants ne change pas du tout le temps dont vous disposez, ni le soutien que vous avez, ni la fatigue. C'est ce qui me permet de vous proposer un protocole que vous pourrez vraiment tenir.",
+  o: [
+    { k: 'seule', l: "Je vis seule", f: "vous vivez seule",
+      say: "Vivre seule laisse plus de liberté pour s'organiser, mais aussi moins de soutien au quotidien. Nous en tiendrons compte pour que ce que je vous propose soit facile à tenir sans personne pour vous relayer." },
+    { k: 'couple', l: "Je vis en couple, sans enfant à la maison", f: "vous vivez en couple, sans enfant à la maison",
+      say: "Un conjoint peut être un vrai appui, ou parfois une source de contraintes de rythme et de repas. Nous verrons ce qui est possible chez vous." },
+    { k: 'famille', l: "Je vis en famille, avec des enfants à la maison", f: "vous vivez en famille, avec des enfants à la maison",
+      say: "Avec des enfants, le temps pour soi devient rare et la fatigue s'accumule. C'est exactement ce que je prends en compte : je ne vous proposerai rien qui soit impossible à glisser dans vos journées." },
+    { k: 'parent_seul', l: "Je vis seule avec un ou plusieurs enfants", f: "vous vivez seule avec un ou plusieurs enfants",
+      say: "Élever seule demande une énergie et une organisation considérables. Ce que je vous proposerai tiendra compte du peu de relais dont vous disposez.",
+      note: "Parent seul : charge mentale et fatigue souvent importantes ; protocole très simple, peu de contraintes de temps, à adapter à chaque séance." },
+    { k: 'autre', l: "Autre situation (chez mes parents, colocation, hébergement…)", f: "vous vivez dans une autre situation (chez vos parents, en colocation…)",
+      say: "Quand le cadre de vie n'est pas le sien, on a moins la main sur les repas et le rythme. Nous chercherons ce que vous pouvez quand même changer." }
+  ],
+  next: function () { return 'v_enfants'; } });
+
+node('v_enfants', { m: 'ask', multi: true, s: 'Ses enfants',
+  q: "Avez-vous des enfants, et de quel âge ?",
+  hint: "Plusieurs réponses possibles. Un enfant en bas âge ou à besoins particuliers pèse sur le sommeil et la charge mentale.",
+  why: "Les enfants comptent de plusieurs façons : le sommeil morcelé d'un bébé épuise, un adolescent en difficulté pèse sur le mental, et une grossesse passée laisse parfois des traces (carences, thyroïde, hormones). Je veux surtout savoir ce que vous portez au quotidien, pour ne pas vous demander plus que ce que vous pouvez donner.",
+  o: [
+    { k: 'petits', l: "Un enfant de moins de 3 ans", f: "vous avez un enfant de moins de 3 ans",
+      say: "Avec un enfant de cet âge, les nuits sont rarement complètes. La fatigue que vous ressentez a souvent une explication très simple, et je ne vous demanderai pas l'impossible sur le sommeil.",
+      note: "Enfant de moins de 3 ans : sommeil morcelé fréquent ; si allaitement ou post-partum récent, adapter prudence et attentes." },
+    { k: 'ecole', l: "Un ou plusieurs enfants d'âge scolaire", f: "vous avez des enfants d'âge scolaire",
+      say: "Les enfants d'âge scolaire demandent beaucoup d'organisation au quotidien : trajets, repas, devoirs. Nous garderons un protocole compatible avec ce rythme." },
+    { k: 'ados', l: "Un adolescent", f: "vous avez un adolescent",
+      say: "Un adolescent peut peser sur le mental même quand tout va bien : inquiétude, tensions, nuits écourtées. Ça compte dans votre niveau de stress.",
+      note: "Adolescent à la maison : charge mentale à explorer ; s'il est en difficulté, noter l'impact sur le sommeil et le stress de la cliente." },
+    { k: 'adultes', l: "Des enfants adultes ou partis de la maison", f: "vous avez des enfants adultes ou partis de la maison",
+      say: "Quand les enfants sont partis, le rythme change souvent : plus de temps pour soi, mais parfois un vide ou un nouveau cap à passer. Nous regarderons ce que cela change pour vous." },
+    { k: 'besoins', l: "Un enfant avec une maladie chronique ou des besoins particuliers", f: "vous avez un enfant avec une maladie chronique ou des besoins particuliers",
+      say: "Accompagner un enfant malade ou en situation de handicap est un poids considérable, et souvent invisible. Je tiendrai compte de votre charge réelle, et ne vous demanderai jamais de vous oublier.",
+      note: "Enfant à besoins particuliers : charge mentale et fatigue très importantes ; protocole minimal et réaliste ; vérifier qu'elle a du relais." },
+    { k: 'aucun', l: "Pas d'enfant", x: true }
+  ],
+  next: function () { var g = ageCli(); return femmeOK() && !(g !== null && g >= 56) ? 'v_grossesse' : 'v_travail'; } });
+
+node('v_grossesse', { m: 'ask', s: 'Grossesse ou allaitement',
+  q: "Êtes-vous enceinte, en train d'allaiter, ou envisagez-vous une grossesse ?",
+  hint: "Une seule réponse. C'est une question de sécurité : elle renseigne aussi le champ « Grossesse » de la Section 04.",
+  why: "Cette question est une règle de sécurité. Pendant une grossesse ou un allaitement, beaucoup de plantes, d'huiles essentielles et de compléments sont déconseillés, parce qu'ils passent chez le bébé ou peuvent agir sur la grossesse. Et si vous envisagez une grossesse, je préfère le savoir dès maintenant pour préparer votre corps plutôt que de le surcharger.",
+  o: [
+    { k: 'non', l: "Non, aucune grossesse ni allaitement en cours", f: "vous n'êtes pas enceinte et n'allaitez pas",
+      say: "Très bien, je le note. Je vous reposerai la question à chaque séance, car la situation peut changer." },
+    { k: 't1', l: "Enceinte, 1er trimestre", f: "vous êtes enceinte, au 1er trimestre",
+      say: "Pendant la grossesse, je ne propose ni plante, ni huile essentielle, ni complément sans vérification de leur sécurité. Je me limiterai à l'alimentation et au mode de vie, en lien avec votre sage-femme ou votre médecin.",
+      flag: "Grossesse (1er trimestre) : aucune plante, aucune huile essentielle ni complément sans vérification de sécurité ; alimentation et mode de vie uniquement, en lien avec la sage-femme ou le médecin." },
+    { k: 't2', l: "Enceinte, 2e trimestre", f: "vous êtes enceinte, au 2e trimestre",
+      say: "Pendant la grossesse, je ne propose ni plante, ni huile essentielle, ni complément sans vérification de leur sécurité. Je me limiterai à l'alimentation et au mode de vie, en lien avec votre sage-femme ou votre médecin.",
+      flag: "Grossesse (2e trimestre) : aucune plante, aucune huile essentielle ni complément sans vérification de sécurité ; alimentation et mode de vie uniquement, en lien avec la sage-femme ou le médecin." },
+    { k: 't3', l: "Enceinte, 3e trimestre", f: "vous êtes enceinte, au 3e trimestre",
+      say: "Pendant la grossesse, je ne propose ni plante, ni huile essentielle, ni complément sans vérification de leur sécurité. Je me limiterai à l'alimentation et au mode de vie, en lien avec votre sage-femme ou votre médecin.",
+      flag: "Grossesse (3e trimestre) : aucune plante, aucune huile essentielle ni complément sans vérification de sécurité ; alimentation et mode de vie uniquement, en lien avec la sage-femme ou le médecin." },
+    { k: 'allait', l: "Allaitement en cours", f: "vous allaitez",
+      say: "Pendant l'allaitement, ce que vous prenez passe en partie dans le lait. Je ne propose donc ni plante ni huile essentielle sans vérification, et je reste sur l'alimentation et les gestes simples.",
+      flag: "Allaitement en cours : aucune plante, aucune huile essentielle ni complément sans vérification de compatibilité avec l'allaitement." },
+    { k: 'desir', l: "Désir de grossesse en cours", f: "vous envisagez une grossesse",
+      say: "Préparer une grossesse est un très bon moment pour soigner son terrain. En revanche, je n'utilise aucune plante ni aucun actif hormonal tant qu'une grossesse est possible, par prudence.",
+      note: "Désir de grossesse : préparer le terrain (nutriments, thyroïde, cycle) ; pas de plante ni d'actif hormonal tant qu'une grossesse est possible." }
+  ],
+  next: function () { return 'v_travail'; } });
+
+node('v_travail', { m: 'ask', multi: true, s: 'Son travail',
+  q: "Comment se passe votre quotidien professionnel ?",
+  hint: "Plusieurs réponses possibles. Le rythme de travail explique souvent la fatigue, le sommeil et les repas.",
+  why: "Votre travail occupe la moitié de vos journées : rester assise toute la journée, travailler de nuit, ou être sous pression permanente n'ont pas les mêmes effets sur votre corps. Le travail de nuit dérègle l'horloge interne, le stress prolongé épuise les surrénales, et la sédentarité ralentit le transit et la circulation. Ça m'oriente sur ce qu'il faut protéger en priorité.",
+  o: [
+    { k: 'assis', l: "Assise la plus grande partie de la journée", f: "vous êtes assise la plus grande partie de la journée",
+      say: "Rester assise longtemps ralentit la circulation, le transit et la dépense d'énergie. Ce ne sont pas des drames, mais des habitudes que nous pouvons corriger avec des gestes très simples." },
+    { k: 'physique', l: "Debout ou physique (port de charges, déplacements)", f: "votre travail est physique ou debout",
+      say: "Un travail physique use le corps et augmente les besoins en énergie et en minéraux. On s'assure que votre alimentation compense ce que vous dépensez." },
+    { k: 'nuit', l: "Travail de nuit ou horaires décalés", f: "vous travaillez de nuit ou en horaires décalés",
+      say: "Le travail de nuit dérègle votre horloge interne, qui commande le sommeil, le cortisol et même la digestion. C'est une vraie cause de fatigue, et nous la prendrons en compte dans tout ce que je vous proposerai.",
+      note: "Travail de nuit ou horaires décalés : horloge interne déréglée (sommeil, cortisol, digestion, cycle) ; adapter les horaires de repas et de lumière à son planning." },
+    { k: 'pression', l: "Beaucoup de pression, de responsabilités ou de stress", f: "vous avez beaucoup de pression ou de responsabilités au travail",
+      say: "Un stress qui dure sollicite en permanence les surrénales, qui finissent par s'épuiser. C'est un facteur de fatigue, de troubles du sommeil et de digestion que nous allons regarder.",
+      note: "Pression professionnelle forte : stress chronique à explorer (cortisol, sommeil, digestion)." },
+    { k: 'arret', l: "Sans emploi, retraitée, ou en arrêt de travail", f: "vous êtes sans emploi, retraitée ou en arrêt de travail",
+      say: "Quelle que soit la raison, ce temps peut aussi être une chance pour votre santé. Si vous êtes en arrêt de travail, nous gardons le lien avec votre médecin.",
+      note: "Sans emploi, retraitée ou en arrêt : demander la cause d'un arrêt de travail ; garder le lien avec le médecin traitant." },
+    { k: 'calme', l: "Un rythme plutôt calme", f: "votre rythme de travail est plutôt calme", x: true }
+  ],
+  next: function () { return 'v_lieu'; } });
+
+node('v_lieu', { m: 'ask', multi: true, s: 'Où elle vit',
+  q: "Où et comment vivez-vous : y a-t-il des éléments de votre environnement qui vous inquiètent ?",
+  hint: "Plusieurs réponses possibles. Ces questions peuvent sembler éloignées de la santé, mais l'environnement agit sur le foie, les hormones et les voies respiratoires.",
+  why: "Votre environnement entre dans votre corps tous les jours : l'air que vous respirez, l'eau, les produits autour de vous. Certains polluants, comme les pesticides ou les moisissures, sollicitent le foie et peuvent perturber les hormones ou l'immunité. Je ne cherche pas à vous inquiéter, seulement à savoir s'il y a une source qui expliquerait vos symptômes.",
+  o: [
+    { k: 'ville', l: "En ville, avec de la circulation ou de la pollution", f: "vous vivez en ville, exposée à la circulation ou à la pollution",
+      say: "La pollution de l'air entretient une inflammation de fond, surtout des voies respiratoires et de la peau. Nous ne pouvons pas toujours la fuir, mais nous pouvons soutenir votre corps pour mieux la supporter." },
+    { k: 'cultures', l: "À proximité de cultures, de vignes ou de vergers (pesticides)", f: "vous vivez près de cultures, de vignes ou de vergers",
+      say: "Les pesticides font partie des perturbateurs endocriniens : ils sollicitent le foie et peuvent perturber les hormones. Savoir si vous y êtes exposée m'aide à ne pas passer à côté d'une cause.",
+      note: "Proximité de cultures, vignes ou vergers : exposition aux pesticides, possible perturbateur endocrinien ; à croiser avec l'état hormonal et hépatique." },
+    { k: 'humide', l: "Un logement humide, avec des moisissures", f: "votre logement est humide, avec des moisissures",
+      say: "Les moisissures peuvent entretenir de la fatigue, des allergies, des problèmes respiratoires et un terrain inflammatoire. C'est souvent un facteur oublié, mais ce serait le premier à corriger.",
+      note: "Logement humide, moisissures : à considérer comme facteur de fatigue, d'allergie et d'inflammation ; l'inciter à assainir son logement." },
+    { k: 'bruit', l: "Du bruit important ou des nuits perturbées par l'extérieur", f: "vous êtes exposée à un bruit important ou à des nuits perturbées par l'extérieur",
+      say: "Le bruit pendant la nuit fragmente le sommeil même quand on ne se réveille pas vraiment, et il entretient le stress. Nous regarderons ce qui est possible pour mieux vous en protéger." },
+    { k: 'ras', l: "Rien de particulier", f: "vous n'avez rien de particulier à signaler dans votre environnement", x: true }
+  ],
+  next: function () { return 'v_charge'; } });
+
+node('v_charge', { m: 'listen', s: 'Sa charge mentale',
+  q: "Comment décririez-vous votre charge mentale en ce moment ?",
+  hint: "Une seule réponse. Laissez-la parler librement avant de cocher : c'est souvent là que se dit l'essentiel.",
+  why: "La charge mentale, c'est tout ce que vous portez dans votre tête en plus de ce que vous faites : l'organisation de la maison, les enfants, le travail, les autres. Elle sollicite en continu votre système de stress et finit par fatiguer, perturber le sommeil, la digestion et les hormones. Je ne la juge pas, je cherche à en mesurer le poids.",
+  o: [
+    { k: 'legere', l: "Légère, je me sens plutôt tranquille", f: "votre charge mentale est légère",
+      say: "C'est une vraie ressource pour votre santé, et nous allons la préserver." },
+    { k: 'moyenne', l: "Moyenne, avec des périodes plus chargées", f: "votre charge mentale est moyenne, avec des périodes plus chargées",
+      say: "C'est le cas de la plupart des personnes. Nous veillerons à ce que les périodes de pointe ne vous épuisent pas." },
+    { k: 'forte', l: "Forte, j'ai du mal à décrocher", f: "votre charge mentale est forte et vous avez du mal à décrocher",
+      say: "Quand on ne décroche plus, le corps reste en alerte permanente. C'est une cause fréquente de fatigue, de mauvais sommeil et de troubles digestifs, et nous la traiterons comme telle.",
+      note: "Charge mentale forte : stress chronique probable ; explorer cortisol, sommeil et digestion ; protocole simple et peu contraignant." },
+    { k: 'epuisante', l: "Épuisante, je suis à bout", f: "votre charge mentale est épuisante et vous êtes à bout",
+      say: "Je vous entends, et ce que vous traversez est réel. Nous allons avancer par petits pas, sans rien ajouter à votre charge. Et si cela devient trop lourd, parlez-en à votre médecin.",
+      flag: "Épuisement mental déclaré (« à bout ») : explorer sans jugement ; protocole minimal ; la renvoyer vers son médecin si le moral est atteint ; voir les signes de sécurité." }
+  ],
+  next: function () { return 'v_reveils'; } });
+
+node('v_reveils', { m: 'ask', s: 'Son sommeil',
+  q: "Comment dormez-vous, en général ?",
+  hint: "Une seule réponse. Elle renseigne aussi le champ « Réveils nocturnes » de la Section 02.",
+  why: "Le sommeil, c'est le moment où le corps répare, régule les hormones et nettoie le cerveau. Un sommeil haché ou trop court entretient la fatigue, l'envie de sucre, la prise de poids et l'inflammation. Et l'heure des réveils me renseigne : vers 3 heures, c'est souvent le foie ou le cortisol, plutôt qu'un simple manque de sommeil.",
+  o: [
+    { k: 'bien', l: "Je dors d'une traite, je me réveille reposée", f: "vous dormez d'une traite et vous vous réveillez reposée",
+      say: "C'est une excellente base, qui facilite tout le reste." },
+    { k: 'occas', l: "Je me réveille de temps en temps dans la nuit", f: "vous vous réveillez de temps en temps dans la nuit",
+      say: "Quelques réveils occasionnels sont fréquents, surtout en période de stress. Je regarderai l'heure à laquelle ils surviennent." },
+    { k: 'syst', l: "Je me réveille presque toutes les nuits", f: "vous vous réveillez presque toutes les nuits",
+      say: "Des réveils quasi quotidiens ne sont pas anodins : ils orientent vers le stress, le foie ou la glycémie selon l'heure. Nous allons chercher laquelle de ces pistes correspond à votre cas.",
+      note: "Réveils nocturnes quasi quotidiens : demander l'heure habituelle ; 1h-3h : foie ou cortisol ; vers 3h-4h : glycémie ou stress." },
+    { k: 'court', l: "Mes nuits sont courtes, moins de six heures", f: "vos nuits sont courtes, moins de six heures",
+      say: "Dormir moins de six heures de façon durable fatigue, perturbe l'appétit et les hormones, et fait monter l'inflammation. Nous regarderons ce qui vous empêche de dormir plus longtemps." }
+  ],
+  next: function () { return 'v_sport'; } });
+
+node('v_sport', { m: 'ask', s: 'Son activité physique',
+  q: "Quelle place l'activité physique a-t-elle dans votre semaine ?",
+  hint: "Une seule réponse. Elle renseigne aussi le niveau de sport de la Section 02.",
+  why: "Le mouvement agit sur presque tout : il aide l'insuline à faire son travail, soutient le transit, améliore l'humeur et le sommeil. À l'inverse, trop d'effort sans récupération épuise les surrénales et dérègle le cycle. Je cherche donc le bon niveau pour vous : ni trop peu, ni trop.",
+  o: [
+    { k: 'sedentaire', l: "Sédentaire : presque pas d'activité", f: "vous êtes sédentaire",
+      say: "Quand on bouge très peu, l'insuline fonctionne moins bien et le transit ralentit. Je ne vous demanderai pas de vous mettre au sport tout de suite : on commence par de la marche." },
+    { k: 'legere', l: "Légère : un peu de marche ou d'activité douce, de temps en temps", f: "vous avez une activité légère",
+      say: "C'est un bon point de départ. Nous verrons comment l'augmenter progressivement, sans vous fatiguer." },
+    { k: 'moderee', l: "Modérée : deux à trois séances par semaine", f: "vous faites deux à trois séances par semaine",
+      say: "C'est un très bon équilibre pour la plupart des personnes : assez pour protéger le métabolisme sans épuiser le corps." },
+    { k: 'reguliere', l: "Régulière : quatre séances ou plus par semaine", f: "vous faites quatre séances ou plus par semaine",
+      say: "Une pratique soutenue demande d'avoir assez de récupération et d'apports. Si vous êtes fatiguée, nous vérifierons que le sport n'y contribue pas." },
+    { k: 'exces', l: "Beaucoup, et je me sens épuisée ou mon cycle a changé", f: "vous faites beaucoup de sport et vous vous sentez épuisée ou votre cycle a changé",
+      say: "Un excès d'entraînement sans récupération suffisante peut épuiser les surrénales et dérégler le cycle. C'est important à repérer, et on ajustera l'intensité avec vous.",
+      flag: "Surentraînement suspecté : fatigue ou modification du cycle avec sport intensif ; ne pas ajouter d'effort, explorer la récupération, l'apport énergétique et le cycle." }
+  ],
+  next: function () { return 'v_alim'; } });
+
+node('v_alim', { m: 'ask', multi: true, s: 'Comment elle mange',
+  q: "Comment mangez-vous le plus souvent ?",
+  hint: "Plusieurs réponses possibles. Sans jugement : on cherche ce qui nourrit ou ce qui fatigue.",
+  why: "Ce que vous mangez au quotidien devient votre énergie, votre flore intestinale et vos hormones. Je ne cherche pas à vous dire quoi manger tout de suite : je veux comprendre votre façon de manger, parce que c'est elle qui explique beaucoup de symptômes, et elle que nous devrons adapter à votre vie.",
+  o: [
+    { k: 'maison', l: "Surtout de la cuisine maison, avec des produits bruts", f: "vous mangez surtout de la cuisine maison avec des produits bruts",
+      say: "C'est une excellente base, qui rend toute la suite plus simple.", x: true },
+    { k: 'transforme', l: "Souvent des plats préparés, de la restauration rapide ou des produits industriels", f: "vous mangez souvent des plats préparés, de la restauration rapide ou des produits industriels",
+      say: "Les produits industriels contiennent souvent trop de sucres, de mauvaises graisses et d'additifs, et peu de ce dont le corps a besoin. Je ne vous demanderai pas de tout changer, nous irons par étapes.",
+      note: "Alimentation souvent industrielle : sucres, additifs et graisses de mauvaise qualité ; avancer par étapes, sans interdit." },
+    { k: 'pdj_saute', l: "Je saute souvent le petit-déjeuner", f: "vous sautez souvent le petit-déjeuner",
+      say: "Sauter le petit-déjeuner n'est pas mauvais en soi, mais chez certaines personnes cela provoque des coups de fatigue, des fringales ou des hypoglycémies en milieu de matinée. Nous regarderons si c'est votre cas." },
+    { k: 'pdj_sucre', l: "Mon petit-déjeuner est surtout sucré (pain, confiture, céréales, viennoiserie)", f: "votre petit-déjeuner est surtout sucré",
+      say: "Un petit-déjeuner très sucré fait monter la glycémie, puis la fait chuter avec un coup de fatigue et des envies de sucre en fin de matinée. C'est un des leviers les plus simples à ajuster." },
+    { k: 'sucre', l: "J'ai souvent envie de sucre, ou je grignote entre les repas", f: "vous avez souvent envie de sucre ou vous grignotez entre les repas",
+      say: "Des envies de sucre répétées traduisent souvent des variations de glycémie, un stress ou un manque de sommeil, plus rarement un manque de volonté. Nous chercherons ce qui les déclenche." },
+    { k: 'vege', l: "Je suis végétarienne ou végétalienne", f: "vous suivez un régime végétarien ou végétalien",
+      say: "Un régime sans viande peut être très équilibré, mais il demande de surveiller certains nutriments, surtout la vitamine B12, le fer et le zinc. Nous vérifierons que vos apports suffisent.",
+      note: "Régime végétarien ou végétalien : vérifier B12, fer, zinc, oméga-3 et protéines ; ne jamais la pousser à abandonner son choix." },
+    { k: 'eviction', l: "J'évite déjà certains aliments (gluten, lait, sucre…)", f: "vous évitez déjà certains aliments",
+      say: "Si vous avez déjà supprimé des aliments, il est important que je sache lesquels, depuis quand et pourquoi, pour ne pas vous en faire supprimer d'autres sans nécessité.",
+      note: "Éviction alimentaire en cours : noter lesquels, depuis quand et pourquoi ; risque de carences et de restriction excessive." },
+    { k: 'poisson', l: "Je mange rarement du poisson gras (sardines, maquereau, saumon)", f: "vous mangez rarement du poisson gras",
+      say: "Les poissons gras apportent les oméga-3, qui calment l'inflammation et soutiennent le cerveau et les hormones. Avec peu de poisson, ces apports peuvent manquer." }
+  ],
+  next: function () { return 'v_boissons'; } });
+
+node('v_boissons', { m: 'ask', multi: true, s: 'Ce qu\'elle boit',
+  q: "Que buvez-vous dans la journée ?",
+  hint: "Plusieurs réponses possibles. Sans jugement.",
+  why: "Ce que vous buvez pèse autant que ce que vous mangez. Pas assez d'eau ralentit le transit et la filtration des reins, trop de café sollicite le stress et le sommeil, et l'alcool est traité par le foie, qui a alors moins de temps pour ses autres tâches, comme celle d'éliminer les hormones.",
+  o: [
+    { k: 'peu_eau', l: "Moins d'un litre d'eau par jour", f: "vous buvez moins d'un litre d'eau par jour",
+      say: "Une hydratation insuffisante ralentit le transit et la filtration des reins. C'est un des points les plus simples à améliorer." },
+    { k: 'cafe', l: "Trois cafés ou plus par jour", f: "vous buvez trois cafés ou plus par jour",
+      say: "Le café stimule les surrénales : à dose élevée, il peut entretenir la fatigue de fond, l'anxiété et un sommeil moins profond. Je ne vous demanderai pas de l'arrêter d'emblée, nous verrons ce qui est tenable.",
+      note: "Café en excès (3 ou plus par jour) : stimulation des surrénales, sommeil et anxiété ; réduire progressivement." },
+    { k: 'alcool', l: "De l'alcool presque tous les jours", f: "vous buvez de l'alcool presque tous les jours",
+      say: "L'alcool est traité par le foie, qui a alors moins de capacité pour éliminer les hormones et les toxines. Il perturbe aussi le sommeil et la flore intestinale. Je ne vous juge pas : je veux seulement savoir ce que votre foie doit gérer.",
+      note: "Alcool quotidien : foie sollicité (hormones, détox), sommeil et flore perturbés ; aucune plante hépatique sans cadre ; si consommation importante, renvoyer vers le médecin." },
+    { k: 'sodas', l: "Des boissons sucrées ou des sodas", f: "vous buvez des boissons sucrées ou des sodas",
+      say: "Les boissons sucrées apportent beaucoup de sucre d'un coup, ce qui sollicite l'insuline et entretient les envies de sucre. Elles sont souvent faciles à remplacer." },
+    { k: 'ok', l: "Surtout de l'eau et des infusions, peu de café et pas d'alcool", f: "vous buvez surtout de l'eau et des infusions", x: true }
+  ],
+  next: function () { return 'v_tabac'; } });
+
+node('v_tabac', { m: 'ask', s: 'Tabac',
+  q: "Fumez-vous, ou avez-vous fumé ?",
+  hint: "Une seule réponse. Elle renseigne aussi le champ « Tabac » de la Section 06.",
+  why: "Le tabac épuise la vitamine C et les antioxydants, abîme la flore et les vaisseaux, avance la ménopause et perturbe le cycle. Je ne vous fais pas la morale : je veux seulement tenir compte de ce que votre corps doit gérer en plus.",
+  o: [
+    { k: 'non', l: "Non, je n'ai jamais fumé", f: "vous ne fumez pas",
+      say: "Très bien, c'est une charge de moins pour votre corps." },
+    { k: 'ex', l: "J'ai arrêté de fumer", f: "vous avez arrêté de fumer",
+      say: "Bravo pour l'arrêt. Le corps récupère beaucoup, et nous veillerons à lui apporter ce que le tabac a consommé, comme la vitamine C." },
+    { k: 'occasion', l: "Je fume occasionnellement", f: "vous fumez occasionnellement",
+      say: "Même occasionnel, le tabac demande au corps un effort supplémentaire. Nous verrons si c'est lié au stress." },
+    { k: 'regulier', l: "Je fume régulièrement", f: "vous fumez régulièrement",
+      say: "Je ne vous demande pas d'arrêter aujourd'hui. Je veux comprendre ce que le tabac représente pour vous, et nous en tiendrons compte dans tout ce que je vous propose.",
+      note: "Fumeuse régulière : épuisement en vitamine C et antioxydants, flore et vaisseaux abîmés, effet sur le cycle ; ne pas imposer l'arrêt, proposer de l'aide si elle le souhaite." },
+    { k: 'vape', l: "Je vapote", f: "vous vapotez",
+      say: "La cigarette électronique est moins nocive que le tabac, mais elle n'est pas anodine pour les voies respiratoires. Nous en tiendrons compte." }
+  ],
+  next: function () { return 'v_allergies'; } });
+
+node('v_allergies', { m: 'ask', multi: true, s: 'Allergies et intolérances',
+  q: "Avez-vous des allergies ou des intolérances connues ?",
+  hint: "Plusieurs réponses possibles. C'est une question de sécurité : précisez la molécule ou l'aliment dans le champ « Allergies » de la Section 04 si besoin.",
+  why: "Cette question est avant tout une règle de sécurité. Une allergie à un médicament, à un aliment ou à une huile essentielle peut m'empêcher de vous proposer certains compléments ou plantes. Et une intolérance m'aide à comprendre une digestion difficile. Mieux vaut vérifier maintenant que de se tromper ensuite.",
+  o: [
+    { k: 'medic', l: "Une allergie à un médicament (pénicilline, aspirine, iode…)", f: "vous avez une allergie à un médicament",
+      say: "Quelle que soit la molécule, je dois la connaître : une allergie à l'aspirine, par exemple, interdit certaines huiles essentielles, et une allergie à l'iode, certaines algues.",
+      flag: "Allergie médicamenteuse déclarée : noter la molécule (pénicilline, aspirine, iode, latex…) ; vérifier la compatibilité de toute huile essentielle ou algue avant de la proposer." },
+    { k: 'alim', l: "Une allergie alimentaire confirmée (arachide, crustacés, œuf…)", f: "vous avez une allergie alimentaire confirmée",
+      say: "Une vraie allergie alimentaire est une urgence potentielle : nous évitons strictement l'aliment concerné, et je vérifierai qu'aucun complément n'en contienne des traces.",
+      flag: "Allergie alimentaire confirmée : éviction stricte ; vérifier la composition de tout complément ; ne jamais confondre avec une intolérance." },
+    { k: 'intol', l: "Des intolérances (lactose, gluten, histamine…) ou des aliments que je ne digère pas", f: "vous avez des intolérances ou des aliments que vous ne digérez pas",
+      say: "Une intolérance n'est pas une allergie : elle provoque une gêne mais pas de danger immédiat. Elle peut en revanche signaler un problème d'intestin à comprendre, plutôt qu'un aliment à supprimer pour toujours." },
+    { k: 'he', l: "Une réaction aux huiles essentielles, aux parfums ou aux plantes", f: "vous avez réagi aux huiles essentielles, aux parfums ou aux plantes",
+      say: "Dans ce cas, je n'utiliserai aucune huile essentielle avec vous, et je serai très prudente avec les plantes. Je note aussi les plantes concernées.",
+      flag: "Réaction aux huiles essentielles, parfums ou plantes : aucune huile essentielle ; plantes seulement après avoir identifié la famille concernée." },
+    { k: 'environ', l: "Des allergies de l'environnement (pollens, acariens, poils d'animaux)", f: "vous avez des allergies de l'environnement",
+      say: "Les allergies respiratoires reflètent souvent une immunité trop réactive, parfois liée à l'intestin. Nous regarderons si ce terrain y contribue." },
+    { k: 'nickel', l: "Une allergie de contact (nickel, latex, cosmétiques)", f: "vous avez une allergie de contact (nickel, latex, cosmétiques)",
+      say: "Les allergies de contact concernent la peau, mais le latex peut croiser certains fruits (avocat, banane, kiwi). Je tiendrai compte de ce lien." },
+    { k: 'aucune', l: "Aucune allergie ni intolérance connue", f: "vous n'avez aucune allergie ni intolérance connue", x: true }
+  ],
+  next: function () { return 'v_famille'; } });
+
+node('v_famille', { m: 'ask', multi: true, s: 'Antécédents familiaux',
+  q: "Dans votre famille proche (parents, frères et sœurs, grands-parents), y a-t-il des maladies qui reviennent ?",
+  hint: "Plusieurs réponses possibles. Demandez de qui il s'agit et à quel âge, et notez-le dans la Section 03 si besoin.",
+  why: "Beaucoup de terrains se transmettent de façon partielle : une prédisposition à la thyroïde, au diabète, aux maladies cardiovasculaires ou à certains cancers. Cela ne veut pas dire que vous les aurez, mais cela m'indique ce qu'il faut surveiller et protéger en priorité chez vous, bien avant que quoi que ce soit n'apparaisse.",
+  o: [
+    { k: 'sein', l: "Cancer du sein, de l'ovaire ou de l'utérus", f: "il y a un cancer du sein, de l'ovaire ou de l'utérus dans votre famille",
+      say: "Un cancer hormonal dans la famille m'incite à rester très prudente avec tout ce qui agit sur les hormones. Je ne propose aucun actif de ce type sans en parler à votre médecin.",
+      flag: "Antécédent familial de cancer du sein, de l'ovaire ou de l'utérus : aucun phytoestrogène ni actif hormonal sans avis médical ; noter le lien de parenté et l'âge." },
+    { k: 'colon', l: "Cancer du côlon", f: "il y a un cancer du côlon dans votre famille",
+      say: "Un cancer du côlon dans la famille justifie un dépistage plus précoce que la moyenne. Je m'assurerai que vous en avez parlé à votre médecin.",
+      flag: "Antécédent familial de cancer du côlon : s'assurer qu'un dépistage adapté a été discuté avec le médecin ; vigilance sur sang dans les selles ou changement du transit." },
+    { k: 'diabete', l: "Diabète de type 2", f: "il y a un diabète de type 2 dans votre famille",
+      say: "Avec un diabète dans la famille, on surveille de près le sucre et l'insuline, bien avant qu'un problème n'apparaisse. L'alimentation et le mouvement sont ici nos meilleurs alliés." },
+    { k: 'thyroide', l: "Maladie de la thyroïde ou maladie auto-immune", f: "il y a une maladie de la thyroïde ou une maladie auto-immune dans votre famille",
+      say: "Les maladies auto-immunes ont une part familiale. Nous surveillerons votre thyroïde et la santé de votre intestin, qui joue un rôle dans l'immunité." },
+    { k: 'coeur', l: "Infarctus, AVC ou hypertension (avant 65 ans)", f: "il y a un infarctus, un AVC ou une hypertension dans votre famille",
+      say: "Un antécédent cardiovasculaire précoce dans la famille m'amène à surveiller tout ce qui touche au cholestérol, à la tension et à l'inflammation. Votre médecin reste le référent sur ce point." },
+    { k: 'os', l: "Ostéoporose ou fracture précoce", f: "il y a une ostéoporose ou une fracture précoce dans votre famille",
+      say: "On construit son capital osseux jusqu'à 30 ans environ. Savoir qu'il y a un risque familial nous permet de protéger vos os dès maintenant : calcium, vitamine D, mouvement." },
+    { k: 'psy', l: "Dépression ou troubles de l'humeur", f: "il y a une dépression ou des troubles de l'humeur dans votre famille",
+      say: "Une sensibilité familiale à l'humeur ne condamne en rien : elle m'invite à protéger votre sommeil et votre stress, pour que votre cerveau reste bien soutenu." },
+    { k: 'alzheimer', l: "Alzheimer ou démence", f: "il y a une maladie d'Alzheimer ou une démence dans votre famille",
+      say: "Savoir cela m'incite à soutenir votre santé cérébrale à long terme : sommeil, inflammation, alimentation, mouvement." },
+    { k: 'gyneco', l: "Endométriose, fibromes ou SOPK", f: "il y a une endométriose, des fibromes ou un SOPK dans votre famille",
+      say: "Ces troubles ont une composante familiale. Les connaître m'aide à interpréter vos règles et votre cycle avec ce contexte." },
+    { k: 'digestif', l: "Maladie de Crohn, rectocolite, maladie cœliaque", f: "il y a une maladie de Crohn, une rectocolite ou une maladie cœliaque dans votre famille",
+      say: "Les maladies digestives inflammatoires et la maladie cœliaque se transmettent en partie. Nous resterons attentives à vos signes digestifs, et votre médecin pourra vérifier la maladie cœliaque par une prise de sang.",
+      note: "Antécédent familial de Crohn, rectocolite ou maladie cœliaque : demander une recherche de maladie cœliaque par prise de sang avant toute éviction du gluten." },
+    { k: 'aucun', l: "Rien de particulier, ou elle ne sait pas", f: "vous n'avez rien de particulier à signaler dans votre famille, ou vous ne savez pas", x: true }
+  ],
+  next: function () { return 'v_histoire'; } });
+
+node('v_histoire', { m: 'listen', multi: true, s: 'Événements marquants',
+  q: "Y a-t-il eu des événements marquants dans votre vie, qui ont compté pour votre santé ?",
+  hint: "Plusieurs réponses possibles. Laissez-la raconter, ne la forcez jamais à développer. Elle peut choisir de ne rien dire aujourd'hui.",
+  why: "Le corps garde la trace de ce qu'il a traversé : un deuil, une période de stress intense, un accouchement ou une maladie peuvent avoir déclenché des symptômes qui durent encore des années après. Vous n'avez pas à tout me raconter aujourd'hui : cela m'aide seulement à comprendre quand les troubles ont commencé.",
+  o: [
+    { k: 'deuil', l: "Un deuil", f: "vous avez vécu un deuil",
+      say: "Un deuil est une épreuve que le corps encaisse aussi : sommeil, appétit et énergie peuvent en garder la trace pendant longtemps." },
+    { k: 'separation', l: "Une séparation, un divorce ou un changement familial important", f: "vous avez vécu une séparation ou un changement familial important",
+      say: "Ces événements sollicitent beaucoup l'organisme. Beaucoup de troubles débutent juste après une telle période." },
+    { k: 'burnout', l: "Un épuisement professionnel, une période de surmenage ou un changement de travail difficile", f: "vous avez vécu un épuisement professionnel ou une période de surmenage",
+      say: "Une période de surmenage laisse parfois les surrénales épuisées bien après la fin du stress. Je ferai le lien avec votre énergie actuelle." },
+    { k: 'naissance', l: "Une grossesse, un accouchement ou un post-partum difficile", f: "vous avez vécu une grossesse, un accouchement ou un post-partum difficile",
+      say: "La grossesse et l'accouchement bouleversent les réserves en fer, la thyroïde et les hormones. Beaucoup de fatigues qui durent viennent de là." },
+    { k: 'maladie', l: "Une maladie, une hospitalisation ou un accident", f: "vous avez vécu une maladie, une hospitalisation ou un accident",
+      say: "Une hospitalisation ou un accident laissent souvent des traces sur l'immunité et la digestion, surtout après des antibiotiques ou une anesthésie." },
+    { k: 'choc', l: "Un choc émotionnel ou une période très difficile dont elle préfère parler plus tard", f: "vous avez vécu un choc émotionnel ou une période très difficile",
+      say: "Vous n'avez rien à dire aujourd'hui que vous ne souhaitiez pas. Il m'est utile de savoir seulement que cela a existé, pour comprendre le contexte.",
+      note: "Choc émotionnel ou période difficile évoquée : ne pas insister ; noter la période de début ; si besoin, orienter vers un psychologue." },
+    { k: 'demenag', l: "Un déménagement ou un grand changement de vie", f: "vous avez vécu un déménagement ou un grand changement de vie",
+      say: "Les grands changements, même voulus, sont un stress pour le corps, et les troubles débutent souvent dans ces périodes." },
+    { k: 'rien', l: "Rien de particulier à signaler", f: "vous n'avez rien de particulier à signaler", x: true }
+  ],
+  next: function () { return 'v_engagement'; } });
+
+node('v_engagement', { m: 'ask', s: 'Le temps qu\'elle peut y consacrer',
+  q: "Combien de temps pouvez-vous consacrer chaque jour à prendre soin de vous : repas, gestes simples, mouvement ?",
+  hint: "Une seule réponse. Elle sert à dimensionner le protocole pour qu'il soit tenable.",
+  why: "Un protocole parfait mais impossible à suivre ne sert à rien. Je veux savoir combien de temps vous avez, pour vous donner peu de choses, mais des choses que vous ferez vraiment. C'est la régularité, pas la quantité, qui change votre corps.",
+  o: [
+    { k: 'peu', l: "Moins de 10 minutes par jour", f: "vous pouvez consacrer moins de 10 minutes par jour",
+      say: "Très bien : nous irons à l'essentiel, avec deux ou trois gestes seulement. Mieux vaut peu, mais tenu.",
+      note: "Moins de 10 minutes par jour : protocole minimal (2 ou 3 gestes) ; ne pas surcharger." },
+    { k: 'moyen', l: "Entre 10 et 30 minutes par jour", f: "vous pouvez consacrer entre 10 et 30 minutes par jour",
+      say: "C'est un bon créneau : suffisant pour un protocole clair, sans pression." },
+    { k: 'beaucoup', l: "Plus de 30 minutes par jour", f: "vous pouvez consacrer plus de 30 minutes par jour",
+      say: "C'est une vraie chance : nous pourrons construire un programme plus complet, en gardant toujours une base simple." }
+  ],
+  next: function () { return null; } });
+
+var TH_ORDER = ['cancer', 'digestif', 'hormones', 'fatigue', 'poids', 'peau', 'sommeil', 'base', 'vie'];
+var TH_PREFIX = { 'o_': 'cancer', 'h_': 'hormones', 'c_': 'hormones', 'f_': 'fatigue', 'w_': 'poids', 'k_': 'peau', 'z_': 'sommeil', 'b_': 'base', 'v_': 'vie', 'e_': 'entree' };
+var SEC_OF = { cancer: 'Antécédents', digestif: 'Alimentation & digestion', hormones: 'Hormones & cycle', fatigue: 'Surrénales & axe cortisol', poids: 'Surrénales, Hormones & Alimentation', peau: 'Foie & émonctoires', sommeil: 'Surrénales & axe cortisol', base: 'Hormones & Surrénales', vie: 'Identité, Antécédents, Traitements & allergies, Alimentation' };
 function thOf(id) { return TH_PREFIX[String(id).slice(0, 2)] || 'digestif'; }
-ROOT.cancer = 'o_situation'; ROOT.entree = 'e_motifs'; ROOT.fatigue = 'f_motifs'; ROOT.poids = 'w_motifs'; ROOT.peau = 'k_motifs'; ROOT.sommeil = 'z_motifs';
+ROOT.vie = 'v_foyer'; ROOT.cancer = 'o_situation'; ROOT.entree = 'e_motifs'; ROOT.fatigue = 'f_motifs'; ROOT.poids = 'w_motifs'; ROOT.peau = 'k_motifs'; ROOT.sommeil = 'z_motifs';
 
 /* Motifs d'entrée → parcours. Les motifs sans parcours dédié (immunité, douleurs, autre) renvoient aux sections classiques. */
 var ENTRY_TH = { cancer: 'cancer', digestif: 'digestif', contra: 'hormones', hormones: 'hormones', fatigue: 'fatigue', poids: 'poids', peau: 'peau', sommeil: 'sommeil' };
@@ -17544,6 +17878,7 @@ function entreeFaite(a) { return Array.isArray(a.e_motifs) && a.e_motifs.length 
 function themeQueue(a) {
   var q = []; (Array.isArray(a.e_motifs) ? a.e_motifs : []).forEach(function (k) { var t = ENTRY_TH[k]; if (t && q.indexOf(t) < 0) q.push(t); });
   if (entreeFaite(a) && femmeOK() && !hasE(a, 'cancer')) q.push('base'); /* cancer : pas de batterie hormonale en première intention */
+  if (entreeFaite(a)) q.push('vie'); /* 26/11/2026 : questions globales de toute consultation */
   return q;
 }
 function startedThemes(a) { return TH_ORDER.filter(function (th) { return walk(a, th).some(function (id) { return a[id] !== undefined; }); }); }
@@ -17672,6 +18007,15 @@ function entreeFin(an) {
   return h + '</div>';
 }
 
+/* Onglet « Questionnaire de la cliente » : parcours terminés / parcours à faire */
+window.mgProgres = function () {
+  try {
+    var a = S.a, q = themeQueue(a), st = startedThemes(a);
+    var ths = TH_ORDER.filter(function (t) { return (q.indexOf(t) >= 0 || st.indexOf(t) >= 0) && (t !== 'base' || femmeOK()); });
+    var fait = ths.filter(function (t) { return themeDone(a, t); }).length;
+    return { fait: fait, total: ths.length, entree: entreeFaite(a) };
+  } catch (e) { return { fait: 0, total: 0, entree: false }; }
+};
 /* Accès pour le bandeau d'alertes médicales */
 window.mgAlertesFlags = function () {
   try {
@@ -17835,7 +18179,7 @@ function appliquerPonts() {
     }
   });
   S.ponts = voulu;
-  pontsChir(ra); pontsDiag(ra); pontsTrait(ra); pontsCancer(ra);
+  pontsChir(ra); pontsDiag(ra); pontsTrait(ra); pontsCancer(ra); pontsSelects(ra);
   if (touche) { try { if (typeof updateCounter === 'function') updateCounter(); if (typeof refreshFunnel === 'function') refreshFunnel(); } catch (e) { /* non bloquant */ } }
 }
 
@@ -17936,6 +18280,29 @@ function pontsCancer(ra) {
     if (want) { if ((!el.value || CANCERAUTO) && el.value !== want) { el.value = want; CANCERAUTO = true; el.dispatchEvent(new Event('change', { bubbles: true })); } }
     else if (CANCERAUTO) { el.value = ''; CANCERAUTO = false; el.dispatchEvent(new Event('change', { bubbles: true })); }
   } catch (e) { if (window.console) console.warn('[Cancer reporté]', e); }
+}
+/* Questions globales : la réponse renseigne la liste déroulante équivalente du formulaire classique, tant que Sabrina ne l'a pas changée elle-même */
+var SELMAP = {
+  v_grossesse: { sel: 'secu-grossesse', m: { non: 'Non concernée', t1: 'Enceinte — 1er trimestre', t2: 'Enceinte — 2e trimestre', t3: 'Enceinte — 3e trimestre', allait: 'Allaitement en cours', desir: 'Désir de grossesse en cours' } },
+  v_sport: { sel: 'niveau-sport', m: { sedentaire: 'Sédentaire — moins de 30 min/semaine', legere: 'Légère — marche, activité douce occasionnelle', moderee: 'Modérée — 2-3 séances par semaine', reguliere: 'Régulière — 4 séances ou plus par semaine', exces: 'Surentraînement suspecté' } },
+  v_tabac: { sel: 'tabac-consult', m: { non: 'Non-fumeur·se', ex: 'Ex-fumeur·se (arrêt depuis...)', occasion: 'Fumeur·se occasionnel·le / festif·ve', regulier: 'Fumeur·se régulier·ère', vape: 'Cigarette électronique' } },
+  v_reveils: { sel: 'sommeil-reveil-freq', m: { bien: 'Non, dort sans interruption', occas: 'Occasionnellement', syst: 'Systématiquement, presque toutes les nuits' } },
+  v_allergies: { sel: 'secu-allergie-he', he: true }
+};
+function pontsSelects(ra) {
+  try {
+    Object.keys(SELMAP).forEach(function (id) {
+      var c = SELMAP[id], el = document.getElementById(c.sel); if (!el) return;
+      if (!el.dataset.mgWatch) { el.dataset.mgWatch = '1'; el.addEventListener('change', function (e) { if (e.isTrusted) el.dataset.mgUser = '1'; }); }
+      var v = ra[id], want = null;
+      if (v !== undefined && v !== '_skip') {
+        if (c.m) want = c.m[Array.isArray(v) ? v[0] : v] || null;
+        else if (c.he) want = (Array.isArray(v) ? v : [v]).indexOf('he') >= 0 ? 'Oui' : 'Non';
+      }
+      if (want) { if (el.dataset.mgUser !== '1' && el.value !== want) { el.value = want; el.dataset.mgAuto = '1'; el.dispatchEvent(new Event('change', { bubbles: true })); } }
+      else if (el.dataset.mgAuto === '1' && el.dataset.mgUser !== '1') { el.selectedIndex = 0; delete el.dataset.mgAuto; el.dispatchEvent(new Event('change', { bubbles: true })); }
+    });
+  } catch (e) { if (window.console) console.warn('[Listes reportées]', e); }
 }
 /* Un clic de Sabrina sur une case reportée la rend définitivement manuelle */
 document.addEventListener('click', function (e) {
@@ -18703,6 +19070,46 @@ window.__mg = { cli: function () { return CLI; }, fusion: fusion, fill: fill, le
     return detecter().map(function (a) { return (a.niv === 'urg' ? 'URGENCE — ' : 'Avis médical — ') + a.lib; }).join(' ; ');
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+})();
+</script>
+<script id="cam-script">
+/* ═══ Onglet « Questionnaire de [prénom] » (26/11/2026) ═══
+   Le déroulé guidé sort de la Section 01 : il a son propre onglet, en tête du menu, nommé d'après la cliente.
+   Il porte l'index 19 (derniers .section et dernier .nav-btn du DOM), pour ne décaler aucune des 19 autres pages. */
+(function () {
+  var card = document.getElementById('mg-card'), nav = document.getElementById('nav'), page = document.querySelector('.page');
+  if (!card || !nav || !page) return;
+  var sec = document.createElement('div');
+  sec.className = 'section'; sec.id = 'sec-camille'; sec.style.display = 'none';
+  sec.innerHTML = '<div class="sec-title"><div class="sec-num">Questionnaire guidé</div><div class="sec-h" id="cam-titre">Questionnaire de la cliente</div></div>' +
+    '<div class="sec-intro" style="font-size:16px;line-height:1.7;color:var(--ardoise);margin:0 0 18px">Posez les questions dans l\'ordre qui s\'affiche : son motif, puis son quotidien, sa famille, ses allergies. Tout ce que vous cochez remplit le dossier et part vers le générateur : vous n\'avez pas à repasser par les 12 sections, sauf pour votre observation et votre synthèse.</div>';
+  page.appendChild(sec);
+  var prep = document.getElementById('bloc-prep-visio');
+  if (prep) sec.appendChild(prep);
+  var ptr = document.createElement('div');
+  ptr.id = 'cam-pointeur'; ptr.style.cssText = 'background:#fff;border:1px solid var(--ocre,#B4906A);border-radius:20px;padding:20px 24px;margin:0 0 26px';
+  ptr.innerHTML = '<div style="font-family:\'Cormorant Garamond\',serif;font-size:26px;font-weight:600;color:var(--ardoise,#1E1E1C)" id="cam-ptr-t">Questionnaire de la cliente</div>' +
+    '<div style="font-size:16px;line-height:1.7;color:var(--ardoise,#1E1E1C);margin:6px 0 14px">Les questions à lui poser sont dans leur propre onglet, en haut du menu : son motif, son quotidien, sa famille, ses allergies. Vous n\'avez plus besoin de parcourir les 12 sections.</div>' +
+    '<button type="button" class="btn" onclick="goSection(19)" style="font-size:16px;padding:10px 22px">Ouvrir le questionnaire →</button>';
+  card.parentNode.insertBefore(ptr, card);
+  sec.appendChild(card);
+  var btn = document.createElement('button');
+  btn.className = 'nav-btn'; btn.id = 'nav-camille'; btn.type = 'button'; btn.setAttribute('onclick', 'goSection(19)');
+  btn.style.order = '-1'; btn.style.fontWeight = '600'; btn.style.border = '1px solid var(--ocre,#B4906A)'; btn.style.borderRadius = '12px'; btn.style.marginBottom = '6px';
+  btn.innerHTML = '<span class="nav-btn-label" id="nav-camille-l">Questionnaire de la cliente</span><span class="nav-btn-progress" id="nav-prog-19"></span>';
+  nav.appendChild(btn);
+  var dernier = '';
+  function maj() {
+    var pr = (document.getElementById('prenom') || {}).value || '';
+    pr = pr.trim(); if (pr) pr = pr.charAt(0).toUpperCase() + pr.slice(1);
+    var nom = pr ? 'Questionnaire de ' + pr : 'Questionnaire de la cliente';
+    var p = (typeof window.mgProgres === 'function') ? window.mgProgres() : { fait: 0, total: 0 };
+    var cle = nom + '|' + p.fait + '|' + p.total; if (cle === dernier) return; dernier = cle;
+    var l = document.getElementById('nav-camille-l'); if (l) l.textContent = nom;
+    ['cam-titre', 'cam-ptr-t'].forEach(function (i) { var e = document.getElementById(i); if (e) e.textContent = nom; });
+    var g = document.getElementById('nav-prog-19'); if (g) g.textContent = p.total ? p.fait + '/' + p.total : '';
+  }
+  setInterval(maj, 800); maj();
 })();
 </script>
 <script>
