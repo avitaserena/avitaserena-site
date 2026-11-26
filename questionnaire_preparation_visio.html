@@ -451,7 +451,7 @@ const ENERGY_COLORS=['','#9B3A3A','#A8522A','#A06A22','#9B7230','#7A8A22','#4A8A
 
 /* ══════════ ÉTAT ══════════ */
 const A={e_motifs:[]};           /* réponses : identifiant de question -> liste de clés (ou clé seule) */
-const S={age:'',duree:'',energie:5,objectif:'',libre:'',prec:'',autreDig:'',alertes:[],aucunAlerte:false,files:[],dateAn:''};
+const S={age:'',duree:'',energie:5,sc:{},objectif:'',libre:'',prec:'',autreDig:'',alertes:[],aucunAlerte:false,files:[],dateAn:''};
 let idx=0,PLAN=[],sending=false;
 
 const $=id=>document.getElementById(id);
@@ -471,7 +471,7 @@ function plan(){
   });
   if(hasNoFunnel()) p.push('prec');
   if(chosenThemes().length) p.push('alertes');
-  p.push('duree','energie','objectif','analyses','libre');
+  p.push('duree','energie','scores','objectif','analyses','libre');
   return p;
 }
 
@@ -581,6 +581,11 @@ function render(){
       why("Votre niveau d'énergie est un indicateur global de votre terrain : il me dit à quel point votre corps a besoin d'être soutenu.")+
       '<div class="energy-wrap"><div class="energy-val" id="energy-val" style="color:'+ENERGY_COLORS[v]+'">'+v+'</div><div class="energy-label" id="energy-label">'+ENERGY_LABELS[v]+'</div><div class="energy-track"><div class="energy-fill" id="energy-fill" style="width:'+((v-1)/9*100)+'%"></div></div><input type="range" min="1" max="10" value="'+v+'" id="energy-slider" aria-label="Énergie sur 10"></div>'+
       '<div class="empathy'+(v<=3?' show':'')+'" id="empathy-energy">'+(v<=3?"Se sentir à plat n'est pas une fatalité : c'est un signal que je prends très au sérieux.":'')+'</div>'+actions(false);
+  }else if(id==='scores'){
+    const AX=[['sommeil','Votre sommeil','1 = nuits très perturbées · 10 = nuits réparatrices'],['stress','Votre niveau de calme','1 = très stressé·e en permanence · 10 = serein·e'],['digestion','Votre confort digestif','1 = symptômes quotidiens intenses · 10 = aucune gêne']];
+    h=head(num,'Trois autres repères','Déplacez chaque curseur : 1 = très difficile, 10 = excellent.')+
+      why("Ces trois notes, avec votre énergie, me donnent un point de départ chiffré. Dans quelques semaines, nous les comparerons : c'est ainsi que l'on voit ce qui s'améliore, parfois avant même que vous le sentiez.")+
+      '<div class="sub-field" style="max-width:460px">'+AX.map(a=>{const t=S.sc[a[0]];return '<div style="margin:0 0 22px"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px"><strong style="font-size:16px">'+a[1]+'</strong><span id="scv-'+a[0]+'" style="font-family:\'Cormorant Garamond\',serif;font-size:30px;line-height:1">'+(t?t:'–')+'</span></div><div style="font-size:13px;color:var(--gris);margin:2px 0 6px">'+a[2]+'</div><input type="range" min="1" max="10" value="'+(t||5)+'" data-sc="'+a[0]+'" aria-label="'+a[1]+' sur 10" style="width:100%;accent-color:var(--ocre)"></div>';}).join('')+'<p style="font-size:13.5px;color:var(--gris)">Vous pouvez laisser de côté un curseur qui ne vous parle pas.</p></div>'+actions(false);
   }else if(id==='objectif'){
     h=head(num,'Comment aimeriez-vous vous sentir ?','Dans 1, 2 ou 3 mois : décrivez-le comme vous voulez.')+
       why("Savoir comment vous aimeriez vous sentir me donne le cap : votre protocole se construit autour de votre objectif, pas seulement autour de vos symptômes.")+
@@ -650,6 +655,7 @@ document.addEventListener('input',e=>{
     const emp=$('empathy-energy');
     if(v<=3){emp.textContent="Se sentir à plat n'est pas une fatalité : c'est un signal que je prends très au sérieux.";emp.classList.add('show');}else{emp.classList.remove('show');}
   }
+  if(e.target.dataset&&e.target.dataset.sc){const k=e.target.dataset.sc,v=parseInt(e.target.value,10);S.sc[k]=v;const o=$('scv-'+k);if(o) o.textContent=v;}
   if(e.target.id==='prec-t'||e.target.id==='age') refreshNext();
 });
 document.addEventListener('change',e=>{ if(e.target.id==='file-in'){addFiles([...e.target.files]);e.target.value='';} });
@@ -740,6 +746,7 @@ function buildAnswers(){
     motif:parts.join(' · ').slice(0,1500),
     precisions,
     energie:String(S.energie),
+    scores:Object.assign({},S.sc),
     objectif:S.objectif,
     libre,
     date_analyses:S.dateAn||'',

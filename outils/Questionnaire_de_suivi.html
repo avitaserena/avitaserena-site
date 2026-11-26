@@ -5128,9 +5128,46 @@ async function chargerDossierSupabase() {
   } catch(e) { toast('Erreur Supabase — vérifiez la connexion'); }
 }
 
+
+/* Scores de départ : repris automatiquement du dossier (consultation, ou préparation visio pour les 4 premiers axes).
+   Les anciens libellés (Émotions, Satisfaction de vie…) restent reconnus pour les dossiers déjà enregistrés. */
+function prefillScoresInitiaux(snap) {
+  const ALIAS = {
+    dig:['digestion','confort digestif'], ene:['énergie','energie','énergie / vitalité','energie / vitalite'],
+    som:['sommeil','qualité du sommeil'], str:['stress / nervosité','stress','niveau de stress'],
+    cyc:['cycle / hormones'], dou:['douleurs','douleurs chroniques'], cog:['clarté mentale'],
+    pea:['peau / cheveux'], hum:['humeur','émotions','bien-être émotionnel'], vit:['vitalité globale','satisfaction de vie','satisfaction globale de vie']
+  };
+  const trouves = {};
+  const brut = snap && snap.scores;
+  if (typeof brut === 'string') {
+    brut.split('|').forEach(part => {
+      const m = /^\s*(.+?)\s*:\s*(\d{1,2})\s*\/\s*10\s*$/.exec(part);
+      if (!m) return;
+      const lbl = m[1].toLowerCase();
+      for (const id in ALIAS) if (ALIAS[id].includes(lbl)) trouves[id] = parseInt(m[2], 10);
+    });
+  } else if (brut && typeof brut === 'object') {
+    const v = k => parseInt(brut[k], 10);
+    if (v('energieGenerale')) trouves.ene = v('energieGenerale');
+    if (v('sommeil')) trouves.som = v('sommeil');
+    if (v('stress')) trouves.str = v('stress');
+    if (v('digestion')) trouves.dig = v('digestion');
+  }
+  Object.keys(trouves).forEach(id => {
+    const el = document.getElementById('prev-' + id);
+    if (el && !el.value && trouves[id] >= 1 && trouves[id] <= 10) {
+      el.value = trouves[id];
+      try { updateDelta(id); } catch(e) {}
+    }
+  });
+  try { updateScoreSummary(); } catch(e) {}
+}
+
 function afficherBandeauDossier(row, historique) {
   dossierCharge = row;
   const snap = row.snapshot||{};
+  try { prefillScoresInitiaux(snap); } catch(e) { console.warn('[Suivi] Scores de départ non repris :', e); }
   genererSuiviTraitementsDynamique(snap); // couverture intégrale : voir RÈGLE interne, toutes pathologies de la section Antécédents
   document.getElementById('pb-loader').style.display='none';
   document.getElementById('pb-content').style.display='block';
