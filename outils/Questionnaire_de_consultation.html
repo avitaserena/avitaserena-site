@@ -12607,7 +12607,11 @@ function renderPrepVisioSynthese(d) {
   const el = document.getElementById('prep-visio-ia');
   const btn = document.getElementById('btn-regen-prep-visio');
   if (!el) return;
-  const esc = (v) => String(v || '').replace(/</g, '&lt;');
+  // 25/11/2026 : Sabrina dit « on va », jamais « nous allons » — appliqué aux phrases générées par l'IA (futurs en « nous … -erons » inclus)
+  const oral = (t) => String(t || '')
+    .replace(/\bNous allons\b/g, 'On va').replace(/\bnous allons\b/g, 'on va')
+    .replace(/\b([Nn])ous ([a-zéèêàçîô]+?)(?:erons|irons|rons)\b/g, (m, n, st) => { const w = m.slice(m.indexOf(' ') + 1); return (n === 'N' ? 'On ' : 'on ') + w.slice(0, -3) + 'a'; });
+  const esc = (v) => oral(String(v || '').replace(/</g, '&lt;'));
   const lignes = Array.isArray(d.lignes) ? d.lignes : [];
   const objectifs = Array.isArray(d.objectifs) && d.objectifs.length && d.objectifs[0] && typeof d.objectifs[0] === 'object' ? d.objectifs : [];
   const notes = Array.isArray(d.a_noter) ? d.a_noter : [];
