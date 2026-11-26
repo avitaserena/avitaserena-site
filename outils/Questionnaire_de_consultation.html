@@ -12669,6 +12669,15 @@ function renderPrepVisioSynthese(d) {
         '</div>';
     }
     h += hCroiser;
+    /* 26/11/2026 : liste exhaustive des réponses cochées (fabriquée sans IA) : rien ne peut manquer, même si le tableau résume */
+    const tr = d.toutes_reponses;
+    if (tr && Array.isArray(tr.themes) && (tr.themes.length || tr.precisions)) {
+      h += '<details class="pv-all" style="margin-top:22px;border:1px solid var(--taupe);border-radius:14px;background:var(--off)"><summary style="cursor:pointer;padding:14px 20px;font-size:15px;font-weight:600;color:var(--ardoise)">Toutes ses réponses, sans résumé</summary><div style="padding:0 20px 16px">' +
+        (tr.motifs && tr.motifs.length ? '<div class="pv-t">Motifs choisis</div><ul class="pv-motifs">' + tr.motifs.map((m) => '<li>' + esc(m) + '</li>').join('') + '</ul>' : '') +
+        tr.themes.map((t) => '<div class="pv-t">' + esc(t.theme) + '</div>' + (t.items || []).map((it) => '<div style="font-size:14px;color:var(--gris);margin-top:8px">' + esc(it.question) + '</div><ul class="pv-motifs">' + (it.reponses || []).map((r) => '<li>' + esc(r) + '</li>').join('') + '</ul>').join('')).join('') +
+        (tr.precisions ? '<div class="pv-t">Ses mots</div><div style="font-size:15px;line-height:1.65;white-space:pre-line">' + esc(tr.precisions) + '</div>' : '') +
+        '</div></details>';
+    }
     el.innerHTML = h;
   }
   if (btn) btn.style.display = 'inline-flex';

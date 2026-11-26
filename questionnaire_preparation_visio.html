@@ -328,7 +328,8 @@ const ENTRY=[
  ['autre','Autre motif','Autre motif']
 ];
 /* Motifs sans entonnoir dédié : une seule question libre ensuite */
-const NOFUNNEL=['immunite','douleurs','cancer','prevention','autre'];
+const NOFUNNEL=['cancer','prevention','autre'];
+const MAX_MOTIFS=3;   /* 26/11/2026 : 3 motifs détaillés au maximum, les plus importants pour la cliente */
 
 const THEMES=[
  {k:'digestif',nom:'Digestion',main:'motifs',alerte:'secu'},
@@ -337,7 +338,9 @@ const THEMES=[
  {k:'fatigue',nom:'Fatigue, stress et moral',main:'f_motifs',alerte:'f_secu'},
  {k:'poids',nom:'Poids',main:'w_motifs',alerte:'w_secu'},
  {k:'peau',nom:'Peau, cheveux, ongles',main:'k_motifs',alerte:'k_secu'},
- {k:'sommeil',nom:'Sommeil',main:'z_motifs',alerte:'z_alertes'}
+ {k:'sommeil',nom:'Sommeil',main:'z_motifs',alerte:'z_alertes'},
+ {k:'immunite',nom:'Immunité, allergies',main:'i_motifs',alerte:'i_secu'},
+ {k:'douleurs',nom:'Douleurs',main:'d_motifs',alerte:'d_secu'}
 ];
 
 /* Quelle réponse du premier écran d'un thème ouvre quelles questions */
@@ -348,7 +351,9 @@ const FOLLOW={
  f_motifs:{energie:['f_rythme'],stress:['f_stress'],burn:['f_stress'],humeur:['f_humeur'],cerveau:['f_cerveau']},
  w_motifs:{prise:['w_hist'],perdre:['w_hist'],ventre:['w_morpho'],bas:['w_morpho'],fringales:['w_fringales'],regimes:['w_regimes']},
  k_motifs:{cheveux:['k_cheveux'],ongles:['k_cheveux'],acne:['k_acne'],seche:['k_seche'],terne:['k_terne']},
- z_motifs:{endorm:['z_endorm'],reveils:['z_reveils'],leger:['z_leger'],jour:['z_leger'],tot:['z_tot']}
+ z_motifs:{endorm:['z_endorm'],reveils:['z_reveils'],leger:['z_leger'],jour:['z_leger'],tot:['z_tot']},
+ i_motifs:{},
+ d_motifs:{}
 };
 
 /* m : plusieurs réponses possibles · ex : réponses qui excluent les autres · o : [clé, libellé, mot court] */
@@ -401,7 +406,11 @@ const Q={
  k_cheveux:{th:'peau',m:1,ex:['aucun'],t:'Que remarquez-vous côté cheveux et ongles ?',w:"La forme de la chute (diffuse, aux tempes, sourcils clairsemés) distingue le fer, la thyroïde, les hormones androgènes ou un choc de stress. Ce n'est pas le même terrain.",o:[['diffuse','Chute diffuse, sur toute la tête'],['cent','Plus de 100 cheveux par jour depuis plus de 2 mois'],['golfes','Chute aux tempes et au sommet, raie qui s\'élargit'],['golfes_acne','Chute aux tempes et au sommet, avec acné, peau grasse ou cycles longs'],['fins','Cheveux fins, cassants, ternes, qui poussent moins vite'],['sourcil','Sourcils clairsemés vers la queue'],['ongles','Ongles fragiles, cassants, mous'],['pilule','Chute après le démarrage ou l\'arrêt de la pilule'],['aucun','Rien de marquant']]},
  k_acne:{th:'peau',m:1,ex:['aucun'],t:"Que remarquez-vous côté acné, peau grasse et poils ?",w:"La place de l'acné (mâchoire, front), son rythme (avant les règles) et les signes associés me disent si elle vient des hormones androgènes, de l'insuline ou de l'intestin.",o:[['machoire','Acné sur le menton et la mâchoire, adulte'],['avant_regles','Acné qui revient surtout avant les règles'],['grasse','Peau et cheveux gras'],['poils','Poils sur le menton, la poitrine, le ventre'],['cycles','Cycles longs ou irréguliers'],['fringales','Fringales de sucre, ventre qui grossit'],['sous_pilule','Acné apparue sous pilule'],['arret_pilule','Acné revenue ou aggravée à l\'arrêt de la pilule'],['front','Acné sur le front et les joues'],['aucun','Rien de marquant']]},
  k_seche:{th:'peau',m:1,ex:['aucun'],t:'Que remarquez-vous côté sécheresse, eczéma, rougeurs ?',w:"Une peau sèche aux tibias évoque la thyroïde, un eczéma un terrain allergique et un intestin fragilisé. L'endroit et le contexte me guident vers la bonne piste.",o:[['tibias','Peau très sèche aux tibias, aux talons, aux coudes'],['partout','Peau sèche partout, besoin de crème en permanence'],['eczema','Eczéma, ou terrain allergique (asthme, rhinite, urticaire)'],['psoriasis','Psoriasis'],['reactive','Peau réactive, rougeurs, qui change selon l\'alimentation ou la saison'],['avant_regles','Cela s\'aggrave avant les règles'],['orange','Paumes des mains ou plantes des pieds orangées'],['aucun','Rien de marquant']]},
- k_terne:{th:'peau',m:1,ex:['aucun'],t:'Que remarquez-vous côté teint et vieillissement de la peau ?',w:"Un teint terne ou une peau qui vieillit vite viennent souvent du sucre (glycation), d'un manque d'hormones ou d'un foie encombré. Vos réponses m'aident à trancher.",o:[['terne','Teint terne, peau qui manque d\'éclat'],['fine','Peau fine, sèche, ridules précoces'],['glycation','Grosse consommation de sucre, de pain, de grillades'],['meno','Peau qui change depuis la périménopause'],['aucun','Rien de marquant']]}
+ k_terne:{th:'peau',m:1,ex:['aucun'],t:'Que remarquez-vous côté teint et vieillissement de la peau ?',w:"Un teint terne ou une peau qui vieillit vite viennent souvent du sucre (glycation), d'un manque d'hormones ou d'un foie encombré. Vos réponses m'aident à trancher.",o:[['terne','Teint terne, peau qui manque d\'éclat'],['fine','Peau fine, sèche, ridules précoces'],['glycation','Grosse consommation de sucre, de pain, de grillades'],['meno','Peau qui change depuis la périménopause'],['aucun','Rien de marquant']]},
+ /* ───── IMMUNITÉ, ALLERGIES (26/11/2026) ───── */
+ i_motifs:{th:'immunite',m:1,t:"Qu'est-ce qui revient côté immunité et allergies ?",w:"Les infections à répétition et les allergies viennent souvent du même endroit : un système de défense qui s'épuise, ou qui s'emballe contre des choses inoffensives. L'intestin, le stress et les hormones y participent. Selon ce que vous cochez, je ne regarde pas le même terrain.",o:[['rhinite','Rhinite, éternuements, yeux qui piquent au printemps ou à l\'automne','allergies saisonnières'],['orl','Angines, sinusites ou otites à répétition','angines, sinusites'],['urinaire','Cystites, mycoses ou infections vaginales à répétition','cystites, mycoses'],['herpes','Herpès, boutons de fièvre ou zona','herpès'],['rhumes','Rhumes et infections qui s\'enchaînent, surtout l\'hiver','rhumes à répétition'],['recup','Des infections qui traînent, une récupération lente','récupération lente'],['terrain','Asthme, toux allergique, eczéma ou urticaire','terrain allergique']]},
+ /* ───── DOULEURS (26/11/2026) ───── */
+ d_motifs:{th:'douleurs',m:1,t:"Où et quand avez-vous mal ?",w:"Le moment et l'endroit de la douleur racontent son mécanisme : une raideur du matin évoque une inflammation, une douleur à l'effort plutôt l'usure ou un manque de récupération, une migraine liée au cycle les hormones. Je ne cherche pas au même endroit.",o:[['matin','Raideur ou douleurs des articulations le matin (mains, genoux, hanches)','articulations le matin'],['effort','Articulations douloureuses à l\'effort ou en fin de journée','articulations à l\'effort'],['muscles','Douleurs ou courbatures musculaires diffuses, sans gros effort','muscles'],['dos','Dos, nuque ou épaules, tensions qui reviennent','dos, nuque'],['tendons','Tendinites à répétition','tendinites'],['migraines','Migraines ou maux de tête fréquents','migraines'],['cycle','Migraines ou douleurs surtout avant ou pendant les règles','douleurs liées au cycle']]}
 };
 /* « Je ne sais pas » (24/11/2026) : réponse neutre ajoutée à chaque question de détail. Elle n'alimente aucune piste :
    dans la fiche et dans la consultation, elle signale à la praticienne qu'il faut creuser. Exclue : les questions
@@ -424,6 +433,8 @@ const ALERTES={
  f_secu:{amaigr:"Une perte de poids importante sans l'avoir cherchée, avec une fatigue marquée",coeur:"Des palpitations fortes, une douleur dans la poitrine ou un essoufflement inhabituel",addison:"Des taches foncées sur la peau (genoux, coudes, plis des mains), des joues creuses, des malaises",cushing:"Un visage gonflé, une bosse entre les épaules, des bleus faciles, une peau fine"},
  z_alertes:{apnee:"Ronflements forts, pauses respiratoires la nuit, somnolence forte dans la journée",jambes:"Jambes qui ne tiennent pas en place le soir, besoin de les bouger"},
  w_secu:{rapide:"Plusieurs kilos pris en quelques semaines, sans explication",oedeme:"Chevilles, visage ou paupières très gonflés, essoufflement",cushing:"Visage rond, bosse entre les épaules, bleus faciles, peau fine, fonte musculaire",addison:"Perte de poids avec taches foncées sur la peau, joues creuses, tension basse",diabete:"Diabète, glycémie élevée, hypertension ou cholestérol élevé déjà signalés"},
+ i_secu:{fievre:"De la fièvre qui dure plus de 3 jours, ou qui revient sans cause",ganglions:"Des ganglions gonflés qui ne désenflent pas, ou des sueurs nocturnes abondantes",poids:"Une perte de poids sans l'avoir cherchée",souffle:"Un souffle court, ou un gonflement du visage ou de la gorge lors d'une allergie"},
+ d_secu:{rouge:"Une articulation rouge, chaude et très gonflée",nuit:"Une douleur forte et nouvelle qui me réveille la nuit",tete:"Un mal de tête brutal, très intense, inhabituel, ou avec des troubles de la vue, de la parole ou de la force",fievre:"Des douleurs accompagnées de fièvre ou d'une grande fatigue inexpliquée"},
  k_secu:{grain:"Un grain de beauté ou une tache qui change de forme ou de couleur, saigne ou gratte",plaques:"Des cheveux qui tombent en plaques bien délimitées, ou une chute très brutale et massive",virilisation:"Une voix qui devient plus grave, des poils qui poussent rapidement, des traits qui se virilisent",plaie:"Une plaie qui ne cicatrise pas, une lésion douloureuse ou suintante"}
 };
 
@@ -536,8 +547,8 @@ function render(){
       (IDENT.age?'':'<div class="field-row" style="margin-top:14px"><div class="field"><label for="age">Âge</label><input type="number" id="age" placeholder="ex : 34" min="16" max="90" value="'+esc(S.age)+'"></div><div class="field"></div></div>')+
       actions(false);
   }else if(id==='entry'){
-    h=head(num,"Qu'est-ce qui vous amène ?","Plusieurs réponses possibles. Cochez ce qui vous gêne le plus.")+
-      why("Je pars de ce qui vous gêne, pas d'un questionnaire standard : chaque motif ouvre quelques questions précises, et je ne vous en pose aucune qui ne vous concerne pas. Les motifs se croisent presque toujours, je les regarderai ensemble.")+
+    h=head(num,"Qu'est-ce qui vous amène ?","Cochez jusqu'à 3 motifs, ceux qui vous pèsent le plus. Le reste, vous pourrez me le dire à la fin, ou en visio.")+
+      why("Je pars de ce qui vous gêne, pas d'un questionnaire standard : chaque motif ouvre quelques questions précises, et je ne vous en pose aucune qui ne vous concerne pas. Les motifs se croisent presque toujours, je les regarderai ensemble. Limiter à 3 me permet de creuser chacun avec précision plutôt que de survoler dix sujets.")+
       '<div class="opts" data-q="e_motifs" id="entry-opts">'+ENTRY.map(o=>'<div class="opt multi'+(A.e_motifs.includes(o[0])?' on':'')+'" data-k="'+o[0]+'" role="checkbox" tabindex="0"><div class="dot"></div><span>'+esc(o[1])+'</span></div>').join('')+'</div>'+
       actions(false);
   }else if(id in Q){
@@ -580,7 +591,7 @@ function render(){
       '<label class="drop" for="file-in"><strong>Ajouter un document</strong><span>PDF, JPG, PNG ou WEBP · 5 fichiers maximum · 10 Mo chacun</span></label><input type="file" id="file-in" accept=".pdf,.jpg,.jpeg,.png,.webp" multiple style="display:none"><div class="file-list" id="file-list"></div>'+
       '<div class="sub-field"><label for="date-an">Date des analyses (si vous la connaissez)</label><input type="date" id="date-an" value="'+esc(S.dateAn)+'"></div>'+actions(false);
   }else if(id==='libre'){
-    h=head(num,'Quelque chose à me dire ?',"Ce qui compte pour vous, ou ce qui serait plus facile à écrire qu'à dire à l'oral. Rien ne sera jugé.")+
+    h=head(num,'Quelque chose à me dire ?',"Les autres gênes que vous n'avez pas pu cocher, ce qui compte pour vous, ou ce qui serait plus facile à écrire qu'à dire à l'oral. Rien ne sera jugé.")+
       why("Certaines choses sont plus faciles à écrire qu'à dire. Une habitude, une peur ou un détail de votre quotidien peut changer complètement la lecture de votre situation : je préfère le savoir avant notre rendez-vous.")+
       '<div class="sub-field"><textarea id="libre" rows="3" placeholder="Ex. : je fume un paquet par jour. Ou : j\'ai peur que ce soit dans ma tête. Ou : rien de particulier, j\'ai hâte d\'en parler de vive voix.">'+esc(S.libre)+'</textarea></div>'+
       actions(true)+'<div style="margin-top:16px;font-size:12px;color:var(--gris-clair)">Vos données sont protégées et ne seront jamais partagées.</div>';
@@ -598,6 +609,7 @@ function toggleChoice(qid,k,multi){
   const q=qid==='e_motifs'?{m:1}:Q[qid];
   let cur=sel(qid).slice();
   if(!q.m){A[qid]=k;return;}
+  if(qid==='e_motifs'&&!cur.includes(k)&&cur.length>=MAX_MOTIFS){toast('Choisissez les '+MAX_MOTIFS+' gênes qui vous pèsent le plus. Le reste, vous pourrez me le dire à la fin, ou en visio.',5200);return;}
   const ex=(Q[qid]&&Q[qid].ex)||[];
   if(cur.includes(k)) cur=cur.filter(x=>x!==k);
   else{
