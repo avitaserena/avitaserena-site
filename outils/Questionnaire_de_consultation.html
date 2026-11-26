@@ -12662,9 +12662,10 @@ function renderPrepVisioSynthese(d) {
       /* ancien format : rien à afficher, le bouton « Régénérer » est déjà en haut */
     }
     if (lignes.length) {
-      var avecAcc = lignes.some((l) => l.je_vous_accompagne);
-      h += '<div class="pv-big">Réponses au questionnaire de préparation visio</div><div class="pv-grid' + (avecAcc ? '' : ' pv-3') + '"><div class="pv-h">Elle a dit</div><div class="pv-h">Je lui dis</div>' + (avecAcc ? '<div class="pv-h">Comment je vous accompagne</div>' : '') + '<div class="pv-h">Pour moi : à investiguer</div>' +
-        lignes.map((l) => '<div class="pv-c pv-dit">' + esc(l.elle_a_dit) + '</div><div class="pv-c pv-parle">' + esc(l.je_lui_dis) + '</div>' + (avecAcc ? '<div class="pv-c pv-parle">' + (l.je_vous_accompagne ? esc(l.je_vous_accompagne) : '') + '</div>' : '') + '<div class="pv-c pv-moi">' + esc(l.a_investiguer) + '</div>').join('') +
+      /* 26/11/2026 : « Elle a dit » en liste (un tiret par réponse), « Je lui dis » = explication + « comment je vous accompagne » dans une seule case → 3 colonnes */
+      const liste = (t) => { const it = String(t || '').split(/\s*·\s*/).map((x) => x.trim()).filter(Boolean); return it.length > 1 ? '<ul class="pv-motifs">' + it.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul>' : esc(t); };
+      h += '<div class="pv-big">Réponses au questionnaire de préparation visio</div><div class="pv-grid pv-3"><div class="pv-h">Elle a dit</div><div class="pv-h">Je lui dis</div><div class="pv-h">Pour moi : à investiguer</div>' +
+        lignes.map((l) => '<div class="pv-c pv-dit">' + liste(l.elle_a_dit) + '</div><div class="pv-c pv-parle">' + esc(l.je_lui_dis) + (l.je_vous_accompagne ? '<div style="margin-top:10px">' + esc(l.je_vous_accompagne) + '</div>' : '') + '</div><div class="pv-c pv-moi">' + esc(l.a_investiguer) + '</div>').join('') +
         '</div>';
     }
     h += hCroiser;
