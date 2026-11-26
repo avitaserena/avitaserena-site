@@ -15853,18 +15853,18 @@ node('h_absence', { m: 'ask', multi: true, br: 'cycle', s: 'Règles absentes',
 
 node('h_glaire', { m: 'ask', br: 'cycle', s: 'Glaire cervicale',
   q: "Observez-vous votre glaire cervicale (les sécrétions) au fil du cycle ?",
-  hint: "Une seule réponse. La séquence normale : sec, puis humide et filant jusqu'au jour pic, puis à nouveau sec après l'ovulation.",
+  hint: "Une seule réponse. Pas besoin de mesurer : demandez-lui si, vers le milieu du cycle, elle a déjà remarqué quelques jours de pertes transparentes qui filent entre les doigts, comme du blanc d'œuf cru (sur la culotte ou en s'essuyant). Avec des serviettes ou des tampons, c'est difficile à voir : « je ne sais pas » est une réponse normale. La séquence attendue : sec, puis humide et filant jusqu'au jour pic, puis à nouveau sec après l'ovulation.",
   why: "La glaire est le reflet direct de vos œstrogènes : elle devient filante avant l'ovulation, puis s'assèche sous l'effet de la progestérone. La suivre permet de repérer si vous ovulez et combien de temps dure la seconde moitié de votre cycle, sans attendre une prise de sang.",
   o: [
-    { k: 'evolue', l: "Oui : elle devient filante, puis redevient sèche", f: "votre glaire devient filante puis redevient sèche",
+    { k: 'evolue', l: "Oui : à un moment, des pertes transparentes qui filent comme du blanc d'œuf, puis plus rien", f: "votre glaire devient filante puis redevient sèche",
       say: "C'est la séquence attendue : elle montre que les œstrogènes montent, que l'ovulation a lieu, puis que la progestérone prend le relais.", e: [] },
-    { k: 'seche', l: "Sèche ou constante tout au long du cycle", f: "votre glaire reste sèche ou ne change pas au long du cycle",
+    { k: 'seche', l: "Non : plutôt sèche, ou toujours pareille tout au long du cycle", f: "votre glaire reste sèche ou ne change pas au long du cycle",
       say: "Une glaire qui n'évolue pas dit que les œstrogènes montent peu et qu'il n'y a pas d'ovulation franche : sans ce signal, on ne peut pas dire que le cycle est ovulatoire.",
       e: [['dysovulation', 2, "glaire qui n'évolue pas"], ['hypooestro', 2, "glaire rare ou constante"]] },
     { k: 'abondante', l: "Abondante en permanence", f: "votre glaire est abondante en permanence",
       say: "Une glaire qui reste abondante sans s'assécher indique des œstrogènes qui agissent sans le frein de la progestérone, signe d'une ovulation insuffisante.",
       e: [['hyperoestro', 2, "glaire abondante en permanence"], ['progesterone_def', 2, "glaire qui ne s'assèche pas après l'ovulation"]] },
-    { k: 'non', l: "Je ne l'observe pas", x: true,
+    { k: 'non', l: "Je ne l'ai jamais remarqué, je ne sais pas", x: true,
       say: "Ce n'est pas un problème : c'est une observation que je vous apprendrai, car elle permet de savoir si vous ovulez sans prise de sang.", e: [] }
   ],
   next: function () { return 'h_lut'; } });
@@ -17897,11 +17897,11 @@ function currentId(an) {
 function lastSay(an, a) {
   for (var i = an.path.length - 1; i >= 0; i--) {
     var id = an.path[i]; if (a[id] === undefined) continue;
-    var says = chosen(id, a).filter(function (o) { return o.say; }).slice(0, 2).map(function (o) { return o.say; });
-    if (says.length) return says.join(' ');
-    return '';
+    var ch = chosen(id, a), says = ch.filter(function (o) { return o.say; }).slice(0, 2).map(function (o) { return o.say; });
+    if (says.length) return { t: says.join(' '), q: (N[id] && N[id].q) || '', r: ch.map(function (o) { return o.l; }).join(' · ') };
+    return null;
   }
-  return '';
+  return null;
 }
 function optHtml(n, o, i, sel) {
   return '<button type="button" class="mg-opt' + (sel ? ' on' : '') + (o.x ? ' none' : '') + '" data-mg="pick" data-n="' + n.id + '" data-k="' + o.k + '" aria-pressed="' + (sel ? 'true' : 'false') + '">' +
@@ -18039,9 +18039,9 @@ function render() {
   var h = lectureHtml() + '<div class="mg-th-l">Ses motifs, un par un</div>' + themesHtml() + soonHtml();
   if (S.th === 'croise') { box.innerHTML = h + croiseHtml(an) + calWrap(); var b0 = document.getElementById('mg-back'), r0 = document.getElementById('mg-reset'); if (b0) b0.disabled = !started; if (r0) { r0.disabled = !started; r0.textContent = S.rst ? 'Confirmer : tout effacer' : 'Recommencer'; } return; }
   if (an.flags.length && !(cid === null)) h += '<div class="mg-alert"><b>À clarifier avec son médecin avant tout</b><ul>' + an.flags.map(function (f) { return '<li>' + esc(f) + '</li>'; }).join('') + '</ul></div>';
-  var say = cid !== null ? lastSay(an, a) : '';
+  var say = cid !== null ? lastSay(an, a) : null;
   h += '<div class="mg-flow">' + (cid === null ? (S.th === 'entree' ? entreeFin(an) : summaryHtml(an)) : questionHtml(cid));
-  if (cid !== null && say && !S.edit) h += '<div class="mg-say"><div class="mg-say-t">' + esc(say) + '</div></div>';
+  if (cid !== null && say && !S.edit) h += '<div class="mg-say"><div class="mg-say-t"><b>À propos de sa réponse précédente</b>' + (say.q ? ' (« ' + esc(say.q) + ' » : ' + esc(say.r) + ')' : '') + ' : ' + esc(say.t) + '</div></div>';
   h += (cid === null ? '' : sideHtml(an)) + trailHtml(an) + '</div>';
   box.innerHTML = h + calWrap();
   var back = document.getElementById('mg-back'), rst = document.getElementById('mg-reset');
