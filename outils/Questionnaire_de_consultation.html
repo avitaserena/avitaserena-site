@@ -18074,11 +18074,85 @@ node('v_engagement', { m: 'ask', s: 'Le temps qu\'elle peut y consacrer',
   ],
   next: function () { return null; } });
 
-var TH_ORDER = ['cancer', 'digestif', 'hormones', 'fatigue', 'poids', 'peau', 'sommeil', 'base', 'vie'];
-var TH_PREFIX = { 'o_': 'cancer', 'h_': 'hormones', 'c_': 'hormones', 'f_': 'fatigue', 'w_': 'poids', 'k_': 'peau', 'z_': 'sommeil', 'b_': 'base', 'v_': 'vie', 'e_': 'entree' };
+var TH_ORDER = ['cancer', 'digestif', 'hormones', 'fatigue', 'poids', 'peau', 'sommeil', 'base', 'vie', 'tour', 'tourdig'];
+var TH_PREFIX = { 'o_': 'cancer', 'h_': 'hormones', 'c_': 'hormones', 'f_': 'fatigue', 'w_': 'poids', 'k_': 'peau', 'z_': 'sommeil', 'b_': 'base', 'v_': 'vie', 't_': 'tour', 'u_': 'tourdig', 'e_': 'entree' };
 var SEC_OF = { cancer: 'Antécédents', digestif: 'Alimentation & digestion', hormones: 'Hormones & cycle', fatigue: 'Surrénales & axe cortisol', poids: 'Surrénales, Hormones & Alimentation', peau: 'Foie & émonctoires', sommeil: 'Surrénales & axe cortisol', base: 'Hormones & Surrénales', vie: 'Identité, Antécédents, Traitements & allergies, Alimentation' };
 function thOf(id) { return TH_PREFIX[String(id).slice(0, 2)] || 'digestif'; }
 ROOT.vie = 'v_foyer'; ROOT.cancer = 'o_situation'; ROOT.entree = 'e_motifs'; ROOT.fatigue = 'f_motifs'; ROOT.poids = 'w_motifs'; ROOT.peau = 'k_motifs'; ROOT.sommeil = 'z_motifs';
+
+/* ═══════════════════════════════════════════════════════════════════
+   26/11/2026 — « Le reste du dossier » : les questions des onglets 02, 04 et 06 passent dans l'entonnoir.
+   Les nœuds sont construits à partir des cartes elles-mêmes : la question, le « pourquoi » et la phrase à dire sont ceux
+   des onglets, donc rien n'est réécrit et rien ne peut diverger. Cocher ici coche la case de l'onglet (même mécanisme que PONTS).
+   - « tour »    : questions posées à toute cliente (activité, charge mentale, traitements, sécurité, allergies, alimentation, rythme des repas)
+   - « tourdig » : questions digestives approfondies, posées seulement si le digestif fait partie des motifs ; sinon elles comptent comme écartées
+   - Sont exclues : les constats que seule la praticienne fait en séance (test au bicarbonate, signe de Murphy, contre-indications à vérifier…)
+═══════════════════════════════════════════════════════════════════ */
+var TOUR_LISTES = { tour: [], tourdig: [] }, TOUR_CARTES = { tour: [], tourdig: [] }, TOUR_ECARTES = [];
+var TOUR_PRATICIEN = /^(test au bicarbonate|ci verifiees|cliente sous ipp|le signe de murphy|avez vous des douleurs ou une gene a la palpation|votre synthese)/;
+PONTS.push.apply(PONTS, [
+  ['Anticoagulant (Xarelto', function (a) { return has(a, 'v_traitements', 'anticoag'); }],
+  ['Aspirine à faible dose', function (a) { return has(a, 'v_traitements', 'anticoag'); }],
+  ['ISRS (Sertraline', function (a) { return has(a, 'v_traitements', 'antidep'); }],
+  ['IRSNA (Venlafaxine', function (a) { return has(a, 'v_traitements', 'antidep'); }],
+  ['IPP (oméprazole', function (a) { return has(a, 'v_traitements', 'ipp'); }],
+  ['Corticoïdes de fond au long cours', function (a) { return has(a, 'v_traitements', 'cortico'); }],
+  ['Metformine', function (a) { return has(a, 'v_traitements', 'diabete'); }]
+]);
+function genererTour() {
+  if (genererTour.fait) return; genererTour.fait = true;
+  try {
+    var secs = document.querySelectorAll('.section'), pk = PONTS.map(function (p) { return norm(p[0]); });
+    var SEC_DIG = 5, ids = { tour: [], tourdig: [] };
+    [1, 3, 5].forEach(function (si) {
+      var sec = secs[si]; if (!sec) return;
+      [].slice.call(sec.querySelectorAll('.qcard')).forEach(function (card, ci) {
+        if (/recap|cloture/.test(card.id || '') || card.style.display === 'none') return;
+        var titre = ((card.querySelector('.qtext') || {}).textContent || '').replace(/\s+/g, ' ').trim();
+        if (!titre) return;
+        var th = (si === SEC_DIG && ci >= 2) ? 'tourdig' : 'tour', pre = th === 'tour' ? 't_' : 'u_';
+        var items = [];
+        [].slice.call(card.querySelectorAll('.trig-check, .check-item')).forEach(function (el) {
+          var e = el.querySelector('.trig-q') || el.querySelector('.ci-top span'); if (!e) return;
+          var lab = e.textContent.replace(/\s+/g, ' ').trim(), n = norm(lab);
+          if (lab.length < 14) { TOUR_ECARTES.push([si + 1, titre, lab, 'constat de la praticienne']); return; }
+          if (TOUR_PRATICIEN.test(n)) { TOUR_ECARTES.push([si + 1, titre, lab, 'constat de la praticienne']); return; }
+          if (pk.some(function (k) { return n.indexOf(k) === 0; })) return; /* déjà relié à une réponse de l'entonnoir */
+          items.push(lab);
+        });
+        if (!items.length) { if (th === 'tourdig') TOUR_CARTES.tourdig.push(card); return; }
+        var why = ((card.querySelector('.pourquoi-txt') || {}).textContent || '').replace(/\s+/g, ' ').trim() || "Ces signes m'aident à comprendre ce qui pèse sur votre terrain : je les passe en revue avec vous, sans rien oublier.";
+        var dis = ((card.querySelector('.dis-phrase') || {}).textContent || '').replace(/\s+/g, ' ').replace(/^["«\s]+|["»\s]+$/g, '').trim();
+        var parts = []; for (var i = 0; i < items.length; i += 7) parts.push(items.slice(i, i + 7));
+        parts.forEach(function (grp, pi) {
+          var id = pre + si + '_' + ci + '_' + pi, o = grp.map(function (lab, k) {
+            var key = 'i' + (pi * 7 + k), q = lab.replace(/\s*\?\s*$/, '');
+            var op = { k: key, l: lab, f: "vous avez répondu oui à : « " + q + " »" };
+            PONTS.push([lab, new Function('has', 'return function (a) { return has(a, ' + JSON.stringify(id) + ', ' + JSON.stringify(key) + '); }')(has)]);
+            return op;
+          });
+          o.push({ k: 'aucun', l: 'Aucun de ces signes', x: true });
+          node(id, { m: 'ask', multi: true, s: titre.length > 60 ? titre.slice(0, 58) + '…' : titre, q: titre + (parts.length > 1 ? ' (' + (pi + 1) + '/' + parts.length + ')' : ''),
+            hint: "Cochez ce qui s'applique, à voix haute avec elle. Les cases se cochent aussi dans l'onglet " + (si + 1 < 10 ? '0' : '') + (si + 1) + '.' + (dis && pi === 0 ? " Phrase de l'onglet : « " + dis + " »" : ''),
+            why: why, o: o, next: function () { return null; } });
+          ids[th].push(id);
+        });
+        TOUR_CARTES[th].push(card);
+      });
+    });
+    ['tour', 'tourdig'].forEach(function (th) {
+      var L = ids[th]; TOUR_LISTES[th] = L;
+      L.forEach(function (id, i) { N[id].next = function () { return L[i + 1] || null; }; });
+      if (L.length) ROOT[th] = L[0];
+    });
+    TH_LABEL.tour = 'Le reste du dossier'; TH_LONG.tour = 'le reste du dossier (activité, traitements, allergies, alimentation)';
+    TH_LABEL.tourdig = 'Digestion approfondie'; TH_LONG.tourdig = 'la digestion en détail';
+    SEC_OF.tour = 'Identité, Traitements & allergies, Alimentation'; SEC_OF.tourdig = 'Alimentation & digestion';
+  } catch (e) { if (window.console) console.warn('[Tour] génération impossible :', e); }
+}
+genererTour();
+window.mgTourEcartes = function () { return TOUR_ECARTES.slice(); };
+window.mgTourListe = function () { return { tour: TOUR_LISTES.tour.slice(), tourdig: TOUR_LISTES.tourdig.slice() }; };
 
 /* Motifs d'entrée → parcours. Les motifs sans parcours dédié (immunité, douleurs, autre) renvoient aux sections classiques. */
 var ENTRY_TH = { cancer: 'cancer', digestif: 'digestif', contra: 'hormones', hormones: 'hormones', fatigue: 'fatigue', poids: 'poids', peau: 'peau', sommeil: 'sommeil' };
@@ -18088,6 +18162,8 @@ function themeQueue(a) {
   var q = []; (Array.isArray(a.e_motifs) ? a.e_motifs : []).forEach(function (k) { var t = ENTRY_TH[k]; if (t && q.indexOf(t) < 0) q.push(t); });
   if (entreeFaite(a) && femmeOK() && !hasE(a, 'cancer')) q.push('base'); /* cancer : pas de batterie hormonale en première intention */
   if (entreeFaite(a)) q.push('vie'); /* 26/11/2026 : questions globales de toute consultation */
+  if (entreeFaite(a) && TOUR_LISTES.tour.length) q.push('tour'); /* reste du dossier : onglets 02, 04, 06 */
+  if (entreeFaite(a) && TOUR_LISTES.tourdig.length && hasE(a, 'digestif')) q.push('tourdig');
   return q;
 }
 function startedThemes(a) { return TH_ORDER.filter(function (th) { return walk(a, th).some(function (id) { return a[id] !== undefined; }); }); }
@@ -18239,7 +18315,7 @@ function cartesLiees() {
     ids.forEach(function (i) { if (e.ids.indexOf(i) < 0) e.ids.push(i); });
   }
   PONTS.forEach(function (p) {
-    var ids = [], m, src = String(p[1]), re = /\b(?:has|hasAny|hasE)\(\s*a\s*,\s*'([a-z_0-9]+)'/g, re2 = /\ba\.([a-z_0-9]+)/g;
+    var ids = [], m, src = String(p[1]), re = /\b(?:has|hasAny|hasE)\(\s*a\s*,\s*['"]([a-z_0-9]+)['"]/g, re2 = /\ba\.([a-z_0-9]+)/g;
     while ((m = re.exec(src))) ids.push(m[1]);
     while ((m = re2.exec(src))) ids.push(m[1]);
     var key = norm(p[0]), c = qmap().filter(function (x) { return x.n.indexOf(key) === 0; })[0];
@@ -18254,6 +18330,7 @@ function cartesLiees() {
 }
 window.mgCartePosee = function (card) {
   try {
+    if (entreeFaite(S.a) && !hasE(S.a, 'digestif') && TOUR_CARTES.tourdig.indexOf(card) >= 0) return true; /* digestion approfondie écartée : pas de motif digestif */
     var e = cartesLiees().filter(function (x) { return x.el === card; })[0];
     return !!e && e.ids.some(function (id) { var v = S.a[id]; return v !== undefined && v !== '_skip'; });
   } catch (x) { return false; }
