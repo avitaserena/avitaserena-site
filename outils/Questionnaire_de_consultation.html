@@ -1238,6 +1238,10 @@ textarea.fi{height:auto !important;min-height:112px;line-height:1.65 !important;
 @media (max-width:900px){#nav.nav{width:auto !important}.page{padding:8px 16px 72px !important}.qcard-top{padding:24px 20px 4px !important}.qinput{padding:16px 20px 28px !important}.qtext{font-size:19px !important}}
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
 </style>
+<style>/* 26/11/2026 : la ligne « % du questionnaire abordé » reste visible en descendant */
+.progress-wrap{position:sticky;top:60px;z-index:150;background:rgba(247,246,244,.96);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);padding-top:10px !important;padding-bottom:8px !important;border-bottom:1px solid var(--taupe)}
+.progress-wrap::after{display:none !important}
+@media print{.progress-wrap{position:static}}</style>
 </head>
 <body>
 <div id="alerte-cle-ia" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9998;background:var(--ardoise);color:#fff;padding:12px 20px;font-size:15px;font-family:'Be Vietnam Pro',sans-serif;align-items:center;justify-content:center;gap:14px;box-shadow:0 2px 10px rgba(0,0,0,.15)">
@@ -10685,7 +10689,7 @@ function updateCounter() {
   // d'un brouillon ou pré-remplissage depuis le CRM (valeurs fixées par le code, pas par un clic).
   document.querySelectorAll('.slider-row input[type="range"]').forEach(inp => {
     const vid = inp.id.replace('-input', '');
-    if (document.getElementById(vid)) sv(inp, vid);
+    if (document.getElementById(vid)) { const dejaTouche = inp.dataset.touched; sv(inp, vid); if (!dejaTouche) delete inp.dataset.touched; /* la mise en couleur ne vaut pas réponse */ }
   });
   document.querySelectorAll('textarea.fi').forEach(t => { if (t.value.trim().length > 3) count++; });
   document.querySelectorAll('input.fi[type=text], input.fi[type=number]').forEach(i => { if (i.value.trim().length > 0) count++; });
@@ -10758,7 +10762,7 @@ function updateNavProgress() {
         [...q.querySelectorAll('input[type=range]')].some(el => el.dataset.touched === '1') ||
         aUnDiagnosticReel || aUneChirurgieReelle ||
         !!q.querySelector('.chip.on, .check-item.checked, .trig-check.checked, .porte-opt.sel, .bilan-card.checked');
-      if (has) answered++;
+      if (has || (typeof window.mgCartePosee === 'function' && window.mgCartePosee(q))) answered++;
     });
     if (!total) { label.textContent = ''; continue; }
     const pct = Math.round(answered / total * 100);
@@ -10905,7 +10909,7 @@ document.addEventListener('DOMContentLoaded', () => { try {
   // couleur neutre par défaut tant qu'on n'a pas encore bougé le curseur au moins une fois.
   document.querySelectorAll('.slider-row input[type="range"]').forEach(inp => {
     const vid = inp.id.replace('-input', '');
-    if (document.getElementById(vid)) sv(inp, vid);
+    if (document.getElementById(vid)) { const dejaTouche = inp.dataset.touched; sv(inp, vid); if (!dejaTouche) delete inp.dataset.touched; /* la mise en couleur ne vaut pas réponse */ }
   });
 } catch(e) {} });
 function toggleCollapseGroup(groupKey) {
@@ -12694,6 +12698,7 @@ function prefillScoresDepuisVisio(s) {
     if (!inp || !(v >= 1 && v <= 10) || inp.value !== '5') return; /* curseur encore à sa valeur de départ */
     inp.value = v;
     sv(inp, id);
+    inp.dataset.touched = '1'; /* note donnée par la cliente : compte comme réponse */
     n++;
   });
   if (n) window.__scoresVisioRepris = n;
@@ -18220,6 +18225,39 @@ window.mgProgres = function () {
     return { fait: fait, total: ths.length, entree: entreeFaite(a) };
   } catch (e) { return { fait: 0, total: 0, entree: false }; }
 };
+/* 26/11/2026 : une question des onglets est « abordée » dès que l'entonnoir l'a posée (même réponse « aucun »).
+   Le lien carte ↔ questions de l'entonnoir est déduit des ponts existants : cases reliées (PONTS), menus (SELMAP),
+   listes de diagnostics, d'opérations et de traitements. Les cartes sans lien restent à aborder à la main. */
+var CARTES_LIEES = null, CARTES_LIEES_N = -1;
+function cartesLiees() {
+  if (CARTES_LIEES && CARTES_LIEES_N === PONTS.length) return CARTES_LIEES;
+  var L = [];
+  function add(card, ids) {
+    if (!card || !ids.length) return;
+    var e = L.filter(function (x) { return x.el === card; })[0];
+    if (!e) { e = { el: card, ids: [] }; L.push(e); }
+    ids.forEach(function (i) { if (e.ids.indexOf(i) < 0) e.ids.push(i); });
+  }
+  PONTS.forEach(function (p) {
+    var ids = [], m, src = String(p[1]), re = /\b(?:has|hasAny|hasE)\(\s*a\s*,\s*'([a-z_0-9]+)'/g, re2 = /\ba\.([a-z_0-9]+)/g;
+    while ((m = re.exec(src))) ids.push(m[1]);
+    while ((m = re2.exec(src))) ids.push(m[1]);
+    var key = norm(p[0]), c = qmap().filter(function (x) { return x.n.indexOf(key) === 0; })[0];
+    if (c) add(c.el.closest('.qcard'), ids);
+  });
+  Object.keys(SELMAP).forEach(function (id) { var el = document.getElementById(SELMAP[id].sel); if (el) add(el.closest('.qcard'), [id]); });
+  var cd = document.getElementById('diagnostics-antecedents-card'); if (cd) add(cd, Object.keys(DIAGMAP));
+  var cc = document.getElementById('chirurgies-antecedents-card'); if (cc) add(cc, Object.keys(CHIRMAP));
+  var ct = document.getElementById('traitements-liste-render-c'); if (ct) add(ct.closest('.qcard'), Object.keys(TRAITMAP));
+  var cs = document.getElementById('secu-cancer'); if (cs) add(cs.closest('.qcard'), ['o_situation', 'o_type', 'o_traitements']);
+  CARTES_LIEES = L; CARTES_LIEES_N = PONTS.length; return L;
+}
+window.mgCartePosee = function (card) {
+  try {
+    var e = cartesLiees().filter(function (x) { return x.el === card; })[0];
+    return !!e && e.ids.some(function (id) { var v = S.a[id]; return v !== undefined && v !== '_skip'; });
+  } catch (x) { return false; }
+};
 /* Accès pour le bandeau d'alertes médicales */
 window.mgAlertesFlags = function () {
   try {
@@ -18384,6 +18422,7 @@ function appliquerPonts() {
   });
   S.ponts = voulu;
   pontsChir(ra); pontsDiag(ra); pontsTrait(ra); pontsCancer(ra); pontsSelects(ra);
+  try { if (typeof updateNavProgress === 'function') updateNavProgress(); } catch (e) { /* non bloquant */ }
   if (touche) { try { if (typeof updateCounter === 'function') updateCounter(); if (typeof refreshFunnel === 'function') refreshFunnel(); } catch (e) { /* non bloquant */ } }
 }
 
