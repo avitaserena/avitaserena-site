@@ -12673,12 +12673,30 @@ async function chargerPrepVisio() {
     } catch (e) { console.warn('[Prep visio] Lecture réservation impossible :', e); }
     renderPrepVisioFaits(row.snapshot || {}, resa);
     try { prefillMotifDepuisVisio(row.snapshot || {}); } catch (e) { console.warn('[Prep visio] Motif détaillé non pré-rempli :', e); }
+    try { prefillScoresDepuisVisio(row.snapshot || {}); } catch (e) { console.warn('[Prep visio] Scores non pré-remplis :', e); }
     window.__visioSnap = row.snapshot || null;
     try { if (typeof window.mgChargerVisio === 'function') window.mgChargerVisio(row.snapshot || {}); } catch (e) { console.warn('[Prep visio] Parcours non préchargé :', e); }
 
     if (row.synthese_ia) { renderPrepVisioSynthese(row.synthese_ia); }
     else { genererPrepVisioSynthese(false); }
   } catch (e) { console.warn('[Prep visio] Chargement échoué :', e); }
+}
+
+/* Scores donnés par la cliente à la préparation visio : reportés dans la Section 05 (curseurs encore intacts seulement).
+   Sabrina peut tout rectifier ; l'écart entre le chiffre donné et ce qu'elle dit en séance reste une information utile. */
+function prefillScoresDepuisVisio(s) {
+  const sc = (s && s.scores) || {};
+  const MAP = [['energieGenerale', 'rv-e'], ['sommeil', 'rv-s'], ['stress', 'rv-st'], ['digestion', 'rv-d']];
+  let n = 0;
+  MAP.forEach(([cle, id]) => {
+    const v = parseInt(sc[cle], 10);
+    const inp = document.getElementById(id + '-input');
+    if (!inp || !(v >= 1 && v <= 10) || inp.value !== '5') return; /* curseur encore à sa valeur de départ */
+    inp.value = v;
+    sv(inp, id);
+    n++;
+  });
+  if (n) window.__scoresVisioRepris = n;
 }
 
 /* Ce que la cliente a déjà dit à la préparation est reporté dans « Motif détaillé » (champs vides seulement) : durée, objectif à 6 mois, petit mot */
@@ -17589,6 +17607,38 @@ node('v_enfants', { m: 'ask', multi: true, s: 'Ses enfants',
       note: "Enfant à besoins particuliers : charge mentale et fatigue très importantes ; protocole minimal et réaliste ; vérifier qu'elle a du relais." },
     { k: 'aucun', l: "Pas d'enfant", x: true }
   ],
+  next: function (a) { var e = Array.isArray(a && a.v_enfants) ? a.v_enfants : []; if (femmeOK() && e.length && e.indexOf('aucun') < 0) return 'v_accouch'; var g = ageCli(); return femmeOK() && !(g !== null && g >= 56) ? 'v_grossesse' : 'v_travail'; } });
+
+node('v_accouch', { m: 'ask', multi: true, s: 'La naissance de ses enfants',
+  q: "Comment se sont passés vos grossesses et vos accouchements ?",
+  hint: "Plusieurs réponses possibles. Posez la question avec douceur : certains souvenirs sont difficiles, elle peut ne rien dire. Précisez l'année si elle le souhaite.",
+  why: "Une grossesse et un accouchement sollicitent tout le corps : les réserves de fer, la thyroïde, les hormones, le périnée, le moral. Beaucoup de fatigues, de troubles du cycle ou de douleurs qui durent depuis des années ont commencé à ce moment-là, et on ne fait pas toujours le lien. Vous n'avez rien à me raconter que vous ne souhaitiez pas : je veux seulement comprendre ce que votre corps a traversé.",
+  o: [
+    { k: 'cesar', l: "Une ou plusieurs césariennes", f: "vous avez accouché par césarienne",
+      say: "Une césarienne laisse une cicatrice profonde sur le ventre : elle peut créer des adhérences qui tirent sur le transit, le bas-ventre ou le dos, et la récupération est plus longue.",
+      note: "Césarienne : cicatrice et adhérences possibles (douleurs pelviennes, transit) ; envisager une prise en charge de la cicatrice (ostéopathie, massage) si gêne." },
+    { k: 'difficile', l: "Un accouchement long ou difficile (forceps, ventouse, déchirure, épisiotomie)", f: "vous avez eu un accouchement long ou difficile",
+      say: "Un accouchement difficile marque le périnée et parfois le moral. Si vous avez des fuites, des douleurs aux rapports ou une pesanteur, la rééducation du périnée change beaucoup de choses.",
+      note: "Accouchement difficile : explorer périnée (fuites, douleurs aux rapports, pesanteur) ; orienter vers une rééducation périnéale si besoin." },
+    { k: 'hemorragie', l: "Une hémorragie ou une perte de sang importante", f: "vous avez eu une hémorragie à l'accouchement",
+      say: "Une grosse perte de sang vide les réserves de fer, et il faut parfois des années pour les reconstituer. Je vérifierai votre ferritine.",
+      flag: "Hémorragie de l'accouchement : vérifier ferritine et bilan martial ; pas de supplémentation en fer sans bilan." },
+    { k: 'gesta', l: "Un diabète de grossesse, de l'hypertension ou une prééclampsie", f: "vous avez eu un diabète de grossesse, de l'hypertension ou une prééclampsie",
+      say: "Ces complications sont un signal précoce : elles montrent que votre corps gère le sucre ou la tension avec plus de difficulté, et elles augmentent le risque de diabète ou de tension plus tard. C'est une raison de plus de vous suivre de près.",
+      flag: "Antécédent de diabète gestationnel ou de prééclampsie : risque métabolique et cardiovasculaire accru ; surveiller glycémie, tension et lipides avec le médecin." },
+    { k: 'moral', l: "Un baby blues prolongé ou une dépression après l'accouchement", f: "vous avez eu un baby blues prolongé ou une dépression du post-partum",
+      say: "Un moral qui tombe après la naissance est fréquent, et il vient en partie du corps : chute brutale des hormones, thyroïde, fer, sommeil. Ce n'est ni une faiblesse ni une faute.",
+      note: "Dépression ou baby blues prolongé du post-partum : vérifier thyroïde (thyroïdite du post-partum), fer et B12 ; vigilance sur l'humeur actuelle." },
+    { k: 'perte', l: "Une fausse couche, une interruption de grossesse ou une grossesse arrêtée", f: "vous avez vécu une fausse couche ou une interruption de grossesse",
+      say: "Je vous remercie de me le dire. Vous n'avez rien à ajouter. Cela peut avoir laissé des traces dans le corps comme dans le cœur, et je le garde en tête avec douceur.",
+      note: "Fausse couche ou interruption de grossesse : sujet sensible, ne pas insister ; noter la période ; vérifier fer, thyroïde et le contexte hormonal si pertes répétées." },
+    { k: 'pma', l: "Un parcours de procréation médicalement assistée (stimulation, FIV, insémination)", f: "vous avez suivi un parcours de procréation médicalement assistée",
+      say: "Une stimulation ovarienne est un traitement hormonal intense, et le parcours lui-même est très éprouvant. Je tiens compte des deux dans la lecture de votre cycle et de votre fatigue.",
+      note: "Parcours de PMA : traitement hormonal passé ; vérifier le cycle depuis ; charge émotionnelle importante." },
+    { k: 'allait', l: "Un allaitement long (plus d'un an au total)", f: "vous avez allaité longtemps",
+      say: "L'allaitement puise dans les réserves de fer, de calcium, d'iode et de bonnes graisses. Après un allaitement long ou plusieurs enfants rapprochés, une fatigue de fond est souvent liée à ces réserves." },
+    { k: 'rien', l: "Grossesses et accouchements sans particularité", f: "vos grossesses et accouchements se sont bien passés", x: true }
+  ],
   next: function () { var g = ageCli(); return femmeOK() && !(g !== null && g >= 56) ? 'v_grossesse' : 'v_travail'; } });
 
 node('v_grossesse', { m: 'ask', s: 'Grossesse ou allaitement',
@@ -17774,6 +17824,122 @@ node('v_tabac', { m: 'ask', s: 'Tabac',
     { k: 'vape', l: "Je vapote", f: "vous vapotez",
       say: "La cigarette électronique est moins nocive que le tabac, mais elle n'est pas anodine pour les voies respiratoires. Nous en tiendrons compte." }
   ],
+  next: function () { return 'v_atcd'; } });
+
+node('v_atcd', { m: 'ask', multi: true, s: 'Antécédents médicaux',
+  q: "Avez-vous déjà eu, ou avez-vous aujourd'hui, un problème de santé diagnostiqué par un médecin ?",
+  hint: "Plusieurs réponses possibles. Demandez l'année et si c'est toujours actif : cela se complète ensuite dans la Section 03.",
+  why: "Votre histoire médicale me montre sur quel terrain nous travaillons. Une thyroïde paresseuse, un diabète ou une maladie auto-immune ne se règlent pas par l'alimentation seule, et ils changent ce que je peux vous proposer en toute sécurité. Je les note donc tous, même s'ils vous semblent sans rapport avec ce qui vous amène.",
+  o: [
+    { k: 'thyro', l: "Une maladie de la thyroïde (hypothyroïdie, Hashimoto, Basedow…)", f: "vous avez une maladie de la thyroïde",
+      say: "La thyroïde commande l'énergie, la température, le transit et le cycle. Je dois savoir si elle est traitée et suivie, car certains compléments et certaines algues l'influencent.",
+      flag: "Maladie thyroïdienne déclarée : vérifier le traitement et le dernier bilan ; pas d'algue ni d'iode sans avis médical." },
+    { k: 'diabete', l: "Un diabète, une résistance à l'insuline ou une glycémie élevée", f: "vous avez un diabète ou une résistance à l'insuline",
+      say: "Le sucre et l'insuline touchent à presque tout : énergie, poids, peau, hormones. Si un traitement est en cours, nous ne le modifierons jamais sans votre médecin.",
+      flag: "Diabète ou insulinorésistance déclaré : ne jamais toucher au traitement ; prudence avec les actifs hypoglycémiants (berbérine, cannelle…)." },
+    { k: 'tension', l: "De l'hypertension ou du cholestérol élevé", f: "vous avez de l'hypertension ou du cholestérol élevé",
+      say: "La tension et le cholestérol sont des marqueurs de terrain cardiovasculaire. Ils orientent mes choix, notamment sur le sel, la réglisse et certaines plantes.",
+      flag: "Hypertension ou hypercholestérolémie déclarée : pas de réglisse ; vérifier les interactions avec le traitement." },
+    { k: 'auto', l: "Une maladie auto-immune (polyarthrite, lupus, psoriasis, cœliaque…)", f: "vous avez une maladie auto-immune",
+      say: "Dans une maladie auto-immune, l'immunité est déjà très sollicitée : je n'utilise aucune plante ou aucun complément qui la stimule, et je vérifie chaque proposition avec votre médecin.",
+      flag: "Maladie auto-immune déclarée : aucun immunostimulant (échinacée, etc.) ; préciser laquelle dans la Section 03." },
+    { k: 'digestif', l: "Une maladie digestive (côlon irritable, Crohn, rectocolite, reflux, SIBO…)", f: "vous avez une maladie digestive diagnostiquée",
+      say: "Savoir ce qui a déjà été diagnostiqué m'évite de refaire des examens inutiles et m'aide à choisir des actifs doux pour votre intestin." },
+    { k: 'gyneco', l: "Un trouble gynécologique (endométriose, SOPK, fibromes…)", f: "vous avez un trouble gynécologique diagnostiqué",
+      say: "Ces troubles sont sensibles aux hormones : je serai prudente avec tout ce qui agit sur elles, et nous lirons votre cycle avec ce contexte." },
+    { k: 'psy', l: "Une dépression ou une anxiété diagnostiquée", f: "vous avez une dépression ou une anxiété diagnostiquée",
+      say: "Votre humeur et votre cerveau dépendent du sommeil, de l'intestin et du stress. Si vous prenez un traitement, certaines plantes (millepertuis) sont à proscrire.",
+      flag: "Dépression ou anxiété diagnostiquée : vérifier le traitement ; pas de millepertuis ni de 5-HTP sans avis médical." },
+    { k: 'migraine', l: "Des migraines chroniques", f: "vous avez des migraines chroniques",
+      say: "Les migraines sont souvent liées aux hormones, au magnésium, au sommeil ou à l'intestin. Je regarderai ce qui les déclenche chez vous." },
+    { k: 'peau', l: "De l'eczéma ou du psoriasis", f: "vous avez de l'eczéma ou du psoriasis",
+      say: "La peau est le miroir de l'intestin et de l'immunité : nous regarderons si l'un des deux nourrit l'inflammation." },
+    { k: 'cancer', l: "Un cancer, actuel ou ancien", f: "vous avez ou avez eu un cancer",
+      say: "Je le note avec beaucoup de précaution : aucun actif hormonal ni immunostimulant sans l'accord de votre oncologue.",
+      flag: "Antécédent ou cancer en cours : préciser le type et les traitements (Section 03) ; aucun actif hormonal ni plante sans accord de l'oncologue." },
+    { k: 'autre', l: "Un autre problème de santé", f: "vous avez un autre problème de santé diagnostiqué",
+      say: "Je le note dans votre dossier pour le prendre en compte.",
+      note: "Autre antécédent médical déclaré : le préciser dans la Section 03 (année, actif ou résolu)." },
+    { k: 'aucun', l: "Aucun problème de santé diagnostiqué", f: "vous n'avez aucun problème de santé diagnostiqué", x: true }
+  ],
+  next: function () { return 'v_chir'; } });
+
+node('v_chir', { m: 'ask', multi: true, s: 'Opérations et chirurgies',
+  q: "Avez-vous déjà été opéré·e ?",
+  hint: "Plusieurs réponses possibles. Demandez l'année, et si tout s'est bien passé. Complétez dans la Section 03 si besoin.",
+  why: "Une opération laisse parfois des traces : une vésicule retirée change la digestion des graisses, une thyroïde retirée impose un traitement à vie, une anesthésie ou des antibiotiques fragilisent l'intestin. Je dois donc connaître vos opérations, même anciennes, pour comprendre votre terrain et éviter ce qui ne vous convient pas.",
+  o: [
+    { k: 'appendice', l: "L'appendice", f: "vous avez été opéré·e de l'appendice",
+      say: "L'appendice participe à l'équilibre du microbiote : après son ablation, on vérifie simplement la santé de l'intestin." },
+    { k: 'vesicule', l: "La vésicule biliaire", f: "vous avez été opéré·e de la vésicule biliaire",
+      say: "Sans vésicule, la bile arrive en continu : la digestion des graisses peut être plus délicate, et je choisirai les actifs en tenant compte de cela.",
+      note: "Cholécystectomie : adapter la digestion des graisses (bile continue) ; vigilance sur la diarrhée post-prandiale." },
+    { k: 'cesarienne', l: "Une césarienne", f: "vous avez eu une césarienne",
+      say: "Je le note : une cicatrice abdominale peut créer des adhérences qui gênent parfois le transit ou le bas-ventre." },
+    { k: 'gyneco', l: "Une chirurgie gynécologique (utérus, ovaires, endométriose, kyste, fibrome)", f: "vous avez eu une chirurgie gynécologique",
+      say: "Après une chirurgie gynécologique, l'équilibre hormonal et la cicatrisation comptent beaucoup. Précisez-moi laquelle, je la noterai en détail.",
+      note: "Chirurgie gynécologique déclarée : préciser le geste (hystérectomie, ovariectomie, kystectomie, cœlioscopie) dans la Section 03 ; il change la lecture hormonale." },
+    { k: 'thyroide', l: "La thyroïde", f: "vous avez été opéré·e de la thyroïde",
+      say: "Sans thyroïde, un traitement à vie est nécessaire : je m'assure qu'il est bien dosé et suivi par votre médecin.",
+      flag: "Thyroïdectomie : traitement substitutif à vie ; vérifier TSH récente ; aucune algue ni iode." },
+    { k: 'orl', l: "Les amygdales, les végétations ou le nez", f: "vous avez été opéré·e des amygdales, des végétations ou du nez",
+      say: "Ces opérations sont souvent liées à des infections répétées dans l'enfance : je regarderai votre terrain immunitaire." },
+    { k: 'sage', l: "Les dents de sagesse", f: "vous avez été opéré·e des dents de sagesse",
+      say: "Je le note, notamment pour les antibiotiques et antidouleurs pris à cette période." },
+    { k: 'ortho', l: "Un os, une articulation ou le dos", f: "vous avez été opéré·e d'un os, d'une articulation ou du dos",
+      say: "Une chirurgie articulaire ou du dos me renseigne sur vos douleurs et sur les anti-inflammatoires que vous avez pu prendre longtemps." },
+    { k: 'sein', l: "Un sein", f: "vous avez été opéré·e d'un sein",
+      say: "Je le note avec attention. Selon la raison, certains actifs hormonaux seront exclus.",
+      flag: "Chirurgie mammaire déclarée : préciser le motif (cancer ou non) ; aucun phytoestrogène sans avis médical si cancer." },
+    { k: 'autre', l: "Une autre opération", f: "vous avez eu une autre opération",
+      say: "Je note laquelle et l'année dans votre dossier.",
+      note: "Autre chirurgie déclarée : préciser l'opération et l'année (Section 03)." },
+    { k: 'aucune', l: "Aucune opération", f: "vous n'avez jamais été opéré·e", x: true }
+  ],
+  next: function () { return 'v_traitements'; } });
+
+node('v_traitements', { m: 'ask', multi: true, s: 'Traitements en cours',
+  q: "Prenez-vous actuellement des médicaments, ou en avez-vous pris longtemps ?",
+  hint: "Plusieurs réponses possibles. Demandez le nom, la dose et depuis quand : cela se complète dans la Section 04. Pensez aussi aux compléments et aux plantes.",
+  why: "Beaucoup de médicaments modifient les besoins du corps : certains épuisent le magnésium, d'autres perturbent l'intestin ou les hormones. À l'inverse, certaines plantes ou certains compléments interagissent avec eux. C'est la règle de sécurité numéro un : je ne propose rien sans connaître tout ce que vous prenez déjà.",
+  o: [
+    { k: 'pilule', l: "Pilule, DIU hormonal, implant ou traitement hormonal", f: "vous prenez une pilule, un DIU hormonal, un implant ou un traitement hormonal",
+      say: "Les hormones de synthèse changent les besoins en vitamines B, en magnésium et en zinc, et elles influencent la peau, l'humeur et la libido. Nous en tiendrons compte." },
+    { k: 'thyroide', l: "Un traitement thyroïdien", f: "vous prenez un traitement thyroïdien",
+      say: "Ces médicaments se prennent à jeun, loin du calcium, du fer et du café : je vous donnerai les bons horaires.",
+      flag: "Traitement thyroïdien : espacer de 4 h du fer, du calcium et du magnésium ; pas d'algue ni d'iode." },
+    { k: 'antidep', l: "Un antidépresseur", f: "vous prenez un antidépresseur",
+      say: "Je serai très prudente : certaines plantes et le 5-HTP sont à proscrire avec un antidépresseur.",
+      flag: "Antidépresseur en cours : pas de millepertuis, pas de 5-HTP ni de L-tryptophane ; ne jamais modifier le traitement." },
+    { k: 'benzo', l: "Un somnifère ou un anxiolytique", f: "vous prenez un somnifère ou un anxiolytique",
+      say: "Ne l'arrêtez jamais brutalement : nous soutenons le sommeil en douceur, avec votre médecin." },
+    { k: 'ipp', l: "Un anti-acide (IPP : oméprazole, ésoméprazole…)", f: "vous prenez un anti-acide de type IPP",
+      say: "Un anti-acide pris longtemps réduit l'acidité de l'estomac, donc l'absorption du fer, de la B12 et du magnésium, et favorise parfois le SIBO.",
+      note: "IPP au long cours : risque de carence B12, fer, magnésium ; envisager un bilan ; lien possible avec le SIBO." },
+    { k: 'cortico', l: "De la cortisone au long cours", f: "vous prenez de la cortisone au long cours",
+      say: "La cortisone met les surrénales au repos et fragilise l'os et l'intestin. Il ne faut jamais l'arrêter sans médecin.",
+      flag: "Corticoïde au long cours : ne jamais l'arrêter ; pas de réglisse ; soutien de l'os et de l'intestin à voir avec le médecin." },
+    { k: 'anticoag', l: "Un anticoagulant ou un fluidifiant du sang (Kardégic, Xarelto, Previscan…)", f: "vous prenez un anticoagulant ou un fluidifiant du sang",
+      say: "Certaines plantes, certaines huiles essentielles et les oméga-3 à forte dose augmentent le risque de saignement : je les exclus.",
+      flag: "Anticoagulant ou antiagrégant : pas de ginkgo, d'ail concentré, de curcuma fort dosé, d'oméga-3 forte dose ni d'huile essentielle ; avis médical avant tout complément." },
+    { k: 'cardio', l: "Un traitement pour la tension ou le cholestérol", f: "vous prenez un traitement pour la tension ou le cholestérol",
+      say: "Certains de ces médicaments épuisent le magnésium ou la coenzyme Q10. Je vérifie aussi qu'aucune plante n'interagisse.",
+      flag: "Traitement cardiovasculaire : pas de réglisse ; vérifier les interactions avant toute plante ou levure de riz rouge." },
+    { k: 'diabete', l: "Un traitement du diabète", f: "vous prenez un traitement du diabète",
+      say: "Ne modifiez jamais ce traitement sans votre médecin. Certains actifs naturels abaissent la glycémie et s'additionnent à lui.",
+      flag: "Traitement du diabète : risque d'hypoglycémie avec berbérine, cannelle, chrome ; ne jamais modifier le traitement." },
+    { k: 'ains', l: "Des anti-inflammatoires ou des antidouleurs réguliers", f: "vous prenez régulièrement des anti-inflammatoires ou des antidouleurs",
+      say: "Pris souvent, ils fragilisent la paroi de l'intestin et de l'estomac. Je les garde en tête pour votre digestion." },
+    { k: 'antibio', l: "Des antibiotiques dans l'année écoulée", f: "vous avez pris des antibiotiques dans l'année",
+      say: "Les antibiotiques bousculent le microbiote pour plusieurs mois : c'est un indice utile sur votre digestion et votre immunité." },
+    { k: 'complements', l: "Des compléments alimentaires, des plantes ou des huiles essentielles", f: "vous prenez des compléments alimentaires, des plantes ou des huiles essentielles",
+      say: "Montrez-moi tout ce que vous prenez : doses, marques, depuis quand. Je décide avec vous de ce qu'on garde, ce qu'on remplace et ce qu'on arrête.",
+      note: "Compléments, plantes ou huiles essentielles déjà pris : noter nom, dose, marque et durée (Section 04) avant toute prescription." },
+    { k: 'autre', l: "Un autre médicament", f: "vous prenez un autre médicament",
+      say: "Je note le nom et la dose pour vérifier qu'aucun complément n'interagisse.",
+      note: "Autre médicament déclaré : noter nom, dose et durée (Section 04) ; vérifier les interactions." },
+    { k: 'aucun', l: "Aucun traitement", f: "vous ne prenez aucun traitement", x: true }
+  ],
   next: function () { return 'v_allergies'; } });
 
 node('v_allergies', { m: 'ask', multi: true, s: 'Allergies et intolérances',
@@ -17829,6 +17995,38 @@ node('v_famille', { m: 'ask', multi: true, s: 'Antécédents familiaux',
       say: "Les maladies digestives inflammatoires et la maladie cœliaque se transmettent en partie. Nous resterons attentives à vos signes digestifs, et votre médecin pourra vérifier la maladie cœliaque par une prise de sang.",
       note: "Antécédent familial de Crohn, rectocolite ou maladie cœliaque : demander une recherche de maladie cœliaque par prise de sang avant toute éviction du gluten." },
     { k: 'aucun', l: "Rien de particulier, ou elle ne sait pas", f: "vous n'avez rien de particulier à signaler dans votre famille, ou vous ne savez pas", x: true }
+  ],
+  next: function () { return 'v_naissance'; } });
+
+node('v_naissance', { m: 'ask', multi: true, s: 'Sa propre naissance',
+  q: "Savez-vous comment s'est passée votre propre naissance, et vos premiers mois ?",
+  hint: "Plusieurs réponses possibles. Beaucoup ne savent pas : elle peut demander à sa mère, c'est une information précieuse. Ne rien forcer.",
+  why: "La naissance est le tout premier événement de votre santé. Un bébé né par voie basse reçoit les bactéries de sa mère, qui forment le début de son microbiote, c'est-à-dire de son intestin et de son immunité. Un bébé né par césarienne, en siège, trop tôt ou après une naissance difficile démarre souvent avec un terrain un peu différent. Ce n'est pas une fatalité, et cela ne détermine rien. Mais cela explique parfois des fragilités qui sont là depuis l'enfance : digestion, allergies, infections à répétition, tensions du dos.",
+  o: [
+    { k: 'cesar', l: "Née par césarienne", f: "vous êtes née par césarienne",
+      say: "En naissant par césarienne, on ne reçoit pas les bactéries de sa mère au passage : le microbiote se construit plus lentement. Cela peut jouer sur la digestion et l'immunité, et c'est une piste que je garde en tête, sans en faire une fatalité.",
+      note: "Née par césarienne : microbiote de départ moins diversifié ; explorer terrain digestif, allergies, eczéma, infections répétées dans l'enfance." },
+    { k: 'siege', l: "Née en siège (par les fesses ou les pieds)", f: "vous êtes née en siège",
+      say: "Un bébé en siège naît souvent par césarienne ou avec des manœuvres, ce qui peut laisser des tensions du bassin, du dos ou de la nuque. Je le note : c'est parfois la bonne piste pour des douleurs dont on n'a jamais trouvé l'origine.",
+      note: "Naissance en siège : explorer douleurs du dos, du bassin ou de la nuque, migraines ; envisager un avis ostéopathique." },
+    { k: 'premature', l: "Née prématurée ou avec un petit poids", f: "vous êtes née prématurée ou avec un petit poids",
+      say: "Un bébé né trop tôt a eu moins de temps pour faire ses réserves et mûrir son intestin et ses poumons. Cela peut laisser des fragilités digestives ou immunitaires, et parfois des réserves de fer plus basses.",
+      note: "Prématurité ou petit poids de naissance : terrain digestif et immunitaire plus fragile ; vérifier fer et vitamine D." },
+    { k: 'difficile', l: "Une naissance difficile (forceps, ventouse, réanimation, couveuse, jaunisse)", f: "vous avez eu une naissance difficile",
+      say: "Une naissance difficile est une première épreuve pour le corps. Elle peut laisser des tensions physiques, et elle est parfois associée à un système de stress plus sensible. Je le note avec respect.",
+      note: "Naissance difficile (forceps, ventouse, réanimation, couveuse) : explorer tensions physiques, hypersensibilité au stress ; envisager un avis ostéopathique." },
+    { k: 'poids', l: "Un poids de naissance très bas (moins de 2,5 kg) ou très élevé (plus de 4 kg)", f: "votre poids de naissance était très bas ou très élevé",
+      say: "Le poids de naissance reflète comment le corps s'est préparé à la vie : un poids très bas ou très élevé est associé, des années plus tard, à plus de risque de résistance à l'insuline ou de prise de poids. Je le garde en tête, sans en faire une fatalité.",
+      note: "Poids de naissance hors norme : surveiller glycémie, insuline, tension et poids sur le long terme." },
+    { k: 'biberon', l: "Peu ou pas allaitée", f: "vous avez été peu ou pas allaitée",
+      say: "Le lait maternel nourrit les bonnes bactéries de l'intestin du bébé. Sans lui, le microbiote peut démarrer un peu différemment, ce qui n'empêche pas de le soutenir aujourd'hui." },
+    { k: 'antibio', l: "Beaucoup d'antibiotiques ou d'otites et d'angines dans l'enfance", f: "vous avez eu beaucoup d'antibiotiques ou d'infections dans l'enfance",
+      say: "Les antibiotiques répétés dans l'enfance ont bousculé le microbiote à un âge où il se construit. Cela explique parfois des ballonnements ou des allergies qui datent de loin.",
+      note: "Antibiotiques répétés dans l'enfance : microbiote fragilisé précocement ; explorer digestion, allergies, candidose." },
+    { k: 'nsp', l: "Je ne sais pas, ou je n'ai pas l'information", f: "vous ne savez pas comment s'est passée votre naissance",
+      say: "Ce n'est pas grave. Vous pouvez demander à votre mère ou regarder votre carnet de santé : si vous trouvez quelque chose, apportez-le-moi.",
+      note: "Naissance inconnue : lui suggérer de demander à sa mère ou de regarder son carnet de santé (césarienne, siège, prématurité).", x: true },
+    { k: 'rien', l: "Naissance et enfance sans particularité", f: "votre naissance et votre petite enfance se sont bien passées", x: true }
   ],
   next: function () { return 'v_histoire'; } });
 
@@ -18197,7 +18395,7 @@ function chirChip(nom) { return [].slice.call(document.querySelectorAll('#chirur
 function chirAssure(nom) {
   try {
     if (!chirListeOk()) return false;
-    if (!chirurgiesListeConsultation.some(function (c) { return c.type === nom; })) { var ent = { type: nom, moisAnnee: '', ressenti: '', etat: '' }; if (!/couche|chirurgie/i.test(nom)) ent.kind = 'examen'; chirurgiesListeConsultation.push(ent); CHIRAUTO[nom] = true; }
+    if (!chirurgiesListeConsultation.some(function (c) { return c.type === nom; })) { var ent = { type: nom, moisAnnee: '', ressenti: '', etat: '' }; if (!/couche|chirurgie/i.test(nom) && !(typeof CHIRVRAIE !== 'undefined' && CHIRVRAIE[nom])) ent.kind = 'examen'; chirurgiesListeConsultation.push(ent); CHIRAUTO[nom] = true; }
     var ch = chirChip(nom); if (ch) ch.classList.add('on');
     return true;
   } catch (e) { return false; }
@@ -18253,6 +18451,21 @@ function diagOuvre(nom) {
 
 /* ───── Traitements cochés dans le déroulé : reportés dans la liste « Traitements » (depuis quand, dose, effet) ───── */
 var TRAITMAP = {"traitements": {"antibio": "Antibiotiques (dans l'année)", "ains": "Antidouleurs ou anti-inflammatoires réguliers", "laxatifs": "Laxatifs ou stimulants du transit", "pilule": "Pilule ou traitement hormonal", "ralentisseurs": "Opioïdes, antidépresseurs ou anti-allergiques sédatifs"}, "haut_ipp": {"ipp_long": "Anti-acide (IPP) depuis plus d'un an", "ipp_periodes": "Anti-acide (IPP) par périodes", "antiacide": "Anti-acides occasionnels"}, "h_meds": {"prolactine": "Médicament pouvant élever la prolactine (antidépresseur, neuroleptique, anti-nauséeux…)", "thyroide": "Traitement thyroïdien", "hormonal": "Traitement hormonal (hors pilule)"}, "f_meds": {"betabloq": "Bêtabloquant", "statine": "Statine", "ipp": "Anti-acide (inhibiteur de la pompe à protons)", "benzo": "Somnifère ou anxiolytique (benzodiazépine)", "antidep": "Antidépresseur", "corticoide": "Cortisone (corticoïde) au long cours", "thyroide": "Traitement thyroïdien", "pilule": "Pilule, DIU hormonal, implant ou traitement hormonal"}, "z_meds": {"betabloq": "Bêtabloquant", "statine": "Statine", "ipp": "Anti-acide (inhibiteur de la pompe à protons)", "benzo": "Somnifère ou anxiolytique (benzodiazépine)", "antidep": "Antidépresseur", "corticoide": "Cortisone (corticoïde) au long cours", "thyroide": "Traitement thyroïdien", "pilule": "Pilule, DIU hormonal, implant ou traitement hormonal", "melatonine": "Mélatonine en complément"}, "w_meds": {"betabloq": "Bêtabloquant", "statine": "Statine", "ipp": "Anti-acide (inhibiteur de la pompe à protons)", "benzo": "Somnifère ou anxiolytique (benzodiazépine)", "antidep": "Antidépresseur", "corticoide": "Cortisone (corticoïde) au long cours", "thyroide": "Traitement thyroïdien", "pilule": "Pilule, DIU hormonal, implant ou traitement hormonal"}, "k_meds": {"betabloq": "Bêtabloquant", "statine": "Statine", "ipp": "Anti-acide (inhibiteur de la pompe à protons)", "benzo": "Somnifère ou anxiolytique (benzodiazépine)", "antidep": "Antidépresseur", "corticoide": "Cortisone (corticoïde) au long cours", "thyroide": "Traitement thyroïdien", "pilule": "Pilule, DIU hormonal, implant ou traitement hormonal", "finasteride": "Finastéride ou dutastéride"}, "o_traitements": {"chimio": "Chimiothérapie", "radio": "Radiothérapie", "immuno": "Immunothérapie ou thérapie ciblée", "hormono": "Hormonothérapie (cancer)"}};
+
+/* 26/11/2026 : questions générales (antécédents, opérations, traitements) reportées dans les listes de la Section 03 / 04 */
+DIAGMAP.v_atcd = {"thyro": ["Hashimoto / hypothyroïdie", "endocrino"], "diabete": ["Diabète de type 2 / résistance à l'insuline", "endocrino"], "tension": ["Hypertension artérielle", "endocrino"], "gyneco": ["SOPK", "gyneco"], "psy": ["Dépression / anxiété diagnostiquée", "neuropsy"], "migraine": ["Migraines chroniques", "neuropsy"], "peau": ["Eczéma / dermatite atopique", "autoimmune"]};
+var CHIRVRAIE = {"Appendicectomie": 1, "Cholécystectomie (ablation vésicule biliaire)": 1, "Césarienne": 1, "Thyroïdectomie": 1, "Amygdalectomie": 1, "Extraction de dents de sagesse": 1};
+PONTS.push.apply(PONTS, [
+  ['Née par césarienne', function (a) { return has(a, 'v_naissance', 'cesar'); }],
+  ['Née par voie basse avec forceps, ventouse ou en siège', function (a) { return has(a, 'v_naissance', 'siege') || has(a, 'v_naissance', 'difficile'); }],
+  ['Non allaitée, ou allaitement très court', function (a) { return has(a, 'v_naissance', 'biberon'); }],
+  ['Poids de naissance en dehors de la norme', function (a) { return has(a, 'v_naissance', 'poids'); }],
+  ['Avez-vous eu des otites, angines ou bronchites récurrentes', function (a) { return has(a, 'v_naissance', 'antibio'); }],
+  ['Plus de 5 cures d\'antibiotiques avant 18 ans', function (a) { return has(a, 'v_naissance', 'antibio'); }]
+]);
+CHIRMAP.v_accouch = {"cesar": "Césarienne"};
+CHIRMAP.v_chir = {"appendice": "Appendicectomie", "vesicule": "Cholécystectomie (ablation vésicule biliaire)", "cesarienne": "Césarienne", "thyroide": "Thyroïdectomie", "orl": "Amygdalectomie", "sage": "Extraction de dents de sagesse"};
+TRAITMAP.v_traitements = {"pilule": "Pilule, DIU hormonal, implant ou traitement hormonal", "thyroide": "Traitement thyroïdien", "antidep": "Antidépresseur", "benzo": "Somnifère ou anxiolytique (benzodiazépine)", "ipp": "Anti-acide (inhibiteur de la pompe à protons)", "cortico": "Cortisone (corticoïde) au long cours", "anticoag": "Anticoagulant ou fluidifiant du sang", "cardio": "Traitement pour la tension ou le cholestérol", "diabete": "Traitement du diabète", "ains": "Antidouleurs ou anti-inflammatoires réguliers", "antibio": "Antibiotiques (dans l'année)", "complements": "Compléments alimentaires, plantes ou huiles essentielles"};
 var TRAITAUTO = {};
 function traitOk() { return typeof traitementsListeConsultation !== 'undefined' && Array.isArray(traitementsListeConsultation); }
 function traitAssure(nom) {
