@@ -735,6 +735,8 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 .mg-qt{font-size:20px;line-height:1.4;font-weight:600;color:var(--ardoise,#1A1A1A);margin:0 0 6px}
 .mg-hint{font-size:15px;line-height:1.55;color:var(--ardoise,#1A1A1A);margin:0 0 14px}
 .mg-opts{display:grid;gap:9px;margin:14px 0 4px}
+.mg-say.mg-say-inline{margin:-2px 0 6px 22px!important;padding-top:10px!important;padding-bottom:10px!important}
+.mg-say.mg-say-inline .mg-say-t{margin:0!important}
 @media(min-width:760px){.mg-opts.mg-cols{grid-template-columns:1fr 1fr}}
 .mg-opt{display:flex;align-items:center;gap:12px;text-align:left;width:100%;min-height:46px;padding:10px 16px;border:1.5px solid var(--taupe,#E7E2D9);border-radius:14px;background:#fff;font-size:15px;line-height:1.4;font-weight:400;color:var(--ardoise,#1A1A1A);cursor:pointer;font-family:inherit;transition:all .14s}
 .mg-opt:hover{border-color:var(--ocre,#B4906A);background:var(--off,#F7F6F4);transform:translateX(3px)}
@@ -15939,13 +15941,16 @@ node('h_impreg', { m: 'ask', multi: true, br: 'regles', s: 'Signes d\'imprégnat
       say: "Des seins tendus en seconde moitié de cycle vont dans le sens d'une imprégnation en œstrogènes trop forte par rapport à la progestérone.",
       e: [['hyperoestro', 2, "seins tendus en seconde moitié de cycle"]] },
     { k: 'fibromes', l: "Fibromes ou kystes connus", f: "vous avez des fibromes ou des kystes",
+      say: "Les fibromes et certains kystes se nourrissent des œstrogènes : quand l'imprégnation est trop forte ou trop longue, elle entretient leur croissance. C'est pourquoi on regarde ce terrain hormonal et l'élimination des œstrogènes, en lien avec votre gynécologue.",
       e: [['hyperoestro', 2, "fibromes ou kystes"]] },
     { k: 'retention', l: "Rétention d'eau, jambes lourdes, ventre gonflé avant les règles", f: "vous retenez l'eau et avez les jambes lourdes avant les règles",
+      say: "Un excès d'œstrogènes fait retenir l'eau et ralentit le retour du sang dans les jambes : d'où les jambes lourdes et le ventre gonflé avant les règles, qui se dégonflent quand elles arrivent.",
       e: [['hyperoestro', 2, "rétention d'eau avant les règles"]] },
     { k: 'noires', l: "Règles noirâtres ou très foncées en début de cycle", f: "vos règles sont noirâtres en début de cycle",
       say: "Un sang noirâtre ou très foncé en début de règles dit que le sang a stagné avant d'être éliminé : cela renvoie souvent à la façon dont le foie et l'intestin éliminent les hormones.",
       e: [['hyperoestro', 2, "règles noirâtres, élimination lente"]] },
     { k: 'migraines', l: "Migraines liées au cycle", f: "vous avez des migraines liées au cycle",
+      say: "Juste avant les règles, les œstrogènes chutent d'un coup : chez certaines femmes, cette chute déclenche la migraine, et elle est d'autant plus marquée que les œstrogènes étaient hauts par rapport à la progestérone.",
       e: [['hyperoestro', 2, "migraines cycliques"]] },
     { k: 'transit', l: "Constipation chronique ou déséquilibre intestinal connu", f: "vous avez une constipation chronique ou un déséquilibre intestinal",
       say: "Les œstrogènes sont éliminés par la bile puis par l'intestin : une flore déséquilibrée peut les libérer de nouveau et les faire repasser dans le sang.",
@@ -17517,7 +17522,7 @@ function themesHtml() {
   return '<div class="mg-themes" role="group" aria-label="Parcours">' + tabs.map(function (t) {
     var on = S.th === t, isq = q.indexOf(t) >= 0, dn = t === 'entree' ? entreeFaite(a) : (t === 'croise' ? false : themeDone(a, t));
     return '<button type="button" class="mg-th' + (on ? ' on' : '') + (isq && !on ? ' q' : '') + (dn && !on ? ' dn' : '') + '" data-mg="theme" data-th="' + t + '" aria-pressed="' + (on ? 'true' : 'false') + '">' + esc(TH_LABEL[t]) + (dn ? ' ✓' : '') + '</button>';
-  }).join('') + '</div><div class="mg-legend">Un parcours par motif qu\'elle a choisi, à faire l\'un après l\'autre. Vert foncé : celui en cours. ✓ : terminé.</div>';
+  }).join('') + '</div><div class="mg-legend">Un parcours par motif qu\'elle a choisi. Vert : celui que vous êtes en train de faire. ✓ : terminé. Les autres restent à faire : touchez-en un pour y aller, dans l\'ordre qui vous convient.</div>';
 }
 function soonHtml() { return ''; }
 function entreeFin(an) {
@@ -17543,7 +17548,7 @@ window.visioLibre = function (s){ var l=(s&&s.libre)||'', p=(s&&s.precisions)||'
 var mgChargerVisio0 = function (snap) {
   try {
     if (!isConsult() || !snap || !snap.moteur || typeof snap.moteur !== 'object') return;
-    var c = {}; NSP = {};
+    var c = {}; NSP = {}; SNAPM = snap.moteur;
     Object.keys(snap.moteur).forEach(function (id) {
       var n = N[id]; if (!n) return;
       var v = snap.moteur[id]; if ((Array.isArray(v) ? v : [v]).indexOf('nsp') >= 0) NSP[id] = true;
@@ -17706,7 +17711,14 @@ document.addEventListener('click', function (e) {
    avec elle (mgDonnees ne lit que S.a). Une réponse donnée en séance remplace celle de la cliente. */
 var TRAIL_OPEN = false;
 document.addEventListener('toggle', function (e) { if (e.target && e.target.classList && e.target.classList.contains('mg-trail')) TRAIL_OPEN = e.target.open; }, true);
-var CLI = null, LASTTOP = null, TOPNOTE = '', NSP = {};
+var CLI = null, LASTTOP = null, TOPNOTE = '', NSP = {}, SNAPM = null;
+/* Réponses déjà données dans la préparation qui recoupent une question que la préparation ne pose pas : on les rappelle, sans les pré-cocher */
+var DEJA_DIT = { h_impreg: [['h_spm', 'seins', 'Seins tendus avant les règles'], ['h_spm', 'ventre', 'Ventre gonflé, rétention d\'eau avant les règles'], ['h_spm', 'migraines', 'Migraines avant les règles'], ['transit_selles', 'dures', 'Selles dures ou en boulettes']] };
+function dejaDitHtml(id) {
+  if (!SNAPM || !DEJA_DIT[id]) return '';
+  var out = DEJA_DIT[id].filter(function (r) { var v = SNAPM[r[0]]; return (Array.isArray(v) ? v : [v]).indexOf(r[1]) >= 0; }).map(function (r) { return r[2]; });
+  return out.length ? '<div class="mg-cli"><b>Elle l\'a déjà dit dans son questionnaire</b> : ' + out.map(esc).join(' · ') + '. Cochez ce qui se confirme, et demandez le reste.</div>' : '';
+}
 var ALERT_NODES = ['secu', 'h_secu', 'f_secu', 'z_alertes', 'w_secu', 'k_secu'];
 function cliVal(id) { return (CLI && S.a[id] === undefined && S.p[id] === undefined) ? CLI[id] : undefined; }
 function cliCopy(v) { return Array.isArray(v) ? v.slice() : v; }
@@ -17899,11 +17911,14 @@ function questionHtml(id) {
   var n = N[id], cur = S.a[id], pend = S.p[id], cl = cliVal(id);
   var sel = n.multi ? (Array.isArray(pend) ? pend : (Array.isArray(cur) ? cur : (Array.isArray(cl) ? cl : []))) : [];
   var h = '<div class="mg-q" id="mg-q"><span class="mg-mode ' + n.m + '">' + (n.m === 'listen' ? '1 · Je lui demande (question ouverte : laissez-la parler)' : '1 · Je lui demande') + '</span>' +
-    '<div class="mg-qt">' + esc(n.q) + '</div>' + (NSP[id] && cl === undefined && cur === undefined ? '<div class="mg-cli" style="background:#FBF3E4;border-color:#C4A882"><b>Elle a répondu « je ne sais pas » à cette question dans le questionnaire de préparation</b> : posez-la-lui, sans rien présumer.</div>' : '') + (cl !== undefined ? '<div class="mg-cli"><b>Réponse de la cliente (questionnaire de préparation)</b> : validez-la, ou touchez une autre réponse pour la remplacer.</div>' : '') + (n.why ? '<div class="mg-why"><div class="mg-why-l">À lui dire</div><p>' + esc(n.why) + '</p></div>' : '') + (n.hint ? '<div class="mg-hint">' + esc(n.hint) + '</div>' : '') +
+    '<div class="mg-qt">' + esc(n.q) + '</div>' + (NSP[id] && cl === undefined && cur === undefined ? '<div class="mg-cli" style="background:#FBF3E4;border-color:#C4A882"><b>Elle a répondu « je ne sais pas » à cette question dans le questionnaire de préparation</b> : posez-la-lui, sans rien présumer.</div>' : '') + (cl !== undefined ? '<div class="mg-cli"><b>Réponse de la cliente (questionnaire de préparation)</b> : validez-la, ou touchez une autre réponse pour la remplacer.</div>' : '') + dejaDitHtml(id) + (n.why ? '<div class="mg-why"><div class="mg-why-l">À lui dire</div><p>' + esc(n.why) + '</p></div>' : '') + (n.hint ? '<div class="mg-hint">' + esc(n.hint) + '</div>' : '') +
     '<div class="mg-step">' + (cl !== undefined ? '2 · Elle avait déjà répondu dans son questionnaire : confirmez avec elle, ou corrigez' : '2 · Elle répond : cochez') + '</div><div class="mg-opts' + (n.o.length > 5 && !n.multi ? ' mg-cols' : '') + '">';
-  n.o.forEach(function (o, i) { h += optHtml(n, o, i, n.multi ? sel.indexOf(o.k) >= 0 : (cur === o.k || (cur === undefined && cl !== undefined && cl === o.k))); });
+  /* 26/11/2026 : l'explication d'une réponse cochée s'ouvre juste sous cette réponse (plus de bloc groupé sous la liste) */
+  n.o.forEach(function (o, i) {
+    h += optHtml(n, o, i, n.multi ? sel.indexOf(o.k) >= 0 : (cur === o.k || (cur === undefined && cl !== undefined && cl === o.k)));
+    if (n.multi && o.say && sel.indexOf(o.k) >= 0) h += '<div class="mg-say mg-say-inline"><div class="mg-say-t">' + esc(o.say) + '</div></div>';
+  });
   h += '</div>';
-  if (n.multi) { var sy0 = n.o.filter(function (o) { return o.say && sel.indexOf(o.k) >= 0; }).slice(0, 3); if (sy0.length) h += '<div class="mg-say mg-say-live">' + sy0.map(function (o) { return '<div class="mg-say-t" style="margin-bottom:8px">' + esc(o.say) + '</div>'; }).join('') + '</div>'; }
   h += '<div class="mg-act">';
   if (n.multi) h += '<button type="button" class="mg-go" data-mg="cont" data-n="' + id + '"' + (sel.length ? '' : ' disabled') + '>' + (cl !== undefined && pend === undefined ? 'Confirmer et continuer' : 'Continuer') + '</button>';
   else if (cl !== undefined) h += '<button type="button" class="mg-go" data-mg="confirm" data-n="' + id + '">Confirmer</button>';
