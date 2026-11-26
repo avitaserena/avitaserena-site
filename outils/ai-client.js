@@ -96,7 +96,9 @@ const AIClient = (function () {
       if (res.status === 546 || res.status === 504) throw erreur('Le relais a été coupé avant la fin de la réponse (limite de 150 s) — réessayez.', 'TIMEOUT', res.status);
       throw erreur('Erreur API (' + res.status + ')' + (msg ? ' ' + msg : ''), 'API_ERROR', res.status);
     }
-    return extraireTexte(await res.json());
+    const data = await res.json();
+    if (opts.refuseTronque && data && data.stop_reason === 'max_tokens') throw erreur('La réponse a atteint la limite de longueur et serait coupée : rien n\'est utilisé. Relancez la génération.', 'TRONQUE');
+    return extraireTexte(data);
   }
 
   // ── Voie 2 : appel direct avec la clé PHV plafonnée ({ direct: true }) ──
@@ -128,7 +130,9 @@ const AIClient = (function () {
         throw erreur('Plafond de dépenses de la clé PHV atteint — augmentez-le dans la console Anthropic.', 'API_ERROR', res.status);
       throw erreur('Erreur API (' + res.status + ') ' + bodyTxt, 'API_ERROR', res.status);
     }
-    return extraireTexte(await res.json());
+    const data = await res.json();
+    if (opts.refuseTronque && data && data.stop_reason === 'max_tokens') throw erreur('La réponse a atteint la limite de longueur et serait coupée : rien n\'est utilisé. Relancez la génération.', 'TRONQUE');
+    return extraireTexte(data);
   }
 
   // Retourne le texte généré (string). Lève une erreur avec .code =
