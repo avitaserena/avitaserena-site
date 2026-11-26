@@ -833,6 +833,23 @@ input.fi[readonly]{background:var(--taupe);cursor:default;opacity:.75}
 <div class="field-card">
   <div class="g2">
     <div>
+      <label class="fl">Disponibilité pour intégrer de nouvelles pratiques</label>
+      <select class="fi" id="motiv-temps">
+        <option>Bonne disponibilité — peut intégrer plusieurs changements</option>
+        <option>Disponibilité modérée — un changement à la fois</option>
+        <option>Très peu de disponibilité — gestes minimalistes uniquement</option>
+      </select>
+    </div>
+    <div>
+      <label class="fl">Temps réel par jour pour les pratiques</label>
+      <select class="fi" id="motiv-minutes">
+        <option>Moins de 10 min par jour</option>
+        <option>10 à 20 min par jour</option>
+        <option>20 à 40 min par jour</option>
+        <option>Plus de 40 min par jour</option>
+      </select>
+    </div>
+    <div>
       <label class="fl">Prête à intégrer des pratiques de gestion du stress</label>
       <select class="fi" id="motiv-stress">
         <option>Oui — cohérence cardiaque, respiration, méditation</option>
@@ -1346,7 +1363,7 @@ function prefillParams() {
   // questionnaire les combine dans une seule chaîne sessionData.motivation ("Alimentation: X |
   // Sport: Y | ..."), à reparser ici — même regex que le fallback déjà utilisé plus bas dans
   // buildClientData().
-  const motivRegexMap = { 'motiv-alim': 'Alimentation', 'motiv-sport': 'Sport', 'motiv-compl': 'Budget compléments', 'motiv-stress': 'Gestion stress', 'motiv-entourage': 'Entourage' };
+  const motivRegexMap = { 'motiv-alim': 'Alimentation', 'motiv-sport': 'Sport', 'motiv-compl': 'Budget compléments', 'motiv-temps': 'Disponibilité', 'motiv-minutes': 'Temps par jour', 'motiv-stress': 'Gestion stress', 'motiv-entourage': 'Entourage' };
   Object.entries(motivRegexMap).forEach(([elId, label]) => {
     const el = document.getElementById(elId);
     const match = sessionData.motivation?.match(new RegExp(label + ': ([^|]+)'));
@@ -1769,6 +1786,8 @@ function buildClientData() {
     // Bien-être
     motiv_stress: gv('motiv-stress') || s.motivation?.match(/Gestion stress: ([^|]+)/)?.[1]?.trim() || '',
     motiv_entourage: gv('motiv-entourage') || s.motivation?.match(/Entourage: ([^|]+)/)?.[1]?.trim() || '',
+    motiv_temps: gv('motiv-temps') || s.motivation?.match(/Disponibilité: ([^|]+)/)?.[1]?.trim() || '',
+    motiv_minutes: gv('motiv-minutes') || s.motivation?.match(/Temps par jour: ([^|]+)/)?.[1]?.trim() || '',
   };
 }
 
@@ -4133,6 +4152,15 @@ ${d.axe_autre_precision ? '🔎 Problématique hors spécialités précisée par
 🧘 BIEN-ÊTRE & STRESS
 - Prête à intégrer des pratiques de gestion du stress : ${d.motiv_stress || '— voir prédispositions ci-dessus'}
 - Soutien de l'entourage : ${d.motiv_entourage || '— voir prédispositions ci-dessus'}
+- Disponibilité pour de nouvelles pratiques : ${d.motiv_temps || 'Non précisé'}
+- Temps réel par jour pour les pratiques : ${d.motiv_minutes || 'Non précisé'}
+
+⚠️ RÈGLE — LE PROTOCOLE DOIT ÊTRE SUIVABLE (décision Sabrina, 26/11/2026) : un protocole que la cliente ne suivra pas ne sert à rien. Ce qu'elle a refusé ou ne peut pas faire n'est JAMAIS proposé, même si c'est cliniquement séduisant ; on le remplace par un autre levier ou on le signale à Sabrina comme point à rediscuter.
+a) Mouvement : si sa réponse commence par « Non » ou « Partiellement », ne propose aucun mouvement structuré (ni qi gong, ni yoga, ni sport) et rappelle seulement les gestes du quotidien déjà en place. Si elle commence par « Oui — activité douce », tu peux proposer le mouvement doux : qi gong, yoga doux, étirements, marche en nature, jamais un sport à visée de dépense calorique. Explique toujours POURQUOI (nerf vague, cortisol, circulation, digestion).
+b) Stress : si elle est « Sceptique » ou sans « disponibilité mentale », ne propose ni cohérence cardiaque, ni méditation, ni relaxation guidée : passe par l'alimentation, le sommeil et les compléments. Dans ce cas, ne propose pas non plus de plante qui stimule le cortisol (réglisse, cordyceps), car le soutien du stress qu'exigent les règles ne peut pas être garanti ; signale-le à Sabrina. « Ouverte — avec accompagnement et rappels » : propose UNE seule pratique très simple.
+c) Disponibilité : « Bonne » = jusqu'à 3 changements à la fois ; « modérée » = UN seul changement à la fois, on hiérarchise ; « très peu » = gestes minimalistes uniquement (1 changement, quelques minutes).
+d) Temps par jour : la somme des pratiques proposées (mouvement, respiration, préparations) ne doit jamais dépasser le temps déclaré. Si le temps est « Moins de 10 min », choisis une seule pratique de moins de 10 minutes.
+e) Si une information est « Non précisé », ne suppose pas qu'elle est disponible : propose le minimum et indique à Sabrina de poser la question.
 
 🧪 RÉSULTATS DE BILANS BIOLOGIQUES DÉJÀ RÉALISÉS (dernières valeurs connues, si disponibles) :
 ${d.bilans_biologiques_resultats || '— Aucun résultat de bilan biologique enregistré pour le moment'}

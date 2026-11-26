@@ -914,6 +914,25 @@ function recStop(){ recLaunch('Arrêter l’enregistrement'); recSetState('done'
   </div>
   <div class="g2" style="margin-top:8px;max-width:640px">
     <div>
+      <label class="fl" style="font-size:13px">Disponibilité pour intégrer de nouvelles pratiques</label>
+      <select class="fi" id="motiv-temps">
+        <option>Bonne disponibilité — peut intégrer plusieurs changements</option>
+        <option>Disponibilité modérée — un changement à la fois</option>
+        <option>Très peu de disponibilité — gestes minimalistes uniquement</option>
+      </select>
+    </div>
+    <div>
+      <label class="fl" style="font-size:13px">Temps réel par jour pour les pratiques</label>
+      <select class="fi" id="motiv-minutes">
+        <option>Moins de 10 min par jour</option>
+        <option>10 à 20 min par jour</option>
+        <option>20 à 40 min par jour</option>
+        <option>Plus de 40 min par jour</option>
+      </select>
+    </div>
+  </div>
+  <div class="g2" style="margin-top:8px;max-width:640px">
+    <div>
       <label class="fl" style="font-size:13px">Prête à intégrer du mouvement</label>
       <select class="fi" id="motiv-sport">
         <option>Oui — activité douce (marche, yoga, étirements)</option>
@@ -5198,7 +5217,7 @@ function afficherBandeauDossier(row, historique) {
   prefillSelect('contraintes-alim', snap.contraintes_alim);
   prefillSelect('niveau-sport', snap.niveau_sport);
   if (snap.motivation) {
-    const motivRegexMapPrefill = { 'motiv-alim': 'Alimentation', 'motiv-sport': 'Sport', 'motiv-compl': 'Budget compléments', 'motiv-stress': 'Gestion stress', 'motiv-entourage': 'Entourage' };
+    const motivRegexMapPrefill = { 'motiv-alim': 'Alimentation', 'motiv-sport': 'Sport', 'motiv-compl': 'Budget compléments', 'motiv-temps': 'Disponibilité', 'motiv-minutes': 'Temps par jour', 'motiv-stress': 'Gestion stress', 'motiv-entourage': 'Entourage' };
     Object.entries(motivRegexMapPrefill).forEach(([elId, label]) => {
       const match = snap.motivation.match(new RegExp(label + ': ([^|]+)'));
       const el = document.getElementById(elId);
@@ -7029,8 +7048,8 @@ function collectData() {
   d.contexteVegetarienne = document.getElementById('chip-ctx-vegetarienne')?.classList.contains('on') || false;
   d.contextePasPilule = document.getElementById('chip-ctx-pas-pilule')?.classList.contains('on') || false;
   // AJOUTÉ (20/09/2026, Claude, demande Sabrina) : même logique que côté consultation initiale.
-  const motivRegexIds = ['motiv-alim','motiv-sport','motiv-compl','motiv-stress','motiv-entourage'];
-  const motivRegexLbls = ['Alimentation','Sport','Budget compléments','Gestion stress','Entourage'];
+  const motivRegexIds = ['motiv-alim','motiv-sport','motiv-compl','motiv-temps','motiv-minutes','motiv-stress','motiv-entourage'];
+  const motivRegexLbls = ['Alimentation','Sport','Budget compléments','Disponibilité','Temps par jour','Gestion stress','Entourage'];
   d.motivation = motivRegexIds.map((id,i) => { const el = document.getElementById(id); return el?.value ? `${motivRegexLbls[i]}: ${el.value}` : ''; }).filter(Boolean).join(' | ');
   d.contraintesAlim = document.getElementById('contraintes-alim')?.value || '';
   d.niveauSport = document.getElementById('niveau-sport')?.value || '';
