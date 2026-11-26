@@ -12615,7 +12615,7 @@ function renderPrepVisioSynthese(d) {
   const lignes = Array.isArray(d.lignes) ? d.lignes : [];
   const objectifs = Array.isArray(d.objectifs) && d.objectifs.length && d.objectifs[0] && typeof d.objectifs[0] === 'object' ? d.objectifs : [];
   const notes = Array.isArray(d.a_noter) ? d.a_noter : [];
-  if (!lignes.length && !objectifs.length) {
+  if (!lignes.length) {
     el.innerHTML = d.donnees_insuffisantes
       ? '<div style="opacity:.7">Pas assez de réponses pour un tableau utile.</div>'
       : '<div style="opacity:.85">Ancien format enregistré. Cliquez sur « ↻ Régénérer » pour obtenir le tableau.</div>';
@@ -12624,16 +12624,12 @@ function renderPrepVisioSynthese(d) {
     const rs = d.resume || {};
     const L = (x) => (Array.isArray(x) ? x : []).filter(Boolean);
     const rc = L(rs.a_croiser), rk = L(rs.a_creuser), rq = L(rs.par_ou_commencer);
-    if (rs.en_bref || rc.length || rk.length || rq.length) {
+    let hCroiser = '';
+    if (rs.en_bref || rc.length || rk.length) {
       const bloc = (cls, ico, titre, items) => items.length
         ? '<div class="pvr-col ' + cls + '"><div class="pvr-t"><span class="pvr-ico">' + ico + '</span>' + titre + '</div><ul>' + items.map((i) => '<li>' + esc(i) + '</li>').join('') + '</ul></div>' : '';
-      const ouv = rq.length
-        ? '<div class="pvr-open"><div class="pvr-t"><span class="pvr-ico">\u2192</span>Par où commencer en visio</div><ol>' + rq.map((i) => '<li><span>' + esc(i) + '</span></li>').join('') + '</ol></div>' : '';
-      h += '<div class="pvr">' +
-        '<div class="pvr-top"><span class="pvr-eyebrow">En un coup d\u2019\u0153il</span></div>' +
-        (rs.en_bref ? '<p class="pvr-bref">' + esc(rs.en_bref) + '</p>' : '') +
-        ((rc.length || rk.length) ? '<div class="pvr-cols">' + bloc('pvr-croiser', '\u21c4', '\u00c0 croiser', rc) + bloc('pvr-creuser', '?', '\u00c0 creuser', rk) + '</div>' : '') +
-        ouv + '</div>';
+      if (rs.en_bref) h += '<div class="pvr"><div class="pvr-top"><span class="pvr-eyebrow">En un coup d\u2019\u0153il</span></div><p class="pvr-bref">' + esc(rs.en_bref) + '</p></div>';
+      if (rc.length || rk.length) hCroiser = '<div class="pvr"><div class="pvr-cols">' + bloc('pvr-croiser', '\u21c4', '\u00c0 croiser', rc) + bloc('pvr-creuser', '?', '\u00c0 creuser', rk) + '</div></div>';
     } else if (rs.vue_d_ensemble || (rs.liens || []).length) {
       /* ancien format : rien à afficher, le bouton « Régénérer » est déjà en haut */
     }
@@ -12643,11 +12639,7 @@ function renderPrepVisioSynthese(d) {
         lignes.map((l) => '<div class="pv-c pv-dit">' + esc(l.elle_a_dit) + '</div><div class="pv-c pv-parle">' + esc(l.je_lui_dis) + '</div>' + (avecAcc ? '<div class="pv-c pv-parle">' + (l.je_vous_accompagne ? esc(l.je_vous_accompagne) : '') + '</div>' : '') + '<div class="pv-c pv-moi">' + esc(l.a_investiguer) + '</div>').join('') +
         '</div>';
     }
-    if (objectifs.length) {
-      h += '<div class="pv-big">Récapitulatif de ses objectifs</div><div class="pv-grid pv-2"><div class="pv-h">Elle a dit</div><div class="pv-h">Je lui dis</div>' +
-        objectifs.map((o) => '<div class="pv-c pv-dit">' + esc(o.elle_a_dit) + '</div><div class="pv-c pv-parle">' + esc(o.je_lui_dis) + '</div>').join('') +
-        '</div>' + (window.__visioMsg ? '<div class="pv-big pv-big-s">Son petit mot de fin</div><div class="pv-msg">' + window.__visioMsg + '</div>' : '');
-    }
+    h += hCroiser;
     el.innerHTML = h;
   }
   if (btn) btn.style.display = 'inline-flex';
