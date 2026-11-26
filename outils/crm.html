@@ -1405,16 +1405,18 @@ function heroTimeClass(){
   return 'hero-day';
 }
 
+function rdvTel(r){ return !!r && /Consultation par téléphone/i.test(r.notes||''); } // 26/11/2026 : RDV par téléphone (marqueur posé par la réservation)
+
 function buildDayTimeline(){
   const body = document.getElementById('htl-body');
   const badgeEl = document.getElementById('htl-badge');
   if(!body) return;
   const tdy = today();
   const rdvJour = rdvs.filter(r => r.date === tdy && r.status !== 'annule' && !isRdvPerso(r)).sort((a,b) => (a.time||'').localeCompare(b.time||''));
-  if(badgeEl) badgeEl.textContent = rdvJour.length ? rdvJour.length+' visio'+(rdvJour.length>1?'s':'') : 'Journée libre';
+  if(badgeEl) badgeEl.textContent = rdvJour.length ? rdvJour.length+' consultation'+(rdvJour.length>1?'s':'') : 'Journée libre';
 
   if(!rdvJour.length){
-    body.innerHTML = '<div class="htl-empty">Aucune visio programmée aujourd\'hui.<br>Une belle journée pour avancer sur vos outils.</div>';
+    body.innerHTML = '<div class="htl-empty">Aucune consultation programmée aujourd\'hui.<br>Une belle journée pour avancer sur vos outils.</div>';
     return;
   }
 
@@ -1443,7 +1445,7 @@ function buildDayTimeline(){
     return '<div class="htl-block '+statusCls+'" style="top:'+top+'px;height:'+height+'px" '+(cl?'onclick="openFiche(\''+cl.id+'\')"':'')+'>'+
       '<div class="htl-block-time">'+escH(r.time||'—')+'</div>'+
       '<div class="htl-block-name">'+escH(r.name||'—')+'</div>'+
-      '<div class="htl-block-type">'+escH(r.type==='bilan'?'Consultation initiale':(r.type||r.motif||'Suivi'))+'</div>'+
+      '<div class="htl-block-type">'+escH(r.type==='bilan'?'Consultation initiale':(r.type||r.motif||'Suivi'))+(rdvTel(r)?' · 📞 téléphone'+(r.phone?' '+escH(r.phone):''):'')+'</div>'+
       '</div>';
   }).join('');
 
@@ -1988,6 +1990,7 @@ async function confirmerApercuEnvoi(){
 
 async function sendMailRdv(rdvId, key, tplId, subject, email, name, heure='', date='', motif='', type=''){
   if(!email){ toast('Email introuvable pour ce RDV','err'); return; }
+  { const _r=(typeof rdvs!=='undefined')?rdvs.find(x=>String(x.id)===String(rdvId)):null; if(rdvTel(_r) && [30,31,32,18].includes(Number(tplId))){ toast('Consultation par téléphone : ce modèle contient le lien visio. Les e-mails téléphone partent automatiquement.','warn'); return; } }
   const apiKey = getBrevoKey(); if(!apiKey){ toast('Clé Brevo requise','warn'); return; }
   const btn = document.getElementById('ajd-send-'+rdvId+'-'+key);
   if(btn){ btn.disabled=true; btn.textContent='Envoi…'; }
