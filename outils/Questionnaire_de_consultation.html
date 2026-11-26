@@ -1921,7 +1921,7 @@ function recStop(){ recLaunch('Arrêter l’enregistrement'); recSetState('done'
         <div class="info-boxes">
           <div class="info-box pourquoi">
             <div class="box-lbl"><svg class="picto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0" aria-hidden="true"><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/><line x1="4.9" y1="4.9" x2="7" y2="7"/><line x1="17" y1="17" x2="19.1" y2="19.1"/><line x1="4.9" y1="19.1" x2="7" y2="17"/><line x1="17" y1="7" x2="19.1" y2="4.9"/></svg> Pourquoi je vous demande de préciser votre activité physique</div>
-            <div class="pourquoi-txt">Le type de sport, son intensité, et même le moment où vous le faites, ça agit directement sur votre cortisol, votre glycémie et vos hormones. Ce n'est pas seulement le fait de bouger ou non.</div>
+            <div class="pourquoi-txt">Bouger, c'est le prolongement naturel du stress : le corps se prépare à agir, et le mouvement lui donne enfin une issue. Le muscle sert aussi de réservoir à sucre, ce qui stabilise la glycémie, et un cœur entraîné récupère mieux. Mais le type de sport, son intensité et le moment où vous le faites agissent aussi sur votre cortisol, votre glycémie et vos hormones : trop peu ou trop, le corps le paie. C'est pour ça que je regarde non seulement si vous bougez, mais comment.</div>
           </div>
         </div>
       </div>
@@ -1951,6 +1951,10 @@ function recStop(){ recLaunch('Arrêter l’enregistrement'); recSetState('done'
             <div class="trig-check">
               <div class="trig-top"><div class="tcb">✓</div><div class="trig-q">Faites-vous du sport intense pour "compenser" votre alimentation ou votre stress ?</div></div>
               <div class="trig-hint">Faire du sport intensément pour compenser l'alimentation ou le stress, ça aggrave en réalité le cortisol et ça perturbe l'équilibre hormonal, au lieu de le soulager.</div>
+            </div>
+            <div class="trig-check">
+              <div class="trig-top"><div class="tcb">✓</div><div class="trig-q">Avez-vous des douleurs (articulations, dos, bas-ventre) qui limitent le mouvement ou qui apparaissent à l'effort ?</div></div>
+              <div class="trig-hint">Une douleur qui limite le mouvement change tout : on ne pousse jamais à bouger malgré la douleur, on adapte. Si elle n'est pas expliquée, c'est d'abord un avis médical.</div>
             </div>
           </div>
         </div>
@@ -2063,6 +2067,14 @@ function recStop(){ recLaunch('Arrêter l’enregistrement'); recSetState('done'
           <div class="trig-check">
             <div class="trig-top"><div class="tcb">✓</div><div class="trig-q">Avez-vous le sentiment de n'être jamais « assez » — perfectionnisme ou hyperexigence envers vous-même ?</div></div>
             <div class="trig-hint">L'autocritique en continu active le même axe biologique que le stress extérieur. Le corps ne fait pas vraiment la différence entre une menace extérieure et une pression qu'on se met toute seule.</div>
+          </div>
+          <div class="trig-check">
+            <div class="trig-top"><div class="tcb">✓</div><div class="trig-q">Gardez-vous le plus souvent le stress pour vous, ou le ressassez-vous, plutôt que de le libérer (bouger, parler, pleurer) ?</div></div>
+            <div class="trig-hint">Le stress prépare le corps à agir : le cœur accélère, les muscles se tendent. Quand l'action n'a pas lieu, cette énergie reste enfermée et le corps n'arrive pas à passer en mode récupération. Savoir comment elle se libère, ou pas, me dit par où commencer : mouvement, parole ou respiration.</div>
+          </div>
+          <div class="trig-check">
+            <div class="trig-top"><div class="tcb">✓</div><div class="trig-q">Vivez-vous une situation difficile qui dure depuis longtemps, sans issue visible (travail, couple, proche) ?</div></div>
+            <div class="trig-hint">Un stress sans fin ni issue garde le corps en alerte, ce qui n'a rien à voir avec un coup de stress ponctuel : il finit par s'épuiser. Les pratiques de détente aident, mais elles ne suffisent pas toujours seules.</div>
           </div>
         </div>
       </div>
@@ -15103,7 +15115,7 @@ node('motifs', { m: 'listen', multi: true, s: 'Ce qu\'elle décrit',
     { k: 'alim', l: "Réactions à certains aliments" },
     { k: 'autre', l: "Autre gêne (haleine, selles grasses, aphtes…)" }
   ],
-  next: function () { return 'secu'; } });
+  next: function (a) { return firstBr(a); } });
 
 node('secu', { m: 'ask', multi: true, s: 'Signes de sécurité',
   q: "Avant d'aller plus loin, je vérifie toujours quelques points avec toutes mes clientes : avez-vous remarqué l'un de ces signes ?",
@@ -15120,7 +15132,7 @@ node('secu', { m: 'ask', multi: true, s: 'Signes de sécurité',
     { k: 'anemie', l: "Une anémie connue, une grande pâleur, un essoufflement inhabituel", flag: "Anémie ou pâleur : cause digestive à rechercher par le médecin." },
     { k: 'aucun', l: "Aucun de ces signes", x: true }
   ],
-  next: function (a) { return firstBr(a); } });
+  next: function () { return 'debut'; } });
 
 /* ── Ballonnements / gaz ── */
 node('ball_quand', { m: 'ask', multi: true, br: 'ball', s: 'Moment du gonflement',
@@ -15519,8 +15531,8 @@ node('examens', { m: 'ask', multi: true, s: 'Examens déjà faits',
 /* ───────────── Navigation dans l'arbre ───────────── */
 var BR = { ball: 'ball_quand', haut: 'haut_brulure', douleur: 'douleur_ou', transit: 'transit_selles', alim: 'alim_react', autre: 'autre_precis' };
 function queue(a) { var m = a.motifs; return Array.isArray(m) ? m.filter(function (k) { return BR[k]; }) : []; }
-function firstBr(a) { var q = queue(a); return q.length ? BR[q[0]] : 'debut'; }
-function afterBr(a, key) { var q = queue(a), i = q.indexOf(key), nx = q[i + 1]; return nx ? BR[nx] : 'debut'; }
+function firstBr(a) { var q = queue(a); return q.length ? BR[q[0]] : 'secu'; }
+function afterBr(a, key) { var q = queue(a), i = q.indexOf(key), nx = q[i + 1]; return nx ? BR[nx] : 'secu'; }
 function nextOf(id, a) { var n = N[id], nx = n.next; return typeof nx === 'function' ? nx(a, a[id]) : (nx || null); }
 function walk(a, th) { var p = [], id = (typeof ROOT !== 'undefined' && ROOT[th || S.th]) || 'motifs', g = 0; if (typeof id === 'function') id = id(a); while (id && g++ < 80) { p.push(id); if (a[id] === undefined) break; id = nextOf(id, a); } return p; }
 function chosen(id, a) {
@@ -15621,8 +15633,8 @@ var BRH = { regles: 'h_volume', cycle: 'h_presence', spm: 'h_spm', douleur: 'h_d
 function isH(id) { return String(id).indexOf('h_') === 0; }
 function sousPilule(a) { return has(a, 'h_pilule', 'actuelle') || has(a, 'c_depuis', 'en_cours_moins2') || has(a, 'c_depuis', 'en_cours_plus2') || has(a, 'c_depuis', 'en_cours_ado'); }
 function queueH(a) { var m = Array.isArray(a.h_motifs) ? a.h_motifs.slice() : a.h_motifs; if (Array.isArray(m) && has(a, 'c_motifs', 'bebe') && m.indexOf('grossesse') < 0) m.push('grossesse'); var ordre = Object.keys(BRH); return Array.isArray(m) ? m.filter(function (k) { return BRH[k] && !(k === 'cycle' && sousPilule(a)); }).sort(function (x, y) { return ordre.indexOf(x) - ordre.indexOf(y); }) : []; }
-function firstBrH(a) { var q = queueH(a); return q.length ? BRH[q[0]] : 'h_meds'; }
-function afterBrH(a, key) { var q = queueH(a), i = q.indexOf(key), nx = q[i + 1]; return nx ? BRH[nx] : 'h_meds'; }
+function firstBrH(a) { var q = queueH(a); return q.length ? BRH[q[0]] : 'h_secu'; }
+function afterBrH(a, key) { var q = queueH(a), i = q.indexOf(key), nx = q[i + 1]; return nx ? BRH[nx] : 'h_secu'; }
 
 node('h_motifs', { m: 'listen', multi: true, s: 'Ce qu\'elle décrit',
   q: "Qu'est-ce qui la gêne côté hormones et cycle ?",
@@ -15638,7 +15650,7 @@ node('h_motifs', { m: 'listen', multi: true, s: 'Ce qu\'elle décrit',
     { k: 'grossesse', l: "Projet de grossesse, difficulté à concevoir, fausse couche" },
     { k: 'pilule', l: "Pilule, DIU hormonal ou implant (en cours ou arrêté)" }
   ],
-  next: function () { return 'h_secu'; } });
+  next: function (a) { return a.c_methode !== undefined ? 'h_pilule_detail' : 'h_pilule'; } });
 
 /* ───── CONTRACEPTION ET ARRÊT (24/11/2026) : mêmes questions que la préparation visio ───── */
 node('c_motifs', { m: 'listen', multi: true, s: 'Où elle en est',
@@ -15724,7 +15736,7 @@ node('h_secu', { m: 'ask', multi: true, s: 'Signes de sécurité',
     { k: 'masse', l: "Une boule ou une masse dans le ventre ou dans un sein", flag: "Masse palpée au ventre ou au sein : examen médical avant tout accompagnement." },
     { k: 'aucun', l: "Aucun de ces signes", x: true }
   ],
-  next: function (a) { return a.c_methode !== undefined ? 'h_pilule_detail' : 'h_pilule'; } });
+  next: function () { return 'h_meds'; } });
 
 node('h_pilule', { m: 'ask', br: 'pilule', s: 'Pilule',
   q: "Prenez-vous ou avez-vous pris une pilule, un DIU hormonal ou un implant ?",
@@ -16693,6 +16705,31 @@ node('f_stress', { m: 'ask', multi: true, br: 'stress', s: 'Stress et récupéra
       note: "Burn-out passé ou en cours : ne pas prendre seule en charge un épuisement avancé ; coordonner avec un travail psycho-émotionnel (psychologue, médecin)." },
     { k: 'aucun', l: "Pas de stress marqué", x: true }
   ],
+  next: function (a) { return 'f_decharge'; } });
+
+node('f_decharge', { m: 'ask', multi: true, br: 'stress', s: 'Ce que devient le stress',
+  q: "Quand une tension monte, qu'est-ce qu'elle en fait ?",
+  hint: "Plusieurs réponses possibles. Demandez simplement : « Quand ça monte, qu'est-ce que vous faites de cette tension ? » La réponse dit si on commence par le mouvement, la parole ou la respiration. Si une situation lourde est évoquée, on ne creuse pas l'émotion : on note et on oriente.",
+  why: "Le stress prépare le corps à agir : le cœur accélère, les muscles se tendent, le sucre monte dans le sang. Quand l'action n'a pas lieu (on reste assise, on se retient, on se tait), cette énergie reste enfermée dans le corps, et le système de récupération ne peut pas prendre le relais. Savoir comment elle sort, ou pas, me dit par où commencer : le mouvement, la parole ou la respiration.",
+  o: [
+    { k: 'bouge', l: "Je bouge : marche, sport, ménage, je me défoule", f: "vous évacuez le stress en bougeant",
+      say: "Bouger, c'est exactement ce que le corps attend quand il est en alerte : il avait préparé l'action, vous la lui donnez. C'est l'une des meilleures façons de le libérer." },
+    { k: 'parle', l: "J'en parle à quelqu'un, je pleure, je relâche", f: "vous évacuez le stress en en parlant ou en pleurant",
+      say: "Parler ou pleurer, ce sont des soupapes naturelles. Quand elles existent, le corps retrouve plus facilement le calme." },
+    { k: 'ressasse', l: "Je ressasse, ça tourne en boucle dans ma tête", f: "vous ressassez le stress",
+      say: "Quand le stress reste dans la tête, le corps croit que la menace continue et ne passe pas en mode récupération. C'est pour ça que ça épuise autant.",
+      e: E("stress ressassé, qui tourne en boucle", [['serotonine', 1], ['cort_haut', 1]]) },
+    { k: 'garde', l: "Je garde pour moi, je serre les dents, je continue", f: "vous gardez le stress pour vous",
+      say: "Se retenir, c'est freiner alors que le moteur tourne : la tension reste enfermée dans le corps, souvent dans la nuque, le ventre ou la mâchoire.",
+      e: E("stress gardé pour soi", [['cort_haut', 1]]) },
+    { k: 'ecrans', l: "Je décroche devant un écran ou en grignotant", f: "vous décrochez devant un écran ou en grignotant",
+      say: "C'est une façon de couper un moment, et je le comprends. Mais le corps, lui, n'a pas évacué sa tension : elle est toujours là après." },
+    { k: 'situation', l: "Une situation difficile dure depuis longtemps, sans issue (travail, couple, proche)", f: "vous vivez une situation difficile qui dure sans issue",
+      say: "Quand une situation n'a pas d'issue, le corps reste en alerte sans jamais pouvoir se poser. Ce n'est pas une faiblesse : c'est ce que fait un corps coincé dans une situation qui dure.",
+      e: E("situation difficile durable, sans issue", [['cort_haut', 1], ['cort_bas', 1]]),
+      note: "Situation difficile durable : ne pas explorer les émotions en profondeur. Les pratiques de détente ne remplacent pas un soutien ; orienter vers un psychologue ou le médecin si elle pèse beaucoup." },
+    { k: 'aucun', l: "Rien de particulier", x: true }
+  ],
   next: function (a) { return afterF(a, 'stress'); } });
 
 node('f_humeur', { m: 'ask', multi: true, br: 'humeur', s: 'Humeur, motivation, anxiété',
@@ -17285,6 +17322,8 @@ PONTS.push.apply(PONTS, [
   ['Hypotension, vertiges ou tête qui tourne', function (a) { return has(a, 'b_cortisol', 'tension_basse'); }],
   ['Surrénales / cortisol — Craquages sucrés systématiques en fin d', function (a) { return has(a, 'w_fringales', 'fin_journee') || has(a, 'f_humeur', 'sucre_soir'); }],
   ['Avez-vous connu une période de travail intensif', function (a) { return has(a, 'f_stress', 'long') || has(a, 'f_stress', 'burn'); }],
+  ['Gardez-vous le plus souvent le stress pour vous', function (a) { return hasAny(a, 'f_decharge', ['garde', 'ressasse']); }],
+  ['Vivez-vous une situation difficile qui dure', function (a) { return has(a, 'f_decharge', 'situation'); }],
   ['Avez-vous eu une période de consommation de caféine très élevée', function (a) { return has(a, 'f_terrain', 'cafe'); }],
   ['Irritabilité inhabituelle, plus vite agacée', function (a) { return has(a, 'f_humeur', 'irritable'); }],
   ['Craquages sucrés ou compulsions alimentaires, surtout en fin de journée', function (a) { return has(a, 'f_humeur', 'sucre_soir') || has(a, 'w_fringales', 'fin_journee'); }],
