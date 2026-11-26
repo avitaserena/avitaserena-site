@@ -18001,6 +18001,16 @@ node('v_famille', { m: 'ask', multi: true, s: 'Antécédents familiaux',
       note: "Antécédent familial de Crohn, rectocolite ou maladie cœliaque : demander une recherche de maladie cœliaque par prise de sang avant toute éviction du gluten." },
     { k: 'aucun', l: "Rien de particulier, ou elle ne sait pas", f: "vous n'avez rien de particulier à signaler dans votre famille, ou vous ne savez pas", x: true }
   ],
+  next: function () { return 'v_fratrie'; } });
+
+node('v_fratrie', { m: 'ask', multi: false, s: 'Frères et sœurs',
+  q: "Avez-vous des frères et sœurs ?",
+  hint: "Si oui, notez le nombre, le sexe et l'année de naissance de chacun dans l'onglet 03 : la case Oui/Non de l'onglet se coche toute seule.",
+  why: "Vos frères et sœurs partagent une partie de votre terrain génétique et souvent votre environnement d'enfance : l'alimentation, le microbiote transmis, le mode de vie de la famille. Leurs antécédents prennent tout leur sens quand on sait qui ils sont et leur place dans la fratrie.",
+  o: [
+    { k: 'oui', l: "Oui", f: "vous avez des frères et sœurs", say: "Pouvez-vous me dire combien, et leur année de naissance ? Cela me permet de situer leur âge par rapport au vôtre." },
+    { k: 'non', l: "Non, enfant unique", f: "vous êtes enfant unique", x: true }
+  ],
   next: function () { return 'v_naissance'; } });
 
 node('v_naissance', { m: 'ask', multi: true, s: 'Sa propre naissance',
@@ -18115,10 +18125,9 @@ function genererTour() {
         [].slice.call(card.querySelectorAll('.trig-check, .check-item')).forEach(function (el) {
           var e = el.querySelector('.trig-q') || el.querySelector('.ci-top span'); if (!e) return;
           var lab = e.textContent.replace(/\s+/g, ' ').trim(), n = norm(lab);
-          if (lab.length < 14) { TOUR_ECARTES.push([si + 1, titre, lab, 'constat de la praticienne']); return; }
-          if (TOUR_PRATICIEN.test(n)) { TOUR_ECARTES.push([si + 1, titre, lab, 'constat de la praticienne']); return; }
+          var prat = TOUR_PRATICIEN.test(n);
           if (pk.some(function (k) { return n.indexOf(k) === 0; })) return; /* déjà relié à une réponse de l'entonnoir */
-          items.push(lab);
+          items.push(prat ? { lab: lab, prat: 1 } : { lab: lab });
         });
         if (!items.length) { if (th === 'tourdig') TOUR_CARTES.tourdig.push(card); return; }
         var why = ((card.querySelector('.pourquoi-txt') || {}).textContent || '').replace(/\s+/g, ' ').trim() || "Ces signes m'aident à comprendre ce qui pèse sur votre terrain : je les passe en revue avec vous, sans rien oublier.";
@@ -18126,8 +18135,8 @@ function genererTour() {
         var parts = []; for (var i = 0; i < items.length; i += 7) parts.push(items.slice(i, i + 7));
         parts.forEach(function (grp, pi) {
           var id = pre + si + '_' + ci + '_' + pi, o = grp.map(function (lab, k) {
-            var key = 'i' + (pi * 7 + k), q = lab.replace(/\s*\?\s*$/, '');
-            var op = { k: key, l: lab, f: "vous avez répondu oui à : « " + q + " »" };
+            var key = 'i' + (pi * 7 + k), pr = !!lab.prat; lab = lab.lab; var q = lab.replace(/\s*\?\s*$/, '');
+            var op = { k: key, l: pr ? lab + ' (constat en séance)' : lab, f: "vous avez répondu oui à : « " + q + " »" };
             PONTS.push([lab, new Function('has', 'return function (a) { return has(a, ' + JSON.stringify(id) + ', ' + JSON.stringify(key) + '); }')(has)]);
             return op;
           });
@@ -18322,6 +18331,7 @@ function cartesLiees() {
     if (c) add(c.el.closest('.qcard'), ids);
   });
   Object.keys(SELMAP).forEach(function (id) { var el = document.getElementById(SELMAP[id].sel); if (el) add(el.closest('.qcard'), [id]); });
+  var cf = document.getElementById('fratrie-oui-non'); if (cf) add(cf.closest('.qcard'), ['v_fratrie']);
   var cd = document.getElementById('diagnostics-antecedents-card'); if (cd) add(cd, Object.keys(DIAGMAP));
   var cc = document.getElementById('chirurgies-antecedents-card'); if (cc) add(cc, Object.keys(CHIRMAP));
   var ct = document.getElementById('traitements-liste-render-c'); if (ct) add(ct.closest('.qcard'), Object.keys(TRAITMAP));
@@ -18479,8 +18489,17 @@ function qmap() {
   document.querySelectorAll('.check-item').forEach(function (el) { var q = el.querySelector('.ci-top span'); if (q) QMAP.push({ n: norm(q.textContent), el: el }); });
   return QMAP;
 }
+function pontFratrie() {
+  try {
+    var v = S.a.v_fratrie, ch = [].slice.call(document.querySelectorAll('#fratrie-oui-non .chip'));
+    if (!ch.length || v === undefined || v === '_skip') return;
+    var oui = (Array.isArray(v) ? v[0] : v) === 'oui', btn = ch[oui ? 0 : 1];
+    if (btn && !btn.classList.contains('on') && !ch.some(function (c) { return c.classList.contains('on'); })) toggleFratrieOuiNon(btn, oui);
+  } catch (e) {}
+}
 function appliquerPonts() {
   if (!isConsult()) return;
+  pontFratrie();
   var a = S.a, path = [].concat.apply([], TH_ORDER.map(function (t) { return walk(a, t); })), onPath = {}; path.forEach(function (id) { onPath[id] = 1; });
   var ra = {}; Object.keys(a).forEach(function (k) { if (onPath[k]) ra[k] = a[k]; });
   var voulu = [], touche = false;
