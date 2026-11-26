@@ -13662,10 +13662,12 @@ function renderFloatSuspicions(suggestions, matchIndices) {
     const matchedSet = matchIndices && matchIndices[s] ? matchIndices[s] : new Set();
     const entendus = signesSpec.filter((sg, i) => matchedSet.has(i)).map(sg => sg.label);
     const restants = signesSpec.filter((sg, i) => !matchedSet.has(i)).map(sg => sg.label);
-    const origine = cocheeManuelle ? 'Cochée dans « Spécialités pressenties »' : 'Repérée d\u2019après ses réponses';
+    const preCochee = !!document.querySelector('#specialites-chips .chip[data-spec="' + s + '"][data-auto]');
+    const origine = preCochee ? 'Précochée d\u2019après son questionnaire de préparation' : cocheeManuelle ? 'Cochée dans « Spécialités pressenties »' : 'Repérée d\u2019après ses réponses';
+    const dits = entendus.length ? entendus : ((info && info.why) || []);
     const titre = info ? info.l : r.label;
-    const entendusHtml = entendus.length
-      ? `<div class="fs-k">Ce qu\u2019elle a dit</div><div class="fs-chips">${entendus.slice(0, 5).map(x => `<span class="fs-chip">${x}</span>`).join('')}</div>`
+    const entendusHtml = dits.length
+      ? `<div class="fs-k">Ce qu\u2019elle a dit</div><div class="fs-chips">${dits.slice(0, 5).map(x => `<span class="fs-chip">${x}</span>`).join('')}</div>`
       : `<div class="fs-k">Ce qu\u2019elle a dit</div><div class="fs-none">Pas encore de signe précis dans ses réponses.</div>`;
     const comprisHtml = `<div class="fs-k">Ce que je lui explique</div><div class="fs-q">${info && info.dire ? '«\u00a0' + info.dire + '\u00a0»' : r.pourquoi}</div>`;
     const accHtml = info && info.acc ? `<div class="fs-acc"><b>Comment je peux vous accompagner</b>${info.acc}</div>` : '';
@@ -15738,10 +15740,10 @@ node('c_symptomes', { m: 'ask', multi: true, s: 'Ce qu\'elle remarque',
 
 node('h_secu', { m: 'ask', multi: true, s: 'Signes de sécurité',
   q: "Avant d'aller plus loin, je vérifie toujours quelques points avec toutes mes clientes : avez-vous remarqué l'un de ces signes ?",
-  hint: "Dites-le comme une routine : « Je pose ces questions à toutes mes clientes, c'est systématique. » Si oui, notez-le : on continue, mais l'avis du médecin passe avant l'accompagnement.",
+  hint: "Dites-le comme une routine : « Je pose ces questions à toutes mes clientes, c'est systématique. » Si elle est ménopausée, tout saignement après la ménopause compte aussi. Si oui, notez-le : on continue, mais l'avis du médecin passe avant l'accompagnement.",
   why: "Certains signes (saignements en dehors des règles ou après la ménopause, douleur pelvienne intense, perte de poids inexpliquée, maux de tête avec troubles de la vue) demandent d'abord un examen médical. Je les écarte dès maintenant : un accompagnement ne se construit qu'une fois ces causes exclues.",
   o: [
-    { k: 'hors', say: "Des saignements en dehors des règles, ou après la ménopause, demandent un avis gynécologique avant tout accompagnement.", l: "Des saignements en dehors des règles, ou après la ménopause", flag: "Saignement en dehors des règles ou après la ménopause : avis médical avant tout accompagnement." },
+    { k: 'hors', say: "Des saignements en dehors des règles (entre deux règles, après un rapport, ou après la ménopause si elle est ménopausée) demandent un avis gynécologique avant tout accompagnement.", l: "Des saignements en dehors des règles (entre deux règles, après un rapport)", flag: "Saignement en dehors des règles : avis médical avant tout accompagnement." },
     { k: 'aigue', say: "Une douleur intense ou soudaine au bas du ventre peut être une urgence (kyste, grossesse extra-utérine) : il faut consulter sans attendre.", l: "Une douleur au bas du ventre intense ou soudaine", flag: "Douleur pelvienne intense ou soudaine : avis médical urgent." },
     { k: 'poids', say: "Une perte de poids non voulue est un signal à explorer avec le médecin avant tout.", l: "Une perte de poids sans l'avoir cherchée", flag: "Perte de poids involontaire : bilan médical avant tout accompagnement." },
     { k: 'tete', say: "Des maux de tête inhabituels ou des troubles de la vue, surtout sans règles ou avec un écoulement des seins, peuvent venir d'un excès de prolactine : un bilan médical s'impose.", l: "Des maux de tête inhabituels ou des troubles de la vue (surtout sans règles ou avec un écoulement des seins)", flag: "Maux de tête ou troubles visuels avec absence de règles ou écoulement mammaire : avis médical (prolactine, hypophyse)." },
@@ -17569,7 +17571,7 @@ window.mgChargerVisio = function (snap) {
 /* Spécialités pressenties précochées d'après ses réponses de préparation (une seule fois par ouverture ; elle peut décocher) */
 var SPEC_PISTE = { sibo: 'sibo', sii: 'sii', endo: 'endo', sopk: 'sopk', meno: 'meno', hashi: 'thyro', insulino: 'insulino', surr: 'cort_bas', hyperoestro: 'hyperoestro', progesterone_def: 'progesterone_def', androgene_f: 'androgenes', amenorrhee: 'amenor', contra: 'pilule' };
 window.mgPisteInfo = function (spec) {
-  try { var k = SPEC_PISTE[spec], P = k && PISTES[k]; if (!P) return null; return { l: String(P.l).split(' : ')[0], dire: P.dire || '', acc: ACC[k] || '' }; } catch (e) { return null; }
+  try { var k = SPEC_PISTE[spec], P = k && PISTES[k]; if (!P) return null; var w = []; try { (analyseCroise(S.a).pistes || []).forEach(function (q) { if (q.k === k) w = q.why.slice(0, 5); }); } catch (e2) { /* sans les signes */ } return { l: String(P.l).split(' : ')[0], dire: P.dire || '', acc: ACC[k] || '', why: w }; } catch (e) { return null; }
 };
 var PISTE_SPEC = { sibo: 'sibo', sii: 'sii', endo: 'endo', sopk: 'sopk', meno: 'meno', thyro: 'hashi', cort_bas: 'surr', cort_haut: 'surr', amenor: 'amenorrhee', pilule: 'contra' };
 function mgPreCocher() {
@@ -17711,7 +17713,7 @@ document.addEventListener('click', function (e) {
    avec elle (mgDonnees ne lit que S.a). Une réponse donnée en séance remplace celle de la cliente. */
 var TRAIL_OPEN = false;
 document.addEventListener('toggle', function (e) { if (e.target && e.target.classList && e.target.classList.contains('mg-trail')) TRAIL_OPEN = e.target.open; }, true);
-var CLI = null, LASTTOP = null, TOPNOTE = '', NSP = {}, SNAPM = null;
+var CLI = null, LASTTOP = null, TOPNOTE = '', NSP = {}, SNAPM = null, NOAUTO = {};
 /* Réponses déjà données dans la préparation qui recoupent une question que la préparation ne pose pas : on les rappelle, sans les pré-cocher */
 var DEJA_DIT = { h_impreg: [['h_spm', 'seins', 'Seins tendus avant les règles'], ['h_spm', 'ventre', 'Ventre gonflé, rétention d\'eau avant les règles'], ['h_spm', 'migraines', 'Migraines avant les règles'], ['transit_selles', 'dures', 'Selles dures ou en boulettes']] };
 function dejaDitHtml(id) {
@@ -18031,7 +18033,7 @@ function render() {
   var auto = false, guard = 0;
   while (CLI && !S.edit && guard++ < 60) {
     var an0 = analyse(S.a), c0 = currentId(an0);
-    if (c0 === null || S.a[c0] !== undefined || S.p[c0] !== undefined || CLI[c0] === undefined || (Array.isArray(CLI[c0]) && !CLI[c0].length) || NSP[c0]) break;
+    if (c0 === null || S.a[c0] !== undefined || S.p[c0] !== undefined || CLI[c0] === undefined || (Array.isArray(CLI[c0]) && !CLI[c0].length) || NSP[c0] || NOAUTO[c0]) break;
     S.a[c0] = cliCopy(CLI[c0]); auto = true;
   }
   if (auto) { try { save(); appliquerPonts(); save(); } catch (e) { /* sans conséquence */ } }
@@ -18092,14 +18094,16 @@ function skip(id) { S.a[id] = N[id].multi ? [] : '_skip'; delete S.p[id]; S.edit
 function back() {
   var an = analyse(S.a), ids = an.path.filter(function (id) { return S.a[id] !== undefined; });
   if (!ids.length) return; var last = ids[ids.length - 1];
-  delete S.a[last]; delete S.p[last]; S.edit = null; commit();
+  delete S.a[last]; delete S.p[last]; S.edit = null;
+  NOAUTO[last] = true; /* sinon sa réponse déjà donnée dans le questionnaire serait revalidée aussitôt et on ne reculerait jamais */
+  commit();
 }
 function edit(id) { S.edit = id; S.p[id] = Array.isArray(S.a[id]) ? S.a[id].slice() : undefined; if (S.p[id] === undefined) delete S.p[id]; save(); render(); scrollUp(); }
 function reset() {
   if (!S.rst) { S.rst = true; render(); setTimeout(function () { if (S.rst) { S.rst = false; render(); } }, 4000); return; }
   var tt = S.th;
   Object.keys(S.a).forEach(function (k) { if (tt === 'croise' || thOf(k) === tt) delete S.a[k]; });
-  S.p = {}; S.edit = null; S.soon = null; S.rst = false;
+  S.p = {}; S.edit = null; S.soon = null; S.rst = false; NOAUTO = {};
   commit();
 }
 function scrollUp() {
