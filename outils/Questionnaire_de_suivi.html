@@ -4581,8 +4581,11 @@ function genererSuiviTraitementsDynamique(snap) {
   const empty = document.getElementById('tt-dynamic-empty');
   if (!container) return;
   const raw = (snap && snap.diag_traitements) ? String(snap.diag_traitements).trim() : '';
-  if (!raw) { if (empty) empty.style.display = 'block'; return; }
   const lignes = raw.split('\n').map(l => l.trim()).filter(Boolean);
+  // 26/11/2026 : liste « Traitements » de la consultation (nom, depuis quand, dose, effet, en cours ou arrêté),
+  // reprise ici pour que le suivi reparte de ce qui a déjà été noté, sans le redemander
+  const tr = (snap && snap.traitements_details) ? String(snap.traitements_details).split(' ; ').map(l => l.trim()).filter(Boolean) : [];
+  tr.forEach(l => { const nom = l.split(' — ')[0].split(',')[0].toLowerCase(); if (!lignes.some(x => x.toLowerCase().indexOf(nom) === 0)) lignes.push(l); });
   if (!lignes.length) { if (empty) empty.style.display = 'block'; return; }
   container.innerHTML = lignes.map(ligne => ttItemHtml(ligne, '')).join('');
   if (empty) empty.style.display = 'none';

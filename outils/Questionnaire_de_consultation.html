@@ -3146,6 +3146,15 @@ function recStop(){ recLaunch('Arrêter l’enregistrement'); recSetState('done'
         <input class="fi" type="text" id="trait-search-c" placeholder="Ex : lévothyrox, ibuprofène…" oninput="filtrerTraitementChips_c(this.value)">
         <p class="field-hint" id="trait-search-hint-c" style="margin-top:6px;font-size:13px;color:var(--ardoise)">Filtre les puces ci-dessous en direct et ouvre la sphère correspondante.</p>
       </div>
+      <div style="margin-bottom:16px;padding-bottom:16px;border-bottom:1px dashed var(--taupe)">
+        <label class="fl">Traitements : depuis quand, dose, effet</label>
+        <p class="field-hint" style="margin:4px 0 8px;font-size:13px;color:var(--ardoise)">Les traitements cochés dans le déroulé guidé s'ajoutent ici : complétez depuis quand, la dose et l'effet. Vous pouvez aussi en ajouter à la main.</p>
+        <div id="traitements-liste-render-c" style="display:flex;flex-direction:column;gap:8px"></div>
+        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+          <input class="fi2" type="text" id="trait-manuel-c" placeholder="Ajouter un traitement (nom)" style="flex:1;min-width:200px" onkeydown="if(event.key==='Enter'){event.preventDefault();ajouterTraitementManuel_c();}">
+          <button type="button" class="chip" onclick="ajouterTraitementManuel_c()">Ajouter</button>
+        </div>
+      </div>
       <div id="traitements-spheres-c">
       <div class="acc-box"><div class="acc-hdr" onclick="accT(this)">Thyroïde <span class="chevron">▼</span></div>
         <div class="acc-body">
@@ -9736,7 +9745,68 @@ function toggleFratrieOuiNon(btn, oui) {
 // liste équivalente du suivi : une liste en mémoire, jamais liée à la position DOM, restaurée
 // AVANT toute boucle générique positionnelle (voir restoreSnapshot) pour éviter le bug de
 // décalage déjà rencontré avec enfants/fratrie.
-let chirurgiesListeConsultation = []; // [{ type, moisAnnee, ressenti }]
+let chirurgiesListeConsultation = []; // [{ type, moisAnnee, ressenti, etat, kind? ('examen' pour un examen reporté depuis le déroulé guidé) }]
+/* Traitements pris (26/11/2026) : depuis quand, dose, effet ressenti, en cours ou arrêté. Liste dédiée, alimentée par le déroulé guidé ou à la main. */
+let traitementsListeConsultation = []; // [{ nom, depuis, dose, effet, etat: 'en_cours' | 'arrete' | '' }]
+function esc_tr(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+function renderTraitementsListe_c() {
+  const wrap = document.getElementById('traitements-liste-render-c');
+  if (!wrap) return;
+  if (!traitementsListeConsultation.length) { wrap.innerHTML = '<p style="font-size:15px;color:var(--ardoise);font-style:italic">Aucun traitement détaillé pour l\'instant.</p>'; return; }
+  wrap.innerHTML = traitementsListeConsultation.map((x, i) => `
+    <div style="display:flex;flex-direction:column;gap:8px;padding:10px 14px;border:1px solid var(--taupe);border-radius:14px;background:var(--blanc)">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="flex:1;min-width:160px;font-size:15px;color:var(--ardoise);font-weight:600">${esc_tr(x.nom)}</span>
+        <button type="button" class="chip${x.etat === 'en_cours' ? ' on' : ''}" onclick="setTraitementField_c(${i},'etat','en_cours')">En cours</button>
+        <button type="button" class="chip${x.etat === 'arrete' ? ' on' : ''}" onclick="setTraitementField_c(${i},'etat','arrete')">Arrêté</button>
+        <button type="button" onclick="removeTraitement_c(${i})" style="background:transparent;border:none;cursor:pointer;color:var(--ardoise);font-size:15px;padding:4px 6px" title="Supprimer">✕</button>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <input type="text" class="fi2" placeholder="Depuis quand (ex : mars 2022)" value="${esc_tr(x.depuis)}" oninput="setTraitementField_c(${i},'depuis',this.value,true)" style="flex:1;min-width:170px">
+        <input type="text" class="fi2" placeholder="Dose, fréquence" value="${esc_tr(x.dose)}" oninput="setTraitementField_c(${i},'dose',this.value,true)" style="flex:1;min-width:150px">
+        <input type="text" class="fi2" placeholder="Effet ressenti (efficace, mal toléré…)" value="${esc_tr(x.effet)}" oninput="setTraitementField_c(${i},'effet',this.value,true)" style="flex:2;min-width:200px">
+      </div>
+    </div>`).join('');
+}
+function setTraitementField_c(i, champ, val, sansRendu) {
+  const x = traitementsListeConsultation[i]; if (!x) return;
+  x[champ] = champ === 'etat' ? (x.etat === val ? '' : val) : String(val || '').trim();
+  try { formTouched = true; } catch (e) { /* page sans variable */ }
+  if (!sansRendu) renderTraitementsListe_c();
+}
+function removeTraitement_c(i) {
+  traitementsListeConsultation.splice(i, 1);
+  renderTraitementsListe_c();
+  try { formTouched = true; } catch (e) { /* sans conséquence */ }
+}
+function ajouterTraitementManuel_c() {
+  const el = document.getElementById('trait-manuel-c');
+  const nom = (el && el.value || '').trim(); if (!nom) return;
+  if (traitementsListeConsultation.some(x => x.nom.toLowerCase() === nom.toLowerCase())) { showToast('Déjà ajouté : ' + nom); return; }
+  traitementsListeConsultation.push({ nom, depuis: '', dose: '', effet: '', etat: '' });
+  el.value = '';
+  renderTraitementsListe_c();
+  try { formTouched = true; } catch (e) { /* sans conséquence */ }
+}
+// Fenêtre « en bref » pour un traitement (ouverte depuis le déroulé guidé) : même overlay que les interventions
+function renderTraitementPopup_c(nom) {
+  const x = traitementsListeConsultation.find(y => y.nom === nom); if (!x) return;
+  const i = traitementsListeConsultation.indexOf(x);
+  try { saveDiagPopupState(); currentDiagPopup = null; currentChirPopup = null; } catch (e) { /* sans conséquence */ }
+  document.getElementById('brief-modal-title').textContent = nom;
+  document.getElementById('brief-modal-body').innerHTML = `
+    <label class="fl" style="display:block;margin-top:6px">Depuis quand ?</label>
+    <input class="fi2" type="text" id="trait-pop-depuis" placeholder="ex : mars 2022, ou « depuis 3 mois »" value="${esc_tr(x.depuis)}" oninput="setTraitementField_c(${i},'depuis',this.value,true)">
+    <label class="fl" style="display:block;margin-top:12px">Dose, fréquence</label>
+    <input class="fi2" type="text" placeholder="ex : 1 comprimé le matin" value="${esc_tr(x.dose)}" oninput="setTraitementField_c(${i},'dose',this.value,true)">
+    <label class="fl" style="display:block;margin-top:12px">Effet ressenti</label>
+    <input class="fi2" type="text" placeholder="efficace, mal toléré, sans effet…" value="${esc_tr(x.effet)}" oninput="setTraitementField_c(${i},'effet',this.value,true)">
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button type="button" class="chip${x.etat === 'en_cours' ? ' on' : ''}" data-nom="${esc_tr(nom)}" onclick="setTraitementField_c(${i},'etat','en_cours');renderTraitementPopup_c(this.dataset.nom)">En cours</button>
+      <button type="button" class="chip${x.etat === 'arrete' ? ' on' : ''}" data-nom="${esc_tr(nom)}" onclick="setTraitementField_c(${i},'etat','arrete');renderTraitementPopup_c(this.dataset.nom)">Arrêté</button>
+    </div>`;
+  document.getElementById('brief-overlay').classList.add('open');
+}
 let currentChirPopup = null; // parallèle à currentDiagPopup — les deux popups sont mutuellement exclusifs
 let chirTxState = {}; // { [type]: {values:[date, ressenti]} } — persiste tant que la popup se rouvre/referme
 
@@ -11007,6 +11077,7 @@ function captureSnapshot() {
   // (juste des lignes d'affichage rendues à partir du tableau ci-dessous), donc pas de risque
   // de décalage comme enfants/fratrie ; une simple capture/restauration suffit.
   snap['chirurgies_consultation'] = JSON.stringify(chirurgiesListeConsultation);
+  snap['traitements_consultation'] = JSON.stringify(traitementsListeConsultation);
   return snap;
 }
 
@@ -11072,6 +11143,7 @@ function restoreSnapshot(snap) {
       if (chip) chip.classList.add('on');
     });
   } catch(e) { chirurgiesListeConsultation = []; }
+  try { traitementsListeConsultation = JSON.parse(snap['traitements_consultation'] || '[]'); renderTraitementsListe_c(); } catch(e) { traitementsListeConsultation = []; }
   document.querySelectorAll('input.fi').forEach((el, i) => { const v = snap['input_' + (el.id || i)]; if (v !== undefined) el.value = v; });
   document.querySelectorAll('select.fi').forEach((el, i) => { const v = snap['select_' + (el.id || i)]; if (v) el.value = v; });
   document.querySelectorAll('textarea.fi').forEach((el, i) => { const v = snap['ta_' + (el.id || i)]; if (v !== undefined) el.value = v; });
@@ -11643,11 +11715,15 @@ function collectAllData() {
   // demande de Sabrina : le générateur PHV doit recevoir les suites actives d'une opération
   // exactement comme un antécédent médical actif). Un seul champ "état" (voir CHIR_ETATS)
   // remplace l'ancien couple statut/évolution : "terminée" = résolu, tout le reste = actif.
-  d.chirurgies_actives = chirurgiesListeConsultation.filter(x => x.etat && x.etat !== 'terminee').map(x => {
+  d.chirurgies_actives = chirurgiesListeConsultation.filter(x => x.kind !== 'examen' && x.etat && x.etat !== 'terminee').map(x => {
     const label = (CHIR_ETATS.find(e => e.key === x.etat) || {}).label || x.etat;
     return `${x.type}${x.moisAnnee ? ' (' + x.moisAnnee + ')' : ''} — ${label}`;
   }).join(', ');
-  d.chirurgies_resolues = chirurgiesListeConsultation.filter(x => x.etat === 'terminee').map(x => x.type + (x.moisAnnee ? ' (' + x.moisAnnee + ')' : '')).join(', ');
+  d.chirurgies_resolues = chirurgiesListeConsultation.filter(x => x.kind !== 'examen' && x.etat === 'terminee').map(x => x.type + (x.moisAnnee ? ' (' + x.moisAnnee + ')' : '')).join(', ');
+  // Examens déjà réalisés (26/11/2026) : date et ce qu'ils ont montré, reportés depuis le déroulé guidé ou saisis dans la liste
+  d.examens_realises = chirurgiesListeConsultation.filter(x => x.kind === 'examen').map(x => x.type + (x.moisAnnee ? ' (' + x.moisAnnee + ')' : ' (date non précisée)') + (x.ressenti ? ' — ' + x.ressenti : '')).join(' ; ');
+  // Traitements pris : depuis quand, dose, effet, en cours ou arrêté
+  d.traitements_details = traitementsListeConsultation.map(x => x.nom + (x.etat === 'en_cours' ? ' — en cours' : x.etat === 'arrete' ? ' — arrêté' : '') + (x.depuis ? ', depuis ' + x.depuis : '') + (x.dose ? ', ' + x.dose : '') + (x.effet ? ', effet : ' + x.effet : '')).join(' ; ');
 
   // ── FAILLE CORRIGÉE (12/09/2026, audit approfondi) : les 80 « portes » (Le SPM a-t-il un
   // impact visible ? Non/Un peu/Oui, etc.) ne laissaient aucune trace exploitable — seul le
@@ -16399,6 +16475,67 @@ node('o_situation', { m: 'ask', s: 'Où elle en est dans son parcours',
       say: "Dans votre situation, ce qui compte est votre confort et ce que décide votre équipe. Je ne peux vous accompagner qu'avec elle, et seulement pour vous soulager au quotidien.",
       flag: "Maladie évoluée ou soins palliatifs : accompagnement uniquement en lien et avec l'accord de l'équipe soignante ; pas de programme de santé classique." }
   ],
+  next: function () { return 'o_type'; } });
+
+node('o_type', { m: 'ask', multi: true, s: 'Quel cancer',
+  q: "De quel cancer s'agit-il ?",
+  hint: "Plusieurs réponses possibles. Chaque cancer coché est reporté dans la sphère « Oncologique » des Antécédents : le bouton sous la réponse permet de noter l'année et si c'est toujours actif, sans le redemander plus tard.",
+  why: "Je dois savoir de quel cancer il s'agit, parce que les précautions ne sont pas les mêmes : certains cancers sont sensibles aux hormones, d'autres touchent la digestion ou la thyroïde. C'est ce qui me dit ce que je dois absolument éviter, et à quel point votre équipe doit rester en première ligne.",
+  o: [
+    { k: 'sein', l: "Cancer du sein", f: "il s'agit d'un cancer du sein",
+      say: "Un cancer du sein est souvent sensible aux hormones : pour cette raison, aucune plante ni aucun complément à action hormonale n'est envisageable.",
+      note: "Cancer du sein : possiblement hormono-dépendant ; aucun phytoestrogène, aucune plante ni complément à action hormonale ; renseigner le champ de sécurité cancer." },
+    { k: 'endometre', l: "Cancer de l'endomètre ou de l'utérus", f: "il s'agit d'un cancer de l'endomètre ou de l'utérus",
+      say: "L'endomètre répond aux œstrogènes : tout ce qui agit sur les hormones est donc exclu de mon accompagnement.",
+      note: "Cancer de l'endomètre : hormono-dépendant ; aucun phytoestrogène ni actif hormonal." },
+    { k: 'ovaire', l: "Cancer de l'ovaire", f: "il s'agit d'un cancer de l'ovaire",
+      say: "Après un cancer de l'ovaire, le suivi médical est étroit et la digestion est souvent perturbée : je reste dans le confort, avec l'accord de l'équipe.",
+      note: "Cancer de l'ovaire : prudence sur tout actif hormonal ; troubles digestifs fréquents, l'équipe reste référente." },
+    { k: 'col', l: "Cancer du col de l'utérus", f: "il s'agit d'un cancer du col de l'utérus",
+      say: "Les traitements pelviens (radiothérapie surtout) laissent souvent des séquelles digestives et urinaires, qu'on peut regarder au quotidien, toujours avec l'équipe.",
+      note: "Cancer du col : séquelles des traitements pelviens (digestion, sécheresse) à rapporter à l'équipe." },
+    { k: 'thyroide', l: "Cancer de la thyroïde", f: "il s'agit d'un cancer de la thyroïde",
+      say: "Sans thyroïde, ou avec un traitement de substitution, tout se règle avec l'endocrinologue : je ne touche à rien de ce qui concerne la thyroïde.",
+      note: "Cancer de la thyroïde : traitement et dosage uniquement gérés par l'équipe ; aucun actif thyroïdien (iode, algues, ashwagandha)." },
+    { k: 'colorectal', l: "Cancer colorectal", f: "il s'agit d'un cancer colorectal",
+      say: "Après un cancer colorectal, la digestion peut rester fragile (transit, stomie, absorption) : le diététicien de l'équipe passe avant moi.",
+      note: "Cancer colorectal : transit et absorption souvent modifiés ; renvoyer vers le diététicien ; ne rien interdire." },
+    { k: 'peau', l: "Cancer de la peau (mélanome ou autre)", f: "il s'agit d'un cancer de la peau",
+      say: "Pour la peau, le suivi dermatologique régulier est la priorité : je n'ai rien à ajouter sur ce point.",
+      note: "Cancer de la peau : suivi dermatologique régulier ; protection solaire à rappeler sans excès." },
+    { k: 'poumon', l: "Cancer du poumon", f: "il s'agit d'un cancer du poumon",
+      say: "Avec un cancer du poumon, l'essoufflement et la fatigue pèsent beaucoup : on cherche des gestes de confort, avec l'équipe.",
+      note: "Cancer du poumon : essoufflement et fatigue ; aucun complément ni plante ; équipe référente." },
+    { k: 'lymphome', l: "Lymphome ou leucémie", f: "il s'agit d'un lymphome ou d'une leucémie",
+      say: "Dans les cancers du sang, l'immunité est souvent très fragilisée par les traitements : le moindre signe d'infection doit être signalé à l'équipe sans attendre.",
+      note: "Lymphome ou leucémie : immunité fragilisée ; aucun complément ni plante ; fièvre = appel immédiat de l'équipe." },
+    { k: 'autre', l: "Un autre cancer", f: "il s'agit d'un autre cancer",
+      say: "Je note le type exact avec vous, parce qu'il change les précautions à prendre.",
+      note: "Autre cancer : l'ajouter dans la sphère « Oncologique » (champ « Autre cancer non listé ») avec l'année." }
+  ],
+  next: function () { return 'o_traitements'; } });
+
+node('o_traitements', { m: 'ask', multi: true, s: 'Les traitements reçus',
+  q: "Quels traitements a-t-elle reçus pour ce cancer, ou reçoit-elle encore ?",
+  hint: "Plusieurs réponses possibles. Chaque traitement coché est reporté avec son bouton : notez depuis quand, la dose ou le protocole, et s'il est en cours ou terminé. La chirurgie va dans les interventions des Antécédents.",
+  why: "Chaque traitement laisse sa trace sur le corps : la chimiothérapie sur la digestion, les nerfs et les défenses immunitaires, la radiothérapie sur la peau et les tissus traités, l'hormonothérapie sur les hormones et les articulations. Savoir lesquels vous avez reçus, et à quelles dates, me permet de comprendre vos symptômes, et surtout de ne rien proposer qui les contrarie.",
+  o: [
+    { k: 'chirurgie', l: "Chirurgie (tumorectomie, mastectomie, ablation d'un organe…)", f: "vous avez été opérée de votre cancer",
+      say: "Une chirurgie laisse des suites : cicatrices, fatigue, parfois un lymphœdème. Je note la date pour situer votre récupération." },
+    { k: 'chimio', l: "Chimiothérapie", f: "vous avez reçu ou recevez une chimiothérapie",
+      say: "La chimiothérapie agit sur toutes les cellules qui se renouvellent vite, d'où les effets sur la digestion, la peau, les cheveux et les défenses. Aucun complément ne doit être pris sans l'accord de l'oncologue.",
+      note: "Chimiothérapie : noter protocole, dates des cures et fin ; aucun complément ni plante (RÈGLE N°62)." },
+    { k: 'radio', l: "Radiothérapie", f: "vous avez reçu ou recevez une radiothérapie",
+      say: "La radiothérapie touche la zone traitée : peau, tissus, parfois digestion si elle est proche du ventre. Ses effets peuvent persister des mois.",
+      note: "Radiothérapie : noter la zone et les dates ; peau et tissus à ménager, aucun produit sans avis de l'équipe." },
+    { k: 'immuno', l: "Immunothérapie ou thérapie ciblée", f: "vous avez reçu ou recevez une immunothérapie ou une thérapie ciblée",
+      say: "Ces traitements agissent sur l'immunité ou sur des cibles précises de la tumeur : tout ce qui stimule l'immunité est exclu, par prudence.",
+      note: "Immunothérapie ou thérapie ciblée : aucun immunostimulant ni complément ; effets digestifs, cutanés et thyroïdiens à signaler à l'équipe." },
+    { k: 'hormono', l: "Hormonothérapie (tamoxifène, inhibiteur de l'aromatase…)", f: "vous suivez ou avez suivi une hormonothérapie",
+      say: "L'hormonothérapie dure souvent cinq à dix ans et provoque bouffées de chaleur, sécheresse et douleurs articulaires. Je ne propose rien d'actif sur les hormones.",
+      note: "Hormonothérapie : jamais de phytoestrogène, de plante ni de complément à action hormonale ; noter le médicament et la date de début." },
+    { k: 'aucun', l: "Aucun traitement pour l'instant", x: true }
+  ],
   next: function () { return 'o_equipe'; } });
 
 node('o_equipe', { m: 'ask', multi: true, s: 'Son équipe de soins',
@@ -17698,19 +17835,19 @@ function appliquerPonts() {
     }
   });
   S.ponts = voulu;
-  pontsChir(ra);
+  pontsChir(ra); pontsDiag(ra); pontsTrait(ra); pontsCancer(ra);
   if (touche) { try { if (typeof updateCounter === 'function') updateCounter(); if (typeof refreshFunnel === 'function') refreshFunnel(); } catch (e) { /* non bloquant */ } }
 }
 
 /* ───── Examens cochés dans le déroulé : reportés dans la liste « interventions et examens » des Antécédents (date, résultat, suite), sans reposer la question ───── */
-var CHIRMAP = {"examens": {"gastro": "Avis gastro-entérologique", "coloscopie": "Coloscopie", "gastroscopie": "Gastroscopie", "souffle": "Test respiratoire (SIBO)", "coeliaque": "Prise de sang cœliaque", "calpro": "Calprotectine fécale", "echo": "Échographie du foie et de la vésicule"}, "h_examens": {"pic7": "Progestérone et œstradiol (Pic+7)", "j3": "Bilan hormonal de début de cycle (FSH, LH, œstradiol)", "androgenes": "Testostérone, SHBG, DHEA-S", "prolactine": "Prolactine", "tsh": "TSH seule", "thyroide": "Bilan thyroïdien complet (TSH, T3 libre, T4 libre)", "echo": "Échographie pelvienne"}, "f_examens": {"tsh": "TSH seule", "thyroide": "Bilan thyroïdien complet (TSH, T3 libre, T4 libre)", "ferritine": "Ferritine", "glycemie": "Glycémie, insuline ou HbA1c", "vitd": "Vitamine D et B12", "cortisol": "Cortisol salivaire", "cortisol_sang": "Cortisol sanguin du matin", "androgenes": "Testostérone, SHBG, DHEA-S"}, "z_examens": {"tsh": "TSH seule", "thyroide": "Bilan thyroïdien complet (TSH, T3 libre, T4 libre)", "ferritine": "Ferritine", "glycemie": "Glycémie, insuline ou HbA1c", "vitd": "Vitamine D et B12", "cortisol": "Cortisol salivaire", "cortisol_sang": "Cortisol sanguin du matin", "androgenes": "Testostérone, SHBG, DHEA-S"}, "w_examens": {"tsh": "TSH seule", "thyroide": "Bilan thyroïdien complet (TSH, T3 libre, T4 libre)", "ferritine": "Ferritine", "glycemie": "Glycémie, insuline ou HbA1c", "vitd": "Vitamine D et B12", "cortisol": "Cortisol salivaire", "cortisol_sang": "Cortisol sanguin du matin", "androgenes": "Testostérone, SHBG, DHEA-S"}, "k_examens": {"tsh": "TSH seule", "thyroide": "Bilan thyroïdien complet (TSH, T3 libre, T4 libre)", "ferritine": "Ferritine", "glycemie": "Glycémie, insuline ou HbA1c", "vitd": "Vitamine D et B12", "cortisol": "Cortisol salivaire", "cortisol_sang": "Cortisol sanguin du matin", "androgenes": "Testostérone, SHBG, DHEA-S"}};
+var CHIRMAP = {"examens": {"gastro": "Avis gastro-entérologique", "coloscopie": "Coloscopie", "gastroscopie": "Gastroscopie", "souffle": "Test respiratoire (SIBO)", "coeliaque": "Prise de sang cœliaque", "calpro": "Calprotectine fécale", "echo": "Échographie du foie et de la vésicule"}, "h_examens": {"pic7": "Progestérone et œstradiol (Pic+7)", "j3": "Bilan hormonal de début de cycle (FSH, LH, œstradiol)", "androgenes": "Testostérone, SHBG, DHEA-S", "prolactine": "Prolactine", "tsh": "TSH seule", "thyroide": "Bilan thyroïdien complet (TSH, T3 libre, T4 libre)", "echo": "Échographie pelvienne"}, "f_examens": {"tsh": "TSH seule", "thyroide": "Bilan thyroïdien complet (TSH, T3 libre, T4 libre)", "ferritine": "Ferritine", "glycemie": "Glycémie, insuline ou HbA1c", "vitd": "Vitamine D et B12", "cortisol": "Cortisol salivaire", "cortisol_sang": "Cortisol sanguin du matin", "androgenes": "Testostérone, SHBG, DHEA-S"}, "z_examens": {"tsh": "TSH seule", "thyroide": "Bilan thyroïdien complet (TSH, T3 libre, T4 libre)", "ferritine": "Ferritine", "glycemie": "Glycémie, insuline ou HbA1c", "vitd": "Vitamine D et B12", "cortisol": "Cortisol salivaire", "cortisol_sang": "Cortisol sanguin du matin", "androgenes": "Testostérone, SHBG, DHEA-S"}, "w_examens": {"tsh": "TSH seule", "thyroide": "Bilan thyroïdien complet (TSH, T3 libre, T4 libre)", "ferritine": "Ferritine", "glycemie": "Glycémie, insuline ou HbA1c", "vitd": "Vitamine D et B12", "cortisol": "Cortisol salivaire", "cortisol_sang": "Cortisol sanguin du matin", "androgenes": "Testostérone, SHBG, DHEA-S"}, "k_examens": {"tsh": "TSH seule", "thyroide": "Bilan thyroïdien complet (TSH, T3 libre, T4 libre)", "ferritine": "Ferritine", "glycemie": "Glycémie, insuline ou HbA1c", "vitd": "Vitamine D et B12", "cortisol": "Cortisol salivaire", "cortisol_sang": "Cortisol sanguin du matin", "androgenes": "Testostérone, SHBG, DHEA-S"}, "h_grossesse": {"fausse": "Fausse(s) couche(s) précoce(s)"}, "o_traitements": {"chirurgie": "Chirurgie du cancer"}};
 var CHIRAUTO = {};
 function chirListeOk() { return typeof chirurgiesListeConsultation !== 'undefined' && Array.isArray(chirurgiesListeConsultation); }
 function chirChip(nom) { return [].slice.call(document.querySelectorAll('#chirurgies-antecedents-card .chip[data-chir]')).filter(function (c) { return c.dataset.chir === nom; })[0]; }
 function chirAssure(nom) {
   try {
     if (!chirListeOk()) return false;
-    if (!chirurgiesListeConsultation.some(function (c) { return c.type === nom; })) { chirurgiesListeConsultation.push({ type: nom, moisAnnee: '', ressenti: '', etat: '' }); CHIRAUTO[nom] = true; }
+    if (!chirurgiesListeConsultation.some(function (c) { return c.type === nom; })) { var ent = { type: nom, moisAnnee: '', ressenti: '', etat: '' }; if (!/couche|chirurgie/i.test(nom)) ent.kind = 'examen'; chirurgiesListeConsultation.push(ent); CHIRAUTO[nom] = true; }
     var ch = chirChip(nom); if (ch) ch.classList.add('on');
     return true;
   } catch (e) { return false; }
@@ -17727,6 +17864,78 @@ function pontsChir(ra) {
     }
     if (changed) { if (typeof renderChirurgiesListConsultation === 'function') renderChirurgiesListConsultation(); if (typeof updateCounter === 'function') updateCounter(); }
   } catch (e) { if (window.console) console.warn('[Examens reportés]', e); }
+}
+
+/* ───── Diagnostics connus cochés dans le déroulé : reportés dans la liste des diagnostics des Antécédents (année, actif ou résolu) ───── */
+var DIAGMAP = {"h_impreg": {"fibromes": ["Fibrome ou kyste (connu)", "gyneco"]}, "w_terrain": {"sopk": ["SOPK", "gyneco"], "lipides": ["Hypercholestérolémie", "autre"], "hta": ["Hypertension artérielle", "autre"]}, "h_age": {"arret": ["Ménopause", "gyneco"]}, "o_type": {"sein": ["Cancer du sein", "onco"], "endometre": ["Cancer de l'endomètre / utérus", "onco"], "ovaire": ["Cancer de l'ovaire", "onco"], "col": ["Cancer du col de l'utérus", "onco"], "thyroide": ["Cancer de la thyroïde", "onco"], "colorectal": ["Cancer colorectal", "onco"], "peau": ["Cancer de la peau (mélanome ou autre)", "onco"], "poumon": ["Cancer du poumon", "onco"], "lymphome": ["Lymphome / leucémie", "onco"]}};
+var DIAGAUTO = {};
+function diagListeOk() { return typeof diagnosticsList !== 'undefined' && Array.isArray(diagnosticsList); }
+function diagAssure(nom, sphere) {
+  try {
+    if (!diagListeOk()) return false;
+    if (!diagnosticsList.some(function (d) { return String(d.nom).toLowerCase() === nom.toLowerCase(); })) { diagnosticsList.push({ nom: nom, sphere: sphere || 'autre', statut: null, annee: '', evolution: '' }); DIAGAUTO[nom] = true; }
+    return true;
+  } catch (e) { return false; }
+}
+function pontsDiag(ra) {
+  try {
+    if (!diagListeOk()) return;
+    var want = {}, changed = false;
+    Object.keys(DIAGMAP).forEach(function (id) { (Array.isArray(ra[id]) ? ra[id] : []).forEach(function (k) { var d = DIAGMAP[id][k]; if (d) want[d[0]] = d[1]; }); });
+    Object.keys(want).forEach(function (nm) { if (!diagnosticsList.some(function (d) { return String(d.nom).toLowerCase() === nm.toLowerCase(); })) { diagAssure(nm, want[nm]); changed = true; } });
+    for (var i = diagnosticsList.length - 1; i >= 0; i--) {
+      var d = diagnosticsList[i];
+      if (DIAGAUTO[d.nom] && want[d.nom] === undefined && !d.statut && !d.annee && !d.evolution) { diagnosticsList.splice(i, 1); delete DIAGAUTO[d.nom]; changed = true; }
+    }
+    if (changed) { if (typeof renderDiagnosticsList === 'function') renderDiagnosticsList(); if (typeof syncDiagChipsState === 'function') syncDiagChipsState(); }
+  } catch (e) { if (window.console) console.warn('[Diagnostics reportés]', e); }
+}
+function diagOuvre(nom) {
+  try {
+    var sk = (typeof DIAG_TO_SPEC !== 'undefined') ? DIAG_TO_SPEC[nom.toLowerCase()] : null;
+    if (sk && typeof showBriefPopup === 'function') { showBriefPopup(sk, nom); return; }
+    var dk = (typeof DIAG_DB !== 'undefined') ? Object.keys(DIAG_DB).filter(function (k) { return k.toLowerCase() === nom.toLowerCase(); })[0] : null;
+    if (dk && typeof renderDiagDbPopup === 'function') { renderDiagDbPopup(dk, DIAG_DB[dk]); return; }
+    var w = document.querySelector('.diag-list-render[data-sphere="all"]') || document.querySelector('.diag-list-render');
+    if (w && w.scrollIntoView) w.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  } catch (e) { /* sans conséquence */ }
+}
+
+/* ───── Traitements cochés dans le déroulé : reportés dans la liste « Traitements » (depuis quand, dose, effet) ───── */
+var TRAITMAP = {"traitements": {"antibio": "Antibiotiques (dans l'année)", "ains": "Antidouleurs ou anti-inflammatoires réguliers", "laxatifs": "Laxatifs ou stimulants du transit", "pilule": "Pilule ou traitement hormonal", "ralentisseurs": "Opioïdes, antidépresseurs ou anti-allergiques sédatifs"}, "haut_ipp": {"ipp_long": "Anti-acide (IPP) depuis plus d'un an", "ipp_periodes": "Anti-acide (IPP) par périodes", "antiacide": "Anti-acides occasionnels"}, "h_meds": {"prolactine": "Médicament pouvant élever la prolactine (antidépresseur, neuroleptique, anti-nauséeux…)", "thyroide": "Traitement thyroïdien", "hormonal": "Traitement hormonal (hors pilule)"}, "f_meds": {"betabloq": "Bêtabloquant", "statine": "Statine", "ipp": "Anti-acide (inhibiteur de la pompe à protons)", "benzo": "Somnifère ou anxiolytique (benzodiazépine)", "antidep": "Antidépresseur", "corticoide": "Cortisone (corticoïde) au long cours", "thyroide": "Traitement thyroïdien", "pilule": "Pilule, DIU hormonal, implant ou traitement hormonal"}, "z_meds": {"betabloq": "Bêtabloquant", "statine": "Statine", "ipp": "Anti-acide (inhibiteur de la pompe à protons)", "benzo": "Somnifère ou anxiolytique (benzodiazépine)", "antidep": "Antidépresseur", "corticoide": "Cortisone (corticoïde) au long cours", "thyroide": "Traitement thyroïdien", "pilule": "Pilule, DIU hormonal, implant ou traitement hormonal", "melatonine": "Mélatonine en complément"}, "w_meds": {"betabloq": "Bêtabloquant", "statine": "Statine", "ipp": "Anti-acide (inhibiteur de la pompe à protons)", "benzo": "Somnifère ou anxiolytique (benzodiazépine)", "antidep": "Antidépresseur", "corticoide": "Cortisone (corticoïde) au long cours", "thyroide": "Traitement thyroïdien", "pilule": "Pilule, DIU hormonal, implant ou traitement hormonal"}, "k_meds": {"betabloq": "Bêtabloquant", "statine": "Statine", "ipp": "Anti-acide (inhibiteur de la pompe à protons)", "benzo": "Somnifère ou anxiolytique (benzodiazépine)", "antidep": "Antidépresseur", "corticoide": "Cortisone (corticoïde) au long cours", "thyroide": "Traitement thyroïdien", "pilule": "Pilule, DIU hormonal, implant ou traitement hormonal", "finasteride": "Finastéride ou dutastéride"}, "o_traitements": {"chimio": "Chimiothérapie", "radio": "Radiothérapie", "immuno": "Immunothérapie ou thérapie ciblée", "hormono": "Hormonothérapie (cancer)"}};
+var TRAITAUTO = {};
+function traitOk() { return typeof traitementsListeConsultation !== 'undefined' && Array.isArray(traitementsListeConsultation); }
+function traitAssure(nom) {
+  try {
+    if (!traitOk()) return false;
+    if (!traitementsListeConsultation.some(function (x) { return x.nom === nom; })) { traitementsListeConsultation.push({ nom: nom, depuis: '', dose: '', effet: '', etat: '' }); TRAITAUTO[nom] = true; }
+    return true;
+  } catch (e) { return false; }
+}
+function pontsTrait(ra) {
+  try {
+    if (!traitOk()) return;
+    var want = {}, changed = false;
+    Object.keys(TRAITMAP).forEach(function (id) { (Array.isArray(ra[id]) ? ra[id] : []).forEach(function (k) { var nm = TRAITMAP[id][k]; if (nm) want[nm] = 1; }); });
+    Object.keys(want).forEach(function (nm) { if (!traitementsListeConsultation.some(function (x) { return x.nom === nm; })) { traitAssure(nm); changed = true; } });
+    for (var i = traitementsListeConsultation.length - 1; i >= 0; i--) {
+      var x = traitementsListeConsultation[i];
+      if (TRAITAUTO[x.nom] && !want[x.nom] && !x.depuis && !x.dose && !x.effet && !x.etat) { traitementsListeConsultation.splice(i, 1); delete TRAITAUTO[x.nom]; changed = true; }
+    }
+    if (changed && typeof renderTraitementsListe_c === 'function') renderTraitementsListe_c();
+  } catch (e) { if (window.console) console.warn('[Traitements reportés]', e); }
+}
+/* Parcours cancer : l'étape du parcours renseigne le champ de sécurité cancer (Section sécurité), tant que Sabrina ne l'a pas changé elle-même */
+var CANCERSEL = { bilan: 'Oui — en cours de traitement / suivi', actif: 'Oui — en cours de traitement / suivi', hormono: 'Oui — en cours de traitement / suivi', surveillance: 'Oui — en cours de traitement / suivi', avance: 'Oui — en cours de traitement / suivi', ancien: 'Oui — antécédent' };
+var CANCERAUTO = false;
+function pontsCancer(ra) {
+  try {
+    var el = document.getElementById('secu-cancer'); if (!el) return;
+    if (!el.dataset.mgWatch) { el.dataset.mgWatch = '1'; el.addEventListener('change', function (e) { if (e.isTrusted) CANCERAUTO = false; }); }
+    var want = CANCERSEL[ra.o_situation];
+    if (want) { if ((!el.value || CANCERAUTO) && el.value !== want) { el.value = want; CANCERAUTO = true; el.dispatchEvent(new Event('change', { bubbles: true })); } }
+    else if (CANCERAUTO) { el.value = ''; CANCERAUTO = false; el.dispatchEvent(new Event('change', { bubbles: true })); }
+  } catch (e) { if (window.console) console.warn('[Cancer reporté]', e); }
 }
 /* Un clic de Sabrina sur une case reportée la rend définitivement manuelle */
 document.addEventListener('click', function (e) {
@@ -17947,6 +18156,8 @@ function questionHtml(id) {
   n.o.forEach(function (o, i) {
     h += optHtml(n, o, i, n.multi ? sel.indexOf(o.k) >= 0 : (cur === o.k || (cur === undefined && cl !== undefined && cl === o.k)));
     if (n.multi && o.say && sel.indexOf(o.k) >= 0) h += '<div class="mg-say mg-say-inline"><div class="mg-say-t">' + esc(o.say) + '</div></div>';
+    if (n.multi && sel.indexOf(o.k) >= 0 && TRAITMAP[id] && TRAITMAP[id][o.k]) h += '<div class="mg-chir"><button type="button" class="mg-link" data-mg="trait" data-name="' + esc(TRAITMAP[id][o.k]) + '">Noter depuis quand, la dose et l\'effet →</button><span class="mg-chir-n"> reporté dans Traitements, à ne pas redemander</span></div>';
+    if (n.multi && sel.indexOf(o.k) >= 0 && DIAGMAP[id] && DIAGMAP[id][o.k]) h += '<div class="mg-chir"><button type="button" class="mg-link" data-mg="diag" data-name="' + esc(DIAGMAP[id][o.k][0]) + '" data-sph="' + esc(DIAGMAP[id][o.k][1]) + '">Noter l\'année et si c\'est toujours actif →</button><span class="mg-chir-n"> reporté dans Antécédents, à ne pas redemander</span></div>';
     if (n.multi && sel.indexOf(o.k) >= 0 && CHIRMAP[id] && CHIRMAP[id][o.k]) h += '<div class="mg-chir"><button type="button" class="mg-link" data-mg="chir" data-name="' + esc(CHIRMAP[id][o.k]) + '">Noter la date, ce qu\'il a montré et la suite →</button><span class="mg-chir-n"> reporté dans Antécédents, à ne pas redemander</span></div>';
   });
   h += '</div>';
@@ -18158,6 +18369,8 @@ function onClick(e) {
   else if (act === 'confirmall') confirmAll();
   else if (act === 'edit') edit(b.getAttribute('data-n'));
   else if (act === 'chir') { var cn = b.getAttribute('data-name'); if (cn && chirAssure(cn)) { try { renderChirurgiesListConsultation(); if (typeof updateCounter === 'function') updateCounter(); renderChirPopup(cn); } catch (e2) { /* sans conséquence */ } } }
+  else if (act === 'diag') { var dn = b.getAttribute('data-name'); if (dn && diagAssure(dn, b.getAttribute('data-sph'))) { try { renderDiagnosticsList(); syncDiagChipsState(); diagOuvre(dn); } catch (e3) { /* sans conséquence */ } } }
+  else if (act === 'trait') { var tn = b.getAttribute('data-name'); if (tn && traitAssure(tn)) { try { renderTraitementsListe_c(); renderTraitementPopup_c(tn); } catch (e4) { /* sans conséquence */ } } }
   else if (act === 'back') back();
   else if (act === 'reset') reset();
   else if (act === 'copy') copier();
