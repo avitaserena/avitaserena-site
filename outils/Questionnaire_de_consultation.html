@@ -745,6 +745,7 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 .mg-key{flex-shrink:0;width:26px;height:26px;border-radius:8px;background:var(--grege,#EDE9E1);color:var(--ardoise,#1A1A1A);font-size:15px;font-weight:600;display:flex;align-items:center;justify-content:center}
 .mg-opt.on .mg-key{background:var(--ocre,#B4906A);color:#fff}
 .mg-opt.none{border-style:dashed}
+.mg-opt .mg-ex{display:block;margin-top:3px;font-size:13px;font-weight:400;line-height:1.45;color:var(--gris,#6B6560)}
 .mg-act{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin-top:14px}
 .mg-go{background:linear-gradient(135deg,var(--ocre,#B4906A),var(--terracotta,#A67C52));color:#fff;border:none;border-radius:99px;padding:12px 26px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;box-shadow:0 6px 18px rgba(234,92,140,.28);transition:transform .15s}
 .mg-go:hover{transform:translateY(-1px)}
@@ -15855,12 +15856,12 @@ node('h_absence', { m: 'ask', multi: true, br: 'cycle', s: 'Règles absentes',
 
 node('h_glaire', { m: 'ask', br: 'cycle', s: 'Glaire cervicale',
   q: "Observez-vous votre glaire cervicale (les sécrétions) au fil du cycle ?",
-  hint: "Une seule réponse. Pas besoin de mesurer : demandez-lui si, vers le milieu du cycle, elle a déjà remarqué quelques jours de pertes transparentes qui filent entre les doigts, comme du blanc d'œuf cru (sur la culotte ou en s'essuyant). Avec des serviettes ou des tampons, c'est difficile à voir : « je ne sais pas » est une réponse normale. La séquence attendue : sec, puis humide et filant jusqu'au jour pic, puis à nouveau sec après l'ovulation.",
+  hint: "Une seule réponse. Il s'agit du cycle entier, mais pas des règles elles-mêmes : la glaire s'observe entre deux règles, surtout vers le milieu du cycle (autour de l'ovulation). Pas besoin de mesurer : demandez-lui si, entre deux règles, elle a déjà remarqué quelques jours de pertes transparentes qui filent entre les doigts, comme du blanc d'œuf cru (sur la culotte ou en s'essuyant). Avec des serviettes ou des tampons, c'est difficile à voir : « je ne sais pas » est une réponse normale. La séquence attendue : sec, puis humide et filant jusqu'au jour pic, puis à nouveau sec après l'ovulation.",
   why: "La glaire est le reflet direct de vos œstrogènes : elle devient filante avant l'ovulation, puis s'assèche sous l'effet de la progestérone. La suivre permet de repérer si vous ovulez et combien de temps dure la seconde moitié de votre cycle, sans attendre une prise de sang.",
   o: [
-    { k: 'evolue', l: "Oui : à un moment, des pertes transparentes qui filent comme du blanc d'œuf, puis plus rien", f: "votre glaire devient filante puis redevient sèche",
+    { k: 'evolue', l: "Oui : entre deux règles, quelques jours de pertes transparentes qui filent comme du blanc d'œuf, puis plus rien", f: "votre glaire devient filante puis redevient sèche",
       say: "C'est la séquence attendue : elle montre que les œstrogènes montent, que l'ovulation a lieu, puis que la progestérone prend le relais.", e: [] },
-    { k: 'seche', l: "Non : plutôt sèche, ou toujours pareille tout au long du cycle", f: "votre glaire reste sèche ou ne change pas au long du cycle",
+    { k: 'seche', l: "Non : jamais de blanc d'œuf entre deux règles, plutôt sèche ou toujours pareille", f: "votre glaire reste sèche ou ne change pas au long du cycle",
       say: "Une glaire qui n'évolue pas dit que les œstrogènes montent peu et qu'il n'y a pas d'ovulation franche : sans ce signal, on ne peut pas dire que le cycle est ovulatoire.",
       e: [['dysovulation', 2, "glaire qui n'évolue pas"], ['hypooestro', 2, "glaire rare ou constante"]] },
     { k: 'abondante', l: "Abondante en permanence", f: "votre glaire est abondante en permanence",
@@ -15869,11 +15870,11 @@ node('h_glaire', { m: 'ask', br: 'cycle', s: 'Glaire cervicale',
     { k: 'non', l: "Je ne l'ai jamais remarqué, je ne sais pas", x: true,
       say: "Ce n'est pas un problème : c'est une observation que je vous apprendrai, car elle permet de savoir si vous ovulez sans prise de sang.", e: [] }
   ],
-  next: function () { return 'h_lut'; } });
+  next: function (a) { return hasAny(a, 'h_glaire', ['evolue']) ? 'h_lut' : afterBrH(a, 'cycle'); } });
 
 node('h_lut', { m: 'ask', br: 'cycle', s: 'Seconde moitié du cycle',
   q: "Entre l'ovulation (ou le pic de glaire) et les règles, combien de jours comptez-vous ?",
-  hint: "Une seule réponse. Si elle ne sait pas, ce n'est pas grave : cela se calcule avec le suivi de la glaire.",
+  hint: "Une seule réponse. Cette question n'est posée que si elle repère son ovulation (glaire en blanc d'œuf, tests d'ovulation ou courbe de température) : c'est le seul cas où elle peut compter. Sinon on la saute, et on l'apprendra ensemble.",
   why: "La progestérone se juge sur la durée de la seconde moitié du cycle, de l'ovulation aux règles : 11 à 16 jours est normal. En dessous de 11 jours, la muqueuse de l'utérus n'est pas assez soutenue. La longueur du cycle seule ne suffit pas : l'ovulation n'a pas lieu le même jour chez toutes les femmes ni d'un cycle à l'autre.",
   o: [
     { k: 'court', l: "Moins de 11 jours", f: "la seconde moitié de votre cycle dure moins de 11 jours",
@@ -16103,13 +16104,13 @@ node('h_meds', { m: 'ask', multi: true, s: 'Médicaments',
   hint: "À vérifier dans son traitement actuel. Jamais d'arrêt suggéré : le médecin qui prescrit décide.",
   why: "Certains médicaments peuvent faire monter la prolactine, l'hormone qui freine l'ovulation : certains antidépresseurs, les neuroleptiques, les traitements de la tension, les anti-acides gastriques, les anti-nauséeux, les benzodiazépines et les antiépileptiques. Les connaître évite d'interpréter à tort un dosage de prolactine élevé.",
   o: [
-    { k: 'prolactine', l: "Antidépresseur, neuroleptique, traitement de la tension, anti-acide gastrique, anti-nauséeux, benzodiazépine ou antiépileptique", f: "vous prenez un médicament qui peut élever la prolactine",
+    { k: 'prolactine', ex: "Antidépresseurs (Deroxat, Seroplex, Prozac), neuroleptiques (Risperdal, Abilify), tension (Loxen), anti-acides (Mopral, Inexium), anti-nauséeux (Motilium, Primpéran), benzodiazépines (Xanax, Lexomil, Temesta), antiépileptiques (Dépakine, Tégrétol)", l: "Antidépresseur, neuroleptique, traitement de la tension, anti-acide gastrique, anti-nauséeux, benzodiazépine ou antiépileptique", f: "vous prenez un médicament qui peut élever la prolactine",
       say: "Certains médicaments peuvent faire monter la prolactine, qui freine l'ovulation. On le garde en tête avant d'interpréter un dosage.",
       note: "Médicament susceptible d'élever la prolactine : à noter avant tout dosage de prolactine, sans jamais suggérer d'arrêt.",
       e: [['prolactine', 2, "médicament qui peut élever la prolactine"]] },
-    { k: 'thyroide', say: "Un traitement pour la thyroïde influence le cycle, l'énergie et le poids : on s'appuie sur le dosage du médecin et on n'y touche pas.", l: "Un traitement pour la thyroïde", f: "vous prenez un traitement pour la thyroïde",
+    { k: 'thyroide', ex: "Lévothyrox, Euthyrox, L-Thyroxine, Cynomel, ou un antithyroïdien (Néo-Mercazole)", say: "Un traitement pour la thyroïde influence le cycle, l'énergie et le poids : on s'appuie sur le dosage du médecin et on n'y touche pas.", l: "Un traitement pour la thyroïde", f: "vous prenez un traitement pour la thyroïde",
       note: "Traitement thyroïdien en cours : la thyroïde influence le cycle, à lire avec la section Thyroïde.", e: [] },
-    { k: 'hormonal', say: "Un traitement hormonal autre que la pilule agit directement sur le cycle : on en tient compte avant d'interpréter les symptômes.", l: "Un traitement hormonal (autre que la pilule)", f: "vous prenez un traitement hormonal", e: [] },
+    { k: 'hormonal', ex: "Traitement de la ménopause (Estrogel, Estreva, Utrogestan, Duphaston), Lutényl ou Lutéran, Androcur, Clomid, Decapeptyl. Si elle ne sait pas : demandez-lui la boîte ou l'ordonnance.", say: "Un traitement hormonal autre que la pilule agit directement sur le cycle : on en tient compte avant d'interpréter les symptômes.", l: "Un traitement hormonal (autre que la pilule)", f: "vous prenez un traitement hormonal", e: [] },
     { k: 'aucun', l: "Aucun de ces médicaments", x: true }
   ],
   next: function () { return 'h_expo'; } });
@@ -16306,14 +16307,14 @@ function mkMeds(id, s, next, extra) {
     hint: "Plusieurs réponses possibles. Ne jamais toucher à un traitement : on le signale simplement.",
     why: "Plusieurs médicaments agissent sur les hormones ou sur le sommeil sans qu'on y pense : certains freinent la conversion de la thyroïde, d'autres bloquent la mélatonine ou abaissent le cholestérol dont le cortisol est fait. Les connaître évite de chercher une cause qui n'en est pas une, et de proposer quelque chose qui interagit.",
     o: [
-      { k: 'betabloq', l: "Bêtabloquant", f: "vous prenez un bêtabloquant", say: "Les bêtabloquants freinent la transformation de la thyroïde en sa forme active, et ils bloquent aussi la fabrication de mélatonine. Du coup, ça peut jouer sur la fatigue, le poids et le sommeil.", e: E("bêtabloquant", [['thyro', 1], ['melato', 2]]) },
-      { k: 'statine', l: "Statine (traitement du cholestérol)", f: "vous prenez une statine", say: "Les statines baissent le cholestérol, et le cholestérol, c'est la matière première du cortisol et des hormones sexuelles. Elles abîment aussi le récepteur de la TSH et freinent les mitochondries.", e: E("statine", [['cort_bas', 1], ['thyro', 1], ['mito', 1]]), note: "Statine : peut limiter la synthèse du cortisol et des hormones, et freine les mitochondries (le cours conseille la CoQ10 en parallèle, avec le médecin)." },
-      { k: 'ipp', l: "Anti-acide (inhibiteur de la pompe à protons)", f: "vous prenez un anti-acide au long cours", say: "Quand on baisse l'acidité de l'estomac, on absorbe moins bien le fer, la B12 et le magnésium, et la digestion ralentit.", e: E("anti-acide au long cours", [['mag', 1], ['fer_zinc', 1], ['thyro', 1]]) },
-      { k: 'benzo', l: "Somnifère ou anxiolytique (benzodiazépine)", f: "vous prenez un somnifère ou un anxiolytique", say: "Ces médicaments donnent l'impression de bien dormir, mais ils abîment la structure du sommeil. Du coup, on reste fatiguée le jour. Et on ne les arrête jamais d'un coup.", e: E("benzodiazépine", [['melato', 2]]), note: "Benzodiazépine : altère l'architecture du sommeil et la mémoire ; sevrage lent, jamais brutal, avec le médecin." },
-      { k: 'antidep', l: "Antidépresseur", f: "vous prenez un antidépresseur", say: "Un antidépresseur, on ne l'arrête pas toute seule. Et certains compléments, comme le griffonia ou le 5-HTP, ne se prennent pas avec.", note: "Antidépresseur : sevrage lent et accompagné par le médecin ; ne pas associer griffonia / 5-HTP." },
-      { k: 'corticoide', l: "Cortisone (corticoïde) au long cours", f: "vous prenez de la cortisone", say: "La cortisone retient le sodium, donc ça fait gonfler, et elle met les surrénales au repos : elles fabriquent moins de cortisol.", e: E("corticoïdes au long cours", [['cort_bas', 3]]), flag: "Corticothérapie au long cours : les surrénales sont freinées ; toute démarche à coordonner avec le médecin prescripteur." },
-      { k: 'thyroide', l: "Traitement de la thyroïde (Lévothyrox ou autre)", f: "vous prenez un traitement de la thyroïde", say: "Je ne touche jamais à ce traitement : mon travail est d'optimiser ce qui l'entoure (conversion, carences, stress), en lien avec votre médecin.", e: E("traitement thyroïdien", [['thyro', 2]]), note: "Traitement thyroïdien : ne pas y toucher ; coordination avec le médecin prescripteur. Fatigue persistante sous traitement : regarder la conversion T4 vers T3 plutôt que la dose." },
-      { k: 'pilule', l: "Pilule, DIU hormonal, implant ou traitement hormonal", f: "vous prenez un traitement hormonal", say: "Les œstrogènes de la pilule font monter la protéine qui transporte la thyroïde, et ils peuvent gêner la fabrication de sérotonine et de mélatonine.", e: E("contraception ou traitement hormonal en cours", [['pilule', 2], ['thyro', 1]]) }
+      { k: 'betabloq', ex: "Propranolol (Avlocardyl), bisoprolol (Cardensiel), aténolol, nébivolol (Temerit)", l: "Bêtabloquant", f: "vous prenez un bêtabloquant", say: "Les bêtabloquants freinent la transformation de la thyroïde en sa forme active, et ils bloquent aussi la fabrication de mélatonine. Du coup, ça peut jouer sur la fatigue, le poids et le sommeil.", e: E("bêtabloquant", [['thyro', 1], ['melato', 2]]) },
+      { k: 'statine', ex: "Atorvastatine (Tahor), rosuvastatine (Crestor), simvastatine, pravastatine", l: "Statine (traitement du cholestérol)", f: "vous prenez une statine", say: "Les statines baissent le cholestérol, et le cholestérol, c'est la matière première du cortisol et des hormones sexuelles. Elles abîment aussi le récepteur de la TSH et freinent les mitochondries.", e: E("statine", [['cort_bas', 1], ['thyro', 1], ['mito', 1]]), note: "Statine : peut limiter la synthèse du cortisol et des hormones, et freine les mitochondries (le cours conseille la CoQ10 en parallèle, avec le médecin)." },
+      { k: 'ipp', ex: "Oméprazole (Mopral), ésoméprazole (Inexium), pantoprazole (Eupantol, Inipomp), lansoprazole (Ogast)", l: "Anti-acide (inhibiteur de la pompe à protons)", f: "vous prenez un anti-acide au long cours", say: "Quand on baisse l'acidité de l'estomac, on absorbe moins bien le fer, la B12 et le magnésium, et la digestion ralentit.", e: E("anti-acide au long cours", [['mag', 1], ['fer_zinc', 1], ['thyro', 1]]) },
+      { k: 'benzo', ex: "Alprazolam (Xanax), bromazépam (Lexomil), lorazépam (Temesta), zolpidem (Stilnox), zopiclone (Imovane)", l: "Somnifère ou anxiolytique (benzodiazépine)", f: "vous prenez un somnifère ou un anxiolytique", say: "Ces médicaments donnent l'impression de bien dormir, mais ils abîment la structure du sommeil. Du coup, on reste fatiguée le jour. Et on ne les arrête jamais d'un coup.", e: E("benzodiazépine", [['melato', 2]]), note: "Benzodiazépine : altère l'architecture du sommeil et la mémoire ; sevrage lent, jamais brutal, avec le médecin." },
+      { k: 'antidep', ex: "Sertraline (Zoloft), escitalopram (Seroplex), fluoxétine (Prozac), paroxétine (Deroxat), venlafaxine (Effexor), amitriptyline (Laroxyl)", l: "Antidépresseur", f: "vous prenez un antidépresseur", say: "Un antidépresseur, on ne l'arrête pas toute seule. Et certains compléments, comme le griffonia ou le 5-HTP, ne se prennent pas avec.", note: "Antidépresseur : sevrage lent et accompagné par le médecin ; ne pas associer griffonia / 5-HTP." },
+      { k: 'corticoide', ex: "Prednisone (Cortancyl), prednisolone (Solupred), hydrocortisone, bétaméthasone (Célestène)", l: "Cortisone (corticoïde) au long cours", f: "vous prenez de la cortisone", say: "La cortisone retient le sodium, donc ça fait gonfler, et elle met les surrénales au repos : elles fabriquent moins de cortisol.", e: E("corticoïdes au long cours", [['cort_bas', 3]]), flag: "Corticothérapie au long cours : les surrénales sont freinées ; toute démarche à coordonner avec le médecin prescripteur." },
+      { k: 'thyroide', ex: "Lévothyrox, Euthyrox, L-Thyroxine, Cynomel", l: "Traitement de la thyroïde (Lévothyrox ou autre)", f: "vous prenez un traitement de la thyroïde", say: "Je ne touche jamais à ce traitement : mon travail est d'optimiser ce qui l'entoure (conversion, carences, stress), en lien avec votre médecin.", e: E("traitement thyroïdien", [['thyro', 2]]), note: "Traitement thyroïdien : ne pas y toucher ; coordination avec le médecin prescripteur. Fatigue persistante sous traitement : regarder la conversion T4 vers T3 plutôt que la dose." },
+      { k: 'pilule', ex: "Pilule, patch (Evra), anneau (Nuvaring), stérilet hormonal (Mirena), implant (Nexplanon), traitement de la ménopause", l: "Pilule, DIU hormonal, implant ou traitement hormonal", f: "vous prenez un traitement hormonal", say: "Les œstrogènes de la pilule font monter la protéine qui transporte la thyroïde, et ils peuvent gêner la fabrication de sérotonine et de mélatonine.", e: E("contraception ou traitement hormonal en cours", [['pilule', 2], ['thyro', 1]]) }
     ].concat(extra || []).concat([{ k: 'aucun', l: "Aucun", x: true }]),
     next: function () { return next; } });
 }
@@ -17907,7 +17908,7 @@ function lastSay(an, a) {
 }
 function optHtml(n, o, i, sel) {
   return '<button type="button" class="mg-opt' + (sel ? ' on' : '') + (o.x ? ' none' : '') + '" data-mg="pick" data-n="' + n.id + '" data-k="' + o.k + '" aria-pressed="' + (sel ? 'true' : 'false') + '">' +
-    '<span class="mg-key">' + (i < 9 ? i + 1 : '·') + '</span><span>' + esc(o.l) + '</span></button>';
+    '<span class="mg-key">' + (i < 9 ? i + 1 : '·') + '</span><span>' + esc(o.l) + (o.ex ? '<small class="mg-ex">' + esc(o.ex) + '</small>' : '') + '</span></button>';
 }
 function questionHtml(id) {
   var n = N[id], cur = S.a[id], pend = S.p[id], cl = cliVal(id);
