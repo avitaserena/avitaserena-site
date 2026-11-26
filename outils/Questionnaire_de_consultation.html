@@ -745,6 +745,9 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 .mg-key{flex-shrink:0;width:26px;height:26px;border-radius:8px;background:var(--grege,#EDE9E1);color:var(--ardoise,#1A1A1A);font-size:15px;font-weight:600;display:flex;align-items:center;justify-content:center}
 .mg-opt.on .mg-key{background:var(--ocre,#B4906A);color:#fff}
 .mg-opt.none{border-style:dashed}
+.mg-chir{margin:-2px 0 10px 4px;font-size:14px}
+.mg-chir .mg-link{font-size:14px}
+.mg-chir-n{color:var(--gris,#6B6560)}
 .mg-opt .mg-ex{display:block;margin-top:3px;font-size:13px;font-weight:400;line-height:1.45;color:var(--gris,#6B6560)}
 .mg-act{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin-top:14px}
 .mg-go{background:linear-gradient(135deg,var(--ocre,#B4906A),var(--terracotta,#A67C52));color:#fff;border:none;border-radius:99px;padding:12px 26px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;box-shadow:0 6px 18px rgba(234,92,140,.28);transition:transform .15s}
@@ -9782,7 +9785,7 @@ function renderChirPopup(nom) {
   // Lit depuis chirurgiesListeConsultation (source de vérité, y compris pour un antécédent
   // importé/restauré) plutôt que chirTxState, qui ne sert que de brouillon pendant l'édition.
   const entry = chirurgiesListeConsultation.find(c => c.type === nom);
-  const estDepistage = /^(échographie pelvienne|irm pelvienne|test salivaire|cœlioscopie diagnostique)/i.test(nom);
+  const estDepistage = /^(échographie|irm|test |cœlioscopie diagnostique|coloscopie|gastroscopie|avis |prise de sang|calprotectine|progestérone|bilan|testostérone|prolactine|thyroïde|tsh|ferritine|glycémie|vitamine|cortisol)/i.test(nom);
   const champLabel = estDepistage ? 'Résultat / ce que l\'examen a révélé' : 'Effets ressentis';
   const champPlaceholder = estDepistage ? "ex : confirme endométriose stade III, lésions ovaires + ligaments utéro-sacrés / RAS, rien de visible..." : "ex : bien tolérée, amélioration nette / effets secondaires, peu efficace...";
   document.getElementById('brief-modal-body').innerHTML =
@@ -16159,6 +16162,7 @@ node('h_examens', { m: 'ask', multi: true, s: 'Examens déjà faits',
     { k: 'j3', say: "Le bilan du début de cycle montre le stock de départ des ovaires et le dialogue entre le cerveau et les ovaires.", l: "Bilan hormonal du début de cycle (FSH, LH, œstradiol)" },
     { k: 'androgenes', say: "Testostérone, SHBG et DHEA-S mesurent l'activité des androgènes : ils confirment un excès qui expliquerait acné ou chute de cheveux.", l: "Testostérone, SHBG, sulfate de DHEA" },
     { k: 'prolactine', say: "Une prolactine élevée freine l'ovulation : c'est une cause fréquente de cycles absents.", l: "Prolactine" },
+    { k: 'tsh', say: "La TSH seule ne voit que le signal envoyé par le cerveau à la thyroïde : elle peut être normale alors que la thyroïde travaille mal.", l: "Thyroïde : TSH seule", f: "vous avez fait doser la TSH seule", note: "TSH seule déjà faite : ne suffit pas à écarter un ralentissement fonctionnel (T3 libre, T3 reverse à lire avec la clinique)." },
     { k: 'thyroide', say: "La thyroïde règle le rythme de tout le corps, cycle compris : TSH, T3 libre et T4 libre donnent la photo complète.", l: "Thyroïde (TSH, T3 libre, T4 libre)" },
     { k: 'echo', say: "L'échographie pelvienne regarde l'utérus et les ovaires : elle cherche kystes, fibromes ou aspect polykystique.", l: "Échographie pelvienne" },
     { k: 'aucun', l: "Aucun examen", x: true }
@@ -17694,7 +17698,35 @@ function appliquerPonts() {
     }
   });
   S.ponts = voulu;
+  pontsChir(ra);
   if (touche) { try { if (typeof updateCounter === 'function') updateCounter(); if (typeof refreshFunnel === 'function') refreshFunnel(); } catch (e) { /* non bloquant */ } }
+}
+
+/* ───── Examens cochés dans le déroulé : reportés dans la liste « interventions et examens » des Antécédents (date, résultat, suite), sans reposer la question ───── */
+var CHIRMAP = {"examens": {"gastro": "Avis gastro-entérologique", "coloscopie": "Coloscopie", "gastroscopie": "Gastroscopie", "souffle": "Test respiratoire (SIBO)", "coeliaque": "Prise de sang cœliaque", "calpro": "Calprotectine fécale", "echo": "Échographie du foie et de la vésicule"}, "h_examens": {"pic7": "Progestérone et œstradiol (Pic+7)", "j3": "Bilan hormonal de début de cycle (FSH, LH, œstradiol)", "androgenes": "Testostérone, SHBG, DHEA-S", "prolactine": "Prolactine", "tsh": "TSH seule", "thyroide": "Bilan thyroïdien complet (TSH, T3 libre, T4 libre)", "echo": "Échographie pelvienne"}, "f_examens": {"tsh": "TSH seule", "thyroide": "Bilan thyroïdien complet (TSH, T3 libre, T4 libre)", "ferritine": "Ferritine", "glycemie": "Glycémie, insuline ou HbA1c", "vitd": "Vitamine D et B12", "cortisol": "Cortisol salivaire", "cortisol_sang": "Cortisol sanguin du matin", "androgenes": "Testostérone, SHBG, DHEA-S"}, "z_examens": {"tsh": "TSH seule", "thyroide": "Bilan thyroïdien complet (TSH, T3 libre, T4 libre)", "ferritine": "Ferritine", "glycemie": "Glycémie, insuline ou HbA1c", "vitd": "Vitamine D et B12", "cortisol": "Cortisol salivaire", "cortisol_sang": "Cortisol sanguin du matin", "androgenes": "Testostérone, SHBG, DHEA-S"}, "w_examens": {"tsh": "TSH seule", "thyroide": "Bilan thyroïdien complet (TSH, T3 libre, T4 libre)", "ferritine": "Ferritine", "glycemie": "Glycémie, insuline ou HbA1c", "vitd": "Vitamine D et B12", "cortisol": "Cortisol salivaire", "cortisol_sang": "Cortisol sanguin du matin", "androgenes": "Testostérone, SHBG, DHEA-S"}, "k_examens": {"tsh": "TSH seule", "thyroide": "Bilan thyroïdien complet (TSH, T3 libre, T4 libre)", "ferritine": "Ferritine", "glycemie": "Glycémie, insuline ou HbA1c", "vitd": "Vitamine D et B12", "cortisol": "Cortisol salivaire", "cortisol_sang": "Cortisol sanguin du matin", "androgenes": "Testostérone, SHBG, DHEA-S"}};
+var CHIRAUTO = {};
+function chirListeOk() { return typeof chirurgiesListeConsultation !== 'undefined' && Array.isArray(chirurgiesListeConsultation); }
+function chirChip(nom) { return [].slice.call(document.querySelectorAll('#chirurgies-antecedents-card .chip[data-chir]')).filter(function (c) { return c.dataset.chir === nom; })[0]; }
+function chirAssure(nom) {
+  try {
+    if (!chirListeOk()) return false;
+    if (!chirurgiesListeConsultation.some(function (c) { return c.type === nom; })) { chirurgiesListeConsultation.push({ type: nom, moisAnnee: '', ressenti: '', etat: '' }); CHIRAUTO[nom] = true; }
+    var ch = chirChip(nom); if (ch) ch.classList.add('on');
+    return true;
+  } catch (e) { return false; }
+}
+function pontsChir(ra) {
+  try {
+    if (!chirListeOk()) return;
+    var want = {}, changed = false;
+    Object.keys(CHIRMAP).forEach(function (id) { (Array.isArray(ra[id]) ? ra[id] : []).forEach(function (k) { var nm = CHIRMAP[id][k]; if (nm) want[nm] = 1; }); });
+    Object.keys(want).forEach(function (nm) { if (!chirurgiesListeConsultation.some(function (c) { return c.type === nm; })) { chirAssure(nm); changed = true; } });
+    for (var i = chirurgiesListeConsultation.length - 1; i >= 0; i--) {
+      var c = chirurgiesListeConsultation[i];
+      if (CHIRAUTO[c.type] && !want[c.type] && !c.moisAnnee && !c.ressenti && !c.etat) { chirurgiesListeConsultation.splice(i, 1); delete CHIRAUTO[c.type]; var ch = chirChip(c.type); if (ch) ch.classList.remove('on'); changed = true; }
+    }
+    if (changed) { if (typeof renderChirurgiesListConsultation === 'function') renderChirurgiesListConsultation(); if (typeof updateCounter === 'function') updateCounter(); }
+  } catch (e) { if (window.console) console.warn('[Examens reportés]', e); }
 }
 /* Un clic de Sabrina sur une case reportée la rend définitivement manuelle */
 document.addEventListener('click', function (e) {
@@ -17915,6 +17947,7 @@ function questionHtml(id) {
   n.o.forEach(function (o, i) {
     h += optHtml(n, o, i, n.multi ? sel.indexOf(o.k) >= 0 : (cur === o.k || (cur === undefined && cl !== undefined && cl === o.k)));
     if (n.multi && o.say && sel.indexOf(o.k) >= 0) h += '<div class="mg-say mg-say-inline"><div class="mg-say-t">' + esc(o.say) + '</div></div>';
+    if (n.multi && sel.indexOf(o.k) >= 0 && CHIRMAP[id] && CHIRMAP[id][o.k]) h += '<div class="mg-chir"><button type="button" class="mg-link" data-mg="chir" data-name="' + esc(CHIRMAP[id][o.k]) + '">Noter la date, ce qu\'il a montré et la suite →</button><span class="mg-chir-n"> reporté dans Antécédents, à ne pas redemander</span></div>';
   });
   h += '</div>';
   h += '<div class="mg-act">';
@@ -18124,6 +18157,7 @@ function onClick(e) {
   else if (act === 'confirm') confirmCli(b.getAttribute('data-n'));
   else if (act === 'confirmall') confirmAll();
   else if (act === 'edit') edit(b.getAttribute('data-n'));
+  else if (act === 'chir') { var cn = b.getAttribute('data-name'); if (cn && chirAssure(cn)) { try { renderChirurgiesListConsultation(); if (typeof updateCounter === 'function') updateCounter(); renderChirPopup(cn); } catch (e2) { /* sans conséquence */ } } }
   else if (act === 'back') back();
   else if (act === 'reset') reset();
   else if (act === 'copy') copier();
