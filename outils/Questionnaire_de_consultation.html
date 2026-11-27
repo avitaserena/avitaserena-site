@@ -19226,6 +19226,8 @@ PONTS.push.apply(PONTS, [
 CHIRMAP.v_accouch = {"cesar": "Césarienne"};
 CHIRMAP.v_chir = {"appendice": "Appendicectomie", "vesicule": "Cholécystectomie (ablation vésicule biliaire)", "cesarienne": "Césarienne", "thyroide": "Thyroïdectomie", "orl": "Amygdalectomie", "sage": "Extraction de dents de sagesse"};
 TRAITMAP.v_traitements = {"pilule": "Pilule, DIU hormonal, implant ou traitement hormonal", "thyroide": "Traitement thyroïdien", "antidep": "Antidépresseur", "benzo": "Somnifère ou anxiolytique (benzodiazépine)", "ipp": "Anti-acide (inhibiteur de la pompe à protons)", "cortico": "Cortisone (corticoïde) au long cours", "anticoag": "Anticoagulant ou fluidifiant du sang", "cardio": "Traitement pour la tension ou le cholestérol", "diabete": "Traitement du diabète", "ains": "Antidouleurs ou anti-inflammatoires réguliers", "antibio": "Antibiotiques (dans l'année)", "complements": "Compléments alimentaires, plantes ou huiles essentielles"};
+TRAITMAP.i_meds = {"betabloq": "Bêtabloquant", "statine": "Statine", "ipp": "Anti-acide (inhibiteur de la pompe à protons)", "benzo": "Somnifère ou anxiolytique (benzodiazépine)", "antidep": "Antidépresseur", "corticoide": "Cortisone (corticoïde) au long cours", "thyroide": "Traitement thyroïdien", "pilule": "Pilule, DIU hormonal, implant ou traitement hormonal", "antibio": "Antibiotiques (dans l'année)", "antihist": "Antihistaminique (anti-allergique)", "immunosup": "Immunosuppresseur ou biothérapie"};
+TRAITMAP.d_meds = {"betabloq": "Bêtabloquant", "statine": "Statine", "ipp": "Anti-acide (inhibiteur de la pompe à protons)", "benzo": "Somnifère ou anxiolytique (benzodiazépine)", "antidep": "Antidépresseur", "corticoide": "Cortisone (corticoïde) au long cours", "thyroide": "Traitement thyroïdien", "pilule": "Pilule, DIU hormonal, implant ou traitement hormonal", "antalgiques": "Antidouleurs ou anti-inflammatoires réguliers", "ains": "Antidouleurs ou anti-inflammatoires réguliers", "fond_migraine": "Traitement de fond de la migraine"};
 var TRAITAUTO = {};
 function traitOk() { return typeof traitementsListeConsultation !== 'undefined' && Array.isArray(traitementsListeConsultation); }
 function traitAssure(nom) {
@@ -19239,7 +19241,8 @@ function pontsTrait(ra) {
   try {
     if (!traitOk()) return;
     var want = {}, changed = false;
-    Object.keys(TRAITMAP).forEach(function (id) { (Array.isArray(ra[id]) ? ra[id] : []).forEach(function (k) { var nm = TRAITMAP[id][k]; if (nm) want[nm] = 1; }); });
+    Object.keys(TRAITMAP).forEach(function (id) { (ra[id] === undefined ? [] : [].concat(ra[id])).forEach(function (k) { var nm = TRAITMAP[id][k]; if (nm) want[nm] = 1; }); });
+    if (want["Anti-acide (IPP) depuis plus d'un an"] || want['Anti-acide (IPP) par périodes']) delete want['Anti-acide (inhibiteur de la pompe à protons)']; /* une seule ligne anti-acide */
     Object.keys(want).forEach(function (nm) { if (!traitementsListeConsultation.some(function (x) { return x.nom === nm; })) { traitAssure(nm); changed = true; } });
     for (var i = traitementsListeConsultation.length - 1; i >= 0; i--) {
       var x = traitementsListeConsultation[i];
@@ -19293,7 +19296,7 @@ var CHIPTRAIT = [
   ['cons-secu-traitements-group', 'ISRS', { v_traitements: ['antidep'], f_meds: ['antidep'], z_meds: ['antidep'], w_meds: ['antidep'], k_meds: ['antidep'], i_meds: ['antidep'], d_meds: ['antidep'] }],
   ['cons-secu-traitements-group', 'Pilule ou THM', { v_traitements: ['pilule'], f_meds: ['pilule'], z_meds: ['pilule'], w_meds: ['pilule'], k_meds: ['pilule'], i_meds: ['pilule'], d_meds: ['pilule'], h_meds: ['hormonal'] }],
   ['cons-secu-traitements-group', 'Lévothyrox', { v_traitements: ['thyroide'], f_meds: ['thyroide'], z_meds: ['thyroide'], w_meds: ['thyroide'], k_meds: ['thyroide'], i_meds: ['thyroide'], d_meds: ['thyroide'], h_meds: ['thyroide'] }],
-  ['cons-secu-traitements-group', 'IPP', { v_traitements: ['ipp'], f_meds: ['ipp'], z_meds: ['ipp'], w_meds: ['ipp'], k_meds: ['ipp'], i_meds: ['ipp'], d_meds: ['ipp'] }],
+  ['cons-secu-traitements-group', 'IPP', { haut_ipp: ['ipp_long', 'ipp_periodes'], v_traitements: ['ipp'], f_meds: ['ipp'], z_meds: ['ipp'], w_meds: ['ipp'], k_meds: ['ipp'], i_meds: ['ipp'], d_meds: ['ipp'] }],
   /* « Aucun » : un groupe jamais touché est traité comme « à vérifier » par le générateur (aromathérapie exclue par prudence) */
   ['cons-secu-traitements-group', 'Aucun de ces traitements', { v_traitements: ['aucun'] }],
   ['cons-allergies-group', 'Aucune connue', { v_allergies: ['aucune'] }]
@@ -19304,7 +19307,7 @@ function pontsChips(ra) {
       var grp = document.getElementById(c[0]); if (!grp) return;
       var chip = [].slice.call(grp.querySelectorAll('.chip')).filter(function (x) { return x.textContent.replace('✓', '').trim().indexOf(c[1]) === 0; })[0]; if (!chip) return;
       var want = Object.keys(c[2]).some(function (id) {
-        var v = ra[id]; if (!Array.isArray(v)) return false;
+        var v = ra[id]; if (v === undefined) return false; v = [].concat(v);
         return c[2][id].some(function (k) { return v.indexOf(k) >= 0; });
       });
       if (want) { if (chip.dataset.mgUser !== '1' && !chip.classList.contains('on')) { chip.classList.add('on'); chip.dataset.mgAuto = '1'; } }
