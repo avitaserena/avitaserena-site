@@ -12925,6 +12925,46 @@ function renderPrepVisioFaits(s, resa) {
    Dans chaque carte : ce qu'elle a répondu · ce que je lui dis · ce que je creuse. Les lignes de la synthèse sont rattachées au thème dont elles reprennent les réponses ;
    celles qui relient plusieurs thèmes vont dans un bloc à part. Les « Ne sait pas » deviennent des points à clarifier avec elle. */
 function pvNorm(t) { return String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim(); }
+/* ── Préparation visio : UN seul tableau (27/11/2026) ──
+   Lignes reliant plusieurs réponses en premier, puis les lignes propres à un thème. Tout ce qu'elle a coché et qu'aucune ligne ne reprend
+   est ajouté en bas du tableau : rien de ce qu'elle a écrit ne peut manquer. Les « Ne sait pas » sont listés à part, à clarifier avec elle. */
+function pvTableau(d, esc) {
+  const tr = d.toutes_reponses || {}, themes = Array.isArray(tr.themes) ? tr.themes : [];
+  const lignes = Array.isArray(d.lignes) ? d.lignes : [];
+  const NSP = /^ne sait pas/i;
+  const ordre = (l) => { if (!l.theme) return 0; const nt = pvNorm(l.theme); if (nt.indexOf('transvers') === 0) return 0; const i = themes.findIndex((t) => pvNorm(t.theme) === nt); return i >= 0 ? i + 1 : 40; };
+  const tri = lignes.map((l, i) => ({ l, i })).sort((x, y) => ordre(x.l) - ordre(y.l) || x.i - y.i).map((x) => x.l);
+  const parts = [];
+  lignes.forEach((l) => String(l.elle_a_dit || '').split(/\s*·\s*/).forEach((x) => { const n = pvNorm(x); if (n) parts.push(n); }));
+  const couvert = (r) => { const n = pvNorm(r); return parts.some((q) => q === n || (q.length >= 10 && n.length >= 10 && (q.indexOf(n) >= 0 || n.indexOf(q) >= 0))); };
+  const autres = [], flou = [];
+  themes.forEach((t) => {
+    const rep = [];
+    (t.items || []).forEach((it) => (it.reponses || []).forEach((r) => {
+      if (NSP.test(r)) { if (flou.indexOf(it.question) < 0) flou.push(it.question); }
+      else if (!couvert(r)) rep.push(r);
+    }));
+    if (rep.length) autres.push({ theme: t.theme, rep });
+  });
+  const liste = (arr) => arr.length ? '<ul class="pvt-ul">' + arr.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul>' : '';
+  const dit = (l) => {
+    const th = l.theme && pvNorm(l.theme).indexOf('transvers') !== 0 ? '<div class="pvt-q">' + esc(l.theme) + '</div>' : '';
+    return th + liste(String(l.elle_a_dit || '').split(/\s*·\s*/).map((x) => x.trim()).filter(Boolean));
+  };
+  const say = (l) => (l.je_lui_dis ? '<p class="pvt-say-t">' + esc(l.je_lui_dis) + '</p>' : '') + (l.je_vous_accompagne ? '<p class="pvt-acc">' + esc(l.je_vous_accompagne) + '</p>' : '');
+  const inv = (l) => { const pistes = String(l.a_investiguer || '').split(/\s*[,;]\s*/).map((x) => x.trim()).filter(Boolean); return pistes.length ? '<div class="pvt-chips">' + pistes.map((x) => '<span>' + esc(x) + '</span>').join('') + '</div>' : ''; };
+  const col = (cls, k, body, vide) => '<div class="pvt-col ' + cls + '"><div class="pvt-k">' + k + '</div>' + (body || '<div class="pvt-vide">' + (vide || '') + '</div>') + '</div>';
+  const attente = lignes.length ? '' : 'En cours de préparation…';
+  let h = '<section class="pvt pvt-c4"><header class="pvt-h"><span class="pvt-n">↔</span><h3>Ce qu\u2019elle m\u2019a dit, ce que je lui réponds, ce que je creuse</h3></header>';
+  h += tri.map((l) => '<div class="pvt-grid pvt-sep">' + col('pvt-dit', 'Elle a dit', dit(l)) + col('pvt-say', 'Je lui dis', say(l)) + col('pvt-inv', 'Je creuse', inv(l)) + '</div>').join('');
+  if (autres.length) {
+    h += '<div class="pvt-grid pvt-sep">' +
+      col('pvt-dit', 'Elle a dit aussi', autres.map((x) => '<div class="pvt-q">' + esc(x.theme) + '</div>' + liste(x.rep)).join('')) +
+      col('pvt-say', 'Je lui dis', '', attente || 'À aborder avec elle en visio.') + col('pvt-inv', 'Je creuse', '', attente || '—') + '</div>';
+  }
+  if (flou.length) h += '<div class="pvt-flou"><b>À clarifier avec elle (elle ne sait pas)</b><ul class="pvt-ul">' + flou.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul></div>';
+  return h + '</section>';
+}
 function pvCartes(d, esc) {
   const tr = d.toutes_reponses || {}, themes = Array.isArray(tr.themes) ? tr.themes : [];
   const lignes = Array.isArray(d.lignes) ? d.lignes : [];
@@ -12982,12 +13022,11 @@ function renderPrepVisioSynthese(d) {
   const lignes = Array.isArray(d.lignes) ? d.lignes : [];
   const objectifs = Array.isArray(d.objectifs) && d.objectifs.length && d.objectifs[0] && typeof d.objectifs[0] === 'object' ? d.objectifs : [];
   const notes = Array.isArray(d.a_noter) ? d.a_noter : [];
-  if (!lignes.length) {
-    const aDesReponses = d.toutes_reponses && Array.isArray(d.toutes_reponses.themes) && d.toutes_reponses.themes.length;
+  const aDesReponses = !!(d.toutes_reponses && Array.isArray(d.toutes_reponses.themes) && d.toutes_reponses.themes.length);
+  if (!lignes.length && !aDesReponses) {
     el.innerHTML = d.donnees_insuffisantes
       ? '<div style="opacity:.7">Pas assez de réponses pour un tableau utile.</div>'
-      : (aDesReponses ? '' : '<div style="opacity:.85">La lecture n\u2019est pas encore préparée. Cliquez sur « ↻ Régénérer ».</div>')
-        + (aDesReponses ? pvCartes(d, esc) : '');
+      : '<div style="opacity:.85">La lecture n\u2019est pas encore préparée. Cliquez sur « ↻ Régénérer ».</div>';
   } else {
     let h = '';
     const rs = d.resume || {};
@@ -12997,24 +13036,31 @@ function renderPrepVisioSynthese(d) {
     if (rs.en_bref || rc.length || rk.length) {
       const bloc = (cls, ico, titre, items) => items.length
         ? '<div class="pvr-col ' + cls + '"><div class="pvr-t"><span class="pvr-ico">' + ico + '</span>' + titre + '</div><ul>' + items.map((i) => '<li>' + esc(i) + '</li>').join('') + '</ul></div>' : '';
-      if (rs.en_bref) h += '<div class="pvr"><div class="pvr-top"><span class="pvr-eyebrow">En un coup d\u2019\u0153il</span></div><p class="pvr-bref">' + esc(rs.en_bref) + '</p></div>';
       if (rc.length || rk.length) hCroiser = '<div class="pvr"><div class="pvr-cols">' + bloc('pvr-croiser', '\u21c4', '\u00c0 croiser', rc) + bloc('pvr-creuser', '?', '\u00c0 creuser', rk) + '</div></div>';
     } else if (rs.vue_d_ensemble || (rs.liens || []).length) {
       /* ancien format : rien à afficher, le bouton « Régénérer » est déjà en haut */
     }
-    /* Pour démarrer : ce que je dis en ouverture et ce qu'elle veut ressentir */
-    const ouv = L(rs.par_ou_commencer);
-    if (ouv.length || objectifs.length) {
-      h += '<div class="pvt-start">' +
-        (ouv.length ? '<div class="pvt-box pvt-open"><div class="pvt-k">Pour ouvrir la visio : je lui demande</div><ol class="pvt-ol">' + ouv.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ol></div>' : '') +
-        (objectifs.length ? '<div class="pvt-box pvt-goal"><div class="pvt-k">Ce qu\u2019elle veut ressentir</div>' + objectifs.map((o) => '<div class="pvt-goal-d">' + esc(o.elle_a_dit) + '</div><p class="pvt-say-t">' + esc(o.je_lui_dis) + '</p>').join('') + '</div>' : '') +
+    /* 1. Ses objectifs · 2. Son message · 3. Le tableau · 4. Le reste (à croiser / à creuser / à noter) */
+    const snap = window.__visioSnap || {};
+    const objBrut = String(snap.objectif || '').trim();
+    if (objectifs.length || objBrut) {
+      h += '<div class="pvt-box pvt-goal"><div class="pvt-k">Ses objectifs · ce qu\u2019elle veut ressentir</div>' +
+        (objectifs.length
+          ? objectifs.map((o) => '<div class="pvt-goal-d">' + esc(o.elle_a_dit) + '</div><p class="pvt-say-t">' + esc(o.je_lui_dis) + '</p>').join('')
+          : '<div class="pvt-goal-d">' + esc(objBrut) + '</div>') +
         '</div>';
     }
-    h += '<div class="pv-big">Thème par thème</div>' + pvCartes(d, esc);
+    const prec0 = d.toutes_reponses && d.toutes_reponses.precisions;
+    const msgs = [];
+    [prec0, window.__visioMsg].forEach((m) => String(m || '').split(' / ').map((x) => x.trim()).filter(Boolean).forEach((x) => {
+      const nx = pvNorm(x);
+      if (!nx || msgs.some((y) => { const ny = pvNorm(y); return ny === nx || ny.indexOf(nx) >= 0 || nx.indexOf(ny) >= 0; })) return;
+      msgs.push(x);
+    }));
+    if (msgs.length) h += '<div class="pvt-box pvt-mots"><div class="pvt-k">Son message pour vous</div>' + msgs.map((m) => '<div class="pvt-mots-t">' + esc(m) + '</div>').join('') + '</div>';
+    h += pvTableau(d, esc);
     h += hCroiser;
     if (notes.length) h += '<div class="pvr"><div class="pvr-t"><span class="pvr-ico">!</span>À noter</div><ul class="pvt-ul">' + notes.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul></div>';
-    const prec0 = d.toutes_reponses && d.toutes_reponses.precisions;
-    if (prec0) h += '<div class="pvt-box pvt-mots"><div class="pvt-k">Ses mots</div><div class="pvt-mots-t">' + esc(prec0) + '</div></div>';
     el.innerHTML = h;
   }
   if (btn) btn.style.display = 'inline-flex';
@@ -19328,7 +19374,7 @@ document.addEventListener('click', function (e) {
 function calWrap() { var c = calibrageHtml(); return c ? '<details class="mg-calw"' + (CAL_OPEN ? ' open' : '') + '><summary>Mes retours sur les pistes (facultatif) : l\'outil les déduit déjà de ses réponses</summary>' + c + '</details>' : ''; }
 function render() {
   var box = document.getElementById('mg-body'); if (!box) return;
-  var plec = document.getElementById('pre-lecture'); if (plec) { try { plec.innerHTML = lectureHtml(); } catch (e0) { /* sans conséquence */ } }
+  var plec = document.getElementById('pre-lecture'); if (plec) plec.innerHTML = '';
   /* Ce qu'elle a déjà répondu dans son questionnaire est repris tel quel : on ne pose que les questions restantes (rien n'est perdu : tout reste modifiable dans « Ses réponses déjà validées ») */
   var auto = false, guard = 0;
   while (CLI && !S.edit && guard++ < 60) {
@@ -19338,7 +19384,8 @@ function render() {
   }
   if (auto) { try { save(); appliquerPonts(); save(); } catch (e) { /* sans conséquence */ } }
   var a = S.a, an = analyse(a), cid = currentId(an), started = Object.keys(a).length > 0;
-  var h = themesHtml() + soonHtml();
+  var ncf = 0; try { ncf = planConfirm().add.length; } catch (e1) { ncf = 0; }
+  var h = (ncf ? '<div class="mg-act" style="margin:0 0 14px;text-align:left"><p style="margin:0 0 8px;font-size:15px;line-height:1.55">Ses réponses de préparation sont déjà proposées dans les questions : vous les confirmez avec elle, une par une, pendant la visio. Si tout est juste, vous pouvez les valider d\u2019un coup.</p><button type="button" class="mg-go" data-mg="confirmall">Valider d\u2019un coup ses ' + ncf + ' réponse' + (ncf > 1 ? 's' : '') + '</button></div>' : '') + themesHtml() + soonHtml();
   if (S.th === 'croise') { box.innerHTML = h + croiseHtml(an) + calWrap(); var b0 = document.getElementById('mg-back'), r0 = document.getElementById('mg-reset'); if (b0) b0.disabled = !started; if (r0) { r0.disabled = !started; r0.textContent = S.rst ? 'Confirmer : tout effacer' : 'Recommencer'; } return; }
   if (an.flags.length && !(cid === null)) h += '<div class="mg-alert"><b>À clarifier avec son médecin avant tout</b><ul>' + an.flags.map(function (f) { return '<li>' + esc(f) + '</li>'; }).join('') + '</ul></div>';
   var say = cid !== null ? lastSay(an, a) : null;
