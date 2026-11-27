@@ -12764,7 +12764,7 @@ async function sbFetch(path, opts={}) {
   return t ? JSON.parse(t) : [];
 }
 
-async function callEdgeFunction(slug, payload) {
+async function callEdgeFunction(slug, payload, timeoutMs) {
   let authToken = SUPA_KEY;
   if (typeof Auth !== 'undefined') {
     const token = await Auth.getValidAccessToken();
@@ -12773,11 +12773,13 @@ async function callEdgeFunction(slug, payload) {
   const r = await fetch(SUPA_URL + '/functions/v1/' + slug, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken, 'apikey': SUPA_KEY },
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payload),
+    signal: timeoutMs ? AbortSignal.timeout(timeoutMs) : undefined
   });
   const t = await r.text();
-  const data = t ? JSON.parse(t) : {};
-  if (!r.ok) throw new Error(data.error || 'Erreur serveur');
+  let data = {};
+  try { data = t ? JSON.parse(t) : {}; } catch (e) { throw new Error('Réponse illisible du serveur (' + r.status + ')'); }
+  if (!r.ok) throw new Error(data.error || data.message || 'Erreur serveur (' + r.status + ')');
   return data;
 }
 
@@ -12848,9 +12850,14 @@ async function chargerPrepVisio() {
     window.__visioSnap = row.snapshot || null;
     try { if (typeof window.mgChargerVisio === 'function') window.mgChargerVisio(row.snapshot || {}); } catch (e) { console.warn('[Prep visio] Parcours non préchargé :', e); }
 
-    /* Une synthèse enregistrée avant le découpage par thème (v18) est régénérée une fois */
-    const si0 = row.synthese_ia, sansTheme = si0 && Array.isArray(si0.lignes) && si0.lignes.some((l) => !(l && l.theme));
-    if (si0 && !sansTheme) { renderPrepVisioSynthese(si0); }
+    /* Ouverture instantanée : on récupère ses réponses (et la lecture déjà enregistrée, même ancienne) sans rien générer.
+       Une génération n'a lieu que s'il n'existe encore aucune lecture, ou sur « Régénérer ». */
+    let d0 = null;
+    try { d0 = await callEdgeFunction('generate-synthese-prep-visio', { client_id: crmClientId, sans_ia: true }, 20000); }
+    catch (e) { console.warn('[Prep visio] Lecture rapide impossible :', e); }
+    if (d0 && !d0.synthese_absente) { renderPrepVisioSynthese(d0); }
+    else if (d0) { renderPrepVisioSynthese(d0); genererPrepVisioSynthese(false, true); }
+    else if (row.synthese_ia) { renderPrepVisioSynthese(row.synthese_ia); }
     else { genererPrepVisioSynthese(false); }
   } catch (e) { console.warn('[Prep visio] Chargement échoué :', e); }
 }
@@ -12976,9 +12983,11 @@ function renderPrepVisioSynthese(d) {
   const objectifs = Array.isArray(d.objectifs) && d.objectifs.length && d.objectifs[0] && typeof d.objectifs[0] === 'object' ? d.objectifs : [];
   const notes = Array.isArray(d.a_noter) ? d.a_noter : [];
   if (!lignes.length) {
+    const aDesReponses = d.toutes_reponses && Array.isArray(d.toutes_reponses.themes) && d.toutes_reponses.themes.length;
     el.innerHTML = d.donnees_insuffisantes
       ? '<div style="opacity:.7">Pas assez de réponses pour un tableau utile.</div>'
-      : '<div style="opacity:.85">Ancien format enregistré. Cliquez sur « ↻ Régénérer » pour obtenir le tableau.</div>';
+      : (aDesReponses ? '' : '<div style="opacity:.85">La lecture n\u2019est pas encore préparée. Cliquez sur « ↻ Régénérer ».</div>')
+        + (aDesReponses ? pvCartes(d, esc) : '');
   } else {
     let h = '';
     const rs = d.resume || {};
@@ -13011,16 +13020,23 @@ function renderPrepVisioSynthese(d) {
   if (btn) btn.style.display = 'inline-flex';
 }
 
-async function genererPrepVisioSynthese(force) {
+async function genererPrepVisioSynthese(force, garder) {
   const el = document.getElementById('prep-visio-ia');
   const btn = document.getElementById('btn-regen-prep-visio');
-  if (el) el.innerHTML = '<div style="opacity:.7">Génération en cours…</div>';
+  let st = document.getElementById('pv-statut');
+  if (!st && el && el.parentNode) { st = document.createElement('div'); st.id = 'pv-statut'; st.style.cssText = 'font-size:15px;line-height:1.6;color:var(--ardoise);background:var(--off);border:1px solid var(--taupe);border-radius:12px;padding:10px 14px;margin:10px 0'; el.parentNode.insertBefore(st, el); }
+  const dire = (h) => { if (st) { st.innerHTML = h; st.style.display = h ? 'block' : 'none'; } };
+  const aDesCartes = !!(el && el.querySelector('.pvt'));
+  if (!(garder || aDesCartes)) { if (el) el.innerHTML = ''; }
+  dire('<b>Préparation de la lecture en cours</b> (environ une minute). Vous pouvez déjà lire ses réponses ci-dessous : les phrases « Je lui dis » et « Je creuse » s\u2019ajouteront toutes seules.');
   if (btn) btn.disabled = true;
   try {
-    const data = await callEdgeFunction('generate-synthese-prep-visio', { client_id: crmClientId, force: !!force });
+    const data = await callEdgeFunction('generate-synthese-prep-visio', { client_id: crmClientId, force: !!force }, 150000);
+    dire('');
     renderPrepVisioSynthese(data);
   } catch (e) {
-    if (el) el.innerHTML = '<div style="opacity:.7">⚠ Synthèse indisponible pour le moment' + (e && e.message ? ' (' + String(e.message).replace(/</g,'&lt;').slice(0,120) + ')' : '') + '. Cliquez sur « Régénérer » pour réessayer.</div>';
+    const raison = e && e.name === 'TimeoutError' ? 'cela prend trop de temps' : (e && e.message ? String(e.message).replace(/</g, '&lt;').slice(0, 120) : 'erreur inconnue');
+    dire('\u26a0 La lecture n\u2019a pas pu être préparée (' + raison + '). Cliquez sur « ↻ Régénérer » pour réessayer.' + (aDesCartes || garder ? ' Ses réponses restent affichées ci-dessous.' : ''));
     if (btn) btn.style.display = 'inline-flex';
     console.warn('[Prep visio] Génération échouée :', e);
   } finally {
