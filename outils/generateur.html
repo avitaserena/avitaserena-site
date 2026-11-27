@@ -2792,9 +2792,14 @@ function detecterProfilsSensibles(d) {
   const hormonal = /\bTHM\b|\bTHS\b|traitement hormonal|estradiol|[œo]estradiol|estriol|[œo]estriol|[œo]strogel|oestrogel|trophic|colpotrophine|gyn[ée]st|utrogestan|progest[ée]rone|duphaston|dydrogest|estreva|lenzetto|climara|vivelledot|divina|delidose/i.test([tt, medics].join(' \n '))
     || /\bTHM\b|\bTHS\b|traitement hormonal (substitutif|de la m[ée]nopause)/i.test(texte);
   const cardio = /score calcique|calcium score|ath[ée]rom|plaques? (d.ath|carotid|coronar)|\bstent\b|infarctus|\bAVC\b|accident vasculaire|coronaropathie|\bstatines?\b|rosuvastatine|atorvastatine|simvastatine|crestor|tahor/i.test([txTexte, texte].join(' \n '));
-  const renal = /^(Oui|Fonction)/.test(d.secu_renal || '') || /insuffisance r[ée]nale|maladie r[ée]nale|\bDFG\b/i.test(diag) || /\bDFG\b|clairance (de la )?cr[ée]atinine/i.test(texte + ' ' + medics);
+  // 27/11/2026 : l'intitulé de la liste « Fonction rénale (DFG) / insuffisance rénale : Non » (et le libellé de la case
+  // « Traitement thyroïdien (Lévothyrox, Euthyrox, Cynomel…) ») contiennent des mots-clés : sans ce nettoyage, TOUTES les clientes
+  // étaient classées « profil rénal », et toute cliente sous Lévothyrox « extrait thyroïdien » (Cynomel).
+  const texteSansIntitules = texte.split('\n').filter(l => !/insuffisance r[ée]nale[^\n]*:\s*Non\b/i.test(l)).join('\n')
+    .replace(/Traitement thyro[ïi]dien \([^)]*\)/gi, ' ');
+  const renal = /^(Oui|Fonction)/.test(d.secu_renal || '') || /insuffisance r[ée]nale|maladie r[ée]nale|\bDFG\b/i.test(diag) || /\bDFG\b|clairance (de la )?cr[ée]atinine/i.test(texteSansIntitules + ' ' + medics);
   const renalDeclaree = /^Oui/.test(d.secu_renal || '');
-  const extraitThyro = /thironat|suprathyro[ïi]d|extraits? (de |d.)?thyro|thyro[ïi]de (porcine|bovine|desséchée|dess[ée]ch[ée]e)|glandulaire|armour|np thyroid|liothyronine|cynomel|cytomel/i.test([txTexte, texte].join(' \n '));
+  const extraitThyro = /thironat|suprathyro[ïi]d|extraits? (de |d.)?thyro|thyro[ïi]de (porcine|bovine|desséchée|dess[ée]ch[ée]e)|glandulaire|armour|np thyroid|liothyronine|cynomel|cytomel/i.test([txTexte, texteSansIntitules].join(' \n '));
   return {
     hormonal, cardio, renal, renalDeclaree, extraitThyro,
     tca: tcaDeclare || nbMarqueursTCA > 0, tcaDeclare, nbMarqueursTCA,
@@ -2855,9 +2860,14 @@ const GARDEFOUS_MOTS = {
   renal: { label: 'Fonction rénale (RÈGLE N°66)', re: /r[ée]glisse|orthosiphon|pissenlit|pr[êe]le|bouleau|queue de cerise|cr[ée]atine|spiruline|chlorelle|laminaire|fucus|dose d.attaque|\b(8|10|12) ?000 ?UI/gi },
   extraitThyro: { label: 'Extrait thyroïdien (RÈGLE N°67)', re: /(ajout\w+|commenc\w+|d[ée]marr\w+|prendre|prenez|proposons|recommand\w+|compl[ée]t\w+)[^.\n]{0,45}(thironat|suprathyro[ïi]d|extraits? (de |d.)?thyro\w*|glandulaire)|booster[^.\n]{0,20}thyro\w*/gi },
   asthme: { label: 'Asthme sans avis allergologue (terrains de sécurité)', re: /propolis|gel[ée]e royale|pollen/gi },
-  hepatique: { label: 'Insuffisance hépatique (terrains de sécurité)', re: /\bkava\b|EGCG|extraits? (concentr[ée] )?de th[ée] vert|origan|m[ée]gadose|niacine/gi },
+  hepatique: { label: 'Insuffisance hépatique (terrains de sécurité)', re: /\bkava\b|EGCG|extraits? (concentr[ée] )?de th[ée] vert|curcuma (en )?(extrait|g[ée]lule|forte dose|\d)|extrait de curcuma|origan|m[ée]gadose|niacine/gi },
   gastrite: { label: 'Gastrite / ulcère actif (terrains de sécurité)', re: /\bHCl\b|b[ée]ta[ïi]ne|enzymes? digestives?/gi },
   cardiovasc: { label: 'Trouble cardiovasculaire (terrains de sécurité)', re: /r[ée]glisse|ginseng|[ée]leuth[ée]rocoque|guarana|yohimbine|caf[ée]ine concentr[ée]e/gi },
+  // 27/11/2026 : familles ajoutées après les tests de dossiers simulés (le prompt les interdisait déjà, mais rien ne contrôlait la sortie)
+  cancerHormono: { label: 'Cancer en cours : aucun phyto-œstrogène (RÈGLES N°62 et 64)', get re() { return GARDEFOUS_MOTS.hormonal.re; } },
+  anticoag: { label: 'Anticoagulant (vitamine K, plantes fluidifiantes)', re: /vitamine K\d?\b|\bK2\b|m[ée]naquinone|ginkgo|gingko|ail (concentr[ée]|en g[ée]lule|noir|en extrait)|curcum\w*|millepertuis|bromela[ïi]ne|nattokinase|dong quai|huiles? essentielles?|om[ée]ga-?3? (à )?(forte|haute) dose/gi },
+  serotonine: { label: 'Antidépresseur : risque sérotoninergique (RÈGLE N°61)', re: /millepertuis|5-HTP|griffonia|\bSAMe\b|tryptophane/gi },
+  immuno: { label: 'Immunosuppresseur / auto-immunité : aucun immunostimulant', re: /[ée]chinac[ée]e|echinacea|astragale|propolis|gel[ée]e royale|reishi|shiita[ïi]ke|maita[ïi]ke|cordyceps|b[êe]ta-?glucanes?|griffe de chat|uncaria|sureau|r[ée]glisse/gi },
   grossesse: { label: 'Grossesse / allaitement (RÈGLE N°63)', re: /FODMAP|\bjeûn\w*|détox\w*|drainag\w*|\brégime\w*|éviction\w*|rétinol|vitamine A\b|perdre du poids|perte de poids/gi },
 };
 function collecterTextesClientes(obj, out, chemin) {
@@ -2870,6 +2880,16 @@ function collecterTextesClientes(obj, out, chemin) {
       collecterTextesClientes(obj[k], out, chemin ? chemin + '.' + k : k);
     });
   }
+}
+function gardeFousSupp(d) {
+  const tt = (d && d.traitements_vigilance) || '';
+  const t = [d.alertes_medicales, d.symptomes_coches, d.chips, d.selects_complets, d.textes_libres, d.diagnostics_confirmes]
+    .filter(Boolean).join(' \n ').split('\n').filter(l => !/:\s*(Non|Aucun\w*)\s*$/i.test(l)).join('\n');
+  return {
+    anticoag: /Anticoagulant/i.test(tt),
+    serotonine: /ISRS|antid[ée]presseur/i.test(tt),
+    immuno: /immunosuppresseur|bioth[ée]rapie|maladie auto-immune|m[ée]thotrexate|ciclosporine|azathioprine|adalimumab|[ée]tanercept/i.test(t)
+  };
 }
 function verifierGardeFousProfils(gen, d) {
   const p = detecterProfilsSensibles(d);
@@ -2884,6 +2904,9 @@ function verifierGardeFousProfils(gen, d) {
   if (p.cardio) actifs.push('cardio');
   if (p.renal) actifs.push('renal');
   if (p.extraitThyro) actifs.push('extraitThyro');
+  { const g = gardeFousSupp(d); if (g.anticoag) actifs.push('anticoag'); if (g.serotonine) actifs.push('serotonine'); if (g.immuno) actifs.push('immuno'); }
+  // Cancer en cours : la RÈGLE N°62 interdit aussi tout phyto-œstrogène (hormono-dépendance présumée tant que non vérifiée), même sans THM
+  if (p.cancerActif && actifs.indexOf('hormonal') < 0) actifs.push('cancerHormono');
   const textes = []; collecterTextesClientes(gen, textes, '');
   const hits = [];
   const NEG = /(pas d[e']|aucun|aucune|jamais|sans|\bni\b|évit|n'est pas|ne sont pas|non )[^.\n]{0,50}$/i;
@@ -2904,7 +2927,8 @@ function verifierGardeFousProfils(gen, d) {
 function afficherVerifGardeFous(gen, d) {
   const p = detecterProfilsSensibles(d);
   const tSec = terrainsSecurite(d);
-  const anyProfil = tSec.asthmeSansAvis || tSec.hepatique || tSec.gastrite || tSec.cardiovasculaire || p.tca || p.imcBas || p.diabeteTraite || p.bipolaire || p.cancerActif || p.grossesse || p.risqueSuicidaire || p.hormonal || p.cardio || p.renal || p.extraitThyro;
+  const supp = gardeFousSupp(d);
+  const anyProfil = supp.anticoag || supp.serotonine || supp.immuno || tSec.asthmeSansAvis || tSec.hepatique || tSec.gastrite || tSec.cardiovasculaire || p.tca || p.imcBas || p.diabeteTraite || p.bipolaire || p.cancerActif || p.grossesse || p.risqueSuicidaire || p.hormonal || p.cardio || p.renal || p.extraitThyro;
   let zone = document.getElementById('gardefous-profils');
   if (!zone) {
     zone = document.createElement('div'); zone.id = 'gardefous-profils';
@@ -2929,6 +2953,9 @@ function afficherVerifGardeFous(gen, d) {
   if (p.cardio) noms.push('risque cardiovasculaire');
   if (p.renal) noms.push(p.renalDeclaree ? 'insuffisance rénale' : 'fonction rénale diminuée');
   if (p.extraitThyro) noms.push('extrait thyroïdien');
+  if (supp.anticoag) noms.push('anticoagulant');
+  if (supp.serotonine) noms.push('antidépresseur');
+  if (supp.immuno) noms.push('immunosuppresseur / auto-immunité');
   const ok = r.hits.length === 0;
   const lignes = r.hits.slice(0, 14).map(h => '<li style="margin-bottom:6px"><strong>' + escH(h.mot) + '</strong> <span style="color:#6B5555">(' + escH(h.profil) + ')</span><br><span style="font-size:12px;color:#6B5555">…' + escH(h.extrait) + '…</span></li>').join('');
   zone.style.display = 'block';

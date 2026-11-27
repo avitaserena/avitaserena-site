@@ -1440,6 +1440,13 @@ html body #nav .nav-btn.nav-g{gap:8px!important;padding-right:10px!important}
 
 .mg-edit .q .pp{display:inline-block;margin-left:8px;padding:1px 9px;border-radius:999px;font-style:normal;font-size:12px;font-weight:600;letter-spacing:.02em;background:#EDE9E1;color:#6B5238;border:1px solid #D5CFC6;vertical-align:middle;white-space:nowrap}
 .mg-edit .q .pp.pv{background:#fff;color:#6B6560}
+.mg-src{display:inline-flex;align-items:center;gap:6px;margin-left:auto;padding:3px 11px 3px 9px;border-radius:999px;font:700 11.5px/1.2 'Be Vietnam Pro',system-ui,sans-serif;font-style:normal;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;vertical-align:middle;border:1px solid #D5CFC6;background:linear-gradient(135deg,#F7F6F4,#EDE9E1);color:#6B5238;box-shadow:0 1px 2px rgba(30,30,28,.06);animation:mgSrcIn .35s ease both}
+.mg-src::before{content:'';width:7px;height:7px;border-radius:50%;background:#B4906A;box-shadow:0 0 0 3px rgba(180,144,106,.18)}
+.mg-src.visio{background:#fff;color:#6B6560}
+.mg-src.visio::before{background:#C4A882;box-shadow:0 0 0 3px rgba(196,168,130,.2)}
+select+.mg-src{margin-left:10px}
+@keyframes mgSrcIn{from{opacity:0;transform:translateY(3px) scale(.96)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.mg-src{animation:none}}
 </style>
 </head>
 <body>
@@ -16646,7 +16653,7 @@ function E(t, arr) { return arr.map(function (x) { return [x[0], x[1], t]; }); }
 function hasE(a, k) { return has(a, 'e_motifs', k); }
 function qOf(a, mid, M) { var m = a[mid], seen = {}, out = []; if (!Array.isArray(m)) return out; m.forEach(function (k) { if (M[k] && !seen[M[k]]) { seen[M[k]] = 1; out.push(k); } }); return out; }
 function firstOf(a, mid, M, tail) { var q = qOf(a, mid, M); return q.length ? M[q[0]] : tail; }
-function afterOf(a, mid, M, key, tail) { var q = qOf(a, mid, M), i = q.indexOf(key), nx = q[i + 1]; return nx ? M[nx] : tail; }
+function afterOf(a, mid, M, key, tail) { var q = qOf(a, mid, M), i = q.indexOf(key), nx; if (i < 0) { var tg = M[key]; for (var j = 0; j < q.length; j++) { if (M[q[j]] === tg) { i = j; break; } } } nx = q[i + 1]; return nx ? M[nx] : tail; } /* 27/11/2026 : retrouve la place d'un parcours même quand c'est un autre motif du même parcours qui a été coché (ex. « ongles » seul) */
 
 /* ───────────── Pistes nouvelles ───────────── */
 PISTES.thyro = { l: "Ralentissement de la thyroïde (hypothyroïdie fonctionnelle)", ad: "Suspicion de ralentissement thyroïdien fonctionnel",
@@ -16685,6 +16692,15 @@ PISTES.androgenes = { l: "Terrain androgénique : acné, peau grasse, poils, chu
 PISTES.atopie = { l: "Terrain atopique : barrière de la peau et de l'intestin fragilisées", ad: "Terrain atopique (eczéma, psoriasis) avec suspicion de perméabilité intestinale",
   dire: "La peau est, avec l'intestin, une barrière de première ligne. Quand la barrière intestinale est trop perméable, le système immunitaire s'emballe et la peau en est souvent le miroir : eczéma, rougeurs, peau réactive. Les acides gras jouent aussi : sans assez d'oméga 3 ni de bons acides gras, la peau ne retient pas l'eau et reste sèche. C'est pourquoi la peau s'hydrate d'abord par l'intérieur.",
   conf: "Index oméga 3 (acides gras érythrocytaires, cible supérieure à 8 %), zinc, vitamine D ; perméabilité intestinale et terrain atopique (asthme, allergies, urticaire) ; chute des œstrogènes avant les règles (perméabilité relativement plus grande). Prudence avec le GLA en cas d'hyperinsulinisme. Psoriasis et pelade : très peu traités dans les cours." };
+PISTES.immun = { l: "Défenses immunitaires fragilisées : infections qui s'enchaînent", ad: "Défenses immunitaires fragilisées avec infections à répétition, à confirmer avec le médecin",
+  dire: "Vos défenses sont une armée qui a besoin de deux choses : de la matière première (vitamine D, zinc, fer, protéines) et du repos. Une grande partie de ces cellules vit dans l'intestin, qui les entraîne. Quand le stress dure, le cortisol les freine ; quand le sommeil est court, elles ne se reconstituent pas ; quand les antibiotiques se répètent, la flore qui les éduque s'appauvrit. Le résultat, ce sont des infections qui s'enchaînent ou qui traînent. Ce n'est pas une faiblesse de caractère : c'est un système qui manque de ressources.",
+  conf: "Vitamine D (25-OH), zinc, ferritine avec CRP, NFS ; cortisol salivaire si stress marqué ; nombre d'antibiotiques sur l'année ; sommeil et rythme. Avis médical si les infections sont graves, inhabituelles ou accompagnées de fièvre prolongée, de ganglions ou d'amaigrissement (déficit immunitaire à écarter). Maladie auto-immune connue ou traitement immunosuppresseur : ne jamais chercher à stimuler l'immunité." };
+PISTES.inflam = { l: "Terrain inflammatoire de fond : articulations, tendons, muscles", ad: "Terrain inflammatoire de bas grade avec douleurs articulaires ou tendineuses, à confirmer avec le médecin",
+  dire: "L'inflammation est la réponse normale du corps à une agression. Mais quand elle ne s'éteint pas, elle s'installe en bruit de fond et se ressent dans les articulations, les tendons et les muscles. Plusieurs choses l'entretiennent : un intestin trop perméable, un sucre qui monte et qui chute, un manque de graisses qui l'apaisent (les oméga 3), un cortisol insuffisant, car il est notre anti-inflammatoire naturel, et la chute des œstrogènes qui protégeaient les articulations. L'horaire de la douleur dit son origine : le matin, c'est l'inflammation ; le soir, c'est plutôt l'usure.",
+  conf: "CRP ultrasensible, index oméga 3 (acides gras érythrocytaires, cible supérieure à 8 %), vitamine D ; perméabilité intestinale ; glycémie et insuline à jeun ; cortisol salivaire si surrénales en cause. Raideur matinale de plus de 30 minutes, petites articulations des deux mains ou articulation rouge et chaude : avis rhumatologique avant tout accompagnement. Le diagnostic d'une maladie inflammatoire ne relève que du médecin." };
+PISTES.migraine = { l: "Terrain migraineux : hormones, magnésium, histamine, glycémie", ad: "Terrain migraineux, déclenchement hormonal, histaminique ou glycémique, à confirmer avec le médecin",
+  dire: "La migraine est un cerveau hyperexcitable : il réagit trop fort à des variations que d'autres supportent. Plusieurs choses abaissent son seuil de déclenchement : la chute des œstrogènes juste avant les règles, le manque de magnésium qui devrait calmer les neurones, l'histamine des aliments fermentés qui dilate les vaisseaux, une glycémie qui chute, un sommeil décalé. Retrouver ce qui revient avant chaque crise, c'est retrouver le levier. Et la migraine avec aura, ou plus de quatre crises par mois, demande d'abord un avis médical.",
+  conf: "Journal des crises avec le jour du cycle, le sommeil, les repas et les aliments déclencheurs ; magnésium (la clinique prime : crampes, tics, tensions) ; ferritine ; histamine alimentaire si rougeurs avec vin, fromage ou charcuterie. Migraine avec aura : œstrogènes déconseillés, avis médical sur la contraception. Mal de tête brutal ou avec troubles neurologiques : urgence (15). Plus de 4 crises par mois : avis neurologique sur un traitement de fond." };
 Object.keys(PISTES).forEach(function (k) { if (!PISTES[k].ad) PISTES[k].ad = PISTES[k].l; });
 
 /* ───────────── Constructeurs communs : médicaments, examens déjà faits ───────────── */
@@ -16744,9 +16760,9 @@ node('e_motifs', { m: 'listen', multi: true, s: 'Ce qui l\'amène',
     { k: 'sommeil', l: "Sommeil : endormissement, réveils, nuits peu réparatrices", f: "vous venez pour votre sommeil",
       say: "Le sommeil dépend des hormones, le cortisol, la mélatonine, la progestérone, autant que des habitudes. Et en retour, il joue sur le poids et sur la fatigue." },
     { k: 'immunite', say: "L'immunité se joue en grande partie dans l'intestin : une flore équilibrée et un intestin intact éduquent les défenses, ce qui relie infections, allergies et digestion.", l: "Infections à répétition, allergies, immunité", f: "vous venez pour des infections ou des allergies à répétition",
-      note: "Immunité, allergies : pas de parcours dédié ; passer par la section « Traitements & allergies » et par l'intestin et le cortisol (le cortisol est notre anti-inflammatoire naturel)." },
+      note: "Immunité, allergies : parcours dédié ; garder en tête l'intestin et le cortisol (le cortisol est notre anti-inflammatoire naturel) et la section « Traitements & allergies »." },
     { k: 'douleurs', say: "Les douleurs d'articulations, de muscles ou les migraines ont souvent une part inflammatoire, hormonale ou liée à l'intestin : leur horaire et leur localisation orientent.", l: "Douleurs : articulations, muscles, migraines", f: "vous venez pour des douleurs ou des migraines",
-      note: "Douleurs, migraines : pas de parcours dédié ; regarder l'inflammation, le cycle (migraines cycliques), la thyroïde et le magnésium dans les sections classiques." },
+      note: "Douleurs, migraines : parcours dédié ; regarder l'inflammation, le cycle (migraines cycliques), la thyroïde et le magnésium." },
     { k: 'cancer', l: "Accompagnement dans le cadre d'un cancer (en cours de traitement, ou après)", f: "vous venez dans le cadre d'un cancer, en cours de traitement ou après",
       say: "Je vous accompagne en complément de votre équipe de soins, jamais à sa place : votre oncologue reste votre référent pour tout ce qui touche au traitement. Ce que je peux faire avec vous, c'est soutenir votre digestion, votre sommeil, votre énergie et votre alimentation, au rythme de ce que votre corps traverse. Avant tout complément ou plante, je vous demanderai l'accord de votre oncologue, parce que certains modifient l'effet des traitements.",
       note: "Cancer : renseigner la sphère « Oncologique » et le champ de sécurité cancer ; aucun complément ni plante sans accord de l'oncologue (RÈGLE N°62) ; jamais de promesse sur la maladie, jamais de régime restrictif ni de détox ; demander si l'équipe a un diététicien et des soins de support." },
@@ -17698,6 +17714,207 @@ node('k_lien', { m: 'ask', multi: true, s: 'Intestin et terrain',
 mkMeds('k_meds', 'Médicaments', 'k_examens', [{ k: 'finasteride', l: "Finastéride ou dutastéride (traitement qui bloque la 5-alpha-réductase)", f: "vous prenez un inhibiteur de la 5-alpha-réductase", say: "Ces traitements bloquent la transformation de la testostérone en DHT. Mais il existe un syndrome post-finastéride, avec des troubles sexuels, de la dépression et de l'anxiété qui persistent à l'arrêt.", note: "Finastéride / dutastéride : syndrome post-finastéride signalé (troubles sexuels, dépression, anxiété persistants à l'arrêt) ; coordonner avec le prescripteur." }]);
 mkExams('k_examens', null, [{ k: 'androgenes', say: "Testostérone, SHBG et DHEA-S mesurent l'activité des androgènes : ils confirment un excès qui expliquerait acné ou chute de cheveux.", l: "Testostérone, SHBG, DHEA-S", f: "vous avez fait doser les hormones masculines" }]);
 
+
+/* ═══════════════ Parcours IMMUNITÉ, ALLERGIES (27/11/2026) ═══════════════
+   Mêmes questions que la préparation visio (i_motifs, i_secu) : ses réponses se reprennent seules.
+   Les questions de précision (i_infect, i_allerg, i_lien) sont posées en séance. */
+var BRI = { rhinite: 'i_allerg', terrain: 'i_allerg', orl: 'i_infect', urinaire: 'i_infect', herpes: 'i_infect', rhumes: 'i_infect', recup: 'i_infect' };
+function firstI(a) { return firstOf(a, 'i_motifs', BRI, 'i_lien'); }
+function afterI(a, key) { return afterOf(a, 'i_motifs', BRI, key, 'i_lien'); }
+
+node('i_motifs', { m: 'listen', multi: true, s: 'Ce qu\'elle décrit',
+  q: "Qu'est-ce qui revient côté immunité et allergies ?",
+  hint: "Elle vous le dit avec ses mots : cochez au fil de son récit. Chaque gêne ouvre ses questions, l'une après l'autre.",
+  why: "Les infections à répétition et les allergies viennent souvent du même endroit : un système de défense qui s'épuise, ou qui s'emballe contre des choses inoffensives. L'intestin, qui abrite une grande partie des cellules immunitaires, le stress et les hormones y participent. Selon ce qui revient, je ne regarde pas le même terrain.",
+  o: [
+    { k: 'rhinite', say: "Éternuements, yeux qui piquent, nez qui coule : c'est une réaction allergique. Les cellules de défense libèrent de l'histamine face à quelque chose d'inoffensif.", l: "Rhinite, éternuements, yeux qui piquent au printemps ou à l'automne" },
+    { k: 'orl', say: "Angines, sinusites, otites qui reviennent : les muqueuses de la gorge et du nez n'arrivent plus à se défendre seules.", l: "Angines, sinusites ou otites à répétition" },
+    { k: 'urinaire', say: "Cystites et mycoses qui reviennent racontent un équilibre des flores fragilisé, souvent lié à l'intestin et aux hormones.", l: "Cystites, mycoses ou infections vaginales à répétition" },
+    { k: 'herpes', say: "L'herpès ou le zona se réveillent quand les défenses baissent : le virus reste dormant et profite d'une fatigue ou d'un stress.", l: "Herpès, boutons de fièvre ou zona" },
+    { k: 'rhumes', say: "Des infections qui s'enchaînent, surtout l'hiver, montrent que les défenses n'ont pas le temps de se reconstituer entre deux épisodes.", l: "Rhumes et infections qui s'enchaînent, surtout l'hiver" },
+    { k: 'recup', say: "Une infection qui traîne et une récupération lente, c'est le signe d'une réponse immunitaire qui manque de ressources ou qui est freinée par le stress.", l: "Des infections qui traînent, une récupération lente" },
+    { k: 'terrain', say: "Asthme, toux allergique, eczéma ou urticaire relèvent du même terrain : une immunité qui réagit trop fort, avec l'intestin et la peau comme barrières de première ligne.", l: "Asthme, toux allergique, eczéma ou urticaire" }
+  ],
+  next: function () { return 'i_secu'; } });
+
+node('i_secu', { m: 'ask', multi: true, s: 'Signes de sécurité',
+  q: "Avant d'aller plus loin, je vérifie toujours quelques points avec toutes mes clientes : avez-vous remarqué l'un de ces signes ?",
+  hint: "Dites-le comme une routine : « Je pose ces questions à toutes mes clientes, c'est systématique. » Si oui, notez-le : on continue, mais l'avis du médecin passe avant l'accompagnement.",
+  why: "Une fièvre qui dure, des ganglions qui ne désenflent pas ou une perte de poids sans cause demandent d'abord un avis médical : ce ne sont pas les signes d'un simple affaiblissement des défenses. Un souffle court ou un gonflement du visage lors d'une allergie est une urgence. Je les écarte dès maintenant : un accompagnement ne se construit qu'une fois ces causes exclues.",
+  o: [
+    { k: 'fievre', say: "Une fièvre qui dure plus de trois jours ou qui revient sans cause demande un avis médical.", l: "De la fièvre qui dure plus de 3 jours, ou qui revient sans cause", flag: "Fièvre prolongée ou récidivante : avis médical avant tout accompagnement.", f: "vous avez de la fièvre qui dure ou qui revient sans cause" },
+    { k: 'ganglions', say: "Des ganglions qui ne désenflent pas ou des sueurs nocturnes abondantes demandent un bilan médical.", l: "Des ganglions gonflés qui ne désenflent pas, ou des sueurs nocturnes abondantes", flag: "Ganglions persistants ou sueurs nocturnes abondantes : avis médical avant tout accompagnement.", f: "vous avez des ganglions gonflés ou des sueurs nocturnes abondantes" },
+    { k: 'poids', say: "Une perte de poids que vous n'avez pas cherchée demande un avis médical.", l: "Une perte de poids sans l'avoir cherchée", flag: "Perte de poids involontaire : avis médical avant tout accompagnement.", f: "vous avez perdu du poids sans l'avoir cherché" },
+    { k: 'souffle', say: "Un souffle court ou un gonflement du visage ou de la gorge lors d'une allergie est une urgence : c'est le 15, pas un accompagnement.", l: "Un souffle court, ou un gonflement du visage ou de la gorge lors d'une allergie", flag: "Souffle court ou gonflement du visage ou de la gorge lors d'une allergie : urgence médicale ; faire voir un allergologue.", f: "vous avez eu le souffle court ou le visage gonflé lors d'une allergie" },
+    { k: 'aucun', l: "Aucun de ces signes", x: true }
+  ],
+  next: function (a) { return firstI(a); } });
+
+node('i_infect', { m: 'ask', multi: true, br: 'infect', s: 'Infections à répétition',
+  q: "Comment ces infections se présentent-elles ?",
+  hint: "Plusieurs réponses possibles. Demandez la fréquence (par an), la durée, et si les antibiotiques ont été nombreux.",
+  why: "Une infection ponctuelle est normale. Ce qui m'intéresse, c'est le rythme : quand elles s'enchaînent, c'est que les défenses n'ont pas le temps de se reconstituer. Le stress prolongé freine l'immunité par le cortisol, l'intestin en est le premier entraîneur, et les antibiotiques répétés fragilisent la flore qui protège aussi les muqueuses.",
+  o: [
+    { k: 'enchaine', l: "Une infection à peine finie, la suivante arrive", f: "vos infections s'enchaînent", say: "Quand une infection à peine finie est suivie d'une autre, ça veut dire que les défenses ne se reconstituent pas entre deux épisodes.", e: E("infections qui s'enchaînent", [['immun', 3]]) },
+    { k: 'traine', l: "Elles durent longtemps, avec peu de fièvre, et la récupération est lente", f: "vos infections durent longtemps et vous récupérez lentement", say: "Une infection qui traîne avec peu de fièvre, ça montre une réponse immunitaire qui manque de ressources. Le stress, les carences et le manque de sommeil la freinent.", e: E("infections qui traînent, récupération lente", [['immun', 2], ['cort_bas', 1]]) },
+    { k: 'stress', l: "Elles arrivent après une période de stress, de fatigue ou de nuits courtes", f: "vos infections arrivent après des périodes de stress ou de fatigue", say: "Le cortisol, quand il reste haut longtemps, freine les défenses. Les infections arrivent alors dès que le corps relâche.", e: E("infections après stress, fatigue ou nuits courtes", [['immun', 2], ['cort_haut', 1], ['cort_bas', 1]]) },
+    { k: 'antibio', l: "Antibiotiques fréquents (plus de 2 fois par an)", f: "vous prenez des antibiotiques plus de 2 fois par an", say: "Les antibiotiques soignent, mais ils fragilisent aussi la flore de l'intestin, qui éduque les défenses. Plus ils reviennent, plus le terrain devient fragile.", e: E("antibiotiques fréquents", [['dysbiose', 2], ['immun', 1], ['perm', 1]]) },
+    { k: 'digestif', l: "Troubles digestifs en même temps (ballonnements, transit perturbé)", f: "vous avez des troubles digestifs en même temps que les infections", say: "L'intestin abrite une grande partie des cellules de défense. Quand il est perturbé, l'immunité l'est aussi.", e: E("troubles digestifs associés aux infections", [['dysbiose', 2], ['perm', 1]]) },
+    { k: 'mycoses', l: "Mycoses ou cystites qui reviennent après les antibiotiques ou avant les règles", f: "vos mycoses ou cystites reviennent après les antibiotiques ou avant les règles", say: "Après un antibiotique, la flore protectrice recule et les levures reprennent leur place. Avant les règles, la baisse des hormones fragilise aussi les muqueuses.", e: E("mycoses ou cystites après antibiotiques ou avant les règles", [['dysbiose', 2], ['candidose', 1], ['hypooestro', 1]]) },
+    { k: 'fatigue', l: "Fatigue, frilosité, cheveux qui tombent en même temps", f: "vous avez en même temps de la fatigue, de la frilosité et une chute de cheveux", say: "Fatigue, frilosité et chute de cheveux avec des infections, ça fait penser à un manque de fer ou de zinc, ou à une thyroïde ralentie : tous freinent les défenses.", e: E("fatigue, frilosité, chute de cheveux avec infections", [['fer_zinc', 2], ['thyro', 1]]) },
+    { k: 'aucun', l: "Rien de marquant", x: true }
+  ],
+  next: function (a) { return afterI(a, 'orl'); } });
+
+node('i_allerg', { m: 'ask', multi: true, br: 'allerg', s: 'Allergies, terrain allergique',
+  q: "Que remarque-t-elle côté allergies ?",
+  hint: "Plusieurs réponses possibles. Demandez depuis quand, à quelle saison, et si cela s'aggrave avant les règles.",
+  why: "Une allergie est une réponse excessive : des cellules de défense libèrent de l'histamine face à quelque chose d'inoffensif. Le terrain compte autant que le déclencheur : une barrière intestinale trop perméable, un excès d'histamine alimentaire, les œstrogènes qui en favorisent la libération, ou un manque de molécules qui calment l'inflammation.",
+  o: [
+    { k: 'saison', l: "Symptômes surtout au printemps ou à l'automne (pollens)", f: "vos symptômes reviennent au printemps ou à l'automne", say: "Des symptômes saisonniers, c'est une réaction aux pollens. Ce qui varie d'une personne à l'autre, c'est la sensibilité du terrain.", e: E("allergie saisonnière aux pollens", [['atopie', 2]]) },
+    { k: 'annee', l: "Nez bouché ou qui coule toute l'année (poussières, acariens)", f: "vous avez le nez bouché ou qui coule toute l'année", say: "Des symptômes toute l'année, c'est plutôt une réaction aux acariens ou aux poussières, souvent sur un terrain atopique avec une barrière fragilisée.", e: E("rhinite toute l'année", [['atopie', 2], ['perm', 1]]) },
+    { k: 'aliments', l: "Rougeurs, maux de tête ou nez bouché après du vin, du fromage affiné, de la charcuterie, des restes", f: "vous réagissez au vin, aux fromages affinés, à la charcuterie ou aux restes", say: "Ces aliments sont riches en histamine. Quand le corps la dégrade mal, elle s'accumule et donne des rougeurs, des maux de tête et un nez bouché.", e: E("réaction au vin, fromages affinés, charcuterie, restes", [['histamine', 3]]) },
+    { k: 'urticaire', l: "Urticaire, démangeaisons, traces rouges en relief quand on se gratte", f: "vous avez de l'urticaire ou des démangeaisons", say: "L'urticaire, c'est l'histamine libérée dans la peau. Des cellules très réactives en libèrent au moindre frottement.", e: E("urticaire, démangeaisons, dermographisme", [['histamine', 2], ['atopie', 1]]) },
+    { k: 'asthme', l: "Asthme ou toux qui revient la nuit ou à l'effort", f: "vous avez de l'asthme ou une toux qui revient la nuit ou à l'effort", say: "L'asthme allergique relève du même terrain : l'immunité réagit fort, avec les bronches comme zone touchée. Le suivi reste médical.", e: E("asthme ou toux nocturne ou à l'effort", [['atopie', 2]]), note: "Asthme : suivi par le médecin ou le pneumologue ; ne jamais toucher aux traitements de fond." },
+    { k: 'enfance', l: "Terrain allergique depuis l'enfance, ou dans la famille", f: "votre terrain allergique date de l'enfance ou existe dans votre famille", say: "Un terrain allergique depuis l'enfance ou dans la famille, c'est une fragilité de la barrière et du système de défense qu'on porte de longue date.", e: E("terrain allergique depuis l'enfance ou familial", [['atopie', 3]]) },
+    { k: 'avant_regles', l: "Cela s'aggrave avant les règles", f: "vos allergies s'aggravent avant les règles", say: "Les œstrogènes favorisent la libération d'histamine. Quand ils sont relativement hauts, par exemple juste avant les règles, les symptômes s'aggravent.", e: E("allergies aggravées avant les règles", [['histamine', 2], ['hyperoestro', 1]]) },
+    { k: 'digestif', l: "Troubles digestifs en même temps", f: "vous avez des troubles digestifs en même temps que les allergies", say: "Quand l'intestin laisse trop passer, le système immunitaire s'emballe et les allergies se multiplient.", e: E("troubles digestifs associés aux allergies", [['perm', 2], ['dysbiose', 1]]) },
+    { k: 'aucun', l: "Rien de marquant", x: true }
+  ],
+  next: function (a) { return afterI(a, 'rhinite'); } });
+
+node('i_lien', { m: 'ask', multi: true, s: 'Terrain qui épuise les défenses',
+  q: "Retrouve-t-elle un terrain qui épuise ses défenses ?",
+  hint: "Plusieurs réponses possibles. Ces questions reviennent dans d'autres parcours : si elle y a déjà répondu, ses réponses sont reprises.",
+  why: "Les défenses sont coûteuses en énergie et en matières premières. Un stress qui dure, des nuits courtes, un manque de soleil ou une alimentation pauvre en zinc, fer ou protéines les épuisent. Et certaines maladies auto-immunes changent la manière de regarder l'immunité : on ne cherche alors jamais à la stimuler.",
+  o: [
+    { k: 'stress', l: "Stress long, nuits courtes, rythme soutenu", f: "vous avez un stress long, des nuits courtes et un rythme soutenu", say: "Un stress qui dure puis des nuits courtes épuisent les défenses : le cortisol les freine, et c'est la nuit que le corps les reconstitue.", e: E("stress long, nuits courtes", [['immun', 1], ['cort_haut', 1], ['cort_bas', 1]]) },
+    { k: 'carence', l: "Peu de soleil, alimentation pauvre ou monotone", f: "vous avez peu de soleil et une alimentation pauvre ou monotone", say: "La vitamine D, qu'on fabrique au soleil, le zinc et le fer sont les premières matières premières de l'immunité. Quand ils manquent, les défenses s'en ressentent.", e: E("peu de soleil, alimentation pauvre ou monotone", [['immun', 2], ['fer_zinc', 1]]) },
+    { k: 'auto', l: "Maladie auto-immune connue (thyroïde, polyarthrite, lupus, cœliaque…)", f: "vous avez une maladie auto-immune connue", say: "Dans une maladie auto-immune, l'immunité est déjà trop active contre le corps lui-même. Je ne cherche donc jamais à la stimuler : on soutient l'intestin et le terrain, en lien avec votre médecin.", note: "Maladie auto-immune : ne jamais parler de « booster » l'immunité ; suivi médical prioritaire ; coordonner avec le médecin référent." },
+    { k: 'tabac', l: "Tabac, alcool régulier", f: "vous fumez ou buvez de l'alcool régulièrement", say: "Le tabac et l'alcool abîment les muqueuses et consomment les antioxydants dont les défenses ont besoin.", e: E("tabac ou alcool régulier", [['immun', 1]]) },
+    { k: 'aucun', l: "Rien de tout cela", x: true }
+  ],
+  next: function () { return 'i_meds'; } });
+
+mkMeds('i_meds', 'Médicaments', 'i_examens', [
+  { k: 'antibio', ex: "Amoxicilline (Clamoxyl), Augmentin, azithromycine (Zithromax)", l: "Antibiotiques fréquents ou récents", f: "vous avez pris des antibiotiques fréquents ou récents", say: "Les antibiotiques fragilisent la flore intestinale pour plusieurs mois. Elle éduque les défenses, donc ça compte dans la lecture des infections.", e: E("antibiotiques fréquents ou récents", [['dysbiose', 2], ['immun', 1]]) },
+  { k: 'antihist', ex: "Cétirizine (Zyrtec), loratadine (Clarityne), desloratadine (Aerius), fexofénadine (Telfast)", l: "Antihistaminique pris souvent", f: "vous prenez souvent un antihistaminique", say: "Un antihistaminique bloque les effets de l'histamine mais ne traite pas pourquoi elle est libérée. Je le signale, sans y toucher." },
+  { k: 'immunosup', ex: "Méthotrexate, azathioprine, ciclosporine, anti-TNF (Humira, Enbrel…)", l: "Traitement immunosuppresseur ou biothérapie", f: "vous prenez un traitement immunosuppresseur ou une biothérapie", say: "Ce traitement baisse volontairement l'immunité. Rien n'est fait sans l'accord du médecin qui le prescrit.", flag: "Immunosuppresseur ou biothérapie : aucune plante ni complément sans accord du médecin prescripteur." }
+]);
+mkExams('i_examens', null, [
+  { k: 'nfs', say: "La numération sanguine et la CRP montrent si les globules blancs sont normaux et s'il y a une inflammation en cours.", l: "NFS (numération), CRP", f: "vous avez fait une numération sanguine et une CRP" },
+  { k: 'allergo', say: "Un bilan allergologique (prick-tests ou IgE) objective ce à quoi la cliente réagit vraiment, au lieu de le supposer.", l: "Bilan allergologique (prick-tests, IgE)", f: "vous avez fait un bilan allergologique" }
+]);
+
+/* ═══════════════ Parcours DOULEURS, MIGRAINES (27/11/2026) ═══════════════
+   Mêmes questions que la préparation visio (d_motifs, d_secu) : ses réponses se reprennent seules. */
+var BRD = { matin: 'd_artic', effort: 'd_artic', tendons: 'd_artic', muscles: 'd_musc', dos: 'd_musc', migraines: 'd_migr', cycle: 'd_migr' };
+function firstD(a) { return firstOf(a, 'd_motifs', BRD, 'd_lien'); }
+function afterD(a, key) { return afterOf(a, 'd_motifs', BRD, key, 'd_lien'); }
+
+node('d_motifs', { m: 'listen', multi: true, s: 'Ce qu\'elle décrit',
+  q: "Où et quand a-t-elle mal ?",
+  hint: "Elle vous le dit avec ses mots : cochez au fil de son récit. Chaque gêne ouvre ses questions, l'une après l'autre.",
+  why: "Le moment et l'endroit de la douleur racontent son mécanisme : une raideur du matin évoque une inflammation, une douleur à l'effort plutôt l'usure ou un manque de récupération, une migraine liée au cycle les hormones. Je ne cherche pas au même endroit.",
+  o: [
+    { k: 'matin', say: "Une raideur au réveil, c'est le signe d'une inflammation : la nuit, les articulations bougent peu et l'inflammation s'y accumule.", l: "Raideur ou douleurs des articulations le matin (mains, genoux, hanches)" },
+    { k: 'effort', say: "Une articulation qui fait mal à l'effort ou en fin de journée raconte plutôt l'usure ou un manque de récupération.", l: "Articulations douloureuses à l'effort ou en fin de journée" },
+    { k: 'muscles', say: "Des courbatures sans gros effort montrent que le muscle récupère mal : énergie, magnésium, thyroïde ou sommeil peuvent être en cause.", l: "Douleurs ou courbatures musculaires diffuses, sans gros effort" },
+    { k: 'dos', say: "Des tensions du dos, de la nuque ou des épaules qui reviennent racontent souvent un corps resté en alerte, avec un manque de magnésium.", l: "Dos, nuque ou épaules, tensions qui reviennent" },
+    { k: 'tendons', say: "Des tendinites à répétition montrent un tissu qui se répare mal : inflammation de fond, carences ou manque de récupération.", l: "Tendinites à répétition" },
+    { k: 'migraines', say: "Une migraine, c'est un cerveau hyperexcitable : hormones, magnésium, histamine ou glycémie abaissent son seuil de déclenchement.", l: "Migraines ou maux de tête fréquents" },
+    { k: 'cycle', say: "Des migraines autour des règles suivent la chute des œstrogènes : c'est un mécanisme hormonal.", l: "Migraines ou douleurs surtout avant ou pendant les règles" }
+  ],
+  next: function () { return 'd_secu'; } });
+
+node('d_secu', { m: 'ask', multi: true, s: 'Signes de sécurité',
+  q: "Avant d'aller plus loin, je vérifie toujours quelques points avec toutes mes clientes : avez-vous remarqué l'un de ces signes ?",
+  hint: "Dites-le comme une routine : « Je pose ces questions à toutes mes clientes, c'est systématique. » Si oui, notez-le : on continue, mais l'avis du médecin passe avant l'accompagnement.",
+  why: "Une articulation rouge, chaude et très gonflée, une douleur forte qui réveille la nuit, un mal de tête brutal ou des douleurs avec fièvre ne relèvent pas d'abord d'un accompagnement : elles demandent un avis médical, parfois en urgence. Je les écarte dès maintenant.",
+  o: [
+    { k: 'rouge', say: "Une articulation rouge, chaude et très gonflée peut être une infection ou une crise inflammatoire : elle demande un avis médical rapide.", l: "Une articulation rouge, chaude et très gonflée", flag: "Articulation rouge, chaude et très gonflée : avis médical rapide (arthrite, goutte, infection).", f: "vous avez une articulation rouge, chaude et très gonflée" },
+    { k: 'nuit', say: "Une douleur forte et nouvelle qui réveille la nuit demande un avis médical.", l: "Une douleur forte et nouvelle qui me réveille la nuit", flag: "Douleur forte, nouvelle, qui réveille la nuit : avis médical avant tout accompagnement.", f: "vous avez une douleur forte et nouvelle qui vous réveille la nuit" },
+    { k: 'tete', say: "Un mal de tête brutal, très intense, inhabituel, ou avec des troubles de la vue, de la parole ou de la force, c'est une urgence : le 15.", l: "Un mal de tête brutal, très intense, inhabituel, ou avec des troubles de la vue, de la parole ou de la force", flag: "Mal de tête brutal ou avec troubles neurologiques : urgence médicale (15).", f: "vous avez eu un mal de tête brutal, très intense ou avec des troubles de la vue, de la parole ou de la force" },
+    { k: 'fievre', say: "Des douleurs avec de la fièvre ou une grande fatigue inexpliquée demandent un bilan médical.", l: "Des douleurs accompagnées de fièvre ou d'une grande fatigue inexpliquée", flag: "Douleurs avec fièvre ou grande fatigue inexpliquée : avis médical avant tout accompagnement.", f: "vous avez des douleurs avec de la fièvre ou une grande fatigue inexpliquée" },
+    { k: 'aucun', l: "Aucun de ces signes", x: true }
+  ],
+  next: function (a) { return firstD(a); } });
+
+node('d_artic', { m: 'ask', multi: true, br: 'artic', s: 'Articulations et tendons',
+  q: "Que remarque-t-elle côté articulations et tendons ?",
+  hint: "Plusieurs réponses possibles. Demandez la durée de la raideur au réveil, et si les deux côtés sont touchés.",
+  why: "Ce qui distingue une douleur inflammatoire d'une douleur mécanique, c'est l'horaire : l'inflammation raidit le matin et s'améliore en bougeant, l'usure s'aggrave en fin de journée et s'améliore au repos. Les petites articulations des deux mains évoquent un terrain auto-immun. Et l'intestin dialogue avec les articulations par l'inflammation.",
+  o: [
+    { k: 'derouille', l: "Raideur au réveil qui dure plus de 30 minutes", f: "votre raideur du matin dure plus de 30 minutes", say: "Une raideur du matin qui dépasse une demi-heure, c'est le signe d'une inflammation, pas de l'usure.", e: E("raideur du matin de plus de 30 minutes", [['inflam', 3]]), note: "Raideur matinale de plus de 30 min : orienter vers le médecin ou le rhumatologue pour écarter une cause inflammatoire (polyarthrite) avant tout accompagnement." },
+    { k: 'petites', l: "Petites articulations (mains, doigts) touchées des deux côtés", f: "vos petites articulations sont touchées des deux côtés", say: "Quand les petites articulations des deux mains sont touchées, ça évoque un terrain auto-immun. C'est le médecin qui pose ce diagnostic.", e: E("petites articulations des deux mains", [['inflam', 3]]), note: "Petites articulations symétriques : avis rhumatologique ; ne pas conclure." },
+    { k: 'gonfle', l: "Doigts ou mains gonflés le matin", f: "vos doigts ou mains sont gonflés le matin", say: "Des doigts gonflés le matin peuvent être un signe de thyroïde ralentie, avant une cause articulaire.", e: E("doigts gonflés le matin", [['thyro', 2], ['inflam', 1]]) },
+    { k: 'effort', l: "Douleur qui monte à l'effort ou en fin de journée, mieux au repos", f: "votre douleur monte à l'effort ou en fin de journée", say: "Une douleur qui monte en fin de journée et qui s'apaise au repos, c'est plutôt l'usure ou un manque de récupération.", e: E("douleur articulaire à l'effort ou en fin de journée", [['inflam', 1]]) },
+    { k: 'tendinites', l: "Tendinites qui reviennent, sur plusieurs tendons", f: "vous avez des tendinites qui reviennent sur plusieurs tendons", say: "Des tendinites qui reviennent sur plusieurs tendons, ça montre un tissu qui se répare mal. L'inflammation de fond et les carences y jouent.", e: E("tendinites multiples à répétition", [['inflam', 2], ['fer_zinc', 1]]) },
+    { k: 'hormones', l: "Douleurs apparues autour de la périménopause ou après l'arrêt de la pilule", f: "vos douleurs sont apparues autour de la périménopause ou après l'arrêt de la pilule", say: "Les œstrogènes protègent les articulations et calment l'inflammation. Quand ils chutent, les douleurs s'installent souvent.", e: E("douleurs articulaires après chute des œstrogènes", [['hypooestro', 2], ['meno', 1]]) },
+    { k: 'digestif', l: "Ballonnements ou transit perturbé en même temps", f: "vous avez des ballonnements ou un transit perturbé en même temps", say: "L'intestin et les articulations dialoguent par l'inflammation : un intestin perméable peut entretenir une inflammation générale qui se ressent dans les articulations.", e: E("troubles digestifs associés aux douleurs articulaires", [['perm', 2], ['inflam', 1]]) },
+    { k: 'aucun', l: "Rien de marquant", x: true }
+  ],
+  next: function (a) { return afterD(a, 'matin'); } });
+
+node('d_musc', { m: 'ask', multi: true, br: 'musc', s: 'Muscles, dos, nuque',
+  q: "Que remarque-t-elle côté muscles, dos et nuque ?",
+  hint: "Plusieurs réponses possibles. Demandez si les tensions sont plus fortes en période de stress, et si le sommeil est réparateur.",
+  why: "Le muscle a besoin d'énergie pour se détendre, pas seulement pour se contracter. Quand le magnésium manque, quand les cellules fabriquent peu d'énergie ou quand le corps reste en alerte, le muscle reste tendu. La thyroïde et le sommeil comptent aussi : c'est la nuit que le muscle récupère.",
+  o: [
+    { k: 'diffuses', l: "Courbatures ou douleurs musculaires diffuses, sans gros effort", f: "vous avez des courbatures diffuses sans gros effort", say: "Des courbatures sans effort montrent un muscle qui manque d'énergie pour récupérer. Les cellules en fabriquent moins.", e: E("courbatures diffuses sans effort", [['mito', 2], ['mag', 1], ['thyro', 1]]) },
+    { k: 'crampes', l: "Crampes, tics, paupières qui sautent, muscles tendus", f: "vous avez des crampes, des tics ou des muscles tendus", say: "Crampes, tics et paupières qui sautent, c'est le signe d'un manque de magnésium : il sert à relâcher le muscle.", e: E("crampes, tics, muscles tendus", [['mag', 3]]) },
+    { k: 'nuque', l: "Nuque, épaules, mâchoire serrées, surtout en période de stress", f: "votre nuque, vos épaules et votre mâchoire sont serrées en période de stress", say: "Nuque, épaules et mâchoire serrées, c'est un corps resté en alerte. L'adrénaline fait perdre du magnésium, et le muscle reste tendu.", e: E("nuque, épaules, mâchoire serrées en période de stress", [['cort_haut', 2], ['mag', 2]]) },
+    { k: 'dos', l: "Dos bloqué le matin ou après être restée assise", f: "votre dos se bloque le matin ou après être restée assise", say: "Un dos qui se bloque après une position prolongée, c'est le plus souvent mécanique. S'il y a une douleur qui descend dans la jambe ou une perte de force, c'est un avis médical.", e: E("dos bloqué après position prolongée", [['inflam', 1]]), note: "Douleur du dos irradiant dans la jambe ou perte de force : avis médical." },
+    { k: 'sommeil', l: "Douleurs avec un sommeil non réparateur et une grande fatigue", f: "vos douleurs s'accompagnent d'un sommeil non réparateur et d'une grande fatigue", say: "Des douleurs avec un sommeil qui ne répare pas et une fatigue marquée, ça montre que le corps ne récupère plus la nuit.", e: E("douleurs avec sommeil non réparateur et fatigue", [['melato', 1], ['cort_bas', 1], ['mito', 1]]), note: "Douleurs diffuses, sommeil non réparateur et fatigue : ne pas poser de diagnostic ; orienter vers le médecin." },
+    { k: 'froid', l: "Fatigue, frilosité, peau sèche en même temps", f: "vous avez en même temps de la fatigue, de la frilosité et la peau sèche", say: "Des douleurs musculaires avec frilosité et peau sèche, c'est le profil d'une thyroïde ralentie : elle règle l'énergie du muscle.", e: E("douleurs musculaires avec frilosité et peau sèche", [['thyro', 3]]) },
+    { k: 'statine', l: "Douleurs musculaires depuis un traitement (statine ou autre)", f: "vos douleurs musculaires ont commencé avec un traitement", say: "Certains traitements, comme les statines, abîment l'énergie du muscle. Je le signale au médecin, sans jamais arrêter le traitement.", e: E("douleurs musculaires depuis un traitement", [['mito', 2]]), note: "Douleurs musculaires depuis un traitement (statine…) : le signaler au médecin, sans arrêter le traitement." },
+    { k: 'aucun', l: "Rien de marquant", x: true }
+  ],
+  next: function (a) { return afterD(a, 'muscles'); } });
+
+node('d_migr', { m: 'ask', multi: true, br: 'migr', s: 'Migraines, maux de tête',
+  q: "Que remarque-t-elle côté migraines et maux de tête ?",
+  hint: "Plusieurs réponses possibles. Demandez la fréquence par mois, le moment du cycle, et les déclencheurs connus.",
+  why: "La migraine est une hyperexcitabilité du cerveau, que plusieurs choses déclenchent : la chute des œstrogènes avant les règles, le manque de magnésium, l'histamine des aliments, une glycémie qui chute ou un sommeil décalé. Retrouver ce qui revient à chaque crise indique où agir. Et certaines situations demandent d'abord un avis médical.",
+  o: [
+    { k: 'regles', l: "Migraines surtout juste avant ou pendant les règles", f: "vos migraines arrivent juste avant ou pendant les règles", say: "Une migraine qui suit les règles vient de la chute des œstrogènes juste avant. Le cerveau y est très sensible.", e: E("migraines avant ou pendant les règles", [['hypooestro', 3], ['progesterone_def', 1]]) },
+    { k: 'ovulation', l: "Maux de tête autour de l'ovulation", f: "vous avez des maux de tête autour de l'ovulation", say: "À l'ovulation, les œstrogènes chutent brièvement après leur pic, et ça peut suffire à déclencher un mal de tête.", e: E("maux de tête autour de l'ovulation", [['hypooestro', 1], ['dysovulation', 1]]) },
+    { k: 'pilule', l: "Migraines apparues ou aggravées avec la pilule ou un traitement hormonal", f: "vos migraines sont apparues ou se sont aggravées avec la pilule ou un traitement hormonal", say: "Les œstrogènes d'un traitement hormonal peuvent aggraver les migraines. Avec aura, c'est une contre-indication que je signale au médecin.", e: E("migraines apparues ou aggravées sous hormones", [['pilule', 3]]), note: "Migraine avec aura sous œstrogènes : contre-indication à signaler au médecin (risque vasculaire)." },
+    { k: 'aura', l: "Éclairs, troubles visuels ou fourmillements avant la crise (aura)", f: "vous avez des éclairs, des troubles visuels ou des fourmillements avant la crise", say: "Une aura, c'est une vague d'activité électrique du cerveau avant la crise. Elle change la manière de regarder la contraception : j'en parle au médecin.", e: E("migraine avec aura", [['migraine', 2]]), note: "Migraine avec aura : œstrogènes déconseillés ; avis médical sur la contraception." },
+    { k: 'aliments', l: "Déclenchées par le vin, le fromage affiné, la charcuterie, le chocolat, les restes", f: "vos migraines sont déclenchées par le vin, le fromage, la charcuterie ou les restes", say: "Ces aliments sont riches en histamine. Quand le corps la dégrade mal, elle dilate les vaisseaux du cerveau et déclenche la crise.", e: E("migraines après vin, fromage affiné, charcuterie, restes", [['histamine', 3]]) },
+    { k: 'sucre', l: "Après un repas sauté ou une baisse de sucre", f: "vos migraines arrivent après un repas sauté ou une baisse de sucre", say: "Une glycémie qui chute est un déclencheur classique : le cerveau n'a plus assez de sucre, et il devient plus excitable.", e: E("migraines après repas sauté ou baisse de sucre", [['insulino', 2]]) },
+    { k: 'stress', l: "Maux de tête de fin de journée, nuque raide, périodes de stress", f: "vous avez des maux de tête de fin de journée avec la nuque raide en période de stress", say: "Des maux de tête de fin de journée avec la nuque raide, c'est la tension : le stress fait perdre du magnésium et contracte les muscles de la nuque.", e: E("maux de tête de tension en période de stress", [['cort_haut', 2], ['mag', 2]]) },
+    { k: 'sommeil', l: "Après une mauvaise nuit ou un décalage de rythme", f: "vos migraines arrivent après une mauvaise nuit ou un décalage de rythme", say: "Le cerveau migraineux déteste les changements de rythme : une nuit courte ou décalée suffit à le déclencher.", e: E("migraines après mauvaise nuit ou rythme décalé", [['rythmes', 2], ['mag', 1]]) },
+    { k: 'frequence', l: "Plus de 4 crises par mois", f: "vous avez plus de 4 crises par mois", say: "Plus de quatre crises par mois, c'est un rythme qui justifie un avis neurologique sur un traitement de fond, en plus de ce qu'on regarde ensemble.", e: E("plus de 4 crises par mois", [['migraine', 3]]), note: "Plus de 4 crises par mois : avis neurologique sur un traitement de fond." },
+    { k: 'digestif', l: "Nausées, ballonnements ou constipation avec les crises", f: "vous avez des nausées, des ballonnements ou de la constipation avec les crises", say: "L'intestin et le cerveau communiquent. Un intestin perturbé peut abaisser le seuil de déclenchement.", e: E("troubles digestifs avec les crises", [['dysbiose', 1], ['perm', 1]]) },
+    { k: 'aucun', l: "Rien de marquant", x: true }
+  ],
+  next: function (a) { return afterD(a, 'migraines'); } });
+
+node('d_lien', { m: 'ask', multi: true, s: 'Terrain qui entretient la douleur',
+  q: "Retrouve-t-elle un terrain qui entretient la douleur ?",
+  hint: "Plusieurs réponses possibles. Ces questions reviennent dans d'autres parcours : si elle y a déjà répondu, ses réponses sont reprises.",
+  why: "La douleur ne dépend pas que de l'endroit touché : le sommeil, le stress, la glycémie et l'intestin règlent le seuil à partir duquel on a mal. Un sommeil léger, un corps tendu, un intestin sensible ou un sucre qui chute abaissent ce seuil et entretiennent l'inflammation.",
+  o: [
+    { k: 'sommeil', l: "Sommeil léger, nuits non réparatrices", f: "votre sommeil est léger et peu réparateur", say: "Un sommeil léger abaisse le seuil de la douleur : le corps ne répare plus ce qui s'est abîmé dans la journée.", e: E("sommeil léger non réparateur", [['cort_haut', 1], ['melato', 1]]) },
+    { k: 'tension', l: "Tension nerveuse, mâchoire serrée, épaules hautes", f: "vous avez une tension nerveuse avec la mâchoire serrée et les épaules hautes", say: "Un corps resté en alerte garde ses muscles contractés et perd du magnésium. La douleur s'entretient.", e: E("tension nerveuse, mâchoire serrée", [['mag', 2], ['cort_haut', 1]]) },
+    { k: 'digestif', l: "Ventre sensible, transit perturbé", f: "vous avez un ventre sensible et un transit perturbé", say: "Un intestin perméable entretient une inflammation de fond qui se ressent dans tout le corps.", e: E("ventre sensible, transit perturbé", [['perm', 2], ['inflam', 1]]) },
+    { k: 'sucre', l: "Fringales de sucre, coups de pompe", f: "vous avez des fringales de sucre et des coups de pompe", say: "Un sucre qui monte et qui chute entretient l'inflammation et abaisse le seuil de la douleur.", e: E("fringales de sucre, coups de pompe", [['insulino', 2], ['inflam', 1]]) },
+    { k: 'aucun', l: "Rien de tout cela", x: true }
+  ],
+  next: function () { return 'd_meds'; } });
+
+mkMeds('d_meds', 'Médicaments', 'd_examens', [
+  { k: 'antalgiques', ex: "Paracétamol (Doliprane), ibuprofène (Advil, Nurofen), aspirine, triptans (Imigrane, Maxalt)", l: "Antidouleurs pris souvent (plus de 10 jours par mois)", f: "vous prenez des antidouleurs plus de 10 jours par mois", say: "Des antidouleurs pris trop souvent peuvent eux-mêmes entretenir les maux de tête. Je le signale au médecin, sans y toucher.", note: "Antalgiques plus de 10 jours par mois : risque de céphalées par abus médicamenteux ; en parler au médecin." },
+  { k: 'ains', ex: "Ibuprofène (Advil, Nurofen), kétoprofène, diclofénac (Voltarène), naproxène", l: "Anti-inflammatoires pris régulièrement", f: "vous prenez régulièrement des anti-inflammatoires", say: "Les anti-inflammatoires irritent la muqueuse de l'estomac et de l'intestin, et augmentent sa perméabilité. Ça peut entretenir ce qu'on cherche à calmer.", e: E("anti-inflammatoires réguliers", [['perm', 1]]) },
+  { k: 'fond_migraine', ex: "Topiramate (Epitomax), amitriptyline (Laroxyl), flunarizine, candésartan", l: "Traitement de fond de la migraine", f: "vous avez un traitement de fond de la migraine", say: "Ce traitement est prescrit pour réduire les crises. Je ne touche à rien : on l'inclut dans la lecture." }
+]);
+mkExams('d_examens', null, [
+  { k: 'crp', say: "La CRP ultrasensible, la VS et le bilan rhumatologique montrent s'il existe une inflammation de fond ou un terrain auto-immun.", l: "CRP, VS, bilan rhumatologique (facteur rhumatoïde, anti-CCP)", f: "vous avez fait une CRP ou un bilan rhumatologique" },
+  { k: 'imagerie', say: "Une radio, une échographie ou une IRM montrent l'état du tissu : usure, tendon, disque. Elles ne disent rien du terrain inflammatoire ou hormonal.", l: "Radiographie, échographie ou IRM", f: "vous avez fait une radiographie, une échographie ou une IRM" },
+  { k: 'neuro', say: "Un avis neurologique ou une IRM cérébrale écartent une cause organique devant des migraines fréquentes ou inhabituelles.", l: "Consultation de neurologie ou IRM cérébrale", f: "vous avez consulté en neurologie ou fait une IRM cérébrale" }
+]);
+
 /* ═══════════════ Examens, liens, croisements, lettre ═══════════════ */
 function examensN(a, an) {
   var s = an.sc, out = [], f = function (id, k) { return has(a, id, k); };
@@ -17711,6 +17928,9 @@ function examensN(a, an) {
   if (((s.androgenes || 0) >= 3 || (s.five_ar || 0) >= 3) && !ex('androgenes')) out.push("Testostérone totale et SHBG, sulfate de DHEA, androstènediol glucuronide (sang, ou urines pour l'activité de la 5-alpha-réductase), œstradiol, progestérone, au bon moment du cycle ; HOMA. Le diagnostic de SOPK ne relève que du médecin.");
   if ((s.atopie || 0) >= 3) out.push("Index oméga 3 (acides gras érythrocytaires, cible supérieure à 8 %), zinc, vitamine D ; évaluer la perméabilité intestinale avec les sections digestives.");
   if ((s.dopamine || 0) >= 3 || (s.serotonine || 0) >= 3) out.push("Bilan clinique des fonctions neuropsychiques ; chercher d'abord l'inflammation digestive, le cortisol et le magnésium avant d'envisager les précurseurs. Échelle HAD si humeur basse.");
+  if ((s.immun || 0) >= 3) out.push("Vitamine D (25-OH), zinc, ferritine avec CRP, NFS ; nombre d'antibiotiques sur l'année. Avis médical si les infections sont graves, inhabituelles ou accompagnées de fièvre prolongée, de ganglions ou d'amaigrissement.");
+  if ((s.inflam || 0) >= 3) out.push("CRP ultrasensible, index oméga 3, vitamine D ; glycémie et insuline à jeun ; évaluer la perméabilité intestinale avec les sections digestives. Raideur matinale de plus de 30 minutes ou petites articulations touchées : avis rhumatologique.");
+  if ((s.migraine || 0) >= 3) out.push("Journal des crises avec le jour du cycle, le sommeil et les repas ; ferritine ; magnésium lu sur la clinique. Migraine avec aura ou plus de 4 crises par mois : avis médical ou neurologique.");
   return out;
 }
 function liensN(an) {
@@ -17721,6 +17941,8 @@ function liensN(an) {
   if ((s.meno || 0) >= 3) l.push({ t: "Guide spécialisé Ménopause", n: 17 });
   if ((s.perm || 0) >= 2 || (s.atopie || 0) >= 3) l.push({ t: "Alimentation & digestion", n: 5 });
   if (an.th === 'peau' && ((s.fer_zinc || 0) >= 3 || (s.androgenes || 0) >= 3)) l.push({ t: "Hormones, cycle & gynécologie", n: 8 });
+  if ((s.immun || 0) >= 3 || (s.inflam || 0) >= 3) l.push({ t: "Alimentation & digestion", n: 5 });
+  if ((s.migraine || 0) >= 3 && ((s.hypooestro || 0) >= 2 || (s.pilule || 0) >= 2)) l.push({ t: "Hormones, cycle & gynécologie", n: 8 });
   return l;
 }
 function T(ac, th) { return ac.ths.indexOf(th) >= 0; }
@@ -17828,10 +18050,12 @@ var SUIVI_NODES_N = {
   poids: ['w_hist', 'w_morpho', 'w_fringales', 'w_regimes', 'w_terrain', 'w_axes'],
   peau: ['k_cheveux', 'k_acne', 'k_seche', 'k_terne', 'k_lien'],
   sommeil: ['z_endorm', 'z_reveils', 'z_leger', 'z_tot', 'z_rythme'],
-  base: ['b_cycle', 'b_spm', 'b_thyro', 'b_cortisol']
+  base: ['b_cycle', 'b_spm', 'b_thyro', 'b_cortisol'],
+  immunite: ['i_infect', 'i_allerg', 'i_lien'],
+  douleurs: ['d_artic', 'd_musc', 'd_migr', 'd_lien']
 };
-var SUIVI_PFX = { fatigue: 'Énergie, stress, moral : ', poids: 'Poids : ', peau: 'Peau, cheveux : ', sommeil: 'Sommeil : ', base: 'Socle femme : ' };
-var SUIVI_SEC = { fatigue: 'sec-7', poids: 'sec-4', peau: 'sec-6', sommeil: 'sec-7', base: 'sec-7' };
+var SUIVI_PFX = { fatigue: 'Énergie, stress, moral : ', poids: 'Poids : ', peau: 'Peau, cheveux : ', sommeil: 'Sommeil : ', base: 'Socle femme : ', immunite: 'Immunité, allergies : ', douleurs: 'Douleurs, migraines : ' };
+var SUIVI_SEC = { fatigue: 'sec-7', poids: 'sec-4', peau: 'sec-6', sommeil: 'sec-7', base: 'sec-7', immunite: 'sec-2', douleurs: 'sec-3' };
 
 /* ═══════════════════════════════════════════════════════════════════
    MOTIFS D'ENTRÉE, PARCOURS MULTIPLES, SOCLE FÉMININ, SYNTHÈSE CROISÉE (02/11/2026)
@@ -17841,8 +18065,8 @@ var SUIVI_SEC = { fatigue: 'sec-7', poids: 'sec-4', peau: 'sec-6', sommeil: 'sec
    parcours sont classées ensemble (ce qui revient plusieurs fois remonte), avec « pour confirmer »,
    examens à discuter et le texte à reprendre dans la lettre d'adressage au médecin.
 ═══════════════════════════════════════════════════════════════════ */
-var TH_LABEL = { entree: '1 · Pourquoi elle vient', cancer: 'Cancer', digestif: 'Digestif', hormones: 'Hormones & cycle', fatigue: 'Fatigue, stress & moral', poids: 'Poids', peau: 'Peau & cheveux', sommeil: 'Sommeil', base: 'Socle femme : cycle, thyroïde, cortisol', vie: 'Son quotidien & sa famille', croise: 'Synthèse croisée' };
-var TH_LONG = { cancer: "l'accompagnement dans le cadre d'un cancer", digestif: 'digestif', hormones: 'hormones & cycle', fatigue: 'fatigue, stress & moral', poids: 'poids', peau: 'peau & cheveux', sommeil: 'sommeil', base: 'socle femme (cycle, thyroïde, cortisol)', vie: 'son quotidien et sa famille' };
+var TH_LABEL = { entree: '1 · Pourquoi elle vient', cancer: 'Cancer', digestif: 'Digestif', hormones: 'Hormones & cycle', fatigue: 'Fatigue, stress & moral', poids: 'Poids', peau: 'Peau & cheveux', sommeil: 'Sommeil', immunite: 'Immunité & allergies', douleurs: 'Douleurs & migraines', base: 'Socle femme : cycle, thyroïde, cortisol', vie: 'Son quotidien & sa famille', croise: 'Synthèse croisée' };
+var TH_LONG = { cancer: "l'accompagnement dans le cadre d'un cancer", digestif: 'digestif', hormones: 'hormones & cycle', fatigue: 'fatigue, stress & moral', poids: 'poids', peau: 'peau & cheveux', sommeil: 'sommeil', immunite: 'immunité & allergies', douleurs: 'douleurs & migraines', base: 'socle femme (cycle, thyroïde, cortisol)', vie: 'son quotidien et sa famille' };
 /* ═══════════════════════════════════════════════════════════════════
    PARCOURS « SON QUOTIDIEN & SA FAMILLE » (26/11/2026) — les questions que pose toujours une naturopathe,
    quel que soit le motif : foyer, enfants, grossesse, travail, lieu de vie, charge mentale, sommeil, sport,
@@ -18191,7 +18415,7 @@ node('v_traitements', { m: 'ask', multi: true, s: 'Traitements en cours',
       say: "Les hormones de synthèse changent les besoins en vitamines B, en magnésium et en zinc, et elles influencent la peau, l'humeur et la libido. Nous en tiendrons compte." },
     { k: 'thyroide', l: "Un traitement thyroïdien", f: "vous prenez un traitement thyroïdien",
       say: "Ces médicaments se prennent à jeun, loin du calcium, du fer et du café : je vous donnerai les bons horaires.",
-      flag: "Traitement thyroïdien : espacer de 4 h du fer, du calcium et du magnésium ; pas d'algue ni d'iode." },
+      flag: "Traitement thyroïdien : espacer de 4 h du fer, du calcium, du magnésium et de l'anti-acide (IPP) ; pas d'algue ni d'iode." },
     { k: 'antidep', l: "Un antidépresseur", f: "vous prenez un antidépresseur",
       say: "Je serai très prudente : certaines plantes et le 5-HTP sont à proscrire avec un antidépresseur.",
       flag: "Antidépresseur en cours : pas de millepertuis, pas de 5-HTP ni de L-tryptophane ; ne jamais modifier le traitement." },
@@ -18363,11 +18587,11 @@ node('v_engagement', { m: 'ask', s: 'Le temps qu\'elle peut y consacrer',
   ],
   next: function () { return null; } });
 
-var TH_ORDER = ['cancer', 'digestif', 'hormones', 'fatigue', 'poids', 'peau', 'sommeil', 'base', 'vie', 'tour', 'tourdig', 'tourfoie', 'toursurr', 'tourhorm', 'spsibo', 'sphashi', 'spsurr', 'spendo', 'spsopk', 'spmeno', 'spamen', 'tourobs'];
-var TH_PREFIX = { 'o_': 'cancer', 'h_': 'hormones', 'c_': 'hormones', 'f_': 'fatigue', 'w_': 'poids', 'k_': 'peau', 'z_': 'sommeil', 'b_': 'base', 'v_': 'vie', 't_': 'tour', 'u_': 'tourdig', 'x_': 'tourfoie', 'y_': 'toursurr', 'g_': 'tourhorm', 'q_': 'tourobs', 'pa': 'spsibo', 'pb': 'sphashi', 'pc': 'spsurr', 'pd': 'spendo', 'pe': 'spsopk', 'pf': 'spmeno', 'pg': 'spamen', 'e_': 'entree' };
-var SEC_OF = { cancer: 'Antécédents', digestif: 'Alimentation & digestion', hormones: 'Hormones & cycle', fatigue: 'Surrénales & axe cortisol', poids: 'Surrénales, Hormones & Alimentation', peau: 'Foie & émonctoires', sommeil: 'Surrénales & axe cortisol', base: 'Hormones & Surrénales', vie: 'Identité, Antécédents, Traitements & allergies, Alimentation' };
+var TH_ORDER = ['cancer', 'digestif', 'hormones', 'fatigue', 'poids', 'peau', 'sommeil', 'immunite', 'douleurs', 'base', 'vie', 'tour', 'tourdig', 'tourfoie', 'toursurr', 'tourhorm', 'spsibo', 'sphashi', 'spsurr', 'spendo', 'spsopk', 'spmeno', 'spamen', 'tourobs'];
+var TH_PREFIX = { 'o_': 'cancer', 'h_': 'hormones', 'c_': 'hormones', 'f_': 'fatigue', 'w_': 'poids', 'k_': 'peau', 'z_': 'sommeil', 'i_': 'immunite', 'd_': 'douleurs', 'b_': 'base', 'v_': 'vie', 't_': 'tour', 'u_': 'tourdig', 'x_': 'tourfoie', 'y_': 'toursurr', 'g_': 'tourhorm', 'q_': 'tourobs', 'pa': 'spsibo', 'pb': 'sphashi', 'pc': 'spsurr', 'pd': 'spendo', 'pe': 'spsopk', 'pf': 'spmeno', 'pg': 'spamen', 'e_': 'entree' };
+var SEC_OF = { cancer: 'Antécédents', digestif: 'Alimentation & digestion', hormones: 'Hormones & cycle', fatigue: 'Surrénales & axe cortisol', poids: 'Surrénales, Hormones & Alimentation', peau: 'Foie & émonctoires', sommeil: 'Surrénales & axe cortisol', base: 'Hormones & Surrénales', immunite: 'Traitements & allergies, Alimentation & digestion', douleurs: 'Surrénales & axe cortisol, Hormones & cycle', vie: 'Identité, Antécédents, Traitements & allergies, Alimentation' };
 function thOf(id) { return TH_PREFIX[String(id).slice(0, 2)] || 'digestif'; }
-ROOT.vie = 'v_foyer'; ROOT.cancer = 'o_situation'; ROOT.entree = 'e_motifs'; ROOT.fatigue = 'f_motifs'; ROOT.poids = 'w_motifs'; ROOT.peau = 'k_motifs'; ROOT.sommeil = 'z_motifs';
+ROOT.vie = 'v_foyer'; ROOT.cancer = 'o_situation'; ROOT.entree = 'e_motifs'; ROOT.fatigue = 'f_motifs'; ROOT.poids = 'w_motifs'; ROOT.peau = 'k_motifs'; ROOT.sommeil = 'z_motifs'; ROOT.immunite = 'i_motifs'; ROOT.douleurs = 'd_motifs';
 
 /* ═══════════════════════════════════════════════════════════════════
    26/11/2026 — « Le reste du dossier » : les questions des onglets 02, 04 et 06 passent dans l'entonnoir.
@@ -18493,7 +18717,7 @@ window.mgTourEcartes = function () { return TOUR_ECARTES.slice(); };
 window.mgTourListe = function () { var r = {}; Object.keys(TOUR_LISTES).forEach(function (k) { r[k] = TOUR_LISTES[k].slice(); }); return r; };
 
 /* Motifs d'entrée → parcours. Les motifs sans parcours dédié (immunité, douleurs, autre) renvoient aux sections classiques. */
-var ENTRY_TH = { cancer: 'cancer', digestif: 'digestif', contra: 'hormones', hormones: 'hormones', fatigue: 'fatigue', poids: 'poids', peau: 'peau', sommeil: 'sommeil' };
+var ENTRY_TH = { cancer: 'cancer', digestif: 'digestif', contra: 'hormones', hormones: 'hormones', fatigue: 'fatigue', poids: 'poids', peau: 'peau', sommeil: 'sommeil', immunite: 'immunite', douleurs: 'douleurs' };
 function femmeOK() { var s = document.getElementById('sexe'); return !(s && s.value === 'Homme'); }
 function entreeFaite(a) { return Array.isArray(a.e_motifs) && a.e_motifs.length > 0; }
 function themeQueue(a) {
@@ -18618,7 +18842,7 @@ function themesHtml() {
   var a = S.a, q = themeQueue(a), st = startedThemes(a);
   var tabs = ['entree'].concat(TH_ORDER.filter(function (t) { return (q.indexOf(t) >= 0 || st.indexOf(t) >= 0 || S.th === t) && (t !== 'base' || femmeOK()); }));
   var GROUPES = [
-    ['1 · Ses motifs de consultation', ['entree', 'cancer', 'digestif', 'hormones', 'fatigue', 'poids', 'peau', 'sommeil']],
+    ['1 · Ses motifs de consultation', ['entree', 'cancer', 'digestif', 'hormones', 'fatigue', 'poids', 'peau', 'sommeil', 'immunite', 'douleurs']],
     ['2 · Son terrain et son quotidien', ['base', 'vie', 'tour']],
     ['3 · Les grands systèmes, un par un', ['tourdig', 'tourfoie', 'toursurr', 'tourhorm']],
     ['4 · Questions de spécialité (selon ses motifs)', ['spsibo', 'sphashi', 'spsurr', 'spendo', 'spsopk', 'spmeno', 'spamen']],
@@ -18862,6 +19086,22 @@ function pontFratrie() {
     if (btn && !btn.classList.contains('on') && !ch.some(function (c) { return c.classList.contains('on'); })) toggleFratrieOuiNon(btn, oui);
   } catch (e) {}
 }
+/* 27/11/2026 : repère « Sa préparation » / « Vu avec elle » sur les cases et menus cochés automatiquement */
+function idsDe(fn) { var ids = [], m, src = String(fn), re = /\b(?:has|hasAny|hasE)\(\s*a\s*,\s*['"]([a-z_0-9]+)['"]/g, re2 = /\ba\.([a-z_0-9]+)/g; while ((m = re.exec(src))) ids.push(m[1]); while ((m = re2.exec(src))) ids.push(m[1]); return ids; }
+function dePrepId(id) { try { var cv = CLI && CLI[id], sv = S.a[id]; return cv !== undefined && sv !== undefined && sv !== '_skip' && JSON.stringify([].concat(cv).slice().sort()) === JSON.stringify([].concat(sv).slice().sort()); } catch (e) { return false; } }
+function marquerSource(el, ids) {
+  try {
+    var isSel = el.tagName === 'SELECT';
+    var tag = isSel ? (el.nextElementSibling && el.nextElementSibling.classList.contains('mg-src') ? el.nextElementSibling : null) : el.querySelector('.mg-src');
+    var vus = (ids || []).filter(function (id) { return S.a[id] !== undefined && S.a[id] !== '_skip'; });
+    var show = el.dataset.mgAuto === '1' && el.dataset.mgUser !== '1' && vus.length > 0;
+    if (!show) { if (tag) tag.remove(); return; }
+    var prep = vus.every(dePrepId);
+    if (!tag) { tag = document.createElement('span'); tag.setAttribute('aria-label', 'Origine de la réponse'); if (isSel) el.insertAdjacentElement('afterend', tag); else (el.querySelector('.ci-top, .trig-top') || el).appendChild(tag); }
+    tag.className = 'mg-src ' + (prep ? 'prep' : 'visio');
+    tag.textContent = prep ? 'Sa préparation' : 'Vu avec elle';
+  } catch (e) { /* non bloquant */ }
+}
 function appliquerPonts() {
   if (!isConsult()) return;
   pontFratrie();
@@ -18880,9 +19120,10 @@ function appliquerPonts() {
     } else if (S.ponts.indexOf(p[0]) >= 0 && el.dataset.mgAuto === '1' && el.dataset.mgUser !== '1') {
       el.classList.remove('checked'); delete el.dataset.mgAuto; touche = true;
     }
+    marquerSource(el, idsDe(p[1]));
   });
   S.ponts = voulu;
-  pontsChir(ra); pontsDiag(ra); pontsTrait(ra); pontsCancer(ra); pontsSelects(ra);
+  pontsChir(ra); pontsDiag(ra); pontsTrait(ra); pontsCancer(ra); pontsSelects(ra); pontsChips(ra);
   try { if (typeof updateNavProgress === 'function') updateNavProgress(); } catch (e) { /* non bloquant */ }
   if (touche) { try { if (typeof updateCounter === 'function') updateCounter(); if (typeof refreshFunnel === 'function') refreshFunnel(); } catch (e) { /* non bloquant */ } }
 }
@@ -19021,13 +19262,43 @@ function pontsSelects(ra) {
       }
       if (want) { if (el.dataset.mgUser !== '1' && el.value !== want) { el.value = want; el.dataset.mgAuto = '1'; el.dispatchEvent(new Event('change', { bubbles: true })); } }
       else if (el.dataset.mgAuto === '1' && el.dataset.mgUser !== '1') { el.selectedIndex = 0; delete el.dataset.mgAuto; el.dispatchEvent(new Event('change', { bubbles: true })); }
+      marquerSource(el, [id]);
     });
   } catch (e) { if (window.console) console.warn('[Listes reportées]', e); }
 }
+/* Pastilles « Traitements en cours nécessitant une vigilance » (Section sécurité) : le générateur déclenche ses règles
+   (anticoagulants, Lévothyrox, THM, antidépresseurs, IPP) à partir de ces pastilles. Elles se cochent donc seules d'après
+   les traitements cités dans le parcours, tant que Sabrina n'a pas cliqué dessus elle-même (27/11/2026). */
+var CHIPTRAIT = [
+  ['cons-secu-traitements-group', 'Anticoagulants', { v_traitements: ['anticoag'] }],
+  ['cons-secu-traitements-group', 'ISRS', { v_traitements: ['antidep'], f_meds: ['antidep'], z_meds: ['antidep'], w_meds: ['antidep'], k_meds: ['antidep'], i_meds: ['antidep'], d_meds: ['antidep'] }],
+  ['cons-secu-traitements-group', 'Pilule ou THM', { v_traitements: ['pilule'], f_meds: ['pilule'], z_meds: ['pilule'], w_meds: ['pilule'], k_meds: ['pilule'], i_meds: ['pilule'], d_meds: ['pilule'], h_meds: ['hormonal'] }],
+  ['cons-secu-traitements-group', 'Lévothyrox', { v_traitements: ['thyroide'], f_meds: ['thyroide'], z_meds: ['thyroide'], w_meds: ['thyroide'], k_meds: ['thyroide'], i_meds: ['thyroide'], d_meds: ['thyroide'], h_meds: ['thyroide'] }],
+  ['cons-secu-traitements-group', 'IPP', { v_traitements: ['ipp'], f_meds: ['ipp'], z_meds: ['ipp'], w_meds: ['ipp'], k_meds: ['ipp'], i_meds: ['ipp'], d_meds: ['ipp'] }],
+  /* « Aucun » : un groupe jamais touché est traité comme « à vérifier » par le générateur (aromathérapie exclue par prudence) */
+  ['cons-secu-traitements-group', 'Aucun de ces traitements', { v_traitements: ['aucun'] }],
+  ['cons-allergies-group', 'Aucune connue', { v_allergies: ['aucune'] }]
+];
+function pontsChips(ra) {
+  try {
+    CHIPTRAIT.forEach(function (c) {
+      var grp = document.getElementById(c[0]); if (!grp) return;
+      var chip = [].slice.call(grp.querySelectorAll('.chip')).filter(function (x) { return x.textContent.replace('✓', '').trim().indexOf(c[1]) === 0; })[0]; if (!chip) return;
+      var want = Object.keys(c[2]).some(function (id) {
+        var v = ra[id]; if (!Array.isArray(v)) return false;
+        return c[2][id].some(function (k) { return v.indexOf(k) >= 0; });
+      });
+      if (want) { if (chip.dataset.mgUser !== '1' && !chip.classList.contains('on')) { chip.classList.add('on'); chip.dataset.mgAuto = '1'; } }
+      else if (chip.dataset.mgAuto === '1' && chip.dataset.mgUser !== '1') { chip.classList.remove('on'); delete chip.dataset.mgAuto; }
+    });
+  } catch (e) { if (window.console) console.warn('[Pastilles traitements]', e); }
+}
 /* Un clic de Sabrina sur une case reportée la rend définitivement manuelle */
 document.addEventListener('click', function (e) {
+  var chT = e.target.closest && e.target.closest('#cons-secu-traitements-group .chip, #cons-allergies-group .chip');
+  if (chT && chT.dataset.mgAuto === '1') { delete chT.dataset.mgAuto; chT.dataset.mgUser = '1'; }
   var tc = e.target.closest && e.target.closest('.trig-check, .check-item');
-  if (tc && tc.dataset.mgAuto === '1') { delete tc.dataset.mgAuto; tc.dataset.mgUser = '1'; }
+  if (tc && tc.dataset.mgAuto === '1') { delete tc.dataset.mgAuto; tc.dataset.mgUser = '1'; var tgS = tc.querySelector('.mg-src'); if (tgS) tgS.remove(); }
 }, true);
 
 /* ───────────── Réponses de la préparation visio (23/11/2026) ─────────────
@@ -19045,7 +19316,7 @@ function dejaDitHtml(id) {
   var out = DEJA_DIT[id].filter(function (r) { var v = SNAPM[r[0]]; return (Array.isArray(v) ? v : [v]).indexOf(r[1]) >= 0; }).map(function (r) { return r[2]; });
   return out.length ? '<div class="mg-cli"><b>Elle l\'a déjà dit dans son questionnaire</b> : ' + out.map(esc).join(' · ') + '. Cochez ce qui se confirme, et demandez le reste.</div>' : '';
 }
-var ALERT_NODES = ['secu', 'h_secu', 'f_secu', 'z_alertes', 'w_secu', 'k_secu'];
+var ALERT_NODES = ['secu', 'h_secu', 'f_secu', 'z_alertes', 'w_secu', 'k_secu', 'i_secu', 'd_secu'];
 function cliVal(id) { return (CLI && S.a[id] === undefined && S.p[id] === undefined) ? CLI[id] : undefined; }
 function cliCopy(v) { return Array.isArray(v) ? v.slice() : v; }
 /* Réponses de la cliente, puis celles confirmées ou modifiées en séance par-dessus */
@@ -19123,7 +19394,10 @@ var ACC = {
 "fer_zinc": "On confirmera d'abord avec votre médecin, puis on soutiendra vos réserves et leur absorption, car elles conditionnent l'énergie, la peau et les cheveux.",
 "mito": "On soutiendra la production d'énergie de vos cellules et on lèvera ce qui la freine, pour une énergie plus régulière et moins de récupération interminable.",
 "androgenes": "On agira sur la stabilité de votre énergie et l'inflammation, car c'est ce qui régule la production d'hormones masculines dans l'organisme.",
-"atopie": "On apaisera le terrain de votre peau de l'intérieur (intestin, inflammation, stress), car la peau reflète souvent ce qui se passe plus en profondeur."
+"atopie": "On apaisera le terrain de votre peau de l'intérieur (intestin, inflammation, stress), car la peau reflète souvent ce qui se passe plus en profondeur.",
+"immun": "On soutiendra vos défenses à la racine : l'intestin qui les entraîne, le sommeil et le stress qui les freinent, et les réserves dont elles ont besoin, pour que les infections cessent de s'enchaîner.",
+"inflam": "On calmera l'inflammation de fond là où elle s'entretient (intestin, sucre, graisses, stress), car la douleur suit ce terrain bien plus que l'endroit où elle se ressent.",
+"migraine": "On cherchera ce qui abaisse le seuil de vos crises (hormones, magnésium, histamine, glycémie, sommeil) pour agir sur le déclencheur plutôt que sur la douleur seule."
 };
 var PISTES0 = null;
 function recapRows(ac) {
