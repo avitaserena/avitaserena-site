@@ -1350,6 +1350,17 @@ html body .mg-lg-row{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 8px}
 html body .mg-lg{display:inline-block;padding:3px 12px;border-radius:99px;border:1.5px solid var(--taupe-fonce,#C9C2B6);font-size:12.5px;font-weight:600;color:var(--ardoise,#1E1E1C);background:#fff;line-height:1.5}
 html body .mg-lg-on{background:#F3E7D2;border:2px solid var(--ocre,#B4906A)}
 html body .mg-lg-dn{background:#E6F1E8;border-color:#7FAE8A;color:#2F5B3B}
+html body .mg-sticky{position:sticky;top:var(--mg-top,126px);z-index:30;background:#fff;margin:0 -2px 12px;padding:8px 2px 0}
+html body .mg-sbar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:var(--off,#F7F6F4);border:1.5px solid var(--ocre,#B4906A);border-radius:14px;padding:9px 14px;box-shadow:0 4px 14px rgba(30,30,28,.08)}
+html body .mg-sbar-l{display:flex;align-items:baseline;gap:8px;font-size:15.5px;min-width:0}
+html body .mg-sbar-k{font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ocre,#B4906A)}
+html body .mg-sbar-m{flex:1 1 220px;font-size:13.5px;color:var(--ardoise,#1E1E1C);min-width:180px}
+html body .mg-sbar-m .mg-bar{margin:4px 0 0;height:6px}
+html body .mg-sbar-b{margin-left:auto;white-space:nowrap}
+html body .mg-spanel[hidden]{display:none!important}
+html body .mg-spanel{margin:12px 0 6px}
+html body .mg-pre{margin-top:18px}
+html body .mg-card{overflow:visible!important;overflow:clip!important}
 </style>
 </head>
 <body>
@@ -10606,9 +10617,9 @@ function goSection(n) {
   const sectionsAvant = document.querySelectorAll('.section');
   const currentAvant = document.querySelector('.section.active');
   const currentIndexAvant = currentAvant ? Array.prototype.indexOf.call(sectionsAvant, currentAvant) : null;
-  const CAM_IDX = 19; // onglet « Questionnaire de la cliente » (26/11/2026) : fait partie du parcours principal
-  const estPrincipal = i => i < 12 || i === CAM_IDX;
-  if (n >= 12 && n !== CAM_IDX && currentIndexAvant !== null && estPrincipal(currentIndexAvant) && lastSectionBeforeJump === null) {
+  const CAM_IDX = 19, PRE_IDX = 20; // onglet « Questionnaire de la cliente » (26/11/2026) : fait partie du parcours principal
+  const estPrincipal = i => i < 12 || i === CAM_IDX || i === PRE_IDX;
+  if (n >= 12 && n !== CAM_IDX && n !== PRE_IDX && currentIndexAvant !== null && estPrincipal(currentIndexAvant) && lastSectionBeforeJump === null) {
     lastSectionBeforeJump = currentIndexAvant;
   } else if (estPrincipal(n)) {
     lastSectionBeforeJump = null;
@@ -10636,6 +10647,8 @@ function goSection(n) {
     document.getElementById('progress-label').textContent = 'Section ' + (n + 1) + ' sur ' + TOTAL;
   } else if (n === CAM_IDX) {
     document.getElementById('progress-label').textContent = 'Questionnaire guidé — hors du parcours en ' + TOTAL + ' sections';
+  } else if (n === PRE_IDX) {
+    document.getElementById('progress-label').textContent = 'Pré-questionnaire — sa préparation, lue avant la consultation';
   } else {
     document.getElementById('progress-label').textContent = 'Guide spécialisé — hors du parcours en ' + TOTAL + ' sections';
   }
@@ -18412,6 +18425,7 @@ function copierAdr() {
   if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(el.textContent || '').then(ok, function () { if (st) st.textContent = 'Copie impossible : sélectionnez le texte à la main.'; });
   else if (st) st.textContent = 'Copie impossible : sélectionnez le texte à la main.';
 }
+var PANEL_OPEN = true;
 function themesHtml() {
   var a = S.a, q = themeQueue(a), st = startedThemes(a);
   var tabs = ['entree'].concat(TH_ORDER.filter(function (t) { return (q.indexOf(t) >= 0 || st.indexOf(t) >= 0 || S.th === t) && (t !== 'base' || femmeOK()); }));
@@ -18437,10 +18451,13 @@ function themesHtml() {
     var cpt = tot ? '<span class="mg-cpt' + (n === tot ? ' ok' : '') + '">' + (n === tot ? '✓ terminé' : n + ' sur ' + tot) + '</span>' : '';
     return '<div class="mg-grp"><div class="mg-grp-l"><span>' + titre + '</span>' + cpt + '</div><div class="mg-themes" role="group" aria-label="' + titre + '">' + liste.map(chip).join('') + '</div></div>';
   }
-  var h = '<div class="mg-prog"><b>' + faits + ' parcours terminé' + (faits > 1 ? 's' : '') + ' sur ' + total + '</b>' + (total - faits > 0 ? ' · il en reste ' + (total - faits) : ' · tout est fait') + '</div>';
-  h += '<div class="mg-bar"><span style="width:' + Math.round(100 * faits / Math.max(1, total)) + '%"></span></div>';
+  var cur = TH_LABEL[S.th] || '', pct = Math.round(100 * faits / Math.max(1, total));
+  var bar = '<div class="mg-sticky" id="mg-sticky"><div class="mg-sbar"><div class="mg-sbar-l"><span class="mg-sbar-k">En cours</span><b>' + esc(cur) + '</b></div>' +
+    '<div class="mg-sbar-m"><span><b>' + faits + '</b> sur ' + total + ' parcours terminés</span><div class="mg-bar"><span style="width:' + pct + '%"></span></div></div>' +
+    '<button type="button" class="mg-tbtn mg-sbar-b" data-mg="panel" aria-expanded="' + (PANEL_OPEN ? 'true' : 'false') + '">' + (PANEL_OPEN ? 'Masquer les parcours ▴' : 'Tous les parcours ▾') + '</button></div></div>';
+  var h = bar + '<div class="mg-spanel"' + (PANEL_OPEN ? '' : ' hidden') + '>';
   GROUPES.forEach(function (g) { h += bloc(g[0], g[1].filter(function (t) { return tabs.indexOf(t) >= 0 && (t !== 'croise' || st.length); })); });
-  h += '<div class="mg-legend"><div class="mg-lg-row"><span class="mg-lg mg-lg-td">À faire</span><span class="mg-lg mg-lg-on">En cours</span><span class="mg-lg mg-lg-dn">✓ Terminé</span></div>Touchez un parcours pour y aller, dans l\'ordre qui vous convient. Une question non évoquée se passe avec « Pas évoqué, passer » : elle compte alors comme traitée.</div>';
+  h += '<div class="mg-legend"><div class="mg-lg-row"><span class="mg-lg mg-lg-td">À faire</span><span class="mg-lg mg-lg-on">En cours</span><span class="mg-lg mg-lg-dn">✓ Terminé</span></div>Touchez un parcours pour y aller, dans l\'ordre qui vous convient. Une question non évoquée se passe avec « Pas évoqué, passer » : elle compte alors comme traitée.</div></div>';
   return h;
 }
 function soonHtml() { return ''; }
@@ -19172,6 +19189,7 @@ document.addEventListener('click', function (e) {
 function calWrap() { var c = calibrageHtml(); return c ? '<details class="mg-calw"' + (CAL_OPEN ? ' open' : '') + '><summary>Mes retours sur les pistes (facultatif) : l\'outil les déduit déjà de ses réponses</summary>' + c + '</details>' : ''; }
 function render() {
   var box = document.getElementById('mg-body'); if (!box) return;
+  var plec = document.getElementById('pre-lecture'); if (plec) { try { plec.innerHTML = lectureHtml(); } catch (e0) { /* sans conséquence */ } }
   /* Ce qu'elle a déjà répondu dans son questionnaire est repris tel quel : on ne pose que les questions restantes (rien n'est perdu : tout reste modifiable dans « Ses réponses déjà validées ») */
   var auto = false, guard = 0;
   while (CLI && !S.edit && guard++ < 60) {
@@ -19181,7 +19199,7 @@ function render() {
   }
   if (auto) { try { save(); appliquerPonts(); save(); } catch (e) { /* sans conséquence */ } }
   var a = S.a, an = analyse(a), cid = currentId(an), started = Object.keys(a).length > 0;
-  var h = lectureHtml() + '<div class="mg-th-l">Où vous en êtes</div>' + themesHtml() + soonHtml();
+  var h = themesHtml() + soonHtml();
   if (S.th === 'croise') { box.innerHTML = h + croiseHtml(an) + calWrap(); var b0 = document.getElementById('mg-back'), r0 = document.getElementById('mg-reset'); if (b0) b0.disabled = !started; if (r0) { r0.disabled = !started; r0.textContent = S.rst ? 'Confirmer : tout effacer' : 'Recommencer'; } return; }
   if (an.flags.length && !(cid === null)) h += '<div class="mg-alert"><b>À clarifier avec son médecin avant tout</b><ul>' + an.flags.map(function (f) { return '<li>' + esc(f) + '</li>'; }).join('') + '</ul></div>';
   var say = cid !== null ? lastSay(an, a) : null;
@@ -19263,7 +19281,7 @@ function copier() {
 
 /* ───────────── Branchements ───────────── */
 function onClick(e) {
-  var b = e.target.closest && e.target.closest('[data-mg]'); if (!b || !document.getElementById('mg-card').contains(b)) return;
+  var b = e.target.closest && e.target.closest('[data-mg]'); if (!b) return; var plx0 = document.getElementById('pre-lecture'); if (!document.getElementById('mg-card').contains(b) && !(plx0 && plx0.contains(b))) return;
   var act = b.getAttribute('data-mg');
   if (act === 'pick') pick(b.getAttribute('data-n'), b.getAttribute('data-k'));
   else if (act === 'cont') cont(b.getAttribute('data-n'));
@@ -19281,7 +19299,8 @@ function onClick(e) {
   else if (act === 'copyrt') { try { var t = recapTexte(analyseCroise(S.a)), st = document.getElementById('mg-st3'); (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(function () { if (st) st.textContent = 'Copié'; }, function () { if (st) st.textContent = 'Copie impossible : sélectionnez le tableau'; }); } catch (x) { /* sans effet */ } }
   else if (act === 'go') { var n = parseInt(b.getAttribute('data-sec'), 10); if (typeof goSection === 'function' && !isNaN(n)) goSection(n); }
   else if (act === 'copyadr') copierAdr();
-  else if (act === 'theme') { var th = b.getAttribute('data-th'); if (TH_LABEL[th]) { S.soon = null; S.th = th; S.edit = null; S.rst = false; commit(); scrollUp(); } }
+  else if (act === 'panel') { PANEL_OPEN = !PANEL_OPEN; render(); }
+  else if (act === 'theme') { var th = b.getAttribute('data-th'); if (TH_LABEL[th]) { PANEL_OPEN = false; S.soon = null; S.th = th; S.edit = null; S.rst = false; commit(); scrollUp(); } }
 }
 var actif = false;
 function onKey(e) {
@@ -19378,6 +19397,7 @@ function init() {
   var card = document.getElementById('mg-card'); if (!card) return;
   if (holder() && holder().value) load(holder().value);
   card.addEventListener('click', onClick);
+  var plx = document.getElementById('pre-lecture'); if (plx) plx.addEventListener('click', onClick);
   var ecrireChamp = function (e) {
     var t = e.target; if (!t || !t.getAttribute) return; var ref = t.getAttribute('data-mgc'); if (!ref) return;
     var el = document.getElementById(ref) || document.querySelector('[data-mgf="' + ref + '"]'); if (!el) return;
@@ -19628,8 +19648,6 @@ window.__mg = { cli: function () { return CLI; }, fusion: fusion, fill: fill, le
   sec.innerHTML = '<div class="sec-title"><div class="sec-num">Questionnaire guidé</div><div class="sec-h" id="cam-titre">Questionnaire de la cliente</div></div>' +
     '<div class="sec-intro" style="font-size:16px;line-height:1.7;color:var(--ardoise);margin:0 0 18px">Posez les questions dans l\'ordre qui s\'affiche : son motif, puis son quotidien, sa famille, ses allergies. Tout ce que vous cochez remplit le dossier et part vers le générateur : vous n\'avez pas à repasser par les 12 sections, sauf pour votre observation et votre synthèse.</div>';
   page.appendChild(sec);
-  var prep = document.getElementById('bloc-prep-visio');
-  if (prep) sec.appendChild(prep);
   var ptr = document.createElement('div');
   ptr.id = 'cam-pointeur'; ptr.style.cssText = 'background:#fff;border:1px solid var(--ocre,#B4906A);border-radius:20px;padding:20px 24px;margin:0 0 26px';
   ptr.innerHTML = '<div style="font-family:\'Cormorant Garamond\',serif;font-size:26px;font-weight:600;color:var(--ardoise,#1E1E1C)" id="cam-ptr-t">Questionnaire de la cliente</div>' +
@@ -19642,6 +19660,21 @@ window.__mg = { cli: function () { return CLI; }, fusion: fusion, fill: fill, le
   btn.style.order = '-1'; btn.style.fontWeight = '600'; btn.style.border = '1px solid var(--ocre,#B4906A)'; btn.style.borderRadius = '12px'; btn.style.marginBottom = '6px';
   btn.innerHTML = '<span class="nav-btn-label" id="nav-camille-l">Questionnaire de la cliente</span><span class="nav-btn-progress" id="nav-prog-19"></span>';
   nav.appendChild(btn);
+  /* Onglet « Pré-questionnaire » (27/11/2026) : tout ce qui vient de sa préparation visio, à part du questionnaire qu'on déroule avec elle. Index 20. */
+  var pre = document.createElement('div');
+  pre.className = 'section'; pre.id = 'sec-pre'; pre.style.display = 'none';
+  pre.innerHTML = '<div class="sec-title"><div class="sec-num">Avant la consultation</div><div class="sec-h">Pré-questionnaire</div></div>' +
+    '<div class="sec-intro" style="font-size:16px;line-height:1.7;color:var(--ardoise);margin:0 0 18px">Ce que la cliente a répondu à son questionnaire de préparation, lu pour vous : ce qu\'elle dit, ce qui est à creuser, ce qui se recoupe. À parcourir avant la visio ; le questionnaire à dérouler avec elle est dans l\'onglet voisin.</div>' +
+    '<div id="pre-prep"></div><div id="pre-lecture" class="mg-pre"></div>' +
+    '<div class="nav-footer"><span></span><button type="button" class="btn primary" onclick="goSection(19)">Passer au questionnaire →</button></div>';
+  page.appendChild(pre);
+  var prep = document.getElementById('bloc-prep-visio');
+  if (prep) pre.querySelector('#pre-prep').appendChild(prep);
+  var btn2 = document.createElement('button');
+  btn2.className = 'nav-btn'; btn2.id = 'nav-pre'; btn2.type = 'button'; btn2.setAttribute('onclick', 'goSection(20)');
+  btn2.style.order = '-2'; btn2.style.fontWeight = '600'; btn2.style.border = '1px solid var(--taupe-fonce,#C9C2B6)'; btn2.style.borderRadius = '12px'; btn2.style.marginBottom = '6px';
+  btn2.innerHTML = '<span class="nav-btn-label">Pré-questionnaire</span><span class="nav-btn-progress"></span>';
+  nav.appendChild(btn2);
   var dernier = '';
   function maj() {
     var pr = (document.getElementById('prenom') || {}).value || '';
@@ -19712,6 +19745,15 @@ function accueilMode(m){
     if(v){t.style.height='auto';t.style.height=(t.scrollHeight+2)+'px';}}
   document.addEventListener('input',function(e){if(e.target&&e.target.id==='motif')maj();});
   setInterval(maj,1500);document.addEventListener('DOMContentLoaded',maj);
+})();
+</script>
+<script>
+/* Barre « où vous en êtes » : elle se colle juste sous l'en-tête fixe, quelle que soit la largeur d'écran */
+(function(){
+  function t(){var h=document.querySelector('.hdr'),pw=document.querySelector('.progress-wrap'),v=h?h.getBoundingClientRect().height:0;
+    if(pw&&getComputedStyle(pw).position==='sticky')v+=pw.getBoundingClientRect().height;
+    document.documentElement.style.setProperty('--mg-top',Math.round(v)+'px');}
+  window.addEventListener('resize',t);document.addEventListener('DOMContentLoaded',t);setInterval(t,2000);t();
 })();
 </script>
 </body>
