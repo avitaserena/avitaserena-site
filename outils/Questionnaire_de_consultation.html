@@ -1239,6 +1239,14 @@ textarea.fi{height:auto !important;min-height:112px;line-height:1.65 !important;
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
 </style>
 <style>/* 26/11/2026 : la ligne « % du questionnaire abordé » reste visible en descendant */
+.qcard label.fl,.qcard .fl{font-size:15px!important;font-weight:700!important;letter-spacing:.06em!important;margin:22px 0 8px!important}
+.qcard .check-item{padding:9px 12px!important}
+.qcard .check-item .ci-top{font-size:15px!important;line-height:1.4!important;gap:12px!important}
+.qcard .check-item .ci-top span,.qcard .check-item .ci-top{font-size:15px!important}
+.qcard .trig-check{padding:9px 14px!important}
+.qcard .trig-q{font-size:15px!important;line-height:1.4!important}
+.qcard .trig-hint,.qcard .trig-explain,.qcard .check-item small,.qcard .ci-sub{font-size:14px!important;line-height:1.5!important}
+.qcard .info-box{font-size:15px!important;line-height:1.6!important;padding:12px 16px!important}
 .mg-rng{display:flex;align-items:center;gap:12px}.mg-rng input{flex:1;padding:0!important;min-height:30px!important;border:0!important}.mg-rng b{min-width:28px;font-size:18px}.mg-champs{display:grid;gap:12px;margin:14px 0 6px}.mg-champ{display:grid;gap:5px}.mg-champ-l{font-size:17px;line-height:1.5;color:var(--ardoise,#1E1E1C)}.mg-champs select,.mg-champs input{min-height:48px;padding:10px 14px;border:1.5px solid var(--taupe-fonce,#D5CFC6);border-radius:14px;background:#fff;font-size:17px;font-family:inherit;color:var(--ardoise,#1E1E1C)}
 .progress-wrap{position:sticky;top:60px;z-index:150;background:rgba(247,246,244,.96);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);padding-top:10px !important;padding-bottom:8px !important;border-bottom:1px solid var(--taupe)}
 .progress-wrap::after{display:none !important}
@@ -18949,11 +18957,16 @@ function questionHtml(id) {
   h += '<button type="button" class="mg-link" data-mg="skip" data-n="' + id + '">Pas évoqué, passer</button></div>';
   return h + '</div>';
 }
+function champsResume(id) {
+  var out = [];
+  N[id].champs.forEach(function (f) { var el = document.getElementById(f.d) || document.querySelector('[data-mgf="' + f.d + '"]'); if (el && String(el.value || '').trim() !== '') { var v = el.tagName === 'SELECT' && el.selectedIndex >= 0 ? el.options[el.selectedIndex].text : el.value; out.push(f.l.replace(/\s*[:?]\s*$/, '') + ' : ' + v); } });
+  return out.length ? out.join(' · ') : 'rien noté';
+}
 function trailHtml(an) {
   var rows = [];
   an.path.forEach(function (id) {
     if (S.a[id] === undefined || id === S.edit) return;
-    var lbl = S.a[id] === '_skip' ? 'passée' : chosen(id, S.a).map(function (o) { return o.l; }).join(' · ');
+    var lbl = S.a[id] === '_skip' ? 'passée' : (N[id].champs ? champsResume(id) : chosen(id, S.a).map(function (o) { return o.l; }).join(' · '));
     rows.push('<button type="button" class="mg-edit" data-mg="edit" data-n="' + id + '"><span class="q">' + esc(N[id].s) + '</span><span class="a">' + esc(lbl || '—') + '</span><span class="m">modifier</span></button>');
     var sy = S.a[id] === '_skip' ? [] : chosen(id, S.a).filter(function (o) { return o.say; }).slice(0, 2).map(function (o) { return o.say; });
     if (sy.length) rows.push('<div class="mg-trail-say"><div class="mg-say-l">Je lui dis</div>' + esc(sy.join(' ')) + '</div>');
