@@ -12848,7 +12848,9 @@ async function chargerPrepVisio() {
     window.__visioSnap = row.snapshot || null;
     try { if (typeof window.mgChargerVisio === 'function') window.mgChargerVisio(row.snapshot || {}); } catch (e) { console.warn('[Prep visio] Parcours non préchargé :', e); }
 
-    if (row.synthese_ia) { renderPrepVisioSynthese(row.synthese_ia); }
+    /* Une synthèse enregistrée avant le découpage par thème (v18) est régénérée une fois */
+    const si0 = row.synthese_ia, sansTheme = si0 && Array.isArray(si0.lignes) && si0.lignes.some((l) => !(l && l.theme));
+    if (si0 && !sansTheme) { renderPrepVisioSynthese(si0); }
     else { genererPrepVisioSynthese(false); }
   } catch (e) { console.warn('[Prep visio] Chargement échoué :', e); }
 }
@@ -12923,6 +12925,13 @@ function pvCartes(d, esc) {
   const idx = themes.map((t) => { const set = []; (t.items || []).forEach((it) => (it.reponses || []).forEach((r) => { if (!NSP.test(r)) set.push(pvNorm(r)); })); return set; });
   const byTheme = themes.map(() => []), trans = [];
   lignes.forEach((l) => {
+    /* v18 : la synthèse indique elle-même le thème de chaque ligne */
+    if (l.theme) {
+      const nt = pvNorm(l.theme);
+      if (nt.indexOf('transvers') === 0) { trans.push(l); return; }
+      const ti = themes.findIndex((t) => pvNorm(t.theme) === nt);
+      if (ti >= 0) { byTheme[ti].push(l); return; }
+    }
     const parts = String(l.elle_a_dit || '').split(/\s*·\s*/).map(pvNorm).filter(Boolean);
     const hits = themes.map(() => 0);
     parts.forEach((q) => idx.forEach((set, i) => { if (set.some((r) => r === q || (q.length >= 10 && (r.indexOf(q) >= 0 || q.indexOf(r) >= 0)))) hits[i]++; }));
