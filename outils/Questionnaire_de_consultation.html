@@ -1436,6 +1436,17 @@ html body #nav .nav-btn.nav-g{gap:8px!important;padding-right:10px!important}
 .pvt-vide{font-size:14px;color:#6B6560}
 .pvt-mots{margin:16px 0}
 .pvt-mots-t{font-size:15px;line-height:1.65;white-space:pre-line}
+.pvt-dit-t{margin:0;font-size:15px;line-height:1.5}
+.pvt-plus{font-size:12.5px;color:#6B6560;white-space:nowrap}
+.pvt .pvt-col{padding:11px 16px}
+.pvt .pvt-q{margin:0 0 3px}
+.pvt-acc-d summary,.pvt-more summary,.pvt-aussi summary{cursor:pointer;font-size:14px;color:#6B6560;list-style:none}
+.pvt-acc-d summary::before,.pvt-more summary::before,.pvt-aussi summary::before{content:'＋ ';font-weight:700}
+.pvt-acc-d[open] summary::before,.pvt-more[open] summary::before,.pvt-aussi[open] summary::before{content:'－ '}
+.pvt-acc-d{margin-top:4px}
+.pvt-more>summary,.pvt-aussi>summary{padding:10px 16px;border-top:1px dashed var(--t-ln,#E3CBC0)}
+.pvt-aussi p{margin:0;padding:6px 16px;font-size:14px;line-height:1.5;color:#3F3A35}
+.pvt-flou{margin:0;border-radius:0;border-left:0;border-right:0}
 @media (max-width:1100px){.pvt-grid{grid-template-columns:1fr}.pvt-col+.pvt-col{border-left:0;border-top:1px solid #EDE9E1}.pvt-start{grid-template-columns:1fr}}
 
 .mg-edit .q .pp{display:inline-block;margin-left:8px;padding:1px 9px;border-radius:999px;font-style:normal;font-size:12px;font-weight:600;letter-spacing:.02em;background:#EDE9E1;color:#6B5238;border:1px solid #D5CFC6;vertical-align:middle;white-space:nowrap}
@@ -12957,22 +12968,30 @@ function pvTableau(d, esc) {
     if (rep.length) autres.push({ theme: t.theme, rep });
   });
   const liste = (arr) => arr.length ? '<ul class="pvt-ul">' + arr.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul>' : '';
+  /* 27/11/2026 : allégé. Une ligne = ce qu'elle a dit (en une phrase), ce que je lui dis (1 bloc), 3 pistes au plus.
+     Les 5 premières lignes sont visibles, le reste se déplie ; les réponses non reprises sont repliées en bas. */
   const dit = (l) => {
     const th = l.theme && pvNorm(l.theme).indexOf('transvers') !== 0 ? '<div class="pvt-q">' + esc(l.theme) + '</div>' : '';
-    return th + liste(String(l.elle_a_dit || '').split(/\s*·\s*/).map((x) => x.trim()).filter(Boolean));
+    const all = String(l.elle_a_dit || '').split(/\s*·\s*/).map((x) => x.trim()).filter(Boolean);
+    const vu = all.slice(0, 4), reste = all.length - vu.length;
+    return th + '<p class="pvt-dit-t">' + vu.map(esc).join(' · ') + (reste > 0 ? ' <span class="pvt-plus">+' + reste + '</span>' : '') + '</p>';
   };
-  const say = (l) => (l.je_lui_dis ? '<p class="pvt-say-t">' + esc(l.je_lui_dis) + '</p>' : '') + (l.je_vous_accompagne ? '<p class="pvt-acc">' + esc(l.je_vous_accompagne) + '</p>' : '');
-  const inv = (l) => { const pistes = String(l.a_investiguer || '').split(/\s*[,;]\s*/).map((x) => x.trim()).filter(Boolean); return pistes.length ? '<div class="pvt-chips">' + pistes.map((x) => '<span>' + esc(x) + '</span>').join('') + '</div>' : ''; };
+  const say = (l) => (l.je_lui_dis ? '<p class="pvt-say-t">' + esc(l.je_lui_dis) + '</p>' : '') +
+    (l.je_vous_accompagne ? '<details class="pvt-acc-d"><summary>Comment je l’accompagne</summary><p class="pvt-acc">' + esc(l.je_vous_accompagne) + '</p></details>' : '');
+  const inv = (l) => { const pistes = String(l.a_investiguer || '').split(/\s*[,;]\s*/).map((x) => x.trim()).filter(Boolean).slice(0, 3); return pistes.length ? '<div class="pvt-chips">' + pistes.map((x) => '<span>' + esc(x) + '</span>').join('') + '</div>' : ''; };
   const col = (cls, k, body, vide) => '<div class="pvt-col ' + cls + '"><div class="pvt-k">' + k + '</div>' + (body || '<div class="pvt-vide">' + (vide || '') + '</div>') + '</div>';
-  const attente = lignes.length ? '' : 'En cours de préparation…';
-  let h = '<section class="pvt pvt-c4"><header class="pvt-h"><span class="pvt-n">↔</span><h3>Ce qu\u2019elle m\u2019a dit, ce que je lui réponds, ce que je creuse</h3></header>';
-  h += tri.map((l) => '<div class="pvt-grid pvt-sep">' + col('pvt-dit', 'Elle a dit', dit(l)) + col('pvt-say', 'Je lui dis', say(l)) + col('pvt-inv', 'Je creuse', inv(l)) + '</div>').join('');
+  const ligne = (l) => '<div class="pvt-grid pvt-sep">' + col('pvt-dit', 'Elle a dit', dit(l)) + col('pvt-say', 'Je lui dis', say(l)) + col('pvt-inv', 'Je creuse', inv(l)) + '</div>';
+  const NB = 5;
+  let h = '<section class="pvt pvt-c4"><header class="pvt-h"><span class="pvt-n">↔</span><h3>Ce qu’elle m’a dit, ce que je lui réponds, ce que je creuse</h3></header>';
+  h += tri.slice(0, NB).map(ligne).join('');
+  if (tri.length > NB) h += '<details class="pvt-more"><summary>Voir les ' + (tri.length - NB) + ' autres lignes</summary>' + tri.slice(NB).map(ligne).join('') + '</details>';
+  if (!lignes.length) h += '<div class="pvt-col"><div class="pvt-vide">En cours de préparation…</div></div>';
+  if (flou.length) h += '<div class="pvt-flou"><b>À clarifier avec elle</b> ' + flou.map(esc).join(' · ') + '</div>';
   if (autres.length) {
-    h += '<div class="pvt-grid pvt-sep">' +
-      col('pvt-dit', 'Elle a dit aussi', autres.map((x) => '<div class="pvt-q">' + esc(x.theme) + '</div>' + liste(x.rep)).join('')) +
-      col('pvt-say', 'Je lui dis', '', attente || 'À aborder avec elle en visio.') + col('pvt-inv', 'Je creuse', '', attente || '—') + '</div>';
+    const n = autres.reduce((z, x) => z + x.rep.length, 0);
+    h += '<details class="pvt-aussi"><summary>Autres réponses cochées (' + n + ')</summary>' +
+      autres.map((x) => '<p><b>' + esc(x.theme) + '</b> ' + x.rep.map(esc).join(' · ') + '</p>').join('') + '</details>';
   }
-  if (flou.length) h += '<div class="pvt-flou"><b>À clarifier avec elle (elle ne sait pas)</b><ul class="pvt-ul">' + flou.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul></div>';
   return h + '</section>';
 }
 function pvCartes(d, esc) {
