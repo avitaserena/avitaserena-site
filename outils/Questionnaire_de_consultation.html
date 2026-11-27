@@ -1437,6 +1437,9 @@ html body #nav .nav-btn.nav-g{gap:8px!important;padding-right:10px!important}
 .pvt-mots{margin:16px 0}
 .pvt-mots-t{font-size:15px;line-height:1.65;white-space:pre-line}
 @media (max-width:1100px){.pvt-grid{grid-template-columns:1fr}.pvt-col+.pvt-col{border-left:0;border-top:1px solid #EDE9E1}.pvt-start{grid-template-columns:1fr}}
+
+.mg-edit .q .pp{display:inline-block;margin-left:8px;padding:1px 9px;border-radius:999px;font-style:normal;font-size:12px;font-weight:600;letter-spacing:.02em;background:#EDE9E1;color:#6B5238;border:1px solid #D5CFC6;vertical-align:middle;white-space:nowrap}
+.mg-edit .q .pp.pv{background:#fff;color:#6B6560}
 </style>
 </head>
 <body>
@@ -19277,12 +19280,13 @@ function trailHtml(an) {
   an.path.forEach(function (id) {
     if (S.a[id] === undefined || id === S.edit) return;
     var lbl = S.a[id] === '_skip' ? 'passée' : (N[id].champs ? champsResume(id) : chosen(id, S.a).map(function (o) { return o.l; }).join(' · '));
-    rows.push('<button type="button" class="mg-edit" data-mg="edit" data-n="' + id + '"><span class="q">' + esc(N[id].s) + '</span><span class="a">' + esc(lbl || '—') + '</span><span class="m">modifier</span></button>');
+    var dePrep = false; try { var cv = CLI && CLI[id], sv0 = S.a[id]; dePrep = cv !== undefined && sv0 !== '_skip' && JSON.stringify([].concat(cv).slice().sort()) === JSON.stringify([].concat(sv0).slice().sort()); } catch (e2) { dePrep = false; }
+    rows.push('<button type="button" class="mg-edit" data-mg="edit" data-n="' + id + '"><span class="q">' + esc(N[id].s) + (dePrep ? ' <em class="pp">Sa préparation</em>' : ' <em class="pp pv">Vu avec elle</em>') + '</span><span class="a">' + esc(lbl || '—') + '</span><span class="m">modifier</span></button>');
     var sy = S.a[id] === '_skip' ? [] : chosen(id, S.a).filter(function (o) { return o.say; }).slice(0, 2).map(function (o) { return o.say; });
     if (sy.length) rows.push('<div class="mg-trail-say"><div class="mg-say-l">Je lui dis</div>' + esc(sy.join(' ')) + '</div>');
   });
   if (!rows.length) return '';
-  return '<details class="mg-trail"' + (TRAIL_OPEN ? ' open' : '') + '><summary class="mg-trail-t">Réponses déjà reprises de son questionnaire (' + an.path.filter(function (i) { return S.a[i] !== undefined && i !== S.edit; }).length + ') : à relire ou corriger si besoin</summary>' + rows.join('') + '</details>';
+  return '<details class="mg-trail"' + (TRAIL_OPEN ? ' open' : '') + '><summary class="mg-trail-t">Réponses déjà données (' + an.path.filter(function (i) { return S.a[i] !== undefined && i !== S.edit; }).length + ') : « Sa préparation » = reprise de son questionnaire, « Vu avec elle » = répondu en visio. À relire ou corriger si besoin</summary>' + rows.join('') + '</details>';
 }
 function sideHtml(an) {
   if (an.th === 'cancer') return '<div class="mg-side"><div class="mg-side-t">Le cadre à garder en tête</div>' + '<ul class="mg-list"><li>Aucun complément, aucune plante, aucune huile essentielle, aucune tisane médicinale.</li><li>Aucun régime, jeûne ni détox.</li><li>Aucune promesse sur la maladie ni sur une récidive.</li><li>Rien qui retarde, allège ou remplace un traitement.</li><li>L\'oncologue reste le référent ; le diététicien de l\'équipe passe avant vous sur l\'alimentation.</li></ul>' + '</div>';
